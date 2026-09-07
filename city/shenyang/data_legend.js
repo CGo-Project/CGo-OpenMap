@@ -9,7 +9,7 @@ const LEGEND_CONFIG = [
         type: 'grid',
         cols: 2,
         items: [
-            { targets: ['SYM1'], name: '1号线' },
+            { targets: ['SYM01'], name: '1号线' },
             { targets: ['SYM02'], name: '2号线' },
             { targets: ['SYM03'], name: '3号线' },
             { targets: ['SYM04'], name: '4号线' },

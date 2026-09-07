@@ -2,7 +2,11 @@
  * CGo OpenMap - 沈阳车站卡片模块
  *
  * 读取高德坐标数据，在车站详情中渲染可缩放的周边地图。
+ * 附加信息由 stacard/data.js 提供；该卡片与地图卡片
+ * 共用同一个线路选项卡，并使用核心页面已有的 info-row 结构。
  */
+
+import { SHENYANG_STACARD_DATA } from "./data.js";
 
 const AMapTile = {
     getTileUrl(x, y, z) {
@@ -21,6 +25,13 @@ const WebMercator = {
         return { x, y };
     }
 };
+
+const escapeHtml = (value) => String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 
 const ShenyangStaCard = {
     initialized: false,
@@ -140,12 +151,45 @@ const ShenyangStaCard = {
         return matchedStation ? [matchedStation.lng, matchedStation.lat] : null;
     },
 
+    getInfoCardData(station, lineId, fallbackStationId = "") {
+        const stationId = String(station?.id || station?.stationId || fallbackStationId || "");
+        const lineConfig = SHENYANG_STACARD_DATA[stationId]?.[lineId];
+        return lineConfig || null;
+    },
+
+    getLineById(lineId) {
+        if (typeof linesData === "undefined" || !Array.isArray(linesData)) return null;
+        return linesData.find((line) => line?.id === lineId) || null;
+    },
+
+    resolveDestinationStationId(lineId, destination) {
+        if (!destination) return "";
+        if (destination !== "line-first" && destination !== "line-last") {
+            return String(destination);
+        }
+
+        const line = this.getLineById(lineId);
+        if (!line) return "";
+
+        const stationIds = line.hasbranch
+            ? (line["stationIds-way1"] || line.stationIds || [])
+            : (line.stationIds || []);
+        if (!stationIds.length) return "";
+        return destination === "line-first" ? stationIds[0] : stationIds[stationIds.length - 1];
+    },
+
+    getStationNameById(stationId) {
+        const id = String(stationId || "");
+        const station = typeof stationsData !== "undefined" ? stationsData[id] : null;
+        return station?.cn || "";
+    },
+
     hasCard(stationId, lineId, stationInfo) {
         const stationFromData = typeof stationsData !== "undefined" ? stationsData[stationId] : null;
         const station = stationInfo?.cn || stationInfo?.name
             ? stationInfo
             : stationFromData || { id: stationId };
-        return Boolean(this.getStationCoords(station));
+        return Boolean(this.getInfoCardData(station, lineId, stationId) || this.getStationCoords(station));
     },
 
     getCardPlaceholderHtml(station, lineInfo = {}, isCrossPlatform = false) {
@@ -157,9 +201,12 @@ const ShenyangStaCard = {
         const coordinateValue = coordinates ? coordinates.join(",") : "";
         const extraClass = isCrossPlatform ? "hoisted-stacard" : "";
         const extraStyle = isCrossPlatform ? "margin: 0 0 12px 0;" : "margin: 8px 0 14px 0;";
+        const hasInfoCard = Boolean(this.getInfoCardData(station, lineId));
+        const infoCardStyle = isCrossPlatform ? "margin: 0 0 12px 0;" : "margin: 8px 0 14px 0;";
 
-        return `
+        const mapCardHtml = `
             <div class="stacard-container stacard-minimap-box ${extraClass}"
+                data-card-type="map"
                 data-sid="${stationId}"
                 data-sname="${stationName}"
                 data-lid="${lineId}"
@@ -171,19 +218,42 @@ const ShenyangStaCard = {
                 </div>
             </div>
         `;
+
+        const infoCardHtml = hasInfoCard ? `
+            <div class="stacard-container stacard-info-box ${extraClass}"
+                data-card-type="info"
+                data-sid="${stationId}"
+                data-sname="${stationName}"
+                data-lid="${lineId}"
+                data-color="${lineColor}"
+                style="${infoCardStyle}">
+                <div class="stacard-loading-tip">
+                    <span>正在加载车站信息...</span>
+                </div>
+            </div>
+        ` : "";
+
+        return mapCardHtml + infoCardHtml;
     },
 
     async renderCard(container, context = {}) {
         if (!container) return;
+
+        const station = context.station || (context.cn || context.name ? context : {
+            id: context.stationId || container.dataset.sid || "",
+            cn: context.stationName || container.dataset.sname || ""
+        });
+        const stationName = station.cn || station.name || container.dataset.sname || "";
+        const lineColor = context.color || container.dataset.color || "var(--primary-color)";
+
+        if (container.dataset.cardType === "info") {
+            this.renderInfoCard(container, station, container.dataset.lid);
+            return;
+        }
+
         await this.init();
         this.destroyResizeObserver(container);
 
-        const station = context.station || {
-            id: context.stationId || container.dataset.sid || "",
-            cn: context.stationName || container.dataset.sname || ""
-        };
-        const stationName = station.cn || station.name || container.dataset.sname || "";
-        const lineColor = context.color || container.dataset.color || "var(--primary-color)";
         let coordinates = this.getStationCoords(station);
 
         if (!coordinates && container.dataset.coords) {
@@ -284,6 +354,80 @@ const ShenyangStaCard = {
         renderMap();
     },
 
+    getBeijingSeason() {
+        const parts = new Intl.DateTimeFormat("en-US", {
+            timeZone: "Asia/Shanghai",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric"
+        }).formatToParts(new Date());
+        const month = Number(parts.find((part) => part.type === "month")?.value);
+        const day = Number(parts.find((part) => part.type === "day")?.value);
+        const isSummer = month >= 4 && month <= 10;
+        return {
+            key: isSummer ? "summer" : "winter",
+            label: isSummer ? "夏令时（4月1日至10月31日）" : "冬令时（11月1日至次年3月31日）",
+            month,
+            day
+        };
+    },
+
+    formatServiceHours(serviceHours, season, lineId) {
+        if (!Array.isArray(serviceHours)) return "";
+
+        return serviceHours.map((item) => {
+            const destinationId = this.resolveDestinationStationId(lineId, item.destination);
+            const destinationName = this.getStationNameById(destinationId);
+            const timeRange = item?.[season.key];
+            if (!destinationName || !timeRange) return "";
+
+            const first = timeRange.first ? escapeHtml(timeRange.first) : "";
+            const last = timeRange.last ? escapeHtml(timeRange.last) : "";
+            const hours = first && last
+                ? `${first}-${last}`
+                : first ? `首班 ${first}` : last ? `末班 ${last}` : "";
+            if (!hours) return "";
+
+            const note = item.note ? `（${escapeHtml(item.note)}）` : "";
+            return `开往${escapeHtml(destinationName)}：${hours}${note}`;
+        }).filter(Boolean).join("<br>");
+    },
+
+    renderInfoCard(container, station, lineId) {
+        const info = this.getInfoCardData(station, lineId);
+        if (!info) {
+            container.innerHTML = "<div class=\"stacard-empty-box\"><span>暂无该站点运营信息</span></div>";
+            return;
+        }
+
+        const season = this.getBeijingSeason();
+        const rows = [];
+        if (info.location) {
+            rows.push(["位置", escapeHtml(info.location)]);
+        }
+
+        const serviceHours = this.formatServiceHours(info.serviceHours, season, lineId);
+        if (serviceHours) {
+            rows.push(["首末班车", serviceHours]);
+        }
+
+        if (Array.isArray(info.exits) && info.exits.length) {
+            rows.push(["出入口", info.exits.map(escapeHtml).join("、")]);
+        }
+
+        container.innerHTML = `
+            <div class="stacard-info-content"
+                style="width:100%;box-sizing:border-box;padding:4px 0;border-bottom:1px solid var(--divider,rgba(0,0,0,.08));">
+                ${rows.map(([label, value]) => `
+                    <div class="info-row">
+                        <span class="info-label">${escapeHtml(label)}</span>
+                        <span class="info-value">${value ?? "暂无数据"}</span>
+                    </div>
+                `).join("")}
+            </div>
+        `;
+    },
+
     destroyResizeObserver(container) {
         container._shenyangStaCardResizeObserver?.disconnect();
         delete container._shenyangStaCardResizeObserver;
@@ -291,7 +435,10 @@ const ShenyangStaCard = {
 
     async renderPanelCards(panel, stationInfo) {
         const containers = panel?.querySelectorAll(".stacard-container") || [];
-        await Promise.all([...containers].map((container) => this.renderCard(container, stationInfo)));
+        await Promise.all([...containers].map((container) => this.renderCard(container, {
+            station: stationInfo,
+            color: container.dataset.color
+        })));
     }
 };
 

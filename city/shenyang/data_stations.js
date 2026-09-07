@@ -11,6 +11,7 @@
  * - align: "top" | "bottom" | "left" | "right" | "top-left" | "top-right" |
  *          "bottom-left" | "bottom-right"
  * - offset / textScale / hideLabel: 可选的标签布局微调字段
+ * - 车站卡片的运营与出入口信息由 stacard/data.js 单独维护
  */
 
 const stationsData = {

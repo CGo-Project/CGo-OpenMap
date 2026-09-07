@@ -47,3 +47,38 @@
     object-fit: contain;
     display: block;
 }
+
+/* 沈阳专属紧凑线路徽标：仅保留彩色编号圆与必要的中英文线路文字。 */
+.shenyang-line-badge {
+    display: inline-flex;
+    align-items: center;
+    overflow: visible;
+    border-radius: 0;
+    background: transparent;
+}
+
+.shenyang-line-badge-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.panel-badges .shenyang-line-badge {
+    flex: 0 0 auto;
+}
+
+/* 线路悬停提示使用主题卡片底色，避免线路徽标与线网重叠。 */
+#line-tooltip {
+    box-sizing: border-box;
+    background: var(--header-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 3px 5px;
+}
+
+/* 悬停提示沿用同一徽标，但保留核心引擎规定的 34px 展示高度。 */
+#line-tooltip .shenyang-line-badge {
+    display: block;
+    color: inherit;
+}
