@@ -33,8 +33,8 @@
          */
         LINE_SORT_ORDER: [
             "SH1", "SH2", "SH3", "SH4", "SH5", "SH6", "SH7", "SH8", "SH9", "SH10",
-            "SH11", "SH12", "SH13", "SH14", "SH15", "SH16", "SH17", "SH18", "SH19",
-            "SHAPMR", "SHMaglev", "Rwy", "Rwy2"
+            "SH11", "SH12", "SH13", "SH14", "SH15", "SH16", "SH17", "SH18",
+            "SHAPMR", "SHMaglev", "SHAPT", "Rwy", "Rwy2"
         ],
 
         /** 线路同步联动高亮组 */
@@ -43,13 +43,13 @@
         ],
 
         /** 市郊铁路与国铁干线标识列表 */
-        SUBURBAN_LINES: ['SHAPMR', 'SHMaglev', 'Rwy', 'Rwy2', '中国铁路', '金山铁路', '市域铁路'],
+        SUBURBAN_LINES: ['SHMaglev', 'SHAPT', 'Rwy', 'Rwy2', '中国铁路', '金山铁路', '市域铁路'],
 
         /** 同名合并车站列表 */
         MERGE_STATIONS: [],
 
         /** 同台换乘车站列表 */
-        CROSS_PLATFORM_STATIONS: ["SH_S06", "SH_S11", "SH_S23"],
+        CROSS_PLATFORM_STATIONS: [],
 
         /** 国铁火车站 12306 购票检索站名映射 */
         MAP_12306: {
@@ -145,9 +145,9 @@
         name: ShanghaiCity.name,
         folder: "./city/shanghai",
         mainLogic: "./city/shanghai/shanghai.js",
-        center: { x: 900, y: 650 },
-        defaultScale: 1.1,
-        mapSize: { width: 1850, height: 1300 },
+        center: { x: 1415, y: 1459 },
+        defaultScale: 0.6,
+        mapSize: { width: 2639, height: 3693 },
         searchCity: "上海",
         title: "CGo OpenMap - 上海轨道交通线路图",
         keywords: "CGo OpenMap, 上海地铁, 申通地铁, 线路图, 轨道交通",
