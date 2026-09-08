@@ -1,0 +1,48 @@
+/**
+ * CGo OpenMap - 上海城市专属样式 (city/shanghai/style.css)
+ *
+ * 上海官方线网图与北京线网图的视觉语言差异：
+ * 1. 普通站是垂直于线路的短横（线路主题色实心矩形），不是同心圆点；
+ * 2. 换乘站是白底深灰描边的胶囊/圆形，多线共站时胶囊沿站台方向拉长；
+ * 3. 站名中文字号明显大于英文，中英文行距更紧凑。
+ *
+ * 站点图元由 shanghai.js 的 renderStationIcon() 生成，这里只负责尺寸、层级与文字排版。
+ */
+
+/* ── 站点图元 ── */
+.station.sh-marker {
+    /* 图元尺寸由 renderStationIcon 按原图几何逐站下发，此处仅统一渲染行为 */
+    overflow: visible;
+}
+
+.station.sh-marker svg {
+    overflow: visible;
+    shape-rendering: geometricPrecision;
+}
+
+/* 普通站短横压在线路之上，换乘站胶囊再高一层 */
+.station.sh-tick {
+    z-index: 16;
+}
+
+.station.sh-capsule {
+    z-index: 22;
+}
+
+/* ── 站名排版：贴近官方 17.33px 中文 / 8.42px 英文的比例 ── */
+.map-shanghai .stacn {
+    font-size: 13.2px;
+    line-height: 14.4px;
+    font-weight: 500;
+}
+
+.map-shanghai .staen {
+    font-size: 7.4px;
+    line-height: 8.2px;
+}
+
+/* 换乘站站名加粗，与官方线网图一致 */
+.map-shanghai .label-group.type-tsf .stacn,
+.map-shanghai .label-group.type-rdot .stacn {
+    font-weight: 700;
+}

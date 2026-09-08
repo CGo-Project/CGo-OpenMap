@@ -113,15 +113,35 @@ const stationsData = {
         align: "top-right",         // 文字相对锚点位置: top, bottom, left, right, top-left 等
         offset: { x: 4, y: -2 },    // 文字微调偏移量
         textScale: { cn: 1.0, en: 1.0 }, // 字符宽高微调
-        hideLabel: false            // 是否隐藏文本标签
+        hideLabel: false,           // 是否隐藏文本标签
+        // (可选) 站点图元几何，仅在城市实现了自定义画法时才需要
+        marker: { shape: "tick", angle: 90, long: 15, short: 7 }
     },
     // 更多车站...
 };
 ```
 
+> [!TIP]
+> **自定义城市专属的站点画法**
+>
+> 各城市线网图对「普通站 / 换乘站」的画法差异很大：北京用同心圆点，上海则用垂直于线路的
+> 线路色短横，换乘站是白底深灰描边的胶囊。若目标城市与内置画法不符，可在城市脚本中实现
+> `renderStationIcon(station, stationId)` 钩子，返回 `{ html, width, height, className }`，
+> 核心引擎会用它替换内置的 `SVGTemplates`；不实现该方法时行为完全不变。
+>
+> 配套的 `marker` 字段用来记录每座车站在原始矢量图中的图元几何：
+> `shape`（`tick` 短横 / `capsule` 胶囊 / `circle` 圆形）、`angle`（长轴方向，度）、
+> `long` / `short`（长短轴像素长度）。实现范例见 `city/shanghai/shanghai.js` 与
+> `city/shanghai/style.css`。
+
 ### 2. 串联线路走向 (`data_lines.js`)
 
-在 `data_lines.js` 中按运行顺序将车站连接为线路：
+在 `data_lines.js` 中按运行顺序将车站连接为线路。
+
+> [!NOTE]
+> `pathPoints` 中的每个拐点都可以携带可选的 `r` 指定圆角半径：省略时引擎按 90°=18px、
+> 45°=8px 自动倒角；显式写 `r: 0` 则完全按折线原样绘制，适合从官方矢量图直接提取、
+> 拐角本身已是贝塞尔圆弧的走向数据（再次倒角会造成曲率失真）。
 
 ```javascript
 const linesData = [

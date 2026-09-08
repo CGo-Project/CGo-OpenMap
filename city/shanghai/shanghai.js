@@ -7,6 +7,61 @@
  */
 
 (function () {
+    /** 载入上海城市专属样式表（站点图元尺寸与站名排版） */
+    function loadCityStylesheet() {
+        const href = "./city/shanghai/style.css";
+        if (document.querySelector(`link[href^="${href}"]`)) return null;
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = href;
+        document.head.appendChild(link);
+        return link;
+    }
+    loadCityStylesheet();
+    document.documentElement.classList.add("map-shanghai");
+
+    // ── 上海官方线网图站点画法常量（取自官方矢量图实测值）──
+    const TICK_LONG = 15;        // 普通站短横长度（垂直于线路方向）
+    const TICK_SHORT = 7;        // 普通站短横宽度（沿线路方向）
+    const CAPSULE_SHORT = 12.76; // 换乘站胶囊宽度（直径）
+    const CAPSULE_STROKE = 1.5;  // 换乘站胶囊描边宽度
+    const CAPSULE_COLOR = "#3e3a39";
+
+    /** 站点缺少原图图元数据时，按所属线路折线的切线方向推断短横朝向 */
+    const tangentAngleCache = new Map();
+    function inferTangentAngle(station, stationId) {
+        if (tangentAngleCache.has(stationId)) return tangentAngleCache.get(stationId);
+        let angle = 90;
+        const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
+        let best = null;
+        lines.forEach((line) => {
+            const groups = line.hasbranch
+                ? [line["pathPoints-main"], line["pathPoints-branch1"], line["pathPoints-branch2"]]
+                : [line.pathPoints];
+            groups.forEach((pts) => {
+                if (!Array.isArray(pts) || pts.length < 2) return;
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const a = pts[i], b = pts[i + 1];
+                    const dx = b.x - a.x, dy = b.y - a.y;
+                    const l2 = dx * dx + dy * dy;
+                    if (l2 < 1e-6) continue;
+                    const t = Math.max(0, Math.min(1, ((station.x - a.x) * dx + (station.y - a.y) * dy) / l2));
+                    const d = Math.hypot(station.x - (a.x + t * dx), station.y - (a.y + t * dy));
+                    if (!best || d < best.d) best = { d, dx, dy };
+                }
+            });
+        });
+        if (best && best.d <= 12) {
+            // 短横垂直于线路走向
+            angle = (Math.atan2(best.dy, best.dx) * 180 / Math.PI) + 90;
+        }
+        while (angle < 0) angle += 180;
+        while (angle >= 180) angle -= 180;
+        angle = Math.round(angle * 10) / 10;
+        tangentAngleCache.set(stationId, angle);
+        return angle;
+    }
+
     const ShanghaiCity = {
         /** 城市唯一标识符 */
         id: "shanghai",
@@ -111,6 +166,53 @@
             geoDataUrl: './city/shanghai/amap_data.json',
             basePath: './city/shanghai/stacard/',
             getRenderer: () => window.ShanghaiStaCard || window.StaCard || null
+        },
+
+        /**
+         * 还原上海官方线网图的站点画法（核心引擎 renderStations 的城市钩子）
+         * - 普通站：垂直于线路的线路色短横
+         * - 换乘站 / 国铁站：白底深灰描边胶囊，多线共站时沿站台方向拉长
+         * - 未开通站：交回核心通用模板
+         * @param {object} station - 处理后的车站对象（含 marker、lineColors）
+         * @param {string} stationId - 车站 ID
+         * @returns {{html: string, width: number, height: number, className: string}|null}
+         */
+        renderStationIcon(station, stationId) {
+            if (station.type === "no") return null;
+
+            const marker = station.marker || null;
+            const isCapsule = marker
+                ? marker.shape !== "tick"
+                : (station.type === "tsf" || station.type === "rdot" || station.type === "tsfo");
+            const angle = marker ? marker.angle : inferTangentAngle(station, stationId);
+
+            if (isCapsule) {
+                const short = marker ? Math.max(marker.short, CAPSULE_SHORT) : CAPSULE_SHORT;
+                const long = marker ? Math.max(marker.long, short) : CAPSULE_SHORT;
+                const box = Math.ceil(long + CAPSULE_STROKE * 2 + 2);
+                const c = box / 2;
+                const x = c - long / 2, y = c - short / 2;
+                const html = `<svg viewBox="0 0 ${box} ${box}" xmlns="http://www.w3.org/2000/svg">`
+                    + `<g transform="rotate(${angle} ${c} ${c})">`
+                    + `<rect x="${x}" y="${y}" width="${long}" height="${short}" rx="${short / 2}" ry="${short / 2}"`
+                    + ` fill="var(--map-bg)" stroke="${CAPSULE_COLOR}" stroke-width="${CAPSULE_STROKE}"/>`
+                    + `</g></svg>`;
+                return { html, width: box, height: box, className: "sh-marker sh-capsule" };
+            }
+
+            const long = marker ? marker.long : TICK_LONG;
+            const short = marker ? marker.short : TICK_SHORT;
+            const color = (station.lineColors && station.lineColors.length > 0)
+                ? station.lineColors[0]
+                : "var(--station-stroke)";
+            const box = Math.ceil(Math.max(long, short) + 2);
+            const c = box / 2;
+            // marker.angle 描述长轴方向；短横长轴垂直于线路，直接按该角度摆放
+            const html = `<svg viewBox="0 0 ${box} ${box}" xmlns="http://www.w3.org/2000/svg">`
+                + `<g transform="rotate(${angle} ${c} ${c})">`
+                + `<rect x="${c - long / 2}" y="${c - short / 2}" width="${long}" height="${short}" fill="${color}"/>`
+                + `</g></svg>`;
+            return { html, width: box, height: box, className: "sh-marker sh-tick" };
         },
 
         /** 初始化车站卡片系统 */

@@ -216,14 +216,14 @@
     <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js) -->
     <!-- ========================================================================== -->
     <!-- 城市注册总线与基础元数据 -->
-    <script src="city/data.js?v=260902.210000"></script>
+    <script src="city/data.js?v=260908.120000"></script>
     <!-- 动态按序加载当前激活城市的专属业务与全套数据文件 (根据 URL ?city= 或 LocalStorage 判定) -->
     <script>
         (function () {
             var city = window.CityDataManager ? window.CityDataManager.getCurrentCity() : null;
             var folder = (city && city.folder) ? city.folder : "./city/beijing";
             var cityId = (city && city.id) ? city.id : "beijing";
-            var v = "260902.210000";
+            var v = "260908.120000";
 
             // 同步写入当前激活城市的脚本依赖，确保在核心引擎执行前完成加载
             document.write('<script src="' + folder + '/' + cityId + '.js?v=' + v + '"><\/script>');
@@ -238,20 +238,20 @@
         })();
     </script>
     <!-- 核心地图渲染引擎 -->
-    <script type="module" src="core/script.js?v=260902.210000"></script>
+    <script type="module" src="core/script.js?v=260908.120000"></script>
     <!-- 辅助面板逻辑 -->
-    <script src="core/help.js?v=260902.210000"></script>
-    <script src="core/settings.js?v=260902.210000"></script>
+    <script src="core/help.js?v=260908.120000"></script>
+    <script src="core/settings.js?v=260908.120000"></script>
     <script>
         // 动态加载公告与运营通知系统
         (function () {
             var script = document.createElement('script');
-            script.src = "core/notice.js?v=260902.210000&t=" + Date.now();
+            script.src = "core/notice.js?v=260908.120000&t=" + Date.now();
             document.body.appendChild(script);
         })();
     </script>
     <!-- CGoUI Web Components 基础组件库 -->
-    <script type="module" src="core/cgo-ui.js?v=260902.210000"></script>
+    <script type="module" src="core/cgo-ui.js?v=260908.120000"></script>
     <script>
         // 图片加载完毕后添加 loaded 类，配合 CSS 实现平滑淡入
         document.addEventListener('DOMContentLoaded', function () {

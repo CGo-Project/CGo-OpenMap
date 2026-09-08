@@ -1017,7 +1017,16 @@ function renderStations() {
         stationDiv.style.left = s.x + 'px';
         stationDiv.style.top = s.y + 'px';
         stationDiv.dataset.sid = id;
-        if (s.type === 'dot' || s.type === 'tsfo') {
+        // 城市可自定义站点图元画法（如上海式短横与换乘胶囊）；未实现时回落到通用模板
+        const city = getActiveCity();
+        const customIcon = typeof city.renderStationIcon === 'function' ? city.renderStationIcon(s, id) : null;
+        if (customIcon && customIcon.html) {
+            stationDiv.innerHTML = customIcon.html;
+            if (customIcon.className) stationDiv.className += ' ' + customIcon.className;
+            if (customIcon.width) stationDiv.style.width = customIcon.width + 'px';
+            if (customIcon.height) stationDiv.style.height = customIcon.height + 'px';
+            if (customIcon.zIndex !== undefined) stationDiv.style.zIndex = customIcon.zIndex;
+        } else if (s.type === 'dot' || s.type === 'tsfo') {
             const stationColor = s.lineColors.length > 0 ? s.lineColors[0] : 'var(--station-stroke)';
             stationDiv.innerHTML = SVGTemplates.dot.replace('{{COLOR}}', stationColor);
         } else if (SVGTemplates[s.type]) {

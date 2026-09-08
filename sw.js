@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260907.104000';
+const CACHE_NAME = 'cgo-openmap-v260908.120000';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -61,6 +61,7 @@ const ASSETS_TO_CACHE = [
 
     // 城市配置与业务数据 (示例：上海)
     './city/shanghai/shanghai.js',
+    './city/shanghai/style.css',
     './city/shanghai/stacard/script.js',
     './city/shanghai/data_stations.js',
     './city/shanghai/data_lines.js',
