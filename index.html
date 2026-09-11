@@ -16,14 +16,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260907.102500">
-    <script type="module" src="core/cgo-ui.js?v=260907.102500"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260910.150000">
+    <script type="module" src="core/cgo-ui.js?v=260910.150000"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260907.102500">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260907.102500">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260907.102500">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260907.102500">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260910.150000">
 
     <style>
         /* Web Components 未注册前的优雅占位，杜绝无样式闪烁 */
@@ -682,13 +682,13 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=260907.102500"></script>
-    <script src="core/tool-theme.js?v=260907.102500"></script>
+    <script src="city/data.js?v=260910.150000"></script>
+    <script src="core/tool-theme.js?v=260910.150000"></script>
 
     <!-- 动态城市渲染与数据绑定 -->
     <script>
         (function () {
-            // 规范化并自适应包装城市专属 SVG 图标
+            // 规范化并自适应包装城市专属 SVG 图标；没有图标时回退为通用列车图标。
             function formatCityLogoSvg(rawSvg) {
                 if (!rawSvg || typeof rawSvg !== 'string' || !rawSvg.trim()) {
                     return '<cgo-icon name="train" size="22"></cgo-icon>';
@@ -840,7 +840,6 @@
                         </div>
                     `;
                 }).join('');
-
                 // 为去 viewBox 的自定义 SVG 图标执行边界校准 (自动校准为精确图形外包围盒，彻底兼容各种缩放基准)
                 requestAnimationFrame(() => {
                     document.querySelectorAll('.city-emblem svg').forEach(svg => {

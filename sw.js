@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260908.211000';
+const CACHE_NAME = 'cgo-openmap-v260910.150000';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -107,6 +107,20 @@ const ASSETS_TO_CACHE = [
     './city/hefei/data_timetable.js',
     './city/hefei/amap_data.json',
     './city/hefei/staname.csv',
+
+    // 城市配置与业务数据 (大连)
+    './city/dalian/dalian.js',
+    './city/dalian/stacard/script.js',
+    './city/dalian/data_stations.js',
+    './city/dalian/data_lines.js',
+    './city/dalian/data_virtual_transfers.js',
+    './city/dalian/data_scattered.js',
+    './city/dalian/data_legend.js',
+    './city/dalian/data_timetable.js',
+    './city/dalian/data_notopen.js',
+    './city/dalian/amap_data.json',
+    './city/dalian/assets/airport.svg',
+    './city/dalian/assets/railway.svg',
 
     // 图标与清单素材
     './assets/icons/icon-192.png',

@@ -476,6 +476,20 @@
         },
         async renderStaCards(infoPanel, station) {
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
+        },
+        // 车站信息板采用上游模块调度器，保留沈阳现有 StaCard 与线路关系能力。
+        stationBoard: {
+            modules: {
+                "header-controls": { enabled: true, order: 10 },
+                "header-title": { enabled: true, order: 20 },
+                "header-badges": { enabled: true, order: 30 },
+                "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
+                "adjacent-stations": { enabled: true, targetTab: "line-tab", order: 20 },
+                "transfers": { enabled: true, targetTab: "line-tab", order: 30 },
+                "station-type": { enabled: true, targetTab: "station-info", order: 10 },
+                "operators": { enabled: true, targetTab: "station-info", order: 20 },
+                "footer-actions": { enabled: true, order: 10 }
+            }
         }
     };
 

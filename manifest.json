@@ -100,6 +100,19 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "大连地铁",
+      "short_name": "大连",
+      "description": "查看大连地铁线网图",
+      "url": "./main.html?city=dalian",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

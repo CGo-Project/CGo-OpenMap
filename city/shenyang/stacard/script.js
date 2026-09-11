@@ -417,7 +417,7 @@ const ShenyangStaCard = {
 
         container.innerHTML = `
             <div class="stacard-info-content"
-                style="width:100%;box-sizing:border-box;padding:4px 0;border-bottom:1px solid var(--divider,rgba(0,0,0,.08));">
+                style="width:100%;box-sizing:border-box;padding:4px 0;border-bottom:1px dashed var(--divider,rgba(0,0,0,.08));">
                 ${rows.map(([label, value]) => `
                     <div class="info-row">
                         <span class="info-label">${escapeHtml(label)}</span>
