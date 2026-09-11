@@ -59,8 +59,23 @@ openmap/
 ├── privacy.html                # 隐私政策页面
 ├── manifest.json               # PWA 配置文件
 ├── sw.js                       # Service Worker 离线缓存
+├── drunk/                      # Drunk 线路图智能转换系统 (早期测试版，仅供测试使用)
+│   ├── index.html              # Drunk 沉浸式暗色转换工作台页面
+│   ├── css/drunk.css           # 工作台专属样式
+│   └── js/                     # 转换管道与识别算法
+│       ├── drunk_pipeline.js   # 交互流程调度总线 (上传/渲染/编辑/导出)
+│       ├── deepseek_vision.js  # DeepSeek 视觉大模型识图引擎 (客户端直连)
+│       ├── pdf_vector_extractor.js # PDF & AI 矢量图层与 XMP 色板直通解析
+│       ├── city_knowledge_matcher.js # 维基百科知识库动态匹配与 Levenshtein 纠错
+│       ├── ocr_align_solver.js # 智能 OCR 与 8 方向文字排版求解器
+│       ├── topology_tracer.js  # 线网拓扑追踪 (分支/环线/换乘)
+│       ├── openmap_codegen.js  # 标准代码生成器与 5 项核心铁律自检
+│       └── drunk_logger.js     # 控制台诊断追踪日志
+├── docs/                       # 架构设计与二次开发文档
+│   └── STATION_MODULE_GUIDE.md # 车站信息板自定义模块开发与配置指南
 ├── core/                       # 核心渲染与交互引擎 (多城市通用)
 │   ├── script.js               # 主引擎：SVG生成、视口矩阵变换、平滑飞跃定位、事件监听
+│   ├── station-board.js        # 车站信息板调度引擎与内置标准模块注册表
 │   ├── cgo-ui.js               # Web Components 组件库 (<cgo-icon> 等)
 │   ├── settings.js             # 偏好设置面板逻辑 (主题、全屏、清除缓存)
 │   ├── help.js                 # 帮助与关于弹窗逻辑
@@ -69,7 +84,8 @@ openmap/
 ├── city/                       # 城市数据层 (按城市解耦)
 │   ├── data.js                 # 城市注册总线 (CITY_REGISTRY) 与运行时元数据
 │   ├── beijing/                # 示例城市 (北京)
-│   │   ├── beijing.js          # 城市特有业务关系
+│   │   ├── beijing.js          # 城市特有业务关系与模块调度配置
+│   │   ├── modules/            # 城市专属特色模块 (如 beijing_cultural.js)
 │   │   ├── data_stations.js    # 车站坐标、中英文名、对齐方式、类型 (dot/tsf/rdot)
 │   │   ├── data_lines.js       # 线路序列、颜色、站距、分支/环线配置
 │   │   ├── data_legend.js      # 图例分组与分类显示
@@ -108,6 +124,8 @@ const CITY_REGISTRY = {
     "shanghai": {
         id: "shanghai",
         name: "上海",
+        themeColor: "#b72626",          // 城市专属主题色 (Hex，驱动主要按钮、悬浮态与高亮，留空使用默认蓝色)
+        svglogo: '<svg xmlns="http://www.w3.org/2000/svg"><path d="..."/></svg>', // 城市官方矢量徽标 (收录去色去 viewBox，留空默认显示小火车图标)
         folder: "./city/shanghai",
         mainLogic: "./city/shanghai/shanghai.js",
         center: { x: 1000, y: 800 },   // 初始视口居中坐标
@@ -121,6 +139,11 @@ const CITY_REGISTRY = {
     }
 };
 ```
+
+> 💡 **城市品牌定制规范**：
+> - `themeColor`：优先使用 6 位 Hex（如 `#b72626`、`#c60a16`），亦兼容 3/8 位 Hex。未设置时自动继承系统经典深蓝（`#00263b`）。不同城市之间色彩完全隔离，杜绝相互污染。
+> - `svglogo`：收录时**必须去色（移除硬编码 fill）、去 viewBox 并去除 XML 头部**。前端基于 `currentColor` 自动适配亮暗与悬浮反白，并通过 `getBBox()` 自动自适应缩放至与小火车图标一致的 `22px × 22px`。留空则自动降级展示小火车图标。
+
 
 ### 4.2 车站定义 (`data_stations.js`)
 
@@ -187,11 +210,63 @@ const linesData = [
   - `svgclr` (可选): 图标底色（默认同 `color`）
   - `svgtext` (可选): 图标文字颜色（默认 `#FFFFFF`）
 
+### 4.5 可定制模块化车站信息板（`core/station-board.js`）
+
+车站信息板采用**模块注册化架构**，核心调度逻辑与城市业务数据完全解耦。各城市主理人可根据本地城市特点与运营需求，自主开关、重排序或定制扩展以下 7 大核心领域内容：
+
+1. 🏛️ **文旅信息**：车站周边历史名胜古迹、红色旅游景点、网红商圈与地标导览（如北京历史名胜、沈阳方城文脉）。
+2. ⏱️ **运行时刻信息**：首末班车发车时刻、平日/节假日运营时刻表及全天班次分布。
+3. ⏳ **预计进站时间**：列车实时到站倒计时、发车预估及行车间隔动态指示。
+4. 🔄 **换乘详情**：同台换乘指引、立体通道换乘、出站限时虚拟免换乘规则、换乘步行耗时与火车站/航站楼连通提示。
+5. 🚌 **接驳空间**：地面微循环公交线路、出租车/网约车站台、P+R 驻车换乘停车场、共享单车接驳区。
+6. 🏗️ **站台结构**：岛式/侧式站台示意、楼梯/自动扶梯/垂直无障碍电梯分布位置、车厢编号与最佳换乘车门指引。
+7. 🍼 **设施指南**：母婴关爱室、无障碍卫生间、AED 自动体外除颤仪、便民服务台与失物招领处。
+
+#### 模块注册与城市配置规范
+- **注册模块**：在 `city/{city_id}/modules/` 下编写模块脚本，调用 `window.StationBoard.registerModule({ id, name, targetTab, order, shouldRender, render, onMounted })`；
+- **配置与调度**：在 `city/{city_id}/{city_id}.js` 中配置 `stationBoard` 字典统一调度；
+- **同步加载机制**：城市专属模块脚本必须在城市主逻辑 `{city}.js` 中通过 `document.write` 同步引入，确保在核心引擎执行前就绪。
+- 完整开发手册与 API 规范请参阅：[《车站信息板自定义模块开发与配置指南》](docs/STATION_MODULE_GUIDE.md)。
+
 ---
 
-## 5. AI Agent 常见任务执行 SOP
+## 5. Drunk 转换系统与 Agent 协作指南 (实验特性)
+
+> [!WARNING]
+> **早期开发验证阶段声明**：  
+> **Drunk 转换系统（`drunk/`）目前处于早期开发验证阶段，仅供测试与实验使用**。系统算法与数据结构仍在频繁迭代中，导出结果请以实际运行渲染测试为准。**极其欢迎开发者与社区团队共同参与其识别算法、矢量图层直通及拓扑求解器的协同开发！**
+
+Drunk（`drunk/index.html`）是专为解决“新城市手工测量 `(x, y)` 坐标繁琐且易出错”而研发的自动化转换工作台。
+
+### 5.1 核心架构与模块分工
+- `drunk/js/pdf_vector_extractor.js`：基于 Mozilla PDF.js 原生解析 PDF/AI 图层，直通读取矢量路径、OCG 图层语义及 XMP 色板（CMYK/RGB 专色转 Hex），支持多行文字自适应聚类。
+- `drunk/js/deepseek_vision.js`：客户端直连 DeepSeek 官方视觉大模型（`deepseek-v4-flash-vision-exp`），零中间服务器，用于整网位图拓扑结构解析。
+- `drunk/js/city_knowledge_matcher.js`：动态拉取维基百科分类树（MediaWiki API），结合 Levenshtein 模糊编辑距离自动补全站名与中英双语对齐。
+- `drunk/js/ocr_align_solver.js`：计算站名与站点的空间相对方位，自动分配 8 方向避让锚点。
+- `drunk/js/openmap_codegen.js`：生成标准 OpenMap 格式代码，并强制执行 5 项完整性自检。
+
+### 5.2 代码生成 5 项铁律校验（由 `openmap_codegen.js` 自动检验）
+1. **站间距长度自检**：单线必须满足 `distances.length === stationIds.length - 1`；环线必须满足 `distances.length === stationIds.length`。
+2. **车站 ID 引用自检**：`linesData` 中引用的所有 `stationId` 必须在 `stationsData` 中有定义。
+3. **换乘站物理对齐自检**：共站换乘的车站物理坐标必须严格统一。
+4. **孤立车站告警**：未被任何线路引用的车站将提示警告。
+5. **矢量徽标与颜色校验**：`color` 必须符合合法 Hex 格式，引用的 `svg` 需对应 `assets/svg/` 中的模板。
+
+---
+
+## 6. AI Agent 常见任务执行 SOP
 
 ### 任务 A：为项目移植新城市
+根据用户情况选择以下两种路径之一：
+
+#### 路径一：借助 Drunk 工作台快速提取并由 Agent 后期整合（推荐，测试阶段）
+1. 引导用户启动本地静态服务并访问 `http://localhost:8080/drunk/`；
+2. 上传该城市的高清线路图图片、PDF 或 Adobe Illustrator (.ai) 文件；
+3. 执行“视觉识图”或矢量解析，利用 8 方向轮盘排版并执行“45°/90°吸附”；
+4. 点击“导出城市工程”，将代码交付给 Agent 或直接放置于 `city/{city_id}/` 下；
+5. Agent 协助检查 `city/data.js` 注册表与 `sw.js` 缓存版本更新。
+
+#### 路径二：纯手工编写与数据排版
 1. **创建城市目录**：在 `city/` 下新建 `city/{city_id}/`，参考 `city/beijing/` 或 `city/shenyang/` 准备各个 `data_*.js` 文件。
 2. **注册城市**：在 `city/data.js` 的 `CITY_REGISTRY` 中添加新城市元数据。
 3. **编写车站与线路**：按顺序填充 `data_stations.js` 和 `data_lines.js`。
@@ -215,9 +290,18 @@ const linesData = [
    };
    ```
 
+### 任务 D：为城市定制/新增车站信息板模块
+1. **明确业务场景与槽位**：根据城市需要，选择定制文旅名胜、运行时刻、预计进站时间、换乘详情、接驳空间、站台结构、便民设施等内容；确定挂载目标（`'line-tab'`、`'station-info'`、`'header'`、`'footer'` 或自定义新 Tab）。
+2. **编写模块脚本**：在 `city/{city_id}/modules/{module_name}.js` 中通过 `window.StationBoard.registerModule({...})` 编写渲染逻辑（返回标准 HTML 字符串）。
+3. **在城市主脚本中同步引入与调度**：
+   - 在 `city/{city_id}/{city_id}.js` 中通过 `document.write('<script src="' + folder + '/modules/{module_name}.js?v=' + v + '"><\/script>');` 同步加载；
+   - 在城市对象的 `stationBoard.modules` 字典中配置模块的 `enabled`、`order` 与 `targetTab`。
+4. **更新离线缓存**：将新模块文件登记至 `sw.js` 的 `ASSETS_TO_CACHE` 中，并递增 `CACHE_NAME` 版本号。
+5. **验证测试**：启动本地服务器，点击对应车站，检查模块内容、事件交互及暗色/浅色模式适配。
+
 ---
 
-## 6. 本地运行与调试方法
+## 7. 本地运行与调试方法
 
 由于浏览器安全策略（CORS）限制，直接双击 `index.html` 或 `main.html` 无法通过 `file://` 协议加载模块与数据。请使用以下任一方式启动本地静态服务：
 

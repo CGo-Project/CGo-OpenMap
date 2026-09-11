@@ -87,6 +87,19 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "合肥轨道交通",
+      "short_name": "合肥",
+      "description": "查看合肥轨道交通线网图",
+      "url": "./main.html?city=hefei",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

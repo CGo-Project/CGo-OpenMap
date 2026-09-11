@@ -391,10 +391,30 @@
 
             .port-banner-actions {
                 width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
             }
 
             .port-banner-actions .btn {
-                flex: 1;
+                flex: 1 1 auto;
+                min-width: max-content;
+                padding: 0 14px !important;
+                height: 36px;
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .port-banner-actions .btn span {
+                display: inline !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .port-banner-actions .btn {
+                flex: 1 1 100%;
+                justify-content: center;
             }
         }
     </style>
@@ -462,13 +482,14 @@
                         <div class="feature-emblem">
                             <cgo-icon name="route" size="22"></cgo-icon>
                         </div>
-                        <h3 class="feature-title">车站信息与换乘</h3>
+                        <h3 class="feature-title">可定制模块化车站信息板</h3>
                     </div>
                     <ul class="feature-list">
-                        <li><strong>详细图卡</strong>：点击车站展示中英文名、所属线路与运营归属单位</li>
-                        <li><strong>站台结构图</strong>：精细化楼梯分布与换乘节点图（持续补充中）</li>
-                        <li><strong>换乘连通</strong>：支持同台换乘、通道换乘及出站虚拟换乘逻辑</li>
-                        <li><strong>时刻表查询</strong>：一键调取首末班车与实时列车运行时刻</li>
+                        <li><strong>模块化注册架构</strong>：支持城市主理人按需定制、独立开关、排序与跨选项卡调度</li>
+                        <li><strong>文旅与名胜指引</strong>：定制展现车站周边历史人文、名胜古迹、商圈打卡与游览路线</li>
+                        <li><strong>运行时刻与进站预估</strong>：支持首末班车时刻查询、全天运行表与实时/预计列车进站时间看板</li>
+                        <li><strong>立体换乘与接驳空间</strong>：精细呈现同台/通道/虚拟换乘走行耗时、地面微循环公交、打车及 P+R 停车场</li>
+                        <li><strong>站台结构与设施指南</strong>：直观展示岛侧站台布局、无障碍垂直电梯、楼扶梯、母婴关爱室与 AED 急救分布</li>
                     </ul>
                 </div>
 
@@ -509,6 +530,7 @@
                     <ul class="feature-list">
                         <li><strong>引擎与数据分离</strong>：核心渲染引擎与城市业务数据完全解耦</li>
                         <li><strong>标准化数据目录</strong>：城市数据采用独立配置清单，极简清晰</li>
+                        <li><strong>城市专属主题色</strong>：支持配置专属 `themeColor` 衍生全套深浅配色，城市间色彩彻底隔离</li>
                         <li><strong>多城市一键接入</strong>：在城市注册中心注册即可扩展全国各大城市</li>
                     </ul>
                 </div>
@@ -522,6 +544,7 @@
                     </div>
                     <ul class="feature-list">
                         <li><strong>纯矢量 SVG 渲染</strong>：全高清矢量绘制，任何缩放比例下均清晰锐利</li>
+                        <li><strong>城市官方矢量徽标</strong>：支持在注册表中登记城市官方 SVG 徽标（`svglogo`），首页卡片等大保真渲染</li>
                         <li><strong>文化特色徽标</strong>：支持重点地标文化车站（如故宫、天坛等）专属图标</li>
                         <li><strong>精致版式排版</strong>：站名智能多向对齐与避让，还原轨道交通图设计感</li>
                     </ul>
@@ -554,6 +577,26 @@
                         <li><strong>完备文档与指引</strong>：提供移植手册与贡献指南，支持零基础 AI 辅助制图</li>
                     </ul>
                 </div>
+
+                <div class="feature-card" style="border-color: var(--primary-color);">
+                    <div class="feature-card-header">
+                        <div class="feature-emblem" style="background: var(--primary-color); color: #fff;">
+                            <span style="font-size: 18px;">🍺</span>
+                        </div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex: 1;">
+                            <h3 class="feature-title">Drunk 智能转换系统</h3>
+                            <span class="badge badge-warning" style="font-size: 11px;">测试版</span>
+                        </div>
+                    </div>
+                    <ul class="feature-list">
+                        <li><strong>底图与工程直通</strong>：支持位图图片、矢量 PDF 及 Illustrator (.ai) 工程</li>
+                        <li><strong>AI 视觉拓扑解析</strong>：浏览器直连 DeepSeek 官方多模态视觉大模型</li>
+                        <li><strong>知识库动态对齐</strong>：联网维基百科动态校对站名并补齐中英双语</li>
+                        <li><strong>可视化排版微调</strong>：8 方向文字轮盘避让、幽灵底图比对与 45°/90° 正交吸附</li>
+                        <li><strong>标准工程代码导出</strong>：内置 5 项数据完整性铁律自检，一键生成全套城市代码</li>
+                        <li><strong>早期测试与共建说明</strong>：<strong>Drunk 系统为早期开发验证阶段，仅供测试使用。极其欢迎开发者共同开发！</strong></li>
+                    </ul>
+                </div>
             </div>
 
             <!-- 呼吁共建横幅 -->
@@ -564,23 +607,27 @@
                     </div>
                     <div class="port-banner-info">
                         <h3>想要为你所在的城市制作一份线路图并认领城市主理人？</h3>
-                        <p>无论你是零基础新手想让 AI 辅助编写数据，还是前端开发者自行移植，我们都为你准备了详尽实操指南：</p>
+                        <p>支持使用 Drunk 智能转换系统自动提取线路图，或根据移植指南手动编写数据。Drunk 系统当前为早期测试验证阶段，欢迎体验与共同开发：</p>
                     </div>
                 </div>
                 <div class="port-banner-actions">
-                    <a href="./CONTRIBUTING.md" target="_blank" class="btn btn-primary">
-                        <cgo-icon name="user" size="15"></cgo-icon>
-                        <span>社区贡献与主理人指南</span>
+                    <a href="./drunk/index.html" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台">
+                        <span>🍺 Drunk 智能转换 (测试版)</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
-                    <a href="./QUICKSTART.md" target="_blank" class="btn btn-secondary">
-                        <cgo-icon name="code" size="15"></cgo-icon>
-                        <span>新手快速上手手册</span>
+                    <a href="./CONTRIBUTING.md" target="_blank" class="btn btn-info">
+                        <cgo-icon name="user" size="15"></cgo-icon>
+                        <span>城市主理人指南</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
                     <a href="./PORTING.md" target="_blank" class="btn btn-info">
                         <cgo-icon name="file" size="15"></cgo-icon>
-                        <span>城市移植实操手册</span>
+                        <span>城市移植手册</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
+                    <a href="./QUICKSTART.md" target="_blank" class="btn btn-secondary">
+                        <cgo-icon name="code" size="15"></cgo-icon>
+                        <span>新手实战手册</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
                 </div>
@@ -590,7 +637,7 @@
             <div class="meta-info-box">
                 <div class="meta-info-text">
                     <p><strong>CGo OpenMap - 城市轨道交通线路图开放平台</strong></p>
-                    <p>由 Central Go 及其贡献者开源维护 · 基础范例版本基于北京、沈阳线网构建</p>
+                    <p>由 Central Go 及其贡献者开源维护 · 基础范例版本基于北京、沈阳线网构建 · Drunk 系统处于早期测试阶段</p>
                 </div>
                 <div class="meta-badges">
                     <span class="badge badge-info">GNU AGPLv3 / ODbL</span>
@@ -605,6 +652,8 @@
     <footer class="portal-footer">
         <div class="footer-nav">
             <a href="./index.html">城市主页</a>
+            <span class="footer-sep">·</span>
+            <a href="./drunk/index.html">Drunk 转换工作台</a>
             <span class="footer-sep">·</span>
             <a href="./QUICKSTART.md" target="_blank">新手指南</a>
             <span class="footer-sep">·</span>

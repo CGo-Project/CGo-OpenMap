@@ -250,8 +250,37 @@
         /** 渲染车站详情面板内的全部卡片 */
         async renderStaCards(infoPanel, station) {
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
+        },
+
+        // ======================================================================
+        // 车站信息板模块注册化配置 (StationBoard Modular Configuration)
+        // ======================================================================
+        stationBoard: {
+            // 声明引入的城市自定义模块脚本列表
+            scripts: [
+                'modules/beijing_cultural.js'
+            ],
+            // 模块启用状态、排序权重与挂载选项卡配置
+            modules: {
+                'header-controls': { enabled: true, order: 10 },
+                'header-title': { enabled: true, order: 20 },
+                'header-badges': { enabled: true, order: 30 },
+                'stacard': { enabled: true, targetTab: 'line-tab', order: 10 },
+                'adjacent-stations': { enabled: true, targetTab: 'line-tab', order: 20 },
+                'transfers': { enabled: true, targetTab: 'line-tab', order: 30 },
+                'station-type': { enabled: true, targetTab: 'station-info', order: 10 },
+                // 北京专属历史文化与古迹名胜指引模块
+                'beijing-cultural-tip': { enabled: true, targetTab: 'station-info', order: 15 },
+                'operators': { enabled: true, targetTab: 'station-info', order: 20 },
+                'footer-actions': { enabled: true, order: 10 }
+            }
         }
     };
+
+    // 同步写入城市专属自定义模块脚本（与 document.write 城市数据脚本同批执行，确保早于 type=module 的 core/script.js）
+    if (typeof document !== 'undefined' && typeof document.write === 'function') {
+        document.write('<scr' + 'ipt src="./city/beijing/modules/beijing_cultural.js?v=260908.093000"><\/scr' + 'ipt>');
+    }
 
     // ==========================================================================
     // 全局导出与城市自动注册

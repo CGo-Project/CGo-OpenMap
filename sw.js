@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260908.001000';
+const CACHE_NAME = 'cgo-openmap-v260908.211000';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -38,6 +38,7 @@ const ASSETS_TO_CACHE = [
     // 核心通用 JS 库
     './core/cgo-ui.js',
     './core/tool-theme.js',
+    './core/station-board.js',
     './core/script.js',
     './core/help.js',
     './core/settings.js',
@@ -46,6 +47,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (示例：北京)
     './city/data.js',
     './city/beijing/beijing.js',
+    './city/beijing/modules/beijing_cultural.js',
     './city/beijing/stacard/script.js',
     './city/beijing/data_stations.js',
     './city/beijing/data_lines.js',
@@ -76,7 +78,6 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (沈阳)
     './city/shenyang/shenyang.js',
     './city/shenyang/stacard/script.js',
-    './city/shenyang/stacard/data.js',
     './city/shenyang/data_stations.js',
     './city/shenyang/data_lines.js',
     './city/shenyang/data_virtual_transfers.js',
@@ -90,6 +91,22 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/airport.svg',
     './city/shenyang/assets/fangcheng.svg',
     './city/shenyang/assets/railway.svg',
+
+    // 城市配置与业务数据 (合肥)
+    './city/hefei/hefei.js',
+    './city/hefei/modules/hefei_timetable.js',
+    './city/hefei/modules/hefei_cultural.js',
+    './city/hefei/stacard/script.js',
+    './city/hefei/data_stations.js',
+    './city/hefei/data_lines.js',
+    './city/hefei/data_virtual_transfers.js',
+    './city/hefei/data_scattered.js',
+    './city/hefei/assets/railway.svg',
+    './city/hefei/data_notopen.js',
+    './city/hefei/data_legend.js',
+    './city/hefei/data_timetable.js',
+    './city/hefei/amap_data.json',
+    './city/hefei/staname.csv',
 
     // 图标与清单素材
     './assets/icons/icon-192.png',
