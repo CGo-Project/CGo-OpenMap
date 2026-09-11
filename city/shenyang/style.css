@@ -1,0 +1,119 @@
+/* CGo OpenMap - 沈阳城市专属样式 */
+
+/* 深色主题下提高沈阳黑色装饰线与地图背景的对比度。 */
+[data-theme="dark"] #scattered-layer img[src$="/backslash.svg"],
+[data-theme="dark"] #scattered-layer img[src$="/slash.svg"],
+[data-theme="dark"] #scattered-layer img[src$="/underline_90.svg"] {
+    filter: invert(1);
+}
+
+/* 换乘站呼出标签：用底边框替代需要反复旋转定位的图片资源。 */
+.label-group.label-callout {
+    padding: 2px 4px 1px;
+    border-bottom: 1.2px solid var(--text-main);
+    z-index: 31;
+}
+
+/* 呼出线由城市脚本按标签实际尺寸动态绘制。外描边隔离底图，内线跟随主题文字色。 */
+#lines-layer #shenyang-label-callout-lines {
+    pointer-events: none;
+    overflow: visible;
+}
+
+#lines-layer .shenyang-label-callout-line-halo,
+#lines-layer .shenyang-label-callout-line {
+    fill: none;
+    stroke-linecap: round;
+    pointer-events: none;
+    vector-effect: non-scaling-stroke;
+}
+
+#lines-layer .shenyang-label-callout-line-halo {
+    stroke: var(--map-bg);
+    stroke-width: 4px;
+}
+
+#lines-layer .shenyang-label-callout-line {
+    stroke: var(--text-main);
+    stroke-width: 1.2px;
+}
+
+/* 详情弹窗标题中的沈阳城市专属站点图标。 */
+.shenyang-station-header-decoration {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+    object-fit: contain;
+    display: block;
+}
+
+/* 沈阳专属紧凑线路徽标：仅保留彩色编号圆与必要的中英文线路文字。 */
+.shenyang-line-badge {
+    display: inline-flex;
+    align-items: center;
+    overflow: visible;
+    border-radius: 0;
+    background: transparent;
+}
+
+.shenyang-line-badge-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.panel-badges .shenyang-line-badge {
+    flex: 0 0 auto;
+}
+
+/* 线路悬停提示使用主题卡片底色，避免线路徽标与线网重叠。 */
+#line-tooltip {
+    box-sizing: border-box;
+    background: var(--header-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 3px 5px;
+}
+
+/* 悬停提示沿用同一徽标，但保留核心引擎规定的 34px 展示高度。 */
+#line-tooltip .shenyang-line-badge {
+    display: block;
+    color: inherit;
+}
+
+/* 报站提示中的目的地指引：使用淡色圆角提示条，保持信息板的轻量层级。 */
+.shenyang-cultural-destination-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 9px 11px;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+    border-radius: 7px;
+    background: var(--tab-bg);
+    color: var(--text-main);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.shenyang-cultural-destination-icon {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--primary-color);
+}
+
+.shenyang-cultural-destination-text {
+    min-width: 0;
+    color: var(--text-main);
+}
+
+.shenyang-cultural-destination-text strong {
+    font-weight: 700;
+}
+
+/* 在窄屏下保持图标与文案两列结构，同时允许长目的地自然换行。 */
+.shenyang-cultural-destination-text {
+    overflow-wrap: anywhere;
+}

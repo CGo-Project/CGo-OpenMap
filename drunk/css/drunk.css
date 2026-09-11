@@ -1,0 +1,539 @@
+/* ==========================================================================
+   Drunk 线路图智能转换系统 - CGoUI 标准定制样式 (drunk.css)
+   基于 CGoUI 样式体系 (cgo_clr.css, cgo_element.css, cgo_ui.css) 扩展构建
+   ========================================================================== */
+
+/* 页面整体骨架 */
+body.drunk-body {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--bg-color, #121212);
+    color: var(--text-main, #e0e0e0);
+    font-family: var(--font-sans);
+}
+
+#drunk-app-container {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* 顶部工具栏：继承 CGoUI .tool-header */
+.tool-header.drunk-header {
+    height: 56px;
+    padding: 0 16px;
+    background-color: var(--header-bg, #1e1e1e);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 100;
+}
+
+.brand-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.drunk-logo-icon {
+    font-size: 24px;
+    filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.5));
+    animation: floatLogo 3s ease-in-out infinite alternate;
+}
+
+@keyframes floatLogo {
+    0% { transform: translateY(0px) rotate(0deg); }
+    100% { transform: translateY(-2px) rotate(4deg); }
+}
+
+.brand-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: 0.5px;
+}
+
+/* 工具栏按钮组 */
+.toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* 幽灵底图滑块 */
+.ghost-slider-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--btn-info-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-color);
+    padding: 4px 12px;
+    border-radius: var(--radius-xs, 4px);
+    font-size: var(--text-sm, 12px);
+    color: var(--text-light);
+    height: 34px;
+}
+
+.ghost-slider-group input[type="range"] {
+    width: 80px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
+#ghost-opacity-value {
+    color: var(--primary-color);
+    font-weight: 600;
+    min-width: 32px;
+}
+
+/* 主工作区 */
+#drunk-main-workbench {
+    flex: 1;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 空状态引导框 */
+.empty-guide-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: var(--card-bg, #1e1e1e);
+    border: 1px dashed var(--border-color);
+    padding: 36px 40px;
+    border-radius: var(--radius-md, 8px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+    max-width: 460px;
+    z-index: 10;
+}
+
+.empty-guide-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.empty-guide-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-main);
+}
+
+.empty-guide-desc {
+    font-size: 13px;
+    color: var(--text-light);
+    line-height: 1.6;
+    margin-bottom: 18px;
+}
+
+.empty-guide-tags {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* 漫游视口 */
+#drunk-viewport {
+    flex: 1;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    background: var(--map-bg, #181818);
+    cursor: default;
+}
+
+#drunk-map-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+/* 幽灵底图层 */
+#drunk-ghost-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.45;
+    transition: opacity 0.15s ease;
+}
+
+/* SVG 矢量线路层 */
+#drunk-lines-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: auto;
+}
+
+.line-path-svg {
+    cursor: pointer;
+    transition: stroke-width 0.2s ease, opacity 0.2s ease;
+}
+
+.line-path-svg:hover {
+    stroke-width: 11px !important;
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+}
+
+.line-path-svg.highlighted {
+    stroke-width: 13px !important;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.9));
+}
+
+/* 站点圆点层 */
+#drunk-stations-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: auto;
+}
+
+.station-dot {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #161b22;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+    z-index: 10;
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
+}
+
+.station-dot:hover {
+    transform: translate(-50%, -50%) scale(1.4);
+    box-shadow: 0 0 12px var(--primary-color);
+    z-index: 20;
+}
+
+.station-dot.type-tsf {
+    width: 18px;
+    height: 18px;
+    background: #ffffff;
+    border: 4px solid #000000;
+    box-shadow: 0 0 0 2px #ffffff;
+}
+
+.station-dot.selected {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(0, 96, 152, 0.5), 0 0 15px var(--primary-color) !important;
+    transform: translate(-50%, -50%) scale(1.5);
+    z-index: 30;
+}
+
+/* 站名标签层 */
+#drunk-labels-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: auto;
+}
+
+.station-label {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    cursor: pointer;
+    white-space: nowrap;
+    z-index: 15;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.15s ease;
+}
+
+.station-label:hover {
+    background: rgba(0, 96, 152, 0.25);
+}
+
+.sta-cn {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main, #ffffff);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.8);
+    line-height: 1.2;
+}
+
+.sta-en {
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--text-light, rgba(255, 255, 255, 0.85));
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+    line-height: 1.1;
+}
+
+/* 8 方向锚点对齐规则 */
+.station-label.align-top {
+    transform: translate(-50%, -100%);
+    margin-top: -8px;
+    align-items: center;
+    text-align: center;
+}
+.station-label.align-bottom {
+    transform: translate(-50%, 0%);
+    margin-top: 8px;
+    align-items: center;
+    text-align: center;
+}
+.station-label.align-left {
+    transform: translate(-100%, -50%);
+    margin-left: -10px;
+    align-items: flex-end;
+    text-align: right;
+}
+.station-label.align-right {
+    transform: translate(0%, -50%);
+    margin-left: 10px;
+    align-items: flex-start;
+    text-align: left;
+}
+.station-label.align-top-left {
+    transform: translate(-100%, -100%);
+    margin-left: -6px;
+    margin-top: -6px;
+    align-items: flex-end;
+    text-align: right;
+}
+.station-label.align-top-right {
+    transform: translate(0%, -100%);
+    margin-left: 6px;
+    margin-top: -6px;
+    align-items: flex-start;
+    text-align: left;
+}
+.station-label.align-bottom-left {
+    transform: translate(-100%, 0%);
+    margin-left: -6px;
+    margin-top: 6px;
+    align-items: flex-end;
+    text-align: right;
+}
+.station-label.align-bottom-right {
+    transform: translate(0%, 0%);
+    margin-left: 6px;
+    margin-top: 6px;
+    align-items: flex-start;
+    text-align: left;
+}
+
+/* 右侧检视面板：继承 CGoUI 侧边栏与卡片 */
+#drunk-sidebar-inspector {
+    width: 320px;
+    background: var(--sidebar-bg, #1a1a1a);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 14px;
+    overflow-y: auto;
+    z-index: 90;
+}
+
+.panel-card {
+    background: var(--card-bg, #222222);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm, 6px);
+    padding: 14px;
+}
+
+.panel-card-title {
+    font-size: var(--text-sm, 12px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 8 方向锚点轮盘控制器 */
+.align-wheel-box {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 34px);
+    gap: 6px;
+    max-width: 170px;
+    margin: 8px auto;
+}
+
+.wheel-sector {
+    background: var(--btn-info-bg, rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs, 4px);
+    color: var(--text-light);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-base);
+}
+
+.wheel-sector:hover {
+    background: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+}
+
+.wheel-sector.active {
+    background: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-hover);
+    box-shadow: 0 0 8px rgba(0, 96, 152, 0.6);
+}
+
+.wheel-center {
+    background: transparent;
+    border: none;
+    cursor: default;
+}
+
+/* 线路列表卡片 */
+.legend-item-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    background: var(--bg-hover, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs, 4px);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.legend-item-card:hover {
+    background: var(--btn-info-hover);
+    border-color: var(--primary-color);
+}
+
+.legend-color-pill {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.legend-name-text {
+    flex: 1;
+    font-size: var(--text-sm, 13px);
+    font-weight: 600;
+}
+
+.legend-sta-count {
+    font-size: var(--text-xs, 11px);
+    color: var(--text-light);
+}
+
+/* 浮层通知 Toast */
+#notification-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--header-bg, #1e1e1e);
+    border: 1px solid var(--primary-color);
+    color: var(--text-main);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 96, 152, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 999;
+}
+
+#notification-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* 导出代码弹窗：对齐 CGoUI Modal */
+#export-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+#export-modal.active {
+    display: flex;
+}
+
+.modal-content-box {
+    width: 760px;
+    max-height: 85vh;
+    background: var(--card-bg, #1e1e1e);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md, 8px);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 14px 20px;
+    background: var(--header-bg, #181818);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+#export-code-preview {
+    width: 100%;
+    height: 380px;
+    background: var(--bg-color, #121212);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs, 4px);
+    color: var(--primary-hover, #58a6ff);
+    font-family: var(--font-mono, Consolas, Monaco, monospace);
+    font-size: 12px;
+    padding: 12px;
+    resize: none;
+    white-space: pre;
+}
+
+.modal-footer {
+    padding: 12px 20px;
+    background: var(--header-bg, #181818);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}

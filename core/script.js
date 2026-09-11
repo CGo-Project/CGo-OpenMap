@@ -28,6 +28,17 @@ const originalDesc = document.querySelector('meta[name="description"]')?.getAttr
 window.STATION_HISTORY = [];
 
 /**
+ * 从 GLOBAL_SCHEDULE_DATA 条目取出可点击的官网 URL。
+ * 兼容字符串外链，以及带 url 字段的官方首末班结构对象。
+ */
+function resolveScheduleHref(entry) {
+    if (!entry) return null;
+    if (typeof entry === 'string') return entry;
+    if (typeof entry === 'object' && typeof entry.url === 'string' && entry.url) return entry.url;
+    return null;
+}
+
+/**
  * 重建常驻侧边栏中的历史车站折叠面板列表
  */
 function rebuildSidebarHistory() {
@@ -1668,15 +1679,21 @@ function renderUserModePanel(station, initialTabIndex = 0) {
         if (typeof GLOBAL_SCHEDULE_DATA === 'undefined' || !GLOBAL_SCHEDULE_DATA) return null;
         const lineData = GLOBAL_SCHEDULE_DATA[lineId];
         if (!lineData) return null;
-        return lineData[stationId];
+        return resolveScheduleHref(lineData[stationId]);
     };
-    const getInfoStr = (sid, dist) => {
+    const getInfoStr = (sid, dist, fromSid) => {
         const sName = processedStations[sid]?.cn || "未知";
         const strDist = (dist === undefined || dist === null) ? "" : String(dist).trim();
-        if (!strDist || strDist === "0" || strDist === "?" || strDist === "??") {
-            return sName;
+        if (strDist && strDist !== "0" && strDist !== "?" && strDist !== "??") {
+            return `${sName} <span style="color:var(--text-light);font-size:10px;">(${strDist}米)</span>`;
         }
-        return `${sName} <span style="color:var(--text-light);font-size:10px;">(${strDist}米)</span>`;
+        if (fromSid) {
+            const estimated = estimateSchematicMeters(fromSid, sid);
+            if (estimated != null) {
+                return `${sName} <span style="color:var(--text-light);font-size:10px;">(约${estimated}米)</span>`;
+            }
+        }
+        return sName;
     };
     linesData.forEach(line => {
         let isStationOnLine = false;
@@ -1730,15 +1747,15 @@ function renderUserModePanel(station, initialTabIndex = 0) {
                 const ids1 = line['stationIds-way1'] || [];
                 let idx = ids1.indexOf(station.id);
                 if (idx !== -1) {
-                    if (idx > 0) prevInfo = getInfoStr(ids1[idx - 1], dists1[idx - 1]);
-                    if (idx < ids1.length - 1) nextInfo = getInfoStr(ids1[idx + 1], dists1[idx]);
+                    if (idx > 0) prevInfo = getInfoStr(ids1[idx - 1], dists1[idx - 1], station.id);
+                    if (idx < ids1.length - 1) nextInfo = getInfoStr(ids1[idx + 1], dists1[idx], station.id);
                 } else {
                     const dists2 = line['distances-way2'] || [];
                     const ids2 = line['stationIds-way2'] || [];
                     idx = ids2.indexOf(station.id);
                     if (idx !== -1) {
-                        if (idx > 0) prevInfo = getInfoStr(ids2[idx - 1], dists2[idx - 1]);
-                        if (idx < ids2.length - 1) nextInfo = getInfoStr(ids2[idx + 1], dists2[idx]);
+                        if (idx > 0) prevInfo = getInfoStr(ids2[idx - 1], dists2[idx - 1], station.id);
+                        if (idx < ids2.length - 1) nextInfo = getInfoStr(ids2[idx + 1], dists2[idx], station.id);
                     }
                 }
             } else {
@@ -1754,16 +1771,16 @@ function renderUserModePanel(station, initialTabIndex = 0) {
                         const prevDistVal = (distsReverse && distsReverse[prevIdx] !== undefined)
                             ? distsReverse[prevIdx] : dists[prevIdx];
                         const nextDistVal = dists[idx];
-                        prevInfo = getInfoStr(ids[prevIdx], prevDistVal);
-                        nextInfo = getInfoStr(ids[nextIdx], nextDistVal);
+                        prevInfo = getInfoStr(ids[prevIdx], prevDistVal, station.id);
+                        nextInfo = getInfoStr(ids[nextIdx], nextDistVal, station.id);
                     } else {
                         if (idx > 0) {
                             const prevDistVal = (distsReverse && distsReverse[idx - 1] !== undefined)
                                 ? distsReverse[idx - 1] : dists[idx - 1];
-                            prevInfo = getInfoStr(ids[idx - 1], prevDistVal);
+                            prevInfo = getInfoStr(ids[idx - 1], prevDistVal, station.id);
                         }
                         if (idx < len - 1) {
-                            nextInfo = getInfoStr(ids[idx + 1], dists[idx]);
+                            nextInfo = getInfoStr(ids[idx + 1], dists[idx], station.id);
                         }
                     }
                 }
@@ -1822,146 +1839,53 @@ function renderUserModePanel(station, initialTabIndex = 0) {
     let tabsNavHtml = '<div class="panel-tabs-nav">';
     let tabsContentHtml = '<div class="panel-tabs-body">';
     const displayLines = relatedLinesInfo.filter(info => !info.isPointOnly || info.id === 'Rwy');
-    let tabIndex = 0;
-    displayLines.forEach((info) => {
-        const isActive = tabIndex === 0 ? 'active' : '';
-        const lineColorStyle = info.lineColor ? `style="--line-color: ${info.lineColor}"` : '';
+    const infoPanel = document.getElementById('info-panel');
+    if (!infoPanel) return;
 
-        tabsNavHtml += `
-            <div class="tab-item ${isActive}" data-tab-index="${tabIndex}" ${lineColorStyle}>
-                ${info.name}
-            </div>
-        `;
-        let cardAreaHtml = !isCrossPlatformDisplay ? getStaCardAreaHtml(info, false) : '';
-        let stopsHtml = '';
-        const shouldHideNone = isMergeStation || info.isRwy;
-        if (info.prev) {
-            if (!(shouldHideNone && info.prev === "无")) {
-                stopsHtml += createRow("上一站", info.prev);
-            }
+    // 构建模块化渲染上下文
+    const context = {
+        station,
+        initialTabIndex,
+        city,
+        CROSS_PLATFORM_STATIONS,
+        MERGE_STATIONS,
+        isMergeStation,
+        isSuburbanStation,
+        isRwyStation,
+        isNoStation,
+        isTsfMode,
+        isCrossPlatformDisplay,
+        relatedLinesInfo,
+        companyList,
+        displayLines,
+        helpers: {
+            findScheduleUrl,
+            getInfoStr,
+            generateTransferHtml,
+            updateStationSectionTitle,
+            handleShare,
+            updateShareMeta,
+            resetMapState,
+            toggleMobilePanelSize,
+            updateExpandIcon,
+            renderStationCardsInPanel,
+            selectStation,
+            injectInlineSvgs,
+            initPanelDrag,
+            adjustPanelPosition
         }
-        if (info.next) {
-            if (!(shouldHideNone && info.next === "无")) {
-                stopsHtml += createRow(info.nextLabel || "下一站", info.next);
-            }
-        }
-        if (isSuburbanStation) {
-            stopsHtml += `<div style="font-size:10px; color:var(--text-light); margin-bottom:10px; font-weight:bold;">乘坐市郊铁路请参考线路的列车时刻表出行</div>`;
-        }
-        tabsContentHtml += `
-            <div class="tab-pane ${isActive}" data-tab-index="${tabIndex}">
-                ${cardAreaHtml}
-                ${stopsHtml}
-                ${transferHtml}
-            </div>
-        `;
-        tabIndex++;
-    });
-    const isInfoActive = tabIndex === 0 ? 'active' : '';
-    const infoTabIndex = 'station-info';
-    let opInfoHtml = '';
-    relatedLinesInfo.forEach(info => {
-        const styleStr = info.svgclr ? `height:28px; width:auto; vertical-align:middle; margin-right:10px; margin-top:3px; --svgclr:${info.svgclr}; --svgtext:${info.svgtext};` : 'height:28px; width:auto; vertical-align:middle; margin-right:10px; margin-top:3px;';
-        const iconHtml = info.svg
-            ? `<span class="svg-icon-placeholder line-badge" data-src="${info.svg}" style="${styleStr}"></span>`
-            : `<span class="text-badge" style="font-size:10px; margin-right:10px; vertical-align:middle;">${info.name}</span>`;
+    };
 
-        opInfoHtml += `
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; padding-left:10px;">
-                ${iconHtml}
-                <span style="font-size:13px; color:var(--text-main); font-weight:bold; text-align:right;">${info.company}</span>
-            </div>
-        `;
-    });
-    tabsNavHtml += `
-        <div class="tab-item ${isInfoActive}" data-tab-index="${infoTabIndex}" style="--line-color: var(--text-light)">
-            车站信息
-        </div>
-    `;
-    tabsContentHtml += `
-        <div class="tab-pane ${isInfoActive}" data-tab-index="${infoTabIndex}">
-            <div class="info-row" style="margin-bottom:15px; border-bottom:1px dashed var(--divider); padding-bottom:10px; font-size: 13px;">
-                <span class="info-label">车站类型</span>
-                <span class="info-value">${stationTypeStr}</span>
-            </div>
-            <div style="margin-bottom:5px; font-size: 13px;">
-                <div class="info-label" style="margin-bottom:8px;">运营单位</div>
-                ${opInfoHtml}
-            </div></div>
-    `;
-    tabsNavHtml += '</div>';
-    tabsContentHtml += '</div>';
-    if (displayLines.length === 0) {
-        tabsNavHtml = '';
-        tabsContentHtml = '<div style="padding:20px;text-align:center;color:#999;">暂无详细运营信息</div>';
+    // 优先调用 StationBoard 模块化渲染引擎
+    if (window.StationBoard && typeof window.StationBoard.render === 'function') {
+        window.StationBoard.render(infoPanel, context);
+        return;
     }
 
-    let footerContent = '';
-    const baseBtnStyle = 'border-radius:6px; text-decoration:none; display:flex; align-items:center; justify-content:center; font-weight:bold; border:none; cursor:pointer; white-space:nowrap; box-shadow:0 2px 5px rgba(0,0,0,0.1); flex:1;';
-    const btnDark = `padding:12px 0; background:var(--primary-color); color:var(--btn-text); font-size:14px; ${baseBtnStyle}`;
-    const btnDarkTiny = `padding:8px 0; background:var(--primary-color); color:var(--btn-text); font-size:11px; ${baseBtnStyle}`;
-    const btnWhite = `padding:12px 0; background:var(--btn-info-bg); color:var(--text-main); border:1px solid var(--border-color); font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,0.05); ${baseBtnStyle}`;
-    const btnWhiteTiny = `padding:8px 0; background:var(--btn-info-bg); color:var(--text-main); border:1px solid var(--border-color); font-size:11px; box-shadow:0 2px 5px rgba(0,0,0,0.05); ${baseBtnStyle}`;
-    const isSuburbanOrRail = isSuburbanStation || isRwyStation;
-    const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(station.cn, isSuburbanOrRail) : `https://uri.amap.com/search?keyword=${encodeURIComponent(station.cn)}`;
-    const url12306 = city.getRailway12306Url ? city.getRailway12306Url(station.cn) : `https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc&fs=${encodeURIComponent(station.cn.replace(/站$/, ''))}`;
-    const isRwy2Station = station.relatedLines && station.relatedLines.includes('Rwy2');
-    const initialLineScheduleUrl = (displayLines[initialTabIndex] && displayLines[initialTabIndex].scheduleUrl)
-        || (displayLines[0] && displayLines[0].scheduleUrl)
-        || displayLines.find(l => l.scheduleUrl)?.scheduleUrl
-        || null;
-
-    if (isNoStation) {
-        footerContent = '<div style="padding:10px; color:#999;">该车站目前尚未运营</div>';
-    } else if (isRwyStation) {
-        const gapSize = '12px';
-        const btnsHtml = `
-            <a href="${url12306}" target="_blank" style="${btnDark}">12306查询</a>
-            <a href="${mapUrl}" target="_blank" onclick="resetMapState()" style="${btnWhite}">高德导航</a>
-        `;
-        footerContent = `<div style="display:flex; gap:${gapSize};">${btnsHtml}</div>`;
-    } else if (isSuburbanStation) {
-        const gapSize = '4px';
-        const suburbanLinks = (typeof city.getSuburbanLinks === 'function') ? city.getSuburbanLinks() : null;
-        let subLinksHtml = '';
-        if (suburbanLinks) {
-            if (suburbanLinks.timetableUrl) subLinksHtml += `<a href="${suburbanLinks.timetableUrl}" target="_blank" style="${btnDarkTiny}">市郊时刻表</a>`;
-            if (suburbanLinks.ticketUrl) subLinksHtml += `<a href="${suburbanLinks.ticketUrl}" target="_blank" style="${btnDarkTiny}">市郊票务</a>`;
-        }
-        const btnsHtml = `
-            ${subLinksHtml}
-            <a href="${url12306}" target="_blank" style="${btnDarkTiny}">12306查询</a>
-            <a href="${mapUrl}" target="_blank" onclick="resetMapState()" style="${btnWhiteTiny}">高德导航</a>
-        `;
-        footerContent = `<div style="display:flex; gap:${gapSize};">${btnsHtml}</div>`;
-    } else {
-        if (isRwy2Station) {
-            const gapSize = '4px';
-            const scheduleBtnHtml = initialLineScheduleUrl
-                ? `<a href="${initialLineScheduleUrl}" id="footer-schedule-btn" target="_blank" style="${btnDarkTiny}">官网查询</a>`
-                : `<a href="#" id="footer-schedule-btn" target="_blank" style="${btnDarkTiny}; display:none;">官网查询</a>`;
-            const btnsHtml = `
-                ${scheduleBtnHtml}
-                <a href="${url12306}" target="_blank" style="${btnDarkTiny}">12306查询</a>
-                <a href="${mapUrl}" target="_blank" onclick="resetMapState()" style="${btnWhiteTiny}">高德导航</a>
-            `;
-            footerContent = `<div style="display:flex; gap:${gapSize};">${btnsHtml}</div>`;
-        } else {
-            const gapSize = '12px';
-            const scheduleBtnHtml = initialLineScheduleUrl
-                ? `<a href="${initialLineScheduleUrl}" id="footer-schedule-btn" target="_blank" style="${btnDark}">官网查询</a>`
-                : `<a href="#" id="footer-schedule-btn" target="_blank" style="${btnDark}; display:none;">官网查询</a>`;
-            const btnsHtml = `
-                ${scheduleBtnHtml}
-                <a href="${mapUrl}" target="_blank" onclick="resetMapState()" style="${btnWhite}">高德导航</a>
-            `;
-            footerContent = `<div style="display:flex; gap:${gapSize};">${btnsHtml}</div>`;
-        }
-    }
+    // 兜底：若 StationBoard 引擎未就绪，使用内联基础渲染流程
     let enNameDisplay = station.en.replace(/<br>/gi, ' ');
     if (station.cn === '首经贸') enNameDisplay = station.en.replace(/<br>/gi, '<span class="special-br"></span>');
     const headerLeftHtml = `<div class="header-name-group"><div class="panel-cn-name">${station.cn}</div><div class="panel-en-name">${enNameDisplay}</div></div>`;
-    const infoPanel = document.getElementById('info-panel');
     infoPanel.style.height = '';
     const expandBtnHtml = (window.innerWidth <= 640)
         ? `<button class="panel-expand-btn" title="展开/收起">
@@ -2069,13 +1993,11 @@ function renderUserModePanel(station, initialTabIndex = 0) {
         });
     });
     injectInlineSvgs(infoPanel);
-
     initPanelDrag();
 
     if (initialTabIndex > 0) {
         const allTabs = infoPanel.querySelectorAll('.tab-item');
         if (allTabs[initialTabIndex]) {
-            // 使用 click 触发切换逻辑
             allTabs[initialTabIndex].click();
         }
     }
@@ -2431,6 +2353,7 @@ async function initGeoSystem() {
         });
         Object.assign(STATION_GEO_MAP, GEO_PATCH);
         isGeoLoaded = true;
+        schematicMetersPerPixelCache = undefined;
         console.log(`LBS: Loaded ${Object.keys(STATION_GEO_MAP).length} geo points.`);
     } catch (e) {
         console.warn(`LBS: Failed to load ${geoDataUrl}. Nearest station feature disabled.`);
@@ -2557,9 +2480,71 @@ function outOfChina(lon, lat) {
     return false;
 }
 
+let schematicMetersPerPixelCache = undefined;
+
+function lookupStationLngLat(cn) {
+    if (!cn || !STATION_GEO_MAP) return null;
+    return STATION_GEO_MAP[cn] || STATION_GEO_MAP[cn + "站"] || STATION_GEO_MAP[String(cn).replace(/站$/, "")] || null;
+}
+
 /**
- * 根据大圆航线 Haversine 公式计算两个经纬度坐标之间的球面距离 (单位: 米)
+ * 示意图像素 → 米的比例。优先用城市配置 schematicMetersPerPixel；
+ * 否则用已加载的高德点对「球面距离 / 示意图站距」取中位数标定。
  */
+function getSchematicMetersPerPixel() {
+    if (schematicMetersPerPixelCache !== undefined) return schematicMetersPerPixelCache;
+    const city = typeof getActiveCity === "function" ? getActiveCity() : null;
+    const configured = Number(city && city.schematicMetersPerPixel);
+    if (Number.isFinite(configured) && configured > 0) {
+        schematicMetersPerPixelCache = configured;
+        return configured;
+    }
+    const ratios = [];
+    if (typeof linesData !== "undefined" && linesData && processedStations) {
+        const waysOf = (line) => {
+            if (line.hasbranch) return [line["stationIds-way1"], line["stationIds-way2"]];
+            return [line.stationIds];
+        };
+        linesData.forEach((line) => {
+            waysOf(line).forEach((ids) => {
+                if (!ids) return;
+                for (let i = 0; i < ids.length - 1; i++) {
+                    const a = processedStations[ids[i]];
+                    const b = processedStations[ids[i + 1]];
+                    if (!a || !b) continue;
+                    const px = Math.hypot(a.x - b.x, a.y - b.y);
+                    if (px < 1) continue;
+                    const geoA = lookupStationLngLat(a.cn);
+                    const geoB = lookupStationLngLat(b.cn);
+                    if (!geoA || !geoB) continue;
+                    const meters = getDistance(geoA[1], geoA[0], geoB[1], geoB[0]);
+                    if (meters > 80) ratios.push(meters / px);
+                }
+            });
+        });
+    }
+    if (!ratios.length) {
+        schematicMetersPerPixelCache = null;
+        return null;
+    }
+    ratios.sort((a, b) => a - b);
+    schematicMetersPerPixelCache = ratios[Math.floor(ratios.length / 2)];
+    return schematicMetersPerPixelCache;
+}
+
+/** 无官方 distances 时，用两站示意图 (x,y) 折算估算米数（取整到 10 米）。 */
+function estimateSchematicMeters(fromId, toId) {
+    const a = processedStations[fromId];
+    const b = processedStations[toId];
+    if (!a || !b) return null;
+    const px = Math.hypot(a.x - b.x, a.y - b.y);
+    if (px < 1) return null;
+    const mpp = getSchematicMetersPerPixel();
+    if (!mpp) return null;
+    return Math.max(10, Math.round((px * mpp) / 10) * 10);
+}
+
+/** 根据大圆航线 Haversine 公式计算两个经纬度坐标之间的球面距离 (单位: 米) */
 function getDistance(lat1, lng1, lat2, lng2) {
     const radLat1 = lat1 * Math.PI / 180.0;
     const radLat2 = lat2 * Math.PI / 180.0;
@@ -2866,8 +2851,8 @@ function initContextMenu() {
             if (station.relatedLines && typeof GLOBAL_SCHEDULE_DATA !== 'undefined' && GLOBAL_SCHEDULE_DATA) {
                 for (const lid of station.relatedLines) {
                     if (GLOBAL_SCHEDULE_DATA[lid] && GLOBAL_SCHEDULE_DATA[lid][station.id]) {
-                        staScheduleUrl = GLOBAL_SCHEDULE_DATA[lid][station.id];
-                        break;
+                        staScheduleUrl = resolveScheduleHref(GLOBAL_SCHEDULE_DATA[lid][station.id]);
+                        if (staScheduleUrl) break;
                     }
                 }
             }

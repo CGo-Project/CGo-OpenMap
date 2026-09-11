@@ -50,25 +50,66 @@
   ],
   "shortcuts": [
     {
-      "name": "最近车站",
-      "short_name": "最近",
-      "url": "./index.html?action=locate",
+      "name": "北京轨道交通",
+      "short_name": "北京",
+      "description": "查看北京轨道交通与市郊铁路线网图",
+      "url": "./main.html?city=beijing",
       "icons": [
         {
-          "src": "./assets/icons/location.png",
-          "sizes": "96x96",
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]
     },
     {
-      "name": "搜索站点",
-      "short_name": "搜索",
-      "url": "./index.html?action=search",
+      "name": "沈阳地铁",
+      "short_name": "沈阳",
+      "description": "查看沈阳地铁线网图",
+      "url": "./main.html?city=shenyang",
       "icons": [
         {
-          "src": "./assets/icons/search.png",
-          "sizes": "96x96",
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "上海轨道交通",
+      "short_name": "上海",
+      "description": "查看上海轨道交通线网图",
+      "url": "./main.html?city=shanghai",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "合肥轨道交通",
+      "short_name": "合肥",
+      "description": "查看合肥轨道交通线网图",
+      "url": "./main.html?city=hefei",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "大连地铁",
+      "short_name": "大连",
+      "description": "查看大连地铁线网图",
+      "url": "./main.html?city=dalian",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
           "type": "image/png"
         }
       ]

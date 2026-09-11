@@ -11,17 +11,19 @@
  * 2. 高德切片网络缓存 (Stale-While-Revalidate / Cache-First for Tiles):
  *    - 拦截所有发往 `autonavi.com` 的地图瓦片请求，保存至 `map-tiles-cache`，加速二次浏览。
  * 
- * 移植指南 (Porting Guide):
- * 当你制作了新城市（如 `shanghai`）并作为发布包时，请在 `ASSETS_TO_CACHE` 中补充该城市的路径：
- * `'./city/shanghai/shanghai.js'`, `'./city/shanghai/data_stations.js'` 等。
+ * 移植与开发维护指南 (Developer & Porting Guide):
+ * 1. 当制作了新城市（如 `shanghai`）或新增静态资源时，请在下方 `ASSETS_TO_CACHE` 中补充对应资源路径；
+ * 2. ⚠️ 务必更新 Service Worker：修改任何业务数据或代码后，必须同步递增 `CACHE_NAME` 版本号，否则更改可能无法生效！
+ *    若在调试开发过程中遇到“怎么修改代码都不起作用、刷新无反应”的情况，请务必优先排查是否是 Service Worker 强缓存导致。
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260903.220000';
+const CACHE_NAME = 'cgo-openmap-v260911.270000';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
     './index.html',
+    './main.html',
     './readme.html',
     './privacy.html',
 
@@ -36,6 +38,7 @@ const ASSETS_TO_CACHE = [
     // 核心通用 JS 库
     './core/cgo-ui.js',
     './core/tool-theme.js',
+    './core/station-board.js',
     './core/script.js',
     './core/help.js',
     './core/settings.js',
@@ -44,6 +47,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (示例：北京)
     './city/data.js',
     './city/beijing/beijing.js',
+    './city/beijing/modules/beijing_cultural.js',
     './city/beijing/stacard/script.js',
     './city/beijing/data_stations.js',
     './city/beijing/data_lines.js',
@@ -70,6 +74,62 @@ const ASSETS_TO_CACHE = [
     './city/shanghai/data_urls.js',
     './city/shanghai/amap_data.json',
     './city/shanghai/staname.csv',
+
+    // 城市配置与业务数据 (沈阳)
+    './city/shenyang/shenyang.js',
+    './city/shenyang/modules/shenyang_map.js',
+    './city/shenyang/modules/shenyang_station_board.js',
+    './city/shenyang/modules/shenyang_cultural.js',
+    './city/shenyang/modules/shenyang_service_info.js',
+    './city/shenyang/stacard/script.js',
+    './city/shenyang/stacard/data.js',
+    './city/shenyang/data_stations.js',
+    './city/shenyang/data_lines.js',
+    './city/shenyang/data_virtual_transfers.js',
+    './city/shenyang/data_scattered.js',
+    './city/shenyang/data_notopen.js',
+    './city/shenyang/data_legend.js',
+    './city/shenyang/data_timetable.js',
+    './city/shenyang/amap_data.json',
+    './city/shenyang/staname.csv',
+    './city/shenyang/style.css',
+    './city/shenyang/assets/airport.svg',
+    './city/shenyang/assets/compass.svg',
+    './city/shenyang/assets/fangcheng.svg',
+    './city/shenyang/assets/railway.svg',
+
+    // 城市配置与业务数据 (合肥)
+    './city/hefei/hefei.js',
+    './city/hefei/modules/hefei_timetable.js',
+    './city/hefei/modules/hefei_cultural.js',
+    './city/hefei/stacard/script.js',
+    './city/hefei/data_stations.js',
+    './city/hefei/data_lines.js',
+    './city/hefei/data_virtual_transfers.js',
+    './city/hefei/data_scattered.js',
+    './city/hefei/assets/railway.svg',
+    './city/hefei/data_notopen.js',
+    './city/hefei/data_legend.js',
+    './city/hefei/data_timetable.js',
+    './city/hefei/amap_data.json',
+    './city/hefei/staname.csv',
+
+    // 城市配置与业务数据 (大连)
+    './city/dalian/dalian.js',
+    './city/dalian/modules/dalian_map.js',
+    './city/dalian/modules/dalian_timetable.js',
+    './city/dalian/stacard/script.js',
+    './city/dalian/data_stations.js',
+    './city/dalian/data_lines.js',
+    './city/dalian/data_virtual_transfers.js',
+    './city/dalian/data_scattered.js',
+    './city/dalian/data_legend.js',
+    './city/dalian/data_timetable.js',
+    './city/dalian/data_notopen.js',
+    './city/dalian/amap_data.json',
+    './city/dalian/assets/compass.svg',
+    './city/dalian/assets/airport.svg',
+    './city/dalian/assets/railway.svg',
 
     // 图标与清单素材
     './assets/icons/icon-192.png',

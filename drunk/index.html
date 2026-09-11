@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+
+<head>
+    <!-- ========================================================================== -->
+    <!-- 1. 基础元数据与 SEO 配置 (全流程纯深色模式)                                   -->
+    <!-- ========================================================================== -->
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <title>Drunk 线路图智能转换系统 - CGo OpenMap</title>
+    <meta name="description" content="为小白用户设计的轨道交通线路图全自动矢量化与移植转换工作台">
+    <link rel="shortcut icon" href="../assets/icons/favicon.ico">
+
+    <!-- ========================================================================== -->
+    <!-- 1.1 Service Worker 安全防御脚本：注销开发环境残留的 ServiceWorker，防止破坏性拦截 -->
+    <!-- ========================================================================== -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                for (var i = 0; i < registrations.length; i++) {
+                    var reg = registrations[i];
+                    if (reg.scope && (reg.scope.includes('/openmap') || reg.scope.includes(':5500') || reg.scope.includes('localhost'))) {
+                        reg.unregister().then(function (unregistered) {
+                            if (unregistered) console.log('[Drunk] 已注销旧 ServiceWorker 以恢复正常网络直连:', reg.scope);
+                        }).catch(function () { });
+                    }
+                }
+            }).catch(function () { });
+        }
+    </script>
+
+    <!-- ========================================================================== -->
+    <!-- 2. 主题锁定脚本：严格固定为暗色，且使用 MutationObserver 防止外部 cgo-ui.js 覆盖 -->
+    <!-- ========================================================================== -->
+    <script>
+        (function () {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            var obs = new MutationObserver(function () {
+                if (document.documentElement.getAttribute('data-theme') !== 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            });
+            obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        })();
+    </script>
+
+    <!-- ========================================================================== -->
+    <!-- 3. CGoUI 页面标准样式库引入链 (严格仅引用 dev/openmap/css 目录文件，保证项目独立) -->
+    <!-- cgo_clr.css -> cgo_element.css -> cgo_ui.css -> cgo_components.css -> tool-style.css -->
+    <!-- ========================================================================== -->
+    <link rel="modulepreload" href="../core/cgo-ui.js">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=260904">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=260904">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=260904">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=260904">
+    <link rel="stylesheet" href="../css/tool-style.css?v=260904">
+
+    <!-- ========================================================================== -->
+    <!-- 4. Drunk 工作台专用高质感深色自适应样式系统 (强制统一暗色，Primary: #006098)   -->
+    <!-- ========================================================================== -->
+    <style>
+        /* 强制覆盖全局色彩 Token，确保上/右及全部控件统一深色，主色为 #006098 */
+        :root,
+        [data-theme],
+        html,
+        body {
+            --bg-color: #121315 !important;
+            --bg-body: #121315 !important;
+            --card-bg: #1c1d21 !important;
+            --panel-bg: #202226 !important;
+            --header-bg: #1a1b1e !important;
+            --footer-bg: #1a1b1e !important;
+            --text-main: #e5e8ea !important;
+            --text-light: #a0b0b9 !important;
+            --text-color: #e5e8ea !important;
+            --border-color: #2e3035 !important;
+            --primary-color: #006098 !important;
+            --primary-hover: #0070b0 !important;
+            --btn-text: #ffffff !important;
+            --btn-info-bg: #282a2f !important;
+            --btn-info-text: #e5e8ea !important;
+            --btn-info-hover: #373940 !important;
+            --table-head-bg: #1c1d21 !important;
+            --table-head-text: #e5e8ea !important;
+            --table-row-hover: #26282e !important;
+            --table-cell-border: #2e3035 !important;
+        }
+
+        /* Web Components 未注册前防闪烁占位 (FOUC 防护) */
+        cgo-icon:not(:defined),
+        cgo-button:not(:defined),
+        cgo-tabs:not(:defined) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            visibility: visible;
+            opacity: 0.6;
+        }
+
+        /* 页面基础架构：100vh 全屏沉浸式暗色工作台 */
+        body.drunk-body {
+            height: 100dvh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            background-color: #121315 !important;
+            color: #e5e8ea !important;
+            font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #drunk-app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* ======================================================================
+           横向流线型顶部工具栏 (统一深色，无反光)
+           ====================================================================== */
+        .drunk-top-bar {
+            height: 52px;
+            padding: 0 16px;
+            background-color: #1a1b1e !important;
+            border-bottom: 1px solid #2e3035 !important;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+            gap: 12px;
+            user-select: none;
+        }
+
+        /* 左侧区：品牌与标识 */
+        .bar-section-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .drunk-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: default;
+        }
+
+        .drunk-logo-icon {
+            font-size: 20px;
+            line-height: 1;
+            filter: drop-shadow(0 2px 5px rgba(234, 179, 8, 0.45));
+            transition: transform 0.2s ease;
+        }
+
+        .drunk-brand:hover .drunk-logo-icon {
+            transform: rotate(12deg) scale(1.1);
+        }
+
+        .drunk-brand-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #e5e8ea !important;
+            letter-spacing: -0.2px;
+            white-space: nowrap;
+        }
+
+        .drunk-brand-tag {
+            font-size: 11px;
+            padding: 2px 7px;
+            font-weight: 600;
+            border-radius: 4px;
+            background: #1c2e42 !important;
+            color: #58a6ff !important;
+            border: 1px solid #2a4060 !important;
+        }
+
+        /* 中间核心操作区：逻辑分组横向排列 */
+        .bar-section-center {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding: 0 8px;
+        }
+
+        .bar-section-center::-webkit-scrollbar {
+            display: none;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 22px;
+            background-color: #2e3035 !important;
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+
+        /* 幽灵底图对比滑块组 (深色定制) */
+        .ghost-slider-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #202226 !important;
+            border: 1px solid #2e3035 !important;
+            padding: 0 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #a0b0b9 !important;
+            height: 32px;
+            box-sizing: border-box;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .ghost-slider-group:hover {
+            border-color: #006098 !important;
+            background: #25282d !important;
+        }
+
+        .ghost-slider-group input[type="range"] {
+            width: 76px;
+            height: 4px;
+            accent-color: #006098 !important;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        #ghost-opacity-value {
+            color: #58a6ff !important;
+            font-weight: 600;
+            min-width: 28px;
+            font-size: 11px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* 右侧系统区：状态指示徽标 */
+        .bar-section-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        #health-status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 20px;
+            background: #1c2e42 !important;
+            color: #58a6ff !important;
+            border: 1px solid #2a4060 !important;
+            transition: all 0.25s ease;
+            white-space: nowrap;
+        }
+
+        #health-status-indicator.badge-success {
+            background: #163820 !important;
+            color: #81c995 !important;
+            border-color: #245934 !important;
+        }
+
+        #health-status-indicator.badge-danger {
+            background: #3b0f0f !important;
+            color: #ff8a80 !important;
+            border-color: #7a2424 !important;
+        }
+
+        .status-dot-pulse {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: currentColor;
+            display: inline-block;
+            box-shadow: 0 0 8px currentColor;
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+
+            0%,
+            100% {
+                opacity: 0.6;
+                transform: scale(0.9);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.15);
+            }
+        }
+
+        /* 统一标准按钮外观：Primary 颜色严格为 #006098 */
+        .btn-sm {
+            height: 32px !important;
+            padding: 0 12px !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+            border-radius: 6px !important;
+            gap: 6px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            white-space: nowrap !important;
+        }
+
+        .btn-primary {
+            background-color: #006098 !important;
+            border-color: #006098 !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 8px rgba(0, 96, 152, 0.35);
+        }
+
+        .btn-primary:hover {
+            background-color: #0070b0 !important;
+            border-color: #0070b0 !important;
+            box-shadow: 0 4px 12px rgba(0, 96, 152, 0.5);
+        }
+
+        .btn-dark {
+            background-color: #006098 !important;
+            border-color: #006098 !important;
+            color: #ffffff !important;
+        }
+
+        .btn-dark:hover {
+            background-color: #0070b0 !important;
+            border-color: #0070b0 !important;
+        }
+
+        .btn-info {
+            background-color: #282a2f !important;
+            border-color: #36393f !important;
+            color: #e5e8ea !important;
+        }
+
+        .btn-info:hover {
+            background-color: #373940 !important;
+            border-color: #454850 !important;
+            color: #ffffff !important;
+        }
+
+        /* ======================================================================
+           主工作区架构 (Workbench: Viewport + Sidebar)
+           ====================================================================== */
+        #drunk-main-workbench {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            position: relative;
+            overflow: hidden;
+            background-color: #121315 !important;
+        }
+
+        /* 漫游视口 */
+        #drunk-viewport {
+            flex: 1;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            cursor: default;
+            /* 现代深色高质感微点阵背景 */
+            background-color: #131417 !important;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+            background-size: 24px 24px;
+            background-position: -1px -1px;
+            transition: background-color 0.2s ease;
+        }
+
+        #drunk-map-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+
+        /* 幽灵底图 */
+        #drunk-ghost-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.45;
+            transition: opacity 0.15s ease;
+        }
+
+        /* 矢量线路层 */
+        #drunk-lines-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: auto;
+        }
+
+        .line-path-svg {
+            cursor: pointer;
+            transition: stroke-width 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+        }
+
+        .line-path-svg:hover {
+            stroke-width: 11px !important;
+            filter: drop-shadow(0 0 8px rgba(0, 96, 152, 0.7));
+        }
+
+        .line-path-svg.highlighted {
+            stroke-width: 13px !important;
+            filter: drop-shadow(0 0 12px rgba(88, 166, 255, 0.9));
+        }
+
+        /* 站点圆点层 */
+        #drunk-stations-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: auto;
+        }
+
+        .station-dot {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #101214;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            z-index: 10;
+            transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, border-color 0.15s ease;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        .station-dot:hover {
+            transform: translate(-50%, -50%) scale(1.35);
+            box-shadow: 0 0 14px #006098;
+            z-index: 20;
+        }
+
+        .station-dot.type-tsf {
+            width: 18px;
+            height: 18px;
+            background: #ffffff;
+            border: 4px solid #101214;
+            box-shadow: 0 0 0 2px #ffffff, 0 2px 8px rgba(0, 0, 0, 0.6);
+        }
+
+        .station-dot.selected {
+            border-color: #006098 !important;
+            box-shadow: 0 0 0 3px rgba(0, 96, 152, 0.5), 0 0 18px #006098 !important;
+            transform: translate(-50%, -50%) scale(1.45);
+            z-index: 30;
+        }
+
+        /* 站名标签层 */
+        #drunk-labels-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: auto;
+        }
+
+        .station-label {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            cursor: pointer;
+            white-space: nowrap;
+            z-index: 15;
+            padding: 3px 6px;
+            border-radius: 4px;
+            transition: background 0.15s ease, transform 0.15s ease;
+            user-select: none;
+        }
+
+        .station-label:hover {
+            background: rgba(0, 96, 152, 0.3);
+        }
+
+        .sta-cn {
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.9);
+            line-height: 1.2;
+            letter-spacing: 0.2px;
+        }
+
+        .sta-en {
+            font-size: 9px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+            line-height: 1.1;
+        }
+
+        /* 8 方向锚点类 */
+        .station-label.align-top {
+            transform: translate(-50%, -100%);
+            margin-top: -8px;
+            align-items: center;
+            text-align: center;
+        }
+
+        .station-label.align-bottom {
+            transform: translate(-50%, 0%);
+            margin-top: 8px;
+            align-items: center;
+            text-align: center;
+        }
+
+        .station-label.align-left {
+            transform: translate(-100%, -50%);
+            margin-left: -10px;
+            align-items: flex-end;
+            text-align: right;
+        }
+
+        .station-label.align-right {
+            transform: translate(0%, -50%);
+            margin-left: 10px;
+            align-items: flex-start;
+            text-align: left;
+        }
+
+        .station-label.align-top-left {
+            transform: translate(-100%, -100%);
+            margin-left: -6px;
+            margin-top: -6px;
+            align-items: flex-end;
+            text-align: right;
+        }
+
+        .station-label.align-top-right {
+            transform: translate(0%, -100%);
+            margin-left: 6px;
+            margin-top: -6px;
+            align-items: flex-start;
+            text-align: left;
+        }
+
+        .station-label.align-bottom-left {
+            transform: translate(-100%, 0%);
+            margin-left: -6px;
+            margin-top: 6px;
+            align-items: flex-end;
+            text-align: right;
+        }
+
+        .station-label.align-bottom-right {
+            transform: translate(0%, 0%);
+            margin-left: 6px;
+            margin-top: 6px;
+            align-items: flex-start;
+            text-align: left;
+        }
+
+        /* 空状态深色引导卡片 */
+        .empty-guide-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: #1c1d21 !important;
+            border: 1px dashed #34373d !important;
+            padding: 38px 44px;
+            border-radius: 12px;
+            box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+            max-width: 480px;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .empty-guide-icon {
+            font-size: 46px;
+            margin-bottom: 12px;
+            line-height: 1;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+        }
+
+        .empty-guide-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: #e5e8ea !important;
+        }
+
+        .empty-guide-desc {
+            font-size: 13px;
+            color: #a0b0b9 !important;
+            line-height: 1.6;
+            margin: 0 0 20px 0;
+        }
+
+        .empty-guide-action {
+            margin-bottom: 22px;
+        }
+
+        .empty-guide-tags {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .empty-guide-tags .badge {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #25272c !important;
+            color: #a0b0b9 !important;
+            border: 1px solid #33363d !important;
+        }
+
+        /* 视口浮动快捷控件 (HUD) */
+        .viewport-hud {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #1c1d21 !important;
+            border: 1px solid #2e3035 !important;
+            border-radius: 8px;
+            padding: 4px 8px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            z-index: 50;
+            font-size: 12px;
+            color: #a0b0b9 !important;
+        }
+
+        .hud-btn {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 4px;
+            color: #e5e8ea !important;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+
+        .hud-btn:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* ======================================================================
+           右侧属性与图例检视面板 (强制统一深色 - Dark)
+           ====================================================================== */
+        #drunk-sidebar-inspector {
+            width: 320px;
+            background: #1a1b1e !important;
+            border-left: 1px solid #2e3035 !important;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 14px;
+            overflow-y: auto;
+            z-index: 90;
+            flex-shrink: 0;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.25);
+        }
+
+        .panel-card {
+            background: #202226 !important;
+            border: 1px solid #2e3035 !important;
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-card-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #a0b0b9 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .station-name-display {
+            font-size: 16px;
+            font-weight: 700;
+            color: #58a6ff !important;
+            margin-bottom: 2px;
+        }
+
+        .station-en-display {
+            font-size: 12px;
+            color: #a0b0b9 !important;
+            margin-bottom: 4px;
+        }
+
+        .station-id-display {
+            font-size: 11px;
+            color: #a0b0b9 !important;
+            opacity: 0.7;
+            font-family: var(--font-mono, monospace);
+        }
+
+        /* 8 方向锚点轮盘控制器 */
+        .align-wheel-box {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 34px);
+            gap: 6px;
+            max-width: 170px;
+            margin: 10px auto 4px auto;
+        }
+
+        .wheel-sector {
+            background: #282a2f !important;
+            border: 1px solid #36393f !important;
+            border-radius: 6px;
+            color: #e5e8ea !important;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .wheel-sector:hover {
+            background: #006098 !important;
+            color: #ffffff !important;
+            border-color: #0070b0 !important;
+            transform: scale(1.04);
+        }
+
+        .wheel-sector.active {
+            background: #006098 !important;
+            color: #ffffff !important;
+            border-color: #0070b0 !important;
+            box-shadow: 0 0 10px rgba(0, 96, 152, 0.6);
+        }
+
+        .wheel-center {
+            background: transparent !important;
+            border: none !important;
+            cursor: default !important;
+            color: #a0b0b9 !important;
+            transform: none !important;
+        }
+
+        /* 线路列表卡片 */
+        .legend-item-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: #191a1d !important;
+            border: 1px solid #2e3035 !important;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .legend-item-card:hover {
+            border-color: #006098 !important;
+            background: #23252a !important;
+            transform: translateX(2px);
+        }
+
+        .legend-color-pill {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .legend-name-text {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 600;
+            color: #e5e8ea !important;
+        }
+
+        .legend-sta-count {
+            font-size: 11px;
+            color: #a0b0b9 !important;
+        }
+
+        /* 快捷说明卡片 */
+        .tips-list {
+            padding-left: 18px;
+            margin: 6px 0 0 0;
+            font-size: 11.5px;
+            color: #a0b0b9 !important;
+            line-height: 1.6;
+        }
+
+        /* ======================================================================
+           浮层通知 Toast
+           ====================================================================== */
+        #notification-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1c1d21 !important;
+            border: 1px solid #006098 !important;
+            color: #e5e8ea !important;
+            padding: 8px 20px;
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 96, 152, 0.4);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 999;
+        }
+
+        #notification-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* ======================================================================
+           导出代码模态框 (纯深色规范)
+           ====================================================================== */
+        #export-modal,
+        #deepseek-api-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        #export-modal.active,
+        #deepseek-api-modal.active {
+            display: flex;
+        }
+
+        .modal-content-box {
+            width: 780px;
+            max-width: 92vw;
+            max-height: 85vh;
+            background: #1c1d21 !important;
+            border: 1px solid #33363d !important;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+            animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 14px 20px;
+            background: #16171a !important;
+            border-bottom: 1px solid #2e3035 !important;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: #e5e8ea !important;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-body {
+            padding: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        #export-code-preview {
+            width: 100%;
+            height: 380px;
+            background: #121315 !important;
+            border: 1px solid #2e3035 !important;
+            border-radius: 6px;
+            color: #58a6ff !important;
+            font-family: var(--font-mono, Consolas, Monaco, monospace);
+            font-size: 12px;
+            line-height: 1.5;
+            padding: 14px;
+            resize: none;
+            white-space: pre;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .modal-footer {
+            padding: 12px 20px;
+            background: #16171a !important;
+            border-top: 1px solid #2e3035 !important;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+    </style>
+</head>
+
+<body class="drunk-body">
+    <div id="drunk-app-container">
+
+        <!-- ====================================================================== -->
+        <!-- 顶部功能横向工具栏 (简洁规整、逻辑分区排列、纯暗色沉浸)                   -->
+        <!-- ====================================================================== -->
+        <header class="drunk-top-bar">
+            <!-- 1. 左侧：品牌与标识 -->
+            <div class="bar-section-left">
+                <div class="drunk-brand" title="Drunk 线路图智能转换系统">
+                    <span class="drunk-logo-icon">🍺</span>
+                    <span class="drunk-brand-title">Drunk 转换工作台</span>
+                    <span class="badge badge-info drunk-brand-tag">Beta 1</span>
+                </div>
+            </div>
+
+            <!-- 2. 中部：横向操作区 (有逻辑、整齐的分组工具带) -->
+            <div class="bar-section-center">
+                <!-- 分组 1: 底图载入与自动转换 -->
+                <div class="toolbar-group">
+                    <label for="image-upload-input" class="btn btn-primary btn-sm"
+                        title="上传任意城市地铁线路图（支持高清图片、矢量/扫描版 PDF 及 Adobe Illustrator .ai 工程）">
+                        <cgo-icon name="upload" size="14"></cgo-icon>
+                        <span>上传底图/PDF/AI</span>
+                    </label>
+                    <input type="file" id="image-upload-input" accept="image/*,application/pdf,.pdf,.ai,application/postscript,application/illustrator"
+                        style="display: none;">
+
+
+                    <button class="btn btn-primary btn-sm" id="btn-run-drunk-convert"
+                        onclick="window.DrunkPipeline.runAutoConvert()"
+                        title="启动 deepseek-v4-flash-vision-exp 视觉大模型高精识图 (DeepSeek官方按量计费 · 本站完全免费)">
+                        <cgo-icon name="sparkle" size="14"></cgo-icon>
+                        <span>视觉识图</span>
+                    </button>
+
+                    <button class="btn btn-info btn-sm" id="btn-deepseek-settings"
+                        onclick="window.DeepSeekVision.openSettingsModal()" title="设置 DeepSeek API Key 与查看官方资费声明">
+                        <cgo-icon name="settings" size="14"></cgo-icon>
+                        <span>API 设置</span>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <!-- 分组 2: 画布对比与几何校准 -->
+                <div class="toolbar-group">
+                    <button class="btn btn-info btn-sm" id="btn-snap-orthogonal-grid"
+                        onclick="window.DrunkPipeline.snapGrid()" title="将微小抖动吸附为标准的水平、垂直或45°专业斜角">
+                        <cgo-icon name="drag" size="14"></cgo-icon>
+                        <span>45°/90°吸附</span>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <!-- 分组 3: 交付导出 -->
+                <div class="toolbar-group">
+                    <button class="btn btn-dark btn-sm" id="btn-export-openmap-bundle"
+                        onclick="window.DrunkPipeline.exportCityFiles()" title="一键生成符合 CGo OpenMap 规范的代码文件">
+                        <cgo-icon name="download" size="14"></cgo-icon>
+                        <span>导出城市工程</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. 右侧：运行健康度指示 (纯暗色模式，Primary: #006098) -->
+            <div class="bar-section-right">
+                <span id="health-status-indicator" class="badge badge-info" title="数据完整性自检状态">
+                    <span class="status-dot-pulse"></span>
+                    <span id="health-status-text">等待上传底图</span>
+                </span>
+            </div>
+        </header>
+
+        <!-- ====================================================================== -->
+        <!-- 主工作区 (漫游视口 + 右侧属性与图例检视抽屉)                              -->
+        <!-- ====================================================================== -->
+        <main id="drunk-main-workbench">
+            <!-- 漫游视口 -->
+            <div id="drunk-viewport">
+                <!-- 空状态引导提示 -->
+                <div id="drunk-empty-guide" class="empty-guide-box">
+                    <div class="empty-guide-icon">🍺</div>
+                    <h2 class="empty-guide-title">Drunk 线路图智能转换工作台</h2>
+                    <p class="empty-guide-desc">
+                        请点击下方按钮上传任意城市线路图图片、PDF 文件或 Adobe Illustrator (.ai) 工程，或直接拖拽至视口区域
+                    </p>
+                    <div class="empty-guide-action">
+                        <label for="image-upload-input" class="btn btn-primary btn-sm"
+                            style="height: 36px !important; padding: 0 18px !important; font-size: 13px !important; cursor: pointer;">
+                            <cgo-icon name="upload" size="16"></cgo-icon>
+                            <span>选择线路图底图 / PDF / AI 文件</span>
+                        </label>
+                    </div>
+                    <div class="empty-guide-tags">
+                        <span class="badge badge-info">AI / PDF 矢量图层直通</span>
+                        <span class="badge badge-info">XMP 色板提取</span>
+                        <span class="badge badge-info">8方向工整排版还原</span>
+                        <span class="badge badge-info">维基百科动态对齐</span>
+                        <span class="badge badge-info">标准 OpenMap 导出</span>
+                    </div>
+                </div>
+
+                <!-- 动态地图画布容器 -->
+                <div id="drunk-map-canvas" style="display: none;">
+                    <!-- 1. 幽灵底图层 -->
+                    <img id="drunk-ghost-image" src="" alt="原始参考底图">
+
+                    <!-- 2. SVG 矢量线路层 -->
+                    <svg id="drunk-lines-layer"></svg>
+
+                    <!-- 3. 站点圆点层 -->
+                    <div id="drunk-stations-layer"></div>
+
+                    <!-- 4. 站名文本层 -->
+                    <div id="drunk-labels-layer"></div>
+                </div>
+
+                <!-- 视口浮动快捷控件 (HUD) -->
+                <div class="viewport-hud">
+                    <button class="hud-btn" onclick="zoomCanvasByFactor(1.15)" title="放大视角">
+                        <cgo-icon name="zoom-in" size="14"></cgo-icon>
+                    </button>
+                    <button class="hud-btn" onclick="zoomCanvasByFactor(0.85)" title="缩小视角">
+                        <cgo-icon name="zoom-out" size="14"></cgo-icon>
+                    </button>
+                    <button class="hud-btn" onclick="resetCanvasTransform()" title="重置居中视角">
+                        <cgo-icon name="zoom-reset" size="14"></cgo-icon>
+                    </button>
+                    <span style="margin: 0 4px; opacity: 0.5;">|</span>
+                    <span style="font-size: 11px;">滚轮缩放 · 拖拽漫游</span>
+                </div>
+            </div>
+
+            <!-- 右侧属性与图例检视面板 (强制统一纯深色，与顶栏和视口保持一致) -->
+            <aside id="drunk-sidebar-inspector">
+                <!-- 1. 选中车站编辑卡片 -->
+                <div class="panel-card" id="inspector-panel">
+                    <div class="panel-card-title">
+                        <span>车站属性检视</span>
+                        <span id="station-count-badge" class="badge badge-info">0 车站</span>
+                    </div>
+
+                    <div
+                        style="margin-bottom: 12px; padding: 10px; background: #18191b; border-radius: 6px; border: 1px solid #2e3035;">
+                        <div id="inspector-sta-cn" class="station-name-display">未选中车站</div>
+                        <div id="inspector-sta-en" class="station-en-display">点击任意车站圆点或文字进行微调</div>
+                        <div id="inspector-sta-id" class="station-id-display">ID: --</div>
+                    </div>
+
+                    <!-- 8 方向文字锚点轮盘微调器 -->
+                    <div style="margin-top: 10px;">
+                        <div style="font-size: 11px; color: #a0b0b9; text-align: center; margin-bottom: 6px;">
+                            文字排版锚点 (当前: <strong id="inspector-align-display" style="color: #58a6ff;">--</strong>)
+                        </div>
+                        <div class="align-wheel-box" id="align-wheel-container">
+                            <button class="wheel-sector" data-align="top-left" title="左上方">↖</button>
+                            <button class="wheel-sector" data-align="top" title="正上方">↑</button>
+                            <button class="wheel-sector" data-align="top-right" title="右上方">↗</button>
+                            <button class="wheel-sector" data-align="left" title="正左侧">←</button>
+                            <button class="wheel-sector wheel-center" disabled>●</button>
+                            <button class="wheel-sector" data-align="right" title="正右侧">→</button>
+                            <button class="wheel-sector" data-align="bottom-left" title="左下方">↙</button>
+                            <button class="wheel-sector" data-align="bottom" title="正下方">↓</button>
+                            <button class="wheel-sector" data-align="bottom-right" title="右下方">↘</button>
+                        </div>
+                        <div
+                            style="font-size: 10px; color: #a0b0b9; opacity: 0.8; text-align: center; margin-top: 6px;">
+                            💡 点击扇区即可秒级切换站名朝向避让线路
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 线路与图例管理卡片 -->
+                <div class="panel-card" style="flex: 1; display: flex; flex-direction: column;">
+                    <div class="panel-card-title">
+                        <span>识别到的线路</span>
+                        <span id="line-count-badge" class="badge badge-info">0 线路</span>
+                    </div>
+                    <div id="legend-list-container" style="flex: 1; overflow-y: auto;"></div>
+                </div>
+
+                <!-- 3. 操作指引提示卡片 -->
+                <div class="panel-card" style="padding: 10px 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #a0b0b9; margin-bottom: 4px;">
+                        快捷操作指引
+                    </div>
+                    <ul class="tips-list">
+                        <li>按住空白处拖动即可平移视口</li>
+                        <li>鼠标按住站点圆点可任意拖拽微调位置</li>
+                        <li>点击「45°/90°吸附」一键矫正专业斜角</li>
+                    </ul>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- 浮层通知 Toast -->
+    <div id="notification-toast"></div>
+
+    <!-- 导出代码预览模态框 (遵循 CGoUI Modal 规范 - Dark) -->
+    <div id="export-modal">
+        <div class="modal-content-box">
+            <div class="modal-header">
+                <h3>
+                    <cgo-icon name="download" size="18"></cgo-icon>
+                    <span>生成符合 CGo OpenMap 规范的城市工程包</span>
+                </h3>
+                <button class="btn btn-info btn-sm"
+                    onclick="document.getElementById('export-modal').classList.remove('active')">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 12px; color: #a0b0b9; margin: 0 0 12px 0;">
+                    系统已自动生成 <code>data_stations.js</code>、<code>data_lines.js</code>、<code>data_legend.js</code>
+                    以及城市主逻辑，完全符合 <code>openmap-dev</code> skill 的数据完整性规范。
+                </p>
+                <textarea id="export-code-preview" readonly></textarea>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-info btn-sm"
+                    onclick="navigator.clipboard.writeText(document.getElementById('export-code-preview').value); alert('已成功复制全部代码到剪贴板！');">
+                    <cgo-icon name="copy" size="14"></cgo-icon>
+                    <span>一键复制全部代码</span>
+                </button>
+                <button class="btn btn-primary btn-sm"
+                    onclick="document.getElementById('export-modal').classList.remove('active')">
+                    完成
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DeepSeek 视觉大模型 API 设置与资费说明模态框 -->
+    <div id="deepseek-api-modal">
+        <div class="modal-content-box" style="width: 740px;">
+            <div class="modal-header">
+                <h3 style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">🤖</span>
+                    <span>DeepSeek 视觉大模型识图设置 (deepseek-v4-flash-vision-exp)</span>
+                </h3>
+                <button class="btn btn-info btn-sm" onclick="window.DeepSeekVision.closeSettingsModal()">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding: 20px; overflow-y: auto; max-height: 72vh;">
+                <!-- 资费与安全声明卡片 (严格遵照要求) -->
+                <div
+                    style="background: rgba(0, 96, 152, 0.12); border: 1px solid #006098; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span
+                            style="font-weight: 700; color: #79c0ff; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                            <span>💡</span> 资费明细与官方计费说明
+                        </span>
+                        <span class="badge badge-success"
+                            style="background: #238636; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 4px;">本站永久免费</span>
+                    </div>
+                    <div style="font-size: 12px; line-height: 1.6; color: #c9d1d9;">
+                        <p style="margin: 0 0 6px 0;">
+                            <strong>1. DeepSeek 官方计费：</strong> 本系统底层采用 DeepSeek 官方多模态视觉大模型
+                            <code>deepseek-v4-flash-vision-exp</code> 进行高精图像拓扑识别。调用 API 时，<strong>DeepSeek 官方将按照图片与
+                                Token 消耗向您的 DeepSeek 账户收取极少量费用</strong>（Flash 模型具备超高性价比，单次整网地图识别通常仅需 <strong>约 0.01 ~
+                                0.05 元人民币</strong>，实际费用以 DeepSeek 官方账单为准）。
+                        </p>
+                        <p style="margin: 0 0 6px 0;">
+                            <strong>2. 本站零收费声明：</strong> <strong>CGo OpenMap / Drunk 转换系统为纯静态开源前端工具，本站绝不向您收取任何使用费、手续费或
+                                API 抽成加价</strong>。
+                        </p>
+                        <p style="margin: 0;">
+                            <strong>3. 密钥安全保障：</strong> 您的 API Key <strong>仅保存在您本地浏览器的 localStorage
+                                中</strong>，直接由您的浏览器直连 DeepSeek 官方服务器，绝不经过任何第三方服务器中转。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- API Key 输入表单 (包裹为 form 并标记 autocomplete 消除浏览器 DOM 安全警报) -->
+                <form autocomplete="off" onsubmit="event.preventDefault(); return false;" style="margin-bottom: 16px;">
+                    <!-- 满足浏览器与无障碍规范的隐藏用户名项，消除 DOM Password forms should have username fields 警告 -->
+                    <input type="text" name="username" autocomplete="username" style="display: none;" aria-hidden="true"
+                        tabindex="-1">
+                    <label
+                        style="display: block; font-size: 13px; font-weight: 600; color: #e5e8ea; margin-bottom: 6px;">
+                        DeepSeek API Key <span style="color: #f85149;">*</span>
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="password" id="deepseek-input-key" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                            autocomplete="new-password"
+                            style="flex: 1; height: 36px; font-size: 13px; font-family: monospace; background: #141517; color: #e5e8ea; border: 1px solid #2e3035; border-radius: 6px; padding: 0 12px; outline: none;">
+                        <button type="button" class="btn btn-info btn-sm"
+                            onclick="const el = document.getElementById('deepseek-input-key'); el.type = el.type === 'password' ? 'text' : 'password';"
+                            title="显示/隐藏密钥">
+                            👁️
+                        </button>
+                    </div>
+                    <div
+                        style="font-size: 11px; color: #8b949e; margin-top: 5px; display: flex; justify-content: space-between;">
+                        <span>没有 API Key 请前往 DeepSeek 官方开放平台获取</span>
+                        <a href="https://platform.deepseek.com/api_keys" target="_blank"
+                            style="color: #58a6ff; text-decoration: none;">
+                            👉 前往 DeepSeek 开放平台 ↗
+                        </a>
+                    </div>
+                </form>
+
+                <!-- 高级配置 (折叠/展开) -->
+                <details
+                    style="margin-bottom: 16px; border: 1px solid #2e3035; border-radius: 6px; padding: 8px 12px; background: #18191c;">
+                    <summary
+                        style="font-size: 12px; color: #a0b0b9; cursor: pointer; user-select: none; font-weight: 600;">
+                        ⚙️ 高级模型与接口设置 (默认无需修改)
+                    </summary>
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                        <div>
+                            <label
+                                style="display: block; font-size: 12px; color: #a0b0b9; margin-bottom: 4px;">指定视觉模型名称</label>
+                            <input type="text" id="deepseek-input-model" value="deepseek-v4-flash-vision-exp"
+                                style="width: 100%; height: 32px; font-size: 12px; font-family: monospace; background: #141517; color: #e5e8ea; border: 1px solid #2e3035; border-radius: 4px; padding: 0 8px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 12px; color: #a0b0b9; margin-bottom: 4px;">API Base
+                                URL 接口基地址</label>
+                            <input type="text" id="deepseek-input-base" value="https://api.deepseek.com"
+                                style="width: 100%; height: 32px; font-size: 12px; font-family: monospace; background: #141517; color: #e5e8ea; border: 1px solid #2e3035; border-radius: 4px; padding: 0 8px; box-sizing: border-box;">
+                            <div style="font-size: 11px; color: #8b949e; margin-top: 3px;">官方接口为
+                                https://api.deepseek.com，也支持兼容 OpenAI 格式的自建反代网关</div>
+                        </div>
+                    </div>
+                </details>
+
+                <div id="deepseek-test-status" style="font-size: 12px; min-height: 20px; margin-bottom: 10px;"></div>
+            </div>
+
+            <div class="modal-footer"
+                style="padding: 12px 20px; background: #16171a; border-top: 1px solid #2e3035; display: flex; justify-content: space-between; align-items: center;">
+                <button class="btn btn-dark btn-sm" onclick="window.DeepSeekVision.clearSettings()" title="清空本地保存的 Key">
+                    清除本地 Key
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-info btn-sm" onclick="window.DeepSeekVision.testConnection()">
+                        ⚡ 测试连接
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="window.DeepSeekVision.saveSettings()">
+                        保存并立即使用
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- 5. 辅助交互脚本与核心模块加载                                              -->
+    <!-- ====================================================================== -->
+    <script>
+        // 浮动 HUD 缩放辅助函数 (非侵入式触发原有视口滚轮机制)
+        function zoomCanvasByFactor(factor) {
+            const vp = document.getElementById('drunk-viewport');
+            if (!vp) return;
+            const rect = vp.getBoundingClientRect();
+            const event = new WheelEvent('wheel', {
+                deltaY: factor > 1 ? -120 : 120,
+                clientX: rect.left + rect.width / 2,
+                clientY: rect.top + rect.height / 2,
+                bubbles: true,
+                cancelable: true
+            });
+            vp.dispatchEvent(event);
+        }
+
+        function resetCanvasTransform() {
+            const vp = document.getElementById('drunk-viewport');
+            const canvas = document.getElementById('drunk-map-canvas');
+            if (!vp || !canvas) return;
+            canvas.style.transform = 'translate(30px, 30px) scale(0.65)';
+        }
+    </script>
+
+    <script type="module" src="../core/cgo-ui.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+    <script src="./js/drunk_logger.js?v=260907_v1"></script>
+    <script src="./js/city_knowledge_matcher.js?v=260907_v1"></script>
+    <script src="./js/pdf_vector_extractor.js?v=260907_v1"></script>
+    <script src="./js/deepseek_vision.js?v=260907_v1"></script>
+    <script src="./js/vision_detector.js?v=260907_v1"></script>
+    <script src="./js/ocr_align_solver.js?v=260904_v6"></script>
+    <script src="./js/topology_tracer.js?v=260904_v6"></script>
+    <script src="./js/openmap_codegen.js?v=260904_v6"></script>
+    <script src="./js/drunk_pipeline.js?v=260907_v1"></script>
+</body>
+
+</html>

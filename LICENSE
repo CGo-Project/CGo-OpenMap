@@ -5,7 +5,7 @@ CGo OpenMap Dual-License Declaration (双轨开源许可协议声明)
 
 1. 核心软件引擎与代码 (Software Engine & Source Code):
    本项目根目录下的所有代码及核心引擎组件（包括但不限于 core/、css/、index.html、
-   sw.js、cgo-ui.js 及相关交互脚本）均在 GNU Affero General Public License v3.0 
+   main.html、sw.js、cgo-ui.js 及相关交互脚本）均在 GNU Affero General Public License v3.0 
    (GNU AGPLv3) 下获得许可。
    
    任何个人或组织在网络服务器上运行并向公众提供交互式在线地图服务时，必须依据 AGPLv3 

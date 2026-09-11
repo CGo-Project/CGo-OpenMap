@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- ========================================================================== -->
+    <!-- 1. 基础元数据与 SEO 配置 (Metadata & SEO Settings)                          -->
+    <!-- 移植说明：制作新城市时，可在 city/data.js 中配置城市标题与描述，也会动态更新此处 -->
+    <!-- ========================================================================== -->
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description" content="CGo OpenMap 是一款现代轻量、高度可扩展的开源城市轨道交通交互线路图引擎，支持快速制作和部署各城市地铁线路图。">
+    <meta name="keywords" content="CGo OpenMap, 线路图开放平台, 开源地铁图, 城市轨道交通, 地铁线路图, 轨道交通">
+    <meta name="author" content="Central Go">
+    <meta property="og:title" content="CGo OpenMap - 城市轨道交通线路图开放平台">
+    <meta property="og:description" content="轻量、现代化的开源城市轨道交通交互线路图引擎，支持自由定制与移植制作各城市线路图。">
+    <meta property="og:image" content="./assets/icons/mapicon.png">
+
+    <!-- 字体引入 (Web Fonts) -->
+    <link rel="preconnect" href="https://fonts.loli.net">
+    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
+    <link
+        href="https://fonts.loli.net/css2?family=Arimo:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="shortcut icon" href="./assets/icons/favicon.ico">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1a1a">
+    <link rel="apple-touch-icon" href="./assets/icons/mapicon2.png">
+    <meta name="apple-mobile-web-app-title" content="CGo OpenMap">
+    <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
+
+    <!-- ========================================================================== -->
+    <!-- 2. 样式表加载 (Stylesheets)                                                 -->
+    <!-- cgo_clr.css: 基础主题色与各线路标志色 CSS 变量                                -->
+    <!-- cgo_element.css / cgo_ui.css / cgo_components.css: CGoUI 基础组件库样式表     -->
+    <!-- style.css: 地图引擎核心样式、图层布局、动画与手势响应                          -->
+    <!-- ========================================================================== -->
+    <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260903.220000">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260903.220000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260903.220000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260903.220000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260903.220000">
+    <link rel="stylesheet" href="css/style.css?v=260903.220000">
+    <style>
+        /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
+        cgo-icon:not(:defined) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            visibility: visible;
+            opacity: 0.6;
+        }
+
+        .title-short {
+            display: none;
+        }
+
+        .title-full {
+            display: inline;
+        }
+
+        @media (max-width: 768px) {
+            .title-full {
+                display: none;
+            }
+
+            .title-short {
+                display: inline;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ========================================================================== -->
+    <!-- 3. 顶部导航栏 (Header Toolbar)                                              -->
+    <!-- 包含：返回按钮、主页链接、平台 Logo/标题、更多操作下拉菜单（偏好设置/帮助与关于） -->
+    <!-- ========================================================================== -->
+    <header class="tool-header">
+        <div class="header-left">
+            <a href="./index.html" class="btn btn-info" title="返回城市列表">
+                <cgo-icon name="back"></cgo-icon>
+                <span>城市</span>
+            </a>
+            <a href="https://centralgo.site/" class="btn btn-primary" title="Central Go 首页">
+                <cgo-icon name="home"></cgo-icon>
+                <span>Central Go</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <div class="img-icon-wrapper header-logo-wrapper">
+                <img src="./assets/icons/mapicon.png" alt="Logo" class="header-logo" loading="lazy" decoding="async"
+                    fetchpriority="low"
+                    onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
+                <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
+            </div>
+            <span class="app-title">
+                <span class="title-full">CGo OpenMap</span>
+                <span class="title-short">CGo OpenMap</span>
+            </span>
+        </div>
+        <div class="header-right">
+            <!-- 更多：选项下拉菜单 -->
+            <div class="dropdown options-dropdown">
+                <button id="options-btn" class="btn btn-info dropbtn" title="更多">
+                    <cgo-icon name="menu"></cgo-icon>
+                    <span>更多</span>
+                </button>
+                <div class="dropdown-content">
+                    <!-- 偏好设置 (弹窗逻辑由 core/settings.js 驱动) -->
+                    <a href="javascript:void(0)" id="settings-btn">
+                        <cgo-icon name="settings"></cgo-icon>
+                        <span>偏好设置</span>
+                    </a>
+                    <!-- 帮助与关于 (弹窗逻辑由 core/help.js 驱动) -->
+                    <a href="javascript:void(0)" id="help-btn">
+                        <cgo-icon name="help"></cgo-icon>
+                        <span>帮助与关于</span>
+                    </a>
+                    <!-- 社区贡献与主理人 (指向 CONTRIBUTING.md) -->
+                    <a href="./CONTRIBUTING.md" target="_blank">
+                        <cgo-icon name="user"></cgo-icon>
+                        <span>贡献与主理人</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================================== -->
+    <!-- 4. 地图主视口与交互层 (Map Viewport & Layer Hierarchy)                        -->
+    <!-- 层级自底向上：                                                               -->
+    <!--   1. scattered-layer: 背景装饰物（如指南针、城门、河流图标等）                  -->
+    <!--   2. lines-layer: SVG 矢量线路层（绘制圆角折线）                              -->
+    <!--   3. not-open-layer: 在建/规划虚线层                                         -->
+    <!--   4. highlight-layer: 选线高亮发光层                                        -->
+    <!--   5. stations-layer: 车站圆点/换乘标记点 (Station Nodes)                      -->
+    <!--   6. labels-layer: 车站中英文名称标签 (Station Labels)                       -->
+    <!-- ========================================================================== -->
+    <div style="position: relative; flex: 1; overflow: hidden; width: 100%;">
+        <!-- 现代化浮动控制条：检索入口、缩放滑块、LBS 查找最近车站 -->
+        <div id="modern-zoom-control">
+            <button id="mz-menu" title="检索面板" style="margin-bottom: 8px;">
+                <cgo-icon name="view-grid" style="width:20px;height:20px;"></cgo-icon>
+            </button>
+            <button id="mz-in" title="放大"><cgo-icon name="zoom-in"></cgo-icon></button>
+            <div class="mz-slider-track">
+                <input type="range" id="mz-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+            </div>
+            <button id="mz-out" title="缩小"><cgo-icon name="zoom-out"></cgo-icon></button>
+            <div style="width: 20px; height: 1px; background-color: #e0e0e0; margin: 4px 0;"></div>
+            <button id="locate-btn" title="查找最近车站">
+                <cgo-icon name="location" size="20"></cgo-icon>
+            </button>
+        </div>
+
+        <!-- 车站详情信息卡片面板 (由 core/script.js 与 city/beijing/stacard 动态填充) -->
+        <div id="info-panel" style="display:none;"></div>
+
+        <!-- 鼠标悬停线路显示的气泡徽标提示 -->
+        <div id="line-tooltip">
+            <img id="line-tooltip-img" src="" alt="">
+        </div>
+
+        <!-- 地图平移缩放主容器 -->
+        <div id="map-container">
+            <div id="map-content">
+                <div id="scattered-layer"></div>
+                <svg id="lines-layer"></svg>
+                <svg id="not-open-layer"></svg>
+                <svg id="highlight-layer"></svg>
+                <div id="stations-layer"></div>
+                <div id="labels-layer"></div>
+            </div>
+        </div>
+
+        <!-- 拖拽面板吸附侧边栏时的辅助幽灵阴影 -->
+        <div id="drag-ghost"></div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 5. 图例与检索抽屉面板 (Legend & Search Drawer Modal)                        -->
+    <!-- 默认浮层弹出；点击固定按钮后可变为桌面端常驻侧边栏                            -->
+    <!-- ========================================================================== -->
+    <div id="legend-overlay">
+        <div class="legend-modal">
+            <button class="legend-close-btn" title="收起面板">
+                <span class="btn-content"><cgo-icon name="arrow-right" class="arrow-icon"
+                        style="transform: rotate(180deg); width: 18px; height: 18px; display: block;"></cgo-icon></span>
+            </button>
+            <button class="legend-pin-btn" id="legend-pin-btn" title="固定面板">
+                <cgo-icon name="pin-angle" size="18"></cgo-icon>
+            </button>
+            <div id="legend-content"></div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 6. 业务脚本加载链 (Script Execution Order)                                  -->
+    <!-- 【移植重点】：                                                              -->
+    <!-- 1. 多城市注册总线 (city/data.js) 必须最先加载                                 -->
+    <!-- 2. 目标城市数据文件 (city/{city_id}/*) 依次加载                               -->
+    <!--    - {city}.js: 城市业务逻辑与关系配置                                       -->
+    <!--    - stacard/script.js: 车站卡片系统与地图切片引擎 (StaCard API)              -->
+    <!--    - data_stations.js: 车站坐标与名称                                         -->
+    <!--    - data_lines.js: 线路串联与折线点                                          -->
+    <!--    - data_virtual_transfers.js: 虚拟/站外换乘关系                             -->
+    <!--    - data_scattered.js: 地图装饰物                                            -->
+    <!--    - data_legend.js: 图例分组配置                                             -->
+    <!--    - data_timetable.js: 首末班车时刻                                         -->
+    <!--    - data_notopen.js: 在建线路虚线                                            -->
+    <!-- 3. 核心引擎 (core/script.js) 读取上述数据并统一渲染                           -->
+    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js) -->
+    <!-- ========================================================================== -->
+    <!-- 城市注册总线与基础元数据 -->
+    <script src="city/data.js?v=260910.150000"></script>
+    <!-- 车站信息板模块注册与渲染引擎 (多城市通用) -->
+    <script src="core/station-board.js?v=260910.150000"></script>
+    <!-- 动态按序加载当前激活城市的专属业务与全套数据文件 (根据 URL ?city= 或 LocalStorage 判定) -->
+    <script>
+        (function () {
+            var city = window.CityDataManager ? window.CityDataManager.getCurrentCity() : null;
+            var folder = (city && city.folder) ? city.folder : "./city/beijing";
+            var cityId = (city && city.id) ? city.id : "beijing";
+            var v = "260910.150000";
+
+            // 同步写入当前激活城市的脚本依赖，确保在核心引擎执行前完成加载
+            // 注：城市专属自定义模块 (如 modules/beijing_cultural.js) 由各城市 {city}.js 内部
+            //     通过 document.write 同步加载，确保早于 type=module 的 core/script.js 执行。
+            document.write('<script src="' + folder + '/' + cityId + '.js?v=' + v + '"><\/script>');
+            document.write('<script type="module" src="' + folder + '/stacard/script.js?v=' + v + '"><\/script>');
+            document.write('<script src="' + folder + '/data_stations.js?v=' + v + '"><\/script>');
+            document.write('<script src="' + folder + '/data_lines.js?v=' + v + '"><\/script>');
+            document.write('<script src="' + folder + '/data_virtual_transfers.js?v=' + v + '"><\/script>');
+            document.write('<script src="' + folder + '/data_scattered.js?v=' + v + '"><\/script>');
+            document.write('<script src="' + folder + '/data_legend.js?v=' + v + '"><\/script>');
+            document.write('<script src="' + folder + '/data_timetable.js?v=' + v + '"><\/script>');
+            document.write('<script src="' + folder + '/data_notopen.js?v=' + v + '"><\/script>');
+        })();
+    </script>
+    <!-- 核心地图渲染引擎 -->
+    <script type="module" src="core/script.js?v=260910.150000"></script>
+    <!-- 辅助面板逻辑 -->
+    <script src="core/help.js?v=260910.150000"></script>
+    <script src="core/settings.js?v=260910.150000"></script>
+    <script>
+        // 动态加载公告与运营通知系统
+        (function () {
+            var script = document.createElement('script');
+            script.src = "core/notice.js?v=260910.150000&t=" + Date.now();
+            document.body.appendChild(script);
+        })();
+    </script>
+    <!-- CGoUI Web Components 基础组件库 -->
+    <script type="module" src="core/cgo-ui.js?v=260910.150000"></script>
+    <script>
+        // 图片加载完毕后添加 loaded 类，配合 CSS 实现平滑淡入
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.img-icon-wrapper img').forEach(function (img) {
+                if (img.complete && img.naturalWidth !== 0) {
+                    img.classList.add('loaded');
+                    if (img.parentElement) img.parentElement.classList.add('loaded');
+                }
+            });
+        });
+
+        // 注册 PWA 渐进式应用 Service Worker，提供离线访问与切片缓存
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(function (reg) {
+                        console.log('[SW] Service Worker 注册成功，作用域:', reg.scope);
+                    })
+                    .catch(function (err) {
+                        console.warn('[SW] Service Worker 注册失败:', err);
+                    });
+            });
+        }
+    </script>
+</body>
+
+</html>

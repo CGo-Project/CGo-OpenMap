@@ -2,51 +2,33 @@
 <html lang="zh-CN">
 
 <head>
-    <!-- ========================================================================== -->
-    <!-- 1. 基础元数据与 SEO 配置 (Metadata & SEO Settings)                          -->
-    <!-- 移植说明：制作新城市时，可在 city/data.js 中配置城市标题与描述，也会动态更新此处 -->
-    <!-- ========================================================================== -->
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
-    <meta name="description" content="CGo OpenMap 是一款现代轻量、高度可扩展的开源城市轨道交通交互线路图引擎，支持快速制作和部署各城市地铁线路图。">
-    <meta name="keywords" content="CGo OpenMap, 线路图开放平台, 开源地铁图, 城市轨道交通, 地铁线路图, 轨道交通">
-    <meta name="author" content="Central Go">
-    <meta property="og:title" content="CGo OpenMap - 城市轨道交通线路图开放平台">
-    <meta property="og:description" content="轻量、现代化的开源城市轨道交通交互线路图引擎，支持自由定制与移植制作各城市线路图。">
-    <meta property="og:image" content="./assets/icons/mapicon.png">
-
-    <!-- 字体引入 (Web Fonts) -->
-    <link rel="preconnect" href="https://fonts.loli.net">
-    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
-    <link
-        href="https://fonts.loli.net/css2?family=Arimo:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
-        rel="stylesheet">
+    <meta name="description" content="CGo OpenMap - 现代轻量开源城市轨道交通交互线路图开放平台。选择城市进入全景智能线网图。">
+    <meta name="keywords" content="CGo OpenMap, 城市轨道交通, 地铁线路图, 开源地铁图, 地图开放平台">
     <link rel="shortcut icon" href="./assets/icons/favicon.ico">
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1a1a">
     <link rel="apple-touch-icon" href="./assets/icons/mapicon2.png">
-    <meta name="apple-mobile-web-app-title" content="CGo OpenMap">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8f9fa">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1a1a">
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
-    <!-- ========================================================================== -->
-    <!-- 2. 样式表加载 (Stylesheets)                                                 -->
-    <!-- cgo_clr.css: 基础主题色与各线路标志色 CSS 变量                                -->
-    <!-- cgo_element.css / cgo_ui.css / cgo_components.css: CGoUI 基础组件库样式表     -->
-    <!-- style.css: 地图引擎核心样式、图层布局、动画与手势响应                          -->
-    <!-- ========================================================================== -->
-    <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260903.220000">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260903.220000">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260903.220000">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260903.220000">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260903.220000">
-    <link rel="stylesheet" href="css/style.css?v=260903.220000">
+    <!-- CGoUI 核心 Web Components 脚本预加载 -->
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260910.150000">
+    <script type="module" src="core/cgo-ui.js?v=260910.150000"></script>
+
+    <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260910.150000">
+
     <style>
-        /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
-        cgo-icon:not(:defined) {
+        /* Web Components 未注册前的优雅占位，杜绝无样式闪烁 */
+        cgo-icon:not(:defined),
+        cgo-theme-toggle:not(:defined) {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -54,227 +36,838 @@
             opacity: 0.6;
         }
 
-        .title-short {
-            display: none;
+        cgo-theme-toggle {
+            display: inline-flex;
+            vertical-align: middle;
         }
 
-        .title-full {
-            display: inline;
+        html {
+            height: auto !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
         }
 
+        body.scrollable {
+            font-family: var(--font-sans);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            margin: 0;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* 顶部导航微调 */
+        .tool-header {
+            box-sizing: border-box;
+        }
+
+        .header-sub-badge {
+            margin-left: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-right .btn {
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-sizing: border-box;
+        }
+
+        .header-right .btn-icon-only {
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* 页面主体架构 */
+        .portal-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        /* 核心内容区 */
+        .portal-content {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 24px 56px;
+            box-sizing: border-box;
+            flex: 1;
+        }
+
+        .section-headline {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 24px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+
+        .section-title h2 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .section-subtitle {
+            font-size: 13px;
+            color: var(--text-light);
+            margin: 0;
+        }
+
+        /* 城市主体卡片网格 */
+        .city-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        /* 大气城市卡片 */
+        .city-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .city-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .city-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .city-identity {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .city-name {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+
+        .city-code-tag {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .city-badges-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .city-emblem {
+            width: 38px;
+            height: 38px;
+            border-radius: var(--radius-md);
+            background: var(--btn-info-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        [data-theme="dark"] .city-emblem {
+            color: #60a5fa;
+        }
+
+        .city-card:hover .city-emblem {
+            background: var(--primary-color);
+            color: #ffffff;
+        }
+
+        .city-emblem svg {
+            width: 22px;
+            height: 22px;
+            max-width: 22px;
+            max-height: 22px;
+            fill: currentColor;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        /* 城市元数据信息 */
+        .city-meta {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 12px;
+            color: var(--text-light);
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .city-meta-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .city-meta-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-light);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .city-meta-link:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        /* 城市说明 */
+        .city-desc {
+            font-size: 13.5px;
+            color: var(--text-light);
+            line-height: 1.6;
+            margin: 0 0 20px 0;
+            flex-grow: 1;
+        }
+
+        /* 主理人板块 */
+        .city-maintainers-box {
+            border-top: 1px solid var(--border-color);
+            padding-top: 14px;
+            margin-bottom: 16px;
+        }
+
+        .maintainers-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .maintainer-recruiting-bar {
+            background: var(--warning-bg);
+            color: var(--warning-color);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .recruiting-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-xs {
+            height: 24px;
+            padding: 2px 8px;
+            font-size: 11px;
+            gap: 2px;
+        }
+
+        .maintainers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .maintainer-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 2px 0;
+        }
+
+        .maintainer-profile {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .maintainer-name {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .maintainer-role {
+            font-size: 11px;
+            color: var(--text-light);
+        }
+
+        .maintainer-gh {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-light);
+            padding: 2px 7px;
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .maintainer-gh:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: var(--btn-info-bg);
+        }
+
+        /* 卡片底部操作 */
+        .card-action {
+            border-top: 1px dashed var(--border-color);
+            padding-top: 14px;
+            display: flex;
+            width: 100%;
+        }
+
+        .btn-enter {
+            width: 100%;
+            height: 38px;
+            padding: 0 16px !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        /* 强制确保卡片与横幅按钮文字始终可见，禁止隐藏文字标签 */
+        .btn-enter span,
+        .card-action .btn span,
+        .port-banner-actions .btn span {
+            display: inline !important;
+        }
+
+        .enter-arrow {
+            transition: transform 0.2s ease;
+        }
+
+        .city-card:hover .enter-arrow {
+            transform: translateX(4px);
+        }
+
+        /* 移植与共建横幅 */
+        .port-banner {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .port-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            max-width: 680px;
+        }
+
+        .port-banner-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-md);
+            background: var(--btn-info-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            flex-shrink: 0;
+        }
+
+        .port-banner-info h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0 0 4px 0;
+        }
+
+        .port-banner-info p {
+            font-size: 13px;
+            color: var(--text-light);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .port-banner-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .port-banner-actions .btn {
+            height: 36px;
+            padding: 0 16px !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 13px;
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+
+        /* 响应式适配：允许折行，严禁隐藏文字标签 */
         @media (max-width: 768px) {
-            .title-full {
+            .portal-content {
+                padding: 20px 16px 40px;
+            }
+
+            .city-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .port-banner {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 20px;
+            }
+
+            .port-banner-actions {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .port-banner-actions .btn {
+                flex: 1 1 auto;
+                min-width: max-content;
+                padding: 0 14px !important;
+                height: 36px;
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .port-banner-actions .btn span,
+            .btn-enter span {
+                display: inline !important;
+            }
+
+            .header-sub-badge {
                 display: none;
             }
+        }
 
-            .title-short {
-                display: inline;
+        @media (max-width: 480px) {
+            .port-banner-actions .btn {
+                flex: 1 1 100%;
+                justify-content: center;
             }
+        }
+
+        /* 页脚增强 */
+        .portal-footer {
+            padding: 24px 20px;
+            text-align: center;
+            background: var(--footer-bg);
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .footer-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+
+        .footer-nav a {
+            color: var(--text-light);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .footer-nav a:hover {
+            color: var(--primary-color);
+            text-decoration: underline;
+        }
+
+        .footer-sep {
+            opacity: 0.35;
+        }
+
+        .footer-copy {
+            opacity: 0.85;
         }
     </style>
 </head>
 
-<body>
-    <!-- ========================================================================== -->
-    <!-- 3. 顶部导航栏 (Header Toolbar)                                              -->
-    <!-- 包含：返回按钮、主页链接、平台 Logo/标题、更多操作下拉菜单（偏好设置/帮助与关于） -->
-    <!-- ========================================================================== -->
+<body class="scrollable">
+    <!-- CGoUI 标准顶部导航 -->
     <header class="tool-header">
         <div class="header-left">
-            <button class="btn btn-info" onclick="history.back()" title="返回上一页">
-                <cgo-icon name="back"></cgo-icon>
-                <span>返回</span>
-            </button>
-            <a href="https://centralgo.site/" class="btn btn-primary" title="前往主页">
-                <cgo-icon name="home"></cgo-icon>
-                <span>主页</span>
+            <a href="./index.html" class="header-title-wrapper" title="CGo OpenMap 首页">
+                <img src="./assets/icons/mapicon.png" alt="CGo OpenMap" class="header-logo">
+                <span class="app-title">CGo OpenMap</span>
             </a>
+            <span class="badge badge-info header-sub-badge">线路图开放平台</span>
         </div>
-        <div class="header-center">
-            <div class="img-icon-wrapper header-logo-wrapper">
-                <img src="./assets/icons/mapicon.png" alt="Logo" class="header-logo" loading="lazy" decoding="async"
-                    fetchpriority="low"
-                    onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
-                <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
-            </div>
-            <span class="app-title">
-                <span class="title-full">CGo OpenMap</span>
-                <span class="title-short">CGo OpenMap</span>
-            </span>
-        </div>
+
         <div class="header-right">
-            <!-- 更多：选项下拉菜单 -->
-            <div class="dropdown options-dropdown">
-                <button id="options-btn" class="btn btn-info dropbtn" title="更多">
-                    <cgo-icon name="menu"></cgo-icon>
-                    <span>更多</span>
-                </button>
-                <div class="dropdown-content">
-                    <!-- 偏好设置 (弹窗逻辑由 core/settings.js 驱动) -->
-                    <a href="javascript:void(0)" id="settings-btn">
-                        <cgo-icon name="settings"></cgo-icon>
-                        <span>偏好设置</span>
-                    </a>
-                    <!-- 帮助与关于 (弹窗逻辑由 core/help.js 驱动) -->
-                    <a href="javascript:void(0)" id="help-btn">
-                        <cgo-icon name="help"></cgo-icon>
-                        <span>帮助与关于</span>
-                    </a>
-                    <!-- 社区贡献与主理人 (指向 CONTRIBUTING.md) -->
-                    <a href="./CONTRIBUTING.md" target="_blank">
-                        <cgo-icon name="user"></cgo-icon>
-                        <span>贡献与主理人</span>
-                    </a>
-                </div>
-            </div>
+            <a href="./readme.html" class="btn btn-info" title="关于平台与开源说明">
+                <cgo-icon name="help"></cgo-icon>
+                <span>关于平台</span>
+            </a>
+            <a href="https://github.com/NokiaimuL/CGo-OpenMap" target="_blank" class="btn btn-info btn-icon-only"
+                title="GitHub 开源仓库">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                    <path
+                        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                </svg>
+            </a>
+            <cgo-theme-toggle></cgo-theme-toggle>
         </div>
     </header>
 
-    <!-- ========================================================================== -->
-    <!-- 4. 地图主视口与交互层 (Map Viewport & Layer Hierarchy)                        -->
-    <!-- 层级自底向上：                                                               -->
-    <!--   1. scattered-layer: 背景装饰物（如指南针、城门、河流图标等）                  -->
-    <!--   2. lines-layer: SVG 矢量线路层（绘制圆角折线）                              -->
-    <!--   3. not-open-layer: 在建/规划虚线层                                         -->
-    <!--   4. highlight-layer: 选线高亮发光层                                        -->
-    <!--   5. stations-layer: 车站圆点/换乘标记点 (Station Nodes)                      -->
-    <!--   6. labels-layer: 车站中英文名称标签 (Station Labels)                       -->
-    <!-- ========================================================================== -->
-    <div style="position: relative; flex: 1; overflow: hidden; width: 100%;">
-        <!-- 现代化浮动控制条：检索入口、缩放滑块、LBS 查找最近车站 -->
-        <div id="modern-zoom-control">
-            <button id="mz-menu" title="检索面板" style="margin-bottom: 8px;">
-                <cgo-icon name="view-grid" style="width:20px;height:20px;"></cgo-icon>
-            </button>
-            <button id="mz-in" title="放大"><cgo-icon name="zoom-in"></cgo-icon></button>
-            <div class="mz-slider-track">
-                <input type="range" id="mz-slider" min="0.5" max="3.0" step="0.1" value="1.0">
+    <!-- 主体页面：以城市为核心主体 -->
+    <main class="portal-main">
+        <!-- 城市展陈与入口区 -->
+        <section class="portal-content">
+            <div class="section-headline">
+                <div class="section-title-group">
+                    <div class="section-title">
+                        <cgo-icon name="location" size="20"></cgo-icon>
+                        <h2>已入驻城市</h2>
+                    </div>
+                    <span class="badge badge-info" id="city-count-badge">加载中...</span>
+                </div>
+                <p class="section-subtitle">点击选择城市卡片，即刻进入对应的全屏交互式线路图：</p>
             </div>
-            <button id="mz-out" title="缩小"><cgo-icon name="zoom-out"></cgo-icon></button>
-            <div style="width: 20px; height: 1px; background-color: #e0e0e0; margin: 4px 0;"></div>
-            <button id="locate-btn" title="查找最近车站">
-                <cgo-icon name="location" size="20"></cgo-icon>
-            </button>
-        </div>
 
-        <!-- 车站详情信息卡片面板 (由 core/script.js 与 city/beijing/stacard 动态填充) -->
-        <div id="info-panel" style="display:none;"></div>
-
-        <!-- 鼠标悬停线路显示的气泡徽标提示 -->
-        <div id="line-tooltip">
-            <img id="line-tooltip-img" src="" alt="">
-        </div>
-
-        <!-- 地图平移缩放主容器 -->
-        <div id="map-container">
-            <div id="map-content">
-                <div id="scattered-layer"></div>
-                <svg id="lines-layer"></svg>
-                <svg id="not-open-layer"></svg>
-                <svg id="highlight-layer"></svg>
-                <div id="stations-layer"></div>
-                <div id="labels-layer"></div>
+            <!-- 城市卡片网格 -->
+            <div class="city-grid" id="city-grid">
+                <!-- 由脚本读取城市注册表动态渲染 -->
             </div>
+
+            <!-- 移植与贡献横幅 -->
+            <div class="port-banner">
+                <div class="port-banner-content">
+                    <div class="port-banner-icon">
+                        <cgo-icon name="sparkle" size="24"></cgo-icon>
+                    </div>
+                    <div class="port-banner-info">
+                        <h3>为你的城市认领或制作专属线路图</h3>
+                        <p>可使用 Drunk 智能转换系统从图片/PDF中极速提取线路拓扑（早期测试阶段，仅供测试使用，欢迎共同开发），最快 1 小时即可完成新城市上线与独立部署。</p>
+                    </div>
+                </div>
+                <div class="port-banner-actions">
+                    <a href="./drunk/index.html" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台">
+                        <span>🍺 Drunk 智能转换 (测试版)</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
+                    <a href="./PORTING.md" target="_blank" class="btn btn-info">
+                        <cgo-icon name="file" size="15"></cgo-icon>
+                        <span>移植实操指南</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
+                    <a href="./CONTRIBUTING.md" target="_blank" class="btn btn-info">
+                        <cgo-icon name="user" size="15"></cgo-icon>
+                        <span>城市主理人计划</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- CGoUI 标准页脚 -->
+    <footer class="portal-footer">
+        <div class="footer-nav">
+            <a href="./readme.html">关于平台</a>
+            <span class="footer-sep">·</span>
+            <a href="./drunk/index.html">Drunk 转换工作台</a>
+            <span class="footer-sep">·</span>
+            <a href="./QUICKSTART.md" target="_blank">新手指南</a>
+            <span class="footer-sep">·</span>
+            <a href="./PORTING.md" target="_blank">移植手册</a>
+            <span class="footer-sep">·</span>
+            <a href="./LICENSE" target="_blank">开源协议 (AGPLv3 / ODbL)</a>
+            <span class="footer-sep">·</span>
+            <a href="./privacy.html">隐私政策</a>
+            <span class="footer-sep">·</span>
+            <a href="https://github.com/NokiaimuL/CGo-OpenMap" target="_blank">GitHub</a>
         </div>
-
-        <!-- 拖拽面板吸附侧边栏时的辅助幽灵阴影 -->
-        <div id="drag-ghost"></div>
-    </div>
-
-    <!-- ========================================================================== -->
-    <!-- 5. 图例与检索抽屉面板 (Legend & Search Drawer Modal)                        -->
-    <!-- 默认浮层弹出；点击固定按钮后可变为桌面端常驻侧边栏                            -->
-    <!-- ========================================================================== -->
-    <div id="legend-overlay">
-        <div class="legend-modal">
-            <button class="legend-close-btn" title="收起面板">
-                <span class="btn-content"><cgo-icon name="arrow-right" class="arrow-icon"
-                        style="transform: rotate(180deg); width: 18px; height: 18px; display: block;"></cgo-icon></span>
-            </button>
-            <button class="legend-pin-btn" id="legend-pin-btn" title="固定面板">
-                <cgo-icon name="pin-angle" size="18"></cgo-icon>
-            </button>
-            <div id="legend-content"></div>
+        <div class="footer-copy">
+            &copy; 2026 CGo OpenMap Community · 城市轨道交通爱好者共建
         </div>
-    </div>
+    </footer>
 
-    <!-- ========================================================================== -->
-    <!-- 6. 业务脚本加载链 (Script Execution Order)                                  -->
-    <!-- 【移植重点】：                                                              -->
-    <!-- 1. 多城市注册总线 (city/data.js) 必须最先加载                                 -->
-    <!-- 2. 目标城市数据文件 (city/{city_id}/*) 依次加载                               -->
-    <!--    - {city}.js: 城市业务逻辑与关系配置                                       -->
-    <!--    - stacard/script.js: 车站卡片系统与地图切片引擎 (StaCard API)              -->
-    <!--    - data_stations.js: 车站坐标与名称                                         -->
-    <!--    - data_lines.js: 线路串联与折线点                                          -->
-    <!--    - data_virtual_transfers.js: 虚拟/站外换乘关系                             -->
-    <!--    - data_scattered.js: 地图装饰物                                            -->
-    <!--    - data_legend.js: 图例分组配置                                             -->
-    <!--    - data_timetable.js: 首末班车时刻                                         -->
-    <!--    - data_notopen.js: 在建线路虚线                                            -->
-    <!-- 3. 核心引擎 (core/script.js) 读取上述数据并统一渲染                           -->
-    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js) -->
-    <!-- ========================================================================== -->
-    <!-- 城市注册总线与基础元数据 -->
-    <script src="city/data.js?v=260902.210000"></script>
-    <!-- 动态按序加载当前激活城市的专属业务与全套数据文件 (根据 URL ?city= 或 LocalStorage 判定) -->
+    <!-- 脚本加载 -->
+    <script src="city/data.js?v=260910.150000"></script>
+    <script src="core/tool-theme.js?v=260910.150000"></script>
+
+    <!-- 动态城市渲染与数据绑定 -->
     <script>
         (function () {
-            var city = window.CityDataManager ? window.CityDataManager.getCurrentCity() : null;
-            var folder = (city && city.folder) ? city.folder : "./city/beijing";
-            var cityId = (city && city.id) ? city.id : "beijing";
-            var v = "260902.210000";
-
-            // 同步写入当前激活城市的脚本依赖，确保在核心引擎执行前完成加载
-            document.write('<script src="' + folder + '/' + cityId + '.js?v=' + v + '"><\/script>');
-            document.write('<script type="module" src="' + folder + '/stacard/script.js?v=' + v + '"><\/script>');
-            document.write('<script src="' + folder + '/data_stations.js?v=' + v + '"><\/script>');
-            document.write('<script src="' + folder + '/data_lines.js?v=' + v + '"><\/script>');
-            document.write('<script src="' + folder + '/data_virtual_transfers.js?v=' + v + '"><\/script>');
-            document.write('<script src="' + folder + '/data_scattered.js?v=' + v + '"><\/script>');
-            document.write('<script src="' + folder + '/data_legend.js?v=' + v + '"><\/script>');
-            document.write('<script src="' + folder + '/data_timetable.js?v=' + v + '"><\/script>');
-            document.write('<script src="' + folder + '/data_notopen.js?v=' + v + '"><\/script>');
-        })();
-    </script>
-    <!-- 核心地图渲染引擎 -->
-    <script type="module" src="core/script.js?v=260902.210000"></script>
-    <!-- 辅助面板逻辑 -->
-    <script src="core/help.js?v=260902.210000"></script>
-    <script src="core/settings.js?v=260902.210000"></script>
-    <script>
-        // 动态加载公告与运营通知系统
-        (function () {
-            var script = document.createElement('script');
-            script.src = "core/notice.js?v=260902.210000&t=" + Date.now();
-            document.body.appendChild(script);
-        })();
-    </script>
-    <!-- CGoUI Web Components 基础组件库 -->
-    <script type="module" src="core/cgo-ui.js?v=260902.210000"></script>
-    <script>
-        // 图片加载完毕后添加 loaded 类，配合 CSS 实现平滑淡入
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.img-icon-wrapper img').forEach(function (img) {
-                if (img.complete && img.naturalWidth !== 0) {
-                    img.classList.add('loaded');
-                    if (img.parentElement) img.parentElement.classList.add('loaded');
+            // 规范化并自适应包装城市专属 SVG 图标；没有图标时回退为通用列车图标。
+            function formatCityLogoSvg(rawSvg) {
+                if (!rawSvg || typeof rawSvg !== 'string' || !rawSvg.trim()) {
+                    return '<cgo-icon name="train" size="22"></cgo-icon>';
                 }
-            });
-        });
+                let svg = rawSvg.trim();
+                // 移除 XML 声明及 DOCTYPE (如果有)
+                svg = svg.replace(/<\?xml[\s\S]*?\?>/gi, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '').trim();
+                // 若收录时去除了 viewBox，根据坐标特征智能赋予初始视口 (1000 级 vs 100 级)
+                if (!/viewBox\s*=/i.test(svg)) {
+                    const pathDMatch = svg.match(/\bd=["']([^"']+)["']/i);
+                    const pathD = pathDMatch ? pathDMatch[1] : '';
+                    const nums = pathD.match(/-?\d+(?:\.\d+)?/g);
+                    const isLarge = nums && nums.some(n => Math.abs(parseFloat(n)) > 150);
+                    const initVb = isLarge ? '0 0 1024 1024' : '0 0 100 100';
+                    svg = svg.replace(/<svg\b/i, `<svg viewBox="${initVb}"`);
+                }
+                // 统一设置 width="22" height="22" fill="currentColor"，并剥离写死的固定尺寸和填充色
+                svg = svg.replace(/<svg\b([^>]*)>/i, (match, attrs) => {
+                    let cleanAttrs = attrs
+                        .replace(/\s+(width|height|fill)\s*=\s*["'][^"']*["']/gi, '')
+                        .trim();
+                    return `<svg width="22" height="22" fill="currentColor" ${cleanAttrs}>`;
+                });
+                return svg;
+            }
 
-        // 注册 PWA 渐进式应用 Service Worker，提供离线访问与切片缓存
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(function (reg) {
-                        console.log('[SW] Service Worker 注册成功，作用域:', reg.scope);
-                    })
-                    .catch(function (err) {
-                        console.warn('[SW] Service Worker 注册失败:', err);
+            function render() {
+                const grid = document.getElementById('city-grid');
+                if (!grid) return;
+
+                const registry = window.CITY_REGISTRY || {};
+                const cities = Object.values(registry);
+
+                const countBadge = document.getElementById('city-count-badge');
+                if (countBadge) {
+                    countBadge.textContent = `已收录 ${cities.length} 个城市`;
+                }
+
+                // 按 registerDate 升序排序
+                cities.sort((a, b) => {
+                    const timeA = new Date(a.registerDate || '1970-01-01').getTime();
+                    const timeB = new Date(b.registerDate || '1970-01-01').getTime();
+                    return timeA - timeB;
+                });
+
+                grid.innerHTML = cities.map(city => {
+                    const isRecruiting = city.status === 'recruiting' || (city.maintainers && city.maintainers.some(m => m.isRecruiting));
+                    const badgeClass = isRecruiting ? 'badge-warning' : 'badge-success';
+                    const badgeIcon = isRecruiting ? 'sparkle' : 'check-circle';
+                    const badgeText = isRecruiting ? '招募主理人' : (city.isDefault ? '核心范例 (已上线)' : '已上线');
+
+                    // 主理团队展示
+                    let maintainersHtml = '';
+                    const maintainers = Array.isArray(city.maintainers) ? city.maintainers : [];
+
+                    if (isRecruiting && maintainers.length === 1 && maintainers[0].isRecruiting) {
+                        maintainersHtml = `
+                            <div class="maintainer-recruiting-bar">
+                                <div class="recruiting-tag">
+                                    <cgo-icon name="sparkle" size="13"></cgo-icon>
+                                    <span>城市主理人虚位以待</span>
+                                </div>
+                                <a href="${maintainers[0].github || 'https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md'}" target="_blank" class="recruiting-link" onclick="event.stopPropagation()">
+                                    <span>认领该城市</span>
+                                    <cgo-icon name="arrow-right" size="11"></cgo-icon>
+                                </a>
+                            </div>
+                        `;
+                    } else {
+                        maintainersHtml = `
+                            <div class="maintainers-list">
+                                ${maintainers.map(m => {
+                            const ghBtn = m.github ? `
+                                        <a href="${m.github}" target="_blank" class="maintainer-gh" title="${m.name} 的 GitHub" onclick="event.stopPropagation()">
+                                            <cgo-icon name="code" size="12"></cgo-icon>
+                                            <span>GitHub</span>
+                                        </a>
+                                    ` : '';
+                            return `
+                                        <div class="maintainer-item">
+                                            <div class="maintainer-profile">
+                                                <span class="maintainer-name">${m.name}</span>
+                                                ${m.role ? `<span class="maintainer-role">${m.role}</span>` : ''}
+                                            </div>
+                                            ${ghBtn}
+                                        </div>
+                                    `;
+                        }).join('')}
+                            </div>
+                        `;
+                    }
+
+                    // 官方参考链接
+                    const officialLinkHtml = city.officialMapUrl ? `
+                        <a href="${city.officialMapUrl}" target="_blank" class="city-meta-link" title="官方地铁运营单位线网参考" onclick="event.stopPropagation()">
+                            <cgo-icon name="external" size="12"></cgo-icon>
+                            <span>官方参考</span>
+                        </a>
+                    ` : '';
+
+                    const targetUrl = `./main.html?city=${city.id}`;
+
+                    return `
+                        <div class="city-card" onclick="window.location.href='${targetUrl}'" title="进入 ${city.name} 交互线路图">
+                            <div>
+                                <div class="city-card-header">
+                                    <div class="city-identity">
+                                        <span class="city-name">${city.name}</span>
+                                        <span class="city-code-tag">${city.id.toUpperCase()}</span>
+                                    </div>
+                                    <div class="city-badges-box">
+                                        <span class="badge ${badgeClass}">
+                                            <cgo-icon name="${badgeIcon}" size="12"></cgo-icon>
+                                            <span>${badgeText}</span>
+                                        </span>
+                                        <div class="city-emblem">
+                                            ${formatCityLogoSvg(city.svglogo)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="city-meta">
+                                    <div class="city-meta-item">
+                                        <cgo-icon name="calendar" size="13"></cgo-icon>
+                                        <span>录入时间：${city.registerDate || '近期'}</span>
+                                    </div>
+                                    ${officialLinkHtml}
+                                </div>
+
+                                <p class="city-desc">${city.description || '暂无城市线网描述。'}</p>
+                            </div>
+
+                            <div>
+                                <div class="city-maintainers-box">
+                                    <div class="maintainers-header">
+                                        <cgo-icon name="user" size="13"></cgo-icon>
+                                        <span>主理团队</span>
+                                    </div>
+                                    ${maintainersHtml}
+                                </div>
+
+                                <div class="card-action">
+                                    <span class="btn btn-primary btn-enter"${city.themeColor ? ` style="background-color: ${city.themeColor}; border-color: ${city.themeColor};"` : ''}>
+                                        <span>探索 ${city.name} 线路图</span>
+                                        <cgo-icon name="arrow-right" size="15" class="enter-arrow"></cgo-icon>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                // 为去 viewBox 的自定义 SVG 图标执行边界校准 (自动校准为精确图形外包围盒，彻底兼容各种缩放基准)
+                requestAnimationFrame(() => {
+                    document.querySelectorAll('.city-emblem svg').forEach(svg => {
+                        if (!svg.classList.contains('cgo-icon')) {
+                            try {
+                                const bbox = svg.getBBox();
+                                if (bbox && bbox.width > 0 && bbox.height > 0) {
+                                    // 自动校准为图形真实外边界
+                                    svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+                                }
+                            } catch (e) {}
+                        }
                     });
-            });
-        }
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', render);
+            } else {
+                render();
+            }
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('./sw.js').catch(function () { });
+                });
+            }
+        })();
     </script>
 </body>
 
