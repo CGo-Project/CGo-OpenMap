@@ -1846,4 +1846,8 @@ for (const [stationId, lineId, location, timeRows] of SHENYANG_STACARD_SUPPLEMEN
     SHENYANG_STACARD_DATA[stationId] = stationData;
 }
 
+if (typeof window !== "undefined") {
+    window.SHENYANG_STACARD_DATA = SHENYANG_STACARD_DATA;
+}
+
 export { SHENYANG_STACARD_DATA };

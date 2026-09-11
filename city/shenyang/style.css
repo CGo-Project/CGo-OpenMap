@@ -82,3 +82,38 @@
     display: block;
     color: inherit;
 }
+
+/* 报站提示中的目的地指引：使用淡色圆角提示条，保持信息板的轻量层级。 */
+.shenyang-cultural-destination-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 14px;
+    padding: 9px 11px;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+    border-radius: 7px;
+    background: var(--tab-bg);
+    color: var(--text-main);
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.shenyang-cultural-destination-icon {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    color: var(--primary-color);
+}
+
+.shenyang-cultural-destination-text {
+    min-width: 0;
+    color: var(--text-main);
+}
+
+.shenyang-cultural-destination-text strong {
+    font-weight: 700;
+}
+
+/* 在窄屏下保持图标与文案两列结构，同时允许长目的地自然换行。 */
+.shenyang-cultural-destination-text {
+    overflow-wrap: anywhere;
+}

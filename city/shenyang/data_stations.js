@@ -6,8 +6,9 @@
  *
  * 车站字段约定：
  * - type: "dot" 普通站，"tsf" 换乘站，"no" 暂缓开通站，"rdot" 国铁车站
- * - x / y: 2000x2400 画布坐标
+ * - x / y: 1944x1680 画布坐标
  * - cn / en: 中文站名与英文站名
+ * - aliases: 可选的搜索别名数组（包括车站历史名称与重点目的地）
  * - align: "top" | "bottom" | "left" | "right" | "top-left" | "top-right" |
  *          "bottom-left" | "bottom-right"
  * - offset / textScale / hideLabel: 可选的标签布局微调字段
@@ -191,6 +192,7 @@ const stationsData = {
         y: 800,
         cn: "怀远门",
         en: "HUAIYUANMEN",
+        aliases: ["沈阳故宫"],
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -351,6 +353,7 @@ const stationsData = {
         y: 160,
         cn: "蒲河路",
         en: "PUHELU",
+        aliases: ["盛京医院沈北院区"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -391,6 +394,7 @@ const stationsData = {
         y: 320,
         cn: "师范大学",
         en: "SHIFANDAIXUE",
+        aliases: ["辽宁古生物博物馆"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -491,6 +495,7 @@ const stationsData = {
         y: 760,
         cn: "人民广场",
         en: "RENMINGUANGCHANG",
+        aliases: ["市府广场", "沈阳博物馆"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -731,6 +736,7 @@ const stationsData = {
         y: 920,
         cn: "滑翔",
         en: "HUAXIANG",
+        aliases: ["盛京医院滑翔院区"],
         align: "left",
         offset: { x: -10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -951,6 +957,7 @@ const stationsData = {
         y: 580,
         cn: "合作街",
         en: "HEZUOJIE",
+        aliases: ["胸科医院", "“九·一八”历史博物馆"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -981,6 +988,7 @@ const stationsData = {
         y: 860,
         cn: "万莲",
         en: "WANLIAN",
+        aliases: ["小河沿早市"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1051,6 +1059,7 @@ const stationsData = {
         y: 375,
         cn: "文官街",
         en: "WENGUANJIE",
+        aliases: ["沈阳职业技术学院"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1111,6 +1120,7 @@ const stationsData = {
         y: 680,
         cn: "皇寺路",
         en: "HUANGSILU",
+        aliases: ["老北市"],
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1121,6 +1131,7 @@ const stationsData = {
         y: 740,
         cn: "市府大路",
         en: "SHIFUDALU",
+        aliases: ["西塔"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1401,6 +1412,7 @@ const stationsData = {
         y: 920,
         cn: "三好街",
         en: "SANHAOJIE",
+        aliases: ["盛京医院南湖院区"],
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1411,6 +1423,7 @@ const stationsData = {
         y: 920,
         cn: "中科院金属所",
         en: "ZHONGKEYUANJINSHUSUO",
+        aliases: ["北部战区总医院", "沈阳药科大学", "沈阳二中"],
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }

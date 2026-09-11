@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260910.150000';
+const CACHE_NAME = 'cgo-openmap-v260911.270000';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -77,7 +77,12 @@ const ASSETS_TO_CACHE = [
 
     // 城市配置与业务数据 (沈阳)
     './city/shenyang/shenyang.js',
+    './city/shenyang/modules/shenyang_map.js',
+    './city/shenyang/modules/shenyang_station_board.js',
+    './city/shenyang/modules/shenyang_cultural.js',
+    './city/shenyang/modules/shenyang_service_info.js',
     './city/shenyang/stacard/script.js',
+    './city/shenyang/stacard/data.js',
     './city/shenyang/data_stations.js',
     './city/shenyang/data_lines.js',
     './city/shenyang/data_virtual_transfers.js',
@@ -89,6 +94,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
     './city/shenyang/assets/airport.svg',
+    './city/shenyang/assets/compass.svg',
     './city/shenyang/assets/fangcheng.svg',
     './city/shenyang/assets/railway.svg',
 
@@ -110,6 +116,8 @@ const ASSETS_TO_CACHE = [
 
     // 城市配置与业务数据 (大连)
     './city/dalian/dalian.js',
+    './city/dalian/modules/dalian_map.js',
+    './city/dalian/modules/dalian_timetable.js',
     './city/dalian/stacard/script.js',
     './city/dalian/data_stations.js',
     './city/dalian/data_lines.js',
@@ -119,6 +127,7 @@ const ASSETS_TO_CACHE = [
     './city/dalian/data_timetable.js',
     './city/dalian/data_notopen.js',
     './city/dalian/amap_data.json',
+    './city/dalian/assets/compass.svg',
     './city/dalian/assets/airport.svg',
     './city/dalian/assets/railway.svg',
 
