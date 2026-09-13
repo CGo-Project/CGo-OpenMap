@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260908.211000';
+const CACHE_NAME = 'cgo-openmap-v260912.194500';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -107,6 +107,45 @@ const ASSETS_TO_CACHE = [
     './city/hefei/data_timetable.js',
     './city/hefei/amap_data.json',
     './city/hefei/staname.csv',
+
+    // 城市配置与业务数据 (青岛)
+    './city/qingdao/qingdao.js',
+    './city/qingdao/stacard/script.js',
+    './city/qingdao/data_stations.js',
+    './city/qingdao/data_lines.js',
+    './city/qingdao/data_virtual_transfers.js',
+    './city/qingdao/data_scattered.js',
+    './city/qingdao/data_notopen.js',
+    './city/qingdao/data_legend.js',
+    './city/qingdao/data_timetable.js',
+    './city/qingdao/data_station_names.js',
+    './city/qingdao/data_construction.js',
+    './city/qingdao/modules/qingdao_station_name_history.js',
+    './city/qingdao/modules/qingdao_engineering_name_notice.js',
+    './city/qingdao/modules/qingdao_timetable.js',
+    './city/qingdao/modules/qingdao_construction.js',
+    './city/qingdao/amap_data.json',
+    './city/qingdao/staname.csv',
+    './city/qingdao/assets/qingdao_sea.svg',
+    './city/qingdao/assets/Aircraft.svg',
+    './city/qingdao/assets/China_Railway.svg',
+    './city/qingdao/assets/Long_Distance_Bus.svg',
+    './city/qingdao/assets/Ship.svg',
+    './city/qingdao/assets/Streetcar.svg',
+
+    // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
+    './assets/svg/icon@01.svg',
+    './assets/svg/icon@02.svg',
+    './assets/svg/icon@03.svg',
+    './assets/svg/icon@04.svg',
+    './assets/svg/icon@05.svg',
+    './assets/svg/icon@06.svg',
+    './assets/svg/icon@07.svg',
+    './assets/svg/icon@08.svg',
+    './assets/svg/icon@09.svg',
+    './assets/svg/icon@15.svg',
+    './assets/svg/icon@lg.svg',
+    './assets/svg/icon@xha.svg',
 
     // 图标与清单素材
     './assets/icons/icon-192.png',
