@@ -25,7 +25,7 @@
    - 负责 SVG 绘制、视口缩放漫游、手势处理、全局搜索、图例调度、主题切换、图卡弹窗等通用交互。
    - **严禁**在 `core/` 下的任何脚本中硬编码特定城市的车站 ID（如 `M101`）、特定线路名称（如 `1号线`）、特定颜色或特定城市的私有业务逻辑。
 2. **`city/` 目录为城市业务数据层**：
-   - 所有特定城市（如北京 `city/beijing/`、沈阳 `city/shenyang/`、上海 `city/shanghai/` 等）的车站坐标、线路走向、站距、图例结构、时刻表，**必须且只能**存放在 `city/{city_id}/` 目录下。
+   - 所有特定城市（如北京 `city/beijing/`、沈阳 `city/shenyang/`、青岛 `city/qingdao/`、合肥 `city/hefei/`、上海 `city/shanghai/` 等）的车站坐标、线路走向、站距、图例结构、时刻表，**必须且只能**存放在 `city/{city_id}/` 目录下。
    - 所有新城市必须通过 `city/data.js` 的 `CITY_REGISTRY` 进行注册。
 
 ### 🚨 铁律二：零重型依赖与单文件纯粹性
@@ -40,6 +40,11 @@
 - 本项目基于原生 Service Worker（`sw.js`）实现离线预缓存与性能加速。
 - **任何新增文件、修改车站/线路数据或核心引擎逻辑后，必须同步更新 `sw.js` 中的 `CACHE_NAME` 缓存版本号**（新增文件还须同步登记至 `ASSETS_TO_CACHE` 数组），**否则更改将无法生效**。
 - 💡 **排错第一准则**：在开发与调试过程中，**若出现“无论怎么修改代码/数据，页面表现都毫无变化、怎么改都不起作用”的情况，请务必首先思考是否是 Service Worker 强缓存导致的可能性！**
+
+### 🚨 铁律五（最重要！）：UI 图标必须严格使用 CGoUI 矢量组件，严禁在界面与模块中滥用 Emoji
+- **强制使用 `<cgo-icon>`**：所有按钮、表单、提示横幅、图例、弹窗及车站信息板自定义模块中，**必须且只能**使用原生 Web Components 图标组件 `<cgo-icon name="..." size="..."></cgo-icon>`（如 `<cgo-icon name="location" size="14"></cgo-icon>`、`<cgo-icon name="clock" size="14"></cgo-icon>`、`<cgo-icon name="route" size="14"></cgo-icon>`、`<cgo-icon name="map" size="14"></cgo-icon>`、`<cgo-icon name="train" size="14"></cgo-icon>` 等）。
+- **严禁滥用 Emoji 表情符号**：严禁在 UI 界面、模块标题、列表前缀中使用 Emoji（如 🚇、🏛️、⏱️、⏳、🔄、🚌、📍、💡 等）。Emoji 在 Windows/Mac/iOS/Android 各操作系统下色调与字重不一致，破坏界面专业美感，且无法适配暗色/亮色主题与 CSS 矢量变量。
+- **唯一例外**：除非实在在 CGoUI 内置图标库（`core/cgo-ui.js`）中匹配不到任何合适或语义相近的图标，才可作为最末降级手段。
 
 ---
 
@@ -95,12 +100,23 @@ openmap/
 │   │   ├── data_scattered.js   # 孤立/特殊连接线路段
 │   │   ├── staname.csv         # 拼音缩写、多音字与旧站名搜索库
 │   │   └── stacard/            # 车站详情卡片与站台结构图组件
-│   └── shenyang/               # 示例城市 (沈阳，社区贡献范例)
-│       ├── shenyang.js         # 城市业务逻辑 (换乘站呼出线/方城文化地标等)
-│       ├── style.css           # 城市专属样式表
-│       ├── data_stations.js    # 车站数据 (1~4、9、10号线等)
-│       ├── data_lines.js       # 线路走向与站距配置
-│       └── ...                 # 图例、卡片与检索等全套数据
+│   ├── shenyang/               # 示例城市 (沈阳，社区贡献范例)
+│   │   ├── shenyang.js         # 城市业务逻辑 (换乘站呼出线/方城文化地标等)
+│   │   ├── style.css           # 城市专属样式表
+│   │   ├── data_stations.js    # 车站数据 (1~4、9、10号线等)
+│   │   ├── data_lines.js       # 线路走向与站距配置
+│   │   └── ...                 # 图例、卡片与检索等全套数据
+│   ├── hefei/                  # 示例城市 (合肥，社区贡献范例)
+│   │   ├── hefei.js            # 城市业务逻辑与模块配置
+│   │   ├── modules/            # 城市专属特色模块 (文旅、时刻表)
+│   │   ├── data_stations.js    # 车站数据 (1~8号线及S1线)
+│   │   └── data_lines.js       # 线路走向与站距配置
+│   └── qingdao/                # 示例城市 (青岛，社区贡献范例)
+│       ├── qingdao.js          # 城市业务逻辑 (运营中心归属/综合交通换乘等)
+│       ├── modules/            # 专属特色模块 (在建工程、工程名提示、更名历史、时刻表)
+│       ├── data_stations.js    # 车站数据 (8条在运营及8段在建线路)
+│       ├── data_lines.js       # 线路走向与快线配置
+│       └── assets/             # 海域轮廓底图与国铁/机场/轮渡图标
 ├── css/                        # 样式系统
 │   ├── style.css               # 地图引擎核心样式、图层排版、手势动画
 │   ├── cgo_clr.css             # 线路标志色与全局主题配色变量
@@ -254,7 +270,60 @@ Drunk（`drunk/index.html`）是专为解决“新城市手工测量 `(x, y)` �
 
 ---
 
-## 6. AI Agent 常见任务执行 SOP
+## 6. AI 任务处理规则与现有城市功能模板参考（强制执行）
+
+AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板模块、调整线网排版及装饰元素）时，**必须且只能严格参考现有成熟城市的标准化实现模板**，杜绝随意自创新格式：
+
+### 6.1 现有城市四大核心功能模板参考
+1. **自定义站名外观和线路标志图标**：
+   - **推荐参考实现**：**沈阳样式**（`city/shenyang/shenyang.js` 与 `city/shenyang/style.css`）。
+   - **核心技术模式**：
+     - 在城市主脚本中实现 `getStationLabelStyle(station, stationId)`，为特殊换乘站应用呼出框（`"callout"`）与气泡引线排版（例如沈阳所有 `type: "tsf"` 换乘站启用 `callout` 引线）；
+     - 通过局部 `MutationObserver` 监听车站信息板重新渲染，在车站标题前注入城市专属特色矢量地标徽章（如沈阳方城地标 `assets/fangcheng.svg`）；
+     - 线路徽标优先复用 `assets/svg/icon@*.svg` 模板，并在 `data_lines.js` 中配置 `svgclr` / `svgtext` 动态调色。
+2. **添加名胜古迹与文旅地标信息**：
+   - **推荐参考实现**：**北京处理方式**（`city/beijing/modules/beijing_cultural.js` 与 `city/beijing/beijing.js`）。
+   - **核心技术模式**：
+     - 严格遵循车站信息板模块化注册规范，调用 `window.StationBoard.registerModule`；
+     - 建立站名与历史名胜、古迹地标及游览路线的字典映射，利用 `shouldRender` 精确判定命中车站；
+     - 默认挂载于 `'station-info'`（车站信息选项卡），排序设为 `order: 15`（置于车站类型后、运营公司前）；
+     - **卡片标题与引导图标严格使用 `<cgo-icon name="location" size="14"></cgo-icon>` 或 `<cgo-icon name="map" size="14"></cgo-icon>`，严禁在 HTML 字符串中使用 emoji**。
+3. **添加首末车运营时刻信息**：
+   - **推荐参考实现**：**青岛处理方式**（`city/qingdao/data_timetable.js` 与 `city/qingdao/modules/qingdao_timetable.js`）。
+   - **核心技术模式**：
+     - 数据端在 `data_timetable.js` 中按线路方向、终点站、平日/节假日多维度规范收录首末车时刻矩阵；
+     - 展示端在 `city/{city_id}/modules/` 下编写时刻表模块，将多方向列车发车时刻组织为响应式数据表格，挂载于 `'line-tab'`（线路选项卡）；
+     - **表头、方向与辅助指引必须使用 `<cgo-icon name="clock" size="14"></cgo-icon>` 与 `<cgo-icon name="arrow-right" size="12"></cgo-icon>`，严禁使用 emoji**。
+4. **添加水域（海岸线、海湾、河道与湖泊等）**：
+   - **推荐参考实现**：**青岛处理方式**（`city/qingdao/assets/qingdao_sea.svg` 与 `city/qingdao/data_scattered.js`）。
+   - **核心技术模式**：
+     - 在城市专属 `city/{city_id}/assets/` 下存放纯净的独立水域轮廓 SVG 矢量资源；
+     - 在 `data_scattered.js` 中作为底图层装饰元素注入（`type: "svg"`, `layer: "background"`, `zIndex: 1`），精准配置大视口物理坐标原点 `(x, y)` 与 `width/height`；
+     - 配合深色模式反转或透明度处理，保持核心渲染引擎（`core/script.js`）零侵入，杜绝在核心引擎中硬编码水域路径。
+
+---
+
+### 6.2 🚨 最重要图标规范：严格使用 CGoUI，严禁使用 Emoji！
+- **基本要求**：所有界面输出、按钮、状态标签、图例、弹窗及车站信息板自定义模块中，**必须且只能使用 `<cgo-icon name="..." size="..."></cgo-icon>` 原生组件**。
+- **严禁滥用 Emoji**：严禁在代码、HTML 模板、按钮文本及提示语中使用 Emoji 表情符号（如 🚇, 📍, 🏛️, ⏱️, ⏳, 🔄, 🚌, 🍼 等）。
+- **降级界限**：**除非且仅当**在 CGoUI 官方图标库（`core/cgo-ui.js`）中实在匹配不到任何语义相近的合适图标时，方允许作为最后的降级手段。
+- **常用 CGoUI 图标速查指引**：
+  - 车站 / 地点 / 地标：`<cgo-icon name="location" size="14"></cgo-icon>`
+  - 路线 / 线路走向：`<cgo-icon name="route" size="14"></cgo-icon>`
+  - 列车 / 地铁车次：`<cgo-icon name="train" size="14"></cgo-icon>`
+  - 时间 / 首末班时刻：`<cgo-icon name="clock" size="14"></cgo-icon>`
+  - 地图 / 导览概览：`<cgo-icon name="map" size="14"></cgo-icon>`
+  - 换乘 / 连通节点：`<cgo-icon name="transfer" size="14"></cgo-icon>`
+  - 出入口 / 进出站闸机：`<cgo-icon name="gate" size="14"></cgo-icon>`
+  - 重点亮点 / 推荐特色：`<cgo-icon name="sparkle" size="14"></cgo-icon>`
+  - 帮助 / 关于说明：`<cgo-icon name="help" size="14"></cgo-icon>` / `<cgo-icon name="info" size="14"></cgo-icon>`
+  - 外部链接 / 跳转指引：`<cgo-icon name="external" size="13"></cgo-icon>` / `<cgo-icon name="arrow-right" size="12"></cgo-icon>`
+  - 校验通过 / 成功状态：`<cgo-icon name="check-circle" size="14"></cgo-icon>`
+  - 警告提示 / 在建工程：`<cgo-icon name="warning" size="14"></cgo-icon>`
+
+---
+
+## 7. AI Agent 常见任务执行 SOP
 
 ### 任务 A：为项目移植新城市
 根据用户情况选择以下两种路径之一：
@@ -267,7 +336,7 @@ Drunk（`drunk/index.html`）是专为解决“新城市手工测量 `(x, y)` �
 5. Agent 协助检查 `city/data.js` 注册表与 `sw.js` 缓存版本更新。
 
 #### 路径二：纯手工编写与数据排版
-1. **创建城市目录**：在 `city/` 下新建 `city/{city_id}/`，参考 `city/beijing/` 或 `city/shenyang/` 准备各个 `data_*.js` 文件。
+1. **创建城市目录**：在 `city/` 下新建 `city/{city_id}/`，参考 `city/beijing/`、`city/shenyang/`、`city/qingdao/` 或 `city/hefei/` 准备各个 `data_*.js` 文件。
 2. **注册城市**：在 `city/data.js` 的 `CITY_REGISTRY` 中添加新城市元数据。
 3. **编写车站与线路**：按顺序填充 `data_stations.js` 和 `data_lines.js`。
 4. **引入脚本**：在 `main.html` 底部修改引入的城市脚本路径，或保留动态加载支持（通过 `main.html?city={city_id}` 动态访问）。
@@ -301,7 +370,7 @@ Drunk（`drunk/index.html`）是专为解决“新城市手工测量 `(x, y)` �
 
 ---
 
-## 7. 本地运行与调试方法
+## 8. 本地运行与调试方法
 
 由于浏览器安全策略（CORS）限制，直接双击 `index.html` 或 `main.html` 无法通过 `file://` 协议加载模块与数据。请使用以下任一方式启动本地静态服务：
 

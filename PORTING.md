@@ -1,6 +1,6 @@
 # 🚇 CGo OpenMap 城市移植与二次开发手册
 
-> 本手册为 **CGo OpenMap 开源项目** 官方移植指南。通过本手册，你可以快速基于本项目的基础架构，从零制作任意城市（如上海、广州、深圳、成都、武汉、南京等）的轨道交通交互线路图。目前仓库中已提供北京（`city/beijing/`）与沈阳（`city/shenyang/`）两套完整城市的成熟实现范例供参考借鉴。
+> 本手册为 **CGo OpenMap 开源项目** 官方移植指南。通过本手册，你可以快速基于本项目的基础架构，从零制作任意城市（如上海、广州、深圳、成都、武汉、南京等）的轨道交通交互线路图。目前仓库中已提供北京（`city/beijing/`）、沈阳（`city/shenyang/`）、青岛（`city/qingdao/`）、合肥（`city/hefei/`）等多套完整城市的成熟实现范例供参考借鉴。
 
 ---
 
@@ -48,7 +48,7 @@ CGo OpenMap 采用了**核心渲染引擎与城市业务数据完全解耦**的�
 
 ## 📂 文件结构速查
 
-创建新城市时，请在 `city/` 下新建城市文件夹（例如 `city/shanghai/`），结构建议参考现有的 `city/beijing/` 或 `city/shenyang/`：
+创建新城市时，请在 `city/` 下新建城市文件夹（例如 `city/shanghai/`），结构建议参考现有的 `city/beijing/`、`city/shenyang/`、`city/qingdao/` 或 `city/hefei/`：
 
 ```text
 city/shanghai/
@@ -379,7 +379,7 @@ if (typeof document !== 'undefined' && document.write) {
 ### 为什么一定要回传到官方主仓库？
 
 1. **🌟 尊享官方「城市主理人」专属署名**：
-   - 你的名字与 GitHub 个人主页将被写入 `city/data.js` 的 `maintainers` 字段，并在系统的 **「关于与帮助」弹窗**、官方 `README.md` 中动态展示与致谢（如同北京主理人 NaL、沈阳主理人 jrzhang 一样）！
+   - 你的名字与 GitHub 个人主页将被写入 `city/data.js` 的 `maintainers` 字段，并在系统的 **「关于与帮助」弹窗**、官方 `README.md` 中动态展示与致谢（如同北京主理人 NaL、沈阳主理人 jrzhang、青岛主理人 YoTra青通、合肥主理人 Evin 一样）！
 2. **🛡️ 终身享有底层引擎的平滑升级保障（技术反制保障）**：
    - CGo OpenMap 核心引擎正在持续高速演进（包括即将到来的换乘路径寻路算法、时刻表联动、3D模式联动及图形性能大重构）。
    - **合入官方主库的城市**：官方核心团队承诺负责向后兼容性测试、自动化数据迁移以及 Bug 维护，确保你的城市始终享有最新的引擎特性；
