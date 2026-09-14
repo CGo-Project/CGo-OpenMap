@@ -18,6 +18,18 @@ const LEGEND_CONFIG = [
             { targets: ['SYM10'], name: '10号线' },
         ]
     },
+    {
+        type: 'title',
+        title: '有轨线路',
+        subtitle: 'Tramway Lines'
+    },
+    {
+        type: 'grid',
+        cols: 2,
+        items: [
+            { targets: ['HNT5'], name: '5号线' },
+        ]
+    },
 ];
 
 if (typeof window !== "undefined") {

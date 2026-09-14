@@ -1,6 +1,6 @@
 /** CGo OpenMap - 大连图例配置 (city/dalian/data_legend.js) */
 const LEGEND_CONFIG = [
-    { type: "title", title: "运营线路", subtitle: "Metro Lines" },
+    { type: "title", title: "地铁线路", subtitle: "Metro Lines" },
     {
         type: "grid",
         cols: 2,
@@ -11,6 +11,15 @@ const LEGEND_CONFIG = [
             { targets: ["DLM05"], name: "5号线" },
             { targets: ["DLM12"], name: "12号线" },
             { targets: ["DLM13"], name: "13号线" }
+        ]
+    },
+    { type: "title", title: "有轨线路", subtitle: "Tram Lines" },
+    {
+        type: "grid",
+        cols: 2,
+        items: [
+            { targets: ["DL201","DL201-1"], name: "201路 / 201路区间" },
+            { targets: ["DL202"], name: "202路" },
         ]
     }
 ];

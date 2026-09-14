@@ -16,9 +16,28 @@
         return window.SHENYANG_STACARD_DATA?.[String(stationId)]?.[String(lineId)] || null;
     }
 
+    function getTramwayTimetable(lineId) {
+        const timetable = window.SHENYANG_TRAMWAY_TIMETABLE?.[String(lineId)];
+        return timetable && Array.isArray(timetable.endpoints) ? timetable : null;
+    }
+
+    function getTramwayOriginInfos(lineId) {
+        const timetable = getTramwayTimetable(lineId);
+        if (!timetable) return [];
+        return timetable.endpoints.filter((endpoint) => endpoint && (endpoint.first || endpoint.last));
+    }
+
     function getLineById(lineId) {
         if (typeof linesData === "undefined" || !Array.isArray(linesData)) return null;
         return linesData.find((line) => line?.id === lineId) || null;
+    }
+
+    function isTramLine(lineId) {
+        const line = getLineById(lineId);
+        return Boolean(
+            String(lineId || "").toUpperCase().startsWith("HNT")
+            || String(line?.name || "").includes("有轨")
+        );
     }
 
     function resolveDestinationStationId(lineId, destination) {
@@ -73,15 +92,44 @@
         }).filter(Boolean).join("<br>");
     }
 
+    function formatTramwayHours(timetableInfos, timetable) {
+        if (!Array.isArray(timetableInfos) || !timetableInfos.length) return "";
+        return timetableInfos.map((timetableInfo) => {
+            const first = timetableInfo.first ? escapeHtml(timetableInfo.first) : "";
+            const last = timetableInfo.last ? escapeHtml(timetableInfo.last) : "";
+            const timeRange = first && last
+                ? `${first}-${last}`
+                : first ? `首班 ${first}` : `末班 ${last}`;
+            if (!timeRange) return "";
+            const origin = timetableInfo.stationName
+                ? `${escapeHtml(timetableInfo.stationName)}始发：`
+                : "";
+            const note = timetable.dailySinglePair
+                ? ` <small class="shenyang-tramway-origin-note">（每日1对）</small>`
+                : "";
+            return `${origin}${timeRange}${note}`;
+        }).filter(Boolean).join("<br>");
+    }
+
     function renderRows(info, lineId) {
         const season = getSeason();
         const rows = [];
-        if (info.location) rows.push(["位置", escapeHtml(info.location)]);
+        const safeInfo = info || {};
+        const tramway = getTramwayOriginInfos(lineId);
+        const timetable = getTramwayTimetable(lineId) || {};
+        if (safeInfo.location) rows.push(["位置", escapeHtml(safeInfo.location)]);
 
-        const serviceHours = formatServiceHours(info.serviceHours, season, lineId);
-        if (serviceHours) rows.push([`首末班车<br><small>${escapeHtml(season.label)}</small>`, serviceHours]);
-        if (Array.isArray(info.exits) && info.exits.length) {
-            rows.push(["出入口", info.exits.map(escapeHtml).join("、")]);
+        const serviceHours = isTramLine(lineId)
+            ? formatTramwayHours(tramway, timetable)
+            : formatServiceHours(safeInfo.serviceHours, season, lineId);
+        if (serviceHours) {
+            const serviceLabel = isTramLine(lineId)
+                ? "首末班车"
+                : `首末班车<br><small>${escapeHtml(season.label)}</small>`;
+            rows.push([serviceLabel, serviceHours]);
+        }
+        if (Array.isArray(safeInfo.exits) && safeInfo.exits.length) {
+            rows.push(["出入口", safeInfo.exits.map(escapeHtml).join("、")]);
         }
 
         return rows.map(([label, value]) => `
@@ -99,11 +147,14 @@
             targetTab: "line-tab",
             order: 15,
             shouldRender({ station, lineInfo }) {
-                return Boolean(getInfo(station?.id, lineInfo?.id));
+                return Boolean(
+                    getInfo(station?.id, lineInfo?.id)
+                    || (isTramLine(lineInfo?.id) && getTramwayOriginInfos(lineInfo?.id).length > 0)
+                );
             },
             render({ station, lineInfo }) {
                 const info = getInfo(station?.id, lineInfo?.id);
-                if (!info) return "";
+                if (!info && !(isTramLine(lineInfo?.id) && getTramwayOriginInfos(lineInfo?.id).length > 0)) return "";
                 return `
                     <div class="shenyang-service-info-card" style="margin:8px 0 14px 0;">
                         <div class="stacard-info-content" style="width:100%;box-sizing:border-box;padding:4px 0;border-bottom:1px dashed var(--divider,rgba(0,0,0,.08));">

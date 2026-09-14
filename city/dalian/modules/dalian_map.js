@@ -4,90 +4,15 @@
  * @event cgo:city-module-ready
  * @property {{ cityId: string, moduleId: string }} detail
  * @event dalian:geography-rendered
- * @property {{ featureIds: string[] }} detail
+ * @property {{ asset: string }} detail
  */
 (function () {
     const DALIAN_LABEL_STYLE_ID = "dalian-label-enhancements";
-    const DALIAN_OCEAN_BLEED = 10000;
-    const DALIAN_LAND_FEATURES = [
-        {
-            id: "mainland",
-            cornerRadius: 12,
-            points: [
-                [0, -1600],
-                [1750, 150],
-                [1750, 170],
-                [1300, 170],
-                [1100, 370],
-                [700, 370],
-                [500, 570],
-                [400, 570],
-                [250, 720],
-                [250, 1200],
-                [800, 1200],
-                [1000, 1000],
-                [1100, 1000],
-                [1200, 1100],
-                [1300, 1100],
-                [1450, 950],
-                [1450, 750],
-                [1230, 750],
-                [1205, 710],
-                [1080, 710],
-                [1080, 670],
-                [1200, 670],
-                [1250, 615],
-                [1250, 530],
-                [1600, 530],
-                [1600, 450],
-                [6000, 450],
-                [6000, -1600]
-            ]
-        }
-    ];
+    const DALIAN_SEA_ASSET = "./city/dalian/assets/dalian_sea.svg";
     let legendSyncSuppressed = false;
 
     function getCity() {
         return window.DALIAN_CITY || {};
-    }
-
-    function buildLandPath(points, cornerRadius = 18) {
-        if (!Array.isArray(points) || points.length < 3) return "";
-        const first = points[0];
-        const last = points[points.length - 1];
-        const normalizedPoints = points.length > 3
-            && first?.[0] === last?.[0]
-            && first?.[1] === last?.[1]
-            ? points.slice(0, -1)
-            : points;
-        if (normalizedPoints.length < 3) return "";
-
-        const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-        const moveTowards = (from, to, length) => {
-            const segmentLength = distance(from, to);
-            if (!segmentLength || length <= 0) return [...from];
-            const ratio = Math.min(length / segmentLength, 0.5);
-            return [from[0] + (to[0] - from[0]) * ratio, from[1] + (to[1] - from[1]) * ratio];
-        };
-        const radius = Math.max(0, Number(cornerRadius) || 0);
-        const corners = normalizedPoints.map((point, index) => {
-            const previous = normalizedPoints[(index - 1 + normalizedPoints.length) % normalizedPoints.length];
-            const next = normalizedPoints[(index + 1) % normalizedPoints.length];
-            const localRadius = Math.min(radius, distance(point, previous) / 2, distance(point, next) / 2);
-            return {
-                point,
-                before: moveTowards(point, previous, localRadius),
-                after: moveTowards(point, next, localRadius)
-            };
-        });
-
-        let path = `M${corners[0].after[0]} ${corners[0].after[1]}`;
-        for (let index = 1; index <= corners.length; index += 1) {
-            const corner = corners[index % corners.length];
-            path += ` L${corner.before[0]} ${corner.before[1]}`;
-            path += ` Q${corner.point[0]} ${corner.point[1]} ${corner.after[0]} ${corner.after[1]}`;
-        }
-        return `${path} Z`;
     }
 
     function installGeography() {
@@ -121,45 +46,20 @@
         layer.setAttribute("preserveAspectRatio", "none");
         layer.replaceChildren();
 
-        const defs = document.createElementNS(svgNamespace, "defs");
-        const shadowFilter = document.createElementNS(svgNamespace, "filter");
-        shadowFilter.setAttribute("id", "dalian-land-shadow");
-        shadowFilter.setAttribute("x", "-20%");
-        shadowFilter.setAttribute("y", "-20%");
-        shadowFilter.setAttribute("width", "140%");
-        shadowFilter.setAttribute("height", "150%");
-        const dropShadow = document.createElementNS(svgNamespace, "feDropShadow");
-        dropShadow.setAttribute("dx", "0");
-        dropShadow.setAttribute("dy", "6");
-        dropShadow.setAttribute("stdDeviation", "0");
-        dropShadow.setAttribute("flood-color", "var(--info-color)");
-        dropShadow.setAttribute("flood-opacity", "0.18");
-        shadowFilter.appendChild(dropShadow);
-        defs.appendChild(shadowFilter);
-        layer.appendChild(defs);
-
-        const ocean = document.createElementNS(svgNamespace, "rect");
-        ocean.setAttribute("x", String(-DALIAN_OCEAN_BLEED));
-        ocean.setAttribute("y", String(-DALIAN_OCEAN_BLEED));
-        ocean.setAttribute("width", String(mapSize.width + DALIAN_OCEAN_BLEED * 2));
-        ocean.setAttribute("height", String(mapSize.height + DALIAN_OCEAN_BLEED * 2));
-        ocean.setAttribute("fill", "var(--info-color)");
-        ocean.setAttribute("fill-opacity", "0.14");
-        layer.appendChild(ocean);
-
-        DALIAN_LAND_FEATURES.forEach((feature) => {
-            const pathData = buildLandPath(feature.points, feature.cornerRadius);
-            if (!pathData) return;
-            const path = document.createElementNS(svgNamespace, "path");
-            path.setAttribute("id", `dalian-land-${feature.id}`);
-            path.setAttribute("d", pathData);
-            path.setAttribute("fill", "var(--map-bg)");
-            path.setAttribute("filter", "url(#dalian-land-shadow)");
-            layer.appendChild(path);
-        });
+        const seaDecoration = document.createElementNS(svgNamespace, "image");
+        seaDecoration.setAttribute("x", "0");
+        seaDecoration.setAttribute("y", "0");
+        seaDecoration.setAttribute("width", String(mapSize.width));
+        seaDecoration.setAttribute("height", String(mapSize.height));
+        seaDecoration.setAttribute("preserveAspectRatio", "none");
+        seaDecoration.setAttribute("aria-hidden", "true");
+        seaDecoration.setAttribute("pointer-events", "none");
+        seaDecoration.setAttribute("href", DALIAN_SEA_ASSET);
+        seaDecoration.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", DALIAN_SEA_ASSET);
+        layer.appendChild(seaDecoration);
 
         document.dispatchEvent(new CustomEvent("dalian:geography-rendered", {
-            detail: { featureIds: DALIAN_LAND_FEATURES.map((feature) => feature.id) }
+            detail: { asset: DALIAN_SEA_ASSET }
         }));
     }
 

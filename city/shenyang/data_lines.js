@@ -17,6 +17,21 @@
 
 const linesData = [
     {
+        id: "Rwy", // 记录地图上单独的铁路车站站点
+        name: "中国铁路",
+        svg: "icon@56.svg",
+        svgclr: "#098bd6",
+        svgtext: "#ffffff",
+        company: "中国铁路沈阳局",
+        color: "#bdcbd2",
+        overlayStyle: { color: "#00263b", width: 3.4, opacity: 0.5, dashArray: "12, 12" },
+        isPointOnly: true,
+        // 记得在这里把相关站点的 stationIds 加进去
+        stationIds: ["SYB", "SYZ", "SYN"],
+        distances: [],
+        pathPoints: []
+    },
+    {
         id: "SYM01",
         name: "1号线",
         color: "#CF3517",
@@ -104,6 +119,21 @@ const linesData = [
             { x: 410, y: 560 },
             { x: 1280, y: 560 },
             { x: 1280, y: 1260 },
+        ]
+    },
+    {
+        id: "HNT5",
+        name: "有轨5号线",
+        svg: "icon@05.svg",
+        company: "沈阳浑南现代有轨电车运营有限公司",
+        color: "#1c5ac6",
+        overlayStyle: { color: "white", width: 1.6, opacity: 1, dashArray: "0, 0" },
+        stationIds: ["T501", "T502", "T503", "T504", "T505", "T506", "T507", "T508", "T509", "T510", "T511", "T512", "T513", "T514", "T515", "T516", "T517", "T518", "T519", "T520", "T521", "T522", "T523", "T524", "T525", "T526", "T527", "T528"],
+        pathPoints: [
+            { x: 1010, y: 1095 },
+            { x: 1080, y: 1095 },
+            { x: 1080, y: 1140 },
+            { x: 1880, y: 1140 },
         ]
     },
 ];

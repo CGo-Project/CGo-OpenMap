@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260911.270000';
+const CACHE_NAME = 'cgo-openmap-v260914.001758';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -118,6 +118,7 @@ const ASSETS_TO_CACHE = [
     './city/dalian/dalian.js',
     './city/dalian/modules/dalian_map.js',
     './city/dalian/modules/dalian_timetable.js',
+    './city/dalian/modules/dalian_transfers.js',
     './city/dalian/stacard/script.js',
     './city/dalian/data_stations.js',
     './city/dalian/data_lines.js',
@@ -130,6 +131,25 @@ const ASSETS_TO_CACHE = [
     './city/dalian/assets/compass.svg',
     './city/dalian/assets/airport.svg',
     './city/dalian/assets/railway.svg',
+    './city/dalian/assets/dalian_sea.svg',
+    './city/dalian/assets/tram-201.svg',
+    './city/dalian/assets/tram-201-interval.svg',
+    './city/dalian/assets/tram-202.svg',
+
+    // 城市配置与业务数据 (长春)
+    './city/changchun/README.md',
+    './city/changchun/changchun.js',
+    './city/changchun/stacard/script.js',
+    './city/changchun/data_stations.js',
+    './city/changchun/data_lines.js',
+    './city/changchun/amap_data.json',
+    './city/changchun/modules/changchun_service_info.js',
+    './city/changchun/data_virtual_transfers.js',
+    './city/changchun/data_scattered.js',
+    './city/changchun/data_legend.js',
+    './city/changchun/data_timetable.js',
+    './city/changchun/data_notopen.js',
+
 
     // 图标与清单素材
     './assets/icons/icon-192.png',

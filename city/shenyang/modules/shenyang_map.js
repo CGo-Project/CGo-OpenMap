@@ -66,9 +66,10 @@
             x: stationRect.left + stationRect.width / 2,
             y: stationRect.top + stationRect.height / 2
         };
+        const isBottom = stationCenter.y < labelRect.bottom;
         const candidates = [
-            { x: labelRect.left, y: labelRect.bottom },
-            { x: labelRect.right, y: labelRect.bottom }
+            { x: labelRect.left + 0.5, y: labelRect.bottom - (isBottom ? 1.5 : 0) },
+            { x: labelRect.right - 0.5, y: labelRect.bottom - (isBottom ? 1.5 : 0) }
         ];
         const distance = (point) => Math.hypot(point.x - stationCenter.x, point.y - stationCenter.y);
         const target = distance(candidates[0]) <= distance(candidates[1]) ? candidates[0] : candidates[1];

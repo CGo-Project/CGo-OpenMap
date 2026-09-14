@@ -14,13 +14,25 @@
         LINE_META: {},
         LINE_SORT_ORDER: [],
         LINE_SYNC_GROUPS: [],
-        SUBURBAN_LINES: [],
+        SUBURBAN_LINES: ["Rwy"],
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         getStationLabelStyle(station) {
             if (station?.labelStyle) return station.labelStyle;
             if (station?.type !== "tsf" || station.cn === "合作街") return null;
             return "callout";
+        },
+        isTramLine(lineId) {
+            const line = (typeof linesData !== "undefined" && Array.isArray(linesData))
+                ? linesData.find((item) => item?.id === lineId)
+                : null;
+            return Boolean(
+                String(lineId || "").toUpperCase().startsWith("HNT")
+                || String(line?.name || "").includes("有轨")
+            );
+        },
+        isTramStation(station) {
+            return Boolean(station?.relatedLines?.some((lineId) => this.isTramLine(lineId)));
         },
         maintainers: [
             { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" },
@@ -30,8 +42,12 @@
             stanameCsvUrl: "./city/shenyang/staname.csv",
             amapDataUrl: "./city/shenyang/amap_data.json"
         },
-        getNavigationUrl(stationName, isRailway = false) {
-            const query = isRailway ? stationName : `${stationName}(地铁站)`;
+        getNavigationUrl(stationName, isRailway = false, context = {}) {
+            const isTram = context?.isTram === true
+                || this.isTramStation(context?.station);
+            const query = isTram
+                ? `${stationName}(有轨电车站)`
+                : isRailway ? stationName : `${stationName}(地铁站)`;
             return `https://uri.amap.com/search?keyword=${encodeURIComponent(query)}&city=${encodeURIComponent("沈阳")}`;
         },
         getRailway12306Url(stationName) {
@@ -80,6 +96,7 @@
                 "shenyang-fangcheng-decoration": { enabled: true, targetTab: "header", order: 15 },
                 "header-title": { enabled: true, order: 20 },
                 "header-badges": { enabled: true, order: 30 },
+                "shenyang-tramway-navigation": { enabled: true, targetTab: "footer", order: 11 },
                 "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
                 "shenyang-service-info": { enabled: true, targetTab: "line-tab", order: 15 },
                 "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 5 },

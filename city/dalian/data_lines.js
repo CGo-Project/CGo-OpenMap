@@ -8,6 +8,21 @@
 
 const linesData = [
     {
+        id: "Rwy", // 记录地图上单独的铁路车站站点
+        name: "中国铁路",
+        svg: "icon@56.svg",
+        svgclr: "#00263b",
+        svgtext: "#ffffff",
+        company: "中国铁路沈阳局",
+        color: "#bdcbd2",
+        overlayStyle: { color: "#00263b", width: 3.4, opacity: 0.5, dashArray: "12, 12" },
+        isPointOnly: true,
+        // 记得在这里把相关站点的 stationIds 加进去
+        stationIds: ["DLB", "DLZ"],
+        distances: [],
+        pathPoints: []
+    },
+    {
         "id": "DLM99",
         "name": "3号线支线",
         "color": "#E4007F",
@@ -291,7 +306,93 @@ const linesData = [
                 "y": 184
             }
         ]
-    }
+    },
+    {
+        "id": "DL201",
+        "name": "201路",
+        "color": "#e35225",
+        "svg": "./city/dalian/assets/tram-201.svg",
+        "company": "大连交通集团",
+        overlayStyle: { color: "white", width: 1.6, opacity: 1, dashArray: "0, 0" },
+        "stationIds": [
+            "20101",
+            "20102",
+            "20103",
+            "20104",
+            "20105",
+            "20106",
+            "20107",
+            "20108",
+            "20109",
+            "20110",
+            "20111",
+            "20112",
+            "20113",
+            "20114",
+            "20115",
+            "20116",
+            "20117",
+        ],
+        pathPoints: [
+            { x: 932, y: 759 },
+            { x: 1225, y: 759 },
+            { x: 1225, y: 845 },
+            { x: 1300, y: 845 },
+        ]
+    },
+    {
+        "id": "DL201-1",
+        "name": "201路区间",
+        "color": "#e35225",
+        "svg": "./city/dalian/assets/tram-201-interval.svg",
+        "company": "大连交通集团",
+        overlayStyle: { color: "white", width: 1.6, opacity: 1, dashArray: "0, 0" },
+        "stationIds": [
+            "20117-1",
+            "20118",
+            "20119",
+            "20120",
+        ],
+        pathPoints: [
+            { x: 1310, y: 845 },
+            { x: 1380, y: 845 },
+        ]
+    },
+    {
+        "id": "DL202",
+        "name": "202路",
+        "color": "#2ddcb6",
+        "svg": "./city/dalian/assets/tram-202.svg",
+        "company": "大连交通集团",
+        overlayStyle: { color: "white", width: 1.6, opacity: 1, dashArray: "0, 0" },
+        "stationIds": [
+            "20201",
+            "20202",
+            "20203",
+            "20204",
+            "20205",
+            "20206",
+            "20207",
+            "20208",
+            "20209",
+            "20210",
+            "20211",
+            "20212",
+            "20213",
+            "20214",
+            "20215",
+            "20216",
+            "20217",
+            "20218",
+            "20219"
+        ],
+        pathPoints: [
+            { x: 912, y: 759 },
+            { x: 912, y: 963 },
+            { x: 765, y: 1110 },
+            { x: 660, y: 1110 },
+        ]
+    },
 ];
 
 const LINE_META = {};

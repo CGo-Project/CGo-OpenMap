@@ -113,6 +113,19 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "长春轨道交通",
+      "short_name": "长春",
+      "description": "查看长春轨道交通线网图",
+      "url": "./main.html?city=changchun",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

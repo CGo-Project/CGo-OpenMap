@@ -78,7 +78,8 @@
         stationBoard: {
             scripts: [
                 "modules/dalian_map.js",
-                "modules/dalian_timetable.js"
+                "modules/dalian_timetable.js",
+                "modules/dalian_transfers.js"
             ],
             modules: {
                 "header-controls": { enabled: true, order: 10 },

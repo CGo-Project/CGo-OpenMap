@@ -11,7 +11,7 @@ const SCATTERED_DATA = [
         width: 20,
         height: 20,
         opacity: 1,
-        zIndex: 15
+        zIndex: 20
     },
     {
         id: "railway-SYB",
@@ -21,7 +21,7 @@ const SCATTERED_DATA = [
         width: 20,
         height: 20,
         opacity: 1,
-        zIndex: 15
+        zIndex: 20
     },
     {
         id: "railway-SYN",
@@ -31,7 +31,7 @@ const SCATTERED_DATA = [
         width: 20,
         height: 20,
         opacity: 1,
-        zIndex: 15
+        zIndex: 20
     },
     {
         id: "airport",

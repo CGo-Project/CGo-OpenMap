@@ -303,14 +303,14 @@ const stationsData = {
         "x": 1115,
         "y": 729,
         "cn": "大连站",
-        "en": "Dalian Railway Station",
+        "en": "Dalian Railway<br> Station",
         "labelIcon": {
             "src": "./city/dalian/assets/railway.svg",
             "title": "铁路换乘"
         },
-        "align": "right",
+        "align": "top-right",
         "offset": {
-            "x": 6,
+            "x": 0,
             "y": 0
         },
         "textScale": {
@@ -500,10 +500,10 @@ const stationsData = {
         "y": 796,
         "cn": "东海",
         "en": "Donghai",
-        "align": "bottom",
+        "align": "top",
         "offset": {
             "x": 0,
-            "y": 4
+            "y": -4
         },
         "textScale": {
             "cn": 1,
@@ -532,10 +532,10 @@ const stationsData = {
         "y": 796,
         "cn": "会议中心",
         "en": "Conference Center",
-        "align": "bottom",
+        "align": "bottom-right",
         "offset": {
-            "x": 0,
-            "y": 4
+            "x": -10,
+            "y": -2
         },
         "textScale": {
             "cn": 1,
@@ -548,9 +548,9 @@ const stationsData = {
         "y": 796,
         "cn": "港湾广场",
         "en": "Gangwan Square",
-        "align": "top",
+        "align": "top-right",
         "offset": {
-            "x": 0,
+            "x": -10,
             "y": -4
         },
         "textScale": {
@@ -570,24 +570,24 @@ const stationsData = {
             "y": 4
         },
         "textScale": {
-            "cn": 1,
-            "en": 1
+            "cn": 0.9,
+            "en": 0.7
         }
     },
     "0207": {
         "type": "dot",
-        "x": 1156,
+        "x": 1146,
         "y": 796,
         "cn": "友好广场",
         "en": "Youhao Square",
-        "align": "top",
+        "align": "bottom",
         "offset": {
             "x": 0,
-            "y": -4
+            "y": 4
         },
         "textScale": {
-            "cn": 1,
-            "en": 1
+            "cn": 0.9,
+            "en": 0.9
         }
     },
     "0208": {
@@ -599,32 +599,32 @@ const stationsData = {
         "align": "bottom-left",
         "offset": {
             "x": 0,
-            "y": 4
+            "y": 3
         },
         "textScale": {
-            "cn": 1,
+            "cn": 0.9,
             "en": 1
         }
     },
     "0209": {
         "type": "dot",
-        "x": 1063,
+        "x": 1043,
         "y": 796,
         "cn": "一二九街",
         "en": "Yi'erjiu Street",
-        "align": "top",
+        "align": "bottom",
         "offset": {
             "x": 0,
-            "y": -4
+            "y": 4
         },
         "textScale": {
-            "cn": 1,
+            "cn": 0.9,
             "en": 1
         }
     },
     "0210": {
         "type": "dot",
-        "x": 1018,
+        "x": 998,
         "y": 796,
         "cn": "人民广场",
         "en": "Renmin Square",
@@ -634,24 +634,24 @@ const stationsData = {
             "y": 4
         },
         "textScale": {
-            "cn": 1,
-            "en": 1
+            "cn": 0.9,
+            "en": 0.85
         }
     },
     "0211": {
         "type": "dot",
-        "x": 972,
+        "x": 956,
         "y": 796,
         "cn": "联合路",
         "en": "Lianhe Road",
-        "align": "top",
+        "align": "bottom",
         "offset": {
             "x": 0,
-            "y": -4
+            "y": 4
         },
         "textScale": {
             "cn": 1,
-            "en": 1
+            "en": 0.9
         }
     },
     "0113": {
@@ -660,7 +660,7 @@ const stationsData = {
         "y": 796,
         "cn": "西安路",
         "en": "Xi'an Road",
-        "align": "bottom-right",
+        "align": "top-right",
         "offset": {
             "x": 0,
             "y": 0
@@ -672,13 +672,13 @@ const stationsData = {
     },
     "0212": {
         "type": "dot",
-        "x": 873,
+        "x": 840,
         "y": 796,
         "cn": "交通大学",
-        "en": "Dalian Jiaotong University",
-        "align": "bottom",
+        "en": "Dalian Jiaotong<br> University",
+        "align": "bottom-left",
         "offset": {
-            "x": 0,
+            "x": 16,
             "y": 4
         },
         "textScale": {
@@ -688,10 +688,10 @@ const stationsData = {
     },
     "0213": {
         "type": "dot",
-        "x": 825,
+        "x": 800,
         "y": 796,
         "cn": "辽师大",
-        "en": "Liaoning Normal University",
+        "en": "Liaoning Normal<br> University",
         "align": "top",
         "offset": {
             "x": 0,
@@ -704,7 +704,7 @@ const stationsData = {
     },
     "0214": {
         "type": "dot",
-        "x": 780,
+        "x": 760,
         "y": 796,
         "cn": "马栏广场",
         "en": "Malan Square",
@@ -720,7 +720,7 @@ const stationsData = {
     },
     "0215": {
         "type": "dot",
-        "x": 737,
+        "x": 720,
         "y": 796,
         "cn": "湾家",
         "en": "Wanjia",
@@ -736,7 +736,7 @@ const stationsData = {
     },
     "0216": {
         "type": "dot",
-        "x": 694    ,
+        "x": 680    ,
         "y": 796,
         "cn": "红旗西路",
         "en": "Hongqi West Road",
@@ -1116,10 +1116,10 @@ const stationsData = {
         "y": 749,
         "cn": "兴工街",
         "en": "Xinggong Street",
-        "align": "right",
+        "align": "left",
         "offset": {
-            "x": 6,
-            "y": 0
+            "x": -6,
+            "y": -4
         },
         "textScale": {
             "cn": 1,
@@ -1192,8 +1192,8 @@ const stationsData = {
     },
     "0118": {
         "type": "dot",
-        "x": 863,
-        "y": 1025,
+        "x": 868,
+        "y": 1020,
         "cn": "黑石礁",
         "en": "Heishijiao",
         "align": "bottom-right",
@@ -1208,8 +1208,8 @@ const stationsData = {
     },
     "0119": {
         "type": "dot",
-        "x": 831,
-        "y": 1057,
+        "x": 843,
+        "y": 1045,
         "cn": "学苑广场",
         "en": "Xueyuan Square",
         "align": "bottom-right",
@@ -1224,8 +1224,8 @@ const stationsData = {
     },
     "0120": {
         "type": "dot",
-        "x": 798,
-        "y": 1091,
+        "x": 818,
+        "y": 1070,
         "cn": "海事大学",
         "en": "Dalian Maritime University",
         "align": "bottom-right",
@@ -1240,8 +1240,8 @@ const stationsData = {
     },
     "0121": {
         "type": "dot",
-        "x": 766,
-        "y": 1123,
+        "x": 786,
+        "y": 1103,
         "cn": "七贤岭",
         "en": "Qixianling",
         "align": "bottom-right",
@@ -1276,10 +1276,10 @@ const stationsData = {
         "y": 1140,
         "cn": "蔡大岭",
         "en": "Caidaling",
-        "align": "top",
+        "align": "bottom",
         "offset": {
             "x": 0,
-            "y": -4
+            "y": 4
         },
         "textScale": {
             "cn": 1,
@@ -1621,7 +1621,691 @@ const stationsData = {
             "cn": 1,
             "en": 1
         }
-    }
+    },
+    "20101": {
+        "type": "dot",
+        "x": 932,
+        "y": 759,
+        "cn": "兴工街",
+        "en": "Xinggong Street",
+        "align": "right",
+        hideLabel: true,
+        "offset": {
+            "x": 6,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+     },
+    "20102": {
+        "type": "dot",
+        "x": 959,
+        "y": 759,
+        "cn": "振工街",
+        "en": "Zhengong Street",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20103": {
+        "type": "dot",
+        "x": 986,
+        "y": 759,
+        "cn": "五一广场",
+        "en": "Wuyi Square",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 1
+        }
+     },
+    "20104": {
+        "type": "dot",
+        "x": 1013,
+        "y": 759,
+        "cn": "大同街",
+        "en": "Datong Street",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20105": {
+        "type": "dot",
+        "x": 1040,
+        "y": 759,
+        "cn": "北京街",
+        "en": "Beijing Street",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20106": {
+        "type": "dot",
+        "x": 1067,
+        "y": 759,
+        "cn": "市场街",
+        "en": "Shichang Street",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20107": {
+        "type": "dot",
+        "x": 1094,
+        "y": 759,
+        "cn": "东关街",
+        "en": "Dongguan Street",
+        "align": "bottom",
+        "offset": {
+            "x": -4,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.7
+        }
+     },
+    "20108": {
+        "type": "dot",
+        "x": 1126,
+        "y": 759,
+        "cn": "大连火车站",
+        "en": "Dalian Railway Station",
+        "align": "top-right",
+        "offset": {
+            "x": -4,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.7,
+            "en": 0.6
+        }
+     },
+    "20109": {
+        "type": "dot",
+        "x": 1158,
+        "y": 759,
+        "cn": "胜利桥",
+        "en": "Shengliqiao",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20110": {
+        "type": "dot",
+        "x": 1190,
+        "y": 759,
+        "cn": "民生街",
+        "en": "Minsheng Street",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.6
+        }
+     },
+    "20111": {
+        "type": "dot",
+        "x": 1225,
+        "y": 775,
+        "cn": "民主广场",
+        "en": "Minzhu Square",
+        "align": "left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 0.8
+        }
+     },
+    "20112": {
+        "type": "dot",
+        "x": 1225,
+        "y": 806,
+        "cn": "世纪街",
+        "en": "Shiji Street",
+        "align": "bottom-right",
+        "offset": {
+            "x": 0,
+            "y": -10
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20113": {
+        "type": "dot",
+        "x": 1225,
+        "y": 830,
+        "cn": "三八广场",
+        "en": "Sanba Square",
+        "align": "left",
+        "offset": {
+            "x": 0,
+            "y": 6
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 0.9
+        }
+     },
+    "20114": {
+        "type": "dot",
+        "x": 1240,
+        "y": 845,
+        "cn": "二七广场",
+        "en": "Erqi Square",
+        "align": "bottom-left",
+        "offset": {
+            "x": 0,
+            "y": -1
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 1
+        }
+     },
+    "20115": {
+        "type": "dot",
+        "x": 1260,
+        "y": 845,
+        "cn": "寺儿沟",
+        "en": "Siergou",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 1
+        }
+     },
+    "20116": {
+        "type": "dot",
+        "x": 1280,
+        "y": 845,
+        "cn": "春海街",
+        "en": "Chunhai Street",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20117": {
+        "type": "dot",
+        "x": 1300,
+        "y": 845,
+        "cn": "华乐广场",
+        "en": "Huale Square",
+        "align": "bottom",
+        "offset": {
+            "x": 6,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 0.9
+        }
+     },
+    "20117-1": {
+        "type": "dot",
+        "x": 1310,
+        "y": 845,
+        "cn": "华乐广场",
+        "en": "Huale Square",
+        hideLabel: true,
+        "align": "bottom",
+        "offset": {
+            "x": 6,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 0.9
+        }
+     },
+    "20118": {
+        "type": "dot",
+        "x": 1330,
+        "y": 845,
+        "cn": "海昌欣城",
+        "en": "Haichangxincheng",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 0.9
+        }
+     },
+    "20119": {
+        "type": "dot",
+        "x": 1355,
+        "y": 845,
+        "cn": "金广东海岸",
+        "en": "Jinguangdonghaian",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 0.75
+        }
+     },
+    "20120": {
+        "type": "dot",
+        "x": 1380,
+        "y": 845,
+        "cn": "海之韵公园",
+        "en": "Haizhiyun Park",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 0.9
+        }
+     },
+    "20201": {
+        "type": "dot",
+        "x": 912,
+        "y": 759,
+        "cn": "兴工街",
+        "en": "Xinggong Street",
+        "align": "left",
+        hideLabel: true,
+        "offset": {
+            "x": 6,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+     },
+    "20202": {
+        "type": "dot",
+        "x": 912,
+        "y": 785,
+        "cn": "锦辉商城",
+        "en": "Jinhui Mall",
+        "align": "left",
+        "offset": {
+            "x": 0,
+            "y": -6
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 1
+        }
+     },
+    "20203": {
+        "type": "dot",
+        "x": 912,
+        "y": 815,
+        "cn": "解放广场",
+        "en": "Jiefang Square",
+        "align": "left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20204": {
+        "type": "dot",
+        "x": 912,
+        "y": 845,
+        "cn": "功成街",
+        "en": "Gongcheng Street",
+        "align": "left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20205": {
+        "type": "dot",
+        "x": 912,
+        "y": 875,
+        "cn": "和平广场",
+        "en": "Heping Square",
+        "align": "left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20206": {
+        "type": "dot",
+        "x": 912,
+        "y": 905,
+        "cn": "会展中心",
+        "en": "Convention & Exhibition Center",
+        "align": "left",
+        hideLabel: true,
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20207": {
+        "type": "dot",
+        "x": 912,
+        "y": 935,
+        "cn": "星海广场",
+        "en": "Xinghai Square",
+        "align": "left",
+        hideLabel: true,
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20208": {
+        "type": "dot",
+        "x": 908,
+        "y": 967,
+        "cn": "化物所",
+        "en": "Institute of Chemical Physics",
+        "align": "top-left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20209": {
+        "type": "dot",
+        "x": 895,
+        "y": 980,
+        "cn": "大医二院",
+        "en": "2nd Hospital of Dalian Medical University",
+        "align": "top-left",
+        hideLabel: true,
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20210": {
+        "type": "dot",
+        "x": 880,
+        "y": 995,
+        "cn": "星海公园",
+        "en": "Xinghai Park",
+        "align": "top-left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        }
+     },
+    "20211": {
+        "type": "dot",
+        "x": 865,
+        "y": 1010,
+        "cn": "黑石礁",
+        "en": "Heishijiao",
+        "align": "top-left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        },
+        hideLabel: true,
+     },
+    "20212": {
+        "type": "dot",
+        "x": 845,
+        "y": 1030,
+        "cn": "学苑广场地铁站",
+        "en": "Xueyuan Square Metro Station",
+        "align": "top-left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        },
+     },
+    "20213": {
+        "type": "dot",
+        "x": 823,
+        "y": 1052,
+        "cn": "海事大学",
+        "en": "Dalian Maritime University",
+        "align": "top-left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        },
+        hideLabel: true,
+     },
+    "20214": {
+        "type": "dot",
+        "x": 805,
+        "y": 1070,
+        "cn": "万达广场",
+        "en": "Wanda Plaza",
+        "align": "top-left",
+        "offset": {
+            "x": 6,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.95
+        },
+     },
+    "20215": {
+        "type": "dot",
+        "x": 785,
+        "y": 1090,
+        "cn": "七贤岭地铁站",
+        "en": "Qixianling Metro Station",
+        "align": "top-left",
+        "offset": {
+            "x": 6,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 0.9
+        },
+     },
+    "20216": {
+        "type": "dot",
+        "x": 768,
+        "y": 1107,
+        "cn": "中国华录",
+        "en": "China Hualu",
+        "align": "top-left",
+        "offset": {
+            "x": 3,
+            "y": 3
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 1
+        },
+     },
+    "20217": {
+        "type": "dot",
+        "x": 735,
+        "y": 1110,
+        "cn": "七贤岭",
+        "en": "Qixianling",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 1
+        },
+     },
+    "20218": {
+        "type": "dot",
+        "x": 710,
+        "y": 1110,
+        "cn": "河口",
+        "en": "Hekou",
+        "align": "top-left",
+        hideLabel: true,
+        "offset": {
+            "x": 10,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.8,
+            "en": 1
+        },
+     },
+    "20219": {
+        "type": "dot",
+        "x": 660,
+        "y": 1110,
+        "cn": "小平岛前",
+        "en": "Xiaopingdaoqian",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 1
+        },
+     },
+     "DLZ":
+     {
+        "type": "rdot",
+        "x": 1125,
+        "y": 739,
+        "cn": "大连站",
+        "en": "Dalian Railway Station",
+        "align": "top",
+        hideLabel: true,
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+            "en": 1
+        },
+     },
+     "DLB":
+     {
+        "type": "rdot",
+        "x": 922,
+        "y": 456,
+        "cn": "大连北站",
+        "en": "Dalianbei Railway Station",
+        "align": "top",
+        hideLabel: true,
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 0.9,
+        }
+     }
 };
 
 if (typeof window !== "undefined") window.stationsData = stationsData;

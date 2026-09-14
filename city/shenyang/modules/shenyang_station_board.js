@@ -41,8 +41,23 @@
     }
 
     function getLineNumber(line) {
-        const match = String(line?.name || "").match(/^(\d+)号线$/);
+        const match = String(line?.name || "").match(/(\d+)号线$/);
         return match ? match[1] : null;
+    }
+
+    function isTramLine(line) {
+        return Boolean(line && (
+            String(line.id || "").toUpperCase().startsWith("HNT")
+            || String(line.name || "").includes("有轨")
+        ));
+    }
+
+    function isTramStation(station) {
+        const lineList = getShenyangLinesData();
+        return Boolean(station?.relatedLines?.some((lineId) => {
+            const line = lineList.find((item) => item?.id === lineId);
+            return isTramLine(line || { id: lineId });
+        }));
     }
 
     function getLineForBadge(badge) {
@@ -54,6 +69,20 @@
         return lineList.find((line) => line.svg === sourceFile)
             || lineList.find((line) => getLineNumber(line) === String(Number(sourceNumber)))
             || null;
+    }
+
+    function getBadgeLines(badge) {
+        const lineList = getShenyangLinesData();
+        const mergedIds = String(badge?.dataset?.shenyangBadge || "")
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean);
+        if (mergedIds.length > 0) {
+            const mergedLines = mergedIds.map((id) => lineList.find((line) => line.id === id));
+            return mergedLines.every(Boolean) ? mergedLines : null;
+        }
+        const line = getLineForBadge(badge);
+        return line ? [line] : null;
     }
 
     function getReadableCircleTextColor(color) {
@@ -121,7 +150,7 @@
                 : ` transform="translate(${centerX} 0) scale(${scaleX} 1) translate(${-centerX} 0)"`;
             return `
                 <circle cx="${centerX}" cy="${centerY}" r="${circleRadius}" fill="${line.color}" />
-                <text x="${centerX}" y="${centerY + numberVerticalOffset}" text-anchor="middle" dominant-baseline="middle" fill="${getBadgeNumberTextColor(line)}" font-family="Arial, sans-serif" font-size="${fontSize}" font-weight="400"${transform}>${number}</text>
+                <text x="${centerX}" y="${centerY + numberVerticalOffset}" text-anchor="middle" dominant-baseline="middle" fill="${getBadgeNumberTextColor(line)}" font-family="var(--font-en, 'Arimo', 'Arial', sans-serif)" font-size="${fontSize}" font-weight="400"${transform}>${number}</text>
             `;
         }).join("");
 
@@ -131,9 +160,28 @@
                 <svg class="shenyang-line-badge-svg" viewBox="0 0 ${totalWidth} ${height}" aria-hidden="true" focusable="false" xmlns="${SVG_NS}">
                     ${circleMarkup}
                     <g transform="translate(${labelX} ${centerY})" fill="currentColor" text-anchor="start">
-                        <text x="0" y="-5.2" dominant-baseline="middle" font-family="Microsoft YaHei, Noto Sans SC, sans-serif" font-size="11" font-weight="700">号线</text>
-                        <text x="0" y="6.2" dominant-baseline="middle" font-family="Arimo, Arial, sans-serif" font-size="8.5" font-weight="700">${englishLabel}</text>
+                        <text x="0" y="-5.2" dominant-baseline="middle" font-family="var(--font-sans, 'Noto Sans SC', sans-serif)" font-size="11" font-weight="700">号线</text>
+                        <text x="0" y="6.2" dominant-baseline="middle" font-family="var(--font-en, 'Arimo', 'Arial', sans-serif)" font-size="8.5" font-weight="700">${englishLabel}</text>
                     </g>
+                </svg>
+            `
+        };
+    }
+
+    function createTramwayBadgeSvg(line) {
+        const number = getLineNumber(line);
+        if (!number) return null;
+        const width = number.length > 1 ? 78 : 70;
+        const centerX = width / 2;
+
+        return {
+            width,
+            height: 32,
+            svg: `
+                <svg class="shenyang-line-badge-svg shenyang-tramway-badge-svg" viewBox="0 0 ${width} 32" aria-hidden="true" focusable="false" xmlns="${SVG_NS}">
+                    <rect x="1" y="1" width="${width - 2}" height="30" rx="2" fill="${line.color}" stroke="#ffffff" stroke-width="2" />
+                    <text x="${centerX}" y="11" text-anchor="middle" dominant-baseline="middle" fill="#ffffff" font-family="var(--font-sans, 'Noto Sans SC', sans-serif)" font-size="11" font-weight="400">有轨${number}号线</text>
+                    <text x="${centerX}" y="22" text-anchor="middle" dominant-baseline="middle" fill="#ffffff" font-family="var(--font-en, 'Arimo', 'Arial', sans-serif)" font-size="8.5" font-weight="400">Tramway Line ${number}</text>
                 </svg>
             `
         };
@@ -147,11 +195,13 @@
     }
 
     function renderCompactLineBadge(badge, lines) {
-        const compactBadge = createCompactLineBadgeSvg(lines);
+        const compactBadge = lines.length === 1 && isTramLine(lines[0])
+            ? createTramwayBadgeSvg(lines[0])
+            : createCompactLineBadgeSvg(lines);
         if (!compactBadge) return false;
 
         const height = getBadgeHeight(badge);
-        const width = compactBadge.width * height / LINE_BADGE_CONFIG.height;
+        const width = compactBadge.width * height / compactBadge.height;
         const lineNames = lines.map((line) => line.name).join(" / ");
 
         badge.innerHTML = compactBadge.svg;
@@ -166,11 +216,36 @@
 
     function getDistinctBadgeLines(badges) {
         const seen = new Set();
-        return badges.map(getLineForBadge).filter((line) => {
-            if (!line || !getLineNumber(line) || seen.has(line.id)) return false;
-            seen.add(line.id);
-            return true;
-        });
+        const lines = [];
+        for (const badge of badges) {
+            const badgeLines = getBadgeLines(badge);
+            if (!badgeLines) return null;
+            for (const line of badgeLines) {
+                if (!getLineNumber(line)) return null;
+                if (seen.has(line.id)) continue;
+                seen.add(line.id);
+                lines.push(line);
+            }
+        }
+        return lines;
+    }
+
+    function renderBadgeGroup(badges) {
+        if (!badges.length || !badges.every((badge) => badge.classList.contains("svg-icon-inlined"))) return;
+        if (badges.length === 1 && badges[0].dataset.shenyangBadge) return;
+
+        const lines = getDistinctBadgeLines(badges);
+        if (!lines?.length) return;
+
+        // 有轨徽标必须保留各自的双语文字与线路色底条，避免合并后丢失线路类型。
+        if (lines.some(isTramLine)) {
+            if (lines.length === 1) renderCompactLineBadge(badges[badges.length - 1], lines);
+            return;
+        }
+
+        const finalBadge = badges[badges.length - 1];
+        if (!renderCompactLineBadge(finalBadge, lines)) return;
+        badges.slice(0, -1).forEach((badge) => badge.remove());
     }
 
     function normalizeSidebarHistoryTitles() {
@@ -182,17 +257,79 @@
         });
     }
 
+    function rewriteTramwayNavigation(infoPanel, context) {
+        const station = context?.station;
+        if (!infoPanel || !isTramStation(station)) return;
+
+        const city = context?.city || window.SHENYANG_CITY || window.CURRENT_CITY;
+        const mapUrl = city?.getNavigationUrl?.(station.cn, false, { station, isTram: true });
+        if (!mapUrl) return;
+
+        infoPanel.querySelectorAll('a[href*="uri.amap.com/search"]').forEach((link) => {
+            if (String(link.textContent || '').includes('高德导航')) link.href = mapUrl;
+        });
+    }
+
+    function hasVirtualTransferBetween(candidates) {
+        const candidateIds = new Set(candidates.map((station) => station.id));
+        return candidates.some((station) => {
+            const paidTargets = window.VIRTUAL_TRANSFER_MAP?.[station.id]
+                || (typeof VIRTUAL_TRANSFER_MAP !== "undefined" ? VIRTUAL_TRANSFER_MAP[station.id] : null)
+                || [];
+            const freeTargets = window.VIRTUAL_FREE_TRANSFER_MAP?.[station.id]
+                || (typeof VIRTUAL_FREE_TRANSFER_MAP !== "undefined" ? VIRTUAL_FREE_TRANSFER_MAP[station.id] : null)
+                || [];
+            return [...paidTargets, ...freeTargets].some((targetId) => candidateIds.has(targetId));
+        });
+    }
+
+    function installSameNameStationClickHandler() {
+        const labelsLayer = document.getElementById("labels-layer");
+        if (!labelsLayer || labelsLayer.dataset.shenyangSameNameHandler === "true") return;
+
+        labelsLayer.addEventListener("click", (event) => {
+            const label = event.target.closest(".label-group");
+            if (!label || !labelsLayer.contains(label)) return;
+
+            const clickedId = label.dataset.sid;
+            const stationMap = window.processedStations || {};
+            const clickedStation = stationMap[clickedId];
+            if (!clickedStation) return;
+
+            const candidates = Object.values(stationMap).filter((station) => (
+                station?.cn === clickedStation.cn && station.type !== "no"
+            ));
+            if (candidates.length <= 1 || hasVirtualTransferBetween(candidates)) return;
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            document.getElementById("station-selector")?.remove();
+            window.selectStation?.(clickedId, event.pageX, event.pageY);
+        }, true);
+
+        labelsLayer.dataset.shenyangSameNameHandler = "true";
+    }
+
     function syncCompactLineBadges() {
         document.querySelectorAll(".panel-badges").forEach((container) => {
             const badges = [...container.querySelectorAll(":scope > .line-badge")];
-            if (badges.length < 2 || !badges.every((badge) => badge.classList.contains("svg-icon-inlined"))) return;
+            if (badges.length >= 2) renderBadgeGroup(badges);
+        });
 
-            const lines = getDistinctBadgeLines(badges);
-            if (lines.length !== badges.length) return;
+        document.querySelectorAll("#station-selector .selector-item").forEach((item) => {
+            const badges = [...item.querySelectorAll(":scope > .svg-icon-inlined")];
+            renderBadgeGroup(badges);
+        });
 
-            const finalBadge = badges[badges.length - 1];
-            if (!renderCompactLineBadge(finalBadge, lines)) return;
-            badges.slice(0, -1).forEach((badge) => badge.remove());
+        document.querySelectorAll(".transfer-section .info-row > div:last-child").forEach((container) => {
+            const groups = new Map();
+            const badges = [...container.querySelectorAll(":scope > .line-badge.transfer-link")];
+            badges.forEach((badge) => {
+                const targetSid = badge.dataset.jumpSid || "";
+                if (!groups.has(targetSid)) groups.set(targetSid, []);
+                groups.get(targetSid).push(badge);
+            });
+            groups.forEach(renderBadgeGroup);
         });
 
         // 搜索结果使用 .search-line-icon，仍复用同一套沈阳自定义线路徽标。
@@ -214,6 +351,8 @@
         const root = document.body;
         if (!root || root.dataset.shenyangLineBadgeObserver === "true") return;
 
+        installSameNameStationClickHandler();
+
         let frameId = 0;
         const scheduleSync = () => {
             if (frameId) return;
@@ -230,6 +369,16 @@
     }
 
     if (window.StationBoard?.registerModule) {
+        window.StationBoard.registerModule({
+            id: "shenyang-tramway-navigation",
+            name: "沈阳有轨电车导航",
+            slot: "footer",
+            order: 11,
+            shouldRender: ({ station }) => isTramStation(station),
+            render: () => "",
+            onMounted: rewriteTramwayNavigation
+        });
+
         window.StationBoard.registerModule({
             id: "shenyang-fangcheng-decoration",
             name: "沈阳方城标识",

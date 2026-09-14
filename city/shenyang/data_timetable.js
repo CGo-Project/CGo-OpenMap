@@ -58,3 +58,35 @@ Object.entries(SYMTC_OFFICIAL_STATION_ID_RULES).forEach(([lineId, rules]) => {
             = `${SYMTC_STATION_INFO_BASE}?${params.toString()}`;
     });
 });
+
+/**
+ * 有轨电车固定运营时刻。
+ * 该表只记录线路端点站发车时刻，不区分工作日/节假日或夏令时/冬令时。
+ * HNT1、HNT3 的端点站名先保留为待线路数据接入时使用，当前地图仅配置 HNT5。
+ */
+const SHENYANG_TRAMWAY_TIMETABLE = {
+    HNT1: {
+        dailySinglePair: true,
+        endpoints: [
+            { stationName: "兴隆大奥莱", first: "11:10" },
+            { stationName: "会展中心", first: "10:00" }
+        ]
+    },
+    HNT3: {
+        dailySinglePair: true,
+        endpoints: [
+            { stationName: "世纪大厦", first: "11:05" },
+            { stationName: "会展中心", first: "10:10" }
+        ]
+    },
+    HNT5: {
+        endpoints: [
+            { stationId: "T501", stationName: "奥体中心", first: "06:30", last: "22:00" },
+            { stationId: "T528", stationName: "李石寨", first: "05:30", last: "21:00" }
+        ]
+    }
+};
+
+if (typeof window !== "undefined") {
+    window.SHENYANG_TRAMWAY_TIMETABLE = SHENYANG_TRAMWAY_TIMETABLE;
+}
