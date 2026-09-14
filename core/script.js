@@ -367,7 +367,8 @@ function bindSearchAndLegendEvents() {
          */
         const normalizeSearchText = (input) => {
             if (!input) return "";
-            let s = input.toLowerCase();
+            // 站名中的 <br> 只是排版换行，检索时按空格处理
+            let s = input.replace(/<br\s*\/?>/gi, " ").toLowerCase();
             s = s.replace(/[ɑɑ̌ɑ̄]/g, 'a');
             s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             s = s.replace(/railway|rail/g, 'rwy');
@@ -857,6 +858,9 @@ function renderLines() {
         const visualGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
         visualGroup.setAttribute("class", "line-visual-group");
         visualGroup.setAttribute("data-visual-id", line.id);
+        // 同一条线路的各段分别绘制时，后画段的白色外描边会盖住先画段的实体色，
+        // 在 Y 形分歧处留下白缝；因此先把各层收集起来，再按 外描边 → 实体 → 纹理 → 热区 的顺序统一入组
+        const layers = { outer: [], inner: [], overlay: [], interaction: [] };
         const drawSegment = (points, segmentClass) => {
             if (!points || points.length < 2) return;
             const d = generateRoundedPath(points, isStrict);
@@ -872,8 +876,8 @@ function renderLines() {
             pathInner.setAttribute("class", `line-visual-inner ${segmentClass}`);
             pathInner.setAttribute("stroke", line.color);
             pathInner.setAttribute("stroke-width", "5.4");
-            visualGroup.appendChild(pathOuter);
-            visualGroup.appendChild(pathInner);
+            layers.outer.push(pathOuter);
+            layers.inner.push(pathInner);
             // 叠加虚线/市郊纹理
             if (line.overlayStyle) {
                 const pathOverlay = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -885,7 +889,7 @@ function renderLines() {
                 pathOverlay.setAttribute("stroke-dasharray", line.overlayStyle.dashArray);
                 pathOverlay.setAttribute("fill", "none");
                 pathOverlay.setAttribute("stroke-linecap", "butt");
-                visualGroup.appendChild(pathOverlay);
+                layers.overlay.push(pathOverlay);
             }
             // 交互判定层 (透明加宽热区)
             const pathInteraction = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -925,7 +929,7 @@ function renderLines() {
                     hideLineTooltipNow();
                 }, 3000);
             });
-            visualGroup.appendChild(pathInteraction);
+            layers.interaction.push(pathInteraction);
         };
         if (line.hasbranch) {
             drawSegment(line['pathPoints-main'], 'seg-main');
@@ -941,6 +945,10 @@ function renderLines() {
             }
             drawSegment(points, 'seg-main');
         }
+        layers.outer.forEach(p => visualGroup.appendChild(p));
+        layers.inner.forEach(p => visualGroup.appendChild(p));
+        layers.overlay.forEach(p => visualGroup.appendChild(p));
+        layers.interaction.forEach(p => visualGroup.appendChild(p));
         svgLayer.appendChild(visualGroup);
     });
 }
@@ -1546,16 +1554,38 @@ function highlightLine(lineId, currentStationId = null, fromSync = false) {
         el.classList.add('active');
         const lineData = linesData.find(l => l.id === lineId);
         if (lineData && lineData.hasbranch && currentStationId) {
-            const inWay1 = lineData['stationIds-way1'].includes(currentStationId);
-            const inWay2 = lineData['stationIds-way2'].includes(currentStationId);
+            const ids1 = lineData['stationIds-way1'] || [];
+            const ids2 = lineData['stationIds-way2'] || [];
+            const inWay1 = ids1.includes(currentStationId);
+            const inWay2 = ids2.includes(currentStationId);
             const segWay1 = el.querySelectorAll('.seg-way1');
             const segWay2 = el.querySelectorAll('.seg-way2');
             segWay1.forEach(p => p.style.opacity = '1');
             segWay2.forEach(p => p.style.opacity = '1');
-            if (inWay1 && !inWay2) {
+            // 淡化另一条交路时，只停靠该交路的车站也要一起淡化，
+            // 否则会出现走向已经变浅、站点与站名却还亮着的割裂感；
+            // 若该站还有别的线路经过（那些线路并未淡化），则保持原样。
+            const dimExclusive = (dimIds, keepIds) => {
+                const keep = new Set(keepIds);
+                dimIds.forEach(sid => {
+                    if (keep.has(sid)) return;
+                    const s = processedStations[sid];
+                    if (s && (s.relatedLines || []).some(id => id !== lineId)) return;
+                    ['node_', 'label_'].forEach(prefix => {
+                        const node = document.getElementById(prefix + sid);
+                        if (node) node.style.opacity = '0.1';
+                    });
+                });
+            };
+            // 车站同时属于两条交路（位于共用主干）时，按 way1 为主线处理：
+            // 车站详情面板判定上/下一站也是先查 way1 再回落 way2，两边保持一致，
+            // 否则会出现面板只报主线、图上却把支线也点亮的矛盾。
+            if (inWay1) {
                 segWay2.forEach(p => p.style.opacity = '0.1');
-            } else if (!inWay1 && inWay2) {
+                dimExclusive(ids2, ids1);
+            } else if (inWay2) {
                 segWay1.forEach(p => p.style.opacity = '0.1');
+                dimExclusive(ids1, ids2);
             }
         }
         const highlightLayer = document.getElementById('highlight-layer');
@@ -1597,6 +1627,10 @@ function clearHighlights() {
     }
     const segments = document.querySelectorAll('.line-visual-inner, .line-visual-outer, .line-visual-overlay');
     segments.forEach(el => {
+        el.style.opacity = '';
+    });
+    // 恢复被支线淡化过的车站与站名
+    document.querySelectorAll('.station[style*="opacity"], .label-group[style*="opacity"]').forEach(el => {
         el.style.opacity = '';
     });
 }

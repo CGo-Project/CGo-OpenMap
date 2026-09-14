@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260908.120000';
+const CACHE_NAME = 'cgo-openmap-v260914.0245';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -73,6 +73,9 @@ const ASSETS_TO_CACHE = [
     './city/shanghai/data_urls.js',
     './city/shanghai/amap_data.json',
     './city/shanghai/staname.csv',
+    './city/shanghai/assets/icon-railway.svg',
+    './city/shanghai/assets/icon-airport.svg',
+    './city/shanghai/assets/icon-maglev.svg',
 
     // 城市配置与业务数据 (沈阳)
     './city/shenyang/shenyang.js',

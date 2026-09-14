@@ -115,7 +115,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }, // 字符宽高微调
         hideLabel: false,           // 是否隐藏文本标签
         // (可选) 站点图元几何，仅在城市实现了自定义画法时才需要
-        marker: { shape: "tick", angle: 90, long: 15, short: 7 }
+        marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: 90, long: 15, short: 7 }] }
     },
     // 更多车站...
 };
@@ -129,10 +129,16 @@ const stationsData = {
 > `renderStationIcon(station, stationId)` 钩子，返回 `{ html, width, height, className }`，
 > 核心引擎会用它替换内置的 `SVGTemplates`；不实现该方法时行为完全不变。
 >
-> 配套的 `marker` 字段用来记录每座车站在原始矢量图中的图元几何：
-> `shape`（`tick` 短横 / `capsule` 胶囊 / `circle` 圆形）、`angle`（长轴方向，度）、
-> `long` / `short`（长短轴像素长度）。实现范例见 `city/shanghai/shanghai.js` 与
-> `city/shanghai/style.css`。
+> 配套的 `marker.parts` 字段逐枚记录每座车站在原始矢量图中的图元几何：
+> `shape`（`tick` 短横 / `capsule` 胶囊 / `circle` 圆形）、`dx` / `dy`（相对车站锚点的位移）、
+> `angle`（长轴方向，度）、`long` / `short`（长短轴像素长度）。
+> 用数组而非单个图元，是因为不少线网图会给换乘站的每条线各画一枚图元——例如上海的南京西路
+> 是三枚彼此错开的圆、上海火车站是一枚胶囊加一枚圆——只画一枚无法还原。
+> 实现范例见 `city/shanghai/shanghai.js` 与 `city/shanghai/style.css`。
+>
+> 站名排版同样值得逐站对齐官方图：上海的 `align` / `offset` 是把官方矢量图里每条站名的
+> 文本框实测出来后反解出来的，中文字号、字重与行距也一并写进 `city/shanghai/style.css`，
+> 因此渲染结果能与官方图逐像素重合。
 
 ### 2. 串联线路走向 (`data_lines.js`)
 
@@ -175,13 +181,45 @@ const linesData = [
         name: "11号线",
         color: "#852655",
         hasbranch: true,             // 声明含分支
-        "stationIds-way1": ["M1101", "M1102", "M1103", "M1104"], // 主线+支线1
-        "stationIds-way2": ["M1101", "M1102", "M1105", "M1106"], // 主线+支线2
+        "stationIds-way1": ["M1101", "M1102", "M1103", "M1104"], // 主交路（较长的那条）
+        "stationIds-way2": ["M1101", "M1102", "M1105", "M1106"], // 支线交路
         "distances-way1": [1300, 1400, 1200],
-        "distances-way2": [1300, 1800, 1500]
+        "distances-way2": [1300, 1800, 1500],
+        // 走向必须拆成三段：共用主干 + 两条交路各自独有的一段
+        "pathPoints-main": [/* M1101 → 分歧站 M1102 */],
+        "pathPoints-branch1": [/* 分歧站 → way1 终点 */],
+        "pathPoints-branch2": [/* 分歧站 → way2 终点 */]
     }
 ];
 ```
+
+> [!WARNING]
+> **way1 必须是主交路，way2 是支线交路。**
+> 引擎把 way1 当作这条线的默认走向：车站详情面板算上/下一站时先查 way1、查不到才回落
+> way2；高亮时若车站同时属于两条交路（即位于共用主干上），也按 way1 处理、淡化 way2
+> 独有的那一段。两者共用同一套约定，所以一旦把支线错写进 way1，面板报的是支线、
+> 图上淡化的也会是主线。
+>
+> 哪条算主交路由各城市自行判断，**不能按站数多少来定**——通常是这条线对外标称的
+> 那个方向。现有数据里两种情况都有：
+>
+> | 线路 | way1（主交路） | way2（支线） |
+> | --- | --- | --- |
+> | 北京 通密线 | 密云北站（线名由来，仅 1 站独有） | 怀柔北站（2 站独有） |
+> | 北京 S2 线 | 延庆站（1 站独有） | 沙城站（2 站独有） |
+> | 上海 11 号线 | 迪士尼（29 站独有） | 嘉定北（3 站独有） |
+>
+> 前两条的 way1 比 way2 还短，但仍是主交路。录完数据后点一座**共用主干上**的车站
+> 自检：面板报的上/下一站与图上点亮的那一支，应当都落在主交路上。
+
+> [!WARNING]
+> `pathPoints-main` 必须只画两条交路**共用**的那一段，到分歧站为止；两条支线分别写进
+> `pathPoints-branch1`（对应 way1）与 `pathPoints-branch2`（对应 way2）。
+> 引擎在选中某座车站时，靠这个对应关系淡化另一条交路——若把整条 way1 都塞进
+> `pathPoints-main`、只把 way2 的尾巴写成 `branch1`，淡化的就会是错的那一条。
+>
+> 淡化的范围包括走向、站点图元与站名：只停靠被淡化交路的车站会一起变淡，
+> 但若该站还有别的线路经过（那些线路并未淡化），则保持原样。
 
 ### 3. 配置在建与规划未开通线路 (`data_notopen.js`)
 
