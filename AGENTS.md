@@ -274,7 +274,7 @@ Drunk（`drunk/index.html`）是专为解决“新城市手工测量 `(x, y)` �
 
 AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板模块、调整线网排版及装饰元素）时，**必须且只能严格参考现有成熟城市的标准化实现模板**，杜绝随意自创新格式：
 
-### 6.1 现有城市四大核心功能模板参考
+### 6.1 现有城市几大核心功能模板参考
 1. **自定义站名外观和线路标志图标**：
    - **推荐参考实现**：**沈阳样式**（`city/shenyang/shenyang.js` 与 `city/shenyang/style.css`）。
    - **核心技术模式**：
@@ -300,6 +300,14 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
      - 在城市专属 `city/{city_id}/assets/` 下存放纯净的独立水域轮廓 SVG 矢量资源；
      - 在 `data_scattered.js` 中作为底图层装饰元素注入（`type: "svg"`, `layer: "background"`, `zIndex: 1`），精准配置大视口物理坐标原点 `(x, y)` 与 `width/height`；
      - 配合深色模式反转或透明度处理，保持核心渲染引擎（`core/script.js`）零侵入，杜绝在核心引擎中硬编码水域路径。
+5. **添加规划与建设进度信息（规划图信息、建设进度、建设资讯、最新信息与预计开通运营安排）**：
+   - **推荐参考实现**：**青岛处理方式**（`city/qingdao/data_construction.js`、`city/qingdao/modules/qingdao_construction.js` 与 `city/qingdao/modules/qingdao_engineering_name_notice.js`）。
+   - **核心技术模式**：
+     - **规划与在建底图拓扑**：在 `data_notopen.js` 中维护未开通/规划线路走向虚线，在 `data_stations.js` 中将规划及在建车站设为 `type: "no"`；
+     - **建设进度与资讯数据建模**：在 `data_construction.js` 中按线路 ID 细化组织在建车站（主体结构施工/封顶、开挖深度、最新更新日期）及前后盾构区间（左线/右线贯通状态、工程名称与掘进资讯）；
+     - **信息板模块动态挂载**：在 `city/{city_id}/modules/` 编写建设进度模块（注册于 `'line-tab'` 线路选项卡，`order: 24`），动态渲染“上一区间 ➔ 本站 ➔ 下一区间”的完整工程建设链路；
+     - **工程暂用名与开通安排提示**：搭配工程名提示模块（如 `qingdao_engineering_name_notice.js`），对工程暂用名标注提示，并展示最新建设进展资讯与预计开通运营安排；
+     - **状态标识与杜绝 Emoji**：已完成（绿）、建设中（黄）、未开始/待更新（灰）状态指示严格使用原生 CSS 颜色块与 CGoUI 矢量图标（如 `<cgo-icon name="warning" size="14"></cgo-icon>`、`<cgo-icon name="clock" size="14"></cgo-icon>`、`<cgo-icon name="route" size="14"></cgo-icon>`），严禁使用 Emoji。
 
 ---
 
