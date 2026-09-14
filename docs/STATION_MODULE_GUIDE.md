@@ -11,7 +11,8 @@ CGo OpenMap 的车站信息板（`#info-panel`）采用 **模块注册化（Modu
 - **通用核心引擎**：`core/station-board.js` 统一管理生命周期、槽位调度、事件委托与内置标准模块；
 - **城市专属业务**：各城市专属的特色模块（如文化名胜、便民设施、地标引导、首末班时刻等）放置在 `city/{city_id}/modules/` 下；
 - **零构建开箱即用**：纯原生 JavaScript (ES6+)，无需 Webpack/Vite 编译打包；
-- **100% 向下兼容**：未配置 `stationBoard` 的城市自动全量加载默认模块与原版 DOM 布局。
+- **100% 向下兼容**：未配置 `stationBoard` 的城市自动全量加载默认模块与原版 DOM 布局；
+- **🚨 核心铁律（最重要）**：所有模块内图标**必须严格使用原生 Web Components 图标组件 `<cgo-icon name="..." size="..."></cgo-icon>`，严禁使用 Emoji 表情符号**（除非在 CGoUI 库中实在匹配不到合适图标）。
 
 ---
 
@@ -69,7 +70,7 @@ window.StationBoard.registerModule({
         // 返回符合 HTML 标准的字符串
         return `
             <div class="my-module-box">
-                <div class="my-module-title">🏛️ ${station.cn}文化小贴士</div>
+                <div class="my-module-title" style="display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="location" size="14"></cgo-icon><span>${station.cn}文化小贴士</span></div>
                 <div class="my-module-desc">本站周边汇聚丰富的历史名胜。</div>
             </div>
         `;
@@ -118,7 +119,7 @@ window.StationBoard.registerModule({
     render({ station }) {
         return `
             <div style="margin:10px 0; padding:12px; background:var(--card-sub-bg); border-left:3px solid var(--primary-color); border-radius:6px; font-size:12px;">
-                <div style="font-weight:bold; color:var(--text-main); margin-bottom:6px;">🏛️ 周边文旅与名胜</div>
+                <div style="font-weight:bold; color:var(--text-main); margin-bottom:6px; display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="location" size="14"></cgo-icon><span>周边文旅与名胜</span></div>
                 <div style="color:var(--text-light); line-height:1.5;">${station.culturalSpots}</div>
             </div>
         `;
@@ -136,7 +137,7 @@ window.StationBoard.registerModule({
     render({ station, lineInfo }) {
         return `
             <div style="margin:8px 0; padding:8px 10px; background:var(--card-sub-bg); border-radius:6px; font-size:11px;">
-                <div style="font-weight:600; color:var(--text-main); margin-bottom:4px;">⏱️ 运营时刻表</div>
+                <div style="font-weight:600; color:var(--text-main); margin-bottom:4px; display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="clock" size="14"></cgo-icon><span>运营时刻表</span></div>
                 <div style="display:flex; justify-content:space-between; color:var(--text-light);">
                     <span>首班车：05:30（开往终点站）</span>
                     <span>末班车：23:15</span>

@@ -102,23 +102,10 @@
       ]
     },
     {
-      "name": "大连地铁",
-      "short_name": "大连",
-      "description": "查看大连地铁线网图",
-      "url": "./main.html?city=dalian",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "长春轨道交通",
-      "short_name": "长春",
-      "description": "查看长春轨道交通线网图",
-      "url": "./main.html?city=changchun",
+      "name": "青岛轨道交通",
+      "short_name": "青岛",
+      "description": "查看青岛轨道交通线网图",
+      "url": "./main.html?city=qingdao",
       "icons": [
         {
           "src": "./assets/icons/icon-192.png",

@@ -39,7 +39,7 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
 
 ### 第一步：Fork 并准备数据
 1. Fork 本仓库至你的 GitHub 账号，并克隆到本地；
-2. 仔细阅读 **[城市移植手册 (PORTING.md)](./PORTING.md)**，并参考现有的北京（`city/beijing/`）与沈阳（`city/shenyang/`）数据实现；
+2. 仔细阅读 **[城市移植手册 (PORTING.md)](./PORTING.md)**，并参考现有的北京（`city/beijing/`）、沈阳（`city/shenyang/`）、青岛（`city/qingdao/`）与合肥（`city/hefei/`）数据实现；
 3. **准备基础数据（两种方式任选）**：
    - **智能提取（推荐）**：启动静态服务访问 `http://localhost:8080/drunk/`，使用 **Drunk 转换工作台** 上传底图/PDF/AI 自动提取全网站点与走向并导出标准代码。  
      *(⚠️ 注：Drunk 系统目前处于早期开发验证阶段，仅供测试使用，数据需人工复核。极其欢迎开发者共同参与 Drunk 转换系统的算法与交互开发！)*
