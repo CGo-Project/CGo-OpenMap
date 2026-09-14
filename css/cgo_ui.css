@@ -911,7 +911,10 @@ body.map-page {
     /* 保留文字的特殊情况 */
     .viewer-actions .btn span,
     .pdf-controls .ctrl-btn span,
-    .pdf-controls .btn span {
+    .pdf-controls .btn span,
+    .card-action .btn span,
+    .btn-enter span,
+    .port-banner-actions .btn span {
         display: inline;
     }
     .viewer-actions .btn,

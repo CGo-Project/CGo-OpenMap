@@ -1,0 +1,20 @@
+# Local layout helpers — not part of the city data package
+layout_anchors.json
+_generate_from_anchors.py
+_generate_mvp.py
+_coord_picker.html
+_apply_picked_coords.py
+_rebuild_line_paths.py
+_verify_picked.py
+_miss.txt
+_dump_coords.py
+_fix_geometry.py
+_build_amap.py
+_amap_report.txt
+_wiki_coords.json
+_leftover_geo.json
+_fill_missing_amap.py
+26map.png
+26_end_map.png
+26_mid_map.jpg
+hefei_picked_coords.json

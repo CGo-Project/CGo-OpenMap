@@ -27,7 +27,8 @@
 
     <style>
         /* Web Components 未注册前的优雅占位，杜绝无样式闪烁 */
-        cgo-icon:not(:defined), cgo-theme-toggle:not(:defined) {
+        cgo-icon:not(:defined),
+        cgo-theme-toggle:not(:defined) {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -240,6 +241,16 @@
             color: #ffffff;
         }
 
+        .city-emblem svg {
+            width: 22px;
+            height: 22px;
+            max-width: 22px;
+            max-height: 22px;
+            fill: currentColor;
+            display: block;
+            flex-shrink: 0;
+        }
+
         /* 城市元数据信息 */
         .city-meta {
             display: flex;
@@ -380,16 +391,29 @@
             border-top: 1px dashed var(--border-color);
             padding-top: 14px;
             display: flex;
-            justify-content: flex-end;
+            width: 100%;
         }
 
         .btn-enter {
             width: 100%;
-            display: flex;
+            height: 38px;
+            padding: 0 16px !important;
+            display: flex !important;
             align-items: center;
             justify-content: center;
             gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
             transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        /* 强制确保卡片与横幅按钮文字始终可见，禁止隐藏文字标签 */
+        .btn-enter span,
+        .card-action .btn span,
+        .port-banner-actions .btn span {
+            display: inline !important;
         }
 
         .enter-arrow {
@@ -454,7 +478,19 @@
             flex-wrap: wrap;
         }
 
-        /* 响应式适配 */
+        .port-banner-actions .btn {
+            height: 36px;
+            padding: 0 16px !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 13px;
+            white-space: nowrap;
+            flex: 0 0 auto;
+        }
+
+        /* 响应式适配：允许折行，严禁隐藏文字标签 */
         @media (max-width: 768px) {
             .portal-content {
                 padding: 20px 16px 40px;
@@ -473,14 +509,35 @@
 
             .port-banner-actions {
                 width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
             }
 
             .port-banner-actions .btn {
-                flex: 1;
+                flex: 1 1 auto;
+                min-width: max-content;
+                padding: 0 14px !important;
+                height: 36px;
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .port-banner-actions .btn span,
+            .btn-enter span {
+                display: inline !important;
             }
 
             .header-sub-badge {
                 display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .port-banner-actions .btn {
+                flex: 1 1 100%;
+                justify-content: center;
             }
         }
 
@@ -579,16 +636,20 @@
                     </div>
                     <div class="port-banner-info">
                         <h3>为你的城市认领或制作专属线路图</h3>
-                        <p>按照标准规范准备车站坐标与线路配置，无需开发基础，最快 1 小时即可完成新城市上线与独立部署。</p>
+                        <p>可使用 Drunk 智能转换系统从图片/PDF中极速提取线路拓扑（早期测试阶段，仅供测试使用，欢迎共同开发），最快 1 小时即可完成新城市上线与独立部署。</p>
                     </div>
                 </div>
                 <div class="port-banner-actions">
-                    <a href="./PORTING.md" target="_blank" class="btn btn-secondary">
+                    <a href="./drunk/index.html" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台">
+                        <span>🍺 Drunk 智能转换 (测试版)</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
+                    <a href="./PORTING.md" target="_blank" class="btn btn-info">
                         <cgo-icon name="file" size="15"></cgo-icon>
                         <span>移植实操指南</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
-                    <a href="./CONTRIBUTING.md" target="_blank" class="btn btn-primary">
+                    <a href="./CONTRIBUTING.md" target="_blank" class="btn btn-info">
                         <cgo-icon name="user" size="15"></cgo-icon>
                         <span>城市主理人计划</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
@@ -602,6 +663,8 @@
     <footer class="portal-footer">
         <div class="footer-nav">
             <a href="./readme.html">关于平台</a>
+            <span class="footer-sep">·</span>
+            <a href="./drunk/index.html">Drunk 转换工作台</a>
             <span class="footer-sep">·</span>
             <a href="./QUICKSTART.md" target="_blank">新手指南</a>
             <span class="footer-sep">·</span>
@@ -625,6 +688,33 @@
     <!-- 动态城市渲染与数据绑定 -->
     <script>
         (function () {
+            // 规范化并自适应包装城市专属 SVG 图标
+            function formatCityLogoSvg(rawSvg) {
+                if (!rawSvg || typeof rawSvg !== 'string' || !rawSvg.trim()) {
+                    return '<cgo-icon name="train" size="22"></cgo-icon>';
+                }
+                let svg = rawSvg.trim();
+                // 移除 XML 声明及 DOCTYPE (如果有)
+                svg = svg.replace(/<\?xml[\s\S]*?\?>/gi, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '').trim();
+                // 若收录时去除了 viewBox，根据坐标特征智能赋予初始视口 (1000 级 vs 100 级)
+                if (!/viewBox\s*=/i.test(svg)) {
+                    const pathDMatch = svg.match(/\bd=["']([^"']+)["']/i);
+                    const pathD = pathDMatch ? pathDMatch[1] : '';
+                    const nums = pathD.match(/-?\d+(?:\.\d+)?/g);
+                    const isLarge = nums && nums.some(n => Math.abs(parseFloat(n)) > 150);
+                    const initVb = isLarge ? '0 0 1024 1024' : '0 0 100 100';
+                    svg = svg.replace(/<svg\b/i, `<svg viewBox="${initVb}"`);
+                }
+                // 统一设置 width="22" height="22" fill="currentColor"，并剥离写死的固定尺寸和填充色
+                svg = svg.replace(/<svg\b([^>]*)>/i, (match, attrs) => {
+                    let cleanAttrs = attrs
+                        .replace(/\s+(width|height|fill)\s*=\s*["'][^"']*["']/gi, '')
+                        .trim();
+                    return `<svg width="22" height="22" fill="currentColor" ${cleanAttrs}>`;
+                });
+                return svg;
+            }
+
             function render() {
                 const grid = document.getElementById('city-grid');
                 if (!grid) return;
@@ -661,9 +751,9 @@
                                     <cgo-icon name="sparkle" size="13"></cgo-icon>
                                     <span>城市主理人虚位以待</span>
                                 </div>
-                                <a href="./CONTRIBUTING.md" target="_blank" class="btn btn-secondary btn-xs" onclick="event.stopPropagation()">
-                                    <span>认领</span>
-                                    <cgo-icon name="chevron-right" size="11"></cgo-icon>
+                                <a href="${maintainers[0].github || 'https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md'}" target="_blank" class="recruiting-link" onclick="event.stopPropagation()">
+                                    <span>认领该城市</span>
+                                    <cgo-icon name="arrow-right" size="11"></cgo-icon>
                                 </a>
                             </div>
                         `;
@@ -715,7 +805,7 @@
                                             <span>${badgeText}</span>
                                         </span>
                                         <div class="city-emblem">
-                                            <cgo-icon name="train" size="22"></cgo-icon>
+                                            ${formatCityLogoSvg(city.svglogo)}
                                         </div>
                                     </div>
                                 </div>
@@ -741,7 +831,7 @@
                                 </div>
 
                                 <div class="card-action">
-                                    <span class="btn btn-primary btn-enter">
+                                    <span class="btn btn-primary btn-enter"${city.themeColor ? ` style="background-color: ${city.themeColor}; border-color: ${city.themeColor};"` : ''}>
                                         <span>探索 ${city.name} 线路图</span>
                                         <cgo-icon name="arrow-right" size="15" class="enter-arrow"></cgo-icon>
                                     </span>
@@ -750,6 +840,21 @@
                         </div>
                     `;
                 }).join('');
+
+                // 为去 viewBox 的自定义 SVG 图标执行边界校准 (自动校准为精确图形外包围盒，彻底兼容各种缩放基准)
+                requestAnimationFrame(() => {
+                    document.querySelectorAll('.city-emblem svg').forEach(svg => {
+                        if (!svg.classList.contains('cgo-icon')) {
+                            try {
+                                const bbox = svg.getBBox();
+                                if (bbox && bbox.width > 0 && bbox.height > 0) {
+                                    // 自动校准为图形真实外边界
+                                    svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+                                }
+                            } catch (e) {}
+                        }
+                    });
+                });
             }
 
             if (document.readyState === 'loading') {
