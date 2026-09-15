@@ -262,7 +262,9 @@ openmap/
 - **沈阳线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人） · 从恒隆到细河（运营数据支持）
 - **青岛线网**：[YoTra青通](https://github.com/YoTraYoungTraffic)（城市主理人）
 - **合肥线网**：[Evin](https://github.com/walternie)（城市主理人）
-- **上海线网**：*主理人虚位以待，欢迎认领*
+- **上海线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人）
+- **大连线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人） · duckinglim（运营数据支持）
+- **长春线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人）
 - **平台架构**：[NaL](https://github.com/NokiaimuL/) & [Ryan](https://github.com/ryan-si)
 - **地理数据**：[高德地图开放平台](https://lbs.amap.com/)
 

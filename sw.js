@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260915.0020';
+const CACHE_NAME = 'cgo-openmap-v260915.0030';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -142,6 +142,41 @@ const ASSETS_TO_CACHE = [
     './city/qingdao/assets/Long_Distance_Bus.svg',
     './city/qingdao/assets/Ship.svg',
     './city/qingdao/assets/Streetcar.svg',
+
+    // 城市配置与业务数据 (大连)
+    './city/dalian/dalian.js',
+    './city/dalian/modules/dalian_map.js',
+    './city/dalian/modules/dalian_timetable.js',
+    './city/dalian/modules/dalian_transfers.js',
+    './city/dalian/stacard/script.js',
+    './city/dalian/data_stations.js',
+    './city/dalian/data_lines.js',
+    './city/dalian/data_virtual_transfers.js',
+    './city/dalian/data_scattered.js',
+    './city/dalian/data_notopen.js',
+    './city/dalian/data_legend.js',
+    './city/dalian/data_timetable.js',
+    './city/dalian/amap_data.json',
+    './city/dalian/assets/airport.svg',
+    './city/dalian/assets/compass.svg',
+    './city/dalian/assets/dalian_sea.svg',
+    './city/dalian/assets/railway.svg',
+    './city/dalian/assets/tram-201-interval.svg',
+    './city/dalian/assets/tram-201.svg',
+    './city/dalian/assets/tram-202.svg',
+
+    // 城市配置与业务数据 (长春)
+    './city/changchun/changchun.js',
+    './city/changchun/modules/changchun_service_info.js',
+    './city/changchun/stacard/script.js',
+    './city/changchun/data_stations.js',
+    './city/changchun/data_lines.js',
+    './city/changchun/data_virtual_transfers.js',
+    './city/changchun/data_scattered.js',
+    './city/changchun/data_notopen.js',
+    './city/changchun/data_legend.js',
+    './city/changchun/data_timetable.js',
+    './city/changchun/amap_data.json',
 
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
     './assets/svg/icon@01.svg',

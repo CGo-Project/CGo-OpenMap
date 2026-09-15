@@ -23,7 +23,7 @@
 
 (function () {
     const CAT_CONFIG = {
-        'ops': { title: '运营信息', color: '#eb9605', icon: 'subrail' },
+        'ops': { title: '运营信息', color: '#eb9605', icon: 'train' },
         'app': { title: '地图信息', color: '#00a0e9', icon: 'map' },
         'msg': { title: '作者留言', color: '#78848b', icon: 'chat' },
         'ads': { title: '推广信息', color: '#009f3c', icon: 'notification' }
@@ -56,17 +56,9 @@
         autoDismissDuration: 6000,
         items: [
             {
-                id: '20260630_1',
-                active: true,
-                category: 'ops',
-                deadline: '2026-07-10 00:00:00',
-                summary: "部分车站即将投用",
-                detail: "近期开通6号线通运门站和城市副中心线西延车站，请留意官方运营信息。"
-            },
-            {
                 id: '20260915_qq',
                 active: true,
-                category: 'ops',
+                category: 'app',
                 deadline: 'permanent',
                 image: './assets/images/qq.jpg',
                 summary: "欢迎加入 CGo OpenMap 官方交流群",

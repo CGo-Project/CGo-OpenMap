@@ -65,12 +65,12 @@
             searchCity: "上海",
             title: "CGo OpenMap - 上海轨道交通线路图",
             keywords: "CGo OpenMap, 上海地铁, 申通地铁, 线路图, 轨道交通",
-            description: "由 CGo OpenMap 驱动的上海轨道交通智能交互线路图，线网数据由 Drunk 转换系统从官方 D202512 版 SVG 线网图直读生成，覆盖 1~18 号线、浦江线、磁浮线与市域机场线。主理人虚位以待，欢迎共建！",
+            description: "包含 1~18 号线、浦江线、磁浮线与市域机场线，全网拓扑与几何站点对齐官方 D202512 矢量线网图。",
             officialMapUrl: "http://service.shmetro.com/yxxp/index.htm",
             registerDate: "2026-09-04",
-            status: "recruiting",
+            status: "active",
             maintainers: [
-                { name: "待认领", role: "城市主理人招募中", isRecruiting: true, github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+                { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
             ],
             isDefault: false
         },
@@ -87,7 +87,7 @@
             searchCity: "沈阳",
             title: "CGo OpenMap - 沈阳地铁线网图",
             keywords: "CGo OpenMap, 沈阳地铁, 线路图, 轨道交通",
-            description: "由 CGo OpenMap 驱动的沈阳轨道交通智能交互线路图，包含沈阳地铁1~4、9、10号线及方城文化地标。",
+            description: "包含沈阳地铁1~4、9、10号线及方城文化地标。",
             officialMapUrl: "https://www.symtc.com/wwmhm/pathQuery",
             registerDate: "2026-09-05",
             status: "active",
@@ -110,7 +110,7 @@
             searchCity: "青岛",
             title: "CGo OpenMap - 青岛轨道交通线路图",
             keywords: "CGo OpenMap, 青岛地铁, 青岛轨道交通, 线路图",
-            description: "由 CGo OpenMap 驱动的青岛轨道交通智能交互线路图，包含在运营 8 条线路和在建 8 段线路。",
+            description: "包含在运营 8 条线路和在建 8 段线路。",
             officialMapUrl: "https://www.qd-metro.com/",
             registerDate: "2026-09-09",
             status: "active",
@@ -133,7 +133,7 @@
             searchCity: "合肥",
             title: "CGo OpenMap - 合肥轨道交通线路图",
             keywords: "CGo OpenMap, 合肥地铁, 合肥轨道交通, 线路图",
-            description: "由 CGo OpenMap 驱动的合肥轨道交通智能交互线路图，覆盖 1–8 号线及 S1 线示意。",
+            description: "覆盖 1–8 号线及 S1 线示意。",
             officialMapUrl: "https://www.hfgdjt.com/",
             registerDate: "2026-09-07",
             status: "active",
@@ -155,7 +155,7 @@
             searchCity: "大连",
             title: "CGo OpenMap - 大连地铁线网图",
             keywords: "CGo OpenMap, 大连地铁, 线路图, 轨道交通",
-            description: "由 CGo OpenMap 驱动的大连地铁轨道交通交互线路图，包含当前运营的 1、2、3、5、12、13 号线及 3 号线支线。",
+            description: "包含当前运营的 1、2、3、5、12、13 号线及 3 号线支线。",
             officialMapUrl: "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102",
             registerDate: "2026-09-08",
             status: "active",
@@ -178,12 +178,12 @@
             searchCity: "长春",
             title: "CGo OpenMap - 长春轨道交通线路图",
             keywords: "CGo OpenMap, 长春地铁, 长春轨道交通, 线路图",
-            description: "由 CGo OpenMap 驱动的长春轨道交通交互线路图，线路走向依据官方交互线路图整理。",
+            description: "线路走向依据官方交互线路图整理。",
             officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
             registerDate: "2026-09-13",
             status: "active",
             maintainers: [
-                { name: "待认领", role: "城市主理人招募中", isRecruiting: true, github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+                { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" }
             ],
             isDefault: false
         },
