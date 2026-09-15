@@ -197,9 +197,9 @@ const SVGTemplates = {
     rdot: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><circle cx="5" cy="5" r="4.21" style="fill:#78848b;"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`
 };
 
-// 默认圆角半径常量 (px)
-const RADIUS_90 = 18; // 90度拐角圆角半径
-const RADIUS_45 = 8;  // 45度拐角圆角半径
+// 折线倒角算法与半径常量的唯一真源在 core/path-geometry.js，
+// Drunk 编辑模式共用同一份实现以保证「所见即所得」。此处仅取引用。
+const { RADIUS_90, RADIUS_45 } = window.CGoPathGeometry;
 
 /**
  * 规范化 SVG 徽标文件路径
@@ -2228,49 +2228,17 @@ function updateShareMeta(station) {
 
 /**
  * 平滑贝塞尔曲线折线倒角算法 (Corner Rounding & Smoothing Algorithm)
- * 
- * 核心数学原理：
- * 1. 遍历折线点阵中的每一对前后相邻线段向量 v1 (Prev -> Curr) 与 v2 (Curr -> Next)；
- * 2. 归一化为单位方向向量 u1, u2；
- * 3. 利用点积 (Dot Product) 判断拐角夹角类型：
- *    - 当 dot 接近 0 (|u1 · u2| < 0.1) 时为 90° 直角，默认半径 RADIUS_90 (18px)；
- *    - 否则为 45° 或其它斜角，默认半径 RADIUS_45 (8px)；
- *    - 若点对象显式指定了 `pCurr.r`，则优先采用该自定义圆角半径；
- * 4. 为避免线段过短导致圆角相互重叠畸变，采用 `limitFactor` (默认 0.9) 限制最大半径；
- * 5. 使用二次贝塞尔曲线指令 `Q` 以拐角顶点 pCurr 为控制点，从切点 (startX, startY) 平滑过渡到 (endX, endY)。
- * 
+ *
+ * 实现已抽至 `core/path-geometry.js`，由本引擎与 Drunk 编辑模式共用——
+ * 编辑器预览与实际渲染必须是逐字节相同的 path 指令，否则在 Drunk 里调出来的
+ * 走向与圆角上线后会是另一个样子。此处保留同名同签名的薄封装，调用方无需改动。
+ *
  * @param {Array<{x: number, y: number, r?: number}>} points - 折线点阵坐标数组
  * @param {boolean|number} [roundingParam=false] - 是否启用严格倒角限制或指定限制比例因子
  * @returns {string} SVG Path 数据指令字符串 (如 "M 10 10 L 20 20 Q 30 20 30 30...")
  */
 function generateRoundedPath(points, roundingParam = false) {
-    if (!points || points.length < 2) return "";
-    let d = `M ${points[0].x} ${points[0].y}`;
-    let limitFactor = 0.9;
-    if (typeof roundingParam === 'number') {
-        limitFactor = roundingParam;
-    } else if (roundingParam === true) {
-        limitFactor = 0.5;
-    }
-    for (let i = 1; i < points.length - 1; i++) {
-        const pPrev = points[i - 1], pCurr = points[i], pNext = points[i + 1];
-        const v1 = { x: pCurr.x - pPrev.x, y: pCurr.y - pPrev.y };
-        const v2 = { x: pNext.x - pCurr.x, y: pNext.y - pCurr.y };
-        const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-        const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-        if (len1 < 0.01 || len2 < 0.01) continue;
-        const u1 = { x: v1.x / len1, y: v1.y / len1 };
-        const u2 = { x: v2.x / len2, y: v2.y / len2 };
-        let targetRadius = pCurr.r !== undefined ? pCurr.r :
-            (Math.abs(u1.x * u2.x + u1.y * u2.y) < 0.1 ? RADIUS_90 : RADIUS_45);
-        const r = Math.min(targetRadius, len1 * limitFactor, len2 * limitFactor);
-        const startX = pCurr.x - u1.x * r, startY = pCurr.y - u1.y * r;
-        const endX = pCurr.x + u2.x * r, endY = pCurr.y + u2.y * r;
-        d += ` L ${startX} ${startY} Q ${pCurr.x} ${pCurr.y} ${endX} ${endY}`;
-    }
-    const last = points[points.length - 1];
-    d += ` L ${last.x} ${last.y}`;
-    return d;
+    return window.CGoPathGeometry.generateRoundedPath(points, roundingParam);
 }
 
 /**

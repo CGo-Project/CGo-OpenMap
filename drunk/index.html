@@ -1137,6 +1137,104 @@
             cursor: pointer;
             background: #18191b;
         }
+
+        /* 拐角折点画成圆形以示「此处可倒角」，端点保持方形 */
+        .path-vertex.is-corner {
+            border-radius: 50%;
+        }
+
+        /* 已手动指定过 r 的拐角用琥珀色标出，一眼看出哪些是人工调过的 */
+        .path-vertex.custom-radius {
+            border-color: #f5c451;
+        }
+
+        .path-vertex.custom-radius.selected {
+            background: #f5c451;
+            box-shadow: 0 0 0 3px rgba(245, 196, 81, 0.28);
+        }
+
+        /* ==================================================================
+           拐角圆角半径编辑
+           ================================================================== */
+
+        .corner-check {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            font-size: 11px;
+            color: #a0b0b9;
+            cursor: pointer;
+            line-height: 1.5;
+        }
+
+        .corner-check input {
+            margin: 2px 0 0 0;
+            flex-shrink: 0;
+            accent-color: #006098;
+        }
+
+        #corner-radius-box {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #2e3035;
+        }
+
+        .corner-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 700;
+            color: #a0b0b9;
+            margin-bottom: 8px;
+        }
+
+        .corner-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .corner-row input[type="range"] {
+            flex: 1;
+            min-width: 0;
+            accent-color: #006098;
+        }
+
+        .corner-row input[type="number"] {
+            width: 68px;
+            flex-shrink: 0;
+            height: 28px;
+            box-sizing: border-box;
+            padding: 0 8px;
+            background: #18191b;
+            color: #e6edf3;
+            border: 1px solid #2e3035;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+
+        .corner-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .corner-presets .btn {
+            height: 24px !important;
+            padding: 0 9px !important;
+            font-size: 11px !important;
+        }
+
+        .corner-hint {
+            margin-top: 8px;
+            font-size: 10px;
+            line-height: 1.6;
+            color: #a0b0b9;
+            opacity: 0.9;
+        }
     </style>
 </head>
 
@@ -1402,9 +1500,35 @@
                             <span>运营公司</span>
                             <input type="text" id="field-line-company" autocomplete="off" spellcheck="false">
                         </label>
+                        <label class="corner-check">
+                            <input type="checkbox" id="field-line-strict-rounding">
+                            <span>收紧倒角（短线段处圆角更小，避免相邻圆角重叠）</span>
+                        </label>
                     </div>
+
+                    <!-- 选中走向折点后出现：该拐角的圆角半径 -->
+                    <div id="corner-radius-box" style="display: none;">
+                        <div class="corner-head">
+                            <span>拐角圆角半径</span>
+                            <span class="badge badge-info" id="corner-radius-title">--</span>
+                        </div>
+                        <div class="corner-row">
+                            <input type="range" id="corner-radius-slider" min="0" max="60" step="1">
+                            <input type="number" id="field-corner-radius" min="0" step="1" placeholder="自动">
+                        </div>
+                        <div class="corner-presets">
+                            <button type="button" class="btn btn-info btn-sm" data-corner-preset="auto">自动</button>
+                            <button type="button" class="btn btn-info btn-sm" data-corner-preset="0">直角</button>
+                            <button type="button" class="btn btn-info btn-sm" data-corner-preset="8">8 斜角</button>
+                            <button type="button" class="btn btn-info btn-sm" data-corner-preset="18">18 直角弯</button>
+                            <button type="button" class="btn btn-info btn-sm" data-corner-preset="32">32 大弯</button>
+                        </div>
+                        <div class="corner-hint" id="corner-radius-hint"></div>
+                    </div>
+
                     <ul class="tips-list" style="margin-top: 10px;">
-                        <li>拖动线条上的方形手柄可调整走向折点</li>
+                        <li>拖动线条上的手柄可调整走向折点</li>
+                        <li><b>圆形手柄</b>为拐角，选中后可调圆角半径</li>
                         <li><b>双击线条</b>在该处插入一个新折点</li>
                         <li>选中折点后方向键微调、<b>Delete</b> 删除</li>
                         <li><b>Esc</b> 取消选中线路</li>
@@ -1626,18 +1750,20 @@
         }
     </script>
     <!-- 城市注册总线：编辑模式据此枚举 city/ 下已注册的城市（与 main.html 同源，零硬编码） -->
-    <script src="../city/data.js?v=260915_v2"></script>
-    <script src="./js/drunk_logger.js?v=260915_v7"></script>
-    <script src="./js/drunk_sanitizer.js?v=260915_v7"></script>
-    <script src="./js/city_project_io.js?v=260915_v7"></script>
-    <script src="./js/city_knowledge_matcher.js?v=260915_v7"></script>
-    <script src="./js/pdf_vector_extractor.js?v=260915_v7"></script>
-    <script src="./js/deepseek_vision.js?v=260915_v7"></script>
-    <script src="./js/vision_detector.js?v=260915_v7"></script>
-    <script src="./js/ocr_align_solver.js?v=260915_v7"></script>
-    <script src="./js/topology_tracer.js?v=260915_v7"></script>
-    <script src="./js/openmap_codegen.js?v=260915_v7"></script>
-    <script src="./js/drunk_pipeline.js?v=260915_v7"></script>
+    <!-- 折线倒角几何：与 core/script.js 共用同一份实现，保证编辑器预览 = 实际渲染 -->
+    <script src="../core/path-geometry.js?v=260915_v9"></script>
+    <script src="../city/data.js?v=260915_v9"></script>
+    <script src="./js/drunk_logger.js?v=260915_v9"></script>
+    <script src="./js/drunk_sanitizer.js?v=260915_v9"></script>
+    <script src="./js/city_project_io.js?v=260915_v9"></script>
+    <script src="./js/city_knowledge_matcher.js?v=260915_v9"></script>
+    <script src="./js/pdf_vector_extractor.js?v=260915_v9"></script>
+    <script src="./js/deepseek_vision.js?v=260915_v9"></script>
+    <script src="./js/vision_detector.js?v=260915_v9"></script>
+    <script src="./js/ocr_align_solver.js?v=260915_v9"></script>
+    <script src="./js/topology_tracer.js?v=260915_v9"></script>
+    <script src="./js/openmap_codegen.js?v=260915_v9"></script>
+    <script src="./js/drunk_pipeline.js?v=260915_v9"></script>
 </body>
 
 </html>

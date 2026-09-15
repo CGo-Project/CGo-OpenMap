@@ -232,6 +232,61 @@ section('载入失败提示的归因');
 }
 
 // ============================================================================
+// 四点七、折线倒角几何：编辑器预览必须与引擎渲染同源
+// ============================================================================
+section('折线倒角几何 (core/path-geometry.js)');
+{
+    const G = require(path.join(ROOT, 'core/path-geometry.js'));
+
+    // core/script.js 必须委托给共享模块，不能自己再留一份实现——
+    // 一旦复刻两份，Drunk 的预览就会和线路图的实际渲染悄悄漂移。
+    const engineSrc = fs.readFileSync(path.join(ROOT, 'core/script.js'), 'utf8');
+    check(engineSrc.includes('window.CGoPathGeometry.generateRoundedPath'),
+        'core/script.js 委托给共享几何模块');
+    check(!/for\s*\(let i = 1; i < points\.length - 1; i\+\+\)/.test(engineSrc),
+        'core/script.js 未残留第二份倒角实现');
+
+    const drunkSrc = fs.readFileSync(path.join(ROOT, 'drunk/js/drunk_pipeline.js'), 'utf8');
+    check(drunkSrc.includes('CGoPathGeometry.generateRoundedPath'),
+        'Drunk 画布预览走同一份倒角实现');
+
+    // 自动半径：90° 取 18，斜角取 8
+    const square = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }];
+    const diag = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 100 }];
+    check(G.cornerRadiusAt(square, 1).auto === 18, '90° 拐角自动半径 18px');
+    check(G.cornerRadiusAt(diag, 1).auto === 8, '斜角自动半径 8px');
+    check(!G.cornerRadiusAt(square, 0).isCorner && !G.cornerRadiusAt(square, 2).isCorner,
+        '首尾端点不算拐角');
+
+    // r 覆盖：r:0 应产出直角（无 Q 指令绕行，切点与顶点重合）
+    const sharp = [{ x: 0, y: 0 }, { x: 100, y: 0, r: 0 }, { x: 100, y: 100 }];
+    check(G.generateRoundedPath(sharp).includes('Q 100 0 100 0'), 'r:0 保持直角');
+    check(G.cornerRadiusAt(sharp, 1).requested === 0, 'r:0 被如实读作 requested=0');
+
+    // 线段过短时半径被自动收窄，编辑器据此提示用户
+    const tight = G.cornerRadiusAt([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }], 1);
+    check(tight.limited && tight.effective === 9 && tight.requested === 18,
+        `短线段圆角自动收窄 18px → ${tight.effective}px 并标记 limited`);
+
+    // useStrictRounding 收紧 limitFactor
+    const pts = [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 20 }];
+    check(G.generateRoundedPath(pts, false) !== G.generateRoundedPath(pts, true),
+        'useStrictRounding 确实改变倒角结果');
+
+    // 真实城市数据全量跑一遍，确保不抛异常且都能产出合法 path
+    let paths = 0, bad = 0;
+    for (const city of cities) {
+        const lines = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_lines.js'), 'utf8'), 'linesData');
+        lines.forEach(l => IO.linePathGroups(l).forEach(g => {
+            const d = G.generateRoundedPath(g.points, l.useStrictRounding || false);
+            paths++;
+            if (!/^M /.test(d) || /NaN|undefined/.test(d)) bad++;
+        }));
+    }
+    check(bad === 0, `${cities.length} 座城市共 ${paths} 组折线全部生成合法 path（异常 ${bad}）`);
+}
+
+// ============================================================================
 // 五、识别结果净化器
 // ============================================================================
 section('识别结果净化器');

@@ -107,6 +107,14 @@ window.DrunkPipeline = (function () {
         dom.fieldLineColor = document.getElementById('field-line-color');
         dom.fieldLineColorHex = document.getElementById('field-line-color-hex');
         dom.fieldLineCompany = document.getElementById('field-line-company');
+        dom.fieldStrictRounding = document.getElementById('field-line-strict-rounding');
+
+        // 折点圆角
+        dom.cornerBox = document.getElementById('corner-radius-box');
+        dom.cornerTitle = document.getElementById('corner-radius-title');
+        dom.cornerSlider = document.getElementById('corner-radius-slider');
+        dom.fieldCornerRadius = document.getElementById('field-corner-radius');
+        dom.cornerHint = document.getElementById('corner-radius-hint');
     }
 
     function bindEvents() {
@@ -261,6 +269,36 @@ window.DrunkPipeline = (function () {
         // 手填框允许保留城市原有写法（如沈阳的 "rgb(207, 53, 23)"）
         bindLineField(dom.fieldLineColor, 'color');
         bindLineField(dom.fieldLineColorHex, 'color');
+
+        // 整条线的倒角收紧开关（engine: limitFactor 0.9 → 0.5）
+        if (dom.fieldStrictRounding) {
+            dom.fieldStrictRounding.addEventListener('change', () => {
+                const line = state.lines[state.selectedLineIdx];
+                if (!line) return;
+                pushHistory();
+                if (dom.fieldStrictRounding.checked) line.useStrictRounding = true;
+                else delete line.useStrictRounding;
+                renderLines();
+                updateDirtyBadge();
+            });
+        }
+
+        // ── 折点圆角半径 ──────────────────────────────────────────────────────
+        if (dom.cornerSlider) {
+            dom.cornerSlider.addEventListener('input', () => setCornerRadius(dom.cornerSlider.value));
+        }
+        if (dom.fieldCornerRadius) {
+            dom.fieldCornerRadius.addEventListener('change', () => {
+                const v = dom.fieldCornerRadius.value.trim();
+                setCornerRadius(v === '' ? null : v);
+            });
+        }
+        document.querySelectorAll('[data-corner-preset]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const preset = btn.getAttribute('data-corner-preset');
+                setCornerRadius(preset === 'auto' ? null : Number(preset));
+            });
+        });
 
         // ── 键盘快捷键 ────────────────────────────────────────────────────────
         window.addEventListener('keydown', handleShortcut);
@@ -1378,6 +1416,20 @@ window.DrunkPipeline = (function () {
             : (line.stationIds || []);
     }
 
+    // ── 倒角几何：与 core/script.js 共用 core/path-geometry.js 的同一份实现 ──
+    // 预览与实际渲染必须产出逐字节相同的 path，否则在这里调出来的圆角是白调。
+    function roundedPath(points, strict) {
+        if (window.CGoPathGeometry) return window.CGoPathGeometry.generateRoundedPath(points, strict);
+        // 几何模块没加载上时降级为直角折线，至少不白屏
+        return points.reduce((d, p, i) => d + (i ? `L ${p.x} ${p.y} ` : `M ${p.x} ${p.y} `), '');
+    }
+
+    function cornerInfo(points, idx) {
+        return window.CGoPathGeometry
+            ? window.CGoPathGeometry.cornerRadiusAt(points, idx)
+            : { isCorner: false, auto: 0, requested: 0, effective: 0, limited: false };
+    }
+
     function renderLines() {
         dom.svgLinesLayer.innerHTML = '';
         dom.svgLinesLayer.setAttribute('width', state.mapSize.width);
@@ -1407,12 +1459,15 @@ window.DrunkPipeline = (function () {
                 }
             } else if (pathGroups(line).length) {
                 // 模式 2: 离散折线点阵渲染（含分支线路的 pathPoints-main / -branch1 / -branch2…）
+                //
+                // 必须用 core/path-geometry.js 这份与引擎完全相同的倒角实现。
+                // 早先这里是纯 `M/L` 直角折线，而线路图实际渲染是带 45°/90° 圆角的，
+                // 于是编辑器里看到的线形跟上线后的线形对不上，圆角更无从调起。
                 pathGroups(line).forEach(group => {
-                    group.points.forEach((pt, idx) => {
-                        const x = Math.round(pt.x * scaleX);
-                        const y = Math.round(pt.y * scaleY);
-                        d += idx === 0 ? `M ${x} ${y} ` : `L ${x} ${y} `;
-                    });
+                    const pts = (scaleX === 1 && scaleY === 1)
+                        ? group.points
+                        : group.points.map(p => ({ x: p.x * scaleX, y: p.y * scaleY, r: p.r }));
+                    d += roundedPath(pts, line.useStrictRounding || false) + ' ';
                 });
             } else if (line.stationIds && line.stationIds.length >= 2) {
                 // 模式 3: 站点直连安全降级（仅当有明确排过序的站点，且相邻两站距离合理时连接）
@@ -1498,17 +1553,104 @@ window.DrunkPipeline = (function () {
                 handle.style.borderColor = line.color || '#006098';
                 handle.title = `${line.name} · ${group.key}[${ptIdx}]`;
 
+                // 拐角点画成圆形以示「此处可倒角」，端点保持方形
+                const info = cornerInfo(group.points, ptIdx);
+                if (info.isCorner) {
+                    handle.classList.add('is-corner');
+                    if (pt.r !== undefined) handle.classList.add('custom-radius');
+                }
+
                 handle.addEventListener('mousedown', (e) => {
                     e.stopPropagation();
                     pushHistory();
                     state.selectedVertex = { lineIdx: state.selectedLineIdx, groupKey: group.key, ptIdx };
                     state.isDraggingVertex = true;
                     renderVertices();
+                    syncCornerFields();
                 });
 
                 dom.verticesLayer.appendChild(handle);
             });
         });
+
+        syncCornerFields();
+    }
+
+    /** 取出当前选中折点所在的点阵与下标 */
+    function selectedVertexContext() {
+        const sel = state.selectedVertex;
+        if (!sel) return null;
+        const line = state.lines[sel.lineIdx];
+        const points = line && line[sel.groupKey];
+        if (!Array.isArray(points) || !points[sel.ptIdx]) return null;
+        return { sel, line, points, pt: points[sel.ptIdx] };
+    }
+
+    /** 把选中折点的圆角信息回填到面板 */
+    function syncCornerFields() {
+        if (!dom.cornerBox) return;
+        const ctx = selectedVertexContext();
+
+        if (!ctx) {
+            dom.cornerBox.style.display = 'none';
+            return;
+        }
+        dom.cornerBox.style.display = '';
+
+        const info = cornerInfo(ctx.points, ctx.sel.ptIdx);
+        const isAuto = ctx.pt.r === undefined;
+
+        if (dom.fieldCornerRadius) {
+            dom.fieldCornerRadius.value = isAuto ? '' : ctx.pt.r;
+            dom.fieldCornerRadius.placeholder = info.isCorner ? `自动 ${info.auto}` : '端点无拐角';
+            dom.fieldCornerRadius.disabled = !info.isCorner;
+        }
+        if (dom.cornerSlider) {
+            dom.cornerSlider.value = Math.min(60, isAuto ? info.auto : (Number(ctx.pt.r) || 0));
+            dom.cornerSlider.disabled = !info.isCorner;
+        }
+
+        if (dom.cornerHint) {
+            if (!info.isCorner) {
+                dom.cornerHint.textContent = '首尾端点不产生拐角，无法倒角。';
+            } else if (info.limited) {
+                // 这条提示很重要：用户填了 40 却只看到 12，不说明就会以为是 bug
+                dom.cornerHint.textContent =
+                    `当前生效 ${info.effective.toFixed(1)}px —— 相邻线段过短，已从 ${info.requested}px 自动收窄以免圆角互相重叠。`;
+            } else if (isAuto) {
+                dom.cornerHint.textContent =
+                    `自动：按夹角判定为 ${info.auto === 18 ? '90° 直角' : '斜角'}，取 ${info.auto}px。填入数值即可覆盖，填 0 为保持直角。`;
+            } else {
+                dom.cornerHint.textContent = `自定义 ${ctx.pt.r}px（自动值为 ${info.auto}px）。清空输入框可恢复自动。`;
+            }
+        }
+
+        // 面板里的选中折点标题
+        if (dom.cornerTitle) {
+            dom.cornerTitle.textContent = `${ctx.sel.groupKey}[${ctx.sel.ptIdx}]`;
+        }
+    }
+
+    /**
+     * 设置选中折点的圆角半径。
+     * @param {number|null} r  null 表示恢复「自动」（删掉 r 字段，交回引擎按夹角判定）
+     */
+    function setCornerRadius(r) {
+        const ctx = selectedVertexContext();
+        if (!ctx) return;
+        const info = cornerInfo(ctx.points, ctx.sel.ptIdx);
+        if (!info.isCorner) return;
+
+        const before = ctx.pt.r;
+        pushHistory();
+        if (r === null || r === undefined || r === '') delete ctx.pt.r;
+        else ctx.pt.r = Math.max(0, round2(Number(r)));
+
+        if (String(before) === String(ctx.pt.r)) { state.history.pop(); return; }
+
+        renderLines();
+        syncCornerFields();
+        updateDirtyBadge();
     }
 
     /** 选中一条线路并把属性回填到检视面板 */
@@ -1525,6 +1667,9 @@ window.DrunkPipeline = (function () {
         const color = normalizeHex(line.color);
         if (dom.fieldLineColor) dom.fieldLineColor.value = color;
         if (dom.fieldLineColorHex) dom.fieldLineColorHex.value = line.color || '';
+
+        if (dom.fieldStrictRounding) dom.fieldStrictRounding.checked = !!line.useStrictRounding;
+        if (dom.cornerBox) dom.cornerBox.style.display = 'none';
 
         const pts = pathGroups(line).reduce((a, g) => a + g.points.length, 0);
         if (dom.lineMeta) {
@@ -1563,6 +1708,7 @@ window.DrunkPipeline = (function () {
             if (el) el.value = '';
         });
         if (dom.fieldType) dom.fieldType.value = 'dot';
+        if (dom.cornerBox) dom.cornerBox.style.display = 'none';
         highlightActiveAlignWheel(null);
     }
 
@@ -1607,6 +1753,7 @@ window.DrunkPipeline = (function () {
         points.splice(sel.ptIdx, 1);
         state.selectedVertex = null;
         renderAll();
+        syncCornerFields();
         updateDirtyBadge();
         showNotification(`已删除 ${line.name} 的 1 个走向折点，可按 Ctrl/Cmd+Z 撤销。`);
         return true;
@@ -2063,6 +2210,20 @@ window.DrunkPipeline = (function () {
                     const moved = ag.points.filter((p, i) =>
                         p.x !== bg.points[i].x || p.y !== bg.points[i].y).length;
                     if (moved) parts.push(`${ag.key} 挪动 ${moved} 个折点`);
+
+                    // 圆角半径 r 与坐标同样重要：北京/合肥本来就靠它做大弯，
+                    // 上海/悉尼则是逐点 r:0 保持直角，改动必须如实播报
+                    const radiusChanges = [];
+                    ag.points.forEach((p, i) => {
+                        const q = bg.points[i];
+                        if (!q || p.r === q.r) return;
+                        const fmt = (v) => (v === undefined ? '自动' : `${v}px`);
+                        radiusChanges.push(`[${i}] ${fmt(q.r)}→${fmt(p.r)}`);
+                    });
+                    if (radiusChanges.length) {
+                        parts.push(`${ag.key} 圆角 ${radiusChanges.slice(0, 4).join('、')}`
+                            + (radiusChanges.length > 4 ? ` 等 ${radiusChanges.length} 处` : ''));
+                    }
                 });
 
                 rows.push(`  ~ [${idx}] ${a.name}：${parts.length ? parts.join('，') : '其它字段变更'}`);
