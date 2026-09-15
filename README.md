@@ -12,6 +12,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0%20%2F%20ODbL-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen.svg" alt="Zero Dependencies">
   <a href="./CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+  <a href="https://qm.qq.com/q/nHfgBDS68o"><img src="https://img.shields.io/badge/QQ%E7%BE%A4-619357751-12b7f5.svg" alt="QQ Group"></a>
   <img src="https://img.shields.io/badge/platform-Web%20%2F%20PWA-orange.svg" alt="Platform">
 </p>
 
@@ -24,6 +25,7 @@
   <a href="#项目架构">项目架构</a> •
   <a href="#城市数据移植">城市移植</a> •
   <a href="#城市主理人与鸣谢">主理人与鸣谢</a> •
+  <a href="#社区与技术交流">社区交流</a> •
   <a href="#开源许可协议">开源协议</a>
 </p>
 
@@ -267,6 +269,22 @@ openmap/
 > **关于上游维护与兼容性**：
 > 核心引擎将持续迭代演进（如寻路算法、时刻表联动、3D/实际走向视图等）。建议将新增城市数据通过 Pull Request 合入官方主库，官方团队将统一提供向后兼容支持与数据迁移维护。
 > 欢迎查阅 **[社区贡献指南 (CONTRIBUTING.md)](./CONTRIBUTING.md)** 了解更多提交流程。
+
+---
+
+## 社区与技术交流
+
+欢迎加入 **CGo OpenMap** 官方社群！无论你是轨道交通爱好者、前端技术开发者，还是想为自己的城市制作/认领线路图的城市主理人，都期待与你交流：
+
+- **官方 QQ 交流群**：**619357751**
+- **一键直达加群**：[👉 点击一键加入 CGo OpenMap 官方交流群](https://qm.qq.com/q/nHfgBDS68o)
+- **手机 QQ 扫码入群**：
+
+<p align="center">
+  <img src="./assets/images/qq.jpg" alt="CGo OpenMap 官方 QQ 交流群二维码" width="220" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
+  <br>
+  <em>扫一扫二维码，加入 CGo OpenMap 官方交流群 (群号: 619357751)</em>
+</p>
 
 ---
 

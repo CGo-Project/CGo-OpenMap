@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260915.0015';
+const CACHE_NAME = 'cgo-openmap-v260915.0020';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -167,6 +167,7 @@ const ASSETS_TO_CACHE = [
     './assets/icons/beian.png',
     './assets/icons/cgowx.png',
     './assets/icons/favicon.ico',
+    './assets/images/qq.jpg',
     './manifest.json',
 ];
 

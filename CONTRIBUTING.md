@@ -20,6 +20,22 @@
 
 ---
 
+## 💬 官方交流与主理人社区
+
+在开始制作或移植前，强烈建议加入官方交流群，与核心团队及各地城市主理人实时交流、获取技术答疑与模板支持：
+
+- **官方 QQ 交流群**：**619357751**
+- **一键直达加群**：[👉 点击加入 CGo OpenMap 官方交流群](https://qm.qq.com/q/nHfgBDS68o)
+- **手机 QQ 扫码**：
+
+<p align="center">
+  <img src="./assets/images/qq.jpg" alt="官方 QQ 交流群二维码" width="200" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <br>
+  <em>扫码加入 CGo OpenMap 官方交流群 (619357751)</em>
+</p>
+
+---
+
 ## 🛡️ 官方版本兼容性承诺（合入主库 vs 独立分支）
 
 CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路引擎、时刻表联动、实际走向模式联动、3D 视图等重大升级）。

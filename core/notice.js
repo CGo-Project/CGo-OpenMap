@@ -64,14 +64,14 @@
                 detail: "近期开通6号线通运门站和城市副中心线西延车站，请留意官方运营信息。"
             },
             {
-                id: '20260126_3',
+                id: '20260915_qq',
                 active: true,
-                category: 'ads',
+                category: 'ops',
                 deadline: 'permanent',
-                image: './assets/icons/cgowx.png',
-                summary: "欢迎添加作者的微信",
-                detail: "作者微信号「Central-Go」。扫描二维码，或搜索微信号添加好友后，直接发送信息即可。如需加入交流群，请直接发送「加群」二字。"
-            }
+                image: './assets/images/qq.jpg',
+                summary: "欢迎加入 CGo OpenMap 官方交流群",
+                detail: "官方 QQ 交流群（群号：619357751）现已开放！欢迎轨道交通爱好者、前端开发者及城市主理人加入交流线网规划与城市移植。<br><a href='https://qm.qq.com/q/nHfgBDS68o' target='_blank' style='color:#12b7f5; text-decoration:underline; font-weight:600;'>👉 点击一键加入官方 QQ 群</a>"
+            },
         ]
     };
 
@@ -256,7 +256,7 @@
         if (readIds.length > 50) readIds.shift();
         try {
             localStorage.setItem('nal_notice_read_ids', JSON.stringify(readIds));
-        } catch {}
+        } catch { }
     }
 
     function init() {
