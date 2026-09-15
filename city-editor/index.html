@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <!-- ========================================================================== -->
+    <!-- CGo OpenMap - 线路图在线编辑器 (city-editor)                                 -->
+    <!-- 纯静态原生 Web 实现：SVG 直角坐标系画布 + 左侧工具栏 + 右侧属性面板            -->
+    <!-- 依赖：css/cgo_clr.css 主题变量、css/cgo_element.css 基础元素、core/cgo-ui.js  -->
+    <!-- ========================================================================== -->
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description" content="CGo OpenMap 线路图在线编辑器：在网页内绘制与编辑城市轨道交通线路图，支持车站节点、临时节点、折角线段、水域与站名属性编辑。">
+    <meta name="keywords" content="CGo OpenMap, 线路图编辑器, 在线绘制地铁图, 轨道交通, 站点编辑">
+    <meta name="author" content="Central Go">
+    <link rel="shortcut icon" href="../assets/icons/favicon.ico">
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1a1a">
+    <link rel="apple-touch-icon" href="../assets/icons/mapicon2.png">
+    <title>CGo OpenMap - 线路图在线编辑器</title>
+
+    <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=260916.0100">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=260916.0100">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=260916.0100">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=260916.0100">
+    <link rel="stylesheet" href="css/editor.css?v=260916.0100">
+    <style>
+        /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
+        cgo-icon:not(:defined) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            visibility: visible;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+
+<body class="editor-body">
+    <!-- ========================================================================== -->
+    <!-- 1. 顶部导航栏 (Header Toolbar)                                              -->
+    <!-- ========================================================================== -->
+    <header class="tool-header">
+        <div class="header-left">
+            <a href="../index.html" class="btn btn-info" title="返回城市列表">
+                <cgo-icon name="back"></cgo-icon>
+                <span>城市</span>
+            </a>
+            <a href="../drunk/index.html" class="btn btn-info" title="Drunk 智能转换工作台">
+                <cgo-icon name="puzzle"></cgo-icon>
+                <span>Drunk</span>
+            </a>
+        </div>
+        <div class="header-center">
+            <span class="app-title">线路图在线编辑器</span>
+            <span class="editor-badge" id="canvas-badge">未创建画布</span>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-info" id="btn-undo" title="撤销 (Ctrl+Z)">
+                <cgo-icon name="undo"></cgo-icon>
+                <span>撤销</span>
+            </button>
+            <button class="btn btn-info" id="btn-redo" title="重做 (Ctrl+Y)">
+                <cgo-icon name="redo"></cgo-icon>
+                <span>重做</span>
+            </button>
+            <div class="dropdown options-dropdown">
+                <button id="options-btn" class="btn btn-info dropbtn" title="更多">
+                    <cgo-icon name="menu"></cgo-icon>
+                    <span>更多</span>
+                </button>
+                <div class="dropdown-content">
+                    <a href="javascript:void(0)" id="btn-save">
+                        <cgo-icon name="save"></cgo-icon>
+                        <span>保存到本地</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-open">
+                        <cgo-icon name="folder"></cgo-icon>
+                        <span>打开工程文件</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-export-json">
+                        <cgo-icon name="download"></cgo-icon>
+                        <span>导出 JSON</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-export-code">
+                        <cgo-icon name="code"></cgo-icon>
+                        <span>导出城市代码</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-export-openmap">
+                        <cgo-icon name="download"></cgo-icon>
+                        <span>导出 OpenMap 工程包 (.zip)</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-export-svg">
+                        <cgo-icon name="image"></cgo-icon>
+                        <span>导出 SVG 图片</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-clear">
+                        <cgo-icon name="delete"></cgo-icon>
+                        <span>清空当前画布</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-new-canvas">
+                        <cgo-icon name="file"></cgo-icon>
+                        <span>新建空白画布</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-demo">
+                        <cgo-icon name="sparkle"></cgo-icon>
+                        <span>载入示例工程</span>
+                    </a>
+                    <a href="javascript:void(0)" id="btn-help">
+                        <cgo-icon name="help"></cgo-icon>
+                        <span>编辑器操作说明</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================================== -->
+    <!-- 2. 编辑器主体：左侧工具栏 / 中间画布 / 右侧属性面板                            -->
+    <!-- ========================================================================== -->
+    <div class="editor-main">
+        <!-- ---------------------------- 左侧工具栏 ---------------------------- -->
+        <aside class="editor-sidebar" id="editor-sidebar">
+            <!-- 画布管理 -->
+            <section class="side-section">
+                <h2 class="side-title"><cgo-icon name="window" size="14"></cgo-icon><span>画布</span></h2>
+                <div class="side-body">
+                    <div class="field-row">
+                        <label for="canvas-width">宽</label>
+                        <input type="number" id="canvas-width" value="2000" min="200" max="20000" step="10"
+                            title="画布宽度（px），修改后点击下方按钮立即生效">
+                        <label for="canvas-height">高</label>
+                        <input type="number" id="canvas-height" value="1500" min="200" max="20000" step="10"
+                            title="画布高度（px），修改后点击下方按钮立即生效">
+                    </div>
+                    <button class="side-btn side-btn-primary" id="btn-create-canvas"
+                        title="立即把上方宽高应用到当前画布：只改画布尺寸，画布上的元素坐标与当前视图都不变动">
+                        <cgo-icon name="check" size="15"></cgo-icon>
+                        <span>应用画布尺寸</span>
+                    </button>
+                    <p class="side-hint">原点 O 位于画布左上角顶点，X 轴向右为正，Y 轴向下为正（与 CGo OpenMap 数据层一致）。点击「应用画布尺寸」只改变画布边界，已有元素坐标与显示位置均保持不变；如需清空重来，请用「更多 → 新建空白画布」。</p>
+                </div>
+            </section>
+
+            <!-- 添加元素控件组 -->
+            <section class="side-section">
+                <h2 class="side-title"><cgo-icon name="add" size="14"></cgo-icon><span>添加元素</span></h2>
+                <div class="side-body">
+                    <div class="tool-group">
+                        <div class="tool-group-label">节点</div>
+                        <div class="tool-grid">
+                            <button class="tool-btn" data-tool="station" title="车站节点：圆形，描边使用线路色">
+                                <span class="tool-preview"><i class="preview-station"></i></span>
+                                <span class="tool-name">车站节点</span>
+                            </button>
+                            <button class="tool-btn" data-tool="temp" title="临时节点：黑色 × 表示">
+                                <span class="tool-preview"><i class="preview-temp"></i></span>
+                                <span class="tool-name">临时节点</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tool-group">
+                        <div class="tool-group-label">线段</div>
+                        <div class="tool-grid">
+                            <button class="tool-btn" data-tool="seg135" title="135° 折角线段">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <path d="M3 23 L18 8 L37 8" fill="none" stroke="currentColor"
+                                            stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">135° 折角</span>
+                            </button>
+                            <button class="tool-btn" data-tool="seg90" title="90° 折角线段">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <path d="M3 23 L3 8 L37 8" fill="none" stroke="currentColor" stroke-width="3.4"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">90° 折角</span>
+                            </button>
+                            <button class="tool-btn" data-tool="segaxis" title="XY 轴平行直线线段">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <path d="M3 13 L37 13" fill="none" stroke="currentColor" stroke-width="3.4"
+                                            stroke-linecap="round" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">轴平行直线</span>
+                            </button>
+                            <button class="tool-btn" data-tool="segfree" title="自由路径线段">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <path d="M3 21 C11 21 9 6 19 6 C29 6 28 20 37 20" fill="none"
+                                            stroke="currentColor" stroke-width="3.4" stroke-linecap="round" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">自由路径</span>
+                            </button>
+                        </div>
+                        <button class="side-btn side-btn-auto" id="btn-auto-route"
+                            title="路径编辑模式：新建线段时根据所连接的两个节点自动选择 135° 折角 / 90° 折角 / XY 轴平行直线">
+                            <cgo-icon name="route" size="15"></cgo-icon>
+                            <span>自动选型（路径编辑模式）</span>
+                        </button>
+                        <label class="check-row">
+                            <input type="checkbox" id="chk-auto" checked>
+                            <span>线段自动选型</span>
+                        </label>
+                        <button class="side-btn side-btn-refresh" id="btn-refresh-segments"
+                            title="一键按当前车站布局重新计算全部自动线段的走线（135° 折角 / 90° 折角 / 轴平行直线）">
+                            <cgo-icon name="refresh" size="15"></cgo-icon>
+                            <span>刷新线段配置</span>
+                        </button>
+                        <p class="side-hint">开启自动选型后，新线段会按两端节点坐标自动判定 135° 折角、90° 折角或轴平行直线；关闭则使用上方手动选择的线段类型。「刷新线段配置」按当前节点布局重算全部自动走线线段（车站与临时节点一视同仁），手动指定过类型的线段会按该类型重算，仅含 3 个以上转折点的手绘自由路径保持不变。</p>
+                    </div>
+
+                    <div class="tool-group">
+                        <div class="tool-group-label">水域</div>
+                        <div class="tool-grid">
+                            <button class="tool-btn" data-tool="water" title="水域：点击依次添加顶点，双击闭合">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <path d="M4 18 C10 8 16 24 22 14 C27 6 32 12 36 9 L36 23 L4 23 Z"
+                                            fill="currentColor" opacity="0.35" />
+                                        <path d="M4 18 C10 8 16 24 22 14 C27 6 32 12 36 9" fill="none"
+                                            stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">水域多边形</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 吸附与网格 -->
+            <section class="side-section">
+                <h2 class="side-title"><cgo-icon name="home-dots" size="14"></cgo-icon><span>网格对齐</span></h2>
+                <div class="side-body">
+                    <label class="check-row">
+                        <input type="checkbox" id="chk-snap" checked>
+                        <span>对齐网格</span>
+                    </label>
+                    <div class="field-row">
+                        <label for="sel-grid">网格大小</label>
+                        <select id="sel-grid">
+                            <option value="5" selected>5 px</option>
+                            <option value="10">10 px</option>
+                            <option value="20">20 px</option>
+                            <option value="25">25 px</option>
+                            <option value="50">50 px</option>
+                            <option value="100">100 px</option>
+                        </select>
+                    </div>
+                    <label class="check-row">
+                        <input type="checkbox" id="chk-grid" checked>
+                        <span>显示网格与坐标刻度</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- 线路 -->
+            <section class="side-section">
+                <h2 class="side-title"><cgo-icon name="route" size="14"></cgo-icon><span>线路</span></h2>
+                <div class="side-body">
+                    <div class="field-row">
+                        <label for="sel-line">当前线路</label>
+                        <select id="sel-line"></select>
+                    </div>
+                    <div class="field-row">
+                        <label for="line-color">线路色</label>
+                        <input type="color" id="line-color" value="#E4002B">
+                        <input type="text" id="line-name" value="1号线" maxlength="16" title="线路名称">
+                    </div>
+                    <div class="btn-row">
+                        <button class="side-btn" id="btn-add-line">
+                            <cgo-icon name="add" size="14"></cgo-icon>
+                            <span>新建线路</span>
+                        </button>
+                        <button class="side-btn side-btn-danger" id="btn-del-line">
+                            <cgo-icon name="delete" size="14"></cgo-icon>
+                            <span>删除线路</span>
+                        </button>
+                    </div>
+                    <p class="side-hint">线路色会作为其上车站节点的描边色；同一车站被 ≥2 条线路连接时自动显示为换乘站样式。</p>
+                </div>
+            </section>
+
+            <!-- 视图 -->
+            <section class="side-section">
+                <h2 class="side-title"><cgo-icon name="search" size="14"></cgo-icon><span>视图</span></h2>
+                <div class="side-body">
+                    <div class="btn-row">
+                        <button class="side-btn" id="btn-zoom-in" title="放大">
+                            <cgo-icon name="add" size="14"></cgo-icon>
+                        </button>
+                        <button class="side-btn" id="btn-zoom-out" title="缩小">
+                            <cgo-icon name="close" size="14"></cgo-icon>
+                        </button>
+                        <button class="side-btn" id="btn-zoom-reset" title="回到原点 O 并完整展示画布">
+                            <cgo-icon name="refresh" size="14"></cgo-icon>
+                            <span>复位</span>
+                        </button>
+                    </div>
+                    <p class="side-hint" id="view-hint">滚轮缩放 / 中键或空格拖拽平移 / 触控双指捏合。</p>
+                </div>
+            </section>
+        </aside>
+
+        <!-- ---------------------------- 中间画布 ---------------------------- -->
+        <main class="editor-stage">
+            <div class="stage-toolbar">
+                <span class="stage-mode" id="stage-mode">选择模式</span>
+                <span class="stage-stat" id="stage-stat">节点 0 · 线段 0 · 水域 0</span>
+                <span class="stage-coord" id="stage-coord">x: 0, y: 0</span>
+                <button class="mini-btn" id="btn-toggle-sidebar" title="收起/展开左侧工具栏">
+                    <cgo-icon name="tabs" size="14"></cgo-icon>
+                </button>
+            </div>
+
+            <div class="stage-canvas" id="stage-canvas">
+                <svg id="editor-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <pattern id="water-hatch" width="10" height="10" patternUnits="userSpaceOnUse"
+                            patternTransform="rotate(45)">
+                            <line x1="0" y1="0" x2="0" y2="10" stroke="currentColor" stroke-width="1.2"
+                                opacity="0.28" />
+                        </pattern>
+                    </defs>
+                    <g id="view-layer">
+                        <g id="water-layer"></g>
+                        <g id="grid-layer"></g>
+                        <g id="axis-layer"></g>
+                        <g id="line-layer"></g>
+                        <g id="draft-layer"></g>
+                        <g id="node-layer"></g>
+                        <g id="label-layer"></g>
+                        <g id="overlay-layer"></g>
+                    </g>
+                </svg>
+
+                <!-- 未创建画布时的空状态 -->
+                <div class="stage-empty" id="stage-empty">
+                    <cgo-icon name="design" size="42"></cgo-icon>
+                    <h3>尚未创建画布</h3>
+                    <p>在上方「画布」中填写宽高后点击「应用画布尺寸」即可开始绘制，或在「更多」菜单中打开已有工程文件。</p>
+                    <div class="empty-actions">
+                        <button class="side-btn side-btn-primary" id="btn-empty-create">
+                            <cgo-icon name="check" size="15"></cgo-icon>
+                            <span>应用画布尺寸并开始绘制</span>
+                        </button>
+                        <button class="side-btn" id="btn-empty-open">
+                            <cgo-icon name="folder" size="15"></cgo-icon>
+                            <span>打开工程文件</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ---------------------------- 右侧属性面板 ---------------------------- -->
+        <aside class="editor-inspector" id="editor-inspector">
+            <div class="inspector-tabs">
+                <button class="inspector-tab active" data-tab="props">
+                    <cgo-icon name="edit" size="14"></cgo-icon>
+                    <span>属性</span>
+                </button>
+                <button class="inspector-tab" data-tab="list">
+                    <cgo-icon name="table" size="14"></cgo-icon>
+                    <span>元素</span>
+                </button>
+            </div>
+            <div class="inspector-panel active" id="panel-props">
+                <div id="props-content"></div>
+            </div>
+            <div class="inspector-panel" id="panel-list">
+                <div id="list-content"></div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 3. 模态对话框：导出代码 / 操作说明                                            -->
+    <!-- ========================================================================== -->
+    <div class="editor-modal" id="modal">
+        <div class="editor-modal-box">
+            <div class="editor-modal-head">
+                <span id="modal-title">对话框</span>
+                <button class="mini-btn" id="modal-close" title="关闭">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                </button>
+            </div>
+            <div class="editor-modal-body">
+                <p class="modal-tip" id="modal-tip"></p>
+                <textarea id="modal-text" spellcheck="false"></textarea>
+            </div>
+            <div class="editor-modal-foot">
+                <button class="side-btn" id="modal-copy">
+                    <cgo-icon name="copy" size="14"></cgo-icon>
+                    <span>复制内容</span>
+                </button>
+                <button class="side-btn side-btn-primary" id="modal-ok">
+                    <cgo-icon name="check" size="14"></cgo-icon>
+                    <span>关闭</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 3b. 导出对话框：CGo OpenMap 城市工程包 (.zip)                                 -->
+    <!-- ========================================================================== -->
+    <div class="editor-modal" id="om-modal">
+        <div class="editor-modal-box om-box">
+            <div class="editor-modal-head">
+                <span>导出 CGo OpenMap 城市工程包</span>
+                <button class="mini-btn" id="om-close" title="关闭">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                </button>
+            </div>
+            <div class="editor-modal-body">
+                <p class="modal-tip">按 CGo OpenMap 项目城市目录规范自动生成 <b>city/{city_id}/</b> 全套数据文件、集成片段与说明文档，并打包为 zip 压缩包下载。</p>
+                <div class="om-grid">
+                    <div class="prop-field">
+                        <label for="om-city-id">城市 ID（小写英文）</label>
+                        <input type="text" id="om-city-id" placeholder="如 fuzhou" maxlength="24" spellcheck="false">
+                    </div>
+                    <div class="prop-field">
+                        <label for="om-city-name">城市名称</label>
+                        <input type="text" id="om-city-name" placeholder="如 福州" maxlength="16">
+                    </div>
+                    <div class="prop-field">
+                        <label for="om-theme-color">城市主题色</label>
+                        <input type="color" id="om-theme-color" value="#00263b">
+                    </div>
+                    <div class="prop-field">
+                        <label for="om-line-prefix">线路 ID 前缀</label>
+                        <input type="text" id="om-line-prefix" value="M" maxlength="6" spellcheck="false"
+                            title="生成 M1、M2… 形式的线路 ID，需与图例 targets 一致">
+                    </div>
+                    <div class="prop-field">
+                        <label for="om-px-meter">站距比例（米/像素）</label>
+                        <input type="number" id="om-px-meter" value="30" min="1" max="2000" step="1"
+                            title="按画布几何反算站间距（distances），单位米，导出后可按实际里程校正">
+                    </div>
+                    <div class="prop-field">
+                        <label for="om-company">运营公司</label>
+                        <input type="text" id="om-company" placeholder="留空则使用「{城市名}轨道交通」" maxlength="40">
+                    </div>
+                </div>
+                <div class="om-preview" id="om-preview"></div>
+                <details class="om-files">
+                    <summary>将包含以下文件</summary>
+                    <div id="om-files"></div>
+                </details>
+            </div>
+            <div class="editor-modal-foot">
+                <button class="side-btn" id="om-cancel">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                    <span>取消</span>
+                </button>
+                <button class="side-btn side-btn-primary" id="om-download">
+                    <cgo-icon name="download" size="14"></cgo-icon>
+                    <span>下载 zip 工程包</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐藏文件选择器：打开 / 导入工程文件 -->
+    <input type="file" id="file-input" accept=".json,application/json" style="display:none">
+    <!-- 轻量提示条 -->
+    <div class="editor-toast" id="toast"></div>
+
+    <!-- ========================================================================== -->
+    <!-- 4. 脚本加载：CGoUI 图标组件库 + 编辑器主逻辑                                   -->
+    <!-- ========================================================================== -->
+    <script type="module" src="../core/cgo-ui.js?v=260916.0100"></script>
+    <script src="js/editor.js?v=260916.0100"></script>
+</body>
+
+</html>

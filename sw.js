@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260915.0030';
+const CACHE_NAME = 'cgo-openmap-v260920.0100';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -26,6 +26,11 @@ const ASSETS_TO_CACHE = [
     './main.html',
     './readme.html',
     './privacy.html',
+
+    // 线路图在线编辑器 (city-editor)
+    './city-editor/index.html',
+    './city-editor/css/editor.css',
+    './city-editor/js/editor.js',
 
     // 样式表
     './css/style.css',
