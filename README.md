@@ -109,7 +109,22 @@
 - **DeepSeek 视觉多模态识图**：客户端直连 DeepSeek 官方多模态视觉模型（`deepseek-v4-flash-vision-exp`），按量计费透明（单次整网识别约 0.01~0.05 元，本站零加价零抽成，API Key 本地安全存储），高精解析全网拓扑。
 - **维基百科知识库动态对齐**：动态拉取维基百科官方词条，结合 Levenshtein 模糊编辑距离，自动纠错站名与中英双语拼写。
 - **所见即所得可视化微调**：幽灵底图透明度实时对比、站点圆点自由拖拽定位、**8 方向文字排版轮盘微调器**（秒级避让交叉线网）、**45°/90° 正交网格吸附**（一键矫正专业地铁图斜角）。
-- **CGo OpenMap 标准工程导出**：内置 5 项数据完整性自检规范，一键生成开箱即用的 `data_stations.js`、`data_lines.js`、`data_legend.js` 及城市主逻辑文件。
+- **CGo OpenMap 标准工程导出**：内置数据完整性自检，一键生成开箱即用的 `data_stations.js`、`data_lines.js`、`data_legend.js` 及城市主逻辑文件。
+- **识别结果自动净化**：自动剔除被误识别成车站的底图噪点（极端情况下一张图能「识别」出五六千个车站）、清洗脏站名、合并同名换乘站、剔除退化线路；再通过**墨迹吸附 + 最小二乘相似变换**把整体歪斜的识别结果拉回底图线条上。
+
+### 编辑模式：Drunk 同时是任意已有城市的可视化编辑器
+
+除了做新城市，Drunk 也是 **OpenMap 任意已注册城市的编辑模式**。入口有三个，任选其一：
+
+- 线路图右上角 **「更多 → 偏好设置 → 编辑此图 → 打开编辑模式」**；
+- Drunk 顶栏的城市下拉框，选中后点 **「编辑此图」**；
+- 直接访问 `drunk/index.html?city={city_id}`。
+
+载入后即可拖站、改中英文站名、切换车站类型、用 8 方向轮盘调站名朝向、用 `Alt + 方向键` 微调文字偏移，`Ctrl/Cmd + Z` 撤销，`Ctrl/Cmd + S` 导出。
+
+> **导出是条目级无损回写**：只有你实际改动过的那几条会被重写，其余条目连同注释、缩进、字段顺序、手写换行**逐字节保持原样**。
+> 悉尼车站的 `marker.parts` / `halo` / `labelSize`、北京的 `textScale` / `hideLabel`、线路的 `overlayStyle` 与几百个 `pathPoints` 折点都不会在往返中被抹掉或重新排版——
+> 改一座车站的朝向，`git diff` 里就只有 1 行。
 
 ---
 
@@ -120,7 +135,7 @@
 | 读者场景 | 推荐文档 | 说明 |
 | :--- | :--- | :--- |
 | 初学者入门 | [QUICKSTART.md](./QUICKSTART.md) | 面向零基础用户的开发环境配置与 AI 辅助开发指南 |
-| 线路图智能转换 | [Drunk 工作台](./drunk/index.html) | 全自动底图矢量化、PDF/AI直通、AI视觉拓扑提取与代码导出工具（**早期测试阶段**） |
+| 线路图智能转换与编辑 | [Drunk 工作台](./drunk/index.html) | 底图矢量化、PDF/AI 直通、AI 视觉拓扑提取，以及**已有城市的可视化编辑模式**（**早期测试阶段**） |
 | AI 辅助开发 | [AGENTS.md](./AGENTS.md) | 面向各类 AI Coding Agent 的项目架构、解耦规范与数据标准 |
 | 城市数据移植 | [PORTING.md](./PORTING.md) | 城市线网数据结构、站点坐标与线路图例配置说明 |
 | 社区贡献规范 | [CONTRIBUTING.md](./CONTRIBUTING.md) | 代码贡献流程、城市主理人机制与 PR 自查清单 |
@@ -145,17 +160,19 @@ openmap/
 ├── privacy.html                # 隐私政策说明
 ├── manifest.json               # PWA 配置文件
 ├── sw.js                       # Service Worker 离线缓存
-├── drunk/                      # Drunk 线路图智能转换系统 (早期测试版)
-│   ├── index.html              # Drunk 沉浸式暗色转换工作台
-│   ├── css/drunk.css           # 工作台专属样式
-│   └── js/                     # 核心转换管道与识别算法
-│       ├── drunk_pipeline.js   # 交互流程调度总线 (上传/渲染/编辑/导出)
+├── drunk/                      # Drunk 转换工作台 + OpenMap 城市编辑模式 (早期测试版)
+│   ├── index.html              # 沉浸式暗色工作台 (样式内联，drunk.css 目前未被引用)
+│   ├── css/drunk.css           # 早期样式表，当前未被 index.html 引用
+│   └── js/                     # 转换管道、识别算法与城市工程读写
+│       ├── drunk_pipeline.js   # 交互流程调度总线 (识图/载入城市/编辑/撤销/导出)
+│       ├── city_project_io.js  # 城市工程读写层：条目级无损回写 + 分支线路访问器
+│       ├── drunk_sanitizer.js  # 识别结果净化与几何校正 (纯函数，可 Node 直跑回归)
 │       ├── deepseek_vision.js  # DeepSeek 视觉大模型识图引擎 (客户端直连)
 │       ├── pdf_vector_extractor.js # PDF & AI 矢量图层与 XMP 色板直通解析
 │       ├── city_knowledge_matcher.js # 维基百科知识库动态匹配与 Levenshtein 纠错
 │       ├── ocr_align_solver.js # 智能 OCR 与 8 方向文字排版求解器
 │       ├── topology_tracer.js  # 线网拓扑追踪 (分支/环线/换乘)
-│       ├── openmap_codegen.js  # 标准代码生成器与 5 项核心铁律自检
+│       ├── openmap_codegen.js  # 标准代码生成器与数据完整性自检
 │       └── drunk_logger.js     # 控制台诊断追踪日志
 ├── docs/                       # 开发与配置文档
 │   └── STATION_MODULE_GUIDE.md # 车站信息板自定义模块开发与配置指南
@@ -232,13 +249,16 @@ openmap/
 制作新城市线路图可选择以下两种方式：
 
 ### 推荐方式：借助 Drunk 工作台全自动/半自动制图（早期测试版）
-1. 启动本地服务，在浏览器访问 `http://localhost:8080/drunk/`；
+1. 启动本地服务，在浏览器访问 `http://localhost:8080/drunk/`（**必须经由静态服务器访问**，`file://` 协议下浏览器禁止 `fetch`，城市数据读不进来）；
 2. 上传该城市的官方线路图底图、PDF 或 Illustrator (`.ai`) 文件；
 3. 点击“视觉识图”或执行矢量解析，系统将自动识别全网拓扑、站点位置并匹配维基百科标准站名；
 4. 在画布上按需微调站点位置，使用 8 方向轮盘调整站名避让，点击“45°/90°吸附”矫正斜角；
 5. 点击“导出城市工程”，将自动生成的代码放入 `city/{city_id}/` 目录；
 6. 在 `city/data.js` 中登记城市信息，在 `sw.js` 中更新缓存版本即可快速上线。
 *(注：Drunk 目前为早期开发验证阶段，生成结果请予以测试复核，欢迎参与共建)*
+
+> 城市上线之后的日常维护（挪站、改字、调站名朝向）同样回到 Drunk：
+> 访问 `drunk/index.html?city={city_id}` 进入编辑模式，改完导出，覆盖回 `city/{city_id}/` 即可。
 
 ### 传统方式：手动编排配置
 1. **新建城市目录**：在 `city/` 目录下建立对应城市文件夹（例如 `city/shanghai/`），参考 `city/beijing/`、`city/shenyang/`、`city/qingdao/` 或 `city/hefei/` 的数据文件结构。

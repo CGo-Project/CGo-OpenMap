@@ -13,34 +13,69 @@ window.DrunkCodeGen = (function () {
     /**
      * 数据完整性诊断报告生成器
      */
+    /**
+     * 站序分组访问器。线路可能是普通线（stationIds/distances），
+     * 也可能是分支线（hasbranch + stationIds-way1/-way2 + distances-wayN）。
+     * 与 city_project_io.js 的 lineStationGroups 同义，这里内联一份以免产生加载顺序依赖。
+     */
+    function groupsOf(line) {
+        const groups = [];
+        if (!line || typeof line !== 'object') return groups;
+        if (Array.isArray(line.stationIds)) {
+            groups.push({ label: '', ids: line.stationIds, distances: line.distances });
+        }
+        Object.keys(line).forEach(key => {
+            const m = /^stationIds-(.+)$/.exec(key);
+            if (m && Array.isArray(line[key])) {
+                groups.push({ label: ` ${m[1]}`, ids: line[key], distances: line[`distances-${m[1]}`] });
+            }
+        });
+        return groups;
+    }
+
     function validateData(stationsData, linesData) {
         const errors = [];
         const warnings = [];
 
-        // 1. 站间距校验
+        // 1. 站间距校验（按分支逐组校验）
         linesData.forEach(line => {
-            if (line.isLoop) {
-                if (line.distances.length !== line.stationIds.length) {
-                    errors.push(`[${line.name}] 环线站间距长度(${line.distances.length})必须等于站点数(${line.stationIds.length})`);
+            const groups = groupsOf(line);
+            if (!groups.length) {
+                // 纯装饰/纯走向线路（只有 pathPoints）不参与站序校验
+                if (!line.pathPoints && !line.svgPath && !Object.keys(line).some(k => /^pathPoints-/.test(k))) {
+                    warnings.push(`[${line.name || line.id}] 既无站序也无折线走向，将不会被渲染。`);
                 }
-            } else {
-                if (line.distances.length !== line.stationIds.length - 1) {
-                    errors.push(`[${line.name}] 站间距长度(${line.distances.length})必须等于站点数减一(${line.stationIds.length - 1})`);
-                }
+                return;
             }
 
-            // 2. 站点存在性校验
-            line.stationIds.forEach(sid => {
-                if (!stationsData[sid]) {
-                    errors.push(`[${line.name}] 引用的车站 ID "${sid}" 在 stationsData 中未定义！`);
+            groups.forEach(g => {
+                if (!Array.isArray(g.distances) || g.distances.length === 0) {
+                    // 「有站序但没站间距」是合法的待补全状态，不是错误：
+                    // 合肥全网、各地在建线路均属此列，且 data_lines.js 明确要求
+                    // 「未经可靠来源核实的站间距不得按坐标推算或补写」。
+                    // 若在这里报错，绝大多数城市的健康度指示会长期泛红而失去意义。
+                    warnings.push(`[${line.name}${g.label}] 尚未录入站间距 (distances)，共 ${g.ids.length} 站待补。`);
+                } else if (line.isLoop) {
+                    if (g.distances.length !== g.ids.length) {
+                        errors.push(`[${line.name}${g.label}] 环线站间距长度(${g.distances.length})必须等于站点数(${g.ids.length})`);
+                    }
+                } else if (g.distances.length !== g.ids.length - 1) {
+                    errors.push(`[${line.name}${g.label}] 站间距长度(${g.distances.length})必须等于站点数减一(${g.ids.length - 1})`);
                 }
+
+                // 2. 站点存在性校验
+                g.ids.forEach(sid => {
+                    if (!stationsData[sid]) {
+                        errors.push(`[${line.name}${g.label}] 引用的车站 ID "${sid}" 在 stationsData 中未定义！`);
+                    }
+                });
             });
         });
 
         // 3. 孤立站点检测
         const referencedStations = new Set();
         linesData.forEach(line => {
-            line.stationIds.forEach(sid => referencedStations.add(sid));
+            groupsOf(line).forEach(g => g.ids.forEach(sid => referencedStations.add(sid)));
         });
 
         Object.keys(stationsData).forEach(sid => {

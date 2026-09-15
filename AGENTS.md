@@ -64,17 +64,19 @@ openmap/
 ├── privacy.html                # 隐私政策页面
 ├── manifest.json               # PWA 配置文件
 ├── sw.js                       # Service Worker 离线缓存
-├── drunk/                      # Drunk 线路图智能转换系统 (早期测试版，仅供测试使用)
-│   ├── index.html              # Drunk 沉浸式暗色转换工作台页面
-│   ├── css/drunk.css           # 工作台专属样式
-│   └── js/                     # 转换管道与识别算法
-│       ├── drunk_pipeline.js   # 交互流程调度总线 (上传/渲染/编辑/导出)
+├── drunk/                      # Drunk 转换工作台 + OpenMap 城市编辑模式 (早期测试版)
+│   ├── index.html              # 沉浸式暗色工作台页面 (样式内联于 <style>，drunk.css 目前未被引用)
+│   ├── css/drunk.css           # 早期样式表，当前未被 index.html 引用
+│   └── js/                     # 转换管道、识别算法与城市工程读写
+│       ├── drunk_pipeline.js   # 交互流程调度总线 (识图/载入城市/编辑/撤销/导出)
+│       ├── city_project_io.js  # 城市工程读写层：条目级无损回写 + 分支线路访问器
+│       ├── drunk_sanitizer.js  # 识别结果净化与几何校正 (纯函数，可 Node 直跑回归)
 │       ├── deepseek_vision.js  # DeepSeek 视觉大模型识图引擎 (客户端直连)
 │       ├── pdf_vector_extractor.js # PDF & AI 矢量图层与 XMP 色板直通解析
 │       ├── city_knowledge_matcher.js # 维基百科知识库动态匹配与 Levenshtein 纠错
 │       ├── ocr_align_solver.js # 智能 OCR 与 8 方向文字排版求解器
 │       ├── topology_tracer.js  # 线网拓扑追踪 (分支/环线/换乘)
-│       ├── openmap_codegen.js  # 标准代码生成器与 5 项核心铁律自检
+│       ├── openmap_codegen.js  # 标准代码生成器与数据完整性自检
 │       └── drunk_logger.js     # 控制台诊断追踪日志
 ├── docs/                       # 架构设计与二次开发文档
 │   └── STATION_MODULE_GUIDE.md # 车站信息板自定义模块开发与配置指南
@@ -252,14 +254,62 @@ const linesData = [
 > **早期开发验证阶段声明**：  
 > **Drunk 转换系统（`drunk/`）目前处于早期开发验证阶段，仅供测试与实验使用**。系统算法与数据结构仍在频繁迭代中，导出结果请以实际运行渲染测试为准。**极其欢迎开发者与社区团队共同参与其识别算法、矢量图层直通及拓扑求解器的协同开发！**
 
-Drunk（`drunk/index.html`）是专为解决“新城市手工测量 `(x, y)` 坐标繁琐且易出错”而研发的自动化转换工作台。
+Drunk（`drunk/index.html`）有两种工作模式：
+
+- **识图模式（新城市）**：解决“新城市手工测量 `(x, y)` 坐标繁琐且易出错”，从底图/PDF/AI 自动矢量化出整套城市数据；
+- **编辑模式（已有城市）**：**Drunk 同时是 OpenMap 任意已注册城市的可视化编辑器**。从顶栏下拉框（或线路图「偏好设置 → 编辑此图」，或直接访问 `drunk/index.html?city={city_id}`）载入 `city/{city_id}/`，即可拖站、改站名、调站名朝向与文字偏移，导出时只改写你实际动过的条目。
 
 ### 5.1 核心架构与模块分工
+- `drunk/js/city_project_io.js`：**城市工程读写层**。读取 `city/{city_id}/data_*.js` 并保留源码原文，提供条目级「外科手术式回写」与分支线路数据模型访问器。
+- `drunk/js/drunk_sanitizer.js`：**识别结果净化与几何校正器**（纯函数）。噪点站剔除、脏站名清洗、同名换乘站合并、退化线路剔除，以及墨迹吸附 + 最小二乘相似变换的整体歪斜校正。
 - `drunk/js/pdf_vector_extractor.js`：基于 Mozilla PDF.js 原生解析 PDF/AI 图层，直通读取矢量路径、OCG 图层语义及 XMP 色板（CMYK/RGB 专色转 Hex），支持多行文字自适应聚类。
 - `drunk/js/deepseek_vision.js`：客户端直连 DeepSeek 官方视觉大模型（`deepseek-v4-flash-vision-exp`），零中间服务器，用于整网位图拓扑结构解析。
 - `drunk/js/city_knowledge_matcher.js`：动态拉取维基百科分类树（MediaWiki API），结合 Levenshtein 模糊编辑距离自动补全站名与中英双语对齐。
 - `drunk/js/ocr_align_solver.js`：计算站名与站点的空间相对方位，自动分配 8 方向避让锚点。
-- `drunk/js/openmap_codegen.js`：生成标准 OpenMap 格式代码，并强制执行 5 项完整性自检。
+- `drunk/js/openmap_codegen.js`：生成标准 OpenMap 格式代码，并强制执行完整性自检。
+
+### 5.1.1 🚨 编辑模式最高铁律：回写必须无损
+
+城市数据文件里有大量**引擎私有或城市私有的字段**：悉尼每座车站带 `marker.parts` / `marker.halo` / `labelSize` / `labelBold`，北京带 `textScale` / `hideLabel`，线路上还有 `overlayStyle`、`svgclr`、`pathPoints-branch1` 等等。
+
+> **严禁**用「把数据解析成对象再整体重新序列化」的方式写回城市文件。
+> 那样会**静默丢弃所有未被识别的字段**，对已经逐像素校准过的城市是灾难性的。
+
+正确做法已封装在 `CityProjectIO.patchEntries(源码, 变量名, { update, remove, append })`：
+它扫描出每条条目的字面量区间，**递归比对新旧值，只重写真正变了的那个叶子**，未改动的子树连同注释、缩进、字段顺序、手写换行逐字节保留。实测：改一座车站的 `align` 只产生 1 行 diff，改一条线路的 `color` 也只有 1 行，几百个 `pathPoints` 折点不会被重新排版。
+
+### 5.1.2 🚨 遍历线路时必须使用分支安全访问器
+
+线路的站序有两种写法：普通线 `stationIds` + `distances`；分支线 `hasbranch: true` 配 `stationIds-way1` / `-way2`（及 `distances-wayN`）。折线点阵同理：`pathPoints`，或 `pathPoints-main` / `-branch1` / `-branch2`。
+
+北京 `S2`/`S6`/`JX`、上海 `SH5`/`SH10`/`SH11`、悉尼 `T1`/`T2`/`T4`/`T8` 都是分支线路；合肥全网则**只有 `stationIds` 而没有 `distances`**。
+
+> 凡是遍历线路的代码，**必须**走 `CityProjectIO.lineStationGroups(line)` / `linePathGroups(line)` / `lineAllStationIds(line)`，
+> 直接写 `line.stationIds.length` 一碰到这些城市就会 `undefined.length` 崩掉。
+
+另注意：`distances` 允许是空数组（在建线路）或 `"约21千"` 这类人工标注文本，不可假定为等长数字数组。
+
+### 5.1.3 改动纯函数层后必须跑自检
+
+```bash
+node drunk/tools/selfcheck.js
+```
+
+零依赖、零构建、不需要浏览器。覆盖 `city_project_io.js` 的条目级无损回写与 `drunk_sanitizer.js` 的净化/几何校正，断言直接跑在 `city/` 下的**全部真实城市数据**上（当前 62 项断言 / 6 座城市）。改动这两个模块后**必须**跑通再提交。
+
+### 5.2 代码生成完整性自检（由 `openmap_codegen.js` 的 `validateData()` 实际执行）
+
+判定为**错误**（会让健康度指示泛红）：
+1. **站间距长度自检**：单线必须满足 `distances.length === stationIds.length - 1`；环线必须满足 `distances.length === stationIds.length`。分支线按 way 逐组校验。
+2. **车站 ID 引用自检**：`linesData` 中引用的所有 `stationId` 必须在 `stationsData` 中有定义。
+
+判定为**告警**（不阻断导出）：
+
+3. **孤立车站告警**：未被任何线路引用的车站。
+4. **站间距待补告警**：有站序但 `distances` 缺失或为空。这是合法的待补全状态而非错误——`data_lines.js` 明确要求「未经可靠来源核实的站间距不得按坐标推算或补写」，在建线路与合肥全网均属此列；若在此处报错，绝大多数城市的健康度指示会长期泛红而失去意义。
+5. **无几何告警**：线路既无站序也无折线走向，不会被渲染。
+
+> 注意：换乘站坐标一致性、`svg` 模板存在性与 `color` 合法性目前**尚未**在 `validateData()` 中实现，请勿据此假定已被校验。补齐这几项是欢迎的贡献方向。
 
 ### 5.2 代码生成 5 项铁律校验（由 `openmap_codegen.js` 自动检验）
 1. **站间距长度自检**：单线必须满足 `distances.length === stationIds.length - 1`；环线必须满足 `distances.length === stationIds.length`。

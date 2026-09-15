@@ -26,17 +26,37 @@ window.DrunkPipeline = (function () {
         loadedImageEl: null,
         detectedCityInfo: null,
 
+        // ── 编辑模式 (Edit Mode) ────────────────────────────────────────────
+        // mode = "convert"：从底图/PDF 识别出一座新城市（Drunk 的原始用途）
+        // mode = "edit"   ：把 city/{id}/ 下**已有城市**读进来微调（OpenMap 的编辑模式）
+        mode: 'convert',
+        project: null,          // CityProjectIO 读回的城市工程（含 data_*.js 源码原文）
+        originals: null,        // 进入编辑模式时的深拷贝快照，用于脏标记比对
+        history: [],            // 撤销栈（快照式，上限 HISTORY_LIMIT）
+
         // 核心地图模型
         stations: {},
         lines: []
     };
+
+    /** 撤销栈深度。站点数最多千余，整份快照也就几百 KB，足够廉价。 */
+    const HISTORY_LIMIT = 60;
 
     let dom = {};
 
     function init() {
         cacheDom();
         bindEvents();
+        populateCityPicker();
+        updateModeView();
         updateEmptyStateView();
+
+        // 支持从线路图直达编辑模式：drunk/index.html?city=sydney
+        const cityParam = new URLSearchParams(window.location.search).get('city');
+        if (cityParam) {
+            if (dom.citySelect) dom.citySelect.value = cityParam;
+            loadExistingCity(cityParam);
+        }
     }
 
     function cacheDom() {
@@ -61,6 +81,19 @@ window.DrunkPipeline = (function () {
         dom.inspectorAlignDisplay = document.getElementById('inspector-align-display');
         dom.alignWheel = document.getElementById('align-wheel-container');
         dom.legendListContainer = document.getElementById('legend-list-container');
+
+        // 编辑模式相关
+        dom.citySelect = document.getElementById('edit-city-select');
+        dom.btnLoadCity = document.getElementById('btn-load-city');
+        dom.modeBadge = document.getElementById('drunk-mode-badge');
+        dom.dirtyBadge = document.getElementById('dirty-count-badge');
+        dom.editFields = document.getElementById('inspector-edit-fields');
+        dom.fieldCn = document.getElementById('field-sta-cn');
+        dom.fieldEn = document.getElementById('field-sta-en');
+        dom.fieldType = document.getElementById('field-sta-type');
+        dom.fieldOffsetX = document.getElementById('field-sta-offset-x');
+        dom.fieldOffsetY = document.getElementById('field-sta-offset-y');
+        dom.ghostControls = document.getElementById('ghost-controls');
     }
 
     function bindEvents() {
@@ -112,6 +145,7 @@ window.DrunkPipeline = (function () {
                 state.isDraggingStation = false;
                 state.draggedStationId = null;
                 validateAndReport();
+                updateDirtyBadge();
             }
         });
 
@@ -164,13 +198,372 @@ window.DrunkPipeline = (function () {
                     const newAlign = btn.getAttribute('data-align');
                     const s = state.stations[state.selectedStationId];
                     if (s) {
+                        pushHistory();
                         s.align = newAlign;
                         updateLabelElementPos(state.selectedStationId);
                         highlightActiveAlignWheel(newAlign);
+                        updateDirtyBadge();
                     }
                 }
             });
         }
+
+        // ── 编辑模式：城市选择与载入 ──────────────────────────────────────────
+        if (dom.btnLoadCity) {
+            dom.btnLoadCity.addEventListener('click', () => {
+                loadExistingCity(dom.citySelect ? dom.citySelect.value : '');
+            });
+        }
+        if (dom.citySelect) {
+            dom.citySelect.addEventListener('change', () => {
+                if (dom.citySelect.value) loadExistingCity(dom.citySelect.value);
+            });
+        }
+
+        // ── 编辑模式：站名与偏移字段 ──────────────────────────────────────────
+        bindStationField(dom.fieldCn, 'cn');
+        bindStationField(dom.fieldEn, 'en');
+        bindStationField(dom.fieldType, 'type');
+        bindOffsetField(dom.fieldOffsetX, 'x');
+        bindOffsetField(dom.fieldOffsetY, 'y');
+
+        // ── 键盘快捷键 ────────────────────────────────────────────────────────
+        window.addEventListener('keydown', handleShortcut);
+    }
+
+    /** 判断焦点是否落在输入控件里（此时不应劫持方向键/Delete） */
+    function isTypingTarget(el) {
+        if (!el) return false;
+        const tag = (el.tagName || '').toLowerCase();
+        return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
+    }
+
+    function handleShortcut(e) {
+        const mod = e.metaKey || e.ctrlKey;
+        if (mod && (e.key === 'z' || e.key === 'Z')) {
+            e.preventDefault();
+            undo();
+            return;
+        }
+        if (mod && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            exportCityFiles();
+            return;
+        }
+        if (isTypingTarget(e.target) || !state.selectedStationId) return;
+
+        const s = state.stations[state.selectedStationId];
+        if (!s) return;
+
+        const ARROWS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+        if (ARROWS[e.key]) {
+            e.preventDefault();
+            const [dx, dy] = ARROWS[e.key];
+            const step = e.shiftKey ? 10 : 1;
+            pushHistory();
+            if (e.altKey) {
+                // Alt + 方向键微调「文字相对站点的偏移」，站点本身不动
+                s.offset = s.offset || { x: 0, y: 0 };
+                s.offset.x = round2(s.offset.x + dx * step);
+                s.offset.y = round2(s.offset.y + dy * step);
+                syncInspectorFields(s);
+            } else {
+                s.x = round2(s.x + dx * step);
+                s.y = round2(s.y + dy * step);
+                updateStationElementPos(state.selectedStationId);
+                renderLines();
+            }
+            updateLabelElementPos(state.selectedStationId);
+            updateDirtyBadge();
+            return;
+        }
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.preventDefault();
+            deleteSelectedStation();
+        }
+    }
+
+    function round2(n) {
+        return Math.round(n * 100) / 100;
+    }
+
+    /** 把检视面板的文本框与选中站点的某个字段双向绑定 */
+    function bindStationField(el, key) {
+        if (!el) return;
+        el.addEventListener('change', () => {
+            const s = state.stations[state.selectedStationId];
+            if (!s) return;
+            const value = el.value;
+            if (key === 'cn' && !value.trim()) {
+                el.value = s.cn || '';
+                showNotification('中文站名不能为空。');
+                return;
+            }
+            if (String(s[key] == null ? '' : s[key]) === value) return;
+            pushHistory();
+            s[key] = value;
+            renderLabels();
+            renderStations();
+            selectStation(state.selectedStationId);
+            updateDirtyBadge();
+        });
+    }
+
+    function bindOffsetField(el, axis) {
+        if (!el) return;
+        el.addEventListener('change', () => {
+            const s = state.stations[state.selectedStationId];
+            if (!s) return;
+            const n = parseFloat(el.value);
+            if (!Number.isFinite(n)) { syncInspectorFields(s); return; }
+            s.offset = s.offset || { x: 0, y: 0 };
+            if (s.offset[axis] === n) return;
+            pushHistory();
+            s.offset[axis] = n;
+            updateLabelElementPos(state.selectedStationId);
+            updateDirtyBadge();
+        });
+    }
+
+    function deleteSelectedStation() {
+        const id = state.selectedStationId;
+        const s = state.stations[id];
+        if (!s) return;
+        const refLines = state.lines.filter(l => allStationIds(l).includes(id));
+        const tip = refLines.length
+            ? `「${s.cn}」被 ${refLines.length} 条线路引用，删除后将同步从线路走向与站间距中移除。确定删除？`
+            : `确定删除孤立站点「${s.cn}」？`;
+        if (!window.confirm(tip)) return;
+
+        pushHistory();
+        delete state.stations[id];
+        // 从各线路（含分支）的站序中摘除，并把被摘除站两侧的站间距合并为一段
+        state.lines.forEach(line => {
+            stationGroups(line).forEach(g => {
+                let idx;
+                // 同一条线上同名 ID 可能出现多次（环线首尾），逐个摘除
+                while ((idx = g.ids.indexOf(id)) >= 0) {
+                    g.ids.splice(idx, 1);
+                    const dist = line[g.distKey];
+                    if (!Array.isArray(dist) || !dist.length) continue;
+                    if (idx > 0 && idx < dist.length) {
+                        const a = dist[idx - 1];
+                        const b = dist[idx];
+                        // 站间距可能是 "约21千" 这类人工标注文本，无法相加时保留前一段并标注待核
+                        dist[idx - 1] = (typeof a === 'number' && typeof b === 'number')
+                            ? a + b
+                            : `${a} + ${b} 待核`;
+                        dist.splice(idx, 1);
+                    } else if (idx === 0) {
+                        dist.splice(0, 1);
+                    } else {
+                        dist.pop();
+                    }
+                }
+            });
+        });
+        state.selectedStationId = null;
+        renderAll();
+        updateDirtyBadge();
+        showNotification(`已删除「${s.cn}」，可按 Ctrl/Cmd+Z 撤销。`);
+    }
+
+    // ==========================================================================
+    // 编辑模式 (Edit Mode)：把 city/{id}/ 下的已有城市读进来当作可视化编辑对象
+    // ==========================================================================
+
+    /**
+     * 填充顶栏的「编辑已有城市」下拉框。
+     * 城市列表直接来自 city/data.js 的 CITY_REGISTRY，新城市注册后自动出现，
+     * Drunk 侧无需任何硬编码（遵循「核心引擎与城市业务数据解耦」铁律）。
+     */
+    function populateCityPicker() {
+        if (!window.CityProjectIO) return;
+        const cities = window.CityProjectIO.listCities();
+        const options = cities.map(c => `<option value="${c.id}">${c.name || c.id}</option>`).join('');
+
+        if (dom.citySelect) {
+            dom.citySelect.innerHTML = '<option value="">选择要编辑的城市…</option>' + options;
+        }
+        // 空状态引导里的同款下拉框
+        const emptySelect = document.getElementById('edit-city-select-empty');
+        if (emptySelect) {
+            emptySelect.innerHTML = '<option value="">或编辑一座已注册的城市…</option>' + options;
+        }
+        if (dom.btnLoadCity) dom.btnLoadCity.disabled = cities.length === 0;
+
+        const logger = window.DrunkLogger;
+        if (logger && cities.length) {
+            logger.info(`编辑模式可用城市: ${cities.map(c => `${c.name}(${c.id})`).join('、')}`);
+        }
+    }
+
+    /**
+     * 载入一座已注册城市，进入编辑模式。
+     * 注意：station 对象**整份保留**（含 marker / labelSize / textScale 等
+     * Drunk 本身不认识的字段），Drunk 只读写自己关心的那几个键。
+     */
+    async function loadExistingCity(cityId) {
+        const logger = window.DrunkLogger;
+        if (!cityId) {
+            showNotification('请先在下拉框中选择一座已注册的城市。');
+            return;
+        }
+        if (!window.CityProjectIO) {
+            showNotification('城市工程读写层未加载，无法进入编辑模式。');
+            return;
+        }
+
+        if (dom.statusText) dom.statusText.textContent = `正在载入 ${cityId}…`;
+
+        let project;
+        try {
+            project = await window.CityProjectIO.loadCity(cityId);
+        } catch (err) {
+            if (logger) logger.error('城市工程载入失败:', err);
+            showNotification(`载入失败：${err.message}`);
+            if (dom.statusText) dom.statusText.textContent = '城市载入失败';
+            return;
+        }
+
+        const stationsData = project.data.stationsData || {};
+        const linesData = project.data.linesData || [];
+
+        state.mode = 'edit';
+        state.project = project;
+        state.cityId = project.id;
+        state.cityName = project.name;
+
+        const meta = project.meta || {};
+        state.mapSize = {
+            width: (meta.mapSize && meta.mapSize.width) || 2000,
+            height: (meta.mapSize && meta.mapSize.height) || 2000
+        };
+
+        // 编辑已有城市时没有底图可参照，画布即真值
+        state.currentImageSrc = null;
+        state.loadedImageEl = null;
+        if (dom.ghostImage) { dom.ghostImage.src = ''; dom.ghostImage.style.display = 'none'; }
+        if (dom.ghostControls) dom.ghostControls.style.display = 'none';
+
+        state.stations = JSON.parse(JSON.stringify(stationsData));
+        state.lines = JSON.parse(JSON.stringify(linesData));
+        state.originals = {
+            stations: JSON.parse(JSON.stringify(stationsData)),
+            lines: JSON.parse(JSON.stringify(linesData))
+        };
+        state.history = [];
+        state.selectedStationId = null;
+
+        dom.mapCanvasContainer.style.width = `${state.mapSize.width}px`;
+        dom.mapCanvasContainer.style.height = `${state.mapSize.height}px`;
+
+        // 视口居中到画布
+        state.scale = Math.min(
+            (dom.viewport.clientWidth - 80) / state.mapSize.width,
+            (dom.viewport.clientHeight - 80) / state.mapSize.height
+        );
+        state.scale = Math.max(0.15, Math.min(state.scale, 1.5));
+        state.pan = {
+            x: (dom.viewport.clientWidth - state.mapSize.width * state.scale) / 2,
+            y: (dom.viewport.clientHeight - state.mapSize.height * state.scale) / 2
+        };
+
+        updateModeView();
+        renderAll();
+
+        if (logger) {
+            logger.banner('OpenMap 城市工程编辑模式', `${project.name} (${project.id})`);
+            logger.info(`画布尺寸: ${state.mapSize.width} × ${state.mapSize.height}`);
+            logger.info(`载入车站 ${Object.keys(state.stations).length} 座 / 线路 ${state.lines.length} 条`);
+            logger.info(`已缓存源码原文: ${Object.keys(project.sources).join(', ')}`);
+            if (project.missing.length) logger.warn(`缺失或未解析的可选文件: ${project.missing.join(', ')}`);
+            logger.info('导出时将只改写你实际改动过的条目，其余条目逐字节保持原样。');
+        }
+
+        showNotification(`已进入「${project.name}」编辑模式：${Object.keys(state.stations).length} 座车站可直接拖拽与改字。`);
+    }
+
+    /** 顶栏与侧栏按当前模式切换文案 */
+    function updateModeView() {
+        const editing = state.mode === 'edit';
+        if (dom.modeBadge) {
+            dom.modeBadge.textContent = editing ? `编辑模式 · ${state.cityName}` : '识图模式';
+            dom.modeBadge.className = editing ? 'badge badge-success' : 'badge badge-info';
+        }
+        if (dom.editFields) dom.editFields.style.display = 'block';
+        const exportBtn = document.getElementById('btn-export-openmap-bundle');
+        if (exportBtn) {
+            const label = exportBtn.querySelector('span');
+            if (label) label.textContent = editing ? '导出改动文件' : '导出城市工程';
+        }
+        updateDirtyBadge();
+    }
+
+    // ---- 脏标记：只有真正变了的条目才会被写回 --------------------------------
+
+    function diffStations() {
+        if (!state.originals) return [];
+        const out = [];
+        Object.keys(state.stations).forEach(id => {
+            const before = state.originals.stations[id];
+            if (!before) { out.push(id); return; }
+            if (JSON.stringify(state.stations[id]) !== JSON.stringify(before)) out.push(id);
+        });
+        return out;
+    }
+
+    function diffLines() {
+        if (!state.originals) return [];
+        const out = [];
+        state.lines.forEach((line, idx) => {
+            const before = state.originals.lines[idx];
+            if (!before) { out.push(idx); return; }
+            if (JSON.stringify(line) !== JSON.stringify(before)) out.push(idx);
+        });
+        return out;
+    }
+
+    function removedStationIds() {
+        if (!state.originals) return [];
+        return Object.keys(state.originals.stations).filter(id => !state.stations[id]);
+    }
+
+    function updateDirtyBadge() {
+        if (!dom.dirtyBadge) return;
+        if (state.mode !== 'edit') { dom.dirtyBadge.style.display = 'none'; return; }
+        const n = diffStations().length + diffLines().length + removedStationIds().length;
+        dom.dirtyBadge.style.display = '';
+        dom.dirtyBadge.textContent = n === 0 ? '未改动' : `${n} 处改动`;
+        dom.dirtyBadge.className = n === 0 ? 'badge badge-info' : 'badge badge-warning';
+    }
+
+    // ---- 撤销栈 --------------------------------------------------------------
+
+    function pushHistory() {
+        const snap = JSON.stringify({ stations: state.stations, lines: state.lines });
+        // 去重：站点 mousedown 会无条件压栈，但「点一下没拖动」并不产生改动，
+        // 若照压不误，用户后续按 Ctrl+Z 会先撞上一串什么都没做的空撤销。
+        if (state.history.length && state.history[state.history.length - 1] === snap) return;
+        state.history.push(snap);
+        if (state.history.length > HISTORY_LIMIT) state.history.shift();
+    }
+
+    function undo() {
+        if (!state.history.length) {
+            showNotification('没有可撤销的操作了。');
+            return;
+        }
+        const snap = JSON.parse(state.history.pop());
+        state.stations = snap.stations;
+        state.lines = snap.lines;
+        if (state.selectedStationId && !state.stations[state.selectedStationId]) {
+            state.selectedStationId = null;
+        }
+        renderAll();
+        if (state.selectedStationId) selectStation(state.selectedStationId);
+        showNotification(`已撤销（还可撤销 ${state.history.length} 步）`);
     }
 
     function applyTransform() {
@@ -297,8 +690,16 @@ window.DrunkPipeline = (function () {
      */
     function applyNativePdfData(result) {
         const logger = window.DrunkLogger;
-        const rawStations = result.stations || [];
-        const rawLines = result.lines || [];
+
+        // PDF/AI 矢量直通的坐标已是画布像素，净化在画布坐标系内进行。
+        // 矢量链路同样会吐脏数据：曲线化文字碎片、色板注记、重复图元。
+        const sanitized = runSanitizer(
+            result.stations || [], result.lines || [],
+            result.width || state.mapSize.width, result.height || state.mapSize.height,
+            'PDF / AI 矢量直通'
+        );
+        const rawStations = sanitized.stations;
+        const rawLines = sanitized.lines;
 
         // 1. 统计车站出现频次判定换乘站
         const stationLineCount = {};
@@ -481,6 +882,99 @@ window.DrunkPipeline = (function () {
         }
     }
 
+    // ==========================================================================
+    // 识别结果净化与几何校正（两条入料链路共用）
+    // ==========================================================================
+
+    /**
+     * 跑一遍 DrunkSanitizer，并把处理结果写进诊断日志与状态栏。
+     * 净化器是纯函数且已在 Node 侧做过回归，这里只负责接线与播报。
+     */
+    function runSanitizer(stations, lines, width, height, sourceLabel) {
+        if (!window.DrunkSanitizer) return { stations, lines };
+
+        const result = window.DrunkSanitizer.sanitize({ stations, lines, width, height });
+        const r = result.report;
+        const logger = window.DrunkLogger;
+
+        const droppedTotal = r.dropped.junkName + r.dropped.offCanvas +
+            r.dropped.duplicate + r.dropped.unreferenced + r.dropped.badGeometry;
+
+        if (logger) {
+            logger.group(`识别结果净化 (${sourceLabel})`);
+            logger.info(`入料: ${r.input.stations} 站 / ${r.input.lines} 线 ➔ 出料: ${r.output.stations} 站 / ${r.output.lines} 线`);
+            if (droppedTotal > 0) {
+                logger.info(`丢弃明细: 脏站名 ${r.dropped.junkName} · 越界 ${r.dropped.offCanvas} · ` +
+                    `同名幻觉 ${r.dropped.duplicate} · 无拓扑引用 ${r.dropped.unreferenced} · 坐标非法 ${r.dropped.badGeometry}`);
+            }
+            if (r.merged) logger.info(`同名换乘站合并为质心: ${r.merged} 处`);
+            if (r.recoloredLines) logger.info(`线路撞色改判: ${r.recoloredLines} 条`);
+            if (r.droppedLines.tooShort || r.droppedLines.duplicate) {
+                logger.info(`退化线路剔除: 不足两站 ${r.droppedLines.tooShort} 条 · 与既有线重复 ${r.droppedLines.duplicate} 条`);
+            }
+            r.warnings.forEach(w => logger.warn(w));
+            logger.groupEnd();
+        }
+
+        if (r.explosionGuard) {
+            showNotification(`已拦截噪点爆炸：${r.input.stations} 个候选点中只有 ${r.output.stations} 个有线路拓扑支撑，其余按底图噪点丢弃。`);
+        }
+
+        return { stations: result.stations, lines: result.lines };
+    }
+
+    /**
+     * 墨迹吸附 + 整体相似变换校正。
+     * 解决「识别出来的站点整体相对底图歪了一截」——线条颜色是底图上最可靠的锚点。
+     */
+    function runInkSnap(stations, lines, width, height) {
+        if (!window.DrunkSanitizer || !state.loadedImageEl) return stations;
+
+        const out = window.DrunkSanitizer.snapToInk(
+            stations, lines, state.loadedImageEl, { width, height }
+        );
+        const logger = window.DrunkLogger;
+        const rep = out.report;
+
+        if (logger) {
+            logger.group('墨迹吸附与整体几何校正 (Ink Snapping)');
+            if (rep.skipped) {
+                logger.warn('底图画布被跨域数据污染，已跳过墨迹吸附。');
+            } else if (rep.snapped === 0) {
+                logger.warn('未能在底图上找到与线路配色相符的墨迹，已保留模型原始坐标。');
+            } else {
+                logger.info(`${rep.snapped}/${rep.total} 座车站吸附到底图线条上`);
+                if (rep.transform) {
+                    const t = rep.transform;
+                    logger.info(`整体相似变换: 缩放 ${t.scale.toFixed(4)} · 旋转 ${t.rotationDeg.toFixed(2)}° · ` +
+                        `平移 (${t.tx.toFixed(1)}, ${t.ty.toFixed(1)}) · RMSE ${t.rmse.toFixed(2)}`);
+                    logger.info('吸附失败的站点（多半被站名文字压住）已按该变换一并拉正。');
+                } else {
+                    logger.info('吸附命中率偏低，未施加整体变换，仅保留逐点吸附结果。');
+                }
+            }
+            logger.groupEnd();
+        }
+
+        return out.stations;
+    }
+
+    /**
+     * 推断一批站点坐标所处的坐标系尺寸。
+     * 视觉模型按约定输出 0~1000 归一化千分比，但偶尔会直接给原图像素坐标，
+     * 净化器需要知道真实边界才能正确判定「越界」。
+     */
+    function detectCoordSpace(stations, fallbackW, fallbackH) {
+        let maxX = 0, maxY = 0;
+        (stations || []).forEach(s => {
+            const x = Number(s.x), y = Number(s.y);
+            if (Number.isFinite(x)) maxX = Math.max(maxX, x);
+            if (Number.isFinite(y)) maxY = Math.max(maxY, y);
+        });
+        if (maxX <= 1000 && maxY <= 1000) return { width: 1000, height: 1000, normalized: true };
+        return { width: fallbackW, height: fallbackH, normalized: false };
+    }
+
     /**
      * 将 DeepSeek 视觉模型解析出的数据应用到 OpenMap 拓扑模型 (结合在线城市知识库智能对齐)
      */
@@ -503,12 +997,24 @@ window.DrunkPipeline = (function () {
 
         // 2. 车站标准化处理与智能纠错对齐
         let rawStations = Array.isArray(data.stations) ? data.stations : [];
-        const rawLines = Array.isArray(data.lines) ? data.lines : [];
+        let rawLines = Array.isArray(data.lines) ? data.lines : [];
 
         // 如果获取到了城市知识库，利用在线知识库进行站名模糊纠错与中英文权威补全
         if (cityKnowledge && window.CityKnowledgeMatcher) {
             rawStations = window.CityKnowledgeMatcher.matchAndAlignStations(rawStations, cityKnowledge);
         }
+
+        // 2.5 识别结果净化：剔除噪点站、脏站名、同名重复与退化线路
+        // 模型按约定返回 0~1000 归一化坐标，但偶尔会直接给原图像素坐标，先探明坐标系
+        const baseW = state.loadedImageEl ? (state.loadedImageEl.naturalWidth || state.loadedImageEl.width) : state.mapSize.width;
+        const baseH = state.loadedImageEl ? (state.loadedImageEl.naturalHeight || state.loadedImageEl.height) : state.mapSize.height;
+        const space = detectCoordSpace(rawStations, baseW, baseH);
+
+        ({ stations: rawStations, lines: rawLines } =
+            runSanitizer(rawStations, rawLines, space.width, space.height, 'DeepSeek 视觉识图'));
+
+        // 2.6 墨迹吸附：把站点拉回底图上真正的线条像素，并用整体相似变换校正系统性歪斜
+        rawStations = runInkSnap(rawStations, rawLines, space.width, space.height);
 
         // 统计所有线路上车站出现频次，用于精准判定换乘站
         const stationLineCount = {};
@@ -658,6 +1164,7 @@ window.DrunkPipeline = (function () {
         renderLabels();
         renderLegendList();
         validateAndReport();
+        updateDirtyBadge();
         applyTransform();
 
         const logger = window.DrunkLogger;
@@ -676,6 +1183,27 @@ window.DrunkPipeline = (function () {
     /**
      * 绘制 SVG 矢量线路
      */
+    // ── OpenMap 线路数据模型访问器的本地别名（分支线路安全）──────────────────
+    // 北京 S2/S6/JX、上海 SH5/SH10/SH11、悉尼 T1/T2/T4/T8 都是 hasbranch 分支线路，
+    // 其站序写在 stationIds-way1/-way2 里而非 stationIds，直接 .length 会崩。
+    function stationGroups(line) {
+        return window.CityProjectIO
+            ? window.CityProjectIO.lineStationGroups(line)
+            : (Array.isArray(line.stationIds) ? [{ idsKey: 'stationIds', distKey: 'distances', ids: line.stationIds, distances: line.distances }] : []);
+    }
+
+    function pathGroups(line) {
+        return window.CityProjectIO
+            ? window.CityProjectIO.linePathGroups(line)
+            : (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2 ? [line.pathPoints] : []);
+    }
+
+    function allStationIds(line) {
+        return window.CityProjectIO
+            ? window.CityProjectIO.lineAllStationIds(line)
+            : (line.stationIds || []);
+    }
+
     function renderLines() {
         dom.svgLinesLayer.innerHTML = '';
         dom.svgLinesLayer.setAttribute('width', state.mapSize.width);
@@ -703,12 +1231,14 @@ window.DrunkPipeline = (function () {
                         return match;
                     });
                 }
-            } else if (line.pathPoints && line.pathPoints.length >= 2) {
-                // 模式 2: 主干离散路径点渲染
-                line.pathPoints.forEach((pt, idx) => {
-                    const x = Math.round(pt.x * scaleX);
-                    const y = Math.round(pt.y * scaleY);
-                    d += idx === 0 ? `M ${x} ${y} ` : `L ${x} ${y} `;
+            } else if (pathGroups(line).length) {
+                // 模式 2: 离散折线点阵渲染（含分支线路的 pathPoints-main / -branch1 / -branch2…）
+                pathGroups(line).forEach(points => {
+                    points.forEach((pt, idx) => {
+                        const x = Math.round(pt.x * scaleX);
+                        const y = Math.round(pt.y * scaleY);
+                        d += idx === 0 ? `M ${x} ${y} ` : `L ${x} ${y} `;
+                    });
                 });
             } else if (line.stationIds && line.stationIds.length >= 2) {
                 // 模式 3: 站点直连安全降级（仅当有明确排过序的站点，且相邻两站距离合理时连接）
@@ -761,15 +1291,19 @@ window.DrunkPipeline = (function () {
         Object.keys(state.stations).forEach(id => {
             const s = state.stations[id];
             const dot = document.createElement('div');
-            dot.className = `station-dot ${s.type === 'tsf' ? 'type-tsf' : 'type-dot'}`;
+            // type 取值见 PORTING.md：dot 普通站 / tsf 换乘站 / rdot 国铁站 / no 暂缓开通站
+            dot.className = `station-dot type-${s.type || 'dot'}`;
             dot.id = `dot-${id}`;
             dot.setAttribute('data-id', id);
+            dot.title = `${s.cn || id}（${id}）`;
             dot.style.left = `${s.x}px`;
             dot.style.top = `${s.y}px`;
 
             // 点击选中与拖拽监听
             dot.addEventListener('mousedown', (e) => {
                 e.stopPropagation();
+                // 拖拽前压栈一次，整段拖拽算一步撤销
+                pushHistory();
                 state.isDraggingStation = true;
                 state.draggedStationId = id;
                 selectStation(id);
@@ -818,10 +1352,20 @@ window.DrunkPipeline = (function () {
         });
     }
 
+    /**
+     * 站名标签定位。
+     * offset 是 OpenMap 站名排版的核心字段（悉尼/北京几乎每座车站都用到），
+     * 编辑模式下必须如实反映，否则「所见」与线路图实际渲染对不上，
+     * 调出来的方位就是错的。
+     */
     function updateSingleLabelStyle(labelEl, station) {
-        labelEl.style.left = `${station.x}px`;
-        labelEl.style.top = `${station.y}px`;
+        const off = station.offset || { x: 0, y: 0 };
+        labelEl.style.left = `${station.x + (off.x || 0)}px`;
+        labelEl.style.top = `${station.y + (off.y || 0)}px`;
         labelEl.className = `station-label align-${station.align || 'top'}`;
+        if (station.hideLabel) labelEl.classList.add('label-hidden');
+        if (station.labelBold) labelEl.classList.add('label-bold');
+        if (station.labelSize === 'big') labelEl.classList.add('label-big');
     }
 
     function updateStationElementPos(id) {
@@ -854,11 +1398,23 @@ window.DrunkPipeline = (function () {
         if (dot) dot.classList.add('selected');
 
         if (dom.inspectorStationName) dom.inspectorStationName.textContent = s.cn;
-        if (dom.inspectorStationEn) dom.inspectorStationEn.textContent = s.en;
-        if (dom.inspectorStationId) dom.inspectorStationId.textContent = id;
+        if (dom.inspectorStationEn) dom.inspectorStationEn.textContent = s.en || '（无英文名）';
+        if (dom.inspectorStationId) dom.inspectorStationId.textContent = `ID: ${id}`;
         if (dom.inspectorAlignDisplay) dom.inspectorAlignDisplay.textContent = s.align || 'top';
 
+        syncInspectorFields(s);
         highlightActiveAlignWheel(s.align || 'top');
+    }
+
+    /** 把选中站点的可编辑字段回填到检视面板 */
+    function syncInspectorFields(s) {
+        if (!s) return;
+        if (dom.fieldCn) dom.fieldCn.value = s.cn || '';
+        if (dom.fieldEn) dom.fieldEn.value = s.en || '';
+        if (dom.fieldType) dom.fieldType.value = s.type || 'dot';
+        const off = s.offset || { x: 0, y: 0 };
+        if (dom.fieldOffsetX) dom.fieldOffsetX.value = off.x || 0;
+        if (dom.fieldOffsetY) dom.fieldOffsetY.value = off.y || 0;
     }
 
     function highlightActiveAlignWheel(align) {
@@ -893,7 +1449,7 @@ window.DrunkPipeline = (function () {
 
             const countSpan = document.createElement('span');
             countSpan.className = 'legend-sta-count';
-            countSpan.textContent = `${line.stationIds.length} 站`;
+            countSpan.textContent = `${allStationIds(line).length} 站`;
 
             item.appendChild(colorBadge);
             item.appendChild(nameSpan);
@@ -978,9 +1534,194 @@ window.DrunkPipeline = (function () {
     /**
      * 导出 OpenMap 城市工程包
      */
+    /**
+     * 编辑模式导出：对 data_stations.js / data_lines.js 执行条目级外科手术回写。
+     *
+     * 只有**确实被改动过**的条目会被重写，其余条目（连同注释、缩进、字段顺序、
+     * 以及 Drunk 压根不认识的 marker / halo / textScale 等字段）逐字节保持原样。
+     * 生成的文件可以直接覆盖回 city/{id}/，diff 里只会出现你亲手改的那几行。
+     */
+    function exportEditedCity() {
+        const project = state.project;
+        const changedStations = diffStations();
+        const changedLines = diffLines();
+        const removed = removedStationIds();
+
+        if (!changedStations.length && !changedLines.length && !removed.length) {
+            showNotification('当前没有任何改动，无需导出。');
+            return;
+        }
+
+        const files = [];
+        const notes = [];
+
+        // ---- data_stations.js ----
+        if (changedStations.length || removed.length) {
+            const update = {};
+            const append = [];
+            changedStations.forEach(id => {
+                if (project.data.stationsData[id]) update[id] = state.stations[id];
+                else append.push({ key: id, value: state.stations[id] });
+            });
+            try {
+                const patched = window.CityProjectIO.patchEntries(
+                    project.sources['data_stations.js'], 'stationsData',
+                    { update, remove: removed, append }
+                );
+                files.push({ name: 'data_stations.js', text: patched });
+            } catch (err) {
+                showNotification(`data_stations.js 回写失败：${err.message}`);
+                return;
+            }
+        }
+
+        // ---- data_lines.js ----
+        if (changedLines.length) {
+            const update = {};
+            changedLines.forEach(idx => { update[String(idx)] = state.lines[idx]; });
+            try {
+                const patched = window.CityProjectIO.patchEntries(
+                    project.sources['data_lines.js'], 'linesData', { update }
+                );
+                files.push({ name: 'data_lines.js', text: patched });
+            } catch (err) {
+                showNotification(`data_lines.js 回写失败：${err.message}`);
+                return;
+            }
+        }
+
+        // ---- 人工确认提示：挪过站的线路，其 pathPoints 折线不会自动跟着动 ----
+        const movedIds = changedStations.filter(id => {
+            const before = project.data.stationsData[id];
+            const after = state.stations[id];
+            return before && after && (before.x !== after.x || before.y !== after.y);
+        });
+        if (movedIds.length) {
+            const affected = state.lines.filter(l =>
+                Array.isArray(l.pathPoints) && l.pathPoints.length >= 2 &&
+                Array.isArray(l.stationIds) && l.stationIds.some(sid => movedIds.includes(sid))
+            ).map(l => l.name);
+            if (affected.length) {
+                notes.push(
+                    `你挪动了 ${movedIds.length} 座车站，但 ${[...new Set(affected)].join('、')} ` +
+                    `的 pathPoints 折线是独立几何，不会自动跟随。若站点已偏离线形，请在 data_lines.js 中同步折点。`
+                );
+            }
+        }
+        if (removed.length) {
+            notes.push(`已删除 ${removed.length} 座车站，并同步从线路 stationIds 与 distances 中摘除。`);
+        }
+
+        // ---- 数据完整性自检 ----
+        const report = window.DrunkCodeGen.validateData(state.stations, state.lines);
+        if (!report.isValid) {
+            notes.push(`⚠ 自检发现 ${report.errors.length} 项错误，导出的文件可能无法正常渲染：\n  · ` +
+                report.errors.slice(0, 6).join('\n  · '));
+        }
+
+        const header = [
+            `// ${project.name} (${project.id}) — Drunk 编辑模式改动导出`,
+            `// 改动条目：车站 ${changedStations.length} 处，线路 ${changedLines.length} 处，删除 ${removed.length} 处`,
+            `// 未改动的条目逐字节保持原样，可直接覆盖回 ${project.base.replace('../', '')}/`,
+            notes.length ? '//\n// ' + notes.join('\n// ') : ''
+        ].filter(Boolean).join('\n');
+
+        const preview = header + '\n\n' + files.map(f =>
+            `// ================== ${f.name} ==================\n` +
+            `// （完整文件已生成，点击下方「下载改动文件」保存；此处仅列出改动摘要）\n` +
+            summarizeChanges(f.name, changedStations, changedLines, removed)
+        ).join('\n\n');
+
+        state._exportFiles = files;
+        openExportModal(preview, true);
+
+        const logger = window.DrunkLogger;
+        if (logger) {
+            logger.banner('编辑模式改动回写完成', `${project.name} (${project.id})`);
+            logger.info(`改写文件: ${files.map(f => f.name).join(', ')}`);
+            logger.info(`车站改动 ${changedStations.length} 处 / 线路改动 ${changedLines.length} 处 / 删除 ${removed.length} 处`);
+            notes.forEach(n => logger.warn(n));
+        }
+    }
+
+    /** 生成一份人类可读的改动清单（用于导出预览） */
+    function summarizeChanges(fileName, changedStations, changedLines, removed) {
+        const project = state.project;
+        const rows = [];
+        if (fileName === 'data_stations.js') {
+            changedStations.forEach(id => {
+                const b = project.data.stationsData[id];
+                const a = state.stations[id];
+                if (!b) { rows.push(`  + 新增 ${id} "${a.cn}"`); return; }
+                const parts = [];
+                if (b.x !== a.x || b.y !== a.y) parts.push(`坐标 (${b.x}, ${b.y}) → (${a.x}, ${a.y})`);
+                if (b.cn !== a.cn) parts.push(`中文名 "${b.cn}" → "${a.cn}"`);
+                if ((b.en || '') !== (a.en || '')) parts.push(`英文名 "${b.en || ''}" → "${a.en || ''}"`);
+                if ((b.align || 'top') !== (a.align || 'top')) parts.push(`朝向 ${b.align || 'top'} → ${a.align || 'top'}`);
+                const bo = b.offset || { x: 0, y: 0 }, ao = a.offset || { x: 0, y: 0 };
+                if (bo.x !== ao.x || bo.y !== ao.y) parts.push(`偏移 (${bo.x}, ${bo.y}) → (${ao.x}, ${ao.y})`);
+                if ((b.type || 'dot') !== (a.type || 'dot')) parts.push(`类型 ${b.type || 'dot'} → ${a.type || 'dot'}`);
+                rows.push(`  ~ ${id} "${a.cn}"：${parts.length ? parts.join('，') : '其它字段变更'}`);
+            });
+            removed.forEach(id => {
+                rows.push(`  - 删除 ${id} "${project.data.stationsData[id].cn}"`);
+            });
+        } else {
+            changedLines.forEach(idx => {
+                const b = project.data.linesData[idx];
+                const a = state.lines[idx];
+                const parts = [];
+                if (b.name !== a.name) parts.push(`名称 "${b.name}" → "${a.name}"`);
+                if (b.color !== a.color) parts.push(`颜色 ${b.color} → ${a.color}`);
+                // 分支线路的站序写在 stationIds-way1/-way2 里，逐组比对才说得清改了哪一支
+                const beforeGroups = stationGroups(b);
+                const afterGroups = stationGroups(a);
+                afterGroups.forEach(ag => {
+                    const bg = beforeGroups.find(g => g.idsKey === ag.idsKey);
+                    if (!bg) { parts.push(`新增站序 ${ag.idsKey} (${ag.ids.length} 站)`); return; }
+                    if (bg.ids.length !== ag.ids.length) {
+                        const gone = bg.ids.filter(id => !ag.ids.includes(id));
+                        parts.push(`${ag.idsKey} ${bg.ids.length} → ${ag.ids.length} 站` +
+                            (gone.length ? `（移除 ${gone.join('、')}）` : ''));
+                    }
+                });
+                rows.push(`  ~ [${idx}] ${a.name}：${parts.length ? parts.join('，') : '其它字段变更'}`);
+            });
+        }
+        return rows.join('\n') || '  （无）';
+    }
+
+    /** 打开导出预览弹窗；showDownload 为 true 时启用「下载改动文件」按钮 */
+    function openExportModal(text, showDownload) {
+        const modal = document.getElementById('export-modal');
+        const textarea = document.getElementById('export-code-preview');
+        const dlBtn = document.getElementById('btn-download-export');
+        if (textarea) textarea.value = text;
+        if (dlBtn) dlBtn.style.display = showDownload ? '' : 'none';
+        if (modal) modal.classList.add('active');
+    }
+
+    /** 把编辑模式生成的改动文件逐个另存到本地 */
+    function downloadExportFiles() {
+        const files = state._exportFiles || [];
+        if (!files.length) {
+            showNotification('没有可下载的改动文件。');
+            return;
+        }
+        files.forEach((f, i) => {
+            setTimeout(() => window.CityProjectIO.downloadText(f.name, f.text), i * 250);
+        });
+        showNotification(`正在保存 ${files.map(f => f.name).join('、')}，请覆盖回 ${state.project.base.replace('../', '')}/`);
+    }
+
     function exportCityFiles() {
         if (Object.keys(state.stations).length === 0) {
-            showNotification("⚠️ 暂无任何站点数据，请先上传并转换线路图！");
+            showNotification("暂无任何站点数据，请先上传底图识别，或从上方下拉框载入一座已有城市。");
+            return;
+        }
+
+        if (state.mode === 'edit' && state.project) {
+            exportEditedCity();
             return;
         }
 
@@ -989,16 +1730,25 @@ window.DrunkPipeline = (function () {
         const legendJs = window.DrunkCodeGen.generateLegendJs(state.cityId, state.cityName, state.lines);
         const mainJs = window.DrunkCodeGen.generateCityMainJs(state.cityId, state.cityName, state.lines);
 
-        const modal = document.getElementById('export-modal');
-        const textarea = document.getElementById('export-code-preview');
-        if (modal && textarea) {
-            textarea.value = `// ================== 1. data_stations.js ==================\n${stationsJs}\n\n// ================== 2. data_lines.js ==================\n${linesJs}\n\n// ================== 3. data_legend.js ==================\n${legendJs}\n\n// ================== 4. ${state.cityId}.js ==================\n${mainJs}`;
-            modal.classList.add('active');
-        }
+        // 新城市转换产物：四个文件整包生成，同时挂到下载队列
+        state._exportFiles = [
+            { name: 'data_stations.js', text: stationsJs },
+            { name: 'data_lines.js', text: linesJs },
+            { name: 'data_legend.js', text: legendJs },
+            { name: `${state.cityId}.js`, text: mainJs }
+        ];
+
+        openExportModal(
+            `// ================== 1. data_stations.js ==================\n${stationsJs}\n\n` +
+            `// ================== 2. data_lines.js ==================\n${linesJs}\n\n` +
+            `// ================== 3. data_legend.js ==================\n${legendJs}\n\n` +
+            `// ================== 4. ${state.cityId}.js ==================\n${mainJs}`,
+            true
+        );
 
         const logger = window.DrunkLogger;
         if (logger) {
-            logger.info(`📦 [代码导出] 已生成 OpenMap 标准城市工程包 (涵盖 data_stations.js, data_lines.js, data_legend.js, ${state.cityId}.js)`);
+            logger.info(`[代码导出] 已生成 OpenMap 标准城市工程包 (涵盖 data_stations.js, data_lines.js, data_legend.js, ${state.cityId}.js)`);
         }
     }
 
@@ -1016,7 +1766,11 @@ window.DrunkPipeline = (function () {
         runAutoConvert,
         snapGrid,
         exportCityFiles,
-        showNotification
+        showNotification,
+        // 编辑模式
+        loadExistingCity,
+        downloadExportFiles,
+        undo
     };
 })();
 

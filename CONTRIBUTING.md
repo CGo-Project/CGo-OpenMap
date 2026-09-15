@@ -107,7 +107,20 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
 - **PDF & 矢量工程解析**（`drunk/js/pdf_vector_extractor.js`）：进一步增强对各类复杂版本 PDF 与 Adobe Illustrator (`.ai`) 专色色板、图层元数据与文字曲线的解析精度；
 - **视觉大模型提示词与拓扑解算**（`drunk/js/deepseek_vision.js`）：优化多模态模型对密集交叉线网、环线与平行共线站点的空间关系识别率；
 - **智能排版避让与几何算法**（`drunk/js/ocr_align_solver.js` / `drunk_pipeline.js`）：改进 8 方向自动排版算法、文字碰撞检测与 45°/90° 正交网格智能吸附；
-- **UI/UX 交互体验**（`drunk/index.html` / `drunk/css/drunk.css`）：持续打磨全深色工作台的流畅交互（如快捷键支持、历史撤销重做、多选批量移动等）。
+- **识别结果净化与几何校正**（`drunk/js/drunk_sanitizer.js`）：本模块为**纯函数**且不依赖 DOM，可直接用 Node 跑回归自检，是最容易上手贡献的一块。欢迎改进噪点判定、墨迹吸附的颜色容差策略，或引入 RANSAC 让整体相似变换对离群锚点更鲁棒；
+- **城市工程无损回写**（`drunk/js/city_project_io.js`）：条目级「外科手术式」源码回写。可贡献方向：支持在编辑模式中新增车站并插入到线路站序的指定位置、同步改写 `pathPoints` 折线；
+- **UI/UX 交互体验**（`drunk/index.html`）：持续打磨全深色工作台的流畅交互（如多选批量移动、重做 Redo、编辑模式下的对齐参考线等）。
+  注意：`drunk/css/drunk.css` 目前**并未被 `index.html` 引用**，工作台样式全部内联在页面的 `<style>` 块中，改样式请改内联块（或顺手把两者合并收敛掉）。
+
+### 提交前请跑一遍自检
+
+```bash
+node drunk/tools/selfcheck.js
+```
+
+零依赖、零构建、不需要浏览器。它会拿 `city/` 下**全部真实城市数据**回归验证条目级无损回写与识别结果净化器（当前 62 项断言，覆盖 6 座城市）。
+
+**改动 `city_project_io.js` 时这一步尤其不能省**：回写逻辑出错的后果是静默损毁已经逐像素校准过的城市数据（悉尼的 `marker`/`halo`、北京的 `textScale`、线路的 `pathPoints` 折点），而且往往要等到渲染时才会被发现。
 
 欢迎随时向官方主仓库提交 Pull Request 或 Issue 进行探讨！
 

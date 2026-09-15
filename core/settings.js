@@ -91,6 +91,18 @@ document.addEventListener('DOMContentLoaded', function () {
                             ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<cgo-toolbar-option value="${n}">${n}条${n === 5 ? ' (推荐)' : ''}</cgo-toolbar-option>`).join('')}
                         </cgo-toolbar-select>
                     </div>
+                    <div class="settings-row desktop-only">
+                        <div>
+                            <span class="settings-label">编辑此图</span>
+                            <span class="settings-desc">在 Drunk 工作台里拖站、改字、调站名朝向</span>
+                        </div>
+                        <a class="btn btn-info btn-sm" id="pref-edit-in-drunk"
+                            href="./drunk/index.html?city=${currentCityId}" target="_blank" rel="noopener"
+                            style="min-width: 120px; justify-content: center; text-decoration: none;">
+                            <cgo-icon name="edit" size="14"></cgo-icon>
+                            <span>打开编辑模式</span>
+                        </a>
+                    </div>
                 </div>
                 <div style="padding: 10px 20px; font-size:11px; color:var(--text-light); text-align:center;">
                     设置更改时将自动生效和保存<br>清除Cookie和其他站点数据会导致设置失效

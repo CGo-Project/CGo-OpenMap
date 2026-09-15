@@ -951,6 +951,129 @@
             justify-content: flex-end;
             gap: 10px;
         }
+
+        /* ==================================================================
+           编辑模式 (Edit Mode) —— 载入 city/{id}/ 下已有城市进行可视化微调
+           ================================================================== */
+
+        /* 顶栏与空状态引导里的城市下拉框（原生 select，零依赖） */
+        .drunk-select {
+            height: 30px;
+            max-width: 190px;
+            padding: 0 26px 0 10px;
+            background-color: #18191b;
+            color: #d7dde2;
+            border: 1px solid #2e3035;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            appearance: none;
+            background-image: linear-gradient(45deg, transparent 50%, #7d8b94 50%),
+                linear-gradient(135deg, #7d8b94 50%, transparent 50%);
+            background-position: calc(100% - 14px) 13px, calc(100% - 9px) 13px;
+            background-size: 5px 5px, 5px 5px;
+            background-repeat: no-repeat;
+            transition: border-color 0.18s ease;
+        }
+
+        .drunk-select:hover,
+        .drunk-select:focus {
+            border-color: #006098;
+            outline: none;
+        }
+
+        /* 工作模式与未导出改动数指示 */
+        #drunk-mode-badge.badge-success {
+            background: #163820 !important;
+            color: #81c995 !important;
+            border-color: #245934 !important;
+        }
+
+        #dirty-count-badge.badge-warning {
+            background: #3a2a0c !important;
+            color: #f5c451 !important;
+            border-color: #6b4d15 !important;
+        }
+
+        /* 车站属性检视面板中的可编辑字段 */
+        #inspector-edit-fields {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #2e3035;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .edit-field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        .edit-field>span {
+            font-size: 10px;
+            color: #a0b0b9;
+            letter-spacing: 0.02em;
+        }
+
+        .edit-field input,
+        .edit-field select {
+            height: 28px;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0 8px;
+            background: #18191b;
+            color: #e6edf3;
+            border: 1px solid #2e3035;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+
+        .edit-field input:focus,
+        .edit-field select:focus {
+            border-color: #006098;
+            outline: none;
+        }
+
+        .edit-field-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* 车站图元类型：与 core/script.js 的 type 取值对齐
+           (dot 普通站 / tsf 换乘站 / rdot 国铁站 / no 暂缓开通站) */
+        .station-dot.type-rdot {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            background: #ffffff;
+            border: 3px solid #78848b;
+        }
+
+        .station-dot.type-no {
+            background: #6f7a80;
+            border-style: dashed;
+            opacity: 0.75;
+        }
+
+        /* 站名排版的可选修饰字段，编辑时需如实反映线路图的真实观感 */
+        .station-label.label-big .sta-cn {
+            font-size: 15px;
+        }
+
+        .station-label.label-bold .sta-cn {
+            font-weight: 800;
+        }
+
+        .station-label.label-hidden {
+            opacity: 0.28;
+            text-decoration: line-through;
+        }
     </style>
 </head>
 
@@ -999,12 +1122,32 @@
 
                 <div class="toolbar-divider"></div>
 
-                <!-- 分组 2: 画布对比与几何校准 -->
+                <!-- 分组 2: 编辑模式 (载入 city/ 下已注册的城市直接微调) -->
+                <div class="toolbar-group">
+                    <select id="edit-city-select" class="drunk-select"
+                        title="载入 city/ 目录下已注册的城市，直接拖站、改字、调站名朝向">
+                        <option value="">选择要编辑的城市…</option>
+                    </select>
+                    <button class="btn btn-info btn-sm" id="btn-load-city"
+                        title="把选中城市的 data_stations.js / data_lines.js 读进画布进行可视化编辑">
+                        <cgo-icon name="edit" size="14"></cgo-icon>
+                        <span>编辑此图</span>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <!-- 分组 3: 画布对比与几何校准 -->
                 <div class="toolbar-group">
                     <button class="btn btn-info btn-sm" id="btn-snap-orthogonal-grid"
                         onclick="window.DrunkPipeline.snapGrid()" title="将微小抖动吸附为标准的水平、垂直或45°专业斜角">
                         <cgo-icon name="drag" size="14"></cgo-icon>
                         <span>45°/90°吸附</span>
+                    </button>
+                    <button class="btn btn-info btn-sm" id="btn-undo-edit"
+                        onclick="window.DrunkPipeline.undo()" title="撤销上一步编辑 (Ctrl / Cmd + Z)">
+                        <cgo-icon name="undo" size="14"></cgo-icon>
+                        <span>撤销</span>
                     </button>
                 </div>
 
@@ -1022,6 +1165,8 @@
 
             <!-- 3. 右侧：运行健康度指示 (纯暗色模式，Primary: #006098) -->
             <div class="bar-section-right">
+                <span id="drunk-mode-badge" class="badge badge-info" title="当前工作模式">识图模式</span>
+                <span id="dirty-count-badge" class="badge badge-info" title="尚未导出的改动条目数" style="display:none;">未改动</span>
                 <span id="health-status-indicator" class="badge badge-info" title="数据完整性自检状态">
                     <span class="status-dot-pulse"></span>
                     <span id="health-status-text">等待上传底图</span>
@@ -1040,7 +1185,9 @@
                     <div class="empty-guide-icon">🍺</div>
                     <h2 class="empty-guide-title">Drunk 线路图智能转换工作台</h2>
                     <p class="empty-guide-desc">
-                        请点击下方按钮上传任意城市线路图图片、PDF 文件或 Adobe Illustrator (.ai) 工程，或直接拖拽至视口区域
+                        <b>做新城市</b>：上传任意城市线路图图片、PDF 或 Adobe Illustrator (.ai) 工程，或直接拖拽至视口区域。<br>
+                        <b>改已有城市</b>：从下方下拉框选一座已注册城市，直接拖站、改字、调站名朝向，
+                        导出时只改写你动过的那几条，其余逐字节保持原样。
                     </p>
                     <div class="empty-guide-action">
                         <label for="image-upload-input" class="btn btn-primary btn-sm"
@@ -1048,12 +1195,16 @@
                             <cgo-icon name="upload" size="16"></cgo-icon>
                             <span>选择线路图底图 / PDF / AI 文件</span>
                         </label>
+                        <select id="edit-city-select-empty" class="drunk-select" style="height: 36px;"
+                            onchange="if(this.value) window.DrunkPipeline.loadExistingCity(this.value)">
+                            <option value="">或编辑一座已注册的城市…</option>
+                        </select>
                     </div>
                     <div class="empty-guide-tags">
+                        <span class="badge badge-info">已有城市可视化编辑</span>
+                        <span class="badge badge-info">条目级无损回写</span>
                         <span class="badge badge-info">AI / PDF 矢量图层直通</span>
-                        <span class="badge badge-info">XMP 色板提取</span>
-                        <span class="badge badge-info">8方向工整排版还原</span>
-                        <span class="badge badge-info">维基百科动态对齐</span>
+                        <span class="badge badge-info">识别结果自动净化</span>
                         <span class="badge badge-info">标准 OpenMap 导出</span>
                     </div>
                 </div>
@@ -1123,7 +1274,38 @@
                         </div>
                         <div
                             style="font-size: 10px; color: #a0b0b9; opacity: 0.8; text-align: center; margin-top: 6px;">
-                            💡 点击扇区即可秒级切换站名朝向避让线路
+                            点击扇区即可秒级切换站名朝向避让线路
+                        </div>
+                    </div>
+
+                    <!-- 站名 / 类型 / 文字偏移的直接编辑区 -->
+                    <div id="inspector-edit-fields" class="edit-field-grid">
+                        <label class="edit-field">
+                            <span>中文站名</span>
+                            <input type="text" id="field-sta-cn" autocomplete="off" spellcheck="false">
+                        </label>
+                        <label class="edit-field">
+                            <span>英文站名</span>
+                            <input type="text" id="field-sta-en" autocomplete="off" spellcheck="false">
+                        </label>
+                        <label class="edit-field">
+                            <span>车站类型</span>
+                            <select id="field-sta-type">
+                                <option value="dot">dot · 普通站</option>
+                                <option value="tsf">tsf · 换乘站</option>
+                                <option value="rdot">rdot · 国铁站</option>
+                                <option value="no">no · 暂缓开通</option>
+                            </select>
+                        </label>
+                        <div class="edit-field-row">
+                            <label class="edit-field">
+                                <span>文字偏移 X</span>
+                                <input type="number" id="field-sta-offset-x" step="1">
+                            </label>
+                            <label class="edit-field">
+                                <span>文字偏移 Y</span>
+                                <input type="number" id="field-sta-offset-y" step="1">
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -1145,7 +1327,10 @@
                     <ul class="tips-list">
                         <li>按住空白处拖动即可平移视口</li>
                         <li>鼠标按住站点圆点可任意拖拽微调位置</li>
-                        <li>点击「45°/90°吸附」一键矫正专业斜角</li>
+                        <li>方向键微调站点位置，<b>Shift</b> 加速 10 倍</li>
+                        <li><b>Alt</b> + 方向键只挪站名、不动站点</li>
+                        <li><b>Delete</b> 删除选中站，<b>Ctrl/Cmd + Z</b> 撤销</li>
+                        <li><b>Ctrl/Cmd + S</b> 导出改动文件</li>
                     </ul>
                 </div>
             </aside>
@@ -1180,6 +1365,12 @@
                     onclick="navigator.clipboard.writeText(document.getElementById('export-code-preview').value); alert('已成功复制全部代码到剪贴板！');">
                     <cgo-icon name="copy" size="14"></cgo-icon>
                     <span>一键复制全部代码</span>
+                </button>
+                <button class="btn btn-info btn-sm" id="btn-download-export"
+                    onclick="window.DrunkPipeline.downloadExportFiles()"
+                    title="把生成的文件逐个另存到本地，可直接覆盖回 city/{city_id}/">
+                    <cgo-icon name="save" size="14"></cgo-icon>
+                    <span>下载改动文件</span>
                 </button>
                 <button class="btn btn-primary btn-sm"
                     onclick="document.getElementById('export-modal').classList.remove('active')">
@@ -1341,15 +1532,19 @@
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
     </script>
-    <script src="./js/drunk_logger.js?v=260907_v1"></script>
-    <script src="./js/city_knowledge_matcher.js?v=260907_v1"></script>
-    <script src="./js/pdf_vector_extractor.js?v=260907_v1"></script>
-    <script src="./js/deepseek_vision.js?v=260907_v1"></script>
-    <script src="./js/vision_detector.js?v=260907_v1"></script>
-    <script src="./js/ocr_align_solver.js?v=260904_v6"></script>
-    <script src="./js/topology_tracer.js?v=260904_v6"></script>
-    <script src="./js/openmap_codegen.js?v=260904_v6"></script>
-    <script src="./js/drunk_pipeline.js?v=260907_v1"></script>
+    <!-- 城市注册总线：编辑模式据此枚举 city/ 下已注册的城市（与 main.html 同源，零硬编码） -->
+    <script src="../city/data.js?v=260915_v2"></script>
+    <script src="./js/drunk_logger.js?v=260915_v2"></script>
+    <script src="./js/drunk_sanitizer.js?v=260915_v2"></script>
+    <script src="./js/city_project_io.js?v=260915_v2"></script>
+    <script src="./js/city_knowledge_matcher.js?v=260915_v2"></script>
+    <script src="./js/pdf_vector_extractor.js?v=260915_v2"></script>
+    <script src="./js/deepseek_vision.js?v=260915_v2"></script>
+    <script src="./js/vision_detector.js?v=260915_v2"></script>
+    <script src="./js/ocr_align_solver.js?v=260915_v2"></script>
+    <script src="./js/topology_tracer.js?v=260915_v2"></script>
+    <script src="./js/openmap_codegen.js?v=260915_v2"></script>
+    <script src="./js/drunk_pipeline.js?v=260915_v2"></script>
 </body>
 
 </html>
