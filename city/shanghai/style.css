@@ -1,0 +1,121 @@
+/**
+ * CGo OpenMap - 上海城市专属样式 (city/shanghai/style.css)
+ *
+ * 全部取值实测自官方 D202512 版矢量线网图（viewBox 2638.57 × 3692.52，与本图同尺规）：
+ * 1. 普通站是垂直于线路的 15 × 7 短横（线路主题色实心矩形），不是同心圆点；
+ * 2. 换乘站按站台逐条线各画一枚白底 #3e3a39 描边胶囊，平行相邻的站台合并成拉长胶囊；
+ * 3. 站名中文统一 17.33px、英文 Arial 8px，字重一律 normal —— 官方图中换乘站站名并不加粗；
+ *    中文行高 18.4px 使英文基线恰好落在中文基线下方 19.4px，与官方图的中英文行距一致。
+ *
+ * 4. 线路描边宽度为 7px —— 站点短横的 15px 长轴正好被线路盖住靠内的一半、向站名一侧探出，
+ *    引擎默认的 5.4px 会让短横两端都探出来，看起来像十字。
+ *
+ * 站点图元由 shanghai.js 的 renderStationIcon() 生成，这里只负责层级与文字排版。
+ */
+
+/* ── 线路描边：对齐官方图的 7px ── */
+.map-shanghai .line-visual-inner {
+    stroke-width: 7px;
+}
+
+.map-shanghai .line-visual-outer {
+    stroke-width: 8.6px;
+}
+
+/* 选中线路时略微加粗即可，过粗会把站点短横吃掉 */
+.map-shanghai .line-visual-group.active .line-visual-inner {
+    stroke-width: 8px !important;
+}
+
+.map-shanghai .line-interaction {
+    stroke-width: 18px;
+}
+
+/* 换乘胶囊描边：官方图为 #3e3a39，深色主题下换用与核心色板一致的浅色 */
+:root {
+    --sh-capsule-stroke: #3e3a39;
+}
+
+[data-theme='dark'] {
+    --sh-capsule-stroke: #bdcbd2;
+}
+
+/* ── 站点图元 ── */
+.station.sh-marker {
+    /* 图元尺寸由 renderStationIcon 按原图几何逐站下发，此处仅统一渲染行为 */
+    overflow: visible;
+}
+
+.station.sh-marker svg {
+    overflow: visible;
+    shape-rendering: geometricPrecision;
+}
+
+/* 选中态只换颜色，不缩放也不加阴影：
+   短横中心本就偏离线路中心线，一旦整体放大就会离开线路显得错位；
+   发光则会在这么小的图元上糊成一团。改成与选中站名同一个红，边缘依旧是清晰的。 */
+.map-shanghai .station.sh-marker.active {
+    transform: translate(-50%, -50%);
+    filter: none;
+}
+
+/* 实心短横改填红色；空心短横（市域机场线）与换乘胶囊改描边为红色 */
+.map-shanghai .station.sh-tick.active rect:not([stroke]) {
+    fill: #d0021b;
+}
+
+.map-shanghai .station.sh-tick.active rect[stroke],
+.map-shanghai .station.sh-capsule.active rect {
+    stroke: #d0021b;
+}
+
+/* 普通站短横压在线路之上，换乘站胶囊再高一层 */
+.station.sh-tick {
+    z-index: 16;
+}
+
+.station.sh-capsule {
+    z-index: 22;
+}
+
+/* ── 站名排版：官方图为中文 17.33px、英文 8px，均为 normal 字重 ── */
+.map-shanghai .stacn {
+    font-size: 17.33px;
+    line-height: 18.4px;
+    font-weight: 400;
+}
+
+.map-shanghai .staen {
+    font-size: 8px;
+    line-height: 9.2px;
+    font-weight: 400;
+    /* 官方图英文用 Arial，字宽与之逐字匹配 */
+    font-family: Arial, Helvetica, "Helvetica Neue", sans-serif;
+    /* 英文换行位置一律按官方图在 data_stations.js 里用 <br> 写死；
+       留着自动折行会让比中文行宽一点点的英文被挤成两行 */
+    white-space: nowrap;
+}
+
+/* 官方图对换乘站站名不作加粗处理，覆盖核心样式表的默认行为 */
+.map-shanghai .label-group.type-tsf .stacn,
+.map-shanghai .label-group.type-rdot .stacn {
+    font-weight: 400;
+}
+
+/* 选中态在官方字号基础上等比放大，避免比常态更小 */
+.map-shanghai .label-group.active .stacn {
+    font-size: 19.1px;
+    line-height: 20.2px;
+    font-weight: 700;
+}
+
+.map-shanghai .label-group.active .staen {
+    font-size: 8.8px;
+    line-height: 10.1px;
+    font-weight: 700;
+}
+
+/* 国铁 / 机场 / 磁浮徽标以 <img> 引入，深色主题下整体提亮以保证可读性 */
+[data-theme='dark'].map-shanghai #scattered-layer img {
+    filter: brightness(1.9);
+}
