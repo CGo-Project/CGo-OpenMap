@@ -87,6 +87,34 @@ window.CityProjectIO = (function () {
     }
 
     /**
+     * 按**实际失败原因**给出可执行的提示。
+     *
+     * 这里必须分情况：以前不论什么原因都笼统归咎于 `file://`，
+     * 结果服务器没起、路径写错、文件缺失时全都提示「请通过本地静态服务器访问」，
+     * 而用户明明已经在用 http://127.0.0.1 —— 提示把人往错误方向引。
+     */
+    function describeLoadFailure(base, file, reason) {
+        const target = `${base}/${file}`;
+
+        if (typeof location !== 'undefined' && location.protocol === 'file:') {
+            return `无法读取 ${target}：当前以 file:// 协议打开，浏览器禁止本地文件 fetch。\n` +
+                `请在项目根目录启动静态服务（如 python3 -m http.server 8777），再访问 http://127.0.0.1:8777/drunk/。`;
+        }
+
+        if (reason && reason.kind === 'http') {
+            if (reason.status === 404) {
+                return `无法读取 ${target}：服务器返回 404，文件不存在。\n` +
+                    `请确认该城市目录下确有此文件，且 city/data.js 里登记的 folder 路径正确。`;
+            }
+            return `无法读取 ${target}：服务器返回 ${reason.status} ${reason.statusText || ''}`.trim() + '。';
+        }
+
+        const origin = (typeof location !== 'undefined' && location.origin) ? location.origin : '当前站点';
+        return `无法读取 ${target}：请求未能送达（${(reason && reason.message) || '网络错误'}）。\n` +
+            `多半是 ${origin} 的静态服务器已经停了——请重新启动后刷新页面。`;
+    }
+
+    /**
      * 拉取某城市的全套数据文件。
      * 返回 { id, name, meta, base, sources: {文件名: 源码}, data: {全局名: 值} }
      */
@@ -108,17 +136,17 @@ window.CityProjectIO = (function () {
         for (const entry of DATA_FILES) {
             const url = `${base}/${entry.file}?_drunk=${Date.now()}`;
             let text = null;
+            let reason = null;
             try {
                 const res = await fetch(url, { cache: 'no-store' });
                 if (res.ok) text = await res.text();
+                else reason = { kind: 'http', status: res.status, statusText: res.statusText };
             } catch (err) {
-                // file:// 协议或网络异常，下面按缺失处理
+                reason = { kind: 'network', message: err.message };
             }
 
             if (text == null) {
-                if (entry.required) {
-                    throw new Error(`无法读取 ${base}/${entry.file}。请通过本地静态服务器访问 Drunk（file:// 协议下浏览器禁止 fetch）。`);
-                }
+                if (entry.required) throw new Error(describeLoadFailure(base, entry.file, reason));
                 project.missing.push(entry.file);
                 continue;
             }
@@ -605,6 +633,7 @@ window.CityProjectIO = (function () {
         scanContainer,
         formatEntryValue,
         patchEntries,
+        describeLoadFailure,
         downloadText
     };
 })();

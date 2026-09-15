@@ -190,6 +190,40 @@ for (const city of cities) {
 }
 
 // ============================================================================
+// 四点五、载入失败提示必须指向真实原因
+// ============================================================================
+// 这几条是踩过的坑：早先不论什么原因都笼统提示「请通过本地静态服务器访问」，
+// 结果服务器停掉时，明明已经在用 http:// 的用户被指引去做一件他已经做了的事。
+section('载入失败提示的归因');
+{
+    const d = IO.describeLoadFailure;
+    const saved = global.location;
+
+    // file:// 协议
+    global.location = { protocol: 'file:', origin: 'null' };
+    const fileMsg = d('../city/shenyang', 'data_stations.js', { kind: 'network', message: 'Failed to fetch' });
+    check(fileMsg.includes('file://') && fileMsg.includes('http.server'),
+        'file:// 协议下提示启动静态服务器');
+
+    // http 下服务器挂掉
+    global.location = { protocol: 'http:', origin: 'http://127.0.0.1:8777' };
+    const downMsg = d('../city/shenyang', 'data_stations.js', { kind: 'network', message: 'Failed to fetch' });
+    check(!downMsg.includes('file://') && downMsg.includes('http://127.0.0.1:8777') && downMsg.includes('已经停了'),
+        'http 下网络失败归因为「服务器已停」而非 file://');
+
+    // 404
+    const notFound = d('../city/__nope__', 'data_stations.js', { kind: 'http', status: 404, statusText: 'Not Found' });
+    check(!notFound.includes('file://') && notFound.includes('404') && notFound.includes('folder'),
+        '404 归因为路径/文件不存在并指向 city/data.js 的 folder');
+
+    // 其它 HTTP 状态
+    const err500 = d('../city/x', 'data_lines.js', { kind: 'http', status: 500, statusText: 'Internal Server Error' });
+    check(err500.includes('500') && !err500.includes('file://'), '其它 HTTP 状态如实回报状态码');
+
+    if (saved === undefined) delete global.location; else global.location = saved;
+}
+
+// ============================================================================
 // 五、识别结果净化器
 // ============================================================================
 section('识别结果净化器');

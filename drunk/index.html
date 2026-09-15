@@ -840,6 +840,11 @@
             border-radius: 24px;
             font-size: 13px;
             font-weight: 600;
+            /* 载入失败等提示是多行的，需要保留换行并限制宽度，否则会被拉成一长条 */
+            white-space: pre-line;
+            max-width: min(620px, calc(100vw - 48px));
+            text-align: left;
+            line-height: 1.55;
             box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 96, 152, 0.4);
             opacity: 0;
             pointer-events: none;
@@ -1534,17 +1539,17 @@
     </script>
     <!-- 城市注册总线：编辑模式据此枚举 city/ 下已注册的城市（与 main.html 同源，零硬编码） -->
     <script src="../city/data.js?v=260915_v2"></script>
-    <script src="./js/drunk_logger.js?v=260915_v2"></script>
-    <script src="./js/drunk_sanitizer.js?v=260915_v2"></script>
-    <script src="./js/city_project_io.js?v=260915_v2"></script>
-    <script src="./js/city_knowledge_matcher.js?v=260915_v2"></script>
-    <script src="./js/pdf_vector_extractor.js?v=260915_v2"></script>
-    <script src="./js/deepseek_vision.js?v=260915_v2"></script>
-    <script src="./js/vision_detector.js?v=260915_v2"></script>
-    <script src="./js/ocr_align_solver.js?v=260915_v2"></script>
-    <script src="./js/topology_tracer.js?v=260915_v2"></script>
-    <script src="./js/openmap_codegen.js?v=260915_v2"></script>
-    <script src="./js/drunk_pipeline.js?v=260915_v2"></script>
+    <script src="./js/drunk_logger.js?v=260915_v3"></script>
+    <script src="./js/drunk_sanitizer.js?v=260915_v3"></script>
+    <script src="./js/city_project_io.js?v=260915_v3"></script>
+    <script src="./js/city_knowledge_matcher.js?v=260915_v3"></script>
+    <script src="./js/pdf_vector_extractor.js?v=260915_v3"></script>
+    <script src="./js/deepseek_vision.js?v=260915_v3"></script>
+    <script src="./js/vision_detector.js?v=260915_v3"></script>
+    <script src="./js/ocr_align_solver.js?v=260915_v3"></script>
+    <script src="./js/topology_tracer.js?v=260915_v3"></script>
+    <script src="./js/openmap_codegen.js?v=260915_v3"></script>
+    <script src="./js/drunk_pipeline.js?v=260915_v3"></script>
 </body>
 
 </html>

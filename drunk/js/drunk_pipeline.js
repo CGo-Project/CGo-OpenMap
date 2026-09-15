@@ -1752,13 +1752,21 @@ window.DrunkPipeline = (function () {
         }
     }
 
+    let notifyTimer = null;
+
     function showNotification(msg) {
         const banner = document.getElementById('notification-toast');
-        if (banner) {
-            banner.textContent = msg;
-            banner.classList.add('show');
-            setTimeout(() => banner.classList.remove('show'), 3800);
-        }
+        if (!banner) return;
+        banner.textContent = msg;
+        banner.classList.add('show');
+        // 连续弹提示时，旧的定时器会提前把新消息关掉，必须先清掉
+        if (notifyTimer) clearTimeout(notifyTimer);
+        // 多行错误提示需要更长的阅读时间
+        const dwell = Math.min(12000, Math.max(3800, String(msg).length * 90));
+        notifyTimer = setTimeout(() => {
+            banner.classList.remove('show');
+            notifyTimer = null;
+        }, dwell);
     }
 
     return {
