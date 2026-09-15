@@ -199,14 +199,21 @@ window.CityProjectIO = (function () {
         return groups;
     }
 
-    /** 线路的全部折线点阵（主线 + 各分支） */
+    /**
+     * 线路的全部折线点阵（主线 + 各分支），统一成 [{ key, points }]。
+     * points 是对原数组的**引用**，编辑模式下拖折点即直接改它。
+     * 带上 key 是为了让调用方知道该往 line 的哪个字段写回（pathPoints /
+     * pathPoints-main / pathPoints-branch1 …）。
+     */
     function linePathGroups(line) {
         const out = [];
         if (!line || typeof line !== 'object') return out;
-        if (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2) out.push(line.pathPoints);
+        if (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2) {
+            out.push({ key: 'pathPoints', points: line.pathPoints });
+        }
         Object.keys(line).forEach(key => {
             if (/^pathPoints-/.test(key) && Array.isArray(line[key]) && line[key].length >= 2) {
-                out.push(line[key]);
+                out.push({ key, points: line[key] });
             }
         });
         return out;

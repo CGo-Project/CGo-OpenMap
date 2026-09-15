@@ -257,7 +257,13 @@ const linesData = [
 Drunk（`drunk/index.html`）有两种工作模式：
 
 - **识图模式（新城市）**：解决“新城市手工测量 `(x, y)` 坐标繁琐且易出错”，从底图/PDF/AI 自动矢量化出整套城市数据；
-- **编辑模式（已有城市）**：**Drunk 同时是 OpenMap 任意已注册城市的可视化编辑器**。从顶栏下拉框（或线路图「偏好设置 → 编辑此图」，或直接访问 `drunk/index.html?city={city_id}`）载入 `city/{city_id}/`，即可拖站、改站名、调站名朝向与文字偏移，导出时只改写你实际动过的条目。
+- **编辑模式（已有城市）**：**Drunk 同时是 OpenMap 任意已注册城市的可视化编辑器**。从顶栏下拉框（或线路图「偏好设置 → 编辑此图」，或直接访问 `drunk/index.html?city={city_id}`）载入 `city/{city_id}/`，即可：
+  - **车站**：拖站 / 方向键挪站、改中英文站名、切换类型、调站名朝向与文字偏移、删站；
+  - **线路**：点图例项或直接点画布上的线条选中，改线路名 / 标志色 / 运营公司，
+    并可拖动走向折点、双击线条插入折点、`Delete` 删折点（分支线路的
+    `pathPoints-main` / `-branch1` / `-branch2` 一并支持）。
+
+  导出时只改写你实际动过的条目——挪一个折点，`git diff` 里就只有那一行 `{ x: …, y: … }`。
 
 ### 5.1 核心架构与模块分工
 - `drunk/js/city_project_io.js`：**城市工程读写层**。读取 `city/{city_id}/data_*.js` 并保留源码原文，提供条目级「外科手术式回写」与分支线路数据模型访问器。
@@ -286,6 +292,11 @@ Drunk（`drunk/index.html`）有两种工作模式：
 
 > 凡是遍历线路的代码，**必须**走 `CityProjectIO.lineStationGroups(line)` / `linePathGroups(line)` / `lineAllStationIds(line)`，
 > 直接写 `line.stationIds.length` 一碰到这些城市就会 `undefined.length` 崩掉。
+
+返回形状：
+- `lineStationGroups(line)` → `[{ idsKey, distKey, ids, distances }]`
+- `linePathGroups(line)` → `[{ key, points }]`，`points` 是对原数组的**引用**（编辑模式拖折点即直接改它），`key` 用于写回 `line[key]`
+- `lineAllStationIds(line)` → 跨分支去重后的车站 ID 数组
 
 另注意：`distances` 允许是空数组（在建线路）或 `"约21千"` 这类人工标注文本，不可假定为等长数字数组。
 

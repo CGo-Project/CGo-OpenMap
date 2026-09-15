@@ -21,6 +21,10 @@ window.DrunkPipeline = (function () {
         selectedStationId: null,
         isDraggingStation: false,
         draggedStationId: null,
+        // 线路编辑：选中的线路下标，以及选中/正在拖动的走向折点
+        selectedLineIdx: -1,
+        selectedVertex: null,        // { lineIdx, groupKey, ptIdx }
+        isDraggingVertex: false,
         ghostOpacity: 0.45,
         currentImageSrc: null,
         loadedImageEl: null,
@@ -94,6 +98,15 @@ window.DrunkPipeline = (function () {
         dom.fieldOffsetX = document.getElementById('field-sta-offset-x');
         dom.fieldOffsetY = document.getElementById('field-sta-offset-y');
         dom.ghostControls = document.getElementById('ghost-controls');
+
+        // 线路编辑
+        dom.verticesLayer = document.getElementById('drunk-vertices-layer');
+        dom.lineCard = document.getElementById('line-inspector-card');
+        dom.lineMeta = document.getElementById('line-inspector-meta');
+        dom.fieldLineName = document.getElementById('field-line-name');
+        dom.fieldLineColor = document.getElementById('field-line-color');
+        dom.fieldLineColorHex = document.getElementById('field-line-color-hex');
+        dom.fieldLineCompany = document.getElementById('field-line-company');
     }
 
     function bindEvents() {
@@ -108,10 +121,24 @@ window.DrunkPipeline = (function () {
 
         // 视口拖拽平移
         dom.viewport.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.station-dot') || e.target.closest('.station-label') || e.target.closest('#drunk-empty-guide')) return;
+            if (e.target.closest('.station-dot') || e.target.closest('.station-label')
+                || e.target.closest('.path-vertex') || e.target.closest('.line-path-svg')
+                || e.target.closest('#drunk-empty-guide')) return;
             state.isDraggingMap = true;
             state.dragStart = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
             dom.viewport.style.cursor = 'grabbing';
+        });
+
+        // 双击线条：在最近的那段上插入一个走向折点
+        dom.viewport.addEventListener('dblclick', (e) => {
+            const path = e.target.closest('.line-path-svg');
+            if (!path) return;
+            e.preventDefault();
+            const idx = parseInt(path.getAttribute('data-line-idx'), 10);
+            if (Number.isNaN(idx)) return;
+            const rect = dom.mapCanvasContainer.getBoundingClientRect();
+            if (state.selectedLineIdx !== idx) selectLine(idx);
+            insertVertexAt(idx, (e.clientX - rect.left) / state.scale, (e.clientY - rect.top) / state.scale);
         });
 
         window.addEventListener('mousemove', (e) => {
@@ -119,6 +146,17 @@ window.DrunkPipeline = (function () {
                 state.pan.x = e.clientX - state.dragStart.x;
                 state.pan.y = e.clientY - state.dragStart.y;
                 applyTransform();
+            } else if (state.isDraggingVertex && state.selectedVertex) {
+                // 拖拽走向折点
+                const sel = state.selectedVertex;
+                const line = state.lines[sel.lineIdx];
+                const points = line && line[sel.groupKey];
+                if (Array.isArray(points) && points[sel.ptIdx]) {
+                    const rect = dom.mapCanvasContainer.getBoundingClientRect();
+                    points[sel.ptIdx].x = round2((e.clientX - rect.left) / state.scale);
+                    points[sel.ptIdx].y = round2((e.clientY - rect.top) / state.scale);
+                    renderLines();
+                }
             } else if (state.isDraggingStation && state.draggedStationId) {
                 // 拖拽站点圆点
                 const rect = dom.mapCanvasContainer.getBoundingClientRect();
@@ -147,25 +185,14 @@ window.DrunkPipeline = (function () {
                 validateAndReport();
                 updateDirtyBadge();
             }
+            if (state.isDraggingVertex) {
+                state.isDraggingVertex = false;
+                updateDirtyBadge();
+            }
         });
 
-        // 鼠标滚轮缩放
-        dom.viewport.addEventListener('wheel', (e) => {
-            if (!state.currentImageSrc && Object.keys(state.stations).length === 0) return;
-            e.preventDefault();
-            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-            const newScale = Math.min(Math.max(state.scale * zoomFactor, 0.15), 3.5);
-
-            const rect = dom.viewport.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            state.pan.x = mouseX - (mouseX - state.pan.x) * (newScale / state.scale);
-            state.pan.y = mouseY - (mouseY - state.pan.y) * (newScale / state.scale);
-            state.scale = newScale;
-
-            applyTransform();
-        }, { passive: false });
+        // 滚轮 / 触控板（逻辑与 core/script.js 主引擎保持一致，见 handleWheel 注释）
+        dom.viewport.addEventListener('wheel', handleWheel, { passive: false });
 
         // 文件选择上传
         if (dom.fileInput) {
@@ -227,6 +254,14 @@ window.DrunkPipeline = (function () {
         bindOffsetField(dom.fieldOffsetX, 'x');
         bindOffsetField(dom.fieldOffsetY, 'y');
 
+        // ── 线路属性字段 ──────────────────────────────────────────────────────
+        bindLineField(dom.fieldLineName, 'name');
+        bindLineField(dom.fieldLineCompany, 'company');
+        // 取色器与 hex 输入框双向同步：取色器给 #RRGGBB，
+        // 手填框允许保留城市原有写法（如沈阳的 "rgb(207, 53, 23)"）
+        bindLineField(dom.fieldLineColor, 'color');
+        bindLineField(dom.fieldLineColorHex, 'color');
+
         // ── 键盘快捷键 ────────────────────────────────────────────────────────
         window.addEventListener('keydown', handleShortcut);
     }
@@ -250,12 +285,39 @@ window.DrunkPipeline = (function () {
             exportCityFiles();
             return;
         }
-        if (isTypingTarget(e.target) || !state.selectedStationId) return;
+        if (isTypingTarget(e.target)) return;
+
+        const ARROWS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+
+        // 走向折点优先响应：选中折点时方向键微调折点、Delete 删折点
+        if (state.selectedVertex) {
+            const sel = state.selectedVertex;
+            const line = state.lines[sel.lineIdx];
+            const pt = line && Array.isArray(line[sel.groupKey]) ? line[sel.groupKey][sel.ptIdx] : null;
+            if (pt && ARROWS[e.key]) {
+                e.preventDefault();
+                const [dx, dy] = ARROWS[e.key];
+                const step = e.shiftKey ? 10 : 1;
+                pushHistory();
+                pt.x = round2(pt.x + dx * step);
+                pt.y = round2(pt.y + dy * step);
+                renderLines();
+                updateDirtyBadge();
+                return;
+            }
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                if (deleteSelectedVertex()) return;
+            }
+            if (e.key === 'Escape') { state.selectedVertex = null; renderVertices(); return; }
+        }
+
+        if (e.key === 'Escape' && state.selectedLineIdx >= 0) { deselectLine(); return; }
+        if (!state.selectedStationId) return;
 
         const s = state.stations[state.selectedStationId];
         if (!s) return;
 
-        const ARROWS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
         if (ARROWS[e.key]) {
             e.preventDefault();
             const [dx, dy] = ARROWS[e.key];
@@ -454,21 +516,11 @@ window.DrunkPipeline = (function () {
             lines: JSON.parse(JSON.stringify(linesData))
         };
         state.history = [];
-        state.selectedStationId = null;
+        clearSelection();
 
         dom.mapCanvasContainer.style.width = `${state.mapSize.width}px`;
         dom.mapCanvasContainer.style.height = `${state.mapSize.height}px`;
-
-        // 视口居中到画布
-        state.scale = Math.min(
-            (dom.viewport.clientWidth - 80) / state.mapSize.width,
-            (dom.viewport.clientHeight - 80) / state.mapSize.height
-        );
-        state.scale = Math.max(0.15, Math.min(state.scale, 1.5));
-        state.pan = {
-            x: (dom.viewport.clientWidth - state.mapSize.width * state.scale) / 2,
-            y: (dom.viewport.clientHeight - state.mapSize.height * state.scale) / 2
-        };
+        fitToViewport();
 
         updateModeView();
         renderAll();
@@ -558,8 +610,16 @@ window.DrunkPipeline = (function () {
         const snap = JSON.parse(state.history.pop());
         state.stations = snap.stations;
         state.lines = snap.lines;
+        // 撤销可能把被选中的对象一并撤没了，越界的选中下标必须清掉
         if (state.selectedStationId && !state.stations[state.selectedStationId]) {
             state.selectedStationId = null;
+        }
+        if (state.selectedLineIdx >= state.lines.length) clearSelection();
+        const sv = state.selectedVertex;
+        if (sv && !(state.lines[sv.lineIdx]
+            && Array.isArray(state.lines[sv.lineIdx][sv.groupKey])
+            && state.lines[sv.lineIdx][sv.groupKey][sv.ptIdx])) {
+            state.selectedVertex = null;
         }
         renderAll();
         if (state.selectedStationId) selectStation(state.selectedStationId);
@@ -568,6 +628,117 @@ window.DrunkPipeline = (function () {
 
     function applyTransform() {
         dom.mapCanvasContainer.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.scale})`;
+    }
+
+    // ==========================================================================
+    // 视口缩放与漫游（滚轮 / 触控板）
+    // ==========================================================================
+
+    const MIN_SCALE = 0.15;
+    const MAX_SCALE = 3.5;
+
+    /** 以视口内某一屏幕点为锚缩放，锚点下的图面内容保持不动 */
+    function zoomToPoint(targetScale, clientX, clientY) {
+        const next = Math.min(Math.max(targetScale, MIN_SCALE), MAX_SCALE);
+        if (next === state.scale) return;
+        const rect = dom.viewport.getBoundingClientRect();
+        const mx = clientX - rect.left;
+        const my = clientY - rect.top;
+        state.pan.x = mx - (mx - state.pan.x) * (next / state.scale);
+        state.pan.y = my - (my - state.pan.y) * (next / state.scale);
+        state.scale = next;
+        applyTransform();
+    }
+
+    function panBy(dx, dy) {
+        state.pan.x += dx;
+        state.pan.y += dy;
+        applyTransform();
+    }
+
+    /** 以视口中心为锚按倍率缩放（供 HUD 的 +/- 按钮调用） */
+    function zoomBy(factor) {
+        const rect = dom.viewport.getBoundingClientRect();
+        zoomToPoint(state.scale * factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    }
+
+    /** 把整幅画布缩放平移到刚好铺满视口并居中 */
+    function fitToViewport() {
+        if (!dom.viewport || !state.mapSize.width || !state.mapSize.height) return;
+        const fit = Math.min(
+            (dom.viewport.clientWidth - 80) / state.mapSize.width,
+            (dom.viewport.clientHeight - 80) / state.mapSize.height
+        );
+        state.scale = Math.max(MIN_SCALE, Math.min(fit, 1.5));
+        state.pan = {
+            x: (dom.viewport.clientWidth - state.mapSize.width * state.scale) / 2,
+            y: (dom.viewport.clientHeight - state.mapSize.height * state.scale) / 2
+        };
+        applyTransform();
+    }
+
+    /**
+     * 滚轮 / 触控板处理。
+     *
+     * 原实现是「每收到一个 wheel 事件就 ×1.1 或 ×0.9」，与 deltaY 的实际大小无关。
+     * 鼠标滚轮一格一个事件时还凑合，但 macOS 触控板两指滑动一次手势会连发几十个
+     * 小 delta 事件，于是缩放按 1.1^n 指数级窜出去——这就是「太快了」的由来。
+     *
+     * 现在的规则：
+     * - 缩放量与 deltaY 成正比，手势多长就缩多少；
+     * - ctrlKey（macOS 触控板捏合、Windows Ctrl+滚轮）恒为缩放；
+     * - 其余情况尊重用户在主图「偏好设置 → 滚轮与触控板」里的选择，
+     *   复用同一个 localStorage 键 `nal_pref_wheel_mode`，两边设置一处生效；
+     * - smart 模式下识别触控板：触控板两指滑动走平移，鼠标滚轮走缩放
+     *   （识别规则与 core/script.js 完全一致）。
+     *
+     * 与主引擎唯一的有意分歧：主引擎用的是**加法**步长（scale + step），
+     * 那是因为它的 scale 常年在 1 附近；而 Drunk 要让 2000~3700px 的整幅画布
+     * 铺满视口，起始 scale 低到 0.15，缩放域跨 23 倍。此时同样的加法步长
+     * 在小 scale 下相当于单次 +19%，捏合依旧会窜。故这里改成**按比例**缩放
+     * （scale × e^(-deltaY·k)），任何缩放级别下手感一致。
+     */
+
+    /** 每个 wheel 事件的缩放灵敏度：捏合的 delta 天生比滚轮小得多，故系数更大 */
+    const ZOOM_K_WHEEL = 0.0012;   // 鼠标滚轮一格 (deltaY=120) ≈ 15%
+    const ZOOM_K_PINCH = 0.008;    // 触控板捏合
+
+    function handleWheel(e) {
+        if (!state.currentImageSrc && Object.keys(state.stations).length === 0) return;
+        e.preventDefault();
+
+        /** 单个事件的缩放倍率，并钳位防止异常大的 delta 一步跳飞 */
+        const factorFor = (k) => {
+            const f = Math.exp(-e.deltaY * k);
+            return Math.max(0.75, Math.min(1.33, f));
+        };
+
+        // 触控板捏合缩放（macOS 会把捏合伪装成 ctrlKey + wheel）
+        if (e.ctrlKey) {
+            zoomToPoint(state.scale * factorFor(ZOOM_K_PINCH), e.clientX, e.clientY);
+            return;
+        }
+
+        const mode = localStorage.getItem('nal_pref_wheel_mode') || 'smart';
+
+        const doPan = () => panBy(-e.deltaX * 1.5, -e.deltaY * 1.5);
+        const doZoom = () => zoomToPoint(state.scale * factorFor(ZOOM_K_WHEEL), e.clientX, e.clientY);
+
+        if (mode === 'zoom') { doZoom(); return; }
+        if (mode === 'pan') { doPan(); return; }
+
+        // smart：先判是不是触控板
+        const isTouchpad = (() => {
+            if (Math.abs(e.deltaX) > 0) return true;       // 有横向分量必然是触控板
+            if (e.deltaMode === 1) return false;            // 按行滚动是传统滚轮
+            if (e.wheelDelta !== undefined) {
+                if (Math.abs(e.wheelDelta) % 120 === 0) return false;  // 120 的整数倍是滚轮刻度
+                if (Math.abs(e.wheelDelta) < 100) return true;
+            }
+            return Math.abs(e.deltaY) < 40;
+        })();
+
+        if (isTouchpad) doPan(); else doZoom();
     }
 
     function updateEmptyStateView() {
@@ -788,6 +959,7 @@ window.DrunkPipeline = (function () {
         // 写入全局状态
         state.stations = newStations;
         state.lines = newLines;
+        clearSelection();
 
         if (logger) {
             logger.banner('PDF 原生矢量拓扑直通装载完成', `目标城市: ${state.cityName} (${state.cityId})`);
@@ -1141,6 +1313,7 @@ window.DrunkPipeline = (function () {
         // 写入状态
         state.stations = newStations;
         state.lines = newLines;
+        clearSelection();
 
         if (logger) {
             logger.banner('DeepSeek 视觉拓扑装载完成', `目标城市: ${state.cityName} (${state.cityId})`);
@@ -1195,7 +1368,8 @@ window.DrunkPipeline = (function () {
     function pathGroups(line) {
         return window.CityProjectIO
             ? window.CityProjectIO.linePathGroups(line)
-            : (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2 ? [line.pathPoints] : []);
+            : (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2
+                ? [{ key: 'pathPoints', points: line.pathPoints }] : []);
     }
 
     function allStationIds(line) {
@@ -1209,7 +1383,7 @@ window.DrunkPipeline = (function () {
         dom.svgLinesLayer.setAttribute('width', state.mapSize.width);
         dom.svgLinesLayer.setAttribute('height', state.mapSize.height);
 
-        state.lines.forEach(line => {
+        state.lines.forEach((line, lineIdx) => {
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             let d = '';
 
@@ -1233,8 +1407,8 @@ window.DrunkPipeline = (function () {
                 }
             } else if (pathGroups(line).length) {
                 // 模式 2: 离散折线点阵渲染（含分支线路的 pathPoints-main / -branch1 / -branch2…）
-                pathGroups(line).forEach(points => {
-                    points.forEach((pt, idx) => {
+                pathGroups(line).forEach(group => {
+                    group.points.forEach((pt, idx) => {
                         const x = Math.round(pt.x * scaleX);
                         const y = Math.round(pt.y * scaleY);
                         d += idx === 0 ? `M ${x} ${y} ` : `L ${x} ${y} `;
@@ -1277,9 +1451,197 @@ window.DrunkPipeline = (function () {
             path.setAttribute('opacity', '0.95');
             path.setAttribute('class', 'line-path-svg');
             path.setAttribute('data-line-id', line.id);
+            path.setAttribute('data-line-idx', String(lineIdx));
+            if (lineIdx === state.selectedLineIdx) path.classList.add('selected');
+
+            // 点击线条本体即选中该线路（便于直接在画布上挑线，而不必去图例里找）
+            path.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                selectLine(lineIdx);
+            });
 
             dom.svgLinesLayer.appendChild(path);
         });
+
+        renderVertices();
+    }
+
+    // ==========================================================================
+    // 线路编辑：选中线路、改名改色、拖动走向折点
+    // ==========================================================================
+
+    /**
+     * 渲染当前选中线路的走向折点手柄。
+     * 只为选中的那一条渲染——全网折点合计上千个，全画出来既卡又没法点。
+     */
+    function renderVertices() {
+        if (!dom.verticesLayer) return;
+        dom.verticesLayer.innerHTML = '';
+
+        const line = state.lines[state.selectedLineIdx];
+        if (!line) return;
+
+        const scaleX = state.mapSize.width / (line._srcCanvasW || state.mapSize.width);
+        const scaleY = state.mapSize.height / (line._srcCanvasH || state.mapSize.height);
+
+        pathGroups(line).forEach(group => {
+            group.points.forEach((pt, ptIdx) => {
+                const handle = document.createElement('div');
+                handle.className = 'path-vertex';
+                const sel = state.selectedVertex;
+                if (sel && sel.lineIdx === state.selectedLineIdx
+                    && sel.groupKey === group.key && sel.ptIdx === ptIdx) {
+                    handle.classList.add('selected');
+                }
+                handle.style.left = `${pt.x * scaleX}px`;
+                handle.style.top = `${pt.y * scaleY}px`;
+                handle.style.borderColor = line.color || '#006098';
+                handle.title = `${line.name} · ${group.key}[${ptIdx}]`;
+
+                handle.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    pushHistory();
+                    state.selectedVertex = { lineIdx: state.selectedLineIdx, groupKey: group.key, ptIdx };
+                    state.isDraggingVertex = true;
+                    renderVertices();
+                });
+
+                dom.verticesLayer.appendChild(handle);
+            });
+        });
+    }
+
+    /** 选中一条线路并把属性回填到检视面板 */
+    function selectLine(idx) {
+        const line = state.lines[idx];
+        if (!line) return;
+        state.selectedLineIdx = idx;
+        state.selectedVertex = null;
+
+        if (dom.lineCard) dom.lineCard.style.display = '';
+        if (dom.fieldLineName) dom.fieldLineName.value = line.name || '';
+        if (dom.fieldLineCompany) dom.fieldLineCompany.value = line.company || '';
+
+        const color = normalizeHex(line.color);
+        if (dom.fieldLineColor) dom.fieldLineColor.value = color;
+        if (dom.fieldLineColorHex) dom.fieldLineColorHex.value = line.color || '';
+
+        const pts = pathGroups(line).reduce((a, g) => a + g.points.length, 0);
+        if (dom.lineMeta) {
+            dom.lineMeta.textContent = `${line.id} · ${allStationIds(line).length} 站 · ${pts} 个走向折点`
+                + (line.hasbranch ? ' · 含分支' : '');
+        }
+
+        renderAll();
+        highlightLine(line.id);
+    }
+
+    function deselectLine() {
+        clearSelection();
+        renderAll();
+    }
+
+    /**
+     * 清空当前选中的线路 / 折点 / 车站，并收起线路检视卡片。
+     *
+     * 凡是**整体替换** state.lines / state.stations 的入口都必须调用它：
+     * 换一座城市、识图出新结果、装载 PDF 矢量数据。否则 selectedLineIdx 会带着
+     * 上一份数据的下标活到新数据里——线路卡片显示着上一座城市的线路名，
+     * 折点手柄却画在新城市里碰巧同下标的另一条线上。
+     */
+    function clearSelection() {
+        state.selectedLineIdx = -1;
+        state.selectedVertex = null;
+        state.selectedStationId = null;
+        if (dom.lineCard) dom.lineCard.style.display = 'none';
+        if (dom.inspectorStationName) dom.inspectorStationName.textContent = '未选中车站';
+        if (dom.inspectorStationEn) dom.inspectorStationEn.textContent = '点击任意车站圆点或文字进行微调';
+        if (dom.inspectorStationId) dom.inspectorStationId.textContent = 'ID: --';
+        if (dom.inspectorAlignDisplay) dom.inspectorAlignDisplay.textContent = '--';
+        [dom.fieldCn, dom.fieldEn, dom.fieldOffsetX, dom.fieldOffsetY,
+        dom.fieldLineName, dom.fieldLineCompany, dom.fieldLineColorHex].forEach(el => {
+            if (el) el.value = '';
+        });
+        if (dom.fieldType) dom.fieldType.value = 'dot';
+        highlightActiveAlignWheel(null);
+    }
+
+    /** `<input type="color">` 只认 #RRGGBB，rgb() 与 3 位简写都要先归一化 */
+    function normalizeHex(raw) {
+        if (window.DrunkSanitizer) return window.DrunkSanitizer.normalizeColor(raw, 0);
+        return /^#[0-9a-f]{6}$/i.test(raw || '') ? raw : '#006098';
+    }
+
+    function bindLineField(el, key, transform) {
+        if (!el) return;
+        el.addEventListener('change', () => {
+            const line = state.lines[state.selectedLineIdx];
+            if (!line) return;
+            const value = transform ? transform(el.value) : el.value;
+            if (key === 'name' && !String(value).trim()) {
+                el.value = line.name || '';
+                showNotification('线路名称不能为空。');
+                return;
+            }
+            if (String(line[key] == null ? '' : line[key]) === String(value)) return;
+            pushHistory();
+            line[key] = value;
+            selectLine(state.selectedLineIdx);
+            updateDirtyBadge();
+        });
+    }
+
+    /** 删除选中的走向折点；折线至少要保留两个点才能成线 */
+    function deleteSelectedVertex() {
+        const sel = state.selectedVertex;
+        if (!sel) return false;
+        const line = state.lines[sel.lineIdx];
+        if (!line) return false;
+        const points = line[sel.groupKey];
+        if (!Array.isArray(points)) return false;
+        if (points.length <= 2) {
+            showNotification('折线至少需要保留 2 个折点，无法继续删除。');
+            return true;
+        }
+        pushHistory();
+        points.splice(sel.ptIdx, 1);
+        state.selectedVertex = null;
+        renderAll();
+        updateDirtyBadge();
+        showNotification(`已删除 ${line.name} 的 1 个走向折点，可按 Ctrl/Cmd+Z 撤销。`);
+        return true;
+    }
+
+    /**
+     * 在离点击处最近的那段折线上插入一个新折点。
+     * 没有这个功能就只能挪现有折点，遇到需要加转角的走向改不动。
+     */
+    function insertVertexAt(lineIdx, mapX, mapY) {
+        const line = state.lines[lineIdx];
+        if (!line) return;
+
+        let best = null;
+        pathGroups(line).forEach(group => {
+            for (let i = 0; i < group.points.length - 1; i++) {
+                const a = group.points[i], b = group.points[i + 1];
+                const vx = b.x - a.x, vy = b.y - a.y;
+                const len2 = vx * vx + vy * vy;
+                const t = len2 ? Math.max(0, Math.min(1, ((mapX - a.x) * vx + (mapY - a.y) * vy) / len2)) : 0;
+                const px = a.x + vx * t, py = a.y + vy * t;
+                const dist = Math.hypot(mapX - px, mapY - py);
+                if (!best || dist < best.dist) {
+                    best = { dist, groupKey: group.key, at: i + 1, x: px, y: py };
+                }
+            }
+        });
+        if (!best) return;
+
+        pushHistory();
+        line[best.groupKey].splice(best.at, 0, { x: round2(best.x), y: round2(best.y) });
+        state.selectedVertex = { lineIdx, groupKey: best.groupKey, ptIdx: best.at };
+        renderAll();
+        updateDirtyBadge();
+        showNotification(`已在 ${line.name} 上插入 1 个走向折点，拖动它即可调整走向。`);
     }
 
     /**
@@ -1455,8 +1817,12 @@ window.DrunkPipeline = (function () {
             item.appendChild(nameSpan);
             item.appendChild(countSpan);
 
+            if (state.lines.indexOf(line) === state.selectedLineIdx) item.classList.add('active');
+
             item.addEventListener('click', () => {
-                highlightLine(line.id);
+                const idx = state.lines.indexOf(line);
+                if (idx === state.selectedLineIdx) deselectLine();
+                else selectLine(idx);
             });
 
             dom.legendListContainer.appendChild(item);
@@ -1685,6 +2051,20 @@ window.DrunkPipeline = (function () {
                             (gone.length ? `（移除 ${gone.join('、')}）` : ''));
                     }
                 });
+
+                // 走向折点：逐组比对增删与位移，否则拖了半天线形在摘要里一个字都看不到
+                pathGroups(a).forEach(ag => {
+                    const bg = pathGroups(b).find(g => g.key === ag.key);
+                    if (!bg) { parts.push(`新增走向 ${ag.key} (${ag.points.length} 折点)`); return; }
+                    if (bg.points.length !== ag.points.length) {
+                        parts.push(`${ag.key} 折点 ${bg.points.length} → ${ag.points.length}`);
+                        return;
+                    }
+                    const moved = ag.points.filter((p, i) =>
+                        p.x !== bg.points[i].x || p.y !== bg.points[i].y).length;
+                    if (moved) parts.push(`${ag.key} 挪动 ${moved} 个折点`);
+                });
+
                 rows.push(`  ~ [${idx}] ${a.name}：${parts.length ? parts.join('，') : '其它字段变更'}`);
             });
         }
@@ -1775,6 +2155,9 @@ window.DrunkPipeline = (function () {
         snapGrid,
         exportCityFiles,
         showNotification,
+        // 视口
+        zoomBy,
+        resetView: fitToViewport,
         // 编辑模式
         loadExistingCity,
         downloadExportFiles,

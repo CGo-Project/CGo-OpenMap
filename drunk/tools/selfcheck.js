@@ -179,7 +179,15 @@ for (const city of cities) {
 
     let ok = true, report = null;
     try {
-        lines.forEach(l => { IO.lineStationGroups(l); IO.linePathGroups(l); IO.lineAllStationIds(l); });
+        lines.forEach(l => {
+            IO.lineStationGroups(l);
+            IO.lineAllStationIds(l);
+            // linePathGroups 返回 { key, points }，key 必须真的能在 line 上取到该数组
+            IO.linePathGroups(l).forEach(g => {
+                if (!Array.isArray(l[g.key])) throw new Error(`${l.id} 的折线分组 key "${g.key}" 取不到数组`);
+                if (l[g.key] !== g.points) throw new Error(`${l.id} 的折线分组 "${g.key}" 返回的不是原数组引用`);
+            });
+        });
         report = CodeGen.validateData(stations, lines);
     } catch (err) { ok = false; report = { errors: [err.message] }; }
 

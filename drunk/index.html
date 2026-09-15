@@ -1079,6 +1079,64 @@
             opacity: 0.28;
             text-decoration: line-through;
         }
+
+        /* ==================================================================
+           线路编辑：走向折点手柄与选中态
+           ================================================================== */
+
+        #drunk-vertices-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            /* 压在站点之上，方便在换乘站附近也能抓到折点 */
+            z-index: 25;
+        }
+
+        .path-vertex {
+            position: absolute;
+            width: 9px;
+            height: 9px;
+            margin: -4.5px 0 0 -4.5px;
+            background: #16171a;
+            border: 2px solid #58a6ff;
+            border-radius: 2px;
+            cursor: grab;
+            pointer-events: auto;
+            transition: transform 0.12s ease;
+        }
+
+        .path-vertex:hover {
+            transform: scale(1.5);
+        }
+
+        .path-vertex.selected {
+            background: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.28);
+            transform: scale(1.4);
+        }
+
+        /* 线条本体可点选；stroke 命中区仅覆盖笔画，不会挡住下方空白处的拖拽平移 */
+        .line-path-svg {
+            pointer-events: stroke;
+            cursor: pointer;
+        }
+
+        .line-path-svg.selected {
+            filter: drop-shadow(0 0 6px currentColor);
+        }
+
+        .legend-item-card.active {
+            background: #1c2e42 !important;
+            border-color: #2a4060 !important;
+        }
+
+        /* 取色器在深色面板里默认长得很突兀，去掉内边距与默认边框 */
+        .edit-field input[type="color"] {
+            padding: 2px;
+            cursor: pointer;
+            background: #18191b;
+        }
     </style>
 </head>
 
@@ -1227,6 +1285,9 @@
 
                     <!-- 4. 站名文本层 -->
                     <div id="drunk-labels-layer"></div>
+
+                    <!-- 5. 走向折点手柄层 (仅渲染当前选中线路) -->
+                    <div id="drunk-vertices-layer"></div>
                 </div>
 
                 <!-- 视口浮动快捷控件 (HUD) -->
@@ -1241,7 +1302,7 @@
                         <cgo-icon name="zoom-reset" size="14"></cgo-icon>
                     </button>
                     <span style="margin: 0 4px; opacity: 0.5;">|</span>
-                    <span style="font-size: 11px;">滚轮缩放 · 拖拽漫游</span>
+                    <span style="font-size: 11px;">滚轮缩放 · 触控板两指平移 · 捏合缩放</span>
                 </div>
             </div>
 
@@ -1315,10 +1376,45 @@
                     </div>
                 </div>
 
-                <!-- 2. 线路与图例管理卡片 -->
+                <!-- 2. 选中线路编辑卡片 (点击图例项或画布上的线条后出现) -->
+                <div class="panel-card" id="line-inspector-card" style="display: none;">
+                    <div class="panel-card-title">
+                        <span>线路属性检视</span>
+                        <span class="badge badge-info" id="line-inspector-meta">--</span>
+                    </div>
+                    <div class="edit-field-grid" style="margin-top: 0; padding-top: 0; border-top: none;">
+                        <label class="edit-field">
+                            <span>线路名称</span>
+                            <input type="text" id="field-line-name" autocomplete="off" spellcheck="false">
+                        </label>
+                        <div class="edit-field-row">
+                            <label class="edit-field" style="flex: 0 0 44px;">
+                                <span>取色</span>
+                                <input type="color" id="field-line-color">
+                            </label>
+                            <label class="edit-field">
+                                <span>线路标志色</span>
+                                <input type="text" id="field-line-color-hex" autocomplete="off" spellcheck="false"
+                                    placeholder="#006098 或 rgb(0, 96, 152)">
+                            </label>
+                        </div>
+                        <label class="edit-field">
+                            <span>运营公司</span>
+                            <input type="text" id="field-line-company" autocomplete="off" spellcheck="false">
+                        </label>
+                    </div>
+                    <ul class="tips-list" style="margin-top: 10px;">
+                        <li>拖动线条上的方形手柄可调整走向折点</li>
+                        <li><b>双击线条</b>在该处插入一个新折点</li>
+                        <li>选中折点后方向键微调、<b>Delete</b> 删除</li>
+                        <li><b>Esc</b> 取消选中线路</li>
+                    </ul>
+                </div>
+
+                <!-- 3. 线路与图例管理卡片 -->
                 <div class="panel-card" style="flex: 1; display: flex; flex-direction: column;">
                     <div class="panel-card-title">
-                        <span>识别到的线路</span>
+                        <span>线路（点击可编辑）</span>
                         <span id="line-count-badge" class="badge badge-info">0 线路</span>
                     </div>
                     <div id="legend-list-container" style="flex: 1; overflow-y: auto;"></div>
@@ -1335,6 +1431,7 @@
                         <li>方向键微调站点位置，<b>Shift</b> 加速 10 倍</li>
                         <li><b>Alt</b> + 方向键只挪站名、不动站点</li>
                         <li><b>Delete</b> 删除选中站，<b>Ctrl/Cmd + Z</b> 撤销</li>
+                        <li>点图例项或画布上的线条可编辑线路与走向</li>
                         <li><b>Ctrl/Cmd + S</b> 导出改动文件</li>
                     </ul>
                 </div>
@@ -1508,25 +1605,16 @@
     <!-- ====================================================================== -->
     <script>
         // 浮动 HUD 缩放辅助函数 (非侵入式触发原有视口滚轮机制)
+        // HUD 的缩放按钮直接走管道 API。
+        // 早先是伪造一个 WheelEvent 派发给视口，既要受「滚轮与触控板」偏好摆布
+        // （用户选了 pan 模式时按 + 会变成平移），重置又是直接写 transform、
+        // 不同步 state.pan/state.scale，导致下一次滚轮或拖拽视角会突然跳一下。
         function zoomCanvasByFactor(factor) {
-            const vp = document.getElementById('drunk-viewport');
-            if (!vp) return;
-            const rect = vp.getBoundingClientRect();
-            const event = new WheelEvent('wheel', {
-                deltaY: factor > 1 ? -120 : 120,
-                clientX: rect.left + rect.width / 2,
-                clientY: rect.top + rect.height / 2,
-                bubbles: true,
-                cancelable: true
-            });
-            vp.dispatchEvent(event);
+            if (window.DrunkPipeline) window.DrunkPipeline.zoomBy(factor);
         }
 
         function resetCanvasTransform() {
-            const vp = document.getElementById('drunk-viewport');
-            const canvas = document.getElementById('drunk-map-canvas');
-            if (!vp || !canvas) return;
-            canvas.style.transform = 'translate(30px, 30px) scale(0.65)';
+            if (window.DrunkPipeline) window.DrunkPipeline.resetView();
         }
     </script>
 
@@ -1539,17 +1627,17 @@
     </script>
     <!-- 城市注册总线：编辑模式据此枚举 city/ 下已注册的城市（与 main.html 同源，零硬编码） -->
     <script src="../city/data.js?v=260915_v2"></script>
-    <script src="./js/drunk_logger.js?v=260915_v3"></script>
-    <script src="./js/drunk_sanitizer.js?v=260915_v3"></script>
-    <script src="./js/city_project_io.js?v=260915_v3"></script>
-    <script src="./js/city_knowledge_matcher.js?v=260915_v3"></script>
-    <script src="./js/pdf_vector_extractor.js?v=260915_v3"></script>
-    <script src="./js/deepseek_vision.js?v=260915_v3"></script>
-    <script src="./js/vision_detector.js?v=260915_v3"></script>
-    <script src="./js/ocr_align_solver.js?v=260915_v3"></script>
-    <script src="./js/topology_tracer.js?v=260915_v3"></script>
-    <script src="./js/openmap_codegen.js?v=260915_v3"></script>
-    <script src="./js/drunk_pipeline.js?v=260915_v3"></script>
+    <script src="./js/drunk_logger.js?v=260915_v7"></script>
+    <script src="./js/drunk_sanitizer.js?v=260915_v7"></script>
+    <script src="./js/city_project_io.js?v=260915_v7"></script>
+    <script src="./js/city_knowledge_matcher.js?v=260915_v7"></script>
+    <script src="./js/pdf_vector_extractor.js?v=260915_v7"></script>
+    <script src="./js/deepseek_vision.js?v=260915_v7"></script>
+    <script src="./js/vision_detector.js?v=260915_v7"></script>
+    <script src="./js/ocr_align_solver.js?v=260915_v7"></script>
+    <script src="./js/topology_tracer.js?v=260915_v7"></script>
+    <script src="./js/openmap_codegen.js?v=260915_v7"></script>
+    <script src="./js/drunk_pipeline.js?v=260915_v7"></script>
 </body>
 
 </html>
