@@ -332,6 +332,70 @@ section('isPointOnly 线路不得绘制走向');
 }
 
 // ============================================================================
+// 四点九、车站图元：模板与尺寸必须与引擎同源
+// ============================================================================
+section('车站图元 (core/station-icons.js)');
+{
+    const Icons = require(path.join(ROOT, 'core/station-icons.js'));
+    const engineSrc = fs.readFileSync(path.join(ROOT, 'core/script.js'), 'utf8');
+    const drunkSrc = fs.readFileSync(path.join(ROOT, 'drunk/js/drunk_pipeline.js'), 'utf8');
+    const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
+
+    check(engineSrc.includes('window.CGoStationIcons'), '引擎图元模板走共享模块');
+    check(!/const SVGTemplates = \{/.test(engineSrc), '引擎未残留第二份图元模板');
+    check(drunkSrc.includes('Icons.iconHtmlFor'), 'Drunk 画布走同一份图元模板');
+
+    // STATION_SIZE 必须与 css/style.css 的 .dot/.tsf 等尺寸一致——
+    // 引擎靠 CSS 定尺寸、Drunk 靠这张表定尺寸，不同步就会一大一小。
+    function cssSizeOf(sel) {
+        // 选择器后必须紧跟 { , 或空白——否则 `.tsf` 会先匹配到 `.tsfo`
+        const re = new RegExp('(^|\\n)\\.' + sel + '(?=[\\s,{])[^{]*\\{[^}]*?width:\\s*([\\d.]+)px', 'm');
+        const m = re.exec(css);
+        return m ? parseFloat(m[2]) : null;
+    }
+    // .dot/.rdot/.tsfo 共用一条规则，取其中任一均可
+    const cssTsf = cssSizeOf('tsf');
+    const cssNo = cssSizeOf('no');
+    const cssDot = /\.dot,\s*\n\.rdot,\s*\n\.tsfo\s*\{[^}]*?width:\s*([\d.]+)px/m.exec(css);
+
+    check(cssTsf === Icons.STATION_SIZE.tsf, `tsf 尺寸与 css/style.css 一致 (${Icons.STATION_SIZE.tsf}px)`);
+    check(cssNo === Icons.STATION_SIZE.no, `no 尺寸与 css/style.css 一致 (${Icons.STATION_SIZE.no}px)`);
+    check(cssDot && parseFloat(cssDot[1]) === Icons.STATION_SIZE.dot,
+        `dot/rdot/tsfo 尺寸与 css/style.css 一致 (${Icons.STATION_SIZE.dot}px)`);
+
+    // 普通站取第一条经停线路的标志色
+    const html = Icons.iconHtmlFor({ type: 'dot', lineColors: ['#E4002B'] });
+    check(html.includes('#E4002B') && !html.includes('{{COLOR}}'), 'dot 图元按线路标志色上色');
+    check(Icons.iconHtmlFor({ type: 'tsf' }).includes('17.5'), 'tsf 图元为 17.5 viewBox 的双圈');
+    check(Icons.iconHtmlFor({ type: '不存在的类型' }).includes('svg'), '未知类型回落到 dot 而非报错');
+
+    // computeLineColors 写入自定义字段，供编辑器存成运行期私有字段
+    const st = { a: { type: 'dot' }, b: { type: 'tsf' } };
+    Icons.computeLineColors(st, [{ color: '#111111', stationIds: ['a', 'b'] },
+    { color: '#222222', stationIds: ['b'] }], l => l.stationIds, '_lineColors');
+    check(JSON.stringify(st.a._lineColors) === '["#111111"]'
+        && JSON.stringify(st.b._lineColors) === '["#111111","#222222"]'
+        && st.a.lineColors === undefined,
+        'computeLineColors 可写入 _lineColors 运行期私有字段');
+
+    // 真实数据：统计各城市图元类型分布，确保全部能产出图元
+    for (const city of cities) {
+        const stations = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
+        const lines = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_lines.js'), 'utf8'), 'linesData');
+        Icons.computeLineColors(stations, lines, l => IO.lineAllStationIds(l), '_lineColors');
+        let bad = 0;
+        const kinds = {};
+        Object.values(stations).forEach(s => {
+            kinds[s.type] = (kinds[s.type] || 0) + 1;
+            const h = Icons.iconHtmlFor({ type: s.type, lineColors: s._lineColors });
+            if (!h.startsWith('<svg') || h.includes('{{COLOR}}')) bad++;
+        });
+        check(bad === 0, `${city}: ${Object.keys(stations).length} 座车站图元全部生成 (`
+            + Object.entries(kinds).map(([k, v]) => `${k}×${v}`).join(' ') + ')');
+    }
+}
+
+// ============================================================================
 // 五、识别结果净化器
 // ============================================================================
 section('识别结果净化器');

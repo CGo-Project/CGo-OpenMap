@@ -47,6 +47,11 @@ Drunk 不只用来做新城市——它同时是 **OpenMap 任意已注册城市
 
 **导出是条目级无损回写**：只有你实际改动过的那几条会被重写，其余条目连同注释、缩进、字段顺序、手写换行**逐字节保持原样**。悉尼车站的 `marker.parts`/`halo`/`labelSize`、北京的 `textScale`/`hideLabel`、线路的 `overlayStyle` 与几百个 `pathPoints` 折点都不会在往返中被抹掉或重新排版——改一座车站的朝向，`git diff` 里就只有 1 行。把下载到的文件覆盖回 `city/{city_id}/` 即可。
 
+> Drunk 画布上的车站图元与线路走向，与线路图的实际渲染**共用同一份实现**
+> （`core/station-icons.js` 与 `core/path-geometry.js`）：图元尺寸、配色、圆角
+> 全部所见即所得。上海的短横/换乘胶囊、悉尼的 Interchange 底衬这类城市自定义
+> 画法也会一并生效，方便照着原图调。
+
 > [!IMPORTANT]
 > 两点必须注意：
 > 1. **必须经由静态服务器访问 Drunk**（`http://localhost:.../drunk/`）。`file://` 协议下浏览器禁止 `fetch`，城市数据读不进来。

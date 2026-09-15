@@ -35,6 +35,7 @@ window.DrunkPipeline = (function () {
         // mode = "edit"   ：把 city/{id}/ 下**已有城市**读进来微调（OpenMap 的编辑模式）
         mode: 'convert',
         project: null,          // CityProjectIO 读回的城市工程（含 data_*.js 源码原文）
+        cityIconRenderer: null, // 城市自定义车站图元画法 city.renderStationIcon（如上海短横/胶囊）
         originals: null,        // 进入编辑模式时的深拷贝快照，用于脏标记比对
         history: [],            // 撤销栈（快照式，上限 HISTORY_LIMIT）
 
@@ -571,6 +572,14 @@ window.DrunkPipeline = (function () {
         state.history = [];
         clearSelection();
 
+        // 统计每座车站经停线路的标志色——普通站的环色取第一条线的颜色，
+        // 不算这一步画布上所有站点都会是白的，与线路图完全不像
+        refreshLineColors();
+
+        // 尝试接入该城市自定义的车站图元画法（上海短横与换乘胶囊、悉尼 Interchange 底衬）
+        state.cityIconRenderer = null;
+        await loadCityIconRenderer(project);
+
         dom.mapCanvasContainer.style.width = `${state.mapSize.width}px`;
         dom.mapCanvasContainer.style.height = `${state.mapSize.height}px`;
         fitToViewport();
@@ -588,6 +597,75 @@ window.DrunkPipeline = (function () {
         }
 
         showNotification(`已进入「${project.name}」编辑模式：${Object.keys(state.stations).length} 座车站可直接拖拽与改字。`);
+    }
+
+    /** 重算每座车站的 lineColors（线路增删改色后都要跑一次） */
+    function refreshLineColors() {
+        if (!window.CGoStationIcons) return;
+        // 存成下划线私有字段：不写回文件，也不参与「改动过没有」的判定
+        window.CGoStationIcons.computeLineColors(state.stations, state.lines, allStationIds, '_lineColors');
+    }
+
+    /**
+     * 载入城市自定义的车站图元画法 `city.renderStationIcon`。
+     *
+     * ⚠️ 不能无脑注入城市主脚本：北京 / 合肥 / 青岛的 {city}.js 用 `document.write`
+     * 同步加载专属模块，在 DOMContentLoaded 之后再注入会**直接冲掉整个文档**。
+     * 因此先把源码取回来检查，含 document.write 的一律跳过——这几座城市本来
+     * 也没实现 renderStationIcon，跳过不损失任何东西。
+     */
+    async function loadCityIconRenderer(project) {
+        const logger = window.DrunkLogger;
+        const url = `${project.base}/${project.id}.js`;
+        let src;
+        try {
+            const res = await fetch(`${url}?_drunk=${Date.now()}`, { cache: 'no-store' });
+            if (!res.ok) return;
+            src = await res.text();
+        } catch (err) { return; }
+
+        if (/document\s*\.\s*write/.test(src)) {
+            if (logger) logger.info(`${project.id}.js 使用 document.write 同步加载专属模块，已跳过自定义图元接入（该城市未实现 renderStationIcon）。`);
+            return;
+        }
+        if (!/renderStationIcon/.test(src)) return;
+
+        // 城市样式表里带着图元尺寸（如上海 .sh-marker），路径是站点根相对，
+        // 从 /drunk/ 下会 404，这里按 Drunk 的相对位置补挂一次
+        ensureCityStylesheet(project);
+
+        try {
+            // eslint-disable-next-line no-new-func
+            new Function(src)();
+        } catch (err) {
+            if (logger) logger.warn(`${project.id}.js 执行失败，已跳过自定义图元：${err.message}`);
+            return;
+        }
+
+        const city = window.CityDataManager && window.CityDataManager.getAllCities
+            ? window.CityDataManager.getAllCities().find(c => c.id === project.id)
+            : null;
+        const fn = city && typeof city.renderStationIcon === 'function'
+            ? city.renderStationIcon.bind(city)
+            : null;
+
+        if (fn) {
+            state.cityIconRenderer = fn;
+            if (logger) logger.success(`已接入 ${project.name} 的自定义车站图元画法 renderStationIcon。`);
+        }
+    }
+
+    /** 给城市专属样式表补一个从 /drunk/ 出发的正确相对路径 */
+    function ensureCityStylesheet(project) {
+        const href = `${project.base}/style.css`;
+        if (document.querySelector(`link[data-drunk-city-style="${project.id}"]`)) return;
+        document.querySelectorAll('link[data-drunk-city-style]').forEach(el => el.remove());
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `${href}?_drunk=${Date.now()}`;
+        link.setAttribute('data-drunk-city-style', project.id);
+        link.onerror = () => link.remove();   // 城市没有专属样式表是正常的
+        document.head.appendChild(link);
     }
 
     /** 顶栏与侧栏按当前模式切换文案 */
@@ -608,13 +686,25 @@ window.DrunkPipeline = (function () {
 
     // ---- 脏标记：只有真正变了的条目才会被写回 --------------------------------
 
+    /**
+     * 比对用的稳定序列化：丢掉以 `_` 开头的运行期私有字段。
+     *
+     * `_lineColors`（由线路颜色推导）、`_srcCanvasW/H`（PDF 直通的原画布尺寸）
+     * 这类字段是算出来的、不写回文件的，若算进脏判定，一载入城市就会显示
+     * 「477 处改动」，导出摘要也会把每座车站都列成改过。
+     * 导出侧的 formatEntryValue / diffContainerEdits 早已同样过滤 `_` 前缀。
+     */
+    function stableJson(value) {
+        return JSON.stringify(value, (k, v) => (k.startsWith('_') ? undefined : v));
+    }
+
     function diffStations() {
         if (!state.originals) return [];
         const out = [];
         Object.keys(state.stations).forEach(id => {
             const before = state.originals.stations[id];
             if (!before) { out.push(id); return; }
-            if (JSON.stringify(state.stations[id]) !== JSON.stringify(before)) out.push(id);
+            if (stableJson(state.stations[id]) !== stableJson(before)) out.push(id);
         });
         return out;
     }
@@ -625,7 +715,7 @@ window.DrunkPipeline = (function () {
         state.lines.forEach((line, idx) => {
             const before = state.originals.lines[idx];
             if (!before) { out.push(idx); return; }
-            if (JSON.stringify(line) !== JSON.stringify(before)) out.push(idx);
+            if (stableJson(line) !== stableJson(before)) out.push(idx);
         });
         return out;
     }
@@ -1757,6 +1847,7 @@ window.DrunkPipeline = (function () {
             if (String(line[key] == null ? '' : line[key]) === String(value)) return;
             pushHistory();
             line[key] = value;
+            if (key === 'color') refreshLineColors();   // 站点环色跟着线路标志色走
             selectLine(state.selectedLineIdx);
             updateDirtyBadge();
         });
@@ -1822,6 +1913,8 @@ window.DrunkPipeline = (function () {
     function renderStations() {
         dom.stationsLayer.innerHTML = '';
 
+        const Icons = window.CGoStationIcons;
+
         Object.keys(state.stations).forEach(id => {
             const s = state.stations[id];
             const dot = document.createElement('div');
@@ -1832,6 +1925,29 @@ window.DrunkPipeline = (function () {
             dot.title = `${s.cn || id}（${id}）`;
             dot.style.left = `${s.x}px`;
             dot.style.top = `${s.y}px`;
+
+            // 图元画法与尺寸走 core/station-icons.js（与引擎同源）。
+            // 早先是用 CSS 画的固定 14/18px 圆点，比引擎实际的 10/17.5px 大了一大圈，
+            // 北京换乘站密集处糊成一片；上海的短横与换乘胶囊更是完全看不出来。
+            if (Icons) {
+                // 城市自定义画法与通用模板都按引擎的约定读 station.lineColors
+                const sv = Object.assign({}, s, { lineColors: s._lineColors || [] });
+                const custom = state.cityIconRenderer ? state.cityIconRenderer(sv, id) : null;
+                if (custom && custom.html) {
+                    dot.innerHTML = custom.html;
+                    if (custom.className) dot.className += ' ' + custom.className;
+                    dot.style.width = `${custom.width || Icons.sizeFor(s.type)}px`;
+                    dot.style.height = `${custom.height || Icons.sizeFor(s.type)}px`;
+                    dot.classList.add('has-svg-icon');
+                } else {
+                    const size = Icons.sizeFor(s.type);
+                    dot.innerHTML = Icons.iconHtmlFor(sv);
+                    dot.style.width = `${size}px`;
+                    dot.style.height = `${size}px`;
+                    dot.classList.add('has-svg-icon');
+                }
+                dot.style.zIndex = (Icons.STATION_Z[s.type] || 15) + 10;
+            }
 
             // 点击选中与拖拽监听
             dot.addEventListener('mousedown', (e) => {

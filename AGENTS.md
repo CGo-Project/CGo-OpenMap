@@ -85,6 +85,7 @@ openmap/
 │   ├── station-board.js        # 车站信息板调度引擎与内置标准模块注册表
 │   ├── cgo-ui.js               # Web Components 组件库 (<cgo-icon> 等)
 │   ├── path-geometry.js        # 折线倒角几何 (引擎与 Drunk 编辑模式共用的唯一真源)
+│   ├── station-icons.js        # 车站图元模板与尺寸 (引擎与 Drunk 共用的唯一真源)
 │   ├── settings.js             # 偏好设置面板逻辑 (主题、全屏、清除缓存)
 │   ├── help.js                 # 帮助与关于弹窗逻辑
 │   ├── notice.js               # 动态公告与消息提示
@@ -327,6 +328,29 @@ Drunk（`drunk/index.html`）有两种工作模式：
 > （站名 `offset` 吃过同样的亏，见 `updateSingleLabelStyle` 的注释。）
 
 `selfcheck.js` 里有结构性断言守着这一点。
+
+### 5.1.2.7 🚨 车站图元：模板、尺寸与配色同样必须同源
+
+`core/station-icons.js` 是车站图元的唯一真源：`SVGTemplates`（dot/tsf/tsfo/no/rdot）、
+`STATION_SIZE`（dot 10px、tsf 17.5px…，**必须与 `css/style.css` 保持一致**，
+`selfcheck.js` 会直接解析该 CSS 比对）、以及 `computeLineColors`
+（普通站的环色取第一条经停线路的标志色）。
+
+城市可用 `city.renderStationIcon(station, id)` 完全接管画法——上海的短横与
+换乘胶囊、悉尼的 Interchange 底衬即走这条路。Drunk 会在载入城市时尝试接入它。
+
+> ⚠️ **Drunk 不能无脑注入城市主脚本**：北京 / 合肥 / 青岛的 `{city}.js` 用
+> `document.write` 同步加载专属模块，在 DOMContentLoaded 之后再注入会**直接冲掉
+> 整个文档**。因此先取回源码检查，含 `document.write` 的一律跳过（这几座城市本来
+> 也没实现 `renderStationIcon`）。
+
+### 5.1.2.8 运行期派生字段一律用 `_` 前缀
+
+`_lineColors`（由线路颜色推导）、`_srcCanvasW/H`（PDF 直通的原画布尺寸）这类
+**算出来的、不属于城市数据本身**的字段，必须以 `_` 开头：
+`city_project_io.js` 的序列化与 `drunk_pipeline.js` 的脏判定都按这个前缀过滤。
+否则一载入城市就会显示「477 处改动」，导出摘要把每座车站都列成改过，
+甚至可能把派生字段写回数据文件。
 
 ### 5.1.3 改动纯函数层后必须跑自检
 

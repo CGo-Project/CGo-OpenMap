@@ -189,13 +189,9 @@ Object.defineProperty(window, 'LINE_SYNC_GROUPS', {
  * 车站 SVG 图标模板字典
  * 包括：换乘站(tsf)、虚拟换乘站(tsfo)、普通站(dot)、暂缓开通站(no)、国铁火车站(rdot)
  */
-const SVGTemplates = {
-    tsf: `<svg viewBox="0 0 17.5 17.5"><circle cx="8.75" cy="8.75" r="8.75" style="fill: var(--map-bg);"/><circle cx="8.75" cy="8.75" r="8" style="fill: var(--station-stroke);"/><circle cx="8.75" cy="8.75" r="7.1" style="fill: var(--map-bg);"/><path d="M6.21,8.01c.12-2.35,2.26-4.22,4.88-4.22.23,0,.46.01.68.04-.55-.18-1.15-.27-1.77-.27-2.8,0-5.09,1.96-5.3,4.45h-1.4l2.34,2.47c.78-.82,1.56-1.65,2.34-2.47h-1.78.01Z" style="fill: var(--station-stroke);"/><path d="M11.85,7.02c-.78.82-1.56,1.65-2.34,2.47h1.78c-.12,2.35-2.26,4.22-4.88,4.22-.23,0-.46-.01-.68-.04.55.18,1.15.27,1.77.27,2.8,0,5.09-1.96,5.3-4.45h1.4l-2.34-2.47h0Z" style="fill: var(--station-stroke);"/></svg>`,
-    tsfo: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><circle cx="5" cy="5" r="4.21" style="fill:{{COLOR}};"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`,
-    dot: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><circle cx="5" cy="5" r="4.21" style="fill:{{COLOR}};"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`,
-    no: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><path d="M7.5,5c0-.1-.02-.19-.03-.29l1.7-.13c-.05-.46-.15-.9-.33-1.3l-1.54.73c-.08-.18-.18-.34-.3-.5l1.41-.96c-.26-.37-.59-.69-.95-.95l-.97,1.41c-.15-.12-.32-.22-.5-.3l.74-1.54c-.4-.18-.84-.29-1.3-.34l-.14,1.7c-.1-.01-.19-.03-.29-.03s-.19.02-.29.03l-.13-1.7c-.46.05-.9.15-1.3.33l.73,1.54c-.18.08-.34.18-.5.3l-.96-1.41c-.37.26-.69.59-.95.95l1.41.97c-.12.15-.22.32-.3.5l-1.54-.74c-.18.4-.29.84-.34,1.3l1.7.14c-.01.1-.03.19-.03.29s.02.19.03.29l-1.7.13c.05.46.15.9.33,1.3l1.54-.73c.08.18.18.34.3.5l-1.41.96c.26.37.59.69.95.95l.97-1.41c.15.12.32.22.5.3l-.74,1.54c.4.18.84.29,1.3.34l.14-1.7c.1.01.19.03.29.03s.19-.02.29-.03l.13,1.7c.46-.05.9-.15,1.3-.33l-.73-1.54c.18-.08.34-.18.5-.3l.96,1.41c.37-.26.69-.58.95-.95l-1.41-.97c.12-.15.22-.32.3-.5l1.54.74c.18-.4.29-.84.34-1.3l-1.7-.14c.01-.1.03-.19.03-.29Z" style="fill: var(--not-open-color);"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`,
-    rdot: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><circle cx="5" cy="5" r="4.21" style="fill:#78848b;"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`
-};
+// 车站图元模板的唯一真源在 core/station-icons.js，Drunk 编辑模式共用同一份，
+// 以保证编辑器画布上的图元尺寸与配色就是线路图上的真实效果。
+const { SVGTemplates } = window.CGoStationIcons;
 
 // 折线倒角算法与半径常量的唯一真源在 core/path-geometry.js，
 // Drunk 编辑模式共用同一份实现以保证「所见即所得」。此处仅取引用。

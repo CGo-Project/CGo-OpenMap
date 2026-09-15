@@ -1138,6 +1138,48 @@
             background: #18191b;
         }
 
+        /* ==================================================================
+           车站图元：改用 core/station-icons.js 的真实 SVG 模板后，
+           原先那套 CSS 画圆点的规则必须让位，否则白底与粗边框会盖住 SVG。
+           ================================================================== */
+        .station-dot.has-svg-icon {
+            background: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            /* 旧的 CSS 圆点规则给 .type-tsf 加了 `box-shadow: 0 0 0 2px #fff` 作白色外环，
+               改画真实 SVG 后 border-radius 归零，这圈外环就变成一个白色方块把图元框住了。
+               必须一并清掉——图元的外环本来就画在 SVG 里。 */
+            box-shadow: none !important;
+            /* 尺寸由 JS 按 STATION_SIZE 写入，与引擎 css/style.css 一致 */
+            width: auto;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .station-dot.has-svg-icon svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+            pointer-events: none;
+        }
+
+        /* 选中态改用外发光，不再靠加粗边框——那会把图元本身撑变形 */
+        .station-dot.has-svg-icon.selected {
+            transform: translate(-50%, -50%) scale(1.45);
+            filter: drop-shadow(0 0 4px var(--primary-color, #006098))
+                    drop-shadow(0 0 9px var(--primary-color, #006098));
+            box-shadow: none !important;
+            z-index: 60 !important;
+        }
+
+        .station-dot.has-svg-icon:hover {
+            transform: translate(-50%, -50%) scale(1.3);
+            box-shadow: none;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.55));
+        }
+
         /* 拐角折点画成圆形以示「此处可倒角」，端点保持方形 */
         .path-vertex.is-corner {
             border-radius: 50%;
@@ -1755,19 +1797,21 @@
     </script>
     <!-- 城市注册总线：编辑模式据此枚举 city/ 下已注册的城市（与 main.html 同源，零硬编码） -->
     <!-- 折线倒角几何：与 core/script.js 共用同一份实现，保证编辑器预览 = 实际渲染 -->
-    <script src="../core/path-geometry.js?v=260915_v12"></script>
-    <script src="../city/data.js?v=260915_v12"></script>
-    <script src="./js/drunk_logger.js?v=260915_v12"></script>
-    <script src="./js/drunk_sanitizer.js?v=260915_v12"></script>
-    <script src="./js/city_project_io.js?v=260915_v12"></script>
-    <script src="./js/city_knowledge_matcher.js?v=260915_v12"></script>
-    <script src="./js/pdf_vector_extractor.js?v=260915_v12"></script>
-    <script src="./js/deepseek_vision.js?v=260915_v12"></script>
-    <script src="./js/vision_detector.js?v=260915_v12"></script>
-    <script src="./js/ocr_align_solver.js?v=260915_v12"></script>
-    <script src="./js/topology_tracer.js?v=260915_v12"></script>
-    <script src="./js/openmap_codegen.js?v=260915_v12"></script>
-    <script src="./js/drunk_pipeline.js?v=260915_v12"></script>
+    <script src="../core/path-geometry.js?v=260915_v15"></script>
+    <!-- 车站图元模板与尺寸：同样与引擎共用，保证图元大小与配色所见即所得 -->
+    <script src="../core/station-icons.js?v=260915_v15"></script>
+    <script src="../city/data.js?v=260915_v15"></script>
+    <script src="./js/drunk_logger.js?v=260915_v15"></script>
+    <script src="./js/drunk_sanitizer.js?v=260915_v15"></script>
+    <script src="./js/city_project_io.js?v=260915_v15"></script>
+    <script src="./js/city_knowledge_matcher.js?v=260915_v15"></script>
+    <script src="./js/pdf_vector_extractor.js?v=260915_v15"></script>
+    <script src="./js/deepseek_vision.js?v=260915_v15"></script>
+    <script src="./js/vision_detector.js?v=260915_v15"></script>
+    <script src="./js/ocr_align_solver.js?v=260915_v15"></script>
+    <script src="./js/topology_tracer.js?v=260915_v15"></script>
+    <script src="./js/openmap_codegen.js?v=260915_v15"></script>
+    <script src="./js/drunk_pipeline.js?v=260915_v15"></script>
 </body>
 
 </html>
