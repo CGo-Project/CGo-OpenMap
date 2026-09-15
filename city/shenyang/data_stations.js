@@ -6,11 +6,13 @@
  *
  * 车站字段约定：
  * - type: "dot" 普通站，"tsf" 换乘站，"no" 暂缓开通站，"rdot" 国铁车站
- * - x / y: 2000x2400 画布坐标
+ * - x / y: 1944x1680 画布坐标
  * - cn / en: 中文站名与英文站名
+ * - aliases: 可选的搜索别名数组（包括车站历史名称与重点目的地）
  * - align: "top" | "bottom" | "left" | "right" | "top-left" | "top-right" |
  *          "bottom-left" | "bottom-right"
  * - offset / textScale / hideLabel: 可选的标签布局微调字段
+ * - 车站卡片的运营与出入口信息由 stacard/data.js 单独维护
  */
 
 const stationsData = {
@@ -190,6 +192,7 @@ const stationsData = {
         y: 800,
         cn: "怀远门",
         en: "HUAIYUANMEN",
+        aliases: ["沈阳故宫"],
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -350,6 +353,7 @@ const stationsData = {
         y: 160,
         cn: "蒲河路",
         en: "PUHELU",
+        aliases: ["盛京医院沈北院区"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -390,6 +394,7 @@ const stationsData = {
         y: 320,
         cn: "师范大学",
         en: "SHIFANDAIXUE",
+        aliases: ["辽宁古生物博物馆"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -490,6 +495,7 @@ const stationsData = {
         y: 760,
         cn: "人民广场",
         en: "RENMINGUANGCHANG",
+        aliases: ["市府广场", "沈阳博物馆"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -527,7 +533,7 @@ const stationsData = {
     "0214": {
         type: "dot",
         x: 1000,
-        y: 1060,
+        y: 1040,
         cn: "五里河",
         en: "WULIHE",
         align: "right",
@@ -550,8 +556,8 @@ const stationsData = {
         y: 1160,
         cn: "营盘街",
         en: "YINGPANJIE",
-        align: "right",
-        offset: { x: 10, y: 0 },
+        align: "left",
+        offset: { x: -10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "0217": {
@@ -730,6 +736,7 @@ const stationsData = {
         y: 920,
         cn: "滑翔",
         en: "HUAXIANG",
+        aliases: ["盛京医院滑翔院区"],
         align: "left",
         offset: { x: -10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -830,18 +837,18 @@ const stationsData = {
         y: 1120,
         cn: "天成街",
         en: "TIANCHENGJIE",
-        align: "top",
-        offset: { x: 0, y: -4 },
+        align: "top-right",
+        offset: { x: -10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "0921": {
         type: "dot",
-        x: 1190,
+        x: 1160,
         y: 1120,
         cn: "朗日街",
         en: "LANGRIJIE",
-        align: "top",
-        offset: { x: 0, y: -4 },
+        align: "top-right",
+        offset: { x: -10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "0922": {
@@ -860,8 +867,8 @@ const stationsData = {
         y: 1120,
         cn: "建筑大学",
         en: "JIANZHUDAXUE",
-        align: "bottom",
-        offset: { x: 0, y: 4 },
+        align: "top",
+        offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "1001": {
@@ -950,6 +957,7 @@ const stationsData = {
         y: 580,
         cn: "合作街",
         en: "HEZUOJIE",
+        aliases: ["胸科医院", "“九·一八”历史博物馆"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -980,6 +988,7 @@ const stationsData = {
         y: 860,
         cn: "万莲",
         en: "WANLIAN",
+        aliases: ["小河沿早市"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1050,6 +1059,7 @@ const stationsData = {
         y: 375,
         cn: "文官街",
         en: "WENGUANJIE",
+        aliases: ["沈阳职业技术学院"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1110,6 +1120,7 @@ const stationsData = {
         y: 680,
         cn: "皇寺路",
         en: "HUANGSILU",
+        aliases: ["老北市"],
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1120,6 +1131,7 @@ const stationsData = {
         y: 740,
         cn: "市府大路",
         en: "SHIFUDALU",
+        aliases: ["西塔"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1400,6 +1412,7 @@ const stationsData = {
         y: 920,
         cn: "三好街",
         en: "SANHAOJIE",
+        aliases: ["盛京医院南湖院区"],
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1410,6 +1423,7 @@ const stationsData = {
         y: 920,
         cn: "中科院金属所",
         en: "ZHONGKEYUANJINSHUSUO",
+        aliases: ["北部战区总医院", "沈阳药科大学", "沈阳二中"],
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1453,6 +1467,315 @@ const stationsData = {
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
+    },
+    "T501": {
+        type: "dot",
+        x: 1010,
+        y: 1095,
+        cn: "奥体中心",
+        en: "Olympic Center",
+        align: "bottom",
+        hideLabel: true,
+        offset: { x: 0, y: 4 },
+        textScale: { cn: 1.0, en: 1.0 }
+    },
+    "T502": {
+        type: "dot",
+        x: 1040,
+        y: 1095,
+        cn: "沈阳海关",
+        en: "Shenyang Customs",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.9, en: 0.7 }
+    },
+    "T503": {
+        type: "dot",
+        x: 1070,
+        y: 1095,
+        cn: "金水花城",
+        en: "Jinshuihuacheng",
+        align: "top-right",
+        offset: { x: -4, y: 1 },
+        textScale: { cn: 0.9, en: 0.8 }
+    },
+    "T504": {
+        type: "dot",
+        x: 1082,
+        y: 1130,
+        cn: "奥体游泳馆",
+        en: "Olympic Aquatic Stadium",
+        align: "bottom-left",
+        offset: { x: 0, y: -4 },
+        textScale: { cn: 1.0, en: 0.8 }
+    },
+    "T505": {
+        type: "dot",
+        x: 1115,
+        y: 1140,
+        cn: "行政服务中心",
+        en: "Administrative<br> Service Center",
+        align: "bottom",
+        offset: { x: -10, y: 0 },
+        textScale: { cn: 0.8, en: 1 }
+    },
+    "T506": {
+        type: "dot",
+        x: 1160,
+        y: 1140,
+        cn: "浑南图书馆",
+        en: "Hunnan Library",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.8, en: 0.95 }
+    },
+    "T507": {
+        type: "dot",
+        x: 1205,
+        y: 1140,
+        cn: "陆军总院",
+        en: "Lujun Hospital",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.8, en: 0.8 }
+    },
+    "T508": {
+        type: "dot",
+        x: 1250,
+        y: 1140,
+        cn: "浑南实验小学",
+        en: "Hunnan Experimental<br> Primary School",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.7, en: 0.7 }
+    },
+    "T509": {
+        type: "dot",
+        x: 1295,
+        y: 1140,
+        cn: "万科新里程",
+        en: "Wanke Everest Town",
+        align: "bottom-right",
+        offset: { x: -10, y: -1 },
+        textScale: { cn: 0.8, en: 0.72 }
+    },
+    "T510": {
+        type: "dot",
+        x: 1340,
+        y: 1140,
+        cn: "建筑大学",
+        en: "Jianzhu University",
+        align: "bottom",
+        hideLabel: true,
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.8, en: 0.75 }
+    },
+    "T511": {
+        type: "dot",
+        x: 1370,
+        y: 1140,
+        cn: "金地滨河国际",
+        en: "Riverine Paradise",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.8, en: 1 }
+    },
+    "T512": {
+        type: "dot",
+        x: 1400,
+        y: 1140,
+        cn: "综合保税区",
+        en: "Free Trade Zone",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.9, en: 1 }
+    },
+    "T513": {
+        type: "dot",
+        x: 1430,
+        y: 1140,
+        cn: "万科新城",
+        en: "Wanke New City",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T514": {
+        type: "dot",
+        x: 1460,
+        y: 1140,
+        cn: "浑南实验中学",
+        en: "Hunnan Experimental<br> Middle School",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.8, en: 0.85 }
+    },
+    "T515": {
+        type: "dot",
+        x: 1490,
+        y: 1140,
+        cn: "李巴彦",
+        en: "Libayan",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T516": {
+        type: "dot",
+        x: 1520,
+        y: 1140,
+        cn: "杨官",
+        en: "Yangguan",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T517": {
+        type: "dot",
+        x: 1550,
+        y: 1140,
+        cn: "温馨港湾",
+        en: "Wenxingangwan",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T518": {
+        type: "dot",
+        x: 1580,
+        y: 1140,
+        cn: "金地艺境",
+        en: "Brown Stone",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T519": {
+        type: "dot",
+        x: 1610,
+        y: 1140,
+        cn: "东北冷鲜港",
+        en: "Yidu Distribution Center",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.8, en: 0.65 }
+    },
+    "T520": {
+        type: "dot",
+        x: 1640,
+        y: 1140,
+        cn: "天洁华尔街",
+        en: "Tianjie Wall Street",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.9, en: 1 }
+    },
+    "T521": {
+        type: "dot",
+        x: 1670,
+        y: 1140,
+        cn: "人民文化公园",
+        en: "Renminwenhuagongyuan",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.8, en: 0.7 }
+    },
+    "T522": {
+        type: "dot",
+        x: 1700,
+        y: 1140,
+        cn: "伯官",
+        en: "Boguan",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T523": {
+        type: "dot",
+        x: 1730,
+        y: 1140,
+        cn: "上伯官",
+        en: "Shangboguan",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T524": {
+        type: "dot",
+        x: 1760,
+        y: 1140,
+        cn: "玄菟郡遗址公园",
+        en: "Xuantujunyizhigongyuan",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.75, en: 0.8 }
+    },
+    "T525": {
+        type: "dot",
+        x: 1790,
+        y: 1140,
+        cn: "规划馆",
+        en: "Guihuaguan",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T526": {
+        type: "dot",
+        x: 1820,
+        y: 1140,
+        cn: "中金公元启城",
+        en: "Zhongjingongyuanqicheng",
+        align: "top",
+        offset: { x: 6, y: 0 },
+        textScale: { cn: 0.75, en: 0.65 }
+    },
+    "T527": {
+        type: "dot",
+        x: 1850,
+        y: 1140,
+        cn: "汇置城",
+        en: "Huizhicheng",
+        align: "bottom",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "T528": {
+        type: "dot",
+        x: 1880,
+        y: 1140,
+        cn: "李石寨",
+        en: "Lishizhai",
+        align: "top",
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 1, en: 1 }
+    },
+    "SYZ": {
+        type: "rdot",
+        x: 740,
+        y: 780,
+        cn: "沈阳站",
+        en: "Shenyang Railway Station",
+        hideLabel: true,
+        badge: "./city/shenyang/assets/railway.svg",
+    },
+    "SYB": {
+        type: "rdot",
+        x: 1020,
+        y: 660,
+        cn: "沈阳北站",
+        en: "Shenyangbei Railway Station",
+        hideLabel: true,
+        badge: "./city/shenyang/assets/railway.svg",
+    },
+    "SYN": {
+        type: "rdot",
+        x: 730,
+        y: 1420,
+        cn: "沈阳南站",
+        en: "Shenyangnan Railway Station",
+        hideLabel: true,
+        badge: "./city/shenyang/assets/railway.svg",
     },
 };
 

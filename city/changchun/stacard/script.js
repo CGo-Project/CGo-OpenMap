@@ -1,11 +1,16 @@
 /**
- * CGo OpenMap - 沈阳车站卡片模块
+ * CGo OpenMap - 长春车站地图卡片
  *
- * 读取高德坐标数据，在车站详情中渲染可缩放的周边地图。
- * 运营信息由 modules/shenyang_service_info.js 负责，本模块只渲染地图卡片。
+ * 使用高德地铁图接口返回的 GCJ-02 坐标，在车站详情面板中渲染可缩放的
+ * 高德地图切片。卡片只处理地图展示，不写入线路或站点排版数据。
  */
 
-import "./data.js";
+const escapeHtml = (value) => String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 
 const AMapTile = {
     getTileUrl(x, y, z) {
@@ -25,21 +30,18 @@ const WebMercator = {
     }
 };
 
-const ShenyangStaCard = {
+const ChangchunStaCard = {
     initialized: false,
     initPromise: null,
     stationsData: {},
-    geoDataUrl: "./city/shenyang/amap_data.json",
+    geoDataUrl: "./city/changchun/amap_data.json",
 
     async init(options = {}) {
         if (this.initialized) return this;
         if (this.initPromise) return this.initPromise;
+        if (options.geoDataUrl) this.geoDataUrl = options.geoDataUrl;
 
-        if (options.geoDataUrl) {
-            this.geoDataUrl = options.geoDataUrl;
-        }
-
-        this.initPromise = this.loadData(options)
+        this.initPromise = this.loadData()
             .then(() => {
                 this.initialized = true;
                 return this;
@@ -48,94 +50,72 @@ const ShenyangStaCard = {
                 this.initPromise = null;
                 throw error;
             });
-
         return this.initPromise;
     },
 
-    async loadData(options) {
-        const geoDataUrl = options.geoDataUrl || this.geoDataUrl;
-        const response = await fetch(geoDataUrl);
-        if (!response.ok) {
-            throw new Error(`无法加载沈阳车站坐标数据: ${response.status}`);
-        }
+    async loadData() {
+        const response = await fetch(this.geoDataUrl);
+        if (!response.ok) throw new Error(`无法加载长春车站坐标数据: ${response.status}`);
 
         const geoData = await response.json();
         const stationsData = {};
-
         for (const line of geoData?.l || []) {
             for (const station of line?.st || []) {
                 const coordinates = this.parseCoordinates(station.sl);
                 if (!coordinates) continue;
-
                 const normalizedStation = {
                     id: String(station.id || ""),
-                    name: station.n || "",
+                    name: String(station.n || ""),
                     lng: coordinates.lng,
                     lat: coordinates.lat
                 };
-
                 if (normalizedStation.name) {
                     stationsData[normalizedStation.name] = normalizedStation;
+                    stationsData[normalizedStation.name.replace(/站$/, "")] = normalizedStation;
                 }
-                if (normalizedStation.id) {
-                    stationsData[normalizedStation.id] = normalizedStation;
-                }
+                if (normalizedStation.id) stationsData[normalizedStation.id] = normalizedStation;
+                if (station.poiid) stationsData[String(station.poiid)] = normalizedStation;
             }
         }
-
         this.stationsData = stationsData;
     },
 
     parseCoordinates(value) {
-        if (typeof value !== "string") return null;
-
-        const [lngRaw, latRaw] = value.split(",");
-        const lng = Number(lngRaw);
-        const lat = Number(latRaw);
-        if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng === 0 || lat === 0) {
-            return null;
-        }
-
+        const values = Array.isArray(value) ? value : String(value || "").split(",");
+        if (values.length < 2) return null;
+        const lng = Number(values[0]);
+        const lat = Number(values[1]);
+        if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng === 0 || lat === 0) return null;
         return { lng, lat };
     },
 
     getStation(stationId, stationInfo = {}) {
         const stationName = stationInfo.cn || stationInfo.name || stationInfo.stationName || "";
-        const globalGeo = window.STATION_GEO_MAP?.[stationName];
+        const candidates = [stationName, stationName.replace(/站$/, ""), String(stationId || "")]
+            .filter(Boolean);
 
-        if (Array.isArray(globalGeo) && globalGeo.length === 2) {
-            const [lng, lat] = globalGeo.map(Number);
-            if (Number.isFinite(lng) && Number.isFinite(lat)) {
-                return {
-                    id: String(stationId || ""),
-                    name: stationName,
-                    lng,
-                    lat
-                };
-            }
+        for (const key of candidates) {
+            const globalGeo = window.STATION_GEO_MAP?.[key];
+            const parsed = this.parseCoordinates(globalGeo);
+            if (parsed) return { id: String(stationId || ""), name: stationName, ...parsed };
+            const local = this.stationsData[key];
+            if (local) return local;
         }
-
-        if (globalGeo?.lng != null && globalGeo?.lat != null) {
-            return {
-                id: String(stationId || ""),
-                name: stationName,
-                lng: Number(globalGeo.lng),
-                lat: Number(globalGeo.lat)
-            };
-        }
-
-        return this.stationsData[String(stationId || "")] || this.stationsData[stationName] || null;
+        return null;
     },
 
     getStationCoords(station) {
         if (!station) return null;
-
-        if (Number.isFinite(station.lng) && Number.isFinite(station.lat)) {
-            return [station.lng, station.lat];
-        }
-        if (Number.isFinite(station.longitude) && Number.isFinite(station.latitude)) {
-            return [station.longitude, station.latitude];
-        }
+        const direct = this.parseCoordinates(
+            Array.isArray(station.coordinates)
+                ? station.coordinates
+                : station.lng != null && station.lat != null
+                    ? [station.lng, station.lat]
+                    : station.longitude != null && station.latitude != null
+                        ? [station.longitude, station.latitude]
+                        : null
+        );
+        if (direct) return [direct.lng, direct.lat];
 
         const stationId = station.id || station.stationId || "";
         const stationName = station.cn || station.name || station.stationName || "";
@@ -152,33 +132,30 @@ const ShenyangStaCard = {
     },
 
     getCardPlaceholderHtml(station, lineInfo = {}, isCrossPlatform = false) {
+        if (!this.hasCard(station?.id, lineInfo?.id, station)) return "";
         const stationId = station?.id || "";
         const stationName = station?.cn || station?.name || "";
         const lineId = lineInfo?.id || "";
         const lineColor = lineInfo?.lineColor || lineInfo?.color || "var(--primary-color)";
         const coordinates = this.getStationCoords(station);
-        const coordinateValue = coordinates ? coordinates.join(",") : "";
-        const extraClass = isCrossPlatform ? "hoisted-stacard" : "";
-        const extraStyle = isCrossPlatform ? "margin: 0 0 12px 0;" : "margin: 8px 0 14px 0;";
+        const extraClass = isCrossPlatform ? " hoisted-stacard" : "";
+        const extraStyle = isCrossPlatform ? "margin:0 0 12px 0;" : "margin:8px 0 14px 0;";
         return `
-            <div class="stacard-container stacard-minimap-box ${extraClass}"
+            <div class="stacard-container stacard-minimap-box${extraClass}"
                 data-card-type="map"
-                data-sid="${stationId}"
-                data-sname="${stationName}"
-                data-lid="${lineId}"
-                data-color="${lineColor}"
-                data-coords="${coordinateValue}"
+                data-sid="${escapeHtml(stationId)}"
+                data-sname="${escapeHtml(stationName)}"
+                data-lid="${escapeHtml(lineId)}"
+                data-color="${escapeHtml(lineColor)}"
+                data-coords="${escapeHtml(coordinates.join(","))}"
                 style="${extraStyle}">
-                <div class="stacard-loading-tip">
-                    <span>正在加载车站地图...</span>
-                </div>
+                <div class="stacard-loading-tip"><span>正在加载车站地图...</span></div>
             </div>
         `;
     },
 
     async renderCard(container, context = {}) {
         if (!container) return;
-
         const station = context.station || (context.cn || context.name ? context : {
             id: context.stationId || container.dataset.sid || "",
             cn: context.stationName || container.dataset.sname || ""
@@ -188,64 +165,51 @@ const ShenyangStaCard = {
 
         await this.init();
         this.destroyResizeObserver(container);
-
         let coordinates = this.getStationCoords(station);
-
         if (!coordinates && container.dataset.coords) {
-            const [lngRaw, latRaw] = container.dataset.coords.split(",");
-            const lng = Number(lngRaw);
-            const lat = Number(latRaw);
-            if (Number.isFinite(lng) && Number.isFinite(lat)) {
-                coordinates = [lng, lat];
-            }
+            const parsed = this.parseCoordinates(container.dataset.coords);
+            if (parsed) coordinates = [parsed.lng, parsed.lat];
         }
-
         if (!coordinates) {
-            container.innerHTML = "<div class=\"stacard-empty-box\"><span>暂无该站点地理坐标数据</span></div>";
+            container.innerHTML = '<div class="stacard-empty-box"><span>暂无该站点地理坐标数据</span></div>';
             return;
         }
 
-        const initialZoom = 15;
-        let currentZoom = initialZoom;
+        let currentZoom = 15;
         const minZoom = 12;
         const maxZoom = 18;
-        const centerLng = coordinates[0];
-        const centerLat = coordinates[1];
-
+        const [centerLng, centerLat] = coordinates;
         container.innerHTML = `
-            <div class="stacard-minimap-viewport" tabindex="0" aria-label="${stationName}周边地图">
+            <div class="stacard-minimap-viewport" tabindex="0" aria-label="${escapeHtml(stationName)}周边地图">
                 <div class="stacard-tiles-wrapper"></div>
-                <div class="stacard-pin-marker" style="--marker-color: ${lineColor};">
+                <div class="stacard-pin-marker" style="--marker-color:${escapeHtml(lineColor)};">
                     <div class="stacard-pin-pulse"></div>
                     <div class="stacard-pin-dot"></div>
-                    <div class="stacard-pin-label">${stationName}</div>
+                    <div class="stacard-pin-label">${escapeHtml(stationName)}</div>
                 </div>
                 <div class="stacard-controls">
-                    <button type="button" class="stacard-ctrl-btn zoom-in" aria-label="放大地图">+</button>
-                    <button type="button" class="stacard-ctrl-btn zoom-out" aria-label="缩小地图">-</button>
+                    <button type="button" class="stacard-ctrl-btn zoom-in" aria-label="放大地图" title="放大地图">+</button>
+                    <button type="button" class="stacard-ctrl-btn zoom-out" aria-label="缩小地图" title="缩小地图">−</button>
                 </div>
+                <span class="stacard-map-attribution">高德地图</span>
             </div>
         `;
 
         const viewport = container.querySelector(".stacard-minimap-viewport");
         const tilesElement = container.querySelector(".stacard-tiles-wrapper");
-
         const renderMap = () => {
             const width = viewport.clientWidth;
             const height = viewport.clientHeight;
             if (!width || !height) return;
-
             const centerPoint = WebMercator.lngLatToPoint(centerLng, centerLat, currentZoom);
             const startTileX = Math.floor((centerPoint.x - width / 2) / WebMercator.TILE_SIZE);
             const endTileX = Math.floor((centerPoint.x + width / 2) / WebMercator.TILE_SIZE);
             const startTileY = Math.floor((centerPoint.y - height / 2) / WebMercator.TILE_SIZE);
             const endTileY = Math.floor((centerPoint.y + height / 2) / WebMercator.TILE_SIZE);
             const maxTile = Math.pow(2, currentZoom);
-
             tilesElement.replaceChildren();
             for (let tileY = startTileY; tileY <= endTileY; tileY += 1) {
                 if (tileY < 0 || tileY >= maxTile) continue;
-
                 for (let tileX = startTileX; tileX <= endTileX; tileX += 1) {
                     const wrappedTileX = ((tileX % maxTile) + maxTile) % maxTile;
                     const tile = document.createElement("img");
@@ -253,16 +217,13 @@ const ShenyangStaCard = {
                     tile.src = AMapTile.getTileUrl(wrappedTileX, tileY, currentZoom);
                     tile.alt = "";
                     tile.draggable = false;
-                    tile.onerror = () => {
-                        tile.style.opacity = "0";
-                    };
+                    tile.onerror = () => { tile.style.opacity = "0"; };
                     tile.style.left = `${tileX * WebMercator.TILE_SIZE - centerPoint.x + width / 2}px`;
                     tile.style.top = `${tileY * WebMercator.TILE_SIZE - centerPoint.y + height / 2}px`;
                     tilesElement.appendChild(tile);
                 }
             }
         };
-
         const changeZoom = (delta) => {
             const nextZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom + delta));
             if (nextZoom === currentZoom) return;
@@ -270,8 +231,8 @@ const ShenyangStaCard = {
             renderMap();
         };
 
-        container.querySelector(".zoom-in").addEventListener("click", () => changeZoom(1));
-        container.querySelector(".zoom-out").addEventListener("click", () => changeZoom(-1));
+        container.querySelector(".zoom-in")?.addEventListener("click", () => changeZoom(1));
+        container.querySelector(".zoom-out")?.addEventListener("click", () => changeZoom(-1));
         viewport.addEventListener("wheel", (event) => {
             event.preventDefault();
             changeZoom(event.deltaY < 0 ? 1 : -1);
@@ -284,14 +245,14 @@ const ShenyangStaCard = {
         if (typeof ResizeObserver !== "undefined") {
             const resizeObserver = new ResizeObserver(renderMap);
             resizeObserver.observe(viewport);
-            container._shenyangStaCardResizeObserver = resizeObserver;
+            container._changchunStaCardResizeObserver = resizeObserver;
         }
         renderMap();
     },
 
     destroyResizeObserver(container) {
-        container._shenyangStaCardResizeObserver?.disconnect();
-        delete container._shenyangStaCardResizeObserver;
+        container?._changchunStaCardResizeObserver?.disconnect();
+        if (container) delete container._changchunStaCardResizeObserver;
     },
 
     async renderPanelCards(panel, stationInfo) {
@@ -303,8 +264,10 @@ const ShenyangStaCard = {
     }
 };
 
-window.ShenyangStaCard = ShenyangStaCard;
-window.SHENYANG_STACARD = ShenyangStaCard;
-window.StaCard = ShenyangStaCard;
+if (typeof window !== "undefined") {
+    window.ChangchunStaCard = ChangchunStaCard;
+    window.CHANGCHUN_STACARD = ChangchunStaCard;
+    window.StaCard = ChangchunStaCard;
+}
 
-export { ShenyangStaCard };
+export { ChangchunStaCard };
