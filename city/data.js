@@ -141,6 +141,29 @@
                 { name: "Evin", role: "城市主理人", github: "https://github.com/walternie" }
             ],
             isDefault: false
+        },
+        "sydney": {
+            id: "sydney",
+            name: "悉尼",
+            themeColor: "#f7931e", // Transport for NSW 官方橙
+            // Transport for NSW "T" 列车模式标识（去色，按 currentColor 着色）
+            svglogo: '<svg xmlns="http://www.w3.org/2000/svg"><path d="M50,0C22.39,0,0,22.39,0,50s22.39,50,50,50,50-22.39,50-50S77.61,0,50,0ZM50,89.5c-21.82,0-39.5-17.68-39.5-39.5S28.18,10.5,50,10.5s39.5,17.68,39.5,39.5-17.68,39.5-39.5,39.5ZM72.5,25.5H27.5v12h16v37h13v-37h16v-12Z"/></svg>',
+            folder: "./city/sydney",
+            mainLogic: "./city/sydney/sydney.js",
+            center: { x: 780, y: 830 },
+            defaultScale: 0.62,
+            mapSize: { width: 1542, height: 1706 },
+            searchCity: "悉尼",
+            title: "CGo OpenMap - 悉尼轨道交通线路图",
+            keywords: "CGo OpenMap, Sydney Trains, Sydney Metro, 悉尼地铁, 悉尼轨道交通, 线路图",
+            description: "由 CGo OpenMap 驱动的悉尼轨道交通交互线路图，逐像素复刻 Transport for NSW 官方 Sydney rail network 线网图，覆盖 T1–T9 九条铁路干线、M1 地铁及在建的 Sydney Metro West 与西悉尼机场线。",
+            officialMapUrl: "https://transportnsw.info/routes/train",
+            registerDate: "2026-09-15",
+            status: "recruiting",
+            maintainers: [
+                { name: "待认领", role: "城市主理人招募中", isRecruiting: true, github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+            ],
+            isDefault: false
         }
     };
 

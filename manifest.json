@@ -113,6 +113,19 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "悉尼轨道交通",
+      "short_name": "悉尼",
+      "description": "查看悉尼 Sydney Trains 与 Sydney Metro 线网图",
+      "url": "./main.html?city=sydney",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

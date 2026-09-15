@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260915.0014';
+const CACHE_NAME = 'cgo-openmap-v260915.1502';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -111,6 +111,34 @@ const ASSETS_TO_CACHE = [
     './city/hefei/data_timetable.js',
     './city/hefei/amap_data.json',
     './city/hefei/staname.csv',
+
+    // 城市配置与业务数据 (悉尼)
+    './city/sydney/sydney.js',
+    './city/sydney/style.css',
+    './city/sydney/stacard/script.js',
+    './city/sydney/data_stations.js',
+    './city/sydney/data_lines.js',
+    './city/sydney/data_virtual_transfers.js',
+    './city/sydney/data_scattered.js',
+    './city/sydney/data_notopen.js',
+    './city/sydney/data_legend.js',
+    './city/sydney/data_timetable.js',
+    './city/sydney/staname.csv',
+    './city/sydney/assets/sydney_deco.svg',
+    './city/sydney/assets/PublicSans-var-latin.woff2',
+    './city/sydney/assets/line/T1.svg',
+    './city/sydney/assets/line/T2.svg',
+    './city/sydney/assets/line/T3.svg',
+    './city/sydney/assets/line/T4.svg',
+    './city/sydney/assets/line/T5.svg',
+    './city/sydney/assets/line/T6.svg',
+    './city/sydney/assets/line/T7.svg',
+    './city/sydney/assets/line/T8.svg',
+    './city/sydney/assets/line/T9.svg',
+    './city/sydney/assets/line/M1.svg',
+    './city/sydney/assets/line/CONV.svg',
+    './city/sydney/assets/line/MW.svg',
+    './city/sydney/assets/line/WSA.svg',
 
     // 城市配置与业务数据 (青岛)
     './city/qingdao/qingdao.js',
