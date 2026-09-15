@@ -108,6 +108,7 @@ window.DrunkPipeline = (function () {
         dom.fieldLineColorHex = document.getElementById('field-line-color-hex');
         dom.fieldLineCompany = document.getElementById('field-line-company');
         dom.fieldStrictRounding = document.getElementById('field-line-strict-rounding');
+        dom.fieldPointOnly = document.getElementById('field-line-point-only');
 
         // 折点圆角
         dom.cornerBox = document.getElementById('corner-radius-box');
@@ -279,6 +280,20 @@ window.DrunkPipeline = (function () {
                 if (dom.fieldStrictRounding.checked) line.useStrictRounding = true;
                 else delete line.useStrictRounding;
                 renderLines();
+                updateDirtyBadge();
+            });
+        }
+
+        // 仅落站点、不画走向（国铁等）
+        if (dom.fieldPointOnly) {
+            dom.fieldPointOnly.addEventListener('change', () => {
+                const line = state.lines[state.selectedLineIdx];
+                if (!line) return;
+                pushHistory();
+                if (dom.fieldPointOnly.checked) line.isPointOnly = true;
+                else delete line.isPointOnly;
+                renderAll();
+                selectLine(state.selectedLineIdx);
                 updateDirtyBadge();
             });
         }
@@ -1436,6 +1451,11 @@ window.DrunkPipeline = (function () {
         dom.svgLinesLayer.setAttribute('height', state.mapSize.height);
 
         state.lines.forEach((line, lineIdx) => {
+            // isPointOnly 线路只在图上落站点图元，**不画走向**（引擎 renderLines 首行同此判定）。
+            // 北京「中国铁路」Rwy2 就是 24 座散布全城的国铁车站，按站序直连会从延庆一路
+            // 划到大兴，在编辑器里凭空多出一堆横穿全图的长斜线。合肥 S1、悉尼 MW/WSA 同理。
+            if (line.isPointOnly) return;
+
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             let d = '';
 
@@ -1457,42 +1477,45 @@ window.DrunkPipeline = (function () {
                         return match;
                     });
                 }
-            } else if (pathGroups(line).length) {
-                // 模式 2: 离散折线点阵渲染（含分支线路的 pathPoints-main / -branch1 / -branch2…）
-                //
-                // 必须用 core/path-geometry.js 这份与引擎完全相同的倒角实现。
-                // 早先这里是纯 `M/L` 直角折线，而线路图实际渲染是带 45°/90° 圆角的，
-                // 于是编辑器里看到的线形跟上线后的线形对不上，圆角更无从调起。
-                pathGroups(line).forEach(group => {
-                    const pts = (scaleX === 1 && scaleY === 1)
-                        ? group.points
-                        : group.points.map(p => ({ x: p.x * scaleX, y: p.y * scaleY, r: p.r }));
-                    d += roundedPath(pts, line.useStrictRounding || false) + ' ';
-                });
-            } else if (line.stationIds && line.stationIds.length >= 2) {
-                // 模式 3: 站点直连安全降级（仅当有明确排过序的站点，且相邻两站距离合理时连接）
-                const MAX_SAFE_SPAN = state.mapSize.width * 0.35; // 超过 35% 宽度的超长跳跃不连，防止织网穿刺
-                let hasMoved = false;
-
-                for (let idx = 0; idx < line.stationIds.length; idx++) {
-                    const sid = line.stationIds[idx];
-                    const s = state.stations[sid];
-                    if (!s) continue;
-
-                    if (!hasMoved) {
-                        d += `M ${s.x} ${s.y} `;
-                        hasMoved = true;
-                    } else {
-                        const prevS = state.stations[line.stationIds[idx - 1]];
-                        if (prevS && Math.hypot(s.x - prevS.x, s.y - prevS.y) <= MAX_SAFE_SPAN) {
-                            d += `L ${s.x} ${s.y} `;
-                        } else {
-                            d += `M ${s.x} ${s.y} `;
-                        }
-                    }
-                }
             } else {
-                return; // 跳过无几何数据线路
+                // 走向来源（pathPoints / 分支 / 按站序兜底）的判定统一走
+                // core/path-geometry.js 的 lineSegments，与引擎同源。
+                const segs = window.CGoPathGeometry
+                    ? window.CGoPathGeometry.lineSegments(line, state.stations)
+                    : [];
+                if (!segs.length) return; // 无几何数据，不画
+
+                // 这条线的走向是「按站序兜底」推出来的（既无 pathPoints 也非分支线）
+                const fromStations = !line.pathPoints && !line.hasbranch;
+
+                segs.forEach(seg => {
+                    const pts = (scaleX === 1 && scaleY === 1)
+                        ? seg.points
+                        : seg.points.map(p => ({ x: p.x * scaleX, y: p.y * scaleY, r: p.r }));
+
+                    // 识图模式下数据未经人工核验，拓扑顺序可能整个是错的，
+                    // 对站点兜底路径在超长跨度处打断，免得糊成一张穿刺全图的蛛网。
+                    // 编辑模式忠实照搬引擎：不打断，否则画布上的断口在真实线路图上并不存在。
+                    let chunks = [pts];
+                    if (fromStations && state.mode !== 'edit') {
+                        const MAX_SAFE_SPAN = state.mapSize.width * 0.35;
+                        chunks = [];
+                        let cur = [];
+                        pts.forEach((pt, idx) => {
+                            const prev = pts[idx - 1];
+                            if (prev && Math.hypot(pt.x - prev.x, pt.y - prev.y) > MAX_SAFE_SPAN) {
+                                if (cur.length) chunks.push(cur);
+                                cur = [];
+                            }
+                            cur.push(pt);
+                        });
+                        if (cur.length) chunks.push(cur);
+                    }
+
+                    chunks.forEach(chunk => {
+                        if (chunk.length >= 2) d += roundedPath(chunk, line.useStrictRounding || false) + ' ';
+                    });
+                });
             }
 
             if (!d.trim()) return;
@@ -1534,7 +1557,7 @@ window.DrunkPipeline = (function () {
         dom.verticesLayer.innerHTML = '';
 
         const line = state.lines[state.selectedLineIdx];
-        if (!line) return;
+        if (!line || line.isPointOnly) return;   // 走向都不画，就别显示折点手柄
 
         const scaleX = state.mapSize.width / (line._srcCanvasW || state.mapSize.width);
         const scaleY = state.mapSize.height / (line._srcCanvasH || state.mapSize.height);
@@ -1669,11 +1692,13 @@ window.DrunkPipeline = (function () {
         if (dom.fieldLineColorHex) dom.fieldLineColorHex.value = line.color || '';
 
         if (dom.fieldStrictRounding) dom.fieldStrictRounding.checked = !!line.useStrictRounding;
+        if (dom.fieldPointOnly) dom.fieldPointOnly.checked = !!line.isPointOnly;
         if (dom.cornerBox) dom.cornerBox.style.display = 'none';
 
         const pts = pathGroups(line).reduce((a, g) => a + g.points.length, 0);
         if (dom.lineMeta) {
-            dom.lineMeta.textContent = `${line.id} · ${allStationIds(line).length} 站 · ${pts} 个走向折点`
+            dom.lineMeta.textContent = `${line.id} · ${allStationIds(line).length} 站 · `
+                + (line.isPointOnly ? '仅落站点' : `${pts} 个走向折点`)
                 + (line.hasbranch ? ' · 含分支' : '');
         }
 

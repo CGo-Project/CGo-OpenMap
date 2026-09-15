@@ -1504,6 +1504,10 @@
                             <input type="checkbox" id="field-line-strict-rounding">
                             <span>收紧倒角（短线段处圆角更小，避免相邻圆角重叠）</span>
                         </label>
+                        <label class="corner-check">
+                            <input type="checkbox" id="field-line-point-only">
+                            <span>仅落站点，不画走向（国铁等散布车站用，对应 <code>isPointOnly</code>）</span>
+                        </label>
                     </div>
 
                     <!-- 选中走向折点后出现：该拐角的圆角半径 -->
@@ -1751,19 +1755,19 @@
     </script>
     <!-- 城市注册总线：编辑模式据此枚举 city/ 下已注册的城市（与 main.html 同源，零硬编码） -->
     <!-- 折线倒角几何：与 core/script.js 共用同一份实现，保证编辑器预览 = 实际渲染 -->
-    <script src="../core/path-geometry.js?v=260915_v9"></script>
-    <script src="../city/data.js?v=260915_v9"></script>
-    <script src="./js/drunk_logger.js?v=260915_v9"></script>
-    <script src="./js/drunk_sanitizer.js?v=260915_v9"></script>
-    <script src="./js/city_project_io.js?v=260915_v9"></script>
-    <script src="./js/city_knowledge_matcher.js?v=260915_v9"></script>
-    <script src="./js/pdf_vector_extractor.js?v=260915_v9"></script>
-    <script src="./js/deepseek_vision.js?v=260915_v9"></script>
-    <script src="./js/vision_detector.js?v=260915_v9"></script>
-    <script src="./js/ocr_align_solver.js?v=260915_v9"></script>
-    <script src="./js/topology_tracer.js?v=260915_v9"></script>
-    <script src="./js/openmap_codegen.js?v=260915_v9"></script>
-    <script src="./js/drunk_pipeline.js?v=260915_v9"></script>
+    <script src="../core/path-geometry.js?v=260915_v12"></script>
+    <script src="../city/data.js?v=260915_v12"></script>
+    <script src="./js/drunk_logger.js?v=260915_v12"></script>
+    <script src="./js/drunk_sanitizer.js?v=260915_v12"></script>
+    <script src="./js/city_project_io.js?v=260915_v12"></script>
+    <script src="./js/city_knowledge_matcher.js?v=260915_v12"></script>
+    <script src="./js/pdf_vector_extractor.js?v=260915_v12"></script>
+    <script src="./js/deepseek_vision.js?v=260915_v12"></script>
+    <script src="./js/vision_detector.js?v=260915_v12"></script>
+    <script src="./js/ocr_align_solver.js?v=260915_v12"></script>
+    <script src="./js/topology_tracer.js?v=260915_v12"></script>
+    <script src="./js/openmap_codegen.js?v=260915_v12"></script>
+    <script src="./js/drunk_pipeline.js?v=260915_v12"></script>
 </body>
 
 </html>

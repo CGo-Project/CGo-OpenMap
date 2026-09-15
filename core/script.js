@@ -942,20 +942,10 @@ function renderLines() {
             });
             layers.interaction.push(pathInteraction);
         };
-        if (line.hasbranch) {
-            drawSegment(line['pathPoints-main'], 'seg-main');
-            drawSegment(line['pathPoints-branch1'], 'seg-way1');
-            drawSegment(line['pathPoints-branch2'], 'seg-way2');
-        } else {
-            let points = line.pathPoints;
-            if (!points || points.length === 0) {
-                points = line.stationIds.map(sid => {
-                    const s = processedStations[sid];
-                    return s ? { x: s.x, y: s.y } : null;
-                }).filter(p => p !== null);
-            }
-            drawSegment(points, 'seg-main');
-        }
+        // 走向来源的判定统一在 core/path-geometry.js（Drunk 编辑模式共用同一份），
+        // 避免两边各写一份判定后悄悄漂移。
+        window.CGoPathGeometry.lineSegments(line, processedStations)
+            .forEach(seg => drawSegment(seg.points, seg.cls));
         layers.outer.forEach(p => visualGroup.appendChild(p));
         layers.inner.forEach(p => visualGroup.appendChild(p));
         layers.overlay.forEach(p => visualGroup.appendChild(p));

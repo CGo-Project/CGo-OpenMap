@@ -310,8 +310,18 @@ Drunk（`drunk/index.html`）有两种工作模式：
 该字段已在实际使用：北京 20 个折点（20/30/400px）、合肥 24 个（28/32/36px），
 上海与悉尼则是逐点 `r: 0` 保持直角（走向本就由密集折点描出）。
 
-> **`core/path-geometry.js` 是倒角算法的唯一真源**，`core/script.js` 与
+**线路走向的来源判定**同样收敛在这里（`lineSegments(line, stations)`），判定链按优先级为：
+
+1. `isPointOnly: true` → **不画走向**，只在图上落站点图元（国铁等散布全城的车站）；
+2. `hasbranch: true` → 画 `pathPoints-main` / `-branch1` / `-branch2`，**不回退站序**；
+3. `pathPoints` → 画折线点阵；
+4. 都没有 → 按 `stationIds` 顺序取站点坐标连成一段。
+
+> **`core/path-geometry.js` 是倒角算法与走向判定的唯一真源**，`core/script.js` 与
 > `drunk/js/drunk_pipeline.js` 都必须调用它，**严禁任何一方复刻第二份实现**。
+> 这套判定曾经两边各写一份，结果 Drunk 漏了第 1 条，把北京「中国铁路」24 座
+> 散布全城的国铁车站从延庆一路连到大兴，编辑器画布上凭空多出一堆横穿全图的
+> 长斜线；第 4 条又漏了倒角，北京 M11 的走向与线路图对不上。
 > Drunk 是所见即所得编辑器：若编辑器用直角折线预览、引擎渲染时倒了圆角，
 > 用户在 Drunk 里调出来的走向与圆角上线后就是另一个样子。
 > （站名 `offset` 吃过同样的亏，见 `updateSingleLabelStyle` 的注释。）

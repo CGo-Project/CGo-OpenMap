@@ -287,6 +287,51 @@ section('折线倒角几何 (core/path-geometry.js)');
 }
 
 // ============================================================================
+// 四点八、isPointOnly：只落站点、不画走向
+// ============================================================================
+// 引擎 renderLines 首行就是 `if (line.isPointOnly) return;`。Drunk 早先没认这个
+// 标志，退到「按站序直连」兜底，把北京「中国铁路」24 座散布全城的国铁车站
+// 从延庆一路连到大兴，画布上凭空多出一堆横穿全图的长斜线。
+section('isPointOnly 线路不得绘制走向');
+{
+    const G2 = require(path.join(ROOT, 'core/path-geometry.js'));
+    const engineSrc = fs.readFileSync(path.join(ROOT, 'core/script.js'), 'utf8');
+    const drunkSrc = fs.readFileSync(path.join(ROOT, 'drunk/js/drunk_pipeline.js'), 'utf8');
+
+    // 走向来源的判定只能有一份：两侧都必须调用共享的 lineSegments
+    check(engineSrc.includes('CGoPathGeometry.lineSegments'), '引擎走向判定走共享 lineSegments');
+    check(drunkSrc.includes('CGoPathGeometry.lineSegments'), 'Drunk 走向判定走共享 lineSegments');
+    check(!/drawSegment\(line\['pathPoints-main'\]/.test(engineSrc), '引擎未残留第二份分支判定');
+    check(G2.lineSegments({ isPointOnly: true, stationIds: ['a', 'b'] }, { a: { x: 0, y: 0 }, b: { x: 9, y: 9 } }).length === 0,
+        'lineSegments 对 isPointOnly 返回空，绝不按站序连线');
+    check(G2.lineSegments({ hasbranch: true, stationIds: ['a', 'b'] }, { a: { x: 0, y: 0 }, b: { x: 9, y: 9 } }).length === 0,
+        '分支线无 pathPoints-* 时不回退站序（与引擎一致）');
+    check(G2.lineSegments({ stationIds: ['a', 'b'] }, { a: { x: 0, y: 0 }, b: { x: 9, y: 9 } }).length === 1,
+        '普通线无 pathPoints 时按站序兜底');
+
+    let affected = 0;
+    for (const city of cities) {
+        const stations = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
+        const lines = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_lines.js'), 'utf8'), 'linesData');
+        const canvasW = Math.max(...Object.values(stations).map(s => s.x));
+
+        lines.filter(l => l.isPointOnly && Array.isArray(l.stationIds)).forEach(l => {
+            affected++;
+            // 量一下「若误连」会有多离谱：相邻站最大跨度占画布宽度的比例
+            let maxSpan = 0;
+            for (let i = 1; i < l.stationIds.length; i++) {
+                const a = stations[l.stationIds[i - 1]], b = stations[l.stationIds[i]];
+                if (a && b) maxSpan = Math.max(maxSpan, Math.hypot(b.x - a.x, b.y - a.y));
+            }
+            const pct = Math.round(maxSpan / canvasW * 100);
+            check(true, `${city}/${l.id}「${l.name}」${l.stationIds.length} 站仅落点，` +
+                `若误连最长一段将横跨画布 ${pct}% 宽`);
+        });
+    }
+    check(affected === 5, `6 座城市共 ${affected} 条 isPointOnly 线路受此保护`);
+}
+
+// ============================================================================
 // 五、识别结果净化器
 // ============================================================================
 section('识别结果净化器');

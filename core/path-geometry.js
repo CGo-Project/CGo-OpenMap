@@ -118,5 +118,48 @@
         return d;
     }
 
-    return { RADIUS_90, RADIUS_45, generateRoundedPath, cornerRadiusAt };
+    /**
+     * 决定一条线路该画哪几段折线——**线路走向来源的唯一判定处**。
+     *
+     * 判定链（顺序即优先级）：
+     * 1. `isPointOnly` → 不画走向，只在图上落站点图元（国铁等散布车站）；
+     * 2. `hasbranch`   → 画 pathPoints-main / -branch1 / -branch2，**不回退站序**；
+     * 3. `pathPoints`  → 画折线点阵；
+     * 4. 都没有        → 按 stationIds 顺序取站点坐标连成一段。
+     *
+     * 抽到这里是因为这套判定曾经在引擎与 Drunk 里各写一份，结果 Drunk 漏了
+     * 第 1 条，把北京「中国铁路」24 座散布全城的国铁车站从延庆一路连到大兴，
+     * 编辑器画布上凭空多出一堆横穿全图的长斜线；第 4 条也漏了倒角，北京 M11
+     * 的走向与线路图对不上。判定只留一份，这类漂移就不可能再发生。
+     *
+     * @param {object} line 线路对象
+     * @param {object} [stations] 车站字典，仅第 4 条兜底分支需要
+     * @returns {Array<{cls: string, points: Array<{x,y,r?}>}>} 待绘制的折线段
+     */
+    function lineSegments(line, stations) {
+        if (!line || line.isPointOnly) return [];
+        const out = [];
+
+        if (line.hasbranch) {
+            [['pathPoints-main', 'seg-main'],
+            ['pathPoints-branch1', 'seg-way1'],
+            ['pathPoints-branch2', 'seg-way2']].forEach(([key, cls]) => {
+                const points = line[key];
+                if (Array.isArray(points) && points.length >= 2) out.push({ cls, points });
+            });
+            return out;
+        }
+
+        let points = line.pathPoints;
+        if (!points || points.length === 0) {
+            points = (line.stationIds || [])
+                .map(sid => stations && stations[sid])
+                .filter(Boolean)
+                .map(s => ({ x: s.x, y: s.y }));
+        }
+        if (points.length >= 2) out.push({ cls: 'seg-main', points });
+        return out;
+    }
+
+    return { RADIUS_90, RADIUS_45, generateRoundedPath, cornerRadiusAt, lineSegments };
 });
