@@ -560,6 +560,12 @@ body.editor-body {
     cursor: grabbing;
 }
 
+/* 右键框选节点 */
+.stage-canvas.marquee-drag,
+.stage-canvas.marquee-drag.mode-select {
+    cursor: crosshair;
+}
+
 #editor-svg {
     display: block;
     width: 100%;
@@ -675,6 +681,20 @@ body.editor-body {
 .ed-water {
     stroke-width: 2.5;
     cursor: pointer;
+}
+
+/* 水域路径（水域填色线）：线宽由元素的内联 style.strokeWidth 决定
+   （内联样式优先于 .ed-water 的 stroke-width:2.5，否则会被压成细线） */
+.ed-water-path {
+    cursor: pointer;
+}
+
+.ed-water-path:hover {
+    filter: brightness(0.97);
+}
+
+.ed-draft-water {
+    pointer-events: none;
 }
 
 .ed-selected {
@@ -1162,6 +1182,38 @@ body.editor-body {
     white-space: nowrap;
 }
 
+/* 带删除按钮的列表行（虚拟换乘组等） */
+.list-item-row {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.list-item-row .list-item {
+    flex: 1;
+    min-width: 0;
+}
+
+.list-del {
+    flex: none;
+    width: 28px;
+    margin-bottom: 4px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--card-bg, #fff);
+    color: var(--danger-color, #d0021b);
+    cursor: pointer;
+}
+
+.list-del:hover {
+    background: var(--danger-bg, #fdecee);
+}
+
+/* 未开通车站的站名取未开通色，与核心引擎 .label-group.type-no 一致 */
+.ed-label-no {
+    fill: var(--not-open-color, #78848b);
+}
+
 .li-dot {
     width: 10px;
     height: 10px;
@@ -1430,6 +1482,147 @@ body.editor-body {
 @media (max-width: 900px) {
     .om-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ---------------------------- 真实线路车站导入对话框 ---------------------------- */
+
+.side-btn.side-btn-real {
+    margin-top: 8px;
+    border-color: var(--info-border, #b8d0ee);
+    background: var(--info-bg, #e8f0fe);
+    color: var(--info-color, #006098);
+    font-weight: 700;
+}
+
+.side-btn.side-btn-real:hover {
+    border-color: var(--info-color, #006098);
+}
+
+.editor-modal-box.rl-box {
+    width: min(780px, 100%);
+    max-height: min(90vh, 860px);
+}
+
+.rl-box .editor-modal-body {
+    overflow: auto;
+}
+
+.rl-hint {
+    margin: 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--info-color, #006098);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--info-bg, #e8f0fe);
+    color: var(--text-main, #00263b);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.rl-hint.is-warn {
+    border-left-color: var(--warning-color, #f59e0b);
+    background: var(--warning-bg, #fdf6e3);
+}
+
+.rl-action-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.rl-action-row .side-btn {
+    width: auto;
+    padding: 6px 16px;
+    flex: 0 0 auto;
+}
+
+#rl-html,
+#rl-list {
+    width: 100%;
+    min-height: 110px;
+    max-height: 220px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--card-bg, #fff);
+    color: var(--text-main, #00263b);
+    font-family: inherit;
+    font-size: 12.5px;
+    line-height: 1.75;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#rl-list {
+    min-height: 150px;
+}
+
+#rl-html:focus,
+#rl-list:focus {
+    outline: none;
+    border-color: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 2px rgba(0, 96, 152, 0.16);
+}
+
+.rl-status {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-light, #636f75);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.rl-status.is-error {
+    color: var(--danger-color, #ea4335);
+    font-weight: 600;
+}
+
+.rl-status.is-busy {
+    color: var(--info-color, #006098);
+    font-weight: 600;
+}
+
+.rl-status.is-ok {
+    color: var(--success-color, #34a853);
+    font-weight: 600;
+}
+
+#rl-result {
+    width: 100%;
+    min-height: 168px;
+    max-height: 300px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--card-bg, #fff);
+    color: var(--text-main, #00263b);
+    font-family: inherit;
+    font-size: 12.5px;
+    line-height: 1.75;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#rl-result:focus {
+    outline: none;
+    border-color: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 2px rgba(0, 96, 152, 0.16);
+}
+
+.rl-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+}
+
+.rl-checks .check-row {
+    margin: 0;
+}
+
+@media (max-width: 900px) {
+    .rl-action-row {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
 

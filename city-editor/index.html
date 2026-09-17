@@ -14,6 +14,21 @@
     <meta name="description" content="CGo OpenMap 线路图在线编辑器：在网页内绘制与编辑城市轨道交通线路图，支持车站节点、临时节点、折角线段、水域与站名属性编辑。">
     <meta name="keywords" content="CGo OpenMap, 线路图编辑器, 在线绘制地铁图, 轨道交通, 站点编辑">
     <meta name="author" content="Central Go">
+    <!--
+      路径自愈：部分静态服务器（如 npx serve 默认开启的 cleanUrls）会把
+      /city-editor/index.html 301 重定向为 /city-editor（无结尾斜杠），
+      此时页面内的相对路径 css/editor.css、js/editor.js 会被解析到上一级目录而 404，
+      表现为「页面没有样式、脚本也没执行」。这里不改地址，直接用 <base> 修正相对路径基准。
+    -->
+    <script>
+        (function () {
+            if (/\/city-editor$/.test(location.pathname)) {
+                var base = document.createElement('base');
+                base.href = location.pathname + '/';
+                document.head.insertBefore(base, document.head.firstChild);
+            }
+        })();
+    </script>
     <link rel="shortcut icon" href="../assets/icons/favicon.ico">
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
@@ -184,6 +199,15 @@
                                 </span>
                                 <span class="tool-name">90° 折角</span>
                             </button>
+                            <button class="tool-btn" data-tool="seg90d" title="斜 90° 折角线段：两段 45° 斜线相交成 90°">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <path d="M4 21 L20 5 L36 21" fill="none" stroke="currentColor" stroke-width="3.4"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">斜 90° 折角</span>
+                            </button>
                             <button class="tool-btn" data-tool="segaxis" title="XY 轴平行直线线段">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
@@ -193,7 +217,7 @@
                                 </span>
                                 <span class="tool-name">轴平行直线</span>
                             </button>
-                            <button class="tool-btn" data-tool="segfree" title="自由路径线段">
+                            <button class="tool-btn" data-tool="segfree" title="自由路径线段：依次点击添加转折点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
                                         <path d="M3 21 C11 21 9 6 19 6 C29 6 28 20 37 20" fill="none"
@@ -217,13 +241,13 @@
                             <cgo-icon name="refresh" size="15"></cgo-icon>
                             <span>刷新线段配置</span>
                         </button>
-                        <p class="side-hint">开启自动选型后，新线段会按两端节点坐标自动判定 135° 折角、90° 折角或轴平行直线；关闭则使用上方手动选择的线段类型。「刷新线段配置」按当前节点布局重算全部自动走线线段（车站与临时节点一视同仁），手动指定过类型的线段会按该类型重算，仅含 3 个以上转折点的手绘自由路径保持不变。</p>
+                        <p class="side-hint">开启自动选型后，新线段会按两端节点坐标自动判定 135° 折角、90° 折角或轴平行直线；关闭则使用上方手动选择的线段类型（斜 90° 折角需手动选择）。「刷新线段配置」按当前节点布局重算全部自动走线线段（车站与临时节点一视同仁），手动指定过类型的线段会按该类型重算，仅含 3 个以上转折点的手绘自由路径保持不变。</p>
                     </div>
 
                     <div class="tool-group">
                         <div class="tool-group-label">水域</div>
                         <div class="tool-grid">
-                            <button class="tool-btn" data-tool="water" title="水域：点击依次添加顶点，双击闭合">
+                            <button class="tool-btn" data-tool="water" title="水域面：点击依次添加顶点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 闭合为填充多边形">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
                                         <path d="M4 18 C10 8 16 24 22 14 C27 6 32 12 36 9 L36 23 L4 23 Z"
@@ -232,7 +256,18 @@
                                             stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
                                     </svg>
                                 </span>
-                                <span class="tool-name">水域多边形</span>
+                                <span class="tool-name">水域面</span>
+                            </button>
+                            <button class="tool-btn" data-tool="waterpath" title="水域路径：点击依次添加折点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束；以可调线宽的水域填色线渲染（河道 / 运河）">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <path d="M4 20 C12 20 12 6 20 6 C28 6 28 18 36 18" fill="none"
+                                            stroke="currentColor" stroke-width="8" stroke-linecap="round" opacity="0.35" />
+                                        <path d="M4 20 C12 20 12 6 20 6 C28 6 28 18 36 18" fill="none"
+                                            stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">水域路径</span>
                             </button>
                         </div>
                     </div>
@@ -288,7 +323,12 @@
                             <span>删除线路</span>
                         </button>
                     </div>
-                    <p class="side-hint">线路色会作为其上车站节点的描边色；同一车站被 ≥2 条线路连接时自动显示为换乘站样式。</p>
+                    <button class="side-btn side-btn-real" id="btn-import-real-line"
+                        title="从百科页面车站表格的 HTML 代码中提取车站列表，或直接手工输入，然后一键应用到指定线路">
+                        <cgo-icon name="search" size="14"></cgo-icon>
+                        <span>导入车站列表</span>
+                    </button>
+                    <p class="side-hint">线路色会作为其上车站节点的描边色；同一车站被 ≥2 条线路连接时自动显示为换乘站样式。点「导入车站列表」可从百科表格 HTML 提取站名或手工输入，再按顺序批量生成车站。</p>
                 </div>
             </section>
 
@@ -335,6 +375,7 @@
                     </defs>
                     <g id="view-layer">
                         <g id="water-layer"></g>
+                        <g id="virtual-layer"></g>
                         <g id="grid-layer"></g>
                         <g id="axis-layer"></g>
                         <g id="line-layer"></g>
@@ -468,6 +509,93 @@
                 <button class="side-btn side-btn-primary" id="om-download">
                     <cgo-icon name="download" size="14"></cgo-icon>
                     <span>下载 zip 工程包</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- 3c. 导入对话框：百科表格 HTML 提取 / 手工输入 → 应用到线路                     -->
+    <!-- ========================================================================== -->
+    <div class="editor-modal" id="rl-modal">
+        <div class="editor-modal-box rl-box">
+            <div class="editor-modal-head">
+                <span>导入车站列表</span>
+                <button class="mini-btn" id="rl-close" title="关闭">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                </button>
+            </div>
+            <div class="editor-modal-body">
+                <p class="modal-tip">先确定「车站列表」，再把它应用到线路：可从百科页面的<b>车站表格 HTML 代码</b>中提取，
+                    也可直接在下方手工输入，最后按顺序在画布上逐站创建车站并自动命名。</p>
+
+                <div class="om-grid">
+                    <div class="prop-field">
+                        <label for="rl-line">目标线路</label>
+                        <select id="rl-line"></select>
+                    </div>
+                    <div class="prop-field">
+                        <label for="rl-code-prefix">站编号前缀</label>
+                        <input type="text" id="rl-code-prefix" maxlength="8" spellcheck="false"
+                            title="按「前缀 + 两位序号」自动生成站编号，如 M1 → M101、M102">
+                    </div>
+                </div>
+                <p class="rl-hint" id="rl-line-hint"></p>
+
+                <div class="prop-field">
+                    <label for="rl-html">① 百科页面车站表格的 HTML 代码（可选；提取时会去掉站名末尾的「站」，「XX火车站 / XX汽车站 / XX客运站 / XX北站」等写法保留）</label>
+                    <textarea id="rl-html" spellcheck="false"
+                        placeholder="在百科页面的车站表格上右键 → 检查 / 查看源代码，复制其中的 &lt;table&gt;…&lt;/table&gt; 粘贴到这里"></textarea>
+                </div>
+                <div class="rl-action-row">
+                    <button class="side-btn" id="rl-extract">
+                        <cgo-icon name="filter" size="14"></cgo-icon>
+                        <span>提取车站列表</span>
+                    </button>
+                    <span class="rl-status" id="rl-status"></span>
+                </div>
+
+                <div class="prop-field">
+                    <label for="rl-list">② 车站列表（按运营顺序，每行一站，可手工输入或修改）</label>
+                    <textarea id="rl-list" spellcheck="false"
+                        placeholder="莘庄&#10;外环路&#10;莲花路"></textarea>
+                </div>
+
+                <div class="om-grid">
+                    <div class="prop-field">
+                        <label for="rl-start-x">起始 X（px）</label>
+                        <input type="number" id="rl-start-x" step="5">
+                    </div>
+                    <div class="prop-field">
+                        <label for="rl-start-y">起始 Y（px）</label>
+                        <input type="number" id="rl-start-y" step="5">
+                    </div>
+                    <div class="prop-field">
+                        <label for="rl-gap">站距（px）</label>
+                        <input type="number" id="rl-gap" min="10" max="600" step="5">
+                    </div>
+                    <div class="prop-field">
+                        <label for="rl-dir">排列方向</label>
+                        <select id="rl-dir">
+                            <option value="h">水平（X 递增）</option>
+                            <option value="v">垂直（Y 递增）</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="rl-checks">
+                    <label class="check-row"><input type="checkbox" id="rl-connect" checked><span>自动按站序连线</span></label>
+                    <label class="check-row"><input type="checkbox" id="rl-en" checked><span>写入英文站名（若提供）</span></label>
+                    <label class="check-row"><input type="checkbox" id="rl-fit" checked><span>站距自动适配画布</span></label>
+                </div>
+            </div>
+            <div class="editor-modal-foot">
+                <button class="side-btn" id="rl-cancel">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                    <span>取消</span>
+                </button>
+                <button class="side-btn side-btn-primary" id="rl-apply">
+                    <cgo-icon name="check" size="14"></cgo-icon>
+                    <span>③ 应用到线路</span>
                 </button>
             </div>
         </div>

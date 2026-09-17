@@ -187,6 +187,25 @@
             ],
             isDefault: false
         },
+        "fuzhou": {
+            id: "fuzhou",
+            name: "福州",
+            themeColor: "#d7000f",
+            svglogo: "",                       // 城市矢量徽标（可选，留空显示默认小火车图标）
+            folder: "./city/fuzhou",
+            mainLogic: "./city/fuzhou/fuzhou.js",
+            center: { x: 2000, y: 1250 },
+            defaultScale: 1.0,
+            mapSize: { width: 4000, height: 2500 },
+            searchCity: "福州",
+            title: "CGo OpenMap - 福州轨道交通线路图",
+            keywords: "CGo OpenMap, 福州, 轨道交通, 线路图",
+            description: "由 CGo OpenMap 线路图在线编辑器生成的福州轨道交通线路图。",
+            registerDate: "2026-09-16",
+            status: "active",
+            maintainers: [],
+            isDefault: false
+        },
     };
 
     // ==========================================================================

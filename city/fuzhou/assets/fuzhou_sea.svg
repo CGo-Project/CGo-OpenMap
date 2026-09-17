@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2500" height="1600" viewBox="0 0 2500 1600">
+  <style>
+    .sea { fill: #dceff4; }
+    .sea-line { fill: none; stroke: #dceff4; stroke-linecap: round; stroke-linejoin: round; }
+    @media (prefers-color-scheme: dark) {
+      .sea { fill: #17323b; }
+      .sea-line { stroke: #17323b; }
+    }
+  </style>
+  <path class="sea-line" stroke-width="24" d="M325,-5 L325,915 L695,1285 L1905,1285 L2120,1070 L2545,1070"/>
+  <path class="sea-line" stroke-width="24" d="M325,355 L375,355 L710,690 L1000,690 L1100,790 L1250,790 L1635,1175 L1740,1175 L1740,1280"/>
+</svg>
