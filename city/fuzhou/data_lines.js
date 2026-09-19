@@ -115,7 +115,7 @@ const linesData = [
         id: "M6",
         name: "滨海快线",
         color: "#18958d",
-        svg: "icon@06.svg",
+        svg: "icon@bh.svg",
         svgclr: "#18958d",
         svgtext: "#ffffff",
         company: "福州轨道交通",

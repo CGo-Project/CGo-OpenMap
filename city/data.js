@@ -203,7 +203,9 @@
             description: "由 CGo OpenMap 线路图在线编辑器生成的福州轨道交通线路图。",
             registerDate: "2026-09-16",
             status: "active",
-            maintainers: [],
+            maintainers: [
+                { name: "CRH1A-A-1186", role: "城市主理人", github: "https://github.com/CRH1A-A-1186" }
+            ],
             isDefault: false
         },
     };

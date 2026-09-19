@@ -670,6 +670,19 @@ body.editor-body {
     stroke-linejoin: round;
 }
 
+/* 自由文本：白色描边让文字在任意底图上都可读（与核心站名同一思路） */
+.ed-text {
+    paint-order: stroke;
+    stroke: var(--map-bg, #ffffff);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+    user-select: none;
+}
+
+.ed-text-selected {
+    filter: drop-shadow(0 0 4px var(--info-color, #006098));
+}
+
 .ed-seg-hit {
     fill: none;
     stroke: transparent;
@@ -1177,6 +1190,82 @@ body.editor-body {
 }
 
 .list-item .li-meta {
+    color: var(--text-light, #636f75);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* 线路徽标预览区（线路面板内，随线路名 / 线路色 / 徽标实时刷新） */
+.line-badge-preview {
+    margin: 2px 0 10px;
+    padding: 8px 10px;
+    border: 1px dashed var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--bg-color, #f8f9fa);
+}
+
+.line-badge-preview-title {
+    margin-bottom: 6px;
+    color: var(--text-light, #636f75);
+    font-size: 11px;
+}
+
+.line-badge-preview-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 4px 8px;
+    border-radius: var(--radius-xs, 4px);
+    background: var(--map-bg, #ffffff);
+}
+
+.line-badge-preview-stage svg {
+    display: block;
+    height: 34px;
+    width: auto;
+    max-width: 100%;
+}
+
+.line-badge-preview-name {
+    margin-top: 6px;
+    color: var(--text-light, #636f75);
+    font-size: 11px;
+    word-break: break-all;
+}
+
+.line-badge-preview-empty {
+    color: var(--text-light, #636f75);
+    font-size: 11px;
+}
+
+/* 多选线段面板：所选线段一览 */
+.multi-seg-list {
+    margin-bottom: 10px;
+}
+
+.multi-seg-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    margin-bottom: 4px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--card-bg, #fff);
+    font-size: 12px;
+}
+
+.multi-seg-row .multi-seg-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.multi-seg-row .multi-seg-meta {
     color: var(--text-light, #636f75);
     font-size: 11px;
     white-space: nowrap;
