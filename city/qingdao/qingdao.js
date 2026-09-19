@@ -155,7 +155,7 @@
                         `;
                     }
                 },
-                                'qingdao-engineering-name-notice': { enabled: true, targetTab: 'line-tab', order: 21 },
+                'qingdao-engineering-name-notice': { enabled: true, targetTab: 'line-tab', order: 21 },
                 'qingdao-line-timetable': { enabled: true, targetTab: 'line-tab', order: 22 },
                 'qingdao-construction-progress': { enabled: true, targetTab: 'line-tab', order: 24 },
                 'adjacent-stations': {
@@ -206,7 +206,7 @@
         searchCity: QingdaoCity.searchCity,
         title: "CGo OpenMap - 青岛轨道交通线路图",
         keywords: "CGo OpenMap, 青岛地铁, 青岛轨道交通, 线路图",
-        description: "由 CGo OpenMap 驱动的青岛轨道交通智能交互线路图，包含在运营 8 条线路和在建 8 段线路。",
+        description: "包含在运营 8 条线路和在建 8 段线路。",
         officialMapUrl: QingdaoCity.officialMapUrl,
         isDefault: false,
         ...QingdaoCity

@@ -12,6 +12,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0%20%2F%20ODbL-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen.svg" alt="Zero Dependencies">
   <a href="./CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+  <a href="https://qm.qq.com/q/nHfgBDS68o"><img src="https://img.shields.io/badge/QQ%E7%BE%A4-619357751-12b7f5.svg" alt="QQ Group"></a>
   <img src="https://img.shields.io/badge/platform-Web%20%2F%20PWA-orange.svg" alt="Platform">
 </p>
 
@@ -24,6 +25,7 @@
   <a href="#项目架构">项目架构</a> •
   <a href="#城市数据移植">城市移植</a> •
   <a href="#城市主理人与鸣谢">主理人与鸣谢</a> •
+  <a href="#社区与技术交流">社区交流</a> •
   <a href="#开源许可协议">开源协议</a>
 </p>
 
@@ -39,7 +41,12 @@
 
 项目采用原生 Web 技术栈构建，具备**开箱即用、轻量高效、零构建依赖**的特点，旨在为交通爱好者、城市规划研究者以及前端开发者提供可定制的交互式线路图解决方案。
 
-目前引擎内置北京轨道交通、沈阳地铁、青岛轨道交通、合肥轨道交通与悉尼轨道交通（Sydney Trains / Sydney Metro）线网作为完整实现与参考范例（上海与悉尼线网主理人招募中），底层采用通用引擎与城市业务数据完全解耦的架构设计。开发者可以基于标准化数据格式，快速移植并部署任意城市（如上海、广州、深圳、成都、武汉等）的轨道交通网络。
+> [!IMPORTANT]
+> **🚨 核心架构重要大前提（最高技术铁律）**：  
+> **本项目所有内容必须为纯前端，禁止使用任何其他技术（如 Node.js 服务端应用、PM2 进程守护/管理、Express/Koa 后端服务、React/Vue/Angular 重型框架及 Vite/Webpack 构建打包流程）**。项目始终遵循纯原生 Web 标准（HTML5、SVG、CSS3、Vanilla JS、Web Components），确保在任何静态 Web 服务器或托管平台（GitHub Pages、Cloudflare Pages、Nginx 纯静态目录等）开箱即用，零后端与构建依赖。  
+> **📌 唯一破例例外场景**：仅在涉及**监控车站运营状态、监控目标网页**等特殊后台巡检或服务场景下，**可以破例**使用 Node.js / PM2 进行后台监控与进程守护；**其他所有主要地图功能一律严格禁止破例**，必须为纯原生前端实现！
+
+目前引擎内置北京轨道交通、沈阳地铁、大连地铁、长春轨道交通、青岛轨道交通、合肥轨道交通、福州轨道交通与悉尼轨道交通（Sydney Trains / Sydney Metro）线网作为完整实现与参考范例，底层采用通用引擎与城市业务数据完全解耦的架构设计。开发者可以基于标准化数据格式，快速移植并部署任意城市（如广州、深圳、成都、武汉等）的轨道交通网络。
 
 项目配套提供 **Drunk 线路图智能转换系统**，无需手动测量繁重的站点坐标，通过上传高清图片、矢量 PDF 或 Adobe Illustrator 工程，即可借助 AI 视觉大模型与矢量解析引擎一键生成符合规范的标准城市代码。
 
@@ -47,7 +54,7 @@
 
 ## 核心特性
 
-- **轻量与零框架依赖**：纯原生 Web 标准构建（HTML5、SVG、Vanilla JS、Web Components、CSS 变量），无需 Node.js、Webpack 或其它前端打包流程，直接以静态资源方式部署运行。
+- **纯前端与零框架依赖**：纯原生 Web 标准构建（HTML5、SVG、Vanilla JS、Web Components、CSS 变量）。**项目所有内容必须为纯前端**（除监控车站、监控网页等后台任务可破例外，**其他所有主要地图功能一律严格禁止破例**），无需任何打包构建工具，直接以静态资源方式即拷即用。
 - **Drunk 智能转换工作台**：内置面向零基础小白与开发者的全自动/半自动制图工作台（`drunk/`）。支持底图图片、矢量 PDF 及 Adobe Illustrator (`.ai`) 工程直通解析，支持 DeepSeek 视觉多模态大模型拓扑识别、维基百科动态知识库自动校对、8 方向文字排版轮盘、45°/90° 正交网格吸附与标准城市代码一键导出。
 - **原生矢量图形交互**：基于原生 SVG 渲染，支持无级平滑缩放、自由平移漫游与视口边界控制，原生适配桌面端鼠标滚轮及移动端多触点缩放手势。
 - **深浅色主题适配**：内置深色（Dark）与浅色（Light）两套主题，支持跟随系统色彩偏好自动切换或手动锁定；高分屏下文字与矢量元素均保真呈现。
@@ -293,14 +300,32 @@ openmap/
 - **沈阳线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人） · 从恒隆到细河（运营数据支持）
 - **青岛线网**：[YoTra青通](https://github.com/YoTraYoungTraffic)（城市主理人）
 - **合肥线网**：[Evin](https://github.com/walternie)（城市主理人）
-- **上海线网**：*主理人虚位以待，欢迎认领*
-- **悉尼线网**：*主理人虚位以待，欢迎认领*（线网几何逐像素提取自 Transport for NSW 官方 *Sydney rail network* 线网图）
+- **上海线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人）
+- **大连线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人） · duckinglim（运营数据支持）
+- **长春线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人）
+- **悉尼线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人）
 - **平台架构**：[NaL](https://github.com/NokiaimuL/) & [Ryan](https://github.com/ryan-si)
 - **地理数据**：[高德地图开放平台](https://lbs.amap.com/)
 
 > **关于上游维护与兼容性**：
 > 核心引擎将持续迭代演进（如寻路算法、时刻表联动、3D/实际走向视图等）。建议将新增城市数据通过 Pull Request 合入官方主库，官方团队将统一提供向后兼容支持与数据迁移维护。
 > 欢迎查阅 **[社区贡献指南 (CONTRIBUTING.md)](./CONTRIBUTING.md)** 了解更多提交流程。
+
+---
+
+## 社区与技术交流
+
+欢迎加入 **CGo OpenMap** 官方社群！无论你是轨道交通爱好者、前端技术开发者，还是想为自己的城市制作/认领线路图的城市主理人，都期待与你交流：
+
+- **官方 QQ 交流群**：**619357751**
+- **一键直达加群**：[👉 点击一键加入 CGo OpenMap 官方交流群](https://qm.qq.com/q/nHfgBDS68o)
+- **手机 QQ 扫码入群**：
+
+<p align="center">
+  <img src="./assets/images/qq.jpg" alt="CGo OpenMap 官方 QQ 交流群二维码" width="220" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
+  <br>
+  <em>扫一扫二维码，加入 CGo OpenMap 官方交流群 (群号: 619357751)</em>
+</p>
 
 ---
 

@@ -9,13 +9,25 @@ const LEGEND_CONFIG = [
         type: 'grid',
         cols: 2,
         items: [
-            { targets: ['SYM1'], name: '1号线' },
+            { targets: ['SYM01'], name: '1号线' },
             { targets: ['SYM02'], name: '2号线' },
             { targets: ['SYM03'], name: '3号线' },
             { targets: ['SYM04'], name: '4号线' },
             //{ targets: ['SYM06'], name: '6号线' },
             { targets: ['SYM09'], name: '9号线' },
             { targets: ['SYM10'], name: '10号线' },
+        ]
+    },
+    {
+        type: 'title',
+        title: '有轨线路',
+        subtitle: 'Tramway Lines'
+    },
+    {
+        type: 'grid',
+        cols: 2,
+        items: [
+            { targets: ['HNT5'], name: '5号线' },
         ]
     },
 ];

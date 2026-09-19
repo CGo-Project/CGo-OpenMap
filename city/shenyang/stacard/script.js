@@ -2,7 +2,10 @@
  * CGo OpenMap - 沈阳车站卡片模块
  *
  * 读取高德坐标数据，在车站详情中渲染可缩放的周边地图。
+ * 运营信息由 modules/shenyang_service_info.js 负责，本模块只渲染地图卡片。
  */
+
+import "./data.js";
 
 const AMapTile = {
     getTileUrl(x, y, z) {
@@ -157,9 +160,9 @@ const ShenyangStaCard = {
         const coordinateValue = coordinates ? coordinates.join(",") : "";
         const extraClass = isCrossPlatform ? "hoisted-stacard" : "";
         const extraStyle = isCrossPlatform ? "margin: 0 0 12px 0;" : "margin: 8px 0 14px 0;";
-
         return `
             <div class="stacard-container stacard-minimap-box ${extraClass}"
+                data-card-type="map"
                 data-sid="${stationId}"
                 data-sname="${stationName}"
                 data-lid="${lineId}"
@@ -175,15 +178,17 @@ const ShenyangStaCard = {
 
     async renderCard(container, context = {}) {
         if (!container) return;
+
+        const station = context.station || (context.cn || context.name ? context : {
+            id: context.stationId || container.dataset.sid || "",
+            cn: context.stationName || container.dataset.sname || ""
+        });
+        const stationName = station.cn || station.name || container.dataset.sname || "";
+        const lineColor = context.color || container.dataset.color || "var(--primary-color)";
+
         await this.init();
         this.destroyResizeObserver(container);
 
-        const station = context.station || {
-            id: context.stationId || container.dataset.sid || "",
-            cn: context.stationName || container.dataset.sname || ""
-        };
-        const stationName = station.cn || station.name || container.dataset.sname || "";
-        const lineColor = context.color || container.dataset.color || "var(--primary-color)";
         let coordinates = this.getStationCoords(station);
 
         if (!coordinates && container.dataset.coords) {
@@ -291,7 +296,10 @@ const ShenyangStaCard = {
 
     async renderPanelCards(panel, stationInfo) {
         const containers = panel?.querySelectorAll(".stacard-container") || [];
-        await Promise.all([...containers].map((container) => this.renderCard(container, stationInfo)));
+        await Promise.all([...containers].map((container) => this.renderCard(container, {
+            station: stationInfo,
+            color: container.dataset.color
+        })));
     }
 };
 

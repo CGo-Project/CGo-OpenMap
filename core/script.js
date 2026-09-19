@@ -66,19 +66,26 @@ function rebuildSidebarHistory() {
         }
         div.innerHTML = `
             <div class="section-header">
-                <span>${sectionTitle}</span>
-                <span class="header-color-squares">
-                ${(station.relatedLines || []).slice().sort((a, b) => window.getLineSortIndex(a) - window.getLineSortIndex(b)).map(lid => {
-            const line = linesData.find(l => l.id === lid);
-            return line ? `<span class="header-color-square" style="background:${line.color};" title="${line.name}"></span>` : '';
-        }).join('')}
-                </span>
+                <span class="section-title-text"></span>
+                <span class="header-color-squares"></span>
                 <cgo-icon name="expand-more" class="section-arrow"></cgo-icon>
             </div>
             <div class="section-body">
-                <div style="padding:20px;text-align:center;color:var(--text-light);font-size:12px;cursor:pointer;border:1px dashed var(--divider);margin:10px;border-radius:6px;" onclick="selectStation('${sid}')">点击此处查看详情</div>
+                <div class="station-history-detail-trigger" style="padding:20px;text-align:center;color:var(--text-light);font-size:12px;cursor:pointer;border:1px dashed var(--divider);margin:10px;border-radius:6px;">点击此处查看详情</div>
             </div>
         `;
+        div.querySelector('.section-title-text').textContent = sectionTitle;
+        const squaresContainer = div.querySelector('.header-color-squares');
+        (station.relatedLines || []).slice().sort((a, b) => window.getLineSortIndex(a) - window.getLineSortIndex(b)).forEach(lid => {
+            const line = linesData.find(l => l.id === lid);
+            if (!line) return;
+            const square = document.createElement('span');
+            square.className = 'header-color-square';
+            square.style.background = line.color;
+            square.title = line.name;
+            squaresContainer.appendChild(square);
+        });
+        div.querySelector('.station-history-detail-trigger').addEventListener('click', () => selectStation(sid));
         container.appendChild(div);
     });
 }

@@ -16,14 +16,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260907.102500">
-    <script type="module" src="core/cgo-ui.js?v=260907.102500"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260910.150000">
+    <script type="module" src="core/cgo-ui.js?v=260910.150000"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260907.102500">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260907.102500">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260907.102500">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260907.102500">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260910.150000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260910.150000">
 
     <style>
         /* Web Components 未注册前的优雅占位，杜绝无样式闪烁 */
@@ -640,8 +640,13 @@
                     </div>
                 </div>
                 <div class="port-banner-actions">
-                    <a href="./drunk/index.html" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台">
-                        <span>🍺 Drunk 智能转换 (测试版)</span>
+                    <a href="./city-editor/" target="_blank" class="btn btn-primary" title="进入线路图在线编辑器，在网页内绘制与编辑线路图">
+                        <cgo-icon name="edit" size="15"></cgo-icon>
+                        <span>线路图在线编辑器</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
+                    <a href="./drunk/" target="_blank" class="btn btn-info" title="进入 Drunk 线路图智能转换工作台">
+                        <span>Drunk 智能转换 (测试版)</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
                     <a href="./PORTING.md" target="_blank" class="btn btn-info">
@@ -654,6 +659,11 @@
                         <span>城市主理人计划</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
+                    <a href="https://qm.qq.com/q/nHfgBDS68o" target="_blank" class="btn btn-info" style="background: rgba(18, 183, 245, 0.1); border-color: #12b7f5; color: #12b7f5;" title="加入官方 QQ 交流群 (619357751)">
+                        <cgo-icon name="chat" size="15"></cgo-icon>
+                        <span>官方交流群</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
                 </div>
             </div>
         </section>
@@ -664,7 +674,9 @@
         <div class="footer-nav">
             <a href="./readme.html">关于平台</a>
             <span class="footer-sep">·</span>
-            <a href="./drunk/index.html">Drunk 转换工作台</a>
+            <a href="./city-editor/">在线编辑器</a>
+            <span class="footer-sep">·</span>
+            <a href="./drunk/">Drunk 转换工作台</a>
             <span class="footer-sep">·</span>
             <a href="./QUICKSTART.md" target="_blank">新手指南</a>
             <span class="footer-sep">·</span>
@@ -674,6 +686,8 @@
             <span class="footer-sep">·</span>
             <a href="./privacy.html">隐私政策</a>
             <span class="footer-sep">·</span>
+            <a href="https://qm.qq.com/q/nHfgBDS68o" target="_blank">QQ 交流群 (619357751)</a>
+            <span class="footer-sep">·</span>
             <a href="https://github.com/NokiaimuL/CGo-OpenMap" target="_blank">GitHub</a>
         </div>
         <div class="footer-copy">
@@ -682,13 +696,24 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=260907.102500"></script>
-    <script src="core/tool-theme.js?v=260907.102500"></script>
+    <script src="city/data.js?v=260910.150000"></script>
+    <script src="core/tool-theme.js?v=260910.150000"></script>
 
     <!-- 动态城市渲染与数据绑定 -->
     <script>
+        /**
+         * 进入指定城市的线路图。
+         * 先把选择写入本地偏好再跳转：部分静态服务器（如 npx serve 默认的 cleanUrls）
+         * 会把 /main.html?city=xxx 重定向为 /main 并丢掉查询串，
+         * 此时 city/data.js 会用本地偏好兜底，仍能打开正确城市而不是回退到北京。
+         */
+        window.enterCity = function (cityId) {
+            if (!cityId) return;
+            try { localStorage.setItem('cgo_openmap_city', String(cityId)); } catch (e) { /* ignore */ }
+            window.location.href = './main.html?city=' + encodeURIComponent(cityId);
+        };
         (function () {
-            // 规范化并自适应包装城市专属 SVG 图标
+            // 规范化并自适应包装城市专属 SVG 图标；没有图标时回退为通用列车图标。
             function formatCityLogoSvg(rawSvg) {
                 if (!rawSvg || typeof rawSvg !== 'string' || !rawSvg.trim()) {
                     return '<cgo-icon name="train" size="22"></cgo-icon>';
@@ -792,7 +817,7 @@
                     const targetUrl = `./main.html?city=${city.id}`;
 
                     return `
-                        <div class="city-card" onclick="window.location.href='${targetUrl}'" title="进入 ${city.name} 交互线路图">
+                        <div class="city-card" onclick="window.enterCity('${city.id}')" title="进入 ${city.name} 交互线路图">
                             <div>
                                 <div class="city-card-header">
                                     <div class="city-identity">
@@ -840,7 +865,6 @@
                         </div>
                     `;
                 }).join('');
-
                 // 为去 viewBox 的自定义 SVG 图标执行边界校准 (自动校准为精确图形外包围盒，彻底兼容各种缩放基准)
                 requestAnimationFrame(() => {
                     document.querySelectorAll('.city-emblem svg').forEach(svg => {

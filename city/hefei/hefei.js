@@ -104,7 +104,7 @@
         searchCity: HefeiCity.searchCity,
         title: "CGo OpenMap - 合肥轨道交通线路图",
         keywords: "CGo OpenMap, 合肥地铁, 合肥轨道交通, 线路图",
-        description: "由 CGo OpenMap 驱动的合肥轨道交通智能交互线路图，覆盖 1–8 号线及 S1 线示意。",
+        description: "包含 1–8 号线及 S1 线示意。",
         officialMapUrl: HefeiCity.officialMapUrl,
         isDefault: false,
         ...HefeiCity
