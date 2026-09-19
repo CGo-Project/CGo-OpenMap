@@ -10,6 +10,7 @@
 CGo OpenMap 的车站信息板（`#info-panel`）采用 **模块注册化（Modular Registry Architecture）** 体系：
 - **通用核心引擎**：`core/station-board.js` 统一管理生命周期、槽位调度、事件委托与内置标准模块；
 - **城市专属业务**：各城市专属的特色模块（如文化名胜、便民设施、地标引导、首末班时刻等）放置在 `city/{city_id}/modules/` 下；
+- **🚨 重要大前提（最高原则）**：**项目所有内容必须为纯前端，禁止使用任何其他（如 Node.js / PM2 / React 等）技术**。除监控车站、监控网页等后台任务可破例外，所有车站信息板模块与其他主要地图功能一律严格禁止破例，必须基于原生 ES6+ JavaScript、原生 DOM/SVG API 与 Web Components 编写，严禁引入 React、Vue、Node 后端服务或打包工具；
 - **零构建开箱即用**：纯原生 JavaScript (ES6+)，无需 Webpack/Vite 编译打包；
 - **100% 向下兼容**：未配置 `stationBoard` 的城市自动全量加载默认模块与原版 DOM 布局；
 - **🚨 核心铁律（最重要）**：所有模块内图标**必须严格使用原生 Web Components 图标组件 `<cgo-icon name="..." size="..."></cgo-icon>`，严禁使用 Emoji 表情符号**（除非在 CGoUI 库中实在匹配不到合适图标）。
