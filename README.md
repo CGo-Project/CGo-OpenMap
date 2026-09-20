@@ -9,6 +9,10 @@
 </p>
 
 <p align="center">
+  <strong>简体中文</strong> • <a href="./README_EN.md">English</a>
+</p>
+
+<p align="center">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0%20%2F%20ODbL-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/dependencies-none-brightgreen.svg" alt="Zero Dependencies">
   <a href="./CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
@@ -76,7 +80,7 @@
 
 1. **克隆代码库**
    ```bash
-   git clone https://github.com/NokiaimuL/CGo-OpenMap.git
+   git clone https://github.com/CGo-Project/CGo-OpenMap.git
    cd CGo-OpenMap
    ```
 
