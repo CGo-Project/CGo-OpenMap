@@ -478,7 +478,7 @@ const stationsData = {
     "T104": { type: "dot", x: 1155, y: 1058, cn: "亦创会展中心", en: "Yichuang Huizhan Zhongxin", align: "top", offset: { x: 0, y: -1 }, textScale: { cn: 1.0, en: 1.0 } },
     "T105": { type: "dot", x: 1099, y: 1066, cn: "荣昌东街", en: "Rongchang Dongjie", hideLabel: true, align: "top-right", offset: { x: 0, y: 8 }, textScale: { cn: 1, en: 1 } },
     "T106": { type: "dot", x: 1072, y: 1097, cn: "亦庄同仁", en: "Yizhuang Tongren", align: "left", offset: { x: 0, y: 3 }, textScale: { cn: 1, en: 1 } },
-    "T107": { type: "dot", x: 1072, y: 1112, cn: "鹿圈东", en: "Lujjuandong", align: "right", offset: { x: 0, y: -1 }, textScale: { cn: 1, en: 1 } },
+    "T107": { type: "dot", x: 1072, y: 1112, cn: "鹿圈东", en: "Lujuandong", align: "right", offset: { x: 0, y: -1 }, textScale: { cn: 1, en: 1 } },
     "T108": { type: "dot", x: 1072, y: 1127, cn: "泰河路", en: "Taihelu", align: "left", offset: { x: 0, y: 1.5 }, textScale: { cn: 1, en: 1 } },
     "T109": { type: "dot", x: 1072, y: 1142, cn: "九号村", en: "Jiuhaocun", align: "right", offset: { x: 0, y: -1.5 }, textScale: { cn: 1, en: 1 } },
     "T110": { type: "dot", x: 1072, y: 1157, cn: "四海庄", en: "Sihaizhuang", align: "left", offset: { x: 0, y: 0 }, textScale: { cn: 1, en: 1 } },
