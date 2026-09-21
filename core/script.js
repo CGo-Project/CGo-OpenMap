@@ -1447,16 +1447,41 @@ function initLegendPin() {
     }
 }
 /**
- * 地图初始居中 (根据城市配置 center 与默认缩放等级重置视口中心)
+ * 获取浮动标题栏在地图画布顶部需要的避让留白像素（防止顶栏遮挡最上方的车站与线路）
+ */
+function getMapTopOffset() {
+    const isFloating = document.documentElement.getAttribute('header-mode') === 'floating' ||
+        document.body.getAttribute('header-mode') === 'floating' ||
+        Boolean(document.querySelector('.tool-header[header-mode="floating"]'));
+    if (!isFloating) return 0;
+    const header = document.querySelector('.tool-header');
+    if (header) {
+        const island = header.querySelector('.header-island');
+        if (island) {
+            const rect = island.getBoundingClientRect();
+            return Math.max(76, Math.ceil(rect.bottom + 12));
+        }
+    }
+    return 76;
+}
+
+/**
+ * 地图初始居中 (根据城市配置 center 与默认缩放等级重置视口中心，自动避让浮动标题栏)
  */
 function centerMap() {
     const city = getActiveCity();
     const containerW = mapContainer.clientWidth;
     const containerH = mapContainer.clientHeight;
+    const topOffset = getMapTopOffset();
+    const isSplitMode = document.body.classList.contains('mobile-split-active');
+    const bottomOffset = isSplitMode ? containerH * 0.62 : 0;
+    const availableH = Math.max(200, containerH - topOffset - bottomOffset);
+
     const targetX = city.center ? city.center.x : 900;
     const targetY = city.center ? city.center.y : 640;
     currentX = (containerW / 2) - (targetX * currentScale);
-    currentY = (containerH / 2) - (targetY * currentScale);
+    currentY = topOffset + (availableH / 2) - (targetY * currentScale);
+    if (typeof enforceBoundaries === 'function') enforceBoundaries();
     updateMapTransform();
 }
 
@@ -1468,7 +1493,7 @@ function localUpdateMapTransform() {
 }
 
 /**
- * 地图边界限制算法 (防止用户将地图完全拖出可视视口外)
+ * 地图边界限制算法 (防止用户将地图完全拖出可视视口外，并预留浮动标题栏顶部保护留白)
  */
 function localEnforceBoundaries() {
     const city = getActiveCity();
@@ -1482,6 +1507,7 @@ function localEnforceBoundaries() {
     // 移动端分屏模式下底栏高度偏移补偿 (60% 高度抽屉)
     const isSplitMode = document.body.classList.contains('mobile-split-active');
     const bottomOffset = isSplitMode ? containerH * 0.62 : 0;
+    const topOffset = getMapTopOffset();
 
     if (mapW >= containerW) {
         if (currentX > 0) currentX = 0;
@@ -1490,14 +1516,14 @@ function localEnforceBoundaries() {
         currentX = (containerW - mapW) / 2;
     }
     if (mapH >= containerH) {
-        if (currentY > 0) currentY = 0;
+        if (currentY > topOffset) currentY = topOffset;
         const minY = containerH - mapH - bottomOffset;
         if (currentY < minY) currentY = minY;
     } else {
         if (isSplitMode) {
             currentY = (containerH * 0.4 - mapH) / 2;
         } else {
-            currentY = (containerH - mapH) / 2;
+            currentY = topOffset + (containerH - topOffset - mapH) / 2;
         }
     }
 }

@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260921.2225';
+const CACHE_NAME = 'cgo-openmap-v260922.0025';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -253,21 +253,31 @@ const ASSETS_TO_CACHE = [
     './assets/icons/beian.png',
     './assets/icons/cgowx.png',
     './assets/icons/favicon.ico',
-    './assets/images/qq.jpg',
+    './assets/images/qq.png',
     './manifest.json',
 ];
 
-// 1. Service Worker 安装：预缓存核心资产
+// 1. Service Worker 安装：预缓存核心资产（容错机制：单个非核心文件失败不阻断 SW 激活）
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(ASSETS_TO_CACHE))
+            .then(async (cache) => {
+                await Promise.allSettled(
+                    ASSETS_TO_CACHE.map(async (url) => {
+                        try {
+                            await cache.add(url);
+                        } catch (err) {
+                            console.warn('[SW] 预缓存单项跳过:', url, err);
+                        }
+                    })
+                );
+            })
             .then(() => self.skipWaiting())
-            .catch(err => console.error('[SW] 缓存失败:', err))
+            .catch(err => console.error('[SW] 缓存安装异常:', err))
     );
 });
 
-// 2. Service Worker 激活：清理陈旧缓存
+// 2. Service Worker 激活：清理陈旧缓存并立即接管页面
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
@@ -294,8 +304,45 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 默认静态资产：优先读取缓存，离线时优雅回退
-    event.respondWith(
-        caches.match(event.request, { ignoreSearch: true }).then(cached => cached || fetch(event.request).catch(() => {}))
-    );
+    // 页面导航请求（HTML 页面）：网络优先策略 (Network-First)
+    // 确保代码更新后刷新浏览器永远呈现最新页面与样式；离线时优雅降级回退至缓存
+    if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+        event.respondWith((async () => {
+            try {
+                const networkRes = await fetch(event.request);
+                if (networkRes && networkRes.status === 200) {
+                    const cache = await caches.open(CACHE_NAME);
+                    cache.put(event.request, networkRes.clone());
+                }
+                return networkRes;
+            } catch (err) {
+                const cached = await caches.match(event.request, { ignoreSearch: true });
+                if (cached) return cached;
+                return caches.match('./index.html');
+            }
+        })());
+        return;
+    }
+
+    // 静态资源（CSS/JS/图片等）：精准匹配优先 -> 网络获取并更新缓存 -> 离线模糊回退
+    event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        
+        // 优先精确匹配（如果版本号 query 完全一致且已缓存）
+        const exactMatch = await cache.match(event.request);
+        if (exactMatch) return exactMatch;
+
+        // 精确未命中（例如资源刚升级了 ?v= 版本号）：网络优先拉取最新版本并写入缓存
+        try {
+            const networkRes = await fetch(event.request);
+            if (networkRes && networkRes.status === 200) {
+                cache.put(event.request, networkRes.clone());
+            }
+            return networkRes;
+        } catch (err) {
+            // 离线环境：模糊匹配回退
+            const fuzzyMatch = await cache.match(event.request, { ignoreSearch: true });
+            if (fuzzyMatch) return fuzzyMatch;
+        }
+    })());
 });
