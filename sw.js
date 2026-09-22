@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260922.1220';
+const CACHE_NAME = 'cgo-openmap-v260922.1735';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -108,6 +108,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/compass.svg',
     './city/shenyang/assets/fangcheng.svg',
     './city/shenyang/assets/railway.svg',
+    './city/shenyang/assets/transfer-badge.svg',
 
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',
