@@ -326,7 +326,7 @@ openmap/
 - **手机 QQ 扫码入群**：
 
 <p align="center">
-  <img src="./assets/images/qq.jpg" alt="CGo OpenMap 官方 QQ 交流群二维码" width="220" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
+  <img src="./assets/images/qq.png" alt="CGo OpenMap 官方 QQ 交流群二维码" width="220" style="border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
   <br>
   <em>扫一扫二维码，加入 CGo OpenMap 官方交流群 (群号: 619357751)</em>
 </p>

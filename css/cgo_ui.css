@@ -278,16 +278,34 @@ body[data-header-mode="floating"] .header-island-left,
 .tool-header[header-mode="floating"] .header-island-left,
 .tool-header.floating-header .header-island-left {
     left: calc(20px + env(safe-area-inset-left, 0px));
-    width: var(--cgo-nav-width, 280px);
+    width: auto;
+    width: fit-content;
+    max-width: calc(100vw - 40px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - var(--header-island-right-space, 180px));
     box-sizing: border-box;
     gap: 10px;
+}
+
+/* 存在侧边导航时，左浮岛保底与侧边栏对齐，但超出时依然支持自适应自然延展 */
+:root[header-mode="floating"] body:has(.sidebar) .header-island-left,
+:root[header-mode="floating"] body:has(cgo-side-nav) .header-island-left,
+body[header-mode="floating"]:has(.sidebar) .header-island-left,
+body[header-mode="floating"]:has(cgo-side-nav) .header-island-left {
+    min-width: var(--cgo-nav-width, 280px);
+}
+
+:root[header-mode="floating"] .header-island-left .header-left,
+:root[data-header-mode="floating"] .header-island-left .header-left,
+body[header-mode="floating"] .header-island-left .header-left,
+.tool-header[header-mode="floating"] .header-island-left .header-left {
+    min-width: auto;
+    flex-shrink: 0;
 }
 
 :root[header-mode="floating"] .header-island-left .header-center,
 :root[data-header-mode="floating"] .header-island-left .header-center,
 body[header-mode="floating"] .header-island-left .header-center,
 .tool-header[header-mode="floating"] .header-island-left .header-center {
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
 }

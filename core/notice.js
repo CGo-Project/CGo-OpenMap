@@ -60,7 +60,7 @@
                 active: true,
                 category: 'app',
                 deadline: 'permanent',
-                image: './assets/images/qq.jpg',
+                image: './assets/images/qq.png',
                 summary: "欢迎加入 CGo OpenMap 官方交流群",
                 detail: "官方 QQ 交流群（群号：619357751）现已开放！欢迎轨道交通爱好者、前端开发者及城市主理人加入交流线网规划与城市移植。<br><a href='https://qm.qq.com/q/nHfgBDS68o' target='_blank' style='color:#12b7f5; text-decoration:underline; font-weight:600;'>👉 点击一键加入官方 QQ 群</a>"
             },

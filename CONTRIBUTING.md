@@ -29,7 +29,7 @@
 - **手机 QQ 扫码**：
 
 <p align="center">
-  <img src="./assets/images/qq.jpg" alt="官方 QQ 交流群二维码" width="200" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <img src="./assets/images/qq.png" alt="官方 QQ 交流群二维码" width="200" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
   <br>
   <em>扫码加入 CGo OpenMap 官方交流群 (619357751)</em>
 </p>

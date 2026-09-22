@@ -269,7 +269,7 @@ DeepSeek Harness（`dsh`）是 DeepSeek 官方开源的智能体框架，能直�
 - **扫码加入**：
 
 <p align="center">
-  <img src="./assets/images/qq.jpg" alt="QQ 交流群二维码" width="180" style="border-radius: 8px;">
+  <img src="./assets/images/qq.png" alt="QQ 交流群二维码" width="180" style="border-radius: 8px;">
 </p>
 
 祝你借助 DeepSeek Harness 和 CGo OpenMap 玩得开心！如有任何疑问，欢迎随时在群里或 GitHub Issue 交流讨论 🚇✨

@@ -269,7 +269,7 @@ CGo OpenMap welcomes transit enthusiasts, front-end developers, city-data mainta
 - **Join link:** https://qm.qq.com/q/nHfgBDS68o
 
 <p align="center">
-  <img src="./assets/images/qq.jpg" alt="CGo OpenMap official QQ group QR code" width="220">
+  <img src="./assets/images/qq.png" alt="CGo OpenMap official QQ group QR code" width="220">
   <br>
   <em>Scan to join the CGo OpenMap community (QQ Group 619357751)</em>
 </p>
