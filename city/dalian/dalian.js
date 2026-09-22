@@ -36,7 +36,7 @@
         LINE_META: {},
         LINE_SORT_ORDER: ["DLM01", "DLM02", "DLM03", "DLM99", "DLM05", "DLM12", "DLM13"],
         LINE_SYNC_GROUPS: [["DLM13", "DLM99"]],
-        SUBURBAN_LINES: [],
+        SUBURBAN_LINES: ["Rwy"],
         MERGE_STATIONS: ["0320", "0308"],
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {

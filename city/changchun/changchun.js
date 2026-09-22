@@ -65,7 +65,7 @@
         LINE_META: {},
         LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM06", "CCM07", "CCM08"],
         LINE_SYNC_GROUPS: [],
-        SUBURBAN_LINES: [],
+        SUBURBAN_LINES: ["Rwy"],
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {
