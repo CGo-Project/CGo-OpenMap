@@ -4,6 +4,27 @@
  * 城市定制渲染位于 modules/，本文件只保留数据关系、运行时参数与能力桥接。
  */
 (function () {
+    /**
+     * 站点图元 (大连变体)
+     *
+     * 引擎通用模板为三层同心圆：地图底色 r=5 / 线路色 r=4.21 / 地图底色 r=3.5，
+     * 最外圈地图底色会把站点与线路隔开一段白边。
+     * 大连：去掉最外的地图底色描边，并把描边色由线路色改为地图文字色，
+     * 使全图站点统一为文字色圆环（与换乘站同色系），线路色只保留在线路上。
+     * 环宽沿用原值（普通站 0.71、换乘站 0.9），仅改变颜色与去边。
+     */
+    const DL_DOT_ICON = `<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">`
+        + `<circle cx="5" cy="5" r="4.21" fill="var(--text-color)"/>`
+        + `<circle cx="5" cy="5" r="3.5" fill="var(--map-bg)"/>`
+        + `</svg>`;
+
+    const DL_TSF_ICON = `<svg viewBox="0 0 17.5 17.5" xmlns="http://www.w3.org/2000/svg">`
+        + `<circle cx="8.75" cy="8.75" r="8" fill="var(--text-color)"/>`
+        + `<circle cx="8.75" cy="8.75" r="7.1" fill="var(--map-bg)"/>`
+        + `<path d="M6.21,8.01c.12-2.35,2.26-4.22,4.88-4.22.23,0,.46.01.68.04-.55-.18-1.15-.27-1.77-.27-2.8,0-5.09,1.96-5.3,4.45h-1.4l2.34,2.47c.78-.82,1.56-1.65,2.34-2.47h-1.78.01Z" fill="var(--text-color)"/>`
+        + `<path d="M11.85,7.02c-.78.82-1.56,1.65-2.34,2.47h1.78c-.12,2.35-2.26,4.22-4.88,4.22-.23,0-.46-.01-.68-.04.55.18,1.15.27,1.77.27,2.8,0,5.09-1.96,5.3-4.45h1.4l-2.34-2.47h0Z" fill="var(--text-color)"/>`
+        + `</svg>`;
+
     const DalianCity = {
         id: "dalian",
         name: "大连",
@@ -20,6 +41,22 @@
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {
             amapDataUrl: "./city/dalian/amap_data.json"
+        },
+        /**
+         * 城市级站点图元接管（core/ 保持城市无关，大连专属画法只放本目录）：
+         * dot / tsfo / tsf 统一改为地图文字色圆环，并去掉引擎模板最外的地图底色描边。
+         * 尺寸与 z 序沿用 css/style.css 的 .dot / .tsfo / .tsf，不在此覆盖。
+         * 其余站型（no / rdot 等）返回 null，回落引擎通用模板。
+         */
+        renderStationIcon(station) {
+            if (!station) return null;
+            if (station.type === "dot" || station.type === "tsfo") {
+                return { html: DL_DOT_ICON, className: "dl-station-ring" };
+            }
+            if (station.type === "tsf") {
+                return { html: DL_TSF_ICON, className: "dl-station-ring" };
+            }
+            return null;
         },
         handleLineMerge(station, relatedLinesInfo) {
             const mergeConfig = {
