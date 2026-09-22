@@ -4,6 +4,19 @@
  * 线路与站点数据来自官方交互线路图；本文件只负责城市运行时元数据。
  */
 (function () {
+    /**
+     * 普通站图元 (长春变体，viewBox 0 0 10 10)
+     *
+     * 引擎通用模板为三层同心圆：地图底色 r=5 / 线路色 r=4.21 / 地图底色 r=3.5，
+     * 最外圈地图底色会把站点与线路隔开一段白边。
+     * 长春：去掉最外的地图底色描边，线路色环向外撑满，
+     * 环宽由 0.71 加粗至 1.2（内留白半径 3.8）。
+     */
+    const CC_DOT_ICON = (color) => `<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">`
+        + `<circle cx="5" cy="5" r="5" fill="${color}"/>`
+        + `<circle cx="5" cy="5" r="3.8" fill="var(--map-bg)"/>`
+        + `</svg>`;
+
     const ChangchunCity = {
         id: "changchun",
         name: "长春",
@@ -21,6 +34,21 @@
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {
             amapDataUrl: "./city/changchun/amap_data.json"
+        },
+        /**
+         * 城市级站点图元接管（core/ 保持城市无关，长春专属画法只放本目录）：
+         * dot / tsfo 去掉引擎模板最外的地图底色描边，线路色环加粗至 1.2。
+         * 尺寸与 z 序沿用 css/style.css 的 .dot / .tsfo，不在此覆盖。
+         * 换乘站 tsf 与其余站型返回 null，回落引擎通用模板。
+         */
+        renderStationIcon(station) {
+            if (!station) return null;
+            if (station.type === "dot" || station.type === "tsfo") {
+                const colors = Array.isArray(station.lineColors) ? station.lineColors : [];
+                const color = colors[0] || "var(--station-stroke)";
+                return { html: CC_DOT_ICON(color), className: "cc-station-dot" };
+            }
+            return null;
         },
         getNavigationUrl(stationName) {
             return `https://uri.amap.com/search?keyword=${encodeURIComponent(`${stationName}(地铁站)`)}&city=${encodeURIComponent("长春")}`;
