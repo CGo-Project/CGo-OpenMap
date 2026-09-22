@@ -187,7 +187,7 @@ const stationsData = {
         }
     },
     "0320": {
-        "type": "tsf",
+        "type": "dot",
         "x": 1302,
         "y": 263,
         "cn": "九里",
@@ -2271,7 +2271,7 @@ const stationsData = {
             "en": 1
         },
      },
-     "DLZ":
+     "DLT":
      {
         "type": "rdot",
         "x": 1125,
@@ -2289,7 +2289,7 @@ const stationsData = {
             "en": 1
         },
      },
-     "DLB":
+     "DFT":
      {
         "type": "rdot",
         "x": 922,

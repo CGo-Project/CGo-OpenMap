@@ -27,7 +27,7 @@ const linesData = [
         overlayStyle: { color: "#00263b", width: 3.4, opacity: 0.5, dashArray: "12, 12" },
         isPointOnly: true,
         // 记得在这里把相关站点的 stationIds 加进去
-        stationIds: ["SYB", "SYZ", "SYN"],
+        stationIds: ["SBT", "SYT", "SOT"],
         distances: [],
         pathPoints: []
     },

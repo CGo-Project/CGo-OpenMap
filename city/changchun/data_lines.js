@@ -6,6 +6,21 @@
 
 const linesData = [
     {
+        id: "Rwy", // 记录地图上单独的铁路车站站点
+        name: "中国铁路",
+        svg: "icon@56.svg",
+        svgclr: "#00263b",
+        svgtext: "#ffffff",
+        company: "中国铁路沈阳局",
+        color: "#bdcbd2",
+        overlayStyle: { color: "#00263b", width: 3.4, opacity: 0.5, dashArray: "12, 12" },
+        isPointOnly: true,
+        // 记得在这里把相关站点的 stationIds 加进去
+        stationIds: ["CRT", "CCT"],
+        distances: [],
+        pathPoints: []
+    },
+    {
         "id": "CCM01",
         "name": "1号线",
         "color": "#E50011",
