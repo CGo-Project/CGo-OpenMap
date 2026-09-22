@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260920.0110';
+const CACHE_NAME = 'cgo-openmap-v260920.0111';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -183,6 +183,18 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_timetable.js',
     './city/changchun/amap_data.json',
 
+    // 城市配置与业务数据 (福州)
+    './city/fuzhou/staname.csv',
+    './city/fuzhou/data_legend.js',
+    './city/fuzhou/data_lines.js',
+    './city/fuzhou/data_notopen.js',
+    './city/fuzhou/data_scattered.js',
+    './city/fuzhou/data_stations.js',
+    './city/fuzhou/data_timetable.js',
+    './city/fuzhou/data_virtual_transfers.js',
+    './city/fuzhou/fuzhou.js',
+    './city/fuzhou/assets/fuzhou_sea.svg',
+
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
     './assets/svg/icon@01.svg',
     './assets/svg/icon@02.svg',
@@ -196,7 +208,9 @@ const ASSETS_TO_CACHE = [
     './assets/svg/icon@15.svg',
     './assets/svg/icon@lg.svg',
     './assets/svg/icon@xha.svg',
-    './assets/svg/icon@bh.svg',
+
+    //福州线路徽标
+    './assets/svg/icon@fz_BE.svg',
 
     // 图标与清单素材
     './assets/icons/icon-192.png',
