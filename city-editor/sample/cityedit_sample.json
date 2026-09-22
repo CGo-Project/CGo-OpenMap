@@ -5297,7 +5297,8 @@
     {
       "id": "L270",
       "name": "滨海快线",
-      "color": "#18958d"
+      "color": "#18958d",
+      "svg": "icon@bh.svg"
     }
   ],
   "idSeq": 596

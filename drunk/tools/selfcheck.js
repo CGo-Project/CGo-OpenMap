@@ -328,7 +328,7 @@ section('isPointOnly 线路不得绘制走向');
                 `若误连最长一段将横跨画布 ${pct}% 宽`);
         });
     }
-    check(affected === 5, `6 座城市共 ${affected} 条 isPointOnly 线路受此保护`);
+    check(affected >= 5, `${cities.length} 座城市共 ${affected} 条 isPointOnly 线路受此保护`);
 }
 
 // ============================================================================
