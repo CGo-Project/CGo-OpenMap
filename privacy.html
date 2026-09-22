@@ -94,7 +94,8 @@
             <div class="header-island-divider" aria-hidden="true"></div>
             <div class="header-center">
                 <div class="img-icon-wrapper header-logo-wrapper">
-                    <img src="./assets/icons/mapicon.png" alt="Logo" class="header-logo" loading="lazy" decoding="async" fetchpriority="low">
+                    <img src="./assets/icons/mapicon.png" alt="Logo" class="header-logo" loading="lazy" decoding="async" fetchpriority="low"
+                        onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
                     <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
                 </div>
                 <span class="app-title">隐私政策</span>

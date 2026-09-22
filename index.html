@@ -510,7 +510,8 @@
             <div class="header-center">
                 <div class="img-icon-wrapper header-logo-wrapper">
                     <img src="./assets/icons/mapicon.png" alt="CGo OpenMap" class="header-logo" loading="eager"
-                        decoding="async">
+                        decoding="async"
+                        onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
                     <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
                 </div>
                 <span class="app-title">CGo OpenMap</span>

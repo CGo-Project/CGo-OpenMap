@@ -707,15 +707,29 @@ a:hover {
     padding: 0;
 }
 
-.img-icon-wrapper.loaded img {
+/* 兼容多重 loaded 标记：wrapper 级、img 级或其父级 */
+.img-icon-wrapper.loaded img,
+.img-icon-wrapper img.loaded,
+.img-icon-wrapper:has(img.loaded) img {
     opacity: 1;
 }
 
-.img-icon-wrapper.loaded .icon-placeholder {
-    opacity: 0;
-    animation: none;
-    visibility: hidden;
+/* 无占位符时直接保证图片可见，避免因缺乏 js 导致纯静态页面图片不显示 */
+.img-icon-wrapper:not(:has(.icon-placeholder)) img {
+    opacity: 1;
 }
+
+.img-icon-wrapper.loaded .icon-placeholder,
+.img-icon-wrapper:has(img.loaded) .icon-placeholder,
+.img-icon-wrapper:has(.loaded) .icon-placeholder,
+.img-icon-wrapper img.loaded + .icon-placeholder,
+.img-icon-wrapper img.loaded ~ .icon-placeholder {
+    opacity: 0 !important;
+    animation: none !important;
+    visibility: hidden !important;
+    display: none !important;
+}
+
 
 
 /* =====================================================
