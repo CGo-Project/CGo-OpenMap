@@ -82,7 +82,7 @@ const SHENYANG_TRAMWAY_TIMETABLE = {
     HNT5: {
         endpoints: [
             { stationId: "T501", stationName: "奥体中心", first: "06:30", last: "22:00" },
-            { stationId: "T528", stationName: "李石寨", first: "05:30", last: "21:00" }
+            { stationId: "T529", stationName: "李石寨", first: "05:30", last: "21:00" }
         ]
     }
 };
