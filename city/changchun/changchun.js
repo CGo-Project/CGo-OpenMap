@@ -68,9 +68,8 @@
         SUBURBAN_LINES: ["Rwy"],
         /**
          * 有轨电车线路 ID；用于区分地铁站 / 有轨站（侧栏标题、导航链接等）。
-         * ⚠️ 54 路、55 路有轨电车数据尚未录入，录入后请把线路 ID 补进此数组。
          */
-        TRAM_LINES: [],
+        TRAM_LINES: ["CCG54", "CCG55"],
         isTramLine(lineId) {
             if (this.TRAM_LINES.includes(lineId)) return true;
             const line = (typeof linesData !== "undefined" && Array.isArray(linesData))

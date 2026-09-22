@@ -13,6 +13,15 @@ const LEGEND_CONFIG = [
             { targets: ["CCM07"], name: "7号线" },
             { targets: ["CCM08"], name: "8号线" }
         ]
+    },
+    { type: "title", title: "有轨线路", subtitle: "Tram Lines" },
+    {
+        type: "grid",
+        cols: 2,
+        items: [
+            { targets: ["CCG54"], name: "G54路" },
+            { targets: ["CCG55"], name: "G55路" }
+        ]
     }
 ];
 if (typeof window !== "undefined") {
