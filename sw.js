@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260922.2235';
+const CACHE_NAME = 'cgo-openmap-v260923.0144';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -109,6 +109,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/fangcheng.svg',
     './city/shenyang/assets/railway.svg',
     './city/shenyang/assets/transfer-badge.svg',
+    './city/shenyang/assets/tram-5.svg',
 
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',
@@ -217,6 +218,8 @@ const ASSETS_TO_CACHE = [
     './city/changchun/amap_data.json',
     './city/changchun/assets/railway.svg',
     './city/changchun/assets/transfer-badge.svg',
+    './city/changchun/assets/tram-54.svg',
+    './city/changchun/assets/tram-55.svg',
 
     // 城市配置与业务数据 (福州)
     './city/fuzhou/fuzhou.js',
