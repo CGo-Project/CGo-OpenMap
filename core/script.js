@@ -1564,6 +1564,9 @@ function highlightLine(lineId, currentStationId = null, fromSync = false) {
         if (highlightLayer) {
             if (!highlightLayer.querySelector(`[data-visual-id="${lineId}"]`)) {
                 const clone = el.cloneNode(true);
+                // 高亮层只是线路的视觉副本，不能继承 active 状态；否则原线路和副本会分别应用阴影滤镜，
+                // 换乘站关联线路越多，Android Edge 上看到的阴影叠加层就越多。
+                clone.classList.remove('active');
                 const interactPath = clone.querySelector('.line-interaction');
                 if (interactPath) interactPath.remove();
                 highlightLayer.appendChild(clone);

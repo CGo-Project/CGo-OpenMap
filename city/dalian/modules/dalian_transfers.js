@@ -7,7 +7,7 @@
  * @property {{ cityId: string, moduleId: string }} detail
  */
 (function () {
-    const DALIAN_FREE_TRANSFER_LABEL = "可在乘坐期间申请免费站外换乘";
+    const DALIAN_FREE_TRANSFER_LABEL = "可免费站外换乘";
     const DEFAULT_FREE_TRANSFER_LABEL = "电子客票可免费站外换乘";
 
     function renderDalianTransfers(context) {

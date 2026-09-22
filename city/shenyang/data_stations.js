@@ -393,7 +393,7 @@ const stationsData = {
         x: 1000,
         y: 320,
         cn: "师范大学",
-        en: "SHIFANDAIXUE",
+        en: "SHIFANDAXUE",
         aliases: ["辽宁古生物博物馆"],
         align: "right",
         offset: { x: 10, y: 0 },
