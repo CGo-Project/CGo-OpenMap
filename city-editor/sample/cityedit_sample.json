@@ -1,0 +1,5304 @@
+{
+  "version": 1,
+  "canvas": {
+    "width": 2500,
+    "height": 1600
+  },
+  "nodes": {
+    "S271": {
+      "id": "S271",
+      "type": "station",
+      "x": 950,
+      "y": 100,
+      "code": "M101",
+      "cn": "象峰",
+      "en": "Xiangfeng",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S272": {
+      "id": "S272",
+      "type": "station",
+      "x": 950,
+      "y": 150,
+      "code": "M102",
+      "cn": "秀山",
+      "en": "Xiushan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S274": {
+      "id": "S274",
+      "type": "station",
+      "x": 950,
+      "y": 200,
+      "code": "M103",
+      "cn": "罗汉山",
+      "en": "Luohanshan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S276": {
+      "id": "S276",
+      "type": "station",
+      "x": 955,
+      "y": 250,
+      "code": "M104",
+      "cn": "福州火车站",
+      "en": "Fuzhou Railway Station",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01",
+        "L270"
+      ]
+    },
+    "S278": {
+      "id": "S278",
+      "type": "station",
+      "x": 910,
+      "y": 300,
+      "code": "M105",
+      "cn": "斗门",
+      "en": "Doumen",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S280": {
+      "id": "S280",
+      "type": "station",
+      "x": 860,
+      "y": 300,
+      "code": "M106",
+      "cn": "树兜",
+      "en": "Shudou",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S282": {
+      "id": "S282",
+      "type": "station",
+      "x": 810,
+      "y": 350,
+      "code": "M107",
+      "cn": "屏山",
+      "en": "Pingshan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S284": {
+      "id": "S284",
+      "type": "station",
+      "x": 810,
+      "y": 425,
+      "code": "M108",
+      "cn": "东街口",
+      "en": "Dongjiekou",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01",
+        "L168"
+      ]
+    },
+    "S286": {
+      "id": "S286",
+      "type": "station",
+      "x": 810,
+      "y": 525,
+      "code": "M109",
+      "cn": "南门兜",
+      "en": "Nanmendou",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01",
+        "L106"
+      ]
+    },
+    "S288": {
+      "id": "S288",
+      "type": "station",
+      "x": 810,
+      "y": 575,
+      "code": "M110",
+      "cn": "茶亭",
+      "en": "Chating",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S290": {
+      "id": "S290",
+      "type": "station",
+      "x": 810,
+      "y": 625,
+      "code": "M111",
+      "cn": "达道",
+      "en": "Dadao",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S292": {
+      "id": "S292",
+      "type": "station",
+      "x": 860,
+      "y": 725,
+      "code": "M112",
+      "cn": "上藤",
+      "en": "Shangteng",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S294": {
+      "id": "S294",
+      "type": "station",
+      "x": 985,
+      "y": 850,
+      "code": "M113",
+      "cn": "三叉街",
+      "en": "Sanchajie",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S296": {
+      "id": "S296",
+      "type": "station",
+      "x": 1025,
+      "y": 890,
+      "code": "M114",
+      "cn": "白湖亭",
+      "en": "Baihuting",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S298": {
+      "id": "S298",
+      "type": "station",
+      "x": 1065,
+      "y": 930,
+      "code": "M115",
+      "cn": "葫芦阵",
+      "en": "Huluzheng",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S300": {
+      "id": "S300",
+      "type": "station",
+      "x": 1105,
+      "y": 970,
+      "code": "M116",
+      "cn": "黄山",
+      "en": "Huangshan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S302": {
+      "id": "S302",
+      "type": "station",
+      "x": 1145,
+      "y": 1010,
+      "code": "M117",
+      "cn": "排下",
+      "en": "Paixia",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S304": {
+      "id": "S304",
+      "type": "station",
+      "x": 1185,
+      "y": 1050,
+      "code": "M118",
+      "cn": "城门",
+      "en": "Chengmen",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01",
+        "L168"
+      ]
+    },
+    "S306": {
+      "id": "S306",
+      "type": "station",
+      "x": 1235,
+      "y": 1100,
+      "code": "M119",
+      "cn": "三角埕",
+      "en": "Sanjiaocheng",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S308": {
+      "id": "S308",
+      "type": "station",
+      "x": 1310,
+      "y": 1150,
+      "code": "M120",
+      "cn": "胪雷",
+      "en": "Lulei",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S310": {
+      "id": "S310",
+      "type": "station",
+      "x": 1385,
+      "y": 1150,
+      "code": "M121",
+      "cn": "福州火车南站",
+      "en": "Fuzhou South Railway Station",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01",
+        "L169"
+      ]
+    },
+    "S312": {
+      "id": "S312",
+      "type": "station",
+      "x": 1435,
+      "y": 1150,
+      "code": "M122",
+      "cn": "安平",
+      "en": "Anping",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S314": {
+      "id": "S314",
+      "type": "station",
+      "x": 1510,
+      "y": 1175,
+      "code": "M123",
+      "cn": "梁厝",
+      "en": "Liangcuo",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01",
+        "L269"
+      ]
+    },
+    "S316": {
+      "id": "S316",
+      "type": "station",
+      "x": 1560,
+      "y": 1225,
+      "code": "M124",
+      "cn": "下洋",
+      "en": "Xiayang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01",
+        "L269"
+      ]
+    },
+    "S318": {
+      "id": "S318",
+      "type": "station",
+      "x": 1670,
+      "y": 1260,
+      "code": "M125",
+      "cn": "三江口",
+      "en": "Sanjiangkou",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L01",
+      "lineIds": [
+        "L01"
+      ]
+    },
+    "S320": {
+      "id": "S320",
+      "type": "station",
+      "x": 235,
+      "y": 275,
+      "code": "M201",
+      "cn": "苏洋",
+      "en": "Suyang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S321": {
+      "id": "S321",
+      "type": "station",
+      "x": 235,
+      "y": 350,
+      "code": "M202",
+      "cn": "沙堤",
+      "en": "Shadi",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S323": {
+      "id": "S323",
+      "type": "station",
+      "x": 235,
+      "y": 425,
+      "code": "M203",
+      "cn": "上街",
+      "en": "Shangjie",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S325": {
+      "id": "S325",
+      "type": "station",
+      "x": 235,
+      "y": 500,
+      "code": "M204",
+      "cn": "金屿",
+      "en": "Jingyu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S327": {
+      "id": "S327",
+      "type": "station",
+      "x": 235,
+      "y": 575,
+      "code": "M205",
+      "cn": "福州大学",
+      "en": "Fuzhou University",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S329": {
+      "id": "S329",
+      "type": "station",
+      "x": 235,
+      "y": 650,
+      "code": "M206",
+      "cn": "董屿·福建师大",
+      "en": "Dongyu/Fujian Normal University",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S331": {
+      "id": "S331",
+      "type": "station",
+      "x": 285,
+      "y": 700,
+      "code": "M207",
+      "cn": "厚庭",
+      "en": "Houting",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S333": {
+      "id": "S333",
+      "type": "station",
+      "x": 385,
+      "y": 700,
+      "code": "M208",
+      "cn": "桔园洲",
+      "en": "Juyuanzhou",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S335": {
+      "id": "S335",
+      "type": "station",
+      "x": 460,
+      "y": 700,
+      "code": "M209",
+      "cn": "洪湾",
+      "en": "Hongwan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S337": {
+      "id": "S337",
+      "type": "station",
+      "x": 535,
+      "y": 700,
+      "code": "M210",
+      "cn": "金山",
+      "en": "Jinshan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106",
+        "L169"
+      ]
+    },
+    "S339": {
+      "id": "S339",
+      "type": "station",
+      "x": 585,
+      "y": 675,
+      "code": "M211",
+      "cn": "金祥",
+      "en": "Jinxiang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S341": {
+      "id": "S341",
+      "type": "station",
+      "x": 660,
+      "y": 600,
+      "code": "M212",
+      "cn": "祥坂",
+      "en": "Xiangban",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S343": {
+      "id": "S343",
+      "type": "station",
+      "x": 710,
+      "y": 550,
+      "code": "M213",
+      "cn": "宁化",
+      "en": "Ninghua",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S345": {
+      "id": "S345",
+      "type": "station",
+      "x": 760,
+      "y": 525,
+      "code": "M214",
+      "cn": "西洋",
+      "en": "Xiyang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S349": {
+      "id": "S349",
+      "type": "station",
+      "x": 910,
+      "y": 525,
+      "code": "M216",
+      "cn": "水部",
+      "en": "Shuibu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S351": {
+      "id": "S351",
+      "type": "station",
+      "x": 1010,
+      "y": 525,
+      "code": "M217",
+      "cn": "紫阳",
+      "en": "Ziyang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S353": {
+      "id": "S353",
+      "type": "station",
+      "x": 1110,
+      "y": 575,
+      "code": "M218",
+      "cn": "五里亭",
+      "en": "Wuliting",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S355": {
+      "id": "S355",
+      "type": "station",
+      "x": 1160,
+      "y": 625,
+      "code": "M219",
+      "cn": "前屿",
+      "en": "Qianyu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106",
+        "L168"
+      ]
+    },
+    "S357": {
+      "id": "S357",
+      "type": "station",
+      "x": 1210,
+      "y": 675,
+      "code": "M220",
+      "cn": "上洋",
+      "en": "Shangyang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S359": {
+      "id": "S359",
+      "type": "station",
+      "x": 1260,
+      "y": 725,
+      "code": "M221",
+      "cn": "鼓山",
+      "en": "Gushan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S361": {
+      "id": "S361",
+      "type": "station",
+      "x": 1310,
+      "y": 775,
+      "code": "M222",
+      "cn": "洋里",
+      "en": "Yangli",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L106",
+      "lineIds": [
+        "L106"
+      ]
+    },
+    "S381": {
+      "id": "S381",
+      "type": "station",
+      "x": 385,
+      "y": 625,
+      "code": "M401",
+      "cn": "半洲",
+      "en": "Banzhou",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S382": {
+      "id": "S382",
+      "type": "station",
+      "x": 410,
+      "y": 550,
+      "code": "M402",
+      "cn": "建新",
+      "en": "Jianxing",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S384": {
+      "id": "S384",
+      "type": "station",
+      "x": 460,
+      "y": 500,
+      "code": "M403",
+      "cn": "洪塘",
+      "en": "Hongtang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168",
+        "L169"
+      ]
+    },
+    "S386": {
+      "id": "S386",
+      "type": "station",
+      "x": 510,
+      "y": 450,
+      "code": "M404",
+      "cn": "金牛山",
+      "en": "Jinniushan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S388": {
+      "id": "S388",
+      "type": "station",
+      "x": 585,
+      "y": 425,
+      "code": "M405",
+      "cn": "凤凰池",
+      "en": "Fenghuangchi",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S390": {
+      "id": "S390",
+      "type": "station",
+      "x": 660,
+      "y": 425,
+      "code": "M406",
+      "cn": "陆庄",
+      "en": "Luzhuang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S392": {
+      "id": "S392",
+      "type": "station",
+      "x": 735,
+      "y": 425,
+      "code": "M407",
+      "cn": "西门",
+      "en": "Ximeng",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S396": {
+      "id": "S396",
+      "type": "station",
+      "x": 885,
+      "y": 425,
+      "code": "M409",
+      "cn": "省立医院",
+      "en": "Provincial Hospital",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S398": {
+      "id": "S398",
+      "type": "station",
+      "x": 960,
+      "y": 425,
+      "code": "M410",
+      "cn": "东门",
+      "en": "Dongmeng",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168",
+        "L270"
+      ]
+    },
+    "S400": {
+      "id": "S400",
+      "type": "station",
+      "x": 1035,
+      "y": 425,
+      "code": "M411",
+      "cn": "三角池",
+      "en": "Sanjiaochi",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S402": {
+      "id": "S402",
+      "type": "station",
+      "x": 1110,
+      "y": 425,
+      "code": "M412",
+      "cn": "竹屿",
+      "en": "Zhuyu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S404": {
+      "id": "S404",
+      "type": "station",
+      "x": 1160,
+      "y": 475,
+      "code": "M413",
+      "cn": "横屿",
+      "en": "Hengyu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S406": {
+      "id": "S406",
+      "type": "station",
+      "x": 1160,
+      "y": 550,
+      "code": "M414",
+      "cn": "后屿",
+      "en": "Houyu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S410": {
+      "id": "S410",
+      "type": "station",
+      "x": 1160,
+      "y": 675,
+      "code": "M416",
+      "cn": "光明港",
+      "en": "Guangminggang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S412": {
+      "id": "S412",
+      "type": "station",
+      "x": 1160,
+      "y": 750,
+      "code": "M417",
+      "cn": "鳌峰洲",
+      "en": "Aofengzhou",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S414": {
+      "id": "S414",
+      "type": "station",
+      "x": 1205,
+      "y": 825,
+      "code": "M418",
+      "cn": "花海公园",
+      "en": "Huahai Park",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S416": {
+      "id": "S416",
+      "type": "station",
+      "x": 1260,
+      "y": 880,
+      "code": "M419",
+      "cn": "会展中心",
+      "en": "Exhibition Center",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S418": {
+      "id": "S418",
+      "type": "station",
+      "x": 1285,
+      "y": 955,
+      "code": "M420",
+      "cn": "林浦",
+      "en": "Linpu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168",
+        "L269"
+      ]
+    },
+    "S422": {
+      "id": "S422",
+      "type": "station",
+      "x": 1110,
+      "y": 1125,
+      "code": "M422",
+      "cn": "螺洲温泉",
+      "en": "Luozhou Hot Spring",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168"
+      ]
+    },
+    "S424": {
+      "id": "S424",
+      "type": "station",
+      "x": 960,
+      "y": 1205,
+      "code": "M423",
+      "cn": "帝封江",
+      "en": "Difengjiang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L168",
+      "lineIds": [
+        "L168",
+        "L169",
+        "L270"
+      ]
+    },
+    "S430": {
+      "id": "S430",
+      "type": "station",
+      "x": 385,
+      "y": 275,
+      "code": "M401_2",
+      "cn": "荆溪厚屿",
+      "en": "Jinxi Houyu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S431": {
+      "id": "S431",
+      "type": "station",
+      "x": 410,
+      "y": 450,
+      "code": "M402_2",
+      "cn": "农林大学",
+      "en": "Agriculture and Forestry University",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S435": {
+      "id": "S435",
+      "type": "station",
+      "x": 510,
+      "y": 550,
+      "code": "M404_2",
+      "cn": "阵坂",
+      "en": "Zhengban",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S437": {
+      "id": "S437",
+      "type": "station",
+      "x": 535,
+      "y": 625,
+      "code": "M405_2",
+      "cn": "马榕",
+      "en": "Marong",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S441": {
+      "id": "S441",
+      "type": "station",
+      "x": 535,
+      "y": 775,
+      "code": "M407_2",
+      "cn": "凤岗里",
+      "en": "Fenggangli",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S443": {
+      "id": "S443",
+      "type": "station",
+      "x": 535,
+      "y": 850,
+      "code": "M408",
+      "cn": "浦上大道",
+      "en": "Pushang Dadao",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S445": {
+      "id": "S445",
+      "type": "station",
+      "x": 535,
+      "y": 925,
+      "code": "M409_2",
+      "cn": "霞镜",
+      "en": "Xiajing",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S447": {
+      "id": "S447",
+      "type": "station",
+      "x": 570,
+      "y": 985,
+      "code": "M410_2",
+      "cn": "东岭",
+      "en": "Dongling",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S449": {
+      "id": "S449",
+      "type": "station",
+      "x": 620,
+      "y": 1035,
+      "code": "M411_2",
+      "cn": "台屿",
+      "en": "Taiyu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S451": {
+      "id": "S451",
+      "type": "station",
+      "x": 670,
+      "y": 1085,
+      "code": "M412_2",
+      "cn": "盘屿",
+      "en": "Panyu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S453": {
+      "id": "S453",
+      "type": "station",
+      "x": 720,
+      "y": 1135,
+      "code": "M413_2",
+      "cn": "吴山",
+      "en": "Wushan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S455": {
+      "id": "S455",
+      "type": "station",
+      "x": 770,
+      "y": 1185,
+      "code": "M414_2",
+      "cn": "盖山竹榄",
+      "en": "Gaishan Zhulan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S457": {
+      "id": "S457",
+      "type": "station",
+      "x": 870,
+      "y": 1210,
+      "code": "M415",
+      "cn": "义序",
+      "en": "Yixu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S461": {
+      "id": "S461",
+      "type": "station",
+      "x": 1075,
+      "y": 1210,
+      "code": "M417_2",
+      "cn": "螺洲古镇",
+      "en": "Ancient Luozhou Town",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S463": {
+      "id": "S463",
+      "type": "station",
+      "x": 1175,
+      "y": 1210,
+      "code": "M418_2",
+      "cn": "前锦",
+      "en": "Qianjing",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S465": {
+      "id": "S465",
+      "type": "station",
+      "x": 1275,
+      "y": 1210,
+      "code": "M419_2",
+      "cn": "龙江",
+      "en": "Longjiang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L169",
+      "lineIds": [
+        "L169"
+      ]
+    },
+    "S478": {
+      "id": "S478",
+      "type": "station",
+      "x": 1205,
+      "y": 925,
+      "code": "M501",
+      "cn": "潘墩",
+      "en": "Pandun",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S481": {
+      "id": "S481",
+      "type": "station",
+      "x": 1405,
+      "y": 1075,
+      "code": "M503",
+      "cn": "樟岚",
+      "en": "Zhanglang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S487": {
+      "id": "S487",
+      "type": "station",
+      "x": 1660,
+      "y": 1330,
+      "code": "M506",
+      "cn": "营前",
+      "en": "Yingqian",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S489": {
+      "id": "S489",
+      "type": "station",
+      "x": 1710,
+      "y": 1380,
+      "code": "M507",
+      "cn": "航城",
+      "en": "Hangcheng",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top-right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S491": {
+      "id": "S491",
+      "type": "station",
+      "x": 1785,
+      "y": 1425,
+      "code": "M508",
+      "cn": "郑和",
+      "en": "Zhenghe",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S493": {
+      "id": "S493",
+      "type": "station",
+      "x": 1835,
+      "y": 1425,
+      "code": "M509",
+      "cn": "十洋",
+      "en": "Shiyang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S495": {
+      "id": "S495",
+      "type": "station",
+      "x": 1885,
+      "y": 1425,
+      "code": "M510",
+      "cn": "吴航",
+      "en": "Wuhang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S497": {
+      "id": "S497",
+      "type": "station",
+      "x": 1935,
+      "y": 1425,
+      "code": "M511",
+      "cn": "鹤上",
+      "en": "Heshang",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S499": {
+      "id": "S499",
+      "type": "station",
+      "x": 1985,
+      "y": 1425,
+      "code": "M512",
+      "cn": "沙京",
+      "en": "Shajing",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S501": {
+      "id": "S501",
+      "type": "station",
+      "x": 2035,
+      "y": 1425,
+      "code": "M513",
+      "cn": "莲花",
+      "en": "Lianhua",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S503": {
+      "id": "S503",
+      "type": "station",
+      "x": 2085,
+      "y": 1425,
+      "code": "M514",
+      "cn": "下吴",
+      "en": "Xiawu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S505": {
+      "id": "S505",
+      "type": "station",
+      "x": 2135,
+      "y": 1425,
+      "code": "M515",
+      "cn": "壶井",
+      "en": "Hujing",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S507": {
+      "id": "S507",
+      "type": "station",
+      "x": 2185,
+      "y": 1425,
+      "code": "M516",
+      "cn": "万寿",
+      "en": "wanshou",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L269",
+      "lineIds": [
+        "L269"
+      ]
+    },
+    "S517": {
+      "id": "S517",
+      "type": "station",
+      "x": 960,
+      "y": 550,
+      "code": "M603",
+      "cn": "闽都",
+      "en": "Mindu",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S519": {
+      "id": "S519",
+      "type": "station",
+      "x": 960,
+      "y": 625,
+      "code": "M604",
+      "cn": "南公园",
+      "en": "Nangongyuan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S521": {
+      "id": "S521",
+      "type": "station",
+      "x": 960,
+      "y": 850,
+      "code": "M605",
+      "cn": "三叉街（滨海快线）",
+      "en": "Sanchajie (Binhai Express)",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S527": {
+      "id": "S527",
+      "type": "station",
+      "x": 1060,
+      "y": 1375,
+      "code": "M608",
+      "cn": "祥谦",
+      "en": "Xiangqian",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S529": {
+      "id": "S529",
+      "type": "station",
+      "x": 1310,
+      "y": 1525,
+      "code": "M609",
+      "cn": "首占",
+      "en": "Shouzhan",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S533": {
+      "id": "S533",
+      "type": "station",
+      "x": 1560,
+      "y": 1525,
+      "code": "M611",
+      "cn": "滨海西",
+      "en": "Binhaixi",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S535": {
+      "id": "S535",
+      "type": "station",
+      "x": 1835,
+      "y": 1525,
+      "code": "M612",
+      "cn": "大数据",
+      "en": "Dashuju",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S537": {
+      "id": "S537",
+      "type": "station",
+      "x": 2210,
+      "y": 1525,
+      "code": "M613",
+      "cn": "滨海中央商务区",
+      "en": "Binhai CBD",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "top",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S539": {
+      "id": "S539",
+      "type": "station",
+      "x": 2310,
+      "y": 1325,
+      "code": "M614",
+      "cn": "机场",
+      "en": "Airport",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    },
+    "S541": {
+      "id": "S541",
+      "type": "station",
+      "x": 2310,
+      "y": 1225,
+      "code": "M615",
+      "cn": "文岭",
+      "en": "Wenling",
+      "cnSize": 13,
+      "enSize": 10,
+      "align": "right",
+      "offsetX": 0,
+      "offsetY": 0,
+      "labelPos": "align",
+      "lineId": "L270",
+      "lineIds": [
+        "L270"
+      ]
+    }
+  },
+  "segments": [
+    {
+      "id": "G273",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 950,
+          "y": 100,
+          "nid": "S271"
+        },
+        {
+          "x": 950,
+          "y": 150,
+          "nid": "S272"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G275",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 950,
+          "y": 150,
+          "nid": "S272"
+        },
+        {
+          "x": 950,
+          "y": 200,
+          "nid": "S274"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G277",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 950,
+          "y": 200,
+          "nid": "S274"
+        },
+        {
+          "x": 955,
+          "y": 250,
+          "nid": "S276"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": -5,
+        "y": 0
+      }
+    },
+    {
+      "id": "G279",
+      "lineId": "L01",
+      "type": "seg90",
+      "points": [
+        {
+          "x": 955,
+          "y": 250,
+          "nid": "S276"
+        },
+        {
+          "x": 955,
+          "y": 300
+        },
+        {
+          "x": 910,
+          "y": 300,
+          "nid": "S278"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": -5,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G281",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 910,
+          "y": 300,
+          "nid": "S278"
+        },
+        {
+          "x": 860,
+          "y": 300,
+          "nid": "S280"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G283",
+      "lineId": "L01",
+      "type": "seg90",
+      "points": [
+        {
+          "x": 860,
+          "y": 300,
+          "nid": "S280"
+        },
+        {
+          "x": 810,
+          "y": 300
+        },
+        {
+          "x": 810,
+          "y": 350,
+          "nid": "S282"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G285",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 810,
+          "y": 350,
+          "nid": "S282"
+        },
+        {
+          "x": 810,
+          "y": 425,
+          "nid": "S284"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G287",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 810,
+          "y": 425,
+          "nid": "S284"
+        },
+        {
+          "x": 810,
+          "y": 525,
+          "nid": "S286"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G289",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 810,
+          "y": 525,
+          "nid": "S286"
+        },
+        {
+          "x": 810,
+          "y": 575,
+          "nid": "S288"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G291",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 810,
+          "y": 575,
+          "nid": "S288"
+        },
+        {
+          "x": 810,
+          "y": 625,
+          "nid": "S290"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G293",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 810,
+          "y": 625,
+          "nid": "S290"
+        },
+        {
+          "x": 810,
+          "y": 675
+        },
+        {
+          "x": 860,
+          "y": 725,
+          "nid": "S292"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G295",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 860,
+          "y": 725,
+          "nid": "S292"
+        },
+        {
+          "x": 985,
+          "y": 850,
+          "nid": "S294"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G297",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 985,
+          "y": 850,
+          "nid": "S294"
+        },
+        {
+          "x": 1025,
+          "y": 890,
+          "nid": "S296"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G299",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1025,
+          "y": 890,
+          "nid": "S296"
+        },
+        {
+          "x": 1065,
+          "y": 930,
+          "nid": "S298"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G301",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1065,
+          "y": 930,
+          "nid": "S298"
+        },
+        {
+          "x": 1105,
+          "y": 970,
+          "nid": "S300"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G303",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1105,
+          "y": 970,
+          "nid": "S300"
+        },
+        {
+          "x": 1145,
+          "y": 1010,
+          "nid": "S302"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G305",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1145,
+          "y": 1010,
+          "nid": "S302"
+        },
+        {
+          "x": 1185,
+          "y": 1050,
+          "nid": "S304"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G307",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1185,
+          "y": 1050,
+          "nid": "S304"
+        },
+        {
+          "x": 1235,
+          "y": 1100,
+          "nid": "S306"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G309",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1235,
+          "y": 1100,
+          "nid": "S306"
+        },
+        {
+          "x": 1285,
+          "y": 1150
+        },
+        {
+          "x": 1310,
+          "y": 1150,
+          "nid": "S308"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G311",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1310,
+          "y": 1150,
+          "nid": "S308"
+        },
+        {
+          "x": 1385,
+          "y": 1150,
+          "nid": "S310"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G313",
+      "lineId": "L01",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1385,
+          "y": 1150,
+          "nid": "S310"
+        },
+        {
+          "x": 1435,
+          "y": 1150,
+          "nid": "S312"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G315",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1435,
+          "y": 1150,
+          "nid": "S312"
+        },
+        {
+          "x": 1485,
+          "y": 1150
+        },
+        {
+          "x": 1510,
+          "y": 1175,
+          "nid": "S314"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 5,
+        "y": 0
+      }
+    },
+    {
+      "id": "G317",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1510,
+          "y": 1175,
+          "nid": "S314"
+        },
+        {
+          "x": 1560,
+          "y": 1225,
+          "nid": "S316"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 5,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 5,
+        "y": 0
+      }
+    },
+    {
+      "id": "G319",
+      "lineId": "L01",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1560,
+          "y": 1225,
+          "nid": "S316"
+        },
+        {
+          "x": 1595,
+          "y": 1260
+        },
+        {
+          "x": 1670,
+          "y": 1260,
+          "nid": "S318"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 5,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G322",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 235,
+          "y": 275,
+          "nid": "S320"
+        },
+        {
+          "x": 235,
+          "y": 350,
+          "nid": "S321"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G324",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 235,
+          "y": 350,
+          "nid": "S321"
+        },
+        {
+          "x": 235,
+          "y": 425,
+          "nid": "S323"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G326",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 235,
+          "y": 425,
+          "nid": "S323"
+        },
+        {
+          "x": 235,
+          "y": 500,
+          "nid": "S325"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G328",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 235,
+          "y": 500,
+          "nid": "S325"
+        },
+        {
+          "x": 235,
+          "y": 575,
+          "nid": "S327"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G330",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 235,
+          "y": 575,
+          "nid": "S327"
+        },
+        {
+          "x": 235,
+          "y": 650,
+          "nid": "S329"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G332",
+      "lineId": "L106",
+      "type": "seg90",
+      "points": [
+        {
+          "x": 235,
+          "y": 650,
+          "nid": "S329"
+        },
+        {
+          "x": 235,
+          "y": 700
+        },
+        {
+          "x": 285,
+          "y": 700,
+          "nid": "S331"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G334",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 285,
+          "y": 700,
+          "nid": "S331"
+        },
+        {
+          "x": 385,
+          "y": 700,
+          "nid": "S333"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G336",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 385,
+          "y": 700,
+          "nid": "S333"
+        },
+        {
+          "x": 460,
+          "y": 700,
+          "nid": "S335"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G338",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 460,
+          "y": 700,
+          "nid": "S335"
+        },
+        {
+          "x": 535,
+          "y": 700,
+          "nid": "S337"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G340",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 535,
+          "y": 700,
+          "nid": "S337"
+        },
+        {
+          "x": 560,
+          "y": 700
+        },
+        {
+          "x": 585,
+          "y": 675,
+          "nid": "S339"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G342",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 585,
+          "y": 675,
+          "nid": "S339"
+        },
+        {
+          "x": 660,
+          "y": 600,
+          "nid": "S341"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G344",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 660,
+          "y": 600,
+          "nid": "S341"
+        },
+        {
+          "x": 710,
+          "y": 550,
+          "nid": "S343"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G346",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 710,
+          "y": 550,
+          "nid": "S343"
+        },
+        {
+          "x": 735,
+          "y": 525
+        },
+        {
+          "x": 760,
+          "y": 525,
+          "nid": "S345"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G352",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 910,
+          "y": 525,
+          "nid": "S349"
+        },
+        {
+          "x": 1010,
+          "y": 525,
+          "nid": "S351"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G354",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1010,
+          "y": 525,
+          "nid": "S351"
+        },
+        {
+          "x": 1060,
+          "y": 525
+        },
+        {
+          "x": 1110,
+          "y": 575,
+          "nid": "S353"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G356",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1110,
+          "y": 575,
+          "nid": "S353"
+        },
+        {
+          "x": 1160,
+          "y": 625,
+          "nid": "S355"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G358",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1160,
+          "y": 625,
+          "nid": "S355"
+        },
+        {
+          "x": 1210,
+          "y": 675,
+          "nid": "S357"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G360",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1210,
+          "y": 675,
+          "nid": "S357"
+        },
+        {
+          "x": 1260,
+          "y": 725,
+          "nid": "S359"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G362",
+      "lineId": "L106",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1260,
+          "y": 725,
+          "nid": "S359"
+        },
+        {
+          "x": 1310,
+          "y": 775,
+          "nid": "S361"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G379",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 760,
+          "y": 525,
+          "nid": "S345"
+        },
+        {
+          "x": 810,
+          "y": 525,
+          "nid": "S286"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G380",
+      "lineId": "L106",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 910,
+          "y": 525,
+          "nid": "S349"
+        },
+        {
+          "x": 810,
+          "y": 525,
+          "nid": "S286"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G383",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 385,
+          "y": 625,
+          "nid": "S381"
+        },
+        {
+          "x": 385,
+          "y": 575
+        },
+        {
+          "x": 410,
+          "y": 550,
+          "nid": "S382"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G385",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 410,
+          "y": 550,
+          "nid": "S382"
+        },
+        {
+          "x": 460,
+          "y": 500,
+          "nid": "S384"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G387",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 460,
+          "y": 500,
+          "nid": "S384"
+        },
+        {
+          "x": 510,
+          "y": 450,
+          "nid": "S386"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G389",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 510,
+          "y": 450,
+          "nid": "S386"
+        },
+        {
+          "x": 535,
+          "y": 425
+        },
+        {
+          "x": 585,
+          "y": 425,
+          "nid": "S388"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G391",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 585,
+          "y": 425,
+          "nid": "S388"
+        },
+        {
+          "x": 660,
+          "y": 425,
+          "nid": "S390"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G393",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 660,
+          "y": 425,
+          "nid": "S390"
+        },
+        {
+          "x": 735,
+          "y": 425,
+          "nid": "S392"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G399",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 885,
+          "y": 425,
+          "nid": "S396"
+        },
+        {
+          "x": 960,
+          "y": 425,
+          "nid": "S398"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G401",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 960,
+          "y": 425,
+          "nid": "S398"
+        },
+        {
+          "x": 1035,
+          "y": 425,
+          "nid": "S400"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G403",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1035,
+          "y": 425,
+          "nid": "S400"
+        },
+        {
+          "x": 1110,
+          "y": 425,
+          "nid": "S402"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G405",
+      "lineId": "L168",
+      "type": "seg90",
+      "points": [
+        {
+          "x": 1110,
+          "y": 425,
+          "nid": "S402"
+        },
+        {
+          "x": 1160,
+          "y": 425
+        },
+        {
+          "x": 1160,
+          "y": 475,
+          "nid": "S404"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G407",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1160,
+          "y": 475,
+          "nid": "S404"
+        },
+        {
+          "x": 1160,
+          "y": 550,
+          "nid": "S406"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G413",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1160,
+          "y": 675,
+          "nid": "S410"
+        },
+        {
+          "x": 1160,
+          "y": 750,
+          "nid": "S412"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G415",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1160,
+          "y": 750,
+          "nid": "S412"
+        },
+        {
+          "x": 1160,
+          "y": 780
+        },
+        {
+          "x": 1205,
+          "y": 825,
+          "nid": "S414"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G417",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1205,
+          "y": 825,
+          "nid": "S414"
+        },
+        {
+          "x": 1260,
+          "y": 880,
+          "nid": "S416"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G419",
+      "lineId": "L168",
+      "type": "seg90d",
+      "points": [
+        {
+          "x": 1260,
+          "y": 880,
+          "nid": "S416"
+        },
+        {
+          "x": 1310,
+          "y": 930
+        },
+        {
+          "x": 1285,
+          "y": 955,
+          "nid": "S418"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G425",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1110,
+          "y": 1125,
+          "nid": "S422"
+        },
+        {
+          "x": 1030,
+          "y": 1205
+        },
+        {
+          "x": 960,
+          "y": 1205,
+          "nid": "S424"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": -5
+      }
+    },
+    {
+      "id": "G426",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 735,
+          "y": 425,
+          "nid": "S392"
+        },
+        {
+          "x": 810,
+          "y": 425,
+          "nid": "S284"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G427",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 810,
+          "y": 425,
+          "nid": "S284"
+        },
+        {
+          "x": 885,
+          "y": 425,
+          "nid": "S396"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G428",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1160,
+          "y": 550,
+          "nid": "S406"
+        },
+        {
+          "x": 1160,
+          "y": 625,
+          "nid": "S355"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G429",
+      "lineId": "L168",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1160,
+          "y": 625,
+          "nid": "S355"
+        },
+        {
+          "x": 1160,
+          "y": 675,
+          "nid": "S410"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G432",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 385,
+          "y": 275,
+          "nid": "S430"
+        },
+        {
+          "x": 385,
+          "y": 425
+        },
+        {
+          "x": 410,
+          "y": 450,
+          "nid": "S431"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G438",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 510,
+          "y": 550,
+          "nid": "S435"
+        },
+        {
+          "x": 535,
+          "y": 575
+        },
+        {
+          "x": 535,
+          "y": 625,
+          "nid": "S437"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G444",
+      "lineId": "L169",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 535,
+          "y": 775,
+          "nid": "S441"
+        },
+        {
+          "x": 535,
+          "y": 850,
+          "nid": "S443"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G446",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 535,
+          "y": 850,
+          "nid": "S443"
+        },
+        {
+          "x": 535,
+          "y": 925,
+          "nid": "S445"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G448",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 535,
+          "y": 925,
+          "nid": "S445"
+        },
+        {
+          "x": 535,
+          "y": 950
+        },
+        {
+          "x": 570,
+          "y": 985,
+          "nid": "S447"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G450",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 570,
+          "y": 985,
+          "nid": "S447"
+        },
+        {
+          "x": 620,
+          "y": 1035,
+          "nid": "S449"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G452",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 620,
+          "y": 1035,
+          "nid": "S449"
+        },
+        {
+          "x": 670,
+          "y": 1085,
+          "nid": "S451"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G454",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 670,
+          "y": 1085,
+          "nid": "S451"
+        },
+        {
+          "x": 720,
+          "y": 1135,
+          "nid": "S453"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G456",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 720,
+          "y": 1135,
+          "nid": "S453"
+        },
+        {
+          "x": 770,
+          "y": 1185,
+          "nid": "S455"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G458",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 770,
+          "y": 1185,
+          "nid": "S455"
+        },
+        {
+          "x": 795,
+          "y": 1210
+        },
+        {
+          "x": 870,
+          "y": 1210,
+          "nid": "S457"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G464",
+      "lineId": "L169",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1075,
+          "y": 1210,
+          "nid": "S461"
+        },
+        {
+          "x": 1175,
+          "y": 1210,
+          "nid": "S463"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G466",
+      "lineId": "L169",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1175,
+          "y": 1210,
+          "nid": "S463"
+        },
+        {
+          "x": 1275,
+          "y": 1210,
+          "nid": "S465"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G469",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 410,
+          "y": 450,
+          "nid": "S431"
+        },
+        {
+          "x": 460,
+          "y": 500,
+          "nid": "S384"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G470",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 460,
+          "y": 500,
+          "nid": "S384"
+        },
+        {
+          "x": 510,
+          "y": 550,
+          "nid": "S435"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G471",
+      "lineId": "L169",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 535,
+          "y": 625,
+          "nid": "S437"
+        },
+        {
+          "x": 535,
+          "y": 700,
+          "nid": "S337"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G472",
+      "lineId": "L169",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 535,
+          "y": 700,
+          "nid": "S337"
+        },
+        {
+          "x": 535,
+          "y": 775,
+          "nid": "S441"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G473",
+      "lineId": "L169",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 870,
+          "y": 1210,
+          "nid": "S457"
+        },
+        {
+          "x": 960,
+          "y": 1205,
+          "nid": "S424"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 5
+      }
+    },
+    {
+      "id": "G474",
+      "lineId": "L169",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 960,
+          "y": 1205,
+          "nid": "S424"
+        },
+        {
+          "x": 1075,
+          "y": 1210,
+          "nid": "S461"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 5
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G475",
+      "lineId": "L169",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1275,
+          "y": 1210,
+          "nid": "S465"
+        },
+        {
+          "x": 1325,
+          "y": 1210
+        },
+        {
+          "x": 1385,
+          "y": 1150,
+          "nid": "S310"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G476",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1285,
+          "y": 955,
+          "nid": "S418"
+        },
+        {
+          "x": 1190,
+          "y": 1050
+        },
+        {
+          "x": 1185,
+          "y": 1050,
+          "nid": "S304"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G477",
+      "lineId": "L168",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1185,
+          "y": 1050,
+          "nid": "S304"
+        },
+        {
+          "x": 1110,
+          "y": 1125,
+          "nid": "S422"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G490",
+      "lineId": "L269",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1660,
+          "y": 1330,
+          "nid": "S487"
+        },
+        {
+          "x": 1710,
+          "y": 1380,
+          "nid": "S489"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G492",
+      "lineId": "L269",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1710,
+          "y": 1380,
+          "nid": "S489"
+        },
+        {
+          "x": 1755,
+          "y": 1425
+        },
+        {
+          "x": 1785,
+          "y": 1425,
+          "nid": "S491"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G494",
+      "lineId": "L269",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1785,
+          "y": 1425,
+          "nid": "S491"
+        },
+        {
+          "x": 1835,
+          "y": 1425,
+          "nid": "S493"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G496",
+      "lineId": "L269",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1835,
+          "y": 1425,
+          "nid": "S493"
+        },
+        {
+          "x": 1885,
+          "y": 1425,
+          "nid": "S495"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G498",
+      "lineId": "L269",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1885,
+          "y": 1425,
+          "nid": "S495"
+        },
+        {
+          "x": 1935,
+          "y": 1425,
+          "nid": "S497"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G500",
+      "lineId": "L269",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1935,
+          "y": 1425,
+          "nid": "S497"
+        },
+        {
+          "x": 1985,
+          "y": 1425,
+          "nid": "S499"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G502",
+      "lineId": "L269",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1985,
+          "y": 1425,
+          "nid": "S499"
+        },
+        {
+          "x": 2035,
+          "y": 1425,
+          "nid": "S501"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G504",
+      "lineId": "L269",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 2035,
+          "y": 1425,
+          "nid": "S501"
+        },
+        {
+          "x": 2085,
+          "y": 1425,
+          "nid": "S503"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G506",
+      "lineId": "L269",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 2085,
+          "y": 1425,
+          "nid": "S503"
+        },
+        {
+          "x": 2135,
+          "y": 1425,
+          "nid": "S505"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G508",
+      "lineId": "L269",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 2135,
+          "y": 1425,
+          "nid": "S505"
+        },
+        {
+          "x": 2185,
+          "y": 1425,
+          "nid": "S507"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G509",
+      "lineId": "L269",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1205,
+          "y": 925,
+          "nid": "S478"
+        },
+        {
+          "x": 1255,
+          "y": 925
+        },
+        {
+          "x": 1285,
+          "y": 955,
+          "nid": "S418"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G510",
+      "lineId": "L269",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1285,
+          "y": 955,
+          "nid": "S418"
+        },
+        {
+          "x": 1405,
+          "y": 1075,
+          "nid": "S481"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G511",
+      "lineId": "L269",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1405,
+          "y": 1075,
+          "nid": "S481"
+        },
+        {
+          "x": 1410,
+          "y": 1075
+        },
+        {
+          "x": 1510,
+          "y": 1175,
+          "nid": "S314"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": -5,
+        "y": 0
+      }
+    },
+    {
+      "id": "G512",
+      "lineId": "L269",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1510,
+          "y": 1175,
+          "nid": "S314"
+        },
+        {
+          "x": 1560,
+          "y": 1225,
+          "nid": "S316"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": -5,
+        "y": 0
+      },
+      "offsetB": {
+        "x": -5,
+        "y": 0
+      }
+    },
+    {
+      "id": "G513",
+      "lineId": "L269",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1560,
+          "y": 1225,
+          "nid": "S316"
+        },
+        {
+          "x": 1660,
+          "y": 1325
+        },
+        {
+          "x": 1660,
+          "y": 1330,
+          "nid": "S487"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": -5,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G520",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 960,
+          "y": 550,
+          "nid": "S517"
+        },
+        {
+          "x": 960,
+          "y": 625,
+          "nid": "S519"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G522",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 960,
+          "y": 625,
+          "nid": "S519"
+        },
+        {
+          "x": 960,
+          "y": 850,
+          "nid": "S521"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G530",
+      "lineId": "L270",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 1060,
+          "y": 1375,
+          "nid": "S527"
+        },
+        {
+          "x": 1210,
+          "y": 1525
+        },
+        {
+          "x": 1310,
+          "y": 1525,
+          "nid": "S529"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G536",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1560,
+          "y": 1525,
+          "nid": "S533"
+        },
+        {
+          "x": 1835,
+          "y": 1525,
+          "nid": "S535"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G538",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1835,
+          "y": 1525,
+          "nid": "S535"
+        },
+        {
+          "x": 2210,
+          "y": 1525,
+          "nid": "S537"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G540",
+      "lineId": "L270",
+      "type": "seg90",
+      "points": [
+        {
+          "x": 2210,
+          "y": 1525,
+          "nid": "S537"
+        },
+        {
+          "x": 2310,
+          "y": 1525
+        },
+        {
+          "x": 2310,
+          "y": 1325,
+          "nid": "S539"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G542",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 2310,
+          "y": 1325,
+          "nid": "S539"
+        },
+        {
+          "x": 2310,
+          "y": 1225,
+          "nid": "S541"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G543",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 955,
+          "y": 250,
+          "nid": "S276"
+        },
+        {
+          "x": 960,
+          "y": 425,
+          "nid": "S398"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 5,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G544",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 960,
+          "y": 425,
+          "nid": "S398"
+        },
+        {
+          "x": 960,
+          "y": 550,
+          "nid": "S517"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G545",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 960,
+          "y": 850,
+          "nid": "S521"
+        },
+        {
+          "x": 960,
+          "y": 1205,
+          "nid": "S424"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G546",
+      "lineId": "L270",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 960,
+          "y": 1205,
+          "nid": "S424"
+        },
+        {
+          "x": 960,
+          "y": 1275
+        },
+        {
+          "x": 1060,
+          "y": 1375,
+          "nid": "S527"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": true,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "G547",
+      "lineId": "L270",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1310,
+          "y": 1525,
+          "nid": "S529"
+        },
+        {
+          "x": 1560,
+          "y": 1525,
+          "nid": "S533"
+        }
+      ],
+      "routed": true,
+      "cornerFlip": false,
+      "offsetA": {
+        "x": 0,
+        "y": 0
+      },
+      "offsetB": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "waters": [
+    {
+      "id": "W594",
+      "kind": "path",
+      "name": "水域路径 1",
+      "width": 24,
+      "points": [
+        {
+          "x": 325,
+          "y": -5
+        },
+        {
+          "x": 325,
+          "y": 915
+        },
+        {
+          "x": 695,
+          "y": 1285
+        },
+        {
+          "x": 1905,
+          "y": 1285
+        },
+        {
+          "x": 2120,
+          "y": 1070
+        },
+        {
+          "x": 2545,
+          "y": 1070
+        }
+      ]
+    },
+    {
+      "id": "W595",
+      "kind": "path",
+      "name": "水域路径 2",
+      "width": 24,
+      "points": [
+        {
+          "x": 325,
+          "y": 355
+        },
+        {
+          "x": 375,
+          "y": 355
+        },
+        {
+          "x": 710,
+          "y": 690
+        },
+        {
+          "x": 1000,
+          "y": 690
+        },
+        {
+          "x": 1100,
+          "y": 790
+        },
+        {
+          "x": 1250,
+          "y": 790
+        },
+        {
+          "x": 1635,
+          "y": 1175
+        },
+        {
+          "x": 1740,
+          "y": 1175
+        },
+        {
+          "x": 1740,
+          "y": 1280
+        }
+      ]
+    }
+  ],
+  "waterStyle": {
+    "fillLight": "#dceff4",
+    "fillDark": "#17323b",
+    "opacity": 1,
+    "zIndex": 1
+  },
+  "lines": [
+    {
+      "id": "L01",
+      "name": "1号线",
+      "color": "#d7000f"
+    },
+    {
+      "id": "L106",
+      "name": "2号线",
+      "color": "#2d562c"
+    },
+    {
+      "id": "L168",
+      "name": "4号线",
+      "color": "#ef7f3e"
+    },
+    {
+      "id": "L169",
+      "name": "5号线",
+      "color": "#893b67"
+    },
+    {
+      "id": "L269",
+      "name": "6号线",
+      "color": "#0096b7"
+    },
+    {
+      "id": "L270",
+      "name": "滨海快线",
+      "color": "#18958d"
+    }
+  ],
+  "idSeq": 596
+}

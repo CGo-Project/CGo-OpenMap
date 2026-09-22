@@ -46,6 +46,8 @@
     --header-bg: #ffffff;
     --header-height: 60px;
     --footer-bg: #ffffff;
+    --cgo-floating-scrim-start: var(--bg-color, #f8f9fa);
+    --cgo-floating-scrim-end: rgba(248, 249, 250, 0);
 
     /* ── 次级按钮 (灰色系) ── */
     --btn-info-bg: #e9ecef;
@@ -90,6 +92,8 @@
 
     --header-bg: #1f2020;
     --footer-bg: #1f2020;
+    --cgo-floating-scrim-start: var(--bg-color, #1a1a1a);
+    --cgo-floating-scrim-end: rgba(26, 26, 26, 0);
 
     --btn-info-bg: #373838;
     --btn-info-text: #e5e8ea;
@@ -208,19 +212,260 @@
 }
 
 /* =====================================================
-   §4  玻璃态色 (Glassmorphism)
+   §4  玻璃态色与 Liquid Glass 模式体系 (Glassmorphism & Liquid Glass)
    ===================================================== */
 :root {
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.4);
-    --glass-shadow: rgba(0, 0, 0, 0.08);
-    --sidebar-width: 220px;
+    /* ══════════════════════════════════════════════════════
+       CGoUI 玻璃系统中央默认档位配置 (Single Source of Truth)
+       当前：liquid（默认启用物理折射液态玻璃）
+       ══════════════════════════════════════════════════════ */
+    --cgo-glass-default: liquid;
+
+    /* ══════════════════════════════════════════════════════
+       CGoUI 顶栏模式中央默认档位配置 (Single Source of Truth)
+       classic: 默认原版经典吸顶顶栏（Zero-Regression 零变更保证）
+       floating: 新版脱离文档流的双岛屿/单胶囊悬浮菜单栏
+       ══════════════════════════════════════════════════════ */
+    --cgo-header-default: classic;
+    --header-floating-height: 52px;
+    --header-floating-mobile-height: 48px;
+    --header-floating-radius: 12px;
+    --header-floating-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+    --cgo-nav-width: 280px;
+
+    /* ══════════════════════════════════════════════════════
+       CGoUI 背景模式中央默认档位配置 (Single Source of Truth)
+       solid: 默认原版纯色背景（Zero-Regression 零变更保证，使用 --bg-color）
+       gradient: 轻微多维微质感径向双光源渐变背景，衬托玻璃态与沉浸式体验
+       ══════════════════════════════════════════════════════ */
+    --cgo-bg-default: solid;
+    --bg-gradient-light:
+        radial-gradient(circle at 12% 18%, rgba(0, 96, 152, 0.08), transparent 45%),
+        radial-gradient(circle at 88% 82%, rgba(0, 160, 233, 0.06), transparent 45%),
+        var(--bg-color, #f8f9fa);
+    --bg-gradient-dark:
+        radial-gradient(circle at 12% 18%, rgba(0, 96, 152, 0.16), transparent 50%),
+        radial-gradient(circle at 88% 82%, rgba(15, 35, 65, 0.40), transparent 50%),
+        var(--bg-color, #0f1115);
+    --bg-gradient: var(--bg-gradient-light);
+
+    /* 物理光圈与缓动参数 */
+    --lg-rim-lit: 0.95;
+    --lg-rim-dark: 0.04;
+    --lg-rim-hold: 1px;
+    --lg-rim-fade: 12px;
+    --lg-rim-side: 4px;
+    --glass-easing: cubic-bezier(0.32, 0.72, 0, 1);
+    --glass-duration: 0.28s;
+
+    /* 默认：液态玻璃 Liquid Glass 规范（完全对齐 tool.html 真实物理折射） */
+    --glass-refraction-filter: url(#glass-distortion);
+    --glass-backdrop-blur: blur(5px) saturate(130%);
+    --glass-backdrop-blur-surface: blur(14px) saturate(135%);
+    --glass-backdrop-filter: blur(5px) saturate(130%) url(#glass-distortion);
+    --glass-backdrop-filter-surface: blur(14px) saturate(135%) url(#glass-distortion);
+    --glass-bg: rgba(255, 255, 255, 0.60);
+    --glass-bg-hover: rgba(255, 255, 255, 0.68);
+    --glass-border: rgba(255, 255, 255, 0.40);
+    --glass-shadow:
+        0 0 0 0.5px rgba(0, 0, 0, 0.06),
+        0 8px 24px -6px rgba(0, 38, 59, 0.06),
+        0 2px 6px -2px rgba(0, 38, 59, 0.04),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 -8px 16px -12px rgba(0, 0, 0, 0.03);
+    --glass-shadow-hover:
+        0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 14px 30px -8px rgba(0, 38, 59, 0.12),
+        0 4px 10px -2px rgba(0, 38, 59, 0.06),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+    --lg-rim-display: block;
+    --sidebar-width: 280px;
 }
 
 [data-theme='dark'] {
-    --glass-bg: rgba(31, 32, 32, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.05);
-    --glass-shadow: rgba(0, 0, 0, 0.25);
+    --bg-gradient: var(--bg-gradient-dark);
+    --lg-rim-lit: 0.22;
+    --lg-rim-dark: 0;
+    --glass-bg: rgba(31, 32, 34, 0.60);
+    --glass-bg-hover: rgba(38, 40, 44, 0.68);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-shadow:
+        0 0 0 0.5px rgba(255, 255, 255, 0.09),
+        0 10px 28px -6px rgba(0, 0, 0, 0.5),
+        0 3px 8px -2px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+        inset 0 -10px 16px -12px rgba(0, 0, 0, 0.2);
+    --glass-shadow-hover:
+        0 0 0 0.5px rgba(255, 255, 255, 0.15),
+        0 16px 36px -8px rgba(0, 0, 0, 0.65),
+        0 4px 12px -2px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+        --bg-gradient: var(--bg-gradient-dark);
+        --lg-rim-lit: 0.22;
+        --lg-rim-dark: 0;
+        --glass-bg: rgba(31, 32, 34, 0.60);
+        --glass-bg-hover: rgba(38, 40, 44, 0.68);
+        --glass-border: rgba(255, 255, 255, 0.09);
+        --glass-shadow:
+            0 0 0 0.5px rgba(255, 255, 255, 0.09),
+            0 10px 28px -6px rgba(0, 0, 0, 0.5),
+            0 3px 8px -2px rgba(0, 0, 0, 0.35),
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+            inset 0 -10px 16px -12px rgba(0, 0, 0, 0.2);
+        --glass-shadow-hover:
+            0 0 0 0.5px rgba(255, 255, 255, 0.15),
+            0 16px 36px -8px rgba(0, 0, 0, 0.65),
+            0 4px 12px -2px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+        --cgo-floating-scrim-start: var(--bg-color, #1a1a1a);
+        --cgo-floating-scrim-end: rgba(26, 26, 26, 0);
+    }
+}
+
+/* 档位 2：仅模糊 (blur) — 页面级或容器级开启 */
+:root[glass-mode='blur'],
+:root[data-glass-mode='blur'],
+body[glass-mode='blur'],
+body[data-glass-mode='blur'],
+[glass-mode='blur'],
+[data-glass-mode='blur'] {
+    --glass-refraction-filter: none;
+    --glass-backdrop-blur: blur(5px) saturate(130%);
+    --glass-backdrop-blur-surface: blur(14px) saturate(135%);
+    --glass-backdrop-filter: blur(5px) saturate(130%);
+    --glass-backdrop-filter-surface: blur(14px) saturate(135%);
+    --glass-bg: rgba(255, 255, 255, 0.60);
+    --glass-bg-hover: rgba(255, 255, 255, 0.68);
+    --glass-border: rgba(255, 255, 255, 0.40);
+    --glass-shadow:
+        0 0 0 0.5px rgba(0, 0, 0, 0.06),
+        0 8px 24px -6px rgba(0, 38, 59, 0.06),
+        0 2px 6px -2px rgba(0, 38, 59, 0.04),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 -8px 16px -12px rgba(0, 0, 0, 0.03);
+    --glass-shadow-hover:
+        0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 14px 30px -8px rgba(0, 38, 59, 0.12),
+        0 4px 10px -2px rgba(0, 38, 59, 0.06),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+    --lg-rim-display: block;
+}
+
+/* 档位 1：液态玻璃 (liquid) — 模糊 + 硬件加速光学折射 */
+:root[glass-mode='liquid'],
+:root[data-glass-mode='liquid'],
+body[glass-mode='liquid'],
+body[data-glass-mode='liquid'],
+[glass-mode='liquid'],
+[data-glass-mode='liquid'] {
+    --glass-refraction-filter: url(#glass-distortion);
+    --glass-backdrop-blur: blur(5px) saturate(130%);
+    --glass-backdrop-blur-surface: blur(14px) saturate(135%);
+    --glass-backdrop-filter: blur(5px) saturate(130%) url(#glass-distortion);
+    --glass-backdrop-filter-surface: blur(14px) saturate(135%) url(#glass-distortion);
+    --glass-bg: rgba(255, 255, 255, 0.60);
+    --glass-bg-hover: rgba(255, 255, 255, 0.68);
+    --glass-border: rgba(255, 255, 255, 0.40);
+    --glass-shadow:
+        0 0 0 0.5px rgba(0, 0, 0, 0.06),
+        0 8px 24px -6px rgba(0, 38, 59, 0.06),
+        0 2px 6px -2px rgba(0, 38, 59, 0.04),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 -8px 16px -12px rgba(0, 0, 0, 0.03);
+    --glass-shadow-hover:
+        0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 14px 30px -8px rgba(0, 38, 59, 0.12),
+        0 4px 10px -2px rgba(0, 38, 59, 0.06),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+    --lg-rim-display: block;
+}
+
+/* 档位 1 与 2 在暗色模式下的专属高质感黑曜石微透适配 */
+[data-theme='dark'][glass-mode='blur'],
+[data-theme='dark'][data-glass-mode='blur'],
+[data-theme='dark'] body[glass-mode='blur'],
+[data-theme='dark'] body[data-glass-mode='blur'],
+[data-theme='dark'] [glass-mode='blur'],
+[data-theme='dark'] [data-glass-mode='blur'],
+[data-theme='dark'][glass-mode='liquid'],
+[data-theme='dark'][data-glass-mode='liquid'],
+[data-theme='dark'] body[glass-mode='liquid'],
+[data-theme='dark'] body[data-glass-mode='liquid'],
+[data-theme='dark'] [glass-mode='liquid'],
+[data-theme='dark'] [data-glass-mode='liquid'] {
+    --glass-bg: rgba(31, 32, 34, 0.60);
+    --glass-bg-hover: rgba(38, 40, 44, 0.68);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-shadow:
+        0 0 0 0.5px rgba(255, 255, 255, 0.09),
+        0 10px 28px -6px rgba(0, 0, 0, 0.5),
+        0 3px 8px -2px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+        inset 0 -10px 16px -12px rgba(0, 0, 0, 0.2);
+    --glass-shadow-hover:
+        0 0 0 0.5px rgba(255, 255, 255, 0.15),
+        0 16px 36px -8px rgba(0, 0, 0, 0.65),
+        0 4px 12px -2px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light'])[glass-mode='blur'],
+    :root:not([data-theme='light'])[data-glass-mode='blur'],
+    :root:not([data-theme='light']) body[glass-mode='blur'],
+    :root:not([data-theme='light']) body[data-glass-mode='blur'],
+    :root:not([data-theme='light']) [glass-mode='blur'],
+    :root:not([data-theme='light']) [data-glass-mode='blur'],
+    :root:not([data-theme='light'])[glass-mode='liquid'],
+    :root:not([data-theme='light'])[data-glass-mode='liquid'],
+    :root:not([data-theme='light']) body[glass-mode='liquid'],
+    :root:not([data-theme='light']) body[data-glass-mode='liquid'],
+    :root:not([data-theme='light']) [glass-mode='liquid'],
+    :root:not([data-theme='light']) [data-glass-mode='liquid'] {
+        --glass-bg: rgba(31, 32, 34, 0.60);
+        --glass-bg-hover: rgba(38, 40, 44, 0.68);
+        --glass-border: rgba(255, 255, 255, 0.09);
+        --glass-shadow:
+            0 0 0 0.5px rgba(255, 255, 255, 0.09),
+            0 10px 28px -6px rgba(0, 0, 0, 0.5),
+            0 3px 8px -2px rgba(0, 0, 0, 0.35),
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+            inset 0 -10px 16px -12px rgba(0, 0, 0, 0.2);
+        --glass-shadow-hover:
+            0 0 0 0.5px rgba(255, 255, 255, 0.15),
+            0 16px 36px -8px rgba(0, 0, 0, 0.65),
+            0 4px 12px -2px rgba(0, 0, 0, 0.4),
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+    }
+}
+
+/* 显式锁定为扁平（即便未来全局默认切换，显式写了 flat 的页面依然稳固保持扁平） */
+:root[glass-mode='flat'],
+:root[glass-mode='none'],
+:root[data-glass-mode='flat'],
+:root[data-glass-mode='none'],
+body[glass-mode='flat'],
+body[glass-mode='none'],
+body[data-glass-mode='flat'],
+body[data-glass-mode='none'],
+[glass-mode='flat'],
+[glass-mode='none'],
+[data-glass-mode='flat'],
+[data-glass-mode='none'] {
+    --glass-refraction-filter: none;
+    --glass-backdrop-blur: none;
+    --glass-backdrop-blur-surface: none;
+    --glass-backdrop-filter: none;
+    --glass-backdrop-filter-surface: none;
+    --glass-bg: var(--card-bg, #ffffff);
+    --glass-border: var(--border-color, #dee2e6);
+    --glass-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.06));
+    --glass-shadow-hover: var(--shadow-md, 0 4px 15px rgba(0, 0, 0, 0.08));
+    --lg-rim-display: none;
 }
 
 /* =====================================================

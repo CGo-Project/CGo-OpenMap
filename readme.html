@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" glass-mode="liquid" header-mode="floating">
 
 <head>
     <meta charset="UTF-8">
@@ -18,19 +18,23 @@
     <script>
         (function () {
             var t = localStorage.getItem('app-theme');
-            document.documentElement.setAttribute('data-theme', t || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+            if (t) document.documentElement.setAttribute('data-theme', t);
+            var hm = localStorage.getItem('root_cgo_header_mode') || localStorage.getItem('cgo_header_mode');
+            if (hm) document.documentElement.setAttribute('header-mode', hm);
+            var gm = localStorage.getItem('cgo_glass_mode');
+            if (gm) document.documentElement.setAttribute('glass-mode', gm);
         })();
     </script>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260907.104000">
-    <script type="module" src="core/cgo-ui.js?v=260907.104000"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260922.1220">
+    <script type="module" src="core/cgo-ui.js?v=260922.1220"></script>
 
     <!-- 仅引用本地 css/ 样式表以保障项目独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260907.104000">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260907.104000">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260907.104000">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260907.104000">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260922.1220">
 
     <style>
         /* Web Components 未注册前优雅占位，防闪烁 */
@@ -114,6 +118,11 @@
             flex: 1;
         }
 
+        /* 悬浮标题栏模式下内容顶部避让 */
+        :root[header-mode="floating"] .portal-content {
+            padding-top: calc(env(safe-area-inset-top, 0px) + 84px);
+        }
+
         /* 章节标题区 */
         .section-headline {
             display: flex;
@@ -178,6 +187,104 @@
             transform: translateY(-4px);
             border-color: var(--primary-color);
             box-shadow: var(--shadow-lg);
+        }
+
+        /* ══════════════════════════════════════════════════════
+           Liquid Glass 液态玻璃卡片体系升级
+           ══════════════════════════════════════════════════════ */
+        :root[glass-mode="liquid"] .feature-card,
+        :root[glass-mode="liquid"] .port-banner,
+        :root[glass-mode="liquid"] .community-card,
+        :root[glass-mode="liquid"] .meta-info-box {
+            position: relative;
+            background: transparent !important;
+            border: none !important;
+            border-radius: var(--radius-lg, 16px);
+            box-shadow: var(--glass-shadow) !important;
+            backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
+            -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
+            overflow: hidden;
+            isolation: isolate;
+            transition: box-shadow 0.28s cubic-bezier(0.32, 0.72, 0, 1), transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        :root[glass-mode="liquid"] .feature-card:hover,
+        :root[glass-mode="liquid"] .port-banner:hover,
+        :root[glass-mode="liquid"] .community-card:hover {
+            box-shadow: var(--glass-shadow-hover) !important;
+            transform: translateY(-3px);
+        }
+
+        /* 液态玻璃背景层 */
+        :root[glass-mode="liquid"] .feature-card::after,
+        :root[glass-mode="liquid"] .port-banner::after,
+        :root[glass-mode="liquid"] .community-card::after,
+        :root[glass-mode="liquid"] .meta-info-box::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            background: var(--glass-bg, rgba(255, 255, 255, 0.60));
+            pointer-events: none;
+            transition: background-color 0.25s ease;
+        }
+
+        [data-theme="dark"]:root[glass-mode="liquid"] .feature-card::after,
+        [data-theme="dark"]:root[glass-mode="liquid"] .port-banner::after,
+        [data-theme="dark"]:root[glass-mode="liquid"] .community-card::after,
+        [data-theme="dark"]:root[glass-mode="liquid"] .meta-info-box::after {
+            background: var(--glass-bg, rgba(31, 32, 34, 0.60));
+        }
+
+        :root[glass-mode="liquid"] .feature-card:hover::after,
+        :root[glass-mode="liquid"] .port-banner:hover::after,
+        :root[glass-mode="liquid"] .community-card:hover::after {
+            background: var(--glass-bg-hover, rgba(255, 255, 255, 0.68));
+        }
+
+        [data-theme="dark"]:root[glass-mode="liquid"] .feature-card:hover::after,
+        [data-theme="dark"]:root[glass-mode="liquid"] .port-banner:hover::after,
+        [data-theme="dark"]:root[glass-mode="liquid"] .community-card:hover::after {
+            background: var(--glass-bg-hover, rgba(38, 40, 44, 0.68));
+        }
+
+        /* 液态玻璃双轴微光圈 */
+        :root[glass-mode="liquid"] .feature-card::before,
+        :root[glass-mode="liquid"] .port-banner::before,
+        :root[glass-mode="liquid"] .community-card::before,
+        :root[glass-mode="liquid"] .meta-info-box::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background:
+                linear-gradient(to right,
+                    rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
+                    rgba(0, 0, 0, 0) var(--lg-rim-side, 4px),
+                    rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 4px)),
+                    rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
+                linear-gradient(to bottom,
+                    rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) 0,
+                    rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) var(--lg-rim-hold, 1px),
+                    rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px),
+                    rgba(255, 255, 255, 0) calc(100% - var(--lg-rim-fade, 12px)),
+                    rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) calc(100% - var(--lg-rim-hold, 1px)),
+                    rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) 100%);
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        :root[glass-mode="liquid"] .feature-card > *,
+        :root[glass-mode="liquid"] .port-banner > *,
+        :root[glass-mode="liquid"] .community-card > *,
+        :root[glass-mode="liquid"] .meta-info-box > * {
+            position: relative;
+            z-index: 2;
         }
 
         .feature-card-header {
@@ -349,20 +456,34 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 14px;
+            gap: 16px;
+            margin-bottom: 10px;
             flex-wrap: wrap;
-            margin-bottom: 8px;
         }
 
         .footer-nav a {
             color: var(--text-light);
             text-decoration: none;
-            transition: color 0.15s ease;
+            transition: color 0.2s ease;
         }
 
         .footer-nav a:hover {
             color: var(--primary-color);
-            text-decoration: underline;
+        }
+
+        .footer-copyright p {
+            margin: 4px 0;
+        }
+
+        .beian-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .beian-icon {
+            width: 14px;
+            height: 14px;
         }
 
         .footer-sep {
@@ -373,6 +494,53 @@
             opacity: 0.85;
         }
 
+        /* 移动端/异形屏顶部状态栏与信号栏实色安全区保护层 */
+        .mobile-status-bar-fill {
+            position: fixed;
+            top: -100px;
+            left: 0;
+            right: 0;
+            height: calc(100px + constant(safe-area-inset-top, 0px));
+            height: calc(100px + env(safe-area-inset-top, 0px));
+            background-color: var(--bg-color, #f8f9fa);
+            z-index: 50001;
+            pointer-events: none;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme='light']) .mobile-status-bar-fill {
+                background-color: var(--bg-color, #1a1a1a);
+            }
+        }
+
+        [data-theme='dark'] .mobile-status-bar-fill {
+            background-color: var(--bg-color, #1a1a1a);
+        }
+
+        /* 官方社群交流卡片 */
+        .community-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg, 12px);
+            border: 1px solid var(--border-color);
+            padding: 22px 24px;
+            margin-top: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+        }
+
+        .community-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* 响应式适配 */
         @media (max-width: 768px) {
             .portal-content {
                 padding: 20px 16px 40px;
@@ -383,7 +551,8 @@
                 gap: 16px;
             }
 
-            .port-banner {
+            .port-banner,
+            .community-card {
                 flex-direction: column;
                 align-items: flex-start;
                 padding: 20px;
@@ -421,28 +590,44 @@
 </head>
 
 <body class="scrollable">
-    <!-- CGoUI 标准顶部导航 -->
+    <!-- 移动端顶部状态栏/信号栏实色安全区保护层 -->
+    <div class="mobile-status-bar-fill" aria-hidden="true"></div>
+
+    <!-- CGoUI 悬浮双岛模式顶部导航 -->
     <header class="tool-header">
-        <div class="header-left">
-            <button class="btn btn-info" id="backBtn" title="返回上一页">
-                <cgo-icon name="back"></cgo-icon>
-                <span>返回</span>
-            </button>
+        <div class="header-island header-island-left">
+            <div class="header-left">
+                <button class="btn btn-info" id="backBtn" title="返回上一页">
+                    <cgo-icon name="back"></cgo-icon>
+                    <span>返回</span>
+                </button>
+                <a href="./main.html" class="btn btn-primary" title="前往线路图">
+                    <cgo-icon name="home"></cgo-icon>
+                    <span>线路图</span>
+                </a>
+            </div>
+            <div class="header-island-divider" aria-hidden="true"></div>
+            <div class="header-center">
+                <div class="img-icon-wrapper header-logo-wrapper">
+                    <img src="./assets/icons/mapicon.png" alt="Logo" class="header-logo" loading="lazy" decoding="async" fetchpriority="low"
+                        onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
+                    <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
+                </div>
+                <span class="app-title">功能与开源说明</span>
+            </div>
         </div>
 
-        <div class="header-center">
-            <span class="app-title">功能与开源说明</span>
-        </div>
-
-        <div class="header-right">
-            <a href="https://github.com/NokiaimuL/CGo-OpenMap" target="_blank" class="btn btn-info btn-icon-only"
-                title="GitHub 开源仓库">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                    <path
-                        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-                </svg>
-            </a>
-            <cgo-theme-toggle></cgo-theme-toggle>
+        <div class="header-island header-island-right">
+            <div class="header-right">
+                <a href="https://github.com/NokiaimuL/CGo-OpenMap" target="_blank" class="btn btn-info btn-icon-only"
+                    title="GitHub 开源仓库">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                        <path
+                            d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                    </svg>
+                </a>
+                <cgo-theme-toggle></cgo-theme-toggle>
+            </div>
         </div>
     </header>
 
@@ -458,7 +643,7 @@
                     </div>
                     <span class="badge badge-info">开源基础版</span>
                 </div>
-                <p class="section-subtitle">轻量、现代化的开源城市轨道交通交互线路图引擎，内置北京、沈阳等城市线网参考范例，支持快速移植任意城市。</p>
+                <p class="section-subtitle">轻量、现代化的开源城市轨道交通交互线路图引擎，内置北京、沈阳、青岛、合肥等城市线网参考范例，支持快速移植任意城市。</p>
             </div>
 
             <!-- 八大核心特性卡片网格 -->
@@ -558,7 +743,8 @@
                         <h3 class="feature-title">轻量原生与 PWA 离线</h3>
                     </div>
                     <ul class="feature-list">
-                        <li><strong>零重型框架依赖</strong>：纯原生 Web 技术驱动，首屏毫秒级加载</li>
+                        <li><strong>必须纯前端构建</strong>：除监控车站/网页等场景允许破例外，其他主要地图功能严格禁止使用 Node.js、PM2、React 等技术</li>
+                        <li><strong>零重型框架依赖</strong>：纯原生 Web 标准驱动（HTML5/SVG/Vanilla JS），首屏毫秒级加载</li>
                         <li><strong>PWA 独立运行</strong>：支持桌面与移动设备一键安装至主屏幕全屏运行</li>
                         <li><strong>离线数据缓存</strong>：Service Worker 自动缓存核心资源，保障弱网可用</li>
                     </ul>
@@ -630,6 +816,37 @@
                         <span>新手实战手册</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
+                    <a href="https://qm.qq.com/q/nHfgBDS68o" target="_blank" class="btn btn-info" style="background: rgba(18, 183, 245, 0.1); border-color: #12b7f5; color: #12b7f5;" title="加入官方 QQ 交流群 (619357751)">
+                        <cgo-icon name="chat" size="15"></cgo-icon>
+                        <span>官方交流群</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 官方社群交流卡片 -->
+            <div class="community-card">
+                <div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
+                    <img src="./assets/images/qq.png" alt="QQ 交流群二维码" style="width: 100px; height: auto; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);" loading="lazy" decoding="async">
+                    <div style="max-width: 480px;">
+                        <h4 style="margin: 0 0 6px 0; font-size: 16px; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                            <cgo-icon name="chat" size="18" style="color: #12b7f5;"></cgo-icon>
+                            <span>CGo OpenMap 官方交流群</span>
+                            <span class="badge badge-info" style="font-size: 11px; padding: 2px 6px;">群号：619357751</span>
+                        </h4>
+                        <p style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-light); line-height: 1.5;">
+                            欢迎轨道交通爱好者、前端技术开发者与各地城市主理人加入！共同交流城市线网规划、数据移植、拓扑算法与使用反馈。
+                        </p>
+                        <div style="font-size: 12px; color: var(--text-light); opacity: 0.85;">
+                            可手机 QQ 扫码或直接点击右侧一键直达加群。
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <a href="https://qm.qq.com/q/nHfgBDS68o" target="_blank" class="btn btn-primary" style="background: #12b7f5; border-color: #12b7f5; color: #fff; padding: 10px 18px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+                        <span>一键加入官方群</span>
+                        <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                    </a>
                 </div>
             </div>
 
@@ -637,7 +854,7 @@
             <div class="meta-info-box">
                 <div class="meta-info-text">
                     <p><strong>CGo OpenMap - 城市轨道交通线路图开放平台</strong></p>
-                    <p>由 Central Go 及其贡献者开源维护 · 基础范例版本基于北京、沈阳线网构建 · Drunk 系统处于早期测试阶段</p>
+                    <p>由 Central Go 及其贡献者开源维护 · 涵盖北京、沈阳、青岛、合肥等城市线网 · Drunk 系统处于早期测试阶段</p>
                 </div>
                 <div class="meta-badges">
                     <span class="badge badge-info">GNU AGPLv3 / ODbL</span>
@@ -663,6 +880,8 @@
             <span class="footer-sep">·</span>
             <a href="./privacy.html">隐私政策</a>
             <span class="footer-sep">·</span>
+            <a href="https://qm.qq.com/q/nHfgBDS68o" target="_blank">QQ 交流群 (619357751)</a>
+            <span class="footer-sep">·</span>
             <a href="https://github.com/NokiaimuL/CGo-OpenMap" target="_blank">GitHub</a>
         </div>
         <div class="footer-copy">
@@ -670,7 +889,7 @@
         </div>
     </footer>
 
-    <script src="core/tool-theme.js?v=260907.104000"></script>
+    <script src="core/tool-theme.js?v=260922.1220"></script>
     <script>
         document.getElementById('backBtn')?.addEventListener('click', function () {
             if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {

@@ -25,7 +25,7 @@
  * ║   16. 头像 (Avatar)                                           ║
  * ╚══════════════════════════════════════════════════════════════╝
  *
- * 依赖：请先引入 cgo_clr.css
+ * ⚠  依赖：请先引入 cgo_clr.css
  */
 
 /* =====================================================
@@ -45,6 +45,21 @@ html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
+
+/* Web Components 未注册前防闪烁 (FOUC 防护) */
+cgo-icon:not(:defined),
+cgo-button:not(:defined),
+cgo-card:not(:defined),
+cgo-theme-toggle:not(:defined),
+cgo-header-toggle:not(:defined),
+cgo-tabs:not(:defined) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    visibility: visible;
+    opacity: 0.6;
+}
+
 
 body {
     font-family: var(--font-sans);
@@ -612,6 +627,111 @@ a:hover {
     height: 32px;
 }
 
+/* ── 图标与图片渐进加载占位容器体系 ── */
+.img-icon-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.header-logo-wrapper {
+    height: 32px;
+    width: 32px;
+    margin-right: 8px;
+}
+
+.header-logo-wrapper .header-logo {
+    height: 32px;
+    width: 32px;
+    object-fit: contain;
+}
+
+.tool-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+/* 占位 Sparkle 图标 */
+.icon-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--primary-color, #0070f3);
+    opacity: 0.85;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    animation: cgoSparklePulse 1.5s infinite ease-in-out;
+    pointer-events: none;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-logo-wrapper .icon-placeholder {
+    font-size: 20px;
+    --cgo-icon-size: 20px;
+}
+
+.tool-icon-wrapper .icon-placeholder {
+    font-size: 32px;
+    --cgo-icon-size: 32px;
+}
+
+@keyframes cgoSparklePulse {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+    50% {
+        opacity: 0.95;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+}
+
+/* 图像加载前的过渡与淡入 */
+.img-icon-wrapper img {
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background-color: transparent;
+    padding: 0;
+}
+
+/* 兼容多重 loaded 标记：wrapper 级、img 级或其父级 */
+.img-icon-wrapper.loaded img,
+.img-icon-wrapper img.loaded,
+.img-icon-wrapper:has(img.loaded) img {
+    opacity: 1;
+}
+
+/* 无占位符时直接保证图片可见，避免因缺乏 js 导致纯静态页面图片不显示 */
+.img-icon-wrapper:not(:has(.icon-placeholder)) img {
+    opacity: 1;
+}
+
+.img-icon-wrapper.loaded .icon-placeholder,
+.img-icon-wrapper:has(img.loaded) .icon-placeholder,
+.img-icon-wrapper:has(.loaded) .icon-placeholder,
+.img-icon-wrapper img.loaded + .icon-placeholder,
+.img-icon-wrapper img.loaded ~ .icon-placeholder {
+    opacity: 0 !important;
+    animation: none !important;
+    visibility: hidden !important;
+    display: none !important;
+}
+
+
+
 /* =====================================================
    §5  输入框 / 表单 (Forms)
    ===================================================== */
@@ -1042,6 +1162,78 @@ a:hover {
     display: flex;
     flex-direction: column;
     animation: dialogIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: var(--glass-backdrop-blur-surface, none);
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, none);
+}
+
+:root[glass-mode='liquid'] .modal-dialog,
+:root[glass-mode='liquid'] .help-dialog,
+:root[glass-mode='liquid'] .text-dialog,
+:root[data-glass-mode='liquid'] .modal-dialog,
+:root[data-glass-mode='liquid'] .help-dialog,
+:root[data-glass-mode='liquid'] .text-dialog,
+:root[glass-mode='blur'] .modal-dialog,
+:root[glass-mode='blur'] .help-dialog,
+:root[glass-mode='blur'] .text-dialog,
+:root[data-glass-mode='blur'] .modal-dialog,
+:root[data-glass-mode='blur'] .help-dialog,
+:root[data-glass-mode='blur'] .text-dialog,
+body[glass-mode='liquid'] .modal-dialog,
+body[glass-mode='liquid'] .help-dialog,
+body[glass-mode='liquid'] .text-dialog,
+body[data-glass-mode='liquid'] .modal-dialog,
+body[data-glass-mode='liquid'] .help-dialog,
+body[data-glass-mode='liquid'] .text-dialog,
+body[glass-mode='blur'] .modal-dialog,
+body[glass-mode='blur'] .help-dialog,
+body[glass-mode='blur'] .text-dialog,
+body[data-glass-mode='blur'] .modal-dialog,
+body[data-glass-mode='blur'] .help-dialog,
+body[data-glass-mode='blur'] .text-dialog {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: none;
+    box-shadow:
+        0 0 0 0.5px rgba(0, 0, 0, 0.08),
+        0 20px 50px -10px rgba(0, 38, 59, 0.2),
+        0 6px 16px -4px rgba(0, 38, 59, 0.1),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+[data-theme='dark'][glass-mode='liquid'] .modal-dialog,
+[data-theme='dark'][glass-mode='liquid'] .help-dialog,
+[data-theme='dark'][glass-mode='liquid'] .text-dialog,
+[data-theme='dark'][data-glass-mode='liquid'] .modal-dialog,
+[data-theme='dark'][data-glass-mode='liquid'] .help-dialog,
+[data-theme='dark'][data-glass-mode='liquid'] .text-dialog,
+[data-theme='dark'][glass-mode='blur'] .modal-dialog,
+[data-theme='dark'][glass-mode='blur'] .help-dialog,
+[data-theme='dark'][glass-mode='blur'] .text-dialog,
+[data-theme='dark'][data-glass-mode='blur'] .modal-dialog,
+[data-theme='dark'][data-glass-mode='blur'] .help-dialog,
+[data-theme='dark'][data-glass-mode='blur'] .text-dialog,
+[data-theme='dark'] body[glass-mode='liquid'] .modal-dialog,
+[data-theme='dark'] body[glass-mode='liquid'] .help-dialog,
+[data-theme='dark'] body[glass-mode='liquid'] .text-dialog,
+[data-theme='dark'] body[data-glass-mode='liquid'] .modal-dialog,
+[data-theme='dark'] body[data-glass-mode='liquid'] .help-dialog,
+[data-theme='dark'] body[data-glass-mode='liquid'] .text-dialog,
+[data-theme='dark'] body[glass-mode='blur'] .modal-dialog,
+[data-theme='dark'] body[glass-mode='blur'] .help-dialog,
+[data-theme='dark'] body[glass-mode='blur'] .text-dialog,
+[data-theme='dark'] body[data-glass-mode='blur'] .modal-dialog,
+[data-theme='dark'] body[data-glass-mode='blur'] .help-dialog,
+[data-theme='dark'] body[data-glass-mode='blur'] .text-dialog {
+    background: rgba(28, 30, 32, 0.85);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: none;
+    box-shadow:
+        0 0 0 0.5px rgba(255, 255, 255, 0.12),
+        0 24px 60px -10px rgba(0, 0, 0, 0.7),
+        0 8px 20px -4px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
 }
 
 @keyframes dialogIn {
@@ -1335,6 +1527,44 @@ a:hover {
     animation: dropdownIn 0.15s ease;
 }
 
+:root[glass-mode='liquid'] .dropdown-content,
+:root[data-glass-mode='liquid'] .dropdown-content,
+:root[glass-mode='blur'] .dropdown-content,
+:root[data-glass-mode='blur'] .dropdown-content,
+body[glass-mode='liquid'] .dropdown-content,
+body[data-glass-mode='liquid'] .dropdown-content,
+body[glass-mode='blur'] .dropdown-content,
+body[data-glass-mode='blur'] .dropdown-content {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    border: none;
+    box-shadow:
+        0 0 0 0.5px rgba(0, 0, 0, 0.06),
+        0 16px 36px -6px rgba(0, 38, 59, 0.15),
+        0 4px 10px -2px rgba(0, 38, 59, 0.08),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+[data-theme='dark'][glass-mode='liquid'] .dropdown-content,
+[data-theme='dark'][data-glass-mode='liquid'] .dropdown-content,
+[data-theme='dark'][glass-mode='blur'] .dropdown-content,
+[data-theme='dark'][data-glass-mode='blur'] .dropdown-content,
+[data-theme='dark'] body[glass-mode='liquid'] .dropdown-content,
+[data-theme='dark'] body[data-glass-mode='liquid'] .dropdown-content,
+[data-theme='dark'] body[glass-mode='blur'] .dropdown-content,
+[data-theme='dark'] body[data-glass-mode='blur'] .dropdown-content {
+    background: rgba(28, 30, 32, 0.85);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    border: none;
+    box-shadow:
+        0 0 0 0.5px rgba(255, 255, 255, 0.1),
+        0 20px 42px -6px rgba(0, 0, 0, 0.65),
+        0 6px 12px -2px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
+}
+
 @keyframes dropdownIn {
     from {
         opacity: 0;
@@ -1593,32 +1823,273 @@ a:hover {
 }
 
 /* =====================================================
-   §14  卡片 (Cards)
+   §14  卡片 (Cards) - 默认采用 tool.html 苹果物理折射液态玻璃规范
    ===================================================== */
-.tool-card {
-    background: var(--card-bg);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
-    padding: 30px;
-    margin-bottom: 30px;
+.tool-card,
+.glass-card,
+.tool-item {
+    position: relative;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-lg, 12px);
+    padding: 20px;
+    margin-bottom: 20px;
     color: var(--text-main);
-    transition: box-shadow var(--transition-base);
+    box-sizing: border-box;
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow: var(--glass-shadow);
+    transition: box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1));
 }
 
-.tool-card:hover {
-    box-shadow: var(--shadow-lg);
+.tool-card:hover,
+.glass-card:hover,
+.tool-item:hover {
+    box-shadow: var(--glass-shadow-hover);
 }
 
-/* 玻璃态卡片（admin / cgoauth 风格）*/
-.glass-card {
+/* 独立工具项专属几何与排版微调 */
+.tool-item {
+    border-radius: var(--radius-xl, 20px);
+    padding: 30px 25px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.tool-check-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    height: 100%;
+}
+
+/* Layer 0: 折射磨砂层 (完全对齐 tool.html) */
+.tool-card .liquid-glass-effect,
+.tool-card .glass-refraction,
+.glass-card .liquid-glass-effect,
+.glass-card .glass-refraction,
+.tool-item .liquid-glass-effect,
+.tool-item .glass-refraction {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
+    backdrop-filter: var(--glass-backdrop-filter, blur(5px) saturate(130%) url(#glass-distortion));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter, blur(5px) saturate(130%) url(#glass-distortion));
+    filter: var(--glass-refraction-filter, url(#glass-distortion));
+    pointer-events: none;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+/* 当卡片未手动插入 .liquid-glass-effect 元素时的自动毛玻璃降级保护 */
+.tool-card:not(:has(.liquid-glass-effect)):not(:has(.glass-refraction)),
+.glass-card:not(:has(.liquid-glass-effect)):not(:has(.glass-refraction)),
+.tool-item:not(:has(.liquid-glass-effect)):not(:has(.glass-refraction)) {
+    backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
+}
+
+/* Layer 1: 半透明底色衬底层 (完全对齐 tool.html: 亮色 0.60, 暗色 0.60) */
+.tool-card::after,
+.glass-card::after,
+.tool-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--glass-bg, rgba(255, 255, 255, 0.60));
+    pointer-events: none;
+    transition: background-color 0.25s ease;
+}
+
+.tool-card:hover::after,
+.glass-card:hover::after,
+.tool-item:hover::after {
+    background: var(--glass-bg-hover, rgba(255, 255, 255, 0.68));
+}
+
+[data-theme='dark'] .tool-card::after,
+:root:not([data-theme='light']) .tool-card::after,
+[data-theme='dark'] .glass-card::after,
+:root:not([data-theme='light']) .glass-card::after,
+[data-theme='dark'] .tool-item::after,
+:root:not([data-theme='light']) .tool-item::after {
+    background: var(--glass-bg, rgba(31, 32, 34, 0.60));
+}
+
+[data-theme='dark'] .tool-card:hover::after,
+:root:not([data-theme='light']) .tool-card:hover::after,
+[data-theme='dark'] .glass-card:hover::after,
+:root:not([data-theme='light']) .glass-card:hover::after,
+[data-theme='dark'] .tool-item:hover::after,
+:root:not([data-theme='light']) .tool-item:hover::after {
+    background: var(--glass-bg-hover, rgba(38, 40, 44, 0.68));
+}
+
+/* Layer 2: 双轴微光圈层 (完全对齐 tool.html 极简微边框) */
+.tool-card::before,
+.glass-card::before,
+.tool-item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background:
+        linear-gradient(to right,
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
+            rgba(0, 0, 0, 0) var(--lg-rim-side, 4px),
+            rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 4px)),
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) 0,
+            rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) var(--lg-rim-hold, 1px),
+            rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px),
+            rgba(255, 255, 255, 0) calc(100% - var(--lg-rim-fade, 12px)),
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) calc(100% - var(--lg-rim-hold, 1px)),
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+    transition: opacity 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Layer 3: 文字与内容保证绝对清晰 */
+.tool-card > *:not(.liquid-glass-effect):not(.glass-refraction),
+.glass-card > *:not(.liquid-glass-effect):not(.glass-refraction),
+.tool-item > *:not(.liquid-glass-effect):not(.glass-refraction) {
+    position: relative;
+    z-index: 3;
+}
+
+.tool-icon-wrapper,
+.tool-content,
+.tool-arrow {
+    position: relative;
+    z-index: 3;
+}
+
+.tool-item:hover .tool-icon,
+.tool-card:hover .tool-icon {
+    transform: scale(1.05);
+}
+
+.tool-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 15px;
+}
+
+.tool-desc {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    line-height: 1.5;
+    flex-grow: 1;
+}
+
+.tool-arrow {
+    margin-top: 20px;
+    color: var(--primary-color);
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.3s ease;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+}
+
+.tool-item:hover .tool-arrow,
+.tool-card:hover .tool-arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* 显式 flat 模式降级（若开发者指定 flat / none，则回退为传统平面卡片） */
+:root[glass-mode='flat'] .tool-card,
+:root[data-glass-mode='flat'] .tool-card,
+:root[glass-mode='none'] .tool-card,
+:root[data-glass-mode='none'] .tool-card,
+body[glass-mode='flat'] .tool-card,
+body[data-glass-mode='flat'] .tool-card,
+.tool-card[glass-mode='flat'],
+.tool-card[data-glass-mode='flat'],
+:root[glass-mode='flat'] .glass-card,
+:root[data-glass-mode='flat'] .glass-card,
+:root[glass-mode='none'] .glass-card,
+:root[data-glass-mode='none'] .glass-card,
+body[glass-mode='flat'] .glass-card,
+body[data-glass-mode='flat'] .glass-card,
+.glass-card[glass-mode='flat'],
+.glass-card[data-glass-mode='flat'],
+:root[glass-mode='flat'] .tool-item,
+:root[data-glass-mode='flat'] .tool-item,
+:root[glass-mode='none'] .tool-item,
+:root[data-glass-mode='none'] .tool-item,
+body[glass-mode='flat'] .tool-item,
+body[data-glass-mode='flat'] .tool-item,
+.tool-item[glass-mode='flat'],
+.tool-item[data-glass-mode='flat'] {
     background: var(--card-bg);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 4px 20px var(--glass-shadow);
-    border-radius: var(--radius-lg);
-    padding: 16px 20px;
-    margin-bottom: 16px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.06));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+:root[glass-mode='flat'] .tool-card::before,
+:root[data-glass-mode='flat'] .tool-card::before,
+.tool-card[glass-mode='flat']::before,
+:root[glass-mode='flat'] .tool-card::after,
+:root[data-glass-mode='flat'] .tool-card::after,
+.tool-card[glass-mode='flat']::after,
+:root[glass-mode='flat'] .tool-card .liquid-glass-effect,
+:root[data-glass-mode='flat'] .tool-card .liquid-glass-effect,
+:root[glass-mode='flat'] .glass-card::before,
+:root[data-glass-mode='flat'] .glass-card::before,
+.glass-card[glass-mode='flat']::before,
+:root[glass-mode='flat'] .glass-card::after,
+:root[data-glass-mode='flat'] .glass-card::after,
+.glass-card[glass-mode='flat']::after,
+:root[glass-mode='flat'] .glass-card .liquid-glass-effect,
+:root[data-glass-mode='flat'] .glass-card .liquid-glass-effect,
+:root[glass-mode='flat'] .glass-card .glass-refraction,
+:root[data-glass-mode='flat'] .glass-card .glass-refraction,
+:root[glass-mode='flat'] .tool-item::before,
+:root[data-glass-mode='flat'] .tool-item::before,
+.tool-item[glass-mode='flat']::before,
+:root[glass-mode='flat'] .tool-item::after,
+:root[data-glass-mode='flat'] .tool-item::after,
+.tool-item[glass-mode='flat']::after,
+:root[glass-mode='flat'] .tool-item .liquid-glass-effect,
+:root[data-glass-mode='flat'] .tool-item .liquid-glass-effect,
+:root[glass-mode='flat'] .tool-item .glass-refraction,
+:root[data-glass-mode='flat'] .tool-item .glass-refraction {
+    display: none;
+}
+
+/* 视口外非首屏卡片渲染性能优化 */
+.cgo-glass-auto-render,
+.glass-auto-render {
+    content-visibility: auto;
+    contain-intrinsic-size: auto none auto 160px;
+}
+@media (max-width: 640px) {
+    .cgo-glass-auto-render,
+    .glass-auto-render {
+        contain-intrinsic-size: auto none auto 90px;
+    }
 }
 
 /* 渐变信息卡 */
@@ -1654,7 +2125,6 @@ a:hover {
 }
 
 .upgrade-tier-card:hover {
-    transform: translateY(-5px);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
     border-color: var(--primary-color) !important;
     background: rgba(0, 0, 0, 0.04) !important;
@@ -1962,9 +2432,9 @@ th.selected::after {
 }
 
 /* =====================================================
-   §15  移动端 (宽度 <= 600px) 对话框与弹窗靠底样式
+   §15  移动端 (宽度 <= 640px) 对话框与弹窗靠底样式
    ===================================================== */
-@media screen and (max-width: 600px) {
+@media screen and (max-width: 640px) {
 
     /* 普通对话框和弹窗自动转为底部抽屉 */
     .text-dialog:not(.help-dialog):not(.modal-dialog-keep-center),

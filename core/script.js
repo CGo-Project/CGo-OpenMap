@@ -66,19 +66,26 @@ function rebuildSidebarHistory() {
         }
         div.innerHTML = `
             <div class="section-header">
-                <span>${sectionTitle}</span>
-                <span class="header-color-squares">
-                ${(station.relatedLines || []).slice().sort((a, b) => window.getLineSortIndex(a) - window.getLineSortIndex(b)).map(lid => {
-            const line = linesData.find(l => l.id === lid);
-            return line ? `<span class="header-color-square" style="background:${line.color};" title="${line.name}"></span>` : '';
-        }).join('')}
-                </span>
+                <span class="section-title-text"></span>
+                <span class="header-color-squares"></span>
                 <cgo-icon name="expand-more" class="section-arrow"></cgo-icon>
             </div>
             <div class="section-body">
-                <div style="padding:20px;text-align:center;color:var(--text-light);font-size:12px;cursor:pointer;border:1px dashed var(--divider);margin:10px;border-radius:6px;" onclick="selectStation('${sid}')">点击此处查看详情</div>
+                <div class="station-history-detail-trigger" style="padding:20px;text-align:center;color:var(--text-light);font-size:12px;cursor:pointer;border:1px dashed var(--divider);margin:10px;border-radius:6px;">点击此处查看详情</div>
             </div>
         `;
+        div.querySelector('.section-title-text').textContent = sectionTitle;
+        const squaresContainer = div.querySelector('.header-color-squares');
+        (station.relatedLines || []).slice().sort((a, b) => window.getLineSortIndex(a) - window.getLineSortIndex(b)).forEach(lid => {
+            const line = linesData.find(l => l.id === lid);
+            if (!line) return;
+            const square = document.createElement('span');
+            square.className = 'header-color-square';
+            square.style.background = line.color;
+            square.title = line.name;
+            squaresContainer.appendChild(square);
+        });
+        div.querySelector('.station-history-detail-trigger').addEventListener('click', () => selectStation(sid));
         container.appendChild(div);
     });
 }
@@ -189,17 +196,13 @@ Object.defineProperty(window, 'LINE_SYNC_GROUPS', {
  * 车站 SVG 图标模板字典
  * 包括：换乘站(tsf)、虚拟换乘站(tsfo)、普通站(dot)、暂缓开通站(no)、国铁火车站(rdot)
  */
-const SVGTemplates = {
-    tsf: `<svg viewBox="0 0 17.5 17.5"><circle cx="8.75" cy="8.75" r="8.75" style="fill: var(--map-bg);"/><circle cx="8.75" cy="8.75" r="8" style="fill: var(--station-stroke);"/><circle cx="8.75" cy="8.75" r="7.1" style="fill: var(--map-bg);"/><path d="M6.21,8.01c.12-2.35,2.26-4.22,4.88-4.22.23,0,.46.01.68.04-.55-.18-1.15-.27-1.77-.27-2.8,0-5.09,1.96-5.3,4.45h-1.4l2.34,2.47c.78-.82,1.56-1.65,2.34-2.47h-1.78.01Z" style="fill: var(--station-stroke);"/><path d="M11.85,7.02c-.78.82-1.56,1.65-2.34,2.47h1.78c-.12,2.35-2.26,4.22-4.88,4.22-.23,0-.46-.01-.68-.04.55.18,1.15.27,1.77.27,2.8,0,5.09-1.96,5.3-4.45h1.4l-2.34-2.47h0Z" style="fill: var(--station-stroke);"/></svg>`,
-    tsfo: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><circle cx="5" cy="5" r="4.21" style="fill:{{COLOR}};"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`,
-    dot: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><circle cx="5" cy="5" r="4.21" style="fill:{{COLOR}};"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`,
-    no: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><path d="M7.5,5c0-.1-.02-.19-.03-.29l1.7-.13c-.05-.46-.15-.9-.33-1.3l-1.54.73c-.08-.18-.18-.34-.3-.5l1.41-.96c-.26-.37-.59-.69-.95-.95l-.97,1.41c-.15-.12-.32-.22-.5-.3l.74-1.54c-.4-.18-.84-.29-1.3-.34l-.14,1.7c-.1-.01-.19-.03-.29-.03s-.19.02-.29.03l-.13-1.7c-.46.05-.9.15-1.3.33l.73,1.54c-.18.08-.34.18-.5.3l-.96-1.41c-.37.26-.69.59-.95.95l1.41.97c-.12.15-.22.32-.3.5l-1.54-.74c-.18.4-.29.84-.34,1.3l1.7.14c-.01.1-.03.19-.03.29s.02.19.03.29l-1.7.13c.05.46.15.9.33,1.3l1.54-.73c.08.18.18.34.3.5l-1.41.96c.26.37.59.69.95.95l.97-1.41c.15.12.32.22.5.3l-.74,1.54c.4.18.84.29,1.3.34l.14-1.7c.1.01.19.03.29.03s.19-.02.29-.03l.13,1.7c.46-.05.9-.15,1.3-.33l-.73-1.54c.18-.08.34-.18.5-.3l.96,1.41c.37-.26.69-.58.95-.95l-1.41-.97c.12-.15.22-.32.3-.5l1.54.74c.18-.4.29-.84.34-1.3l-1.7-.14c.01-.1.03-.19.03-.29Z" style="fill: var(--not-open-color);"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`,
-    rdot: `<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" style="fill: var(--map-bg);"/><circle cx="5" cy="5" r="4.21" style="fill:#78848b;"/><circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/></svg>`
-};
+// 车站图元模板的唯一真源在 core/station-icons.js，Drunk 编辑模式共用同一份，
+// 以保证编辑器画布上的图元尺寸与配色就是线路图上的真实效果。
+const { SVGTemplates } = window.CGoStationIcons;
 
-// 默认圆角半径常量 (px)
-const RADIUS_90 = 18; // 90度拐角圆角半径
-const RADIUS_45 = 8;  // 45度拐角圆角半径
+// 折线倒角算法与半径常量的唯一真源在 core/path-geometry.js，
+// Drunk 编辑模式共用同一份实现以保证「所见即所得」。此处仅取引用。
+const { RADIUS_90, RADIUS_45 } = window.CGoPathGeometry;
 
 /**
  * 规范化 SVG 徽标文件路径
@@ -378,7 +381,8 @@ function bindSearchAndLegendEvents() {
          */
         const normalizeSearchText = (input) => {
             if (!input) return "";
-            let s = input.toLowerCase();
+            // 站名中的 <br> 只是排版换行，检索时按空格处理
+            let s = input.replace(/<br\s*\/?>/gi, " ").toLowerCase();
             s = s.replace(/[ɑɑ̌ɑ̄]/g, 'a');
             s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             s = s.replace(/railway|rail/g, 'rwy');
@@ -868,6 +872,9 @@ function renderLines() {
         const visualGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
         visualGroup.setAttribute("class", "line-visual-group");
         visualGroup.setAttribute("data-visual-id", line.id);
+        // 同一条线路的各段分别绘制时，后画段的白色外描边会盖住先画段的实体色，
+        // 在 Y 形分歧处留下白缝；因此先把各层收集起来，再按 外描边 → 实体 → 纹理 → 热区 的顺序统一入组
+        const layers = { outer: [], inner: [], overlay: [], interaction: [] };
         const drawSegment = (points, segmentClass) => {
             if (!points || points.length < 2) return;
             const d = generateRoundedPath(points, isStrict);
@@ -883,8 +890,8 @@ function renderLines() {
             pathInner.setAttribute("class", `line-visual-inner ${segmentClass}`);
             pathInner.setAttribute("stroke", line.color);
             pathInner.setAttribute("stroke-width", "5.4");
-            visualGroup.appendChild(pathOuter);
-            visualGroup.appendChild(pathInner);
+            layers.outer.push(pathOuter);
+            layers.inner.push(pathInner);
             // 叠加虚线/市郊纹理
             if (line.overlayStyle) {
                 const pathOverlay = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -896,7 +903,7 @@ function renderLines() {
                 pathOverlay.setAttribute("stroke-dasharray", line.overlayStyle.dashArray);
                 pathOverlay.setAttribute("fill", "none");
                 pathOverlay.setAttribute("stroke-linecap", "butt");
-                visualGroup.appendChild(pathOverlay);
+                layers.overlay.push(pathOverlay);
             }
             // 交互判定层 (透明加宽热区)
             const pathInteraction = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -936,22 +943,16 @@ function renderLines() {
                     hideLineTooltipNow();
                 }, 3000);
             });
-            visualGroup.appendChild(pathInteraction);
+            layers.interaction.push(pathInteraction);
         };
-        if (line.hasbranch) {
-            drawSegment(line['pathPoints-main'], 'seg-main');
-            drawSegment(line['pathPoints-branch1'], 'seg-way1');
-            drawSegment(line['pathPoints-branch2'], 'seg-way2');
-        } else {
-            let points = line.pathPoints;
-            if (!points || points.length === 0) {
-                points = line.stationIds.map(sid => {
-                    const s = processedStations[sid];
-                    return s ? { x: s.x, y: s.y } : null;
-                }).filter(p => p !== null);
-            }
-            drawSegment(points, 'seg-main');
-        }
+        // 走向来源的判定统一在 core/path-geometry.js（Drunk 编辑模式共用同一份），
+        // 避免两边各写一份判定后悄悄漂移。
+        window.CGoPathGeometry.lineSegments(line, processedStations)
+            .forEach(seg => drawSegment(seg.points, seg.cls));
+        layers.outer.forEach(p => visualGroup.appendChild(p));
+        layers.inner.forEach(p => visualGroup.appendChild(p));
+        layers.overlay.forEach(p => visualGroup.appendChild(p));
+        layers.interaction.forEach(p => visualGroup.appendChild(p));
         svgLayer.appendChild(visualGroup);
     });
 }
@@ -1028,7 +1029,16 @@ function renderStations() {
         stationDiv.style.left = s.x + 'px';
         stationDiv.style.top = s.y + 'px';
         stationDiv.dataset.sid = id;
-        if (s.type === 'dot' || s.type === 'tsfo') {
+        // 城市可自定义站点图元画法（如上海式短横与换乘胶囊）；未实现时回落到通用模板
+        const city = getActiveCity();
+        const customIcon = typeof city.renderStationIcon === 'function' ? city.renderStationIcon(s, id) : null;
+        if (customIcon && customIcon.html) {
+            stationDiv.innerHTML = customIcon.html;
+            if (customIcon.className) stationDiv.className += ' ' + customIcon.className;
+            if (customIcon.width) stationDiv.style.width = customIcon.width + 'px';
+            if (customIcon.height) stationDiv.style.height = customIcon.height + 'px';
+            if (customIcon.zIndex !== undefined) stationDiv.style.zIndex = customIcon.zIndex;
+        } else if (s.type === 'dot' || s.type === 'tsfo') {
             const stationColor = s.lineColors.length > 0 ? s.lineColors[0] : 'var(--station-stroke)';
             stationDiv.innerHTML = SVGTemplates.dot.replace('{{COLOR}}', stationColor);
         } else if (SVGTemplates[s.type]) {
@@ -1437,16 +1447,41 @@ function initLegendPin() {
     }
 }
 /**
- * 地图初始居中 (根据城市配置 center 与默认缩放等级重置视口中心)
+ * 获取浮动标题栏在地图画布顶部需要的避让留白像素（防止顶栏遮挡最上方的车站与线路）
+ */
+function getMapTopOffset() {
+    const isFloating = document.documentElement.getAttribute('header-mode') === 'floating' ||
+        document.body.getAttribute('header-mode') === 'floating' ||
+        Boolean(document.querySelector('.tool-header[header-mode="floating"]'));
+    if (!isFloating) return 0;
+    const header = document.querySelector('.tool-header');
+    if (header) {
+        const island = header.querySelector('.header-island');
+        if (island) {
+            const rect = island.getBoundingClientRect();
+            return Math.max(76, Math.ceil(rect.bottom + 12));
+        }
+    }
+    return 76;
+}
+
+/**
+ * 地图初始居中 (根据城市配置 center 与默认缩放等级重置视口中心，自动避让浮动标题栏)
  */
 function centerMap() {
     const city = getActiveCity();
     const containerW = mapContainer.clientWidth;
     const containerH = mapContainer.clientHeight;
+    const topOffset = getMapTopOffset();
+    const isSplitMode = document.body.classList.contains('mobile-split-active');
+    const bottomOffset = isSplitMode ? containerH * 0.62 : 0;
+    const availableH = Math.max(200, containerH - topOffset - bottomOffset);
+
     const targetX = city.center ? city.center.x : 900;
     const targetY = city.center ? city.center.y : 640;
     currentX = (containerW / 2) - (targetX * currentScale);
-    currentY = (containerH / 2) - (targetY * currentScale);
+    currentY = topOffset + (availableH / 2) - (targetY * currentScale);
+    if (typeof enforceBoundaries === 'function') enforceBoundaries();
     updateMapTransform();
 }
 
@@ -1458,7 +1493,7 @@ function localUpdateMapTransform() {
 }
 
 /**
- * 地图边界限制算法 (防止用户将地图完全拖出可视视口外)
+ * 地图边界限制算法 (防止用户将地图完全拖出可视视口外，并预留浮动标题栏顶部保护留白)
  */
 function localEnforceBoundaries() {
     const city = getActiveCity();
@@ -1472,6 +1507,7 @@ function localEnforceBoundaries() {
     // 移动端分屏模式下底栏高度偏移补偿 (60% 高度抽屉)
     const isSplitMode = document.body.classList.contains('mobile-split-active');
     const bottomOffset = isSplitMode ? containerH * 0.62 : 0;
+    const topOffset = getMapTopOffset();
 
     if (mapW >= containerW) {
         if (currentX > 0) currentX = 0;
@@ -1480,14 +1516,14 @@ function localEnforceBoundaries() {
         currentX = (containerW - mapW) / 2;
     }
     if (mapH >= containerH) {
-        if (currentY > 0) currentY = 0;
+        if (currentY > topOffset) currentY = topOffset;
         const minY = containerH - mapH - bottomOffset;
         if (currentY < minY) currentY = minY;
     } else {
         if (isSplitMode) {
             currentY = (containerH * 0.4 - mapH) / 2;
         } else {
-            currentY = (containerH - mapH) / 2;
+            currentY = topOffset + (containerH - topOffset - mapH) / 2;
         }
     }
 }
@@ -1548,16 +1584,38 @@ function highlightLine(lineId, currentStationId = null, fromSync = false) {
         el.classList.add('active');
         const lineData = linesData.find(l => l.id === lineId);
         if (lineData && lineData.hasbranch && currentStationId) {
-            const inWay1 = lineData['stationIds-way1'].includes(currentStationId);
-            const inWay2 = lineData['stationIds-way2'].includes(currentStationId);
+            const ids1 = lineData['stationIds-way1'] || [];
+            const ids2 = lineData['stationIds-way2'] || [];
+            const inWay1 = ids1.includes(currentStationId);
+            const inWay2 = ids2.includes(currentStationId);
             const segWay1 = el.querySelectorAll('.seg-way1');
             const segWay2 = el.querySelectorAll('.seg-way2');
             segWay1.forEach(p => p.style.opacity = '1');
             segWay2.forEach(p => p.style.opacity = '1');
-            if (inWay1 && !inWay2) {
+            // 淡化另一条交路时，只停靠该交路的车站也要一起淡化，
+            // 否则会出现走向已经变浅、站点与站名却还亮着的割裂感；
+            // 若该站还有别的线路经过（那些线路并未淡化），则保持原样。
+            const dimExclusive = (dimIds, keepIds) => {
+                const keep = new Set(keepIds);
+                dimIds.forEach(sid => {
+                    if (keep.has(sid)) return;
+                    const s = processedStations[sid];
+                    if (s && (s.relatedLines || []).some(id => id !== lineId)) return;
+                    ['node_', 'label_'].forEach(prefix => {
+                        const node = document.getElementById(prefix + sid);
+                        if (node) node.style.opacity = '0.1';
+                    });
+                });
+            };
+            // 车站同时属于两条交路（位于共用主干）时，按 way1 为主线处理：
+            // 车站详情面板判定上/下一站也是先查 way1 再回落 way2，两边保持一致，
+            // 否则会出现面板只报主线、图上却把支线也点亮的矛盾。
+            if (inWay1) {
                 segWay2.forEach(p => p.style.opacity = '0.1');
-            } else if (!inWay1 && inWay2) {
+                dimExclusive(ids2, ids1);
+            } else if (inWay2) {
                 segWay1.forEach(p => p.style.opacity = '0.1');
+                dimExclusive(ids1, ids2);
             }
         }
         const highlightLayer = document.getElementById('highlight-layer');
@@ -1602,6 +1660,10 @@ function clearHighlights() {
     }
     const segments = document.querySelectorAll('.line-visual-inner, .line-visual-outer, .line-visual-overlay');
     segments.forEach(el => {
+        el.style.opacity = '';
+    });
+    // 恢复被支线淡化过的车站与站名
+    document.querySelectorAll('.station[style*="opacity"], .label-group[style*="opacity"]').forEach(el => {
         el.style.opacity = '';
     });
 }
@@ -2188,49 +2250,17 @@ function updateShareMeta(station) {
 
 /**
  * 平滑贝塞尔曲线折线倒角算法 (Corner Rounding & Smoothing Algorithm)
- * 
- * 核心数学原理：
- * 1. 遍历折线点阵中的每一对前后相邻线段向量 v1 (Prev -> Curr) 与 v2 (Curr -> Next)；
- * 2. 归一化为单位方向向量 u1, u2；
- * 3. 利用点积 (Dot Product) 判断拐角夹角类型：
- *    - 当 dot 接近 0 (|u1 · u2| < 0.1) 时为 90° 直角，默认半径 RADIUS_90 (18px)；
- *    - 否则为 45° 或其它斜角，默认半径 RADIUS_45 (8px)；
- *    - 若点对象显式指定了 `pCurr.r`，则优先采用该自定义圆角半径；
- * 4. 为避免线段过短导致圆角相互重叠畸变，采用 `limitFactor` (默认 0.9) 限制最大半径；
- * 5. 使用二次贝塞尔曲线指令 `Q` 以拐角顶点 pCurr 为控制点，从切点 (startX, startY) 平滑过渡到 (endX, endY)。
- * 
+ *
+ * 实现已抽至 `core/path-geometry.js`，由本引擎与 Drunk 编辑模式共用——
+ * 编辑器预览与实际渲染必须是逐字节相同的 path 指令，否则在 Drunk 里调出来的
+ * 走向与圆角上线后会是另一个样子。此处保留同名同签名的薄封装，调用方无需改动。
+ *
  * @param {Array<{x: number, y: number, r?: number}>} points - 折线点阵坐标数组
  * @param {boolean|number} [roundingParam=false] - 是否启用严格倒角限制或指定限制比例因子
  * @returns {string} SVG Path 数据指令字符串 (如 "M 10 10 L 20 20 Q 30 20 30 30...")
  */
 function generateRoundedPath(points, roundingParam = false) {
-    if (!points || points.length < 2) return "";
-    let d = `M ${points[0].x} ${points[0].y}`;
-    let limitFactor = 0.9;
-    if (typeof roundingParam === 'number') {
-        limitFactor = roundingParam;
-    } else if (roundingParam === true) {
-        limitFactor = 0.5;
-    }
-    for (let i = 1; i < points.length - 1; i++) {
-        const pPrev = points[i - 1], pCurr = points[i], pNext = points[i + 1];
-        const v1 = { x: pCurr.x - pPrev.x, y: pCurr.y - pPrev.y };
-        const v2 = { x: pNext.x - pCurr.x, y: pNext.y - pCurr.y };
-        const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-        const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-        if (len1 < 0.01 || len2 < 0.01) continue;
-        const u1 = { x: v1.x / len1, y: v1.y / len1 };
-        const u2 = { x: v2.x / len2, y: v2.y / len2 };
-        let targetRadius = pCurr.r !== undefined ? pCurr.r :
-            (Math.abs(u1.x * u2.x + u1.y * u2.y) < 0.1 ? RADIUS_90 : RADIUS_45);
-        const r = Math.min(targetRadius, len1 * limitFactor, len2 * limitFactor);
-        const startX = pCurr.x - u1.x * r, startY = pCurr.y - u1.y * r;
-        const endX = pCurr.x + u2.x * r, endY = pCurr.y + u2.y * r;
-        d += ` L ${startX} ${startY} Q ${pCurr.x} ${pCurr.y} ${endX} ${endY}`;
-    }
-    const last = points[points.length - 1];
-    d += ` L ${last.x} ${last.y}`;
-    return d;
+    return window.CGoPathGeometry.generateRoundedPath(points, roundingParam);
 }
 
 /**

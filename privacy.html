@@ -1,101 +1,157 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" glass-mode="liquid" header-mode="floating">
 
 <head>
+    <script>
+        (function () {
+            var t = localStorage.getItem('app-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+            var hm = localStorage.getItem('root_cgo_header_mode') || localStorage.getItem('cgo_header_mode');
+            if (hm) document.documentElement.setAttribute('header-mode', hm);
+            var gm = localStorage.getItem('cgo_glass_mode');
+            if (gm) document.documentElement.setAttribute('glass-mode', gm);
+        })();
+    </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <title>隐私政策 - CGo OpenMap 线路图开放平台</title>
+    <link rel="shortcut icon" href="./assets/icons/favicon.ico">
+    <link rel="apple-touch-icon" href="./assets/icons/mapicon2.png">
+
+    <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260922.1220">
+    <script type="module" src="core/cgo-ui.js?v=260922.1220"></script>
+
     <style>
-        :root {
-            --bg-color: #ffffff;
-            --text-color: #333333;
-            --link-color: #0078d4;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #1a1a1a;
-                --text-color: #e5e5e5;
-                --link-color: #4cc2ff;
-            }
-        }
-
         body {
-            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
             background-color: var(--bg-color);
-            color: var(--text-color);
+            color: var(--text-main);
         }
 
-        h1 {
-            border-bottom: 2px solid var(--text-color);
-            padding-bottom: 10px;
+        .article-content h1 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
         }
 
-        h2 {
-            margin-top: 30px;
+        .article-content h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 28px;
+            margin-bottom: 12px;
+            color: var(--primary-color);
         }
 
-        a {
-            color: var(--link-color);
+        .article-content p,
+        .article-content li {
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+
+        .article-content ul {
+            padding-left: 20px;
+            margin-bottom: 16px;
+        }
+
+        .article-content a {
+            color: var(--primary-color);
             text-decoration: none;
         }
 
-        a:hover {
+        .article-content a:hover {
             text-decoration: underline;
-        }
-
-        .update-date {
-            color: #888;
-            font-size: 0.9em;
-            margin-top: 50px;
         }
     </style>
 </head>
 
 <body>
 
-    <h1>隐私政策</h1>
-    <p><strong>应用名称：</strong>CGo OpenMap 城市轨道交通线路图开放平台</p>
-    <p><strong>开发者：</strong>Central Go 开放平台与开源贡献者</p>
+    <!-- Header (CGoUI 悬浮双岛模式) -->
+    <header class="tool-header">
+        <div class="header-island header-island-left">
+            <div class="header-left">
+                <button class="btn btn-info" onclick="history.back()" title="返回上一页">
+                    <cgo-icon name="back"></cgo-icon>
+                    <span>返回</span>
+                </button>
+                <a href="./main.html" class="btn btn-primary" title="前往线路图">
+                    <cgo-icon name="home"></cgo-icon>
+                    <span>线路图</span>
+                </a>
+            </div>
+            <div class="header-island-divider" aria-hidden="true"></div>
+            <div class="header-center">
+                <div class="img-icon-wrapper header-logo-wrapper">
+                    <img src="./assets/icons/mapicon.png" alt="Logo" class="header-logo" loading="lazy" decoding="async" fetchpriority="low"
+                        onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
+                    <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
+                </div>
+                <span class="app-title">隐私政策</span>
+            </div>
+        </div>
 
-    <p>我们非常重视您的隐私。本隐私政策旨在说明我们在您使用本应用时，如何收集、使用和保护您的个人信息。</p>
+        <div class="header-island header-island-right">
+            <div class="header-right">
+                <cgo-theme-toggle></cgo-theme-toggle>
+            </div>
+        </div>
+    </header>
 
-    <h2>1. 我们收集的信息</h2>
-    <p>为了提供核心服务功能，本应用可能会请求以下权限：</p>
-    <ul>
-        <li><strong>地理位置信息 (Location Data)：</strong>
-            <br>当您点击应用内的“定位/查找最近车站”按钮时，我们会请求获取您当前的地理位置（GPS 坐标）。
-        </li>
-    </ul>
+    <!-- Main Content Container -->
+    <main class="tool-container" style="max-width: 860px; margin: 0 auto; padding-top: 80px; padding-bottom: 40px; box-sizing: border-box;">
+        <article class="tool-card article-content" style="padding: 32px 28px; border-radius: 16px;">
+            <div class="liquid-glass-effect"></div>
+            <h1>隐私政策</h1>
+            <p><strong>应用名称：</strong>CGo OpenMap 城市轨道交通线路图开放平台</p>
+            <p><strong>开发者：</strong>Central Go 开放平台与开源贡献者</p>
 
-    <h2>2. 我们如何使用您的信息</h2>
-    <p>我们请求地理位置权限的<strong>唯一目的</strong>是：</p>
-    <ul>
-        <li>计算您当前所在位置与城市各轨道交通站点之间的直线距离。</li>
-        <li>为您推荐距离最近的车站，并提供便捷导航建议。</li>
-    </ul>
-    <p><strong>重要声明：</strong>您的位置数据仅在您的设备客户端（浏览器端本地）进行实时计算。我们<strong>不会</strong>将您的位置信息上传至任何服务器，也<strong>不会</strong>存储、追踪或与任何第三方共享您的位置历史记录。
-    </p>
+            <p>我们非常重视您的隐私。本隐私政策旨在说明我们在您使用本应用时，如何收集、使用和保护您的个人信息。</p>
 
-    <h2>3. 数据安全与隐私保障</h2>
-    <p>由于本应用基于现代 Web 技术（PWA）运行，所有定位行为受您设备操作系统与浏览器的沙盒安全机制保护。应用本身不包含用户登录体系，亦不存储任何用户个人隐私数据。</p>
+            <h2>1. 我们收集的信息</h2>
+            <p>为了提供核心服务功能，本应用可能会请求以下权限：</p>
+            <ul>
+                <li><strong>地理位置信息 (Location Data)：</strong>
+                    <br>当您点击应用内的“定位/查找最近车站”按钮时，我们会请求获取您当前的地理位置（GPS 坐标）。
+                </li>
+            </ul>
 
-    <h2>4. 第三方链接</h2>
-    <p>本应用可能包含指向第三方服务（如高德地图导航、12306 官方票务等）的外链。当您点击这些链接离开本应用后，第三方服务的隐私政策将适用，建议您参阅相应网站的隐私说明。</p>
+            <h2>2. 我们如何使用您的信息</h2>
+            <p>我们请求地理位置权限的<strong>唯一目的</strong>是：</p>
+            <ul>
+                <li>计算您当前所在位置与城市各轨道交通站点之间的直线距离。</li>
+                <li>为您推荐距离最近的车站，并提供便捷导航建议。</li>
+            </ul>
+            <p><strong>重要声明：</strong>您的位置数据仅在您的设备客户端（浏览器端本地）进行实时计算。我们<strong>不会</strong>将您的位置信息上传至任何服务器，也<strong>不会</strong>存储、追踪或与任何第三方共享您的位置历史记录。
+            </p>
 
-    <h2>5. 用户控制权</h2>
-    <p>您可以随时在设备的“系统设置”或浏览器的“网站权限设置”中，撤销对本应用的地理位置授权。撤销后，除“查找最近车站”功能外，全图浏览、智能搜索、站点详情等核心功能均可正常使用。</p>
+            <h2>3. 数据安全与隐私保障</h2>
+            <p>由于本应用基于现代 Web 技术（PWA）运行，所有定位行为受您设备操作系统与浏览器的沙盒安全机制保护。应用本身不包含用户登录体系，亦不存储任何用户个人隐私数据。</p>
 
-    <h2>6. 联系我们</h2>
-    <p>如果您对本隐私政策或开源项目有任何疑问，请通过以下方式联系：</p>
-    <p>电子邮件：<a href="mailto:centralgo@163.com">centralgo@163.com</a></p>
+            <h2>4. 第三方链接</h2>
+            <p>本应用可能包含指向第三方服务（如高德地图导航、12306 官方票务等）的外链。当您点击这些链接离开本应用后，第三方服务的隐私政策将适用，建议您参阅相应网站的隐私说明。</p>
 
-    <div class="update-date">最后更新日期：2026年9月</div>
+            <h2>5. 用户控制权</h2>
+            <p>您可以随时在设备的“系统设置”或浏览器的“网站权限设置”中，撤销对本应用的地理位置授权。撤销后，除“查找最近车站”功能外，全图浏览、智能搜索、站点详情等核心功能均可正常使用。</p>
+
+            <h2>6. 联系我们</h2>
+            <p>如果您对本隐私政策或开源项目有任何疑问，请通过以下方式联系：</p>
+            <p>电子邮件：<a href="mailto:centralgo@163.com">centralgo@163.com</a></p>
+
+            <div class="update-date" style="color: var(--text-light); font-size: 0.88em; margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--border-color);">最后更新日期：2026年9月</div>
+        </article>
+    </main>
 
 </body>
 

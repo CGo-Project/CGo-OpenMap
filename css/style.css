@@ -2712,9 +2712,13 @@ cgo-icon:not(:defined) {
     transition: opacity 0.3s ease;
 }
 
-.header-logo-wrapper .header-logo.loaded {
+.header-logo-wrapper .header-logo.loaded,
+.header-logo-wrapper.loaded .header-logo,
+.img-icon-wrapper.loaded .header-logo,
+.img-icon-wrapper:has(img.loaded) .header-logo {
     opacity: 1;
 }
+
 
 .icon-placeholder {
     position: absolute;

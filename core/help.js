@@ -100,6 +100,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span class="btn-arrow"><cgo-icon name="chevron-right" size="12"></cgo-icon></span>
                 </a>
             </div>
+            <div style="margin-top: 10px; padding: 10px 12px; background: rgba(18, 183, 245, 0.08); border-radius: 8px; border-left: 3px solid #12b7f5; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 4px;">
+                        <cgo-icon name="chat" size="14" style="color: #12b7f5;"></cgo-icon>
+                        <span>官方 QQ 交流群：619357751</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-light); margin-top: 2px;">
+                        交流城市移植、线网拓扑与使用反馈
+                    </div>
+                </div>
+                <a href="https://qm.qq.com/q/nHfgBDS68o" target="_blank" style="padding: 5px 10px; font-size: 11px; background: #12b7f5; color: #fff; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; font-weight: 500; white-space: nowrap;">
+                    <span>一键加群</span>
+                    <cgo-icon name="chevron-right" size="10"></cgo-icon>
+                </a>
+            </div>
             <div class="help-data-info" style="margin-top: 12px;">
                 <strong>城市数据与主理人：</strong><br>
                 当前展示城市：${cityName}<br>

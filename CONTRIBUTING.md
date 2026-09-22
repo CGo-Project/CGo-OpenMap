@@ -20,6 +20,22 @@
 
 ---
 
+## 💬 官方交流与主理人社区
+
+在开始制作或移植前，强烈建议加入官方交流群，与核心团队及各地城市主理人实时交流、获取技术答疑与模板支持：
+
+- **官方 QQ 交流群**：**619357751**
+- **一键直达加群**：[👉 点击加入 CGo OpenMap 官方交流群](https://qm.qq.com/q/nHfgBDS68o)
+- **手机 QQ 扫码**：
+
+<p align="center">
+  <img src="./assets/images/qq.png" alt="官方 QQ 交流群二维码" width="200" style="border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <br>
+  <em>扫码加入 CGo OpenMap 官方交流群 (619357751)</em>
+</p>
+
+---
+
 ## 🛡️ 官方版本兼容性承诺（合入主库 vs 独立分支）
 
 CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路引擎、时刻表联动、实际走向模式联动、3D 视图等重大升级）。
@@ -37,9 +53,14 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
 
 ## 🚀 极简 3 步贡献流程
 
+> [!IMPORTANT]
+> **🚨 核心贡献大前提（严禁违反）**：  
+> **本项目所有内容必须为纯前端，禁止使用任何其他技术（如 Node.js 服务端、PM2 进程守护/管理、Express 后端服务、React/Vue/Angular 重型框架及 Vite/Webpack 构建打包流程）**！  
+> **唯一例外**：若涉及**监控车站运营状态、监控目标网页**等后台服务或巡检场景，**可以破例**使用 Node.js / PM2 进行轻量脚本编写与进程守护；**其他所有主要地图功能一律严格禁止破例**，必须且只能遵循纯原生 Web 标准（HTML5/SVG/CSS3/Vanilla JS/Web Components），确保静态开箱即用。
+
 ### 第一步：Fork 并准备数据
 1. Fork 本仓库至你的 GitHub 账号，并克隆到本地；
-2. 仔细阅读 **[城市移植手册 (PORTING.md)](./PORTING.md)**，并参考现有的北京（`city/beijing/`）与沈阳（`city/shenyang/`）数据实现；
+2. 仔细阅读 **[城市移植手册 (PORTING.md)](./PORTING.md)**，并参考现有的北京（`city/beijing/`）、沈阳（`city/shenyang/`）、青岛（`city/qingdao/`）与合肥（`city/hefei/`）数据实现；
 3. **准备基础数据（两种方式任选）**：
    - **智能提取（推荐）**：启动静态服务访问 `http://localhost:8080/drunk/`，使用 **Drunk 转换工作台** 上传底图/PDF/AI 自动提取全网站点与走向并导出标准代码。  
      *(⚠️ 注：Drunk 系统目前处于早期开发验证阶段，仅供测试使用，数据需人工复核。极其欢迎开发者共同参与 Drunk 转换系统的算法与交互开发！)*
@@ -88,6 +109,7 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
 
 ```markdown
 ### 提交内容自查
+- [ ] 严格遵守纯前端大前提：除监控车站/网页等场景允许破例外，其他所有主要地图功能均为纯原生前端实现，未引入任何 Node.js 后端、PM2 守护、React/Vue 框架或打包编译器
 - [ ] 已在 `city/{city_id}/` 下完整添加城市数据文件
 - [ ] 若包含自定义车站信息板模块（文旅/时刻/接驳/设施等），已在 `city/{city_id}/modules/` 下编写并于 `{city}.js` 中同步引入
 - [ ] 已在 `city/data.js` 中注册城市并填写 `maintainers` 主理人信息
@@ -107,7 +129,20 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
 - **PDF & 矢量工程解析**（`drunk/js/pdf_vector_extractor.js`）：进一步增强对各类复杂版本 PDF 与 Adobe Illustrator (`.ai`) 专色色板、图层元数据与文字曲线的解析精度；
 - **视觉大模型提示词与拓扑解算**（`drunk/js/deepseek_vision.js`）：优化多模态模型对密集交叉线网、环线与平行共线站点的空间关系识别率；
 - **智能排版避让与几何算法**（`drunk/js/ocr_align_solver.js` / `drunk_pipeline.js`）：改进 8 方向自动排版算法、文字碰撞检测与 45°/90° 正交网格智能吸附；
-- **UI/UX 交互体验**（`drunk/index.html` / `drunk/css/drunk.css`）：持续打磨全深色工作台的流畅交互（如快捷键支持、历史撤销重做、多选批量移动等）。
+- **识别结果净化与几何校正**（`drunk/js/drunk_sanitizer.js`）：本模块为**纯函数**且不依赖 DOM，可直接用 Node 跑回归自检，是最容易上手贡献的一块。欢迎改进噪点判定、墨迹吸附的颜色容差策略，或引入 RANSAC 让整体相似变换对离群锚点更鲁棒；
+- **城市工程无损回写**（`drunk/js/city_project_io.js`）：条目级「外科手术式」源码回写。可贡献方向：支持在编辑模式中新增车站并插入到线路站序的指定位置、同步改写 `pathPoints` 折线；
+- **UI/UX 交互体验**（`drunk/index.html`）：持续打磨全深色工作台的流畅交互（如多选批量移动、重做 Redo、编辑模式下的对齐参考线等）。
+  注意：`drunk/css/drunk.css` 目前**并未被 `index.html` 引用**，工作台样式全部内联在页面的 `<style>` 块中，改样式请改内联块（或顺手把两者合并收敛掉）。
+
+### 提交前请跑一遍自检
+
+```bash
+node drunk/tools/selfcheck.js
+```
+
+零依赖、零构建、不需要浏览器。它会拿 `city/` 下**全部真实城市数据**回归验证条目级无损回写与识别结果净化器（当前 62 项断言，覆盖 6 座城市）。
+
+**改动 `city_project_io.js` 时这一步尤其不能省**：回写逻辑出错的后果是静默损毁已经逐像素校准过的城市数据（悉尼的 `marker`/`halo`、北京的 `textScale`、线路的 `pathPoints` 折点），而且往往要等到渲染时才会被发现。
 
 欢迎随时向官方主仓库提交 Pull Request 或 Issue 进行探讨！
 

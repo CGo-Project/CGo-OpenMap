@@ -87,12 +87,12 @@
         searchCity: ChangchunCity.searchCity,
         title: "CGo OpenMap - 长春轨道交通线路图",
         keywords: "CGo OpenMap, 长春地铁, 长春轨道交通, 线路图",
-        description: "由 CGo OpenMap 驱动的长春轨道交通交互线路图，线路走向依据官方交互线路图整理。",
+        description: "线路走向依据官方交互线路图整理。",
         officialMapUrl: ChangchunCity.officialMapUrl,
         registerDate: "2026-09-13",
         status: "active",
         maintainers: [
-            { name: "待认领", role: "城市主理人招募中", isRecruiting: true, github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+            { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" }
         ],
         isDefault: false,
         ...ChangchunCity

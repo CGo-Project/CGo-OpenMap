@@ -1,0 +1,273 @@
+/**
+ * CGo OpenMap - 悉尼城市专属样式 (city/sydney/style.css)
+ *
+ * 全部取值实测自 Transport for NSW 官方 "Sydney rail network" 矢量线网图
+ * （A4 595.276 × 841.89 pt，画布 = PDF 点 × 200/72）：
+ *   1. 底图底色 #EEEDE6、海域 #D9EEF8；线路描边 2.13pt → 5.92px；
+ *   2. 站名为纯英文单行，常规站 cap-height 3.55pt → Public Sans 字号 13.35px，
+ *      换乘站加粗，主要枢纽 cap-height 4.95pt → 字号 19.15px；
+ *   3. 45° 斜排站名由 sydney.js 按 align 锚点旋转，字号与常规站一致；
+ *   4. 换乘站灰色底衬（Interchange）为正片叠底 #ADA49E。
+ */
+
+/* ── 站名字体：官方图使用 Public Sans NSW，此处内嵌其上游开源字体 Public Sans
+      （SIL OFL 1.1，Latin 可变字重子集，见 assets/FONT-LICENSE.md）────────── */
+@font-face {
+    font-family: "Public Sans CGo";
+    src: url("./assets/PublicSans-var-latin.woff2") format("woff2-variations"),
+         url("./assets/PublicSans-var-latin.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: block;
+}
+
+/* ── 底图与海域配色 ───────────────────────────────────────────── */
+.map-sydney {
+    --map-bg: #EEEDE6;
+    --syd-halo: #ADA49E;
+    --syd-city-tint: #EEECE8;
+    --syd-text: #1F1A1A;
+    --syd-text-grey: #6E6C68;
+    --syd-text-pink: #E6007E;
+}
+
+[data-theme='dark'].map-sydney {
+    --map-bg: #1a1a1a;
+    --syd-halo: #6c6862;
+    --syd-city-tint: #121212;
+    --syd-text: #e6e4de;
+    --syd-text-grey: #8d8a84;
+    --syd-text-pink: #ef5eb2;
+}
+
+.map-sydney #map-container,
+.map-sydney #map-content {
+    background-color: var(--map-bg);
+}
+
+/* 画布尺寸 = 官方图裁切区域 (555 × 614 pt) × 200/72 */
+.map-sydney #map-content {
+    width: 1542px;
+    height: 1706px;
+}
+
+/* ── 线路描边：官方图 2.13pt 主色 + 背景色隔离描边 ───────────── */
+.map-sydney .line-visual-inner {
+    stroke-width: 5.92px;
+}
+
+.map-sydney .line-visual-outer {
+    stroke-width: 8.9px;
+}
+
+.map-sydney .line-visual-group.active .line-visual-inner {
+    stroke-width: 7.2px !important;
+}
+
+.map-sydney .line-interaction {
+    stroke-width: 16px;
+}
+
+/* 地铁 M1：官方图为 2.27pt 主色带 0.49pt 纯白中缝的"双线"画法 */
+.map-sydney .line-visual-group[data-visual-id="M1"] .line-visual-inner {
+    stroke-width: 6.3px;
+}
+
+/* 改造中的 Bankstown 区间：2.13pt 粉色虚线（实 2.13pt / 空 0.53pt）带背景色中缝 */
+.map-sydney .line-visual-group[data-visual-id="CONV"] .line-visual-inner,
+.map-sydney .line-visual-group[data-visual-id="CONV"] .line-visual-outer {
+    stroke-dasharray: 5.93 1.48;
+    stroke-linecap: butt;
+}
+
+.map-sydney .line-visual-group[data-visual-id="CONV"] .line-visual-inner {
+    stroke-width: 7.0px;
+}
+
+/* ── 线路徽标 ─────────────────────────────────────────────────── */
+/* 悉尼线名是英文全称（"Eastern Suburbs & Illawarra Line"），徽标比中文城市宽得多；
+   Central 这类七线换乘站一行排不下，允许折行并略缩，免得把标题栏顶穿 */
+.map-sydney .panel-badges {
+    flex-shrink: 1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    min-width: 0;
+}
+
+.map-sydney .panel-badges .line-badge {
+    height: 26px;
+}
+
+/* 手机分屏版标题栏是单行不换行的：悉尼徽标较宽，七线换乘站会把站名挤成 0 宽度，
+   这里改成横向可滚动，站名优先占位 */
+.map-sydney body.mobile-split-active .panel-badges {
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+}
+
+.map-sydney body.mobile-split-active .panel-badges::-webkit-scrollbar {
+    display: none;
+}
+
+.map-sydney body.mobile-split-active .header-name-group {
+    flex-shrink: 0;
+    max-width: 55%;
+}
+
+/* 在建线（Sydney Metro West / Western Sydney Airport）：
+   官方图里在建灰虚线画在所有线路最下面，引擎默认把未开通层放在线路层之上，这里压回去 */
+.map-sydney #not-open-layer {
+    z-index: 9;
+}
+
+/* 平头虚线：引擎默认给未开通线路加了圆头端帽，1.48px 的空隙会被两端圆头补满而糊成实线 */
+.map-sydney #not-open-layer path {
+    stroke-linecap: butt;
+    stroke-linejoin: miter;
+}
+
+/* ── 站点图元 ─────────────────────────────────────────────────── */
+.station.syd-marker {
+    overflow: visible;
+    z-index: 16;
+}
+
+.station.syd-marker.syd-interchange {
+    z-index: 22;
+}
+
+.station.syd-marker svg {
+    overflow: visible;
+    shape-rendering: geometricPrecision;
+}
+
+/* 换乘站灰色底衬（Interchange）独立成层：官方图里底衬正片叠底压在线路之上，
+   线路从底衬下透出来并被压暗。混合模式必须加在图层上——加在站点图元里的话，
+   图元自身的 transform 会形成隔离组，底衬只会把线路整段涂成灰色。 */
+.map-sydney #syd-halo-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 14;
+    mix-blend-mode: multiply;
+}
+
+[data-theme='dark'].map-sydney #syd-halo-layer {
+    mix-blend-mode: screen;
+}
+
+.map-sydney #syd-halo-layer .syd-halo {
+    position: absolute;
+    background: var(--syd-halo);
+    border-radius: 999px;
+}
+
+/* CBD "City" 底板：正片叠底后 #EEEDE6 底色压成 #DEDBD1，线路同步压深一档 */
+.map-sydney #syd-halo-layer .syd-city-tint {
+    position: absolute;
+    background: var(--syd-city-tint);
+}
+
+/* 地铁站 M 徽标 */
+.map-sydney .syd-m {
+    font-family: "Public Sans CGo", "Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+}
+
+/* 选中态不缩放图元（图元中心贴合线路，放大会脱离线路），只换成高亮色 */
+.map-sydney .station.syd-marker.active {
+    transform: translate(-50%, -50%);
+    filter: none;
+}
+
+.map-sydney .station.syd-marker.active rect[stroke] {
+    stroke: #D0021B;
+}
+
+.map-sydney .station.syd-marker.active rect:not([stroke]) {
+    fill: #D0021B;
+}
+
+
+/* ── 站名排版：官方图为纯英文单行 ─────────────────────────────── */
+.map-sydney .staen {
+    display: none;
+}
+
+.map-sydney .stacn {
+    font-family: "Public Sans CGo", "Public Sans", "Helvetica Neue", Helvetica, Arial, "Noto Sans SC", sans-serif;
+    font-size: 13.35px;
+    line-height: 14.1px;
+    font-weight: 400;
+    color: var(--syd-text) !important;
+    letter-spacing: 0;
+}
+
+.map-sydney .label-group.syd-bold .stacn {
+    font-weight: 700;
+}
+
+.map-sydney .label-group.syd-big .stacn {
+    font-size: 19.15px;
+    line-height: 20.1px;
+    font-weight: 700;
+}
+
+/* 在建（未开通）车站的站名：官方图用更小的字号加灰色，字形高度实测约为常规站名的 0.86 倍 */
+.map-sydney .label-group.syd-grey .stacn,
+.map-sydney .label-group.type-no .stacn {
+    font-size: 11.5px;
+    line-height: 12.1px;
+}
+
+.map-sydney .label-group.syd-grey .stacn {
+    color: var(--syd-text-grey) !important;
+}
+
+.map-sydney .label-group.syd-pink .stacn {
+    color: var(--syd-text-pink) !important;
+}
+
+/* 注意：这里不要再按 type-tsf / type-no 覆写 font-weight——
+   那条规则与 .syd-bold 同优先级且写在后面，会把官方图里加粗的换乘站名全部还原成常规字重 */
+.map-sydney .label-group.type-no .stacn {
+    color: var(--syd-text-grey) !important;
+}
+
+/* 45° 斜排站名 */
+.map-sydney .label-group.syd-rot .stacn {
+    white-space: nowrap;
+}
+
+/* 选中态：等比放大并换高亮色 */
+.map-sydney .label-group.active .stacn {
+    color: #D0021B !important;
+    font-size: 15.5px;
+    line-height: 16.4px;
+    font-weight: 700;
+    transform: none;
+    -webkit-text-stroke: 2px var(--map-bg);
+}
+
+.map-sydney .label-group.syd-big.active .stacn {
+    font-size: 21px;
+    line-height: 22px;
+}
+
+/* ── 底图装饰（水域、线路端牌、在建注记、机场与指北针）──────────── */
+.map-sydney #scattered-layer img {
+    image-rendering: auto;
+}
+
+[data-theme='dark'].map-sydney #scattered-layer {
+    filter: invert(0.88) hue-rotate(180deg);
+}

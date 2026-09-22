@@ -88,7 +88,7 @@
                             font-weight: bold;
                             color: var(--text-main);
                         ">
-                            <span style="font-size: 14px;">🏛️</span>
+                            <cgo-icon name="location" size="14" style="color: var(--primary-color, #1a73e8);"></cgo-icon>
                             <span>历史文化与名胜指引</span>
                         </div>
                         <div style="

@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260915.0040';
+const CACHE_NAME = 'cgo-openmap-v260922.1220';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -26,6 +26,11 @@ const ASSETS_TO_CACHE = [
     './main.html',
     './readme.html',
     './privacy.html',
+
+    // 线路图在线编辑器 (city-editor)
+    './city-editor/index.html',
+    './city-editor/css/editor.css',
+    './city-editor/js/editor.js',
 
     // 样式表
     './css/style.css',
@@ -41,6 +46,8 @@ const ASSETS_TO_CACHE = [
     './core/station-board.js',
     './core/script.js',
     './core/help.js',
+    './core/path-geometry.js',
+    './core/station-icons.js',
     './core/settings.js',
     './core/notice.js',
 
@@ -63,6 +70,7 @@ const ASSETS_TO_CACHE = [
 
     // 城市配置与业务数据 (示例：上海)
     './city/shanghai/shanghai.js',
+    './city/shanghai/style.css',
     './city/shanghai/stacard/script.js',
     './city/shanghai/data_stations.js',
     './city/shanghai/data_lines.js',
@@ -74,6 +82,9 @@ const ASSETS_TO_CACHE = [
     './city/shanghai/data_urls.js',
     './city/shanghai/amap_data.json',
     './city/shanghai/staname.csv',
+    './city/shanghai/assets/icon-railway.svg',
+    './city/shanghai/assets/icon-airport.svg',
+    './city/shanghai/assets/icon-maglev.svg',
 
     // 城市配置与业务数据 (沈阳)
     './city/shenyang/shenyang.js',
@@ -114,44 +125,35 @@ const ASSETS_TO_CACHE = [
     './city/hefei/amap_data.json',
     './city/hefei/staname.csv',
 
-    // 城市配置与业务数据 (大连)
-    './city/dalian/dalian.js',
-    './city/dalian/modules/dalian_map.js',
-    './city/dalian/modules/dalian_timetable.js',
-    './city/dalian/modules/dalian_transfers.js',
-    './city/dalian/stacard/script.js',
-    './city/dalian/data_stations.js',
-    './city/dalian/data_lines.js',
-    './city/dalian/data_virtual_transfers.js',
-    './city/dalian/data_scattered.js',
-    './city/dalian/data_legend.js',
-    './city/dalian/data_timetable.js',
-    './city/dalian/data_notopen.js',
-    './city/dalian/amap_data.json',
-    './city/dalian/assets/compass.svg',
-    './city/dalian/assets/airport.svg',
-    './city/dalian/assets/railway.svg',
-    './city/dalian/assets/dalian_sea.svg',
-    './city/dalian/assets/tram-201.svg',
-    './city/dalian/assets/tram-201-interval.svg',
-    './city/dalian/assets/tram-202.svg',
-
-    // 城市配置与业务数据 (长春)
-    './city/changchun/README.md',
-    './city/changchun/changchun.js',
-    './city/changchun/stacard/script.js',
-    './city/changchun/data_stations.js',
-    './city/changchun/data_lines.js',
-    './city/changchun/amap_data.json',
-    './city/changchun/modules/changchun_service_info.js',
-    './city/changchun/data_virtual_transfers.js',
-    './city/changchun/data_scattered.js',
-    './city/changchun/data_legend.js',
-    './city/changchun/data_timetable.js',
-    './city/changchun/data_notopen.js',
+    // 城市配置与业务数据 (悉尼)
+    './city/sydney/sydney.js',
+    './city/sydney/style.css',
+    './city/sydney/stacard/script.js',
+    './city/sydney/data_stations.js',
+    './city/sydney/data_lines.js',
+    './city/sydney/data_virtual_transfers.js',
+    './city/sydney/data_scattered.js',
+    './city/sydney/data_notopen.js',
+    './city/sydney/data_legend.js',
+    './city/sydney/data_timetable.js',
+    './city/sydney/staname.csv',
+    './city/sydney/assets/sydney_deco.svg',
+    './city/sydney/assets/PublicSans-var-latin.woff2',
+    './city/sydney/assets/line/T1.svg',
+    './city/sydney/assets/line/T2.svg',
+    './city/sydney/assets/line/T3.svg',
+    './city/sydney/assets/line/T4.svg',
+    './city/sydney/assets/line/T5.svg',
+    './city/sydney/assets/line/T6.svg',
+    './city/sydney/assets/line/T7.svg',
+    './city/sydney/assets/line/T8.svg',
+    './city/sydney/assets/line/T9.svg',
+    './city/sydney/assets/line/M1.svg',
+    './city/sydney/assets/line/CONV.svg',
+    './city/sydney/assets/line/MW.svg',
+    './city/sydney/assets/line/WSA.svg',
 
     // 城市配置与业务数据 (青岛)
-    './city/qingdao/README.md',
     './city/qingdao/qingdao.js',
     './city/qingdao/stacard/script.js',
     './city/qingdao/data_stations.js',
@@ -175,6 +177,69 @@ const ASSETS_TO_CACHE = [
     './city/qingdao/assets/Long_Distance_Bus.svg',
     './city/qingdao/assets/Ship.svg',
     './city/qingdao/assets/Streetcar.svg',
+
+    // 城市配置与业务数据 (大连)
+    './city/dalian/dalian.js',
+    './city/dalian/modules/dalian_map.js',
+    './city/dalian/modules/dalian_timetable.js',
+    './city/dalian/modules/dalian_transfers.js',
+    './city/dalian/stacard/script.js',
+    './city/dalian/data_stations.js',
+    './city/dalian/data_lines.js',
+    './city/dalian/data_virtual_transfers.js',
+    './city/dalian/data_scattered.js',
+    './city/dalian/data_notopen.js',
+    './city/dalian/data_legend.js',
+    './city/dalian/data_timetable.js',
+    './city/dalian/amap_data.json',
+    './city/dalian/assets/airport.svg',
+    './city/dalian/assets/compass.svg',
+    './city/dalian/assets/dalian_sea.svg',
+    './city/dalian/assets/railway.svg',
+    './city/dalian/assets/tram-201-interval.svg',
+    './city/dalian/assets/tram-201.svg',
+    './city/dalian/assets/tram-202.svg',
+
+    // 城市配置与业务数据 (长春)
+    './city/changchun/changchun.js',
+    './city/changchun/modules/changchun_service_info.js',
+    './city/changchun/stacard/script.js',
+    './city/changchun/data_stations.js',
+    './city/changchun/data_lines.js',
+    './city/changchun/data_virtual_transfers.js',
+    './city/changchun/data_scattered.js',
+    './city/changchun/data_notopen.js',
+    './city/changchun/data_legend.js',
+    './city/changchun/data_timetable.js',
+    './city/changchun/amap_data.json',
+
+    // 城市配置与业务数据 (福州)
+    './city/fuzhou/fuzhou.js',
+    './city/fuzhou/modules/fuzhou_timetable.js',
+    './city/fuzhou/modules/fuzhou_cultural.js',
+    './city/fuzhou/stacard/script.js',
+    './city/fuzhou/data_stations.js',
+    './city/fuzhou/data_lines.js',
+    './city/fuzhou/data_virtual_transfers.js',
+    './city/fuzhou/data_scattered.js',
+    './city/fuzhou/data_notopen.js',
+    './city/fuzhou/data_legend.js',
+    './city/fuzhou/data_timetable.js',
+    './city/fuzhou/staname.csv',
+    './city/fuzhou/assets/fuzhou_waters.svg',
+    './city/fuzhou/assets/fuzhou_sea.svg',
+
+    // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
+    './assets/svg/icon@01.svg',
+    './assets/svg/icon@02.svg',
+    './assets/svg/icon@03.svg',
+    './assets/svg/icon@04.svg',
+    './assets/svg/icon@05.svg',
+    './assets/svg/icon@06.svg',
+    './assets/svg/icon@07.svg',
+    './assets/svg/icon@08.svg',
+    './assets/svg/icon@09.svg',
+    './assets/svg/icon@15.svg',
     './assets/svg/icon@lg.svg',
     './assets/svg/icon@xha.svg',
 
@@ -188,20 +253,31 @@ const ASSETS_TO_CACHE = [
     './assets/icons/beian.png',
     './assets/icons/cgowx.png',
     './assets/icons/favicon.ico',
+    './assets/images/qq.png',
     './manifest.json',
 ];
 
-// 1. Service Worker 安装：预缓存核心资产
+// 1. Service Worker 安装：预缓存核心资产（容错机制：单个非核心文件失败不阻断 SW 激活）
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(ASSETS_TO_CACHE))
+            .then(async (cache) => {
+                await Promise.allSettled(
+                    ASSETS_TO_CACHE.map(async (url) => {
+                        try {
+                            await cache.add(url);
+                        } catch (err) {
+                            console.warn('[SW] 预缓存单项跳过:', url, err);
+                        }
+                    })
+                );
+            })
             .then(() => self.skipWaiting())
-            .catch(err => console.error('[SW] 缓存失败:', err))
+            .catch(err => console.error('[SW] 缓存安装异常:', err))
     );
 });
 
-// 2. Service Worker 激活：清理陈旧缓存
+// 2. Service Worker 激活：清理陈旧缓存并立即接管页面
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
@@ -228,8 +304,45 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 默认静态资产：优先读取缓存，离线时优雅回退
-    event.respondWith(
-        caches.match(event.request, { ignoreSearch: true }).then(cached => cached || fetch(event.request).catch(() => {}))
-    );
+    // 页面导航请求（HTML 页面）：网络优先策略 (Network-First)
+    // 确保代码更新后刷新浏览器永远呈现最新页面与样式；离线时优雅降级回退至缓存
+    if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+        event.respondWith((async () => {
+            try {
+                const networkRes = await fetch(event.request);
+                if (networkRes && networkRes.status === 200) {
+                    const cache = await caches.open(CACHE_NAME);
+                    cache.put(event.request, networkRes.clone());
+                }
+                return networkRes;
+            } catch (err) {
+                const cached = await caches.match(event.request, { ignoreSearch: true });
+                if (cached) return cached;
+                return caches.match('./index.html');
+            }
+        })());
+        return;
+    }
+
+    // 静态资源（CSS/JS/图片等）：精准匹配优先 -> 网络获取并更新缓存 -> 离线模糊回退
+    event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        
+        // 优先精确匹配（如果版本号 query 完全一致且已缓存）
+        const exactMatch = await cache.match(event.request);
+        if (exactMatch) return exactMatch;
+
+        // 精确未命中（例如资源刚升级了 ?v= 版本号）：网络优先拉取最新版本并写入缓存
+        try {
+            const networkRes = await fetch(event.request);
+            if (networkRes && networkRes.status === 200) {
+                cache.put(event.request, networkRes.clone());
+            }
+            return networkRes;
+        } catch (err) {
+            // 离线环境：模糊匹配回退
+            const fuzzyMatch = await cache.match(event.request, { ignoreSearch: true });
+            if (fuzzyMatch) return fuzzyMatch;
+        }
+    })());
 });

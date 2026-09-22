@@ -1,7 +1,17 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" glass-mode="liquid" header-mode="floating">
 
 <head>
+    <script>
+        (function () {
+            var t = localStorage.getItem('app-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+            var hm = localStorage.getItem('root_cgo_header_mode') || localStorage.getItem('cgo_header_mode');
+            if (hm) document.documentElement.setAttribute('header-mode', hm);
+            var gm = localStorage.getItem('cgo_glass_mode');
+            if (gm) document.documentElement.setAttribute('glass-mode', gm);
+        })();
+    </script>
     <!-- ========================================================================== -->
     <!-- 1. 基础元数据与 SEO 配置 (Metadata & SEO Settings)                          -->
     <!-- 移植说明：制作新城市时，可在 city/data.js 中配置城市标题与描述，也会动态更新此处 -->
@@ -38,12 +48,12 @@
     <!-- style.css: 地图引擎核心样式、图层布局、动画与手势响应                          -->
     <!-- ========================================================================== -->
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260903.220000">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260903.220000">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260903.220000">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260903.220000">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260903.220000">
-    <link rel="stylesheet" href="css/style.css?v=260903.220000">
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260922.1220">
+    <link rel="stylesheet" href="css/style.css?v=260915.1930">
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -71,60 +81,88 @@
                 display: inline;
             }
         }
+
+        /* 浮动标题栏模式下，地图缩放控件避让顶部悬浮双岛栏 */
+        :root[header-mode="floating"] #modern-zoom-control,
+        body[header-mode="floating"] #modern-zoom-control {
+            top: calc(env(safe-area-inset-top, 0px) + 76px);
+        }
+
+        /* 液态玻璃模式下的地图控件微质感增强 */
+        :root[glass-mode="liquid"] #modern-zoom-control,
+        body[glass-mode="liquid"] #modern-zoom-control {
+            background-color: var(--glass-bg, rgba(255, 255, 255, 0.72)) !important;
+            backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
+            -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
+            box-shadow: var(--glass-shadow);
+            border: 1px solid var(--glass-border);
+        }
+
+        [data-theme="dark"]:root[glass-mode="liquid"] #modern-zoom-control,
+        [data-theme="dark"] body[glass-mode="liquid"] #modern-zoom-control {
+            background-color: var(--glass-bg, rgba(31, 32, 34, 0.72)) !important;
+            box-shadow: var(--glass-shadow);
+        }
     </style>
 </head>
 
 <body>
     <!-- ========================================================================== -->
-    <!-- 3. 顶部导航栏 (Header Toolbar)                                              -->
+    <!-- 3. 顶部导航栏 (Header Toolbar) - 浮动双岛式布局                                -->
     <!-- 包含：返回按钮、主页链接、平台 Logo/标题、更多操作下拉菜单（偏好设置/帮助与关于） -->
     <!-- ========================================================================== -->
     <header class="tool-header">
-        <div class="header-left">
-            <a href="./index.html" class="btn btn-info" title="返回城市列表">
-                <cgo-icon name="back"></cgo-icon>
-                <span>城市</span>
-            </a>
-            <a href="https://centralgo.site/" class="btn btn-primary" title="Central Go 首页">
-                <cgo-icon name="home"></cgo-icon>
-                <span>Central Go</span>
-            </a>
-        </div>
-        <div class="header-center">
-            <div class="img-icon-wrapper header-logo-wrapper">
-                <img src="./assets/icons/mapicon.png" alt="Logo" class="header-logo" loading="lazy" decoding="async"
-                    fetchpriority="low"
-                    onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
-                <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
+        <div class="header-island header-island-left">
+            <div class="header-left">
+                <a href="./index.html" class="btn btn-info" title="返回城市列表">
+                    <cgo-icon name="back"></cgo-icon>
+                    <span>城市</span>
+                </a>
+                <a href="https://centralgo.site/" class="btn btn-primary" title="Central Go 首页">
+                    <cgo-icon name="home"></cgo-icon>
+                    <span>Central Go</span>
+                </a>
             </div>
-            <span class="app-title">
-                <span class="title-full">CGo OpenMap</span>
-                <span class="title-short">CGo OpenMap</span>
-            </span>
+            <div class="header-island-divider" aria-hidden="true"></div>
+            <div class="header-center">
+                <div class="img-icon-wrapper header-logo-wrapper">
+                    <img src="./assets/icons/mapicon.png" alt="Logo" class="header-logo" loading="lazy" decoding="async"
+                        fetchpriority="low"
+                        onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
+                    <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
+                </div>
+                <span class="app-title">
+                    <span class="title-full">CGo 开放地图</span>
+                    <span class="title-short">开放地图</span>
+                </span>
+            </div>
         </div>
-        <div class="header-right">
-            <!-- 更多：选项下拉菜单 -->
-            <div class="dropdown options-dropdown">
-                <button id="options-btn" class="btn btn-info dropbtn" title="更多">
-                    <cgo-icon name="menu"></cgo-icon>
-                    <span>更多</span>
-                </button>
-                <div class="dropdown-content">
-                    <!-- 偏好设置 (弹窗逻辑由 core/settings.js 驱动) -->
-                    <a href="javascript:void(0)" id="settings-btn">
-                        <cgo-icon name="settings"></cgo-icon>
-                        <span>偏好设置</span>
-                    </a>
-                    <!-- 帮助与关于 (弹窗逻辑由 core/help.js 驱动) -->
-                    <a href="javascript:void(0)" id="help-btn">
-                        <cgo-icon name="help"></cgo-icon>
-                        <span>帮助与关于</span>
-                    </a>
-                    <!-- 社区贡献与主理人 (指向 CONTRIBUTING.md) -->
-                    <a href="./CONTRIBUTING.md" target="_blank">
-                        <cgo-icon name="user"></cgo-icon>
-                        <span>贡献与主理人</span>
-                    </a>
+
+        <div class="header-island header-island-right">
+            <div class="header-right">
+                <!-- 更多：选项下拉菜单 -->
+                <div class="dropdown options-dropdown">
+                    <button id="options-btn" class="btn btn-info dropbtn" title="更多">
+                        <cgo-icon name="menu"></cgo-icon>
+                        <span>更多</span>
+                    </button>
+                    <div class="dropdown-content">
+                        <!-- 偏好设置 (弹窗逻辑由 core/settings.js 驱动) -->
+                        <a href="javascript:void(0)" id="settings-btn">
+                            <cgo-icon name="settings"></cgo-icon>
+                            <span>偏好设置</span>
+                        </a>
+                        <!-- 帮助与关于 (弹窗逻辑由 core/help.js 驱动) -->
+                        <a href="javascript:void(0)" id="help-btn">
+                            <cgo-icon name="help"></cgo-icon>
+                            <span>帮助与关于</span>
+                        </a>
+                        <!-- 社区贡献与主理人 (指向 CONTRIBUTING.md) -->
+                        <a href="./CONTRIBUTING.md" target="_blank">
+                            <cgo-icon name="user"></cgo-icon>
+                            <span>贡献与主理人</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -213,19 +251,25 @@
     <!--    - data_timetable.js: 首末班车时刻                                         -->
     <!--    - data_notopen.js: 在建线路虚线                                            -->
     <!-- 3. 核心引擎 (core/script.js) 读取上述数据并统一渲染                           -->
-    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js) -->
+    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js?v=260922.1220) -->
     <!-- ========================================================================== -->
+    <!-- 折线倒角几何算法 (引擎与 Drunk 编辑模式共用，必须早于 core/script.js) -->
+    <script src="core/path-geometry.js?v=260915.1930"></script>
+    <!-- 车站图元模板与尺寸 (引擎与 Drunk 编辑模式共用，必须早于 core/script.js) -->
+    <script src="core/station-icons.js?v=260915.1930"></script>
     <!-- 城市注册总线与基础元数据 -->
-    <script src="city/data.js?v=260910.150000"></script>
+    <script src="city/data.js?v=260915.1930"></script>
     <!-- 车站信息板模块注册与渲染引擎 (多城市通用) -->
-    <script src="core/station-board.js?v=260910.150000"></script>
+    <script src="core/station-board.js?v=260915.1930"></script>
     <!-- 动态按序加载当前激活城市的专属业务与全套数据文件 (根据 URL ?city= 或 LocalStorage 判定) -->
     <script>
         (function () {
             var city = window.CityDataManager ? window.CityDataManager.getCurrentCity() : null;
             var folder = (city && city.folder) ? city.folder : "./city/beijing";
             var cityId = (city && city.id) ? city.id : "beijing";
-            var v = "260910.150000";
+            var v = "260915.1930";
+            // 供城市脚本追加同版本号（如 city/<id>/style.css），避免样式表被浏览器长期缓存
+            window.CGO_ASSET_VERSION = v;
 
             // 同步写入当前激活城市的脚本依赖，确保在核心引擎执行前完成加载
             // 注：城市专属自定义模块 (如 modules/beijing_cultural.js) 由各城市 {city}.js 内部
@@ -242,20 +286,20 @@
         })();
     </script>
     <!-- 核心地图渲染引擎 -->
-    <script type="module" src="core/script.js?v=260910.150000"></script>
+    <script type="module" src="core/script.js?v=260915.1930"></script>
     <!-- 辅助面板逻辑 -->
-    <script src="core/help.js?v=260910.150000"></script>
-    <script src="core/settings.js?v=260910.150000"></script>
+    <script src="core/help.js?v=260915.1930"></script>
+    <script src="core/settings.js?v=260915.1930"></script>
     <script>
         // 动态加载公告与运营通知系统
         (function () {
             var script = document.createElement('script');
-            script.src = "core/notice.js?v=260910.150000&t=" + Date.now();
+            script.src = "core/notice.js?v=260915.1930&t=" + Date.now();
             document.body.appendChild(script);
         })();
     </script>
     <!-- CGoUI Web Components 基础组件库 -->
-    <script type="module" src="core/cgo-ui.js?v=260910.150000"></script>
+    <script type="module" src="core/cgo-ui.js?v=260922.1220"></script>
     <script>
         // 图片加载完毕后添加 loaded 类，配合 CSS 实现平滑淡入
         document.addEventListener('DOMContentLoaded', function () {
@@ -272,6 +316,7 @@
             window.addEventListener('load', function () {
                 navigator.serviceWorker.register('./sw.js')
                     .then(function (reg) {
+                        reg.update().catch(function () { });
                         console.log('[SW] Service Worker 注册成功，作用域:', reg.scope);
                     })
                     .catch(function (err) {

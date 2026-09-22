@@ -23,7 +23,7 @@
 
 (function () {
     const CAT_CONFIG = {
-        'ops': { title: '运营信息', color: '#eb9605', icon: 'subrail' },
+        'ops': { title: '运营信息', color: '#eb9605', icon: 'train' },
         'app': { title: '地图信息', color: '#00a0e9', icon: 'map' },
         'msg': { title: '作者留言', color: '#78848b', icon: 'chat' },
         'ads': { title: '推广信息', color: '#009f3c', icon: 'notification' }
@@ -56,22 +56,14 @@
         autoDismissDuration: 6000,
         items: [
             {
-                id: '20260630_1',
+                id: '20260915_qq',
                 active: true,
-                category: 'ops',
-                deadline: '2026-07-10 00:00:00',
-                summary: "部分车站即将投用",
-                detail: "近期开通6号线通运门站和城市副中心线西延车站，请留意官方运营信息。"
-            },
-            {
-                id: '20260126_3',
-                active: true,
-                category: 'ads',
+                category: 'app',
                 deadline: 'permanent',
-                image: './assets/icons/cgowx.png',
-                summary: "欢迎添加作者的微信",
-                detail: "作者微信号「Central-Go」。扫描二维码，或搜索微信号添加好友后，直接发送信息即可。如需加入交流群，请直接发送「加群」二字。"
-            }
+                image: './assets/images/qq.png',
+                summary: "欢迎加入 CGo OpenMap 官方交流群",
+                detail: "官方 QQ 交流群（群号：619357751）现已开放！欢迎轨道交通爱好者、前端开发者及城市主理人加入交流线网规划与城市移植。<br><a href='https://qm.qq.com/q/nHfgBDS68o' target='_blank' style='color:#12b7f5; text-decoration:underline; font-weight:600;'>👉 点击一键加入官方 QQ 群</a>"
+            },
         ]
     };
 
@@ -256,7 +248,7 @@
         if (readIds.length > 50) readIds.shift();
         try {
             localStorage.setItem('nal_notice_read_ids', JSON.stringify(readIds));
-        } catch {}
+        } catch { }
     }
 
     function init() {
