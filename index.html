@@ -474,10 +474,36 @@
         .footer-copy {
             opacity: 0.85;
         }
+
+        /* 移动端/异形屏顶部状态栏与信号栏实色安全区保护层：遮挡页面滚动穿透内容，填充与背景一致的实心底色 */
+        .mobile-status-bar-fill {
+            position: fixed;
+            top: -100px;
+            left: 0;
+            right: 0;
+            height: calc(100px + constant(safe-area-inset-top, 0px));
+            height: calc(100px + env(safe-area-inset-top, 0px));
+            background-color: var(--bg-color, #f8f9fa);
+            z-index: 50001;
+            pointer-events: none;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme='light']) .mobile-status-bar-fill {
+                background-color: var(--bg-color, #1a1a1a);
+            }
+        }
+
+        [data-theme='dark'] .mobile-status-bar-fill {
+            background-color: var(--bg-color, #1a1a1a);
+        }
     </style>
 </head>
 
 <body class="scrollable">
+    <!-- 移动端顶部状态栏/信号栏实色安全区保护层：遮挡页面滚动穿透内容，实心填充与背景同色 -->
+    <div class="mobile-status-bar-fill" aria-hidden="true"></div>
+
     <!-- CGoUI 浮动双岛标题栏 -->
     <header class="tool-header">
         <div class="header-island header-island-left">
