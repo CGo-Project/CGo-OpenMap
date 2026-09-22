@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260922.1843';
+const CACHE_NAME = 'cgo-openmap-v260922.1905';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -213,6 +213,8 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_legend.js',
     './city/changchun/data_timetable.js',
     './city/changchun/amap_data.json',
+    './city/changchun/assets/railway.svg',
+    './city/changchun/assets/transfer-badge.svg',
 
     // 城市配置与业务数据 (福州)
     './city/fuzhou/fuzhou.js',
