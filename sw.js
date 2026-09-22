@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260922.2001';
+const CACHE_NAME = 'cgo-openmap-v260922.2235';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -184,6 +184,7 @@ const ASSETS_TO_CACHE = [
     './city/dalian/modules/dalian_map.js',
     './city/dalian/modules/dalian_timetable.js',
     './city/dalian/modules/dalian_transfers.js',
+    './city/dalian/modules/dalian_station_title.js',
     './city/dalian/stacard/script.js',
     './city/dalian/data_stations.js',
     './city/dalian/data_lines.js',
@@ -204,6 +205,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (长春)
     './city/changchun/changchun.js',
     './city/changchun/modules/changchun_service_info.js',
+    './city/changchun/modules/changchun_station_title.js',
     './city/changchun/stacard/script.js',
     './city/changchun/data_stations.js',
     './city/changchun/data_lines.js',

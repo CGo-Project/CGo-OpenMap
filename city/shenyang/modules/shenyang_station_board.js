@@ -248,12 +248,56 @@
         badges.slice(0, -1).forEach((badge) => badge.remove());
     }
 
+    /**
+     * 强制标注「（有轨站）」的有轨站名。
+     * 用于「字面不同名、语义却高度混淆」的情况 —— 同名判定抓不到，需人工列出。
+     * 沈阳目前为空，如有此类站名再补。
+     */
+    const TRAM_FORCE_SUFFIX_NAMES = [];
+
+    /**
+     * 侧栏历史车站标题归一化（沈阳规则）
+     *   - 地铁站：站名以「站」结尾时**保留双写**（沈阳站 → 沈阳站站，与地铁官方站名一致）
+     *   - 有轨站：与地铁站同名时 → 「XX站（有轨站）」
+     *   - 国铁车站 → 「XX站（火车站）」
+     *   - 与国铁站同名的地铁站：沈阳不做特殊化，仍为「XX站站」
+     */
+    function buildSidebarStationTitle(station, stations) {
+        const name = String(station?.cn || "");
+        if (!name) return "";
+
+        const isTram = isTramStation(station);
+        const isRail = station.type === "rdot";
+        const isMetro = !isTram && !isRail;
+
+        // 末尾「站」去重：沈阳仅地铁站保留「XX站站」，其余去重为「XX站」
+        const base = (name.endsWith("站") && !isMetro) ? name : name + "站";
+
+        const others = Object.keys(stations)
+            .map((id) => stations[id])
+            .filter((other) => other && other.id !== station.id && other.cn === station.cn);
+        const hasMetro = others.some((other) => !isTramStation(other) && other.type !== "rdot");
+        const hasRail = others.some((other) => other.type === "rdot");
+
+        if (isTram) {
+            return (hasMetro || TRAM_FORCE_SUFFIX_NAMES.includes(name)) ? `${base}（有轨站）` : base;
+        }
+        if (isRail) return `${base}（火车站）`;
+        return base;
+    }
+
     function normalizeSidebarHistoryTitles() {
-        document.querySelectorAll(".station-history-section .section-header > span:first-child").forEach((title) => {
-            const currentTitle = String(title.textContent || "");
-            if (/\s*[（(]地铁站[）)]$/.test(currentTitle)) {
-                title.textContent = currentTitle.replace(/\s*[（(]地铁站[）)]$/, "站");
-            }
+        const stations = window.processedStations || window.stationsData || {};
+        document.querySelectorAll(".station-history-section").forEach((section) => {
+            const sid = section.dataset?.sid;
+            const station = sid ? stations[sid] : null;
+            if (!station) return;
+            const titleEl = section.querySelector(".section-title-text")
+                || section.querySelector(".section-header > span:first-child");
+            if (!titleEl) return;
+            const next = buildSidebarStationTitle(station, stations);
+            // 仅在确有差异时写入，避免 MutationObserver 自触发死循环
+            if (next && titleEl.textContent !== next) titleEl.textContent = next;
         });
     }
 
@@ -392,6 +436,12 @@
             }
         });
     }
+
+    // 导出标题归一化能力，便于复用与自测
+    window.ShenyangStationTitle = {
+        buildTitle: buildSidebarStationTitle,
+        normalizeTitles: normalizeSidebarHistoryTitles
+    };
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", installCompactLineBadgeObserver, { once: true });

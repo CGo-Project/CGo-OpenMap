@@ -66,6 +66,21 @@
         LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM06", "CCM07", "CCM08"],
         LINE_SYNC_GROUPS: [],
         SUBURBAN_LINES: ["Rwy"],
+        /**
+         * 有轨电车线路 ID；用于区分地铁站 / 有轨站（侧栏标题、导航链接等）。
+         * ⚠️ 54 路、55 路有轨电车数据尚未录入，录入后请把线路 ID 补进此数组。
+         */
+        TRAM_LINES: [],
+        isTramLine(lineId) {
+            if (this.TRAM_LINES.includes(lineId)) return true;
+            const line = (typeof linesData !== "undefined" && Array.isArray(linesData))
+                ? linesData.find((item) => item?.id === lineId)
+                : null;
+            return /有轨/.test(String(line?.name || ""));
+        },
+        isTramStation(station) {
+            return Boolean(station?.relatedLines?.some((lineId) => this.isTramLine(lineId)));
+        },
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {
@@ -142,7 +157,7 @@
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
         },
         stationBoard: {
-            scripts: ["modules/changchun_service_info.js"],
+            scripts: ["modules/changchun_service_info.js", "modules/changchun_station_title.js"],
             modules: {
                 "stacard": { enabled: true, order: 10, targetTab: "line-tab" },
                 "changchun-service-info": { enabled: true, order: 15, targetTab: "line-tab" }
@@ -152,7 +167,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260913.220000";
+        const version = "260922.2235";
         (ChangchunCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/changchun/${scriptPath}?v=${version}"><\/script>`);
         });

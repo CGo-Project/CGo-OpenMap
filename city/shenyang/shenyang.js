@@ -135,7 +135,8 @@
         },
         maintainers: [
             { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" },
-            { name: "从恒隆到细河", role: "运营数据支持" }
+            { name: "从恒隆到细河", role: "运营数据支持" },
+            { name: "普兰店大鹅", role: "有轨数据支持" }
         ],
         dataFiles: {
             stanameCsvUrl: "./city/shenyang/staname.csv",
@@ -210,7 +211,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260911.260000";
+        const version = "260922.2235";
         (ShenyangCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/shenyang/${scriptPath}?v=${version}"><\/script>`);
         });

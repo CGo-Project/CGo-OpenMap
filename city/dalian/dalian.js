@@ -37,6 +37,18 @@
         LINE_SORT_ORDER: ["DLM01", "DLM02", "DLM03", "DLM99", "DLM05", "DLM12", "DLM13"],
         LINE_SYNC_GROUPS: [["DLM13", "DLM99"]],
         SUBURBAN_LINES: ["Rwy"],
+        /** 有轨电车线路 ID；用于区分地铁站 / 有轨站（侧栏标题、导航链接等） */
+        TRAM_LINES: ["DL201", "DL201-1", "DL202"],
+        isTramLine(lineId) {
+            if (this.TRAM_LINES.includes(lineId)) return true;
+            const line = (typeof linesData !== "undefined" && Array.isArray(linesData))
+                ? linesData.find((item) => item?.id === lineId)
+                : null;
+            return /有轨/.test(String(line?.name || ""));
+        },
+        isTramStation(station) {
+            return Boolean(station?.relatedLines?.some((lineId) => this.isTramLine(lineId)));
+        },
         MERGE_STATIONS: ["0320", "0308"],
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {
@@ -116,7 +128,8 @@
             scripts: [
                 "modules/dalian_map.js",
                 "modules/dalian_timetable.js",
-                "modules/dalian_transfers.js"
+                "modules/dalian_transfers.js",
+                "modules/dalian_station_title.js"
             ],
             modules: {
                 "header-controls": { enabled: true, order: 10 },
@@ -135,7 +148,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260911.170000";
+        const version = "260922.2235";
         (DalianCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/dalian/${scriptPath}?v=${version}"><\/script>`);
         });
