@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260922.1220';
+const CACHE_NAME = 'cgo-openmap-v260922.2223';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -226,7 +226,6 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/data_legend.js',
     './city/fuzhou/data_timetable.js',
     './city/fuzhou/staname.csv',
-    './city/fuzhou/assets/fuzhou_waters.svg',
     './city/fuzhou/assets/fuzhou_sea.svg',
 
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
@@ -242,6 +241,9 @@ const ASSETS_TO_CACHE = [
     './assets/svg/icon@15.svg',
     './assets/svg/icon@lg.svg',
     './assets/svg/icon@xha.svg',
+
+    // 福州线路徽标
+    './assets/svg/icon@fz_BE.svg',
 
     // 图标与清单素材
     './assets/icons/icon-192.png',

@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2500 1600" width="2500" height="1600">
-	<path d="M325,25 L350,25 L350,925 L700,1275 L2150,1275 L2150,1300 L675,1300 L325,950 Z" fill="#8FC6E8" fill-opacity="0.55" stroke="none"/>
-	<path d="M335,300 L475,300 L475,450 L675,650 L1000,650 L1125,775 L1250,775 L1375,900 L1750,1275 L1750,1300 L1250,800 L1100,800 L975,675 L675,675 L450,450 L450,325 L335,325 Z" fill="#8FC6E8" fill-opacity="0.55" stroke="none"/>
-	<path d="M2150,1275 L2300,1125 L2500,1125 L2500,1150 L2325,1150 L2175,1300 L2150,1300 Z" fill="#8FC6E8" fill-opacity="0.55" stroke="none"/>
-</svg>
