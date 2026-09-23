@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260923.1640';
+const CACHE_NAME = 'cgo-openmap-v260923.1800';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -136,7 +136,6 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/railway.svg',
     './city/shenyang/assets/transfer-badge.svg',
     './city/shenyang/assets/tram-5.svg',
-    './city/shenyang/assets/calligraphy/hangkonghangtiandaxue.jpeg',
     './city/shenyang/assets/calligraphy/xinhuijie.png',
     './city/shenyang/assets/calligraphy/xinningjie.png',
     './city/shenyang/assets/calligraphy/dongdayingjie.png',

@@ -19,19 +19,6 @@
  * 生平文案以题字人公开身份 / 沈阳地铁官方口径为准，不臆测题写渊源、不自行增补。
  */
 const CALLIGRAPHY_DATA = {
-    // 2号线
-    "0253": {
-        // 航空航天大学站，题字实拍图，由阎肃题写
-        // 注意：本文件由根目录 main.html 经 document.write 加载，URL 相对宿主页面解析
-        image: "./city/shenyang/assets/calligraphy/hangkonghangtiandaxue.jpeg",
-        ratio: 4.73,
-        alt: "航空航天大学站",
-        calligrapher: {
-            name: "阎肃",
-            intro: "阎肃，男，生于1930年，河北保定人，代表作有《江姐》《说唱脸谱》等"
-        }
-    },
-
     // 1号线东延段，站名由辽宁 / 沈阳书法界名家题写
     "0123": {
         image: "./city/shenyang/assets/calligraphy/xinhuijie.png",
