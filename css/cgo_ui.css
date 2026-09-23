@@ -289,6 +289,7 @@ body[data-header-mode="floating"] .header-island,
     box-sizing: border-box;
     pointer-events: auto;
     z-index: 1000;
+    overflow: visible !important;
     transition:
         left 0.25s ease,
         right 0.25s ease,
@@ -369,6 +370,7 @@ body[data-header-mode="floating"] .header-island-right,
 .tool-header.floating-header .header-island-right {
     right: calc(20px + env(safe-area-inset-right, 0px));
     gap: 8px;
+    overflow: visible !important;
 }
 
 :root[header-mode="floating"] .header-island .header-center,
@@ -399,12 +401,18 @@ body[header-mode="floating"] .tool-header:not(:has(.header-island)),
     background-color: var(--header-bg);
     pointer-events: auto;
     z-index: 1000;
+    overflow: visible !important;
 }
 
-/* 下拉菜单在浮动岛屿内展开时提权 */
+/* 下拉菜单在浮动岛屿内展开时提权并保障溢出可见 */
 .header-island:has(.dropdown-content.show),
-.tool-header:has(.dropdown-content.show) {
-    z-index: 3000 !important;
+.tool-header:has(.dropdown-content.show),
+.header-island:has(.dropdown.is-open),
+.tool-header:has(.dropdown.is-open),
+.header-island:has(cgo-dropdown[open]),
+.tool-header:has(cgo-dropdown[open]) {
+    z-index: 50002 !important;
+    overflow: visible !important;
 }
 
 /* 分体悬浮模式（桌面双岛）：返回与主页按钮默认隐藏文字标签，仅保留精致图标 */
@@ -530,14 +538,19 @@ body[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
 }
 
 /* 当 header-island 显式添加了 .glass-surface 类时的样式统一与防多层叠加 */
-.header-island.glass-surface {
+.header-island.glass-surface,
+.tool-header.glass-surface {
     padding: 0 12px !important;
     margin: 0 !important;
     background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
+    overflow: visible !important;
 }
 [data-theme='dark'] .header-island.glass-surface,
-:root:not([data-theme='light']) .header-island.glass-surface {
+[data-theme='dark'] .tool-header.glass-surface,
+:root:not([data-theme='light']) .header-island.glass-surface,
+:root:not([data-theme='light']) .tool-header.glass-surface {
     background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
+    overflow: visible !important;
 }
 .header-island.glass-surface::after {
     display: none !important;
@@ -1591,7 +1604,8 @@ body.map-page {
     :root[data-header-mode="floating"] .header-island,
     body[header-mode="floating"] .header-island,
     .tool-header[header-mode="floating"] .header-island,
-    .tool-header.floating-header .header-island {
+    .tool-header.floating-header .header-island,
+    .header-island.glass-surface {
         display: contents !important;
     }
 
@@ -1627,6 +1641,7 @@ body.map-page {
         box-sizing: border-box !important;
         z-index: 50000 !important;
         pointer-events: auto !important;
+        overflow: visible !important;
     }
 
     :root[header-mode="floating"] body::before,

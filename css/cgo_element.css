@@ -2080,6 +2080,16 @@ body[data-glass-mode='liquid'] .glass-panel {
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
 }
 
+/* 浮动菜单栏与顶栏若带有 .glass-surface，严禁裁剪下拉菜单等向外弹出的浮层内容 */
+.glass-surface.header-island,
+.glass-surface.tool-header,
+.header-island.glass-surface,
+.tool-header.glass-surface,
+.glass-surface:has(.dropdown-content),
+.glass-surface:has(cgo-dropdown) {
+    overflow: visible !important;
+}
+
 :root[glass-mode='liquid'] .glass-surface,
 :root[data-glass-mode='liquid'] .glass-surface,
 body[glass-mode='liquid'] .glass-surface,
