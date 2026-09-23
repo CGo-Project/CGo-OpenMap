@@ -54,7 +54,7 @@
 - 💡 **排错第一准则**：在开发与调试过程中，**若出现“无论怎么修改代码/数据，页面表现都毫无变化、怎么改都不起作用”的情况，请务必首先思考是否是 Service Worker 强缓存导致的可能性！**
 
 ### 🚨 铁律五（最重要！）：UI 图标必须严格使用 CGoUI 矢量组件，严禁在界面与模块中滥用 Emoji
-- **强制使用 `<cgo-icon>`**：所有按钮、表单、提示横幅、图例、弹窗及车站信息板自定义模块中，**必须且只能**使用原生 Web Components 图标组件 `<cgo-icon name="..." size="..."></cgo-icon>`（如 `<cgo-icon name="location" size="14"></cgo-icon>`、`<cgo-icon name="clock" size="14"></cgo-icon>`、`<cgo-icon name="route" size="14"></cgo-icon>`、`<cgo-icon name="map" size="14"></cgo-icon>`、`<cgo-icon name="train" size="14"></cgo-icon>` 等）。
+- **强制使用 `<cgo-icon>`**：所有按钮、表单、提示横幅、图例、弹窗及车站信息板自定义模块中，**必须且只能**使用原生 Web Components 图标组件 `<cgo-icon name="..." size="..."></cgo-icon>`（如 `<cgo-icon name="location" size="14"></cgo-icon>`、`<cgo-icon name="time" size="14"></cgo-icon>`、`<cgo-icon name="route" size="14"></cgo-icon>`、`<cgo-icon name="map" size="14"></cgo-icon>`、`<cgo-icon name="train" size="14"></cgo-icon>` 等）。
 - **严禁滥用 Emoji 表情符号**：严禁在 UI 界面、模块标题、列表前缀中使用 Emoji（如 🚇、🏛️、⏱️、⏳、🔄、🚌、📍、💡 等）。Emoji 在 Windows/Mac/iOS/Android 各操作系统下色调与字重不一致，破坏界面专业美感，且无法适配暗色/亮色主题与 CSS 矢量变量。
 - **唯一例外**：除非实在在 CGoUI 内置图标库（`core/cgo-ui.js`）中匹配不到任何合适或语义相近的图标，才可作为最末降级手段。
 
@@ -412,13 +412,13 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
      - 严格遵循车站信息板模块化注册规范，调用 `window.StationBoard.registerModule`；
      - 建立站名与历史名胜、古迹地标及游览路线的字典映射，利用 `shouldRender` 精确判定命中车站；
      - 默认挂载于 `'station-info'`（车站信息选项卡），排序设为 `order: 15`（置于车站类型后、运营公司前）；
-     - **卡片标题与引导图标严格使用 `<cgo-icon name="location" size="14"></cgo-icon>` 或 `<cgo-icon name="map" size="14"></cgo-icon>`，严禁在 HTML 字符串中使用 emoji**。
+     - **卡片标题与引导图标严格使用 `<cgo-icon name="tourist" size="14"></cgo-icon>`，严禁在 HTML 字符串中使用 emoji**。
 3. **添加首末车运营时刻信息**：
    - **推荐参考实现**：**青岛处理方式**（`city/qingdao/data_timetable.js` 与 `city/qingdao/modules/qingdao_timetable.js`）。
    - **核心技术模式**：
      - 数据端在 `data_timetable.js` 中按线路方向、终点站、平日/节假日多维度规范收录首末车时刻矩阵；
      - 展示端在 `city/{city_id}/modules/` 下编写时刻表模块，将多方向列车发车时刻组织为响应式数据表格，挂载于 `'line-tab'`（线路选项卡）；
-     - **表头、方向与辅助指引必须使用 `<cgo-icon name="clock" size="14"></cgo-icon>` 与 `<cgo-icon name="arrow-right" size="12"></cgo-icon>`，严禁使用 emoji**。
+     - **表头、方向与辅助指引必须使用 `<cgo-icon name="time" size="14"></cgo-icon>` 与 `<cgo-icon name="arrow-right" size="12"></cgo-icon>`，严禁使用 emoji**。
 4. **添加水域（海岸线、海湾、河道与湖泊等）**：
    - **推荐参考实现**：**青岛处理方式**（`city/qingdao/assets/qingdao_sea.svg` 与 `city/qingdao/data_scattered.js`）。
    - **核心技术模式**：
@@ -432,7 +432,7 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
      - **建设进度与资讯数据建模**：在 `data_construction.js` 中按线路 ID 细化组织在建车站（主体结构施工/封顶、开挖深度、最新更新日期）及前后盾构区间（左线/右线贯通状态、工程名称与掘进资讯）；
      - **信息板模块动态挂载**：在 `city/{city_id}/modules/` 编写建设进度模块（注册于 `'line-tab'` 线路选项卡，`order: 24`），动态渲染“上一区间 ➔ 本站 ➔ 下一区间”的完整工程建设链路；
      - **工程暂用名与开通安排提示**：搭配工程名提示模块（如 `qingdao_engineering_name_notice.js`），对工程暂用名标注提示，并展示最新建设进展资讯与预计开通运营安排；
-     - **状态标识与杜绝 Emoji**：已完成（绿）、建设中（黄）、未开始/待更新（灰）状态指示严格使用原生 CSS 颜色块与 CGoUI 矢量图标（如 `<cgo-icon name="warning" size="14"></cgo-icon>`、`<cgo-icon name="clock" size="14"></cgo-icon>`、`<cgo-icon name="route" size="14"></cgo-icon>`），严禁使用 Emoji。
+     - **状态标识与杜绝 Emoji**：已完成（绿）、建设中（黄）、未开始/待更新（灰）状态指示严格使用原生 CSS 颜色块与 CGoUI 矢量图标（如 `<cgo-icon name="warning" size="14"></cgo-icon>`、`<cgo-icon name="time" size="14"></cgo-icon>`、`<cgo-icon name="route" size="14"></cgo-icon>`），严禁使用 Emoji。
 
 ---
 
@@ -444,7 +444,7 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
   - 车站 / 地点 / 地标：`<cgo-icon name="location" size="14"></cgo-icon>`
   - 路线 / 线路走向：`<cgo-icon name="route" size="14"></cgo-icon>`
   - 列车 / 地铁车次：`<cgo-icon name="train" size="14"></cgo-icon>`
-  - 时间 / 首末班时刻：`<cgo-icon name="clock" size="14"></cgo-icon>`
+  - 时间 / 首末班时刻：`<cgo-icon name="time" size="14"></cgo-icon>`
   - 地图 / 导览概览：`<cgo-icon name="map" size="14"></cgo-icon>`
   - 换乘 / 连通节点：`<cgo-icon name="transfer" size="14"></cgo-icon>`
   - 出入口 / 进出站闸机：`<cgo-icon name="gate" size="14"></cgo-icon>`

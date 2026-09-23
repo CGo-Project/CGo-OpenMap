@@ -29,14 +29,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260922.2353">
-    <script type="module" src="core/cgo-ui.js?v=260922.2353"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260923.1112">
+    <script type="module" src="core/cgo-ui.js?v=260923.1112"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260922.2353">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260922.2353">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260922.2353">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260922.2353">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260923.1112">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260923.1112">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260923.1112">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260923.1112">
 
     <style>
         html {
@@ -622,8 +622,8 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=260922.2353"></script>
-    <script src="core/tool-theme.js?v=260922.2353"></script>
+    <script src="city/data.js?v=260923.1112"></script>
+    <script src="core/tool-theme.js?v=260923.1112"></script>
 
     <!-- 动态城市渲染与数据绑定 -->
     <script>
@@ -639,8 +639,24 @@
             window.location.href = './main.html?city=' + encodeURIComponent(cityId);
         };
         (function () {
-            // 规范化并自适应包装城市专属 SVG 图标；没有图标时回退为通用列车图标。
-            function formatCityLogoSvg(rawSvg) {
+            // 规范化并包装城市徽标；优先使用 CGoUI 官方原生收录城市图标，缺失时回退自定义 SVG 或通用列车图标。
+            const CGO_BUILTIN_CITY_ICONS = new Set([
+                'beijing', 'changchun', 'dalian', 'fuzhou', 'hefei', 'qingdao', 'shanghai', 'shenyang'
+            ]);
+
+            function formatCityLogoSvg(cityOrSvg) {
+                if (!cityOrSvg) return '<cgo-icon name="train" size="22"></cgo-icon>';
+                let cityId = '';
+                let rawSvg = '';
+                if (typeof cityOrSvg === 'object') {
+                    cityId = (cityOrSvg.id || '').toLowerCase();
+                    rawSvg = cityOrSvg.svglogo || '';
+                } else if (typeof cityOrSvg === 'string') {
+                    rawSvg = cityOrSvg;
+                }
+                if (cityId && CGO_BUILTIN_CITY_ICONS.has(cityId)) {
+                    return `<cgo-icon name="${cityId}" size="22"></cgo-icon>`;
+                }
                 if (!rawSvg || typeof rawSvg !== 'string' || !rawSvg.trim()) {
                     return '<cgo-icon name="train" size="22"></cgo-icon>';
                 }
@@ -757,7 +773,7 @@
                                             <span>${badgeText}</span>
                                         </span>
                                         <div class="city-emblem">
-                                            ${formatCityLogoSvg(city.svglogo)}
+                                            ${formatCityLogoSvg(city)}
                                         </div>
                                     </div>
                                 </div>

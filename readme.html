@@ -27,14 +27,14 @@
     </script>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260922.2353">
-    <script type="module" src="core/cgo-ui.js?v=260922.2353"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260923.1112">
+    <script type="module" src="core/cgo-ui.js?v=260923.1112"></script>
 
     <!-- 仅引用本地 css/ 样式表以保障项目独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260922.2353">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260922.2353">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260922.2353">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260922.2353">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260923.1112">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260923.1112">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260923.1112">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260923.1112">
 
     <style>
         /* Web Components 未注册前优雅占位，防闪烁 */
@@ -766,7 +766,7 @@
                 <div class="feature-card" style="border-color: var(--primary-color);">
                     <div class="feature-card-header">
                         <div class="feature-emblem" style="background: var(--primary-color); color: #fff;">
-                            <span style="font-size: 18px;">🍺</span>
+                            <cgo-icon name="drunk" size="20"></cgo-icon>
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; flex: 1;">
                             <h3 class="feature-title">Drunk 智能转换系统</h3>
@@ -796,8 +796,9 @@
                     </div>
                 </div>
                 <div class="port-banner-actions">
-                    <a href="./drunk/index.html" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台">
-                        <span>🍺 Drunk 智能转换 (测试版)</span>
+                    <a href="./drunk/index.html" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <cgo-icon name="drunk" size="14"></cgo-icon>
+                        <span>Drunk 智能转换 (测试版)</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
                     <a href="./CONTRIBUTING.md" target="_blank" class="btn btn-info">
@@ -888,7 +889,7 @@
         </div>
     </footer>
 
-    <script src="core/tool-theme.js?v=260922.2353"></script>
+    <script src="core/tool-theme.js?v=260923.1112"></script>
     <script>
         document.getElementById('backBtn')?.addEventListener('click', function () {
             if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {

@@ -722,7 +722,7 @@ window.DeepSeekVision = (function () {
         <div class="modal-content-box" style="width: 740px;">
             <div class="modal-header">
                 <h3 style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 20px;">🤖</span>
+                    <cgo-icon name="light"></cgo-icon>
                     <span>DeepSeek 视觉识图大模型设置 (deepseek-v4-flash-vision-exp)</span>
                 </h3>
                 <button class="btn btn-info btn-sm" onclick="window.DeepSeekVision.closeSettingsModal()">
@@ -735,7 +735,7 @@ window.DeepSeekVision = (function () {
                 <div style="background: rgba(0, 96, 152, 0.12); border: 1px solid #006098; border-radius: 8px; padding: 14px 16px; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                         <span style="font-weight: 700; color: #79c0ff; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-                            <span>💡</span> 资费明细与官方计费说明
+                            <cgo-icon name="payment"></cgo-icon> 资费明细与官方计费说明
                         </span>
                         <span class="badge badge-success" style="background: #238636; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 4px;">本站永久免费</span>
                     </div>
@@ -764,21 +764,23 @@ window.DeepSeekVision = (function () {
                             autocomplete="new-password"
                             style="flex: 1; height: 36px; font-size: 13px; font-family: monospace; background: #141517; color: #e5e8ea; border: 1px solid #2e3035; border-radius: 6px; padding: 0 12px; outline: none;">
                         <button type="button" class="btn btn-info btn-sm" onclick="const el = document.getElementById('deepseek-input-key'); el.type = el.type === 'password' ? 'text' : 'password';" title="显示/隐藏密钥">
-                            👁️
+                            <cgo-icon name="eye" size="14"></cgo-icon>
                         </button>
                     </div>
-                    <div style="font-size: 11px; color: #8b949e; margin-top: 5px; display: flex; justify-content: space-between;">
+                    <div style="font-size: 11px; color: #8b949e; margin-top: 5px; display: flex; justify-content: space-between; align-items: center;">
                         <span>没有 API Key？前往 DeepSeek 官方平台创建（新用户通常赠送免费额度）</span>
-                        <a href="https://platform.deepseek.com/api_keys" target="_blank" style="color: #58a6ff; text-decoration: none;">
-                            👉 前往 DeepSeek 开放平台 ↗
+                        <a href="https://platform.deepseek.com/api_keys" target="_blank" style="color: #58a6ff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                            <span>前往 DeepSeek 官方开放平台</span>
+                            <cgo-icon name="arrow-right" size="12"></cgo-icon>
                         </a>
                     </div>
                 </form>
 
                 <!-- 高级配置 (折叠/展开) -->
                 <details style="margin-bottom: 16px; border: 1px solid #2e3035; border-radius: 6px; padding: 8px 12px; background: #18191c;">
-                    <summary style="font-size: 12px; color: #a0b0b9; cursor: pointer; user-select: none; font-weight: 600;">
-                        ⚙️ 高级模型与接口设置 (默认无需修改)
+                    <summary style="font-size: 12px; color: #a0b0b9; cursor: pointer; user-select: none; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                        <cgo-icon name="settings" size="13"></cgo-icon>
+                        <span>高级模型与接口设置 (默认无需修改)</span>
                     </summary>
                     <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
                         <div>
@@ -803,8 +805,9 @@ window.DeepSeekVision = (function () {
                     清除本地 Key
                 </button>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-info btn-sm" onclick="window.DeepSeekVision.testConnection()">
-                        ⚡ 测试连接
+                    <button class="btn btn-info btn-sm" onclick="window.DeepSeekVision.testConnection()" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <cgo-icon name="world"></cgo-icon>
+                        <span>测试连接</span>
                     </button>
                     <button class="btn btn-primary btn-sm" onclick="window.DeepSeekVision.saveSettings()">
                         保存并立即使用
