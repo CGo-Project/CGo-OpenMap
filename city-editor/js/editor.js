@@ -53,11 +53,80 @@
     var WATER_PATH_MIN_WIDTH = 1;
     var WATER_PATH_MAX_WIDTH = 200;
 
+    /**
+     * 自由文本（画布上的注释文字，如「往长乐机场方向」「一期工程」等）。
+     *
+     * 颜色留空表示「跟随主题」：亮色用 light、暗色用 dark；导出成 SVG 素材时写成
+     * `.txt { fill: <light> } + @media (prefers-color-scheme: dark) { .txt { fill: <dark> } }`，
+     * 与水域底图同一套做法，因此地图在亮/暗主题下都能看清。
+     */
+    var TEXT_DEFAULT = {
+        size: 24,
+        light: '#00263b',
+        dark: '#e5e8ea',
+        bold: false,
+        anchor: 'start',
+        rotate: 0
+    };
+    var TEXT_SIZE_MIN = 6;
+    var TEXT_SIZE_MAX = 200;
+    var TEXT_ANCHORS = ['start', 'middle', 'end'];
+    var TEXT_ANCHOR_LABELS = { start: '左对齐（锚点在起点）', middle: '居中（锚点在中心）', end: '右对齐（锚点在末尾）' };
+    /** 导出的 SVG 由 <img> 加载，无法继承页面字体，必须显式给出字体栈 */
+    var TEXT_FONT_STACK = "'Noto Sans SC','PingFang SC','Microsoft YaHei',system-ui,sans-serif";
+    /** 自由文本写入 data_scattered.js 时的默认层级（0~4，水域默认 1） */
+    var TEXT_DEFAULT_ZINDEX = 4;
+    /** 世界坐标下的文本包围盒（渲染后测量），供命中测试与选中框使用 */
+    var TEXT_BOXES = {};
+
+    /** 文本字号（合法化） */
+    function textSize(t) {
+        var v = parseFloat(t && t.size);
+        return isFinite(v) ? clamp(v, TEXT_SIZE_MIN, TEXT_SIZE_MAX) : TEXT_DEFAULT.size;
+    }
+
+    /** 文本对齐方式（即 SVG 的 text-anchor） */
+    function textAnchor(t) {
+        var a = t && t.anchor;
+        return TEXT_ANCHORS.indexOf(a) >= 0 ? a : TEXT_DEFAULT.anchor;
+    }
+
+    /** 文本旋转角度 */
+    function textRotate(t) {
+        var v = parseFloat(t && t.rotate);
+        return isFinite(v) ? clamp(v, -180, 180) : 0;
+    }
+
+    /** 文本实际颜色：显式颜色优先，留空则跟随亮/暗主题 */
+    function textColor(t) {
+        var c = String((t && t.color) || '');
+        if (/^#[0-9a-fA-F]{6}$/.test(c)) return c;
+        return isLightTheme() ? TEXT_DEFAULT.light : TEXT_DEFAULT.dark;
+    }
+
+    /** 文本内容按换行拆分为多行 */
+    function textLines(t) {
+        return String((t && t.text) == null ? '' : t.text).split('\n');
+    }
+
+    function findText(id) {
+        if (!project || !Array.isArray(project.texts)) return null;
+        return project.texts.filter(function (t) { return t.id === id; })[0] || null;
+    }
+
     /** 归一化水域路径线宽 */
     function waterPathWidth(water) {
         var w = parseFloat(water && water.width);
         return isFinite(w) ? clamp(w, WATER_PATH_MIN_WIDTH, WATER_PATH_MAX_WIDTH) : WATER_PATH_DEFAULT_WIDTH;
     }
+
+    /**
+     * 未开通（规划/在建）线段的虚线样式：与 core/script.js 的 not-open 层、
+     * city/beijing/data_notopen.js 的字段说明保持一致（默认色 var(--not-open-color)、宽 3.4、虚线 "6,4"）。
+     * 编辑器画布上的线宽更粗，导出时按核心引擎的宽度给出。
+     */
+    var NOT_OPEN_STYLE = { width: 3.4, dash: [6, 4] };
+    var NOT_OPEN_DASH = NOT_OPEN_STYLE.dash;
 
     /** 水域元素是否为路径形态（水域填色线） */
     function isWaterPath(water) {
@@ -129,6 +198,12 @@
             waters: [],
             /** 虚拟换乘组：{ id, name, free, stationIds: [...] }（组内车站两两互认换乘） */
             virtualTransfers: [],
+            /**
+             * 自由文本：{ id, text, x, y, size, color, bold, anchor, rotate }
+             * —— x/y 为文本锚点（anchor 决定锚在文本的起点/中心/末尾），color 留空表示跟随亮暗主题。
+             * 导出时全部文本合并为一份 assets/{city}_texts.svg，并在 data_scattered.js 登记为一个装饰物。
+             */
+            texts: [],
             /** 水域底图样式（项目级）：{ fillLight, fillDark, opacity, zIndex }，含全部水域合并导出的 assets/{city}_sea.svg */
             waterStyle: {
                 fillLight: WATER_DEFAULT.fillLight, fillDark: WATER_DEFAULT.fillDark,
@@ -147,6 +222,7 @@
     var autoRoute = true;          // 是否开启线段自动选型（路径编辑模式）
     var selection = null;          // { type: 'node'|'segment'|'water', id }；多选节点时指向其中一个节点
     var selectedNodeIds = [];      // 多选节点集合（Ctrl+A 全选 / Ctrl+C 复制 / Ctrl+V 粘贴 的目标）
+    var selectedSegmentIds = [];   // 多选线段集合（Ctrl + 左键点击线段增减），与节点多选互斥
     var clipboardNodes = null;     // 节点剪贴板（深拷贝的节点数据）
     var pasteCount = 0;            // 连续粘贴次数，用于逐次递增偏移
     var pointerWorld = null;       // 鼠标指针当前所在的世界坐标（用于 Ctrl+V 落点）
@@ -666,7 +742,9 @@
         var line = {
             id: nextId('L'),
             name: name || ('线路' + (project.lines.length + 1)),
-            color: color || LINE_PALETTE[project.lines.length % LINE_PALETTE.length]
+            color: color || LINE_PALETTE[project.lines.length % LINE_PALETTE.length],
+            /** 线路徽标模板文件名（assets/svg/ 下）；留空表示按线路名中的数字自动选择 */
+            svg: ''
         };
         project.lines.push(line);
         return line;
@@ -1226,10 +1304,27 @@
         pruneVirtualTransfers();     // 车站被删除后同步清理虚拟换乘组
     }
 
+    /** 删除线段选择集中的全部线段 */
+    function deleteSelectedSegments() {
+        if (!project || !selectedSegmentIds.length) return false;
+        var ids = selectedSegmentIds.slice();
+        pushHistory();
+        project.segments = project.segments.filter(function (s) { return ids.indexOf(s.id) < 0; });
+        clearSelection();
+        renderAll();
+        renderInspector();
+        renderList();
+        syncLineSelect();
+        updateStageInfo();
+        toast('已删除 ' + ids.length + ' 条线段');
+        return true;
+    }
+
     function deleteSelection() {
         if (!project) return;
-        // 多选节点时统一走批量删除
+        // 多选节点 / 多选线段时统一走批量删除
         if (selectedNodeIds.length > 1) { deleteSelectedNodes(); return; }
+        if (selectedSegmentIds.length > 1) { deleteSelectedSegments(); return; }
         if (!selection) { toast('请先选中要删除的元素'); return; }
         pushHistory();
         if (selection.type === 'node') {
@@ -1238,6 +1333,8 @@
             project.segments = project.segments.filter(function (s) { return s.id !== selection.id; });
         } else if (selection.type === 'water') {
             project.waters = project.waters.filter(function (w) { return w.id !== selection.id; });
+        } else if (selection.type === 'text') {
+            project.texts = (project.texts || []).filter(function (t) { return t.id !== selection.id; });
         }
         clearSelection();
         renderAll();
@@ -1274,6 +1371,92 @@
 
     function clearChildren(el) { while (el.firstChild) el.removeChild(el.firstChild); }
 
+    /**
+     * 自由文本渲染：每个文本一个 <text>（多行用 <tspan>），渲染后测量世界坐标包围盒
+     * 存入 TEXT_BOXES，供命中测试、选中框与属性面板使用。
+     */
+    function renderTexts() {
+        var layer = $('text-layer');
+        if (!layer) return;
+        clearChildren(layer);
+        TEXT_BOXES = {};
+        (project.texts || []).forEach(function (t) {
+            if (!isInView(t.x, t.y, 240)) return;
+            var g = document.createElementNS(NS, 'g');
+            g.setAttribute('data-kind', 'text');
+            g.setAttribute('data-id', t.id);
+            g.style.cursor = 'move';
+
+            var el = document.createElementNS(NS, 'text');
+            el.setAttribute('x', round2(t.x));
+            el.setAttribute('y', round2(t.y));
+            el.setAttribute('font-size', round2(textSize(t)));
+            el.setAttribute('font-family', 'var(--font-sans, system-ui, sans-serif)');
+            el.setAttribute('fill', textColor(t));
+            el.setAttribute('text-anchor', textAnchor(t));
+            el.setAttribute('class', 'ed-text' + (isSelected('text', t.id) ? ' ed-text-selected' : ''));
+            if (t.bold) el.setAttribute('font-weight', '700');
+            var rot = textRotate(t);
+            if (rot) el.setAttribute('transform', 'rotate(' + round2(rot) + ' ' + round2(t.x) + ' ' + round2(t.y) + ')');
+            var lineHeight = textSize(t) * 1.25;
+            textLines(t).forEach(function (line, i) {
+                var span = document.createElementNS(NS, 'tspan');
+                span.setAttribute('x', round2(t.x));
+                span.setAttribute('dy', i === 0 ? '0' : round2(lineHeight));
+                span.textContent = line === '' ? ' ' : line;
+                el.appendChild(span);
+            });
+            g.appendChild(el);
+            layer.appendChild(g);
+
+            // 渲染后测量（世界坐标 = SVG 用户坐标，与画布坐标一致）
+            var box = null;
+            try { box = el.getBBox(); } catch (e) { box = null; }
+            if (box && (box.width || box.height)) {
+                TEXT_BOXES[t.id] = { x: box.x, y: box.y, w: box.width, h: box.height };
+            }
+        });
+    }
+
+    /** 命中测试：点是否落在某段自由文本上（带少量容差） */
+    function hitText(world) {
+        var ids = Object.keys(TEXT_BOXES);
+        for (var i = ids.length - 1; i >= 0; i--) {
+            var b = TEXT_BOXES[ids[i]];
+            var pad = 3;
+            if (world.x >= b.x - pad && world.x <= b.x + b.w + pad &&
+                world.y >= b.y - pad && world.y <= b.y + b.h + pad) {
+                return findText(ids[i]);
+            }
+        }
+        return null;
+    }
+
+    /** 新建一段自由文本 */
+    function createTextAt(x, y) {
+        if (!project) return null;
+        var spot = snapPoint(x, y);
+        var text = {
+            id: nextId('T'),
+            text: '新建文本（在右侧属性面板编辑）',
+            x: spot.x, y: spot.y,
+            size: TEXT_DEFAULT.size,
+            color: '',
+            bold: false,
+            anchor: TEXT_DEFAULT.anchor,
+            rotate: 0
+        };
+        project.texts.push(text);
+        selection = { type: 'text', id: text.id };
+        selectedNodeIds = [];
+        selectedSegmentIds = [];
+        renderAll();
+        renderInspector();
+        renderList();
+        toast('已添加自由文本，可在右侧「属性」里编辑内容、字号、颜色与对齐');
+        return text;
+    }
+
     function renderAll() {
         updateStageInfo();
         if (!project) return;
@@ -1285,6 +1468,7 @@
         renderSegments();
         renderNodes();
         renderLabels();
+        renderTexts();
         renderDraft();
         renderOverlay();
         updateStageInfo();
@@ -1921,18 +2105,19 @@
         return handles;
     }
 
-    /** 元素是否处于选中状态（节点支持多选集合） */
+    /** 元素是否处于选中状态（节点 / 线段支持多选集合） */
     function isSelected(kind, id) {
         if (kind === 'node' && selectedNodeIds.length) return selectedNodeIds.indexOf(id) >= 0;
+        if (kind === 'segment' && selectedSegmentIds.length) return selectedSegmentIds.indexOf(id) >= 0;
         return !!selection && selection.type === kind && selection.id === id;
     }
 
-    // ---------------------------- 选择集（支持节点多选） ----------------------------
+    // ---------------------------- 选择集（支持节点 / 线段多选） ----------------------------
 
     /**
-     * 统一维护「节点多选集合 + 单元素选择对象」：
-     *   · 选中多个节点时，selection 指向其中一个节点，供依赖 selection 的逻辑使用；
-     *   · 未选中任何节点时，selection 可指向线段或水域。
+     * 统一维护「节点/线段多选集合 + 单元素选择对象」：
+     *   · 选中多个节点（或线段）时，selection 指向其中一个元素，供依赖 selection 的逻辑使用；
+     *   · 两类多选集合互斥，避免批量操作作用到不该动的元素上。
      */
     function syncSelection(preferredId) {
         if (!project || !selectedNodeIds.length) return;
@@ -1945,18 +2130,30 @@
         selection = { type: 'node', id: id };
     }
 
-    /** 清空全部选择（节点多选集合与单元素选择） */
+    /** 清空全部选择（节点/线段多选集合与单元素选择） */
     function clearSelection() {
         selectedNodeIds = [];
+        selectedSegmentIds = [];
         selection = null;
     }
 
     /** 以指定节点集合建立选择 */
     function selectNodes(ids, preferredId) {
         selectedNodeIds = (ids || []).filter(function (id) { return !!project.nodes[id]; });
+        selectedSegmentIds = [];       // 节点多选与线段多选互斥
         selection = null;
         if (!selectedNodeIds.length) return;   // 空集合即清空选择
         syncSelection(preferredId);
+    }
+
+    /** 以指定线段集合建立选择（Ctrl + 左键点击多选线段） */
+    function selectSegments(ids, preferredId) {
+        selectedSegmentIds = (ids || []).filter(function (id) { return !!findSegment(id); });
+        selectedNodeIds = [];
+        selection = null;
+        if (!selectedSegmentIds.length) return;
+        var id = (preferredId && selectedSegmentIds.indexOf(preferredId) >= 0) ? preferredId : selectedSegmentIds[0];
+        selection = { type: 'segment', id: id };
     }
 
     /** 全选所有节点（车站 + 临时节点） */
@@ -2096,9 +2293,19 @@
             if (!d) return;
             var path = document.createElementNS(NS, 'path');
             path.setAttribute('d', d);
-            path.setAttribute('stroke', color);
-            path.setAttribute('stroke-width', round2(6 * u));
-            path.setAttribute('class', 'ed-seg' + (isSelected('segment', seg.id) ? ' ed-selected' : ''));
+            // 未开通线段：与核心 not-open 层一致——灰色虚线，导出到 data_notopen.js
+            if (seg.notOpen === true) {
+                path.setAttribute('stroke', 'var(--not-open-color, #bdcbd2)');
+                path.setAttribute('stroke-width', round2(6 * u));
+                path.setAttribute('stroke-dasharray', round2(NOT_OPEN_DASH[0] * u) + ',' + round2(NOT_OPEN_DASH[1] * u));
+                path.setAttribute('stroke-linecap', 'butt');
+            } else {
+                path.setAttribute('stroke', color);
+                path.setAttribute('stroke-width', round2(6 * u));
+            }
+            path.setAttribute('fill', 'none');
+            path.setAttribute('class', 'ed-seg' + (seg.notOpen === true ? ' ed-seg-notopen' : '') +
+                (isSelected('segment', seg.id) ? ' ed-selected' : ''));
             path.setAttribute('data-kind', 'segment');
             path.setAttribute('data-id', seg.id);
             layer.appendChild(path);
@@ -2463,6 +2670,37 @@
 
         if (!selection) return;
 
+        // 自由文本：用虚线框标出范围，并画出锚点（拖拽/旋转都以锚点为中心）
+        if (selection.type === 'text') {
+            var tSel = findText(selection.id);
+            if (tSel) {
+                var tb = TEXT_BOXES[tSel.id];
+                if (tb) {
+                    var box = document.createElementNS(NS, 'rect');
+                    box.setAttribute('x', round2(tb.x - 4 * u));
+                    box.setAttribute('y', round2(tb.y - 4 * u));
+                    box.setAttribute('width', round2(tb.w + 8 * u));
+                    box.setAttribute('height', round2(tb.h + 8 * u));
+                    box.setAttribute('fill', 'none');
+                    box.setAttribute('stroke', 'var(--info-color, #006098)');
+                    box.setAttribute('stroke-width', round2(1.4 * u));
+                    box.setAttribute('stroke-dasharray', round2(5 * u) + ' ' + round2(3 * u));
+                    box.setAttribute('pointer-events', 'none');
+                    layer.appendChild(box);
+                }
+                var anchor = document.createElementNS(NS, 'circle');
+                anchor.setAttribute('cx', round2(tSel.x));
+                anchor.setAttribute('cy', round2(tSel.y));
+                anchor.setAttribute('r', round2(3.4 * u));
+                anchor.setAttribute('fill', 'var(--card-bg, #fff)');
+                anchor.setAttribute('stroke', 'var(--info-color, #006098)');
+                anchor.setAttribute('stroke-width', round2(2 * u));
+                anchor.setAttribute('pointer-events', 'none');
+                layer.appendChild(anchor);
+            }
+            return;
+        }
+
         if (selection.type === 'node') {
             // 多选时逐个绘制定位环（当前编辑的那个用实线加重）
             var ids = selectedNodeIds.length ? selectedNodeIds : [selection.id];
@@ -2607,6 +2845,7 @@
             case 'segfree': return '添加自由路径';
             case 'water': return '添加水域面';
             case 'waterpath': return '添加水域路径';
+            case 'text': return '添加自由文本';
             default: return '绘制模式';
         }
     }
@@ -2628,7 +2867,9 @@
             ' · 水域 ' + project.waters.length +
             ' · 线路 ' + project.lines.length;
         mode.textContent = toolLabel(activeTool) +
-            (autoRoute && activeTool.indexOf('seg') === 0 ? ' · 自动选型' : '');
+            (autoRoute && activeTool.indexOf('seg') === 0 ? ' · 自动选型' : '') +
+            (selectedNodeIds.length > 1 ? ' · 已选 ' + selectedNodeIds.length + ' 个节点' : '') +
+            (selectedSegmentIds.length > 1 ? ' · 已选 ' + selectedSegmentIds.length + ' 条线段' : '');
     }
 
     function setTool(tool) {
@@ -2644,6 +2885,7 @@
             if (tool === 'station' || tool === 'temp') toast('在画布上点击以放置' + (tool === 'station' ? '车站节点' : '临时节点'));
             if (tool === 'water') toast('水域面：依次点击添加顶点，按住 Shift 对齐 0°/45°/90°，双击或按 Enter 闭合');
             if (tool === 'waterpath') toast('水域路径：依次点击添加折点，按住 Shift 对齐 0°/45°/90°，双击或按 Enter 结束（线宽可在属性面板调整）');
+            if (tool === 'text') toast('自由文本：在画布上点击放置文字，随后在右侧属性面板编辑内容与样式');
             if (tool.indexOf('seg') === 0) toast('依次点击两个节点绘制线段，Esc 取消');
         }
         updateStageInfo();
@@ -2655,7 +2897,7 @@
     // ==========================================================================
 
     /**
-     * 命中测试：依次判定 节点 → 线段 → 水域
+     * 命中测试：依次判定 节点 → 自由文本 → 线段 → 水域
      * @returns {{kind:string, id:string}|null}
      */
     function hitTestWorld(world) {
@@ -2672,7 +2914,11 @@
         });
         if (bestNode) return { kind: 'node', id: bestNode };
 
-        // 2. 线段（点到折线的最短距离）
+        // 2. 自由文本（文本画在最上层，命中优先级高于线段与水域）
+        var textHit = hitText(world);
+        if (textHit) return { kind: 'text', id: textHit.id };
+
+        // 3. 线段（点到折线的最短距离）
         var segTol = 11 / scale;
         var bestSeg = null, bestSegDist = Infinity;
         project.segments.forEach(function (seg) {
@@ -2681,7 +2927,7 @@
         });
         if (bestSeg) return { kind: 'segment', id: bestSeg };
 
-        // 3. 水域：面用水域多边形（射线法判定内部），路径用「点到折线距离 ≤ 半线宽 + 容差」
+        // 4. 水域：面用水域多边形（射线法判定内部），路径用「点到折线距离 ≤ 半线宽 + 容差」
         for (var i = project.waters.length - 1; i >= 0; i--) {
             var water = project.waters[i];
             var wpts = water.points || [];
@@ -2800,17 +3046,35 @@
         var world = screenToWorld(ev.clientX, ev.clientY);
 
         if (activeTool === 'select') {
-            // Shift + 左键点击线段：快捷翻转折角方向
+            // Shift + 左键点击线段：快捷翻转折角方向（补记撤销点）
             if (ev.shiftKey) {
                 var flipHit = hitTestWorld(world);
                 if (flipHit && flipHit.kind === 'segment') {
+                    withHistory(function () { flipCornerDirection(findSegment(flipHit.id)); });
                     selection = { type: 'segment', id: flipHit.id };
                     selectedNodeIds = [];
-                    flipCornerDirection(findSegment(flipHit.id));
+                    selectedSegmentIds = [flipHit.id];
                     renderAll();
                     renderInspector();
                     return;
                 }
+            }
+
+            // 自由文本：点击即选中并可直接拖动（文本画在最上层，优先于线段/水域）
+            var textHit = hitText(world);
+            if (textHit) {
+                selection = { type: 'text', id: textHit.id };
+                selectedNodeIds = [];
+                selectedSegmentIds = [];
+                dragState = {
+                    kind: 'text', id: textHit.id, moved: false, historyPushed: false,
+                    startWorld: { x: world.x, y: world.y },
+                    startX: textHit.x, startY: textHit.y
+                };
+                try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+                renderAll();
+                renderInspector();
+                return;
             }
 
             // 优先拾取当前选中线段的折角控制柄（拖动即调整折角圆角半径）
@@ -2852,15 +3116,27 @@
             if (hit) {
                 var additive = ev.shiftKey || ev.ctrlKey || ev.metaKey;
                 if (hit.kind === 'node' && additive) {
-                    // Shift/Ctrl + 点击：在节点选择集中增删（多选）
+                    // Shift/Ctrl + 点击节点：在节点选择集中增删（多选）
                     var idx = selectedNodeIds.indexOf(hit.id);
                     if (idx >= 0) selectedNodeIds.splice(idx, 1);
                     else selectedNodeIds.push(hit.id);
+                    selectedSegmentIds = [];      // 节点多选与线段多选互斥
                     selection = null;
                     syncSelection(hit.id);
+                } else if (hit.kind === 'segment' && (ev.ctrlKey || ev.metaKey)) {
+                    // Ctrl（macOS 为 Cmd）+ 点击线段：在线段选择集中增删（多选，可批量设置共同属性）
+                    // 注意：Shift+左键点击线段仍然是「翻转折角方向」，不参与多选
+                    var sIdx = selectedSegmentIds.indexOf(hit.id);
+                    if (sIdx >= 0) selectedSegmentIds.splice(sIdx, 1);
+                    else selectedSegmentIds.push(hit.id);
+                    selectedNodeIds = [];
+                    selection = selectedSegmentIds.length
+                        ? { type: 'segment', id: selectedSegmentIds[selectedSegmentIds.length - 1] }
+                        : null;
                 } else {
                     selection = { type: hit.kind, id: hit.id };
                     selectedNodeIds = hit.kind === 'node' ? [hit.id] : [];
+                    selectedSegmentIds = hit.kind === 'segment' ? [hit.id] : [];
                 }
                 var node = hit.kind === 'node' ? project.nodes[hit.id] : null;
                 if (node) {
@@ -2906,6 +3182,15 @@
             draft.points.push(draftPointFor(draft, world, shiftKey));
             renderDraft();
             updateStageInfo();
+            return;
+        }
+
+        if (activeTool === 'text') {
+            pushHistory();
+            createTextAt(world.x, world.y);
+            // 新建后把光标送进面板里的文本输入框，直接就能打字
+            var input = $('text-content');
+            if (input) { input.focus(); input.select(); }
             return;
         }
 
@@ -3123,6 +3408,23 @@
             return;
         }
 
+        // 自由文本拖动：整体平移（按网格吸附），坐标输入框实时同步
+        if (dragState && dragState.kind === 'text') {
+            var dragText = findText(dragState.id);
+            if (!dragText) { dragState = null; return; }
+            if (!dragState.historyPushed) { pushHistory(); dragState.historyPushed = true; }
+            var wantX = dragState.startX + (world.x - dragState.startWorld.x);
+            var wantY = dragState.startY + (world.y - dragState.startWorld.y);
+            var tp = snapPoint(wantX, wantY);
+            dragText.x = tp.x;
+            dragText.y = tp.y;
+            dragState.moved = true;
+            $('stage-coord').textContent = '文本：x ' + tp.x + ', y ' + tp.y;
+            renderAll();
+            renderTextFields(dragText);
+            return;
+        }
+
         // 绘制中的实时预览
         if (draft) {
             if (draft.tool === 'segfree') {
@@ -3179,6 +3481,10 @@
         }
         if (dragState && dragState.kind === 'waterVertex' && dragState.moved) {
             toast('已调整水域多边形顶点 ' + (dragState.index + 1));
+            renderInspector();
+        }
+        if (dragState && dragState.kind === 'text' && dragState.moved) {
+            toast('已移动自由文本');
             renderInspector();
         }
         canvas.classList.remove('resizing-corner');
@@ -3249,6 +3555,21 @@
      */
     function nudgeSelectedNodes(dirX, dirY, coarse) {
         if (!project) return false;
+        // 选中自由文本时，方向键平移文本
+        if (selection && selection.type === 'text' && !selectedNodeIds.length) {
+            var nudgeText = findText(selection.id);
+            if (!nudgeText) return false;
+            var textStep = (snapEnabled() ? gridSize() : 1) * (coarse ? 10 : 1);
+            withHistory(function () {
+                var target = snapPoint(nudgeText.x + dirX * textStep, nudgeText.y + dirY * textStep);
+                nudgeText.x = target.x;
+                nudgeText.y = target.y;
+            });
+            renderAll();
+            renderTextFields(nudgeText);
+            $('stage-coord').textContent = '文本：x ' + nudgeText.x + ', y ' + nudgeText.y;
+            return true;
+        }
         var ids = selectedNodeIds.length
             ? selectedNodeIds.slice()
             : ((selection && selection.type === 'node') ? [selection.id] : []);
@@ -3336,7 +3657,7 @@
             if (draft && draft.tool === 'segfree') { handleFreePathFinish(); updateStageInfo(); return; }
         }
         if (ev.key === 'Delete' || ev.key === 'Backspace') {
-            if (selectedNodeIds.length || selection) { ev.preventDefault(); deleteSelection(); }
+            if (selectedNodeIds.length || selectedSegmentIds.length || selection) { ev.preventDefault(); deleteSelection(); }
             return;
         }
 
@@ -3400,8 +3721,270 @@
             if (selectedNodeIds.length > 1) return renderMultiNodeProps(host);
             return renderNodeProps(host, project.nodes[selection.id]);
         }
-        if (selection.type === 'segment') return renderSegmentProps(host, findSegment(selection.id));
+        if (selection.type === 'segment') {
+            if (selectedSegmentIds.length > 1) return renderMultiSegmentProps(host);
+            return renderSegmentProps(host, findSegment(selection.id));
+        }
         if (selection.type === 'water') return renderWaterProps(host, findWater(selection.id));
+        if (selection.type === 'text') return renderTextProps(host, findText(selection.id));
+    }
+
+    /**
+     * 自由文本属性面板：内容（支持多行）、字号、颜色（可跟随亮暗主题）、粗体、对齐、旋转与坐标。
+     */
+    function renderTextProps(host, text) {
+        if (!text) { host.innerHTML = '<div class="prop-empty">元素已不存在。</div>'; return; }
+        var followsTheme = !/^#[0-9a-fA-F]{6}$/.test(String(text.color || ''));
+        var html = '';
+        html += '<div class="prop-head"><span class="prop-swatch" style="background:' + textColor(text) + '"></span>自由文本' +
+            '<span class="prop-tag" style="margin-left:auto">' + escapeHtml(text.id) + '</span></div>';
+
+        html += '<div class="prop-field"><label for="text-content">文本内容（支持多行，Enter 换行）</label>' +
+            '<textarea id="text-content" rows="3" maxlength="400" placeholder="例如：往长乐机场方向">' +
+            escapeHtml(text.text || '') + '</textarea></div>';
+
+        html += '<div class="prop-grid2">' +
+            numberField('text-size', '字号 (px)', textSize(text), TEXT_SIZE_MIN, TEXT_SIZE_MAX, 1) +
+            numberField('text-rotate', '旋转 (°)', textRotate(text), -180, 180, 5) +
+            '</div>';
+
+        html += '<div class="prop-grid2">' +
+            numberField('text-x', '锚点 X', text.x) +
+            numberField('text-y', '锚点 Y', text.y) +
+            '</div>';
+
+        html += '<div class="prop-field"><label for="text-anchor">对齐方式（锚点位置）</label>' +
+            '<select id="text-anchor">' +
+            TEXT_ANCHORS.map(function (a) {
+                return '<option value="' + a + '"' + (textAnchor(text) === a ? ' selected' : '') + '>' +
+                    escapeHtml(TEXT_ANCHOR_LABELS[a]) + '</option>';
+            }).join('') + '</select></div>';
+
+        html += '<div class="prop-field"><label for="text-color">文字颜色</label>' +
+            '<input type="color" id="text-color" value="' + (followsTheme ? (isLightTheme() ? TEXT_DEFAULT.light : TEXT_DEFAULT.dark) : text.color) + '"' +
+            (followsTheme ? ' disabled' : '') + '></div>';
+        html += '<label class="check-row"><input type="checkbox" id="text-follow-theme"' +
+            (followsTheme ? ' checked' : '') + '><span>跟随亮 / 暗主题（导出为两套取值，地图切主题时自动换色）</span></label>';
+        html += '<label class="check-row" style="margin:6px 0 12px"><input type="checkbox" id="text-bold"' +
+            (text.bold ? ' checked' : '') + '><span>加粗</span></label>';
+
+        html += '<p class="side-hint">自由文本是画布上的注释（标题、方向提示、工程说明等）。导出时会与水域底图一样合并成一份素材 ' +
+            '<b>assets/{city}_texts.svg</b>，并在 data_scattered.js 里登记为一个装饰物（位于线路下方的底图层）；' +
+            '若希望文字压在线路之上，可按包内 <b>snippets/foreground-texts.js</b> 的三行代码把它注入 #labels-layer。</p>';
+
+        html += '<div class="btn-row">' +
+            '<button class="side-btn" id="btn-focus-text"><cgo-icon name="location" size="14"></cgo-icon><span>居中显示</span></button>' +
+            '<button class="side-btn side-btn-danger" id="btn-del-text"><cgo-icon name="delete" size="14"></cgo-icon><span>删除文本</span></button>' +
+            '</div>';
+        host.innerHTML = html;
+
+        // 文本内容：首次编辑记历史，输入即刷新画布（不重建面板，避免光标丢失）
+        var content = $('text-content');
+        if (content) {
+            var contentPushed = false;
+            content.addEventListener('input', function () {
+                if (!contentPushed) { pushHistory(); contentPushed = true; }
+                text.text = content.value;
+                renderAll();
+                renderList();
+            });
+            content.addEventListener('change', function () { contentPushed = false; });
+        }
+
+        function bindHistoryInput(id, apply) {
+            var el = $(id);
+            if (!el) return;
+            var pushed = false;
+            var run = function () {
+                if (!pushed) { pushHistory(); pushed = true; }
+                apply(el.value);
+                renderAll();
+                renderList();
+                renderTextFields(text);
+            };
+            el.addEventListener('input', run);
+            el.addEventListener('change', function () {
+                pushed = false;
+                apply(el.value);
+                renderAll();
+                renderList();
+                renderTextFields(text);
+            });
+        }
+        bindHistoryInput('text-size', function (v) { text.size = clamp(parseFloat(v) || TEXT_DEFAULT.size, TEXT_SIZE_MIN, TEXT_SIZE_MAX); });
+        bindHistoryInput('text-rotate', function (v) { text.rotate = clamp(parseFloat(v) || 0, -180, 180); });
+        bindHistoryInput('text-x', function (v) { text.x = round2(parseFloat(v) || 0); });
+        bindHistoryInput('text-y', function (v) { text.y = round2(parseFloat(v) || 0); });
+
+        var anchorSel = $('text-anchor');
+        if (anchorSel) {
+            anchorSel.addEventListener('change', function () {
+                withHistory(function () { text.anchor = anchorSel.value; });
+                renderAll();
+                renderList();
+                renderTextFields(text);
+            });
+        }
+        var colorInput = $('text-color');
+        if (colorInput) {
+            var colorPushed = false;
+            colorInput.addEventListener('input', function () {
+                if (!colorPushed) { pushHistory(); colorPushed = true; }
+                text.color = colorInput.value;
+                renderAll();
+                renderList();
+            });
+            colorInput.addEventListener('change', function () { colorPushed = false; });
+        }
+        var follow = $('text-follow-theme');
+        if (follow) {
+            follow.addEventListener('change', function () {
+                withHistory(function () {
+                    text.color = follow.checked ? '' : (((colorInput || {}).value) || TEXT_DEFAULT.light);
+                });
+                renderAll();
+                renderInspector();
+            });
+        }
+        var bold = $('text-bold');
+        if (bold) {
+            bold.addEventListener('change', function () {
+                withHistory(function () { text.bold = bold.checked; });
+                renderAll();
+                renderList();
+            });
+        }
+        var focusBtn = $('btn-focus-text');
+        if (focusBtn) focusBtn.addEventListener('click', function () { centerOn(text.x, text.y); });
+        var delBtn = $('btn-del-text');
+        if (delBtn) {
+            delBtn.addEventListener('click', function () {
+                selection = { type: 'text', id: text.id };
+                deleteSelection();
+            });
+        }
+    }
+
+    /** 拖动/输入文本时只同步坐标输入框，避免整块面板重建导致输入中断 */
+    function renderTextFields(text) {
+        if (!text || !selection || selection.type !== 'text' || selection.id !== text.id) return;
+        var x = $('text-x'), y = $('text-y');
+        if (x && document.activeElement !== x) x.value = round2(text.x);
+        if (y && document.activeElement !== y) y.value = round2(text.y);
+    }
+
+    /** 多选线段时的属性面板：批量设置共同属性 + 批量重算走线 */
+    function renderMultiSegmentProps(host) {
+        var segs = selectedSegmentIds.map(function (id) { return findSegment(id); }).filter(Boolean);
+        if (segs.length < 2) { host.innerHTML = '<div class="prop-empty">所选线段已不存在。</div>'; return; }
+        var notOpenCount = segs.filter(function (s) { return s.notOpen === true; }).length;
+        var autoCount = segs.filter(isAutoRoutable).length;
+        var lineCount = {};
+        segs.forEach(function (s) { lineCount[s.lineId] = (lineCount[s.lineId] || 0) + 1; });
+        var sameLine = Object.keys(lineCount).length === 1 ? Object.keys(lineCount)[0] : null;
+
+        var html = '';
+        html += '<div class="prop-head"><span class="prop-swatch" style="background:var(--info-color)"></span>已选中 ' +
+            segs.length + ' 条线段<span class="prop-tag" style="margin-left:auto">多选</span></div>';
+        html += '<div class="prop-note">按住 Ctrl（macOS 为 Cmd）点击线段可增减选择；点击空白处或按 Esc 取消选择。<br>' +
+            'Shift+左键点击线段 = 翻转折角方向；Delete 删除所选线段；单选一条线段可编辑其折角半径、端点位移等详细属性。</div>';
+
+        // ---- 所选线段一览 ----
+        html += '<div class="list-group-title">所选线段（' + segs.length + '）</div>';
+        html += '<div class="multi-seg-list">';
+        segs.forEach(function (seg) {
+            var line = findLine(seg.lineId);
+            var meta = SEG_META[seg.type] || SEG_META.segfree;
+            var ends = [seg.points[0], seg.points[seg.points.length - 1]];
+            var names = ends.map(function (p) {
+                var n = p && p.nid ? project.nodes[p.nid] : null;
+                if (!n) return '空';
+                return n.type === 'temp' ? '临时节点' : (n.cn || n.id);
+            });
+            var color = seg.notOpen === true ? 'var(--not-open-color, #bdcbd2)' : (line ? line.color : '#006098');
+            html += '<div class="multi-seg-row">' +
+                '<span class="li-dot" style="background:' + color + ';border-color:' + color + '"></span>' +
+                '<span class="multi-seg-name">' + escapeHtml(names.join(' → ')) + '</span>' +
+                '<span class="multi-seg-meta">' + escapeHtml(meta.label) + (seg.notOpen === true ? ' · 未开通' : '') + '</span>' +
+                '</div>';
+        });
+        html += '</div>';
+
+        // ---- 批量共同属性 ----
+        html += '<div class="list-group-title">批量修改共同属性（' + segs.length + ' 条）</div>';
+        html += '<div class="prop-field"><label for="multi-seg-not-open">是否开通（当前：未开通 ' + notOpenCount +
+            ' 条 / 已开通 ' + (segs.length - notOpenCount) + ' 条）</label>' +
+            '<select id="multi-seg-not-open">' +
+            '<option value="">— 保持不变 —</option>' +
+            '<option value="no">全部标记为未开通（规划 / 在建）</option>' +
+            '<option value="yes">全部恢复为开通</option>' +
+            '</select></div>';
+        html += '<div class="prop-field"><label for="multi-seg-line">所属线路' +
+            (sameLine ? '（当前：' + escapeHtml((findLine(sameLine) || {}).name || sameLine) + '）' : '（当前：多条线路）') + '</label>' +
+            '<select id="multi-seg-line"><option value="">— 保持不变 —</option>' +
+            project.lines.map(function (l) {
+                return '<option value="' + l.id + '">' + escapeHtml(l.name) + '（' + escapeHtml(l.color) + '）</option>';
+            }).join('') + '</select></div>';
+        html += '<div class="btn-row" style="margin-bottom:10px">' +
+            '<button class="side-btn side-btn-primary" id="btn-multi-seg-apply">' +
+            '<cgo-icon name="check" size="14"></cgo-icon><span>应用到所选线段</span></button></div>';
+
+        // ---- 批量动作 ----
+        html += '<div class="list-group-title">批量操作</div>';
+        html += '<p class="side-hint">重算走线会按两端节点当前坐标与各自的线段类型重新生成折角走线' +
+            '（与「刷新线段配置」同一套算法）；手绘自由路径（3 个以上转折点）保持不变。' +
+            '当前所选中有 <b>' + autoCount + '</b> 条可自动重算。</p>';
+        html += '<div class="btn-row" style="margin-bottom:8px">' +
+            '<button class="side-btn" id="btn-multi-seg-refresh"' + (autoCount ? '' : ' disabled') +
+            ' title="按两端节点当前坐标重算所选线段的走线与折角类型">' +
+            '<cgo-icon name="refresh" size="14"></cgo-icon><span>重算走线</span></button>' +
+            '<button class="side-btn side-btn-danger" id="btn-multi-seg-delete">' +
+            '<cgo-icon name="delete" size="14"></cgo-icon><span>删除所选线段</span></button></div>';
+        host.innerHTML = html;
+
+        var applyBtn = $('btn-multi-seg-apply');
+        if (applyBtn) applyBtn.addEventListener('click', function () {
+            var notOpenMode = $('multi-seg-not-open').value;
+            var lineId = $('multi-seg-line').value;
+            if (!notOpenMode && !lineId) { toast('请先选择要批量修改的项'); return; }
+            var changed = 0;
+            withHistory(function () {
+                segs.forEach(function (seg) {
+                    if (notOpenMode) {
+                        var want = notOpenMode === 'no';
+                        if (seg.notOpen !== want) { seg.notOpen = want; changed++; }
+                    }
+                    if (lineId && seg.lineId !== lineId) {
+                        var oldLineId = seg.lineId;
+                        seg.lineId = lineId;
+                        // 换线路后同步两端车站的所属线路（与单选改线路保持一致）
+                        syncSegmentEndNodeLines(seg, oldLineId);
+                        changed++;
+                    }
+                });
+            });
+            renderAll();
+            renderInspector();
+            renderList();
+            toast(changed ? '已更新 ' + changed + ' 项线段属性' : '所选线段的属性无需变更');
+        });
+
+        var refreshBtn = $('btn-multi-seg-refresh');
+        if (refreshBtn) refreshBtn.addEventListener('click', function () {
+            var picked = selectedSegmentIds.slice();
+            if (!picked.length) return;
+            if (!autoCount) { toast('所选线段都是手绘自由路径，无需重算走线'); return; }
+            pushHistory();
+            var stat = refreshAutoSegments(function (seg) { return picked.indexOf(seg.id) >= 0; });
+            renderAll();
+            renderInspector();
+            renderList();
+            toast('已按当前节点布局重算 ' + stat.count + ' 条线段' +
+                (stat.changed ? '（' + stat.changed + ' 条走线更新）' : '（走线无需调整）'));
+        });
+
+        var delBtn = $('btn-multi-seg-delete');
+        if (delBtn) delBtn.addEventListener('click', function () { deleteSelectedSegments(); });
     }
 
     /** 多选节点时的属性面板摘要 */
@@ -3485,6 +4068,16 @@
                 ALIGN_VALUES.map(function (v) {
                     return '<option value="' + v + '">' + ALIGN_LABELS[v] + '</option>';
                 }).join('') + '</select></div>';
+
+            // 是否开通（未开通车站：灰色 ⊘ 图元，导出 type: "no"）
+            var noCount = stationIds.filter(function (id) { return project.nodes[id].notOpen === true; }).length;
+            html += '<div class="prop-field"><label for="multi-not-open">是否开通（当前：未开通 ' + noCount +
+                ' 座 / 已开通 ' + (stations - noCount) + ' 座）</label>' +
+                '<select id="multi-not-open">' +
+                '<option value="">— 保持不变 —</option>' +
+                '<option value="no">全部标记为未开通车站（暂缓开通 / 在建）</option>' +
+                '<option value="yes">全部恢复为正常车站</option>' +
+                '</select></div>';
 
             html += '<div class="btn-row" style="margin-bottom:10px">' +
                 '<button class="side-btn side-btn-primary" id="btn-multi-apply">' +
@@ -3589,7 +4182,8 @@
         if (applyBtn) applyBtn.addEventListener('click', function () {
             var posMode = $('multi-label-pos').value;
             var alignValue = $('multi-align').value;
-            if (!posMode && !alignValue) { toast('请先选择要批量修改的项'); return; }
+            var notOpenMode = $('multi-not-open').value;
+            if (!posMode && !alignValue && !notOpenMode) { toast('请先选择要批量修改的项'); return; }
             var changed = 0;
             withHistory(function () {
                 stationIds.forEach(function (id) {
@@ -3608,11 +4202,21 @@
                         node.align = alignValue;
                         changed++;
                     }
+                    if (notOpenMode) {
+                        var want = notOpenMode === 'no';
+                        if (node.notOpen !== want) { node.notOpen = want; changed++; }
+                    }
                 });
             });
             renderAll();
             renderInspector();
-            toast(changed ? '已批量更新 ' + stationIds.length + ' 座车站的站名设置' : '所选车站的站名设置无需变更');
+            renderList();
+            var what = [];
+            if (posMode) what.push('站名定位方式');
+            if (alignValue) what.push('站名对齐方式');
+            if (notOpenMode) what.push(notOpenMode === 'no' ? '未开通车站' : '恢复开通');
+            toast(changed ? '已批量更新 ' + stationIds.length + ' 座车站（' + what.join('、') + '）'
+                : '所选车站的相关属性无需变更');
         });
 
         // ---- 虚拟换乘：建立 / 解除 ----
@@ -4054,6 +4658,15 @@
         html += '<p class="side-hint">折线共 ' + seg.points.length + ' 个节点，长度约 ' +
             Math.round(polylineLength(segmentDrawPoints(seg))) + ' px。修改类型会按两端坐标重新生成折角走线。</p>';
 
+        // ---- 未开通（规划 / 在建）线段 ----
+        var notOpen = seg.notOpen === true;
+        html += '<label class="check-row" style="margin:2px 0 8px"><input type="checkbox" id="seg-not-open"' +
+            (notOpen ? ' checked' : '') + '><span>未开通线段（规划 / 在建）</span></label>';
+        html += '<p class="side-hint">勾选后该线段按核心引擎未开通样式渲染（灰色虚线，' +
+            NOT_OPEN_STYLE.dash.join(',') + '），导出时写入 <b>data_notopen.js</b> 的 NOT_OPEN_LINES，' +
+            '并从 data_lines.js 的线路走向中剔除（与 city/beijing、city/qingdao 的做法一致）。' +
+            (notOpen ? '站台端的车站如需一并标记未开通，请到车站属性里勾选「未开通车站」。' : '') + '</p>';
+
         // ---- 折角调整控件：圆角大小 + 折角方向 ----
         var corners = [];
         var ci;
@@ -4160,6 +4773,20 @@
 
         var flipBtn = $('btn-flip-corner');
         if (flipBtn) flipBtn.addEventListener('click', function () { withHistory(function () { flipCornerDirection(seg); }); });
+
+        var notOpenBox = $('seg-not-open');
+        if (notOpenBox) {
+            notOpenBox.addEventListener('change', function () {
+                pushHistory();
+                seg.notOpen = notOpenBox.checked;
+                renderAll();
+                renderInspector();
+                renderList();
+                toast(notOpenBox.checked
+                    ? '已标记为未开通线段（导出到 data_notopen.js，不再计入线路走向）'
+                    : '已恢复为开通线段');
+            });
+        }
 
         // 端点位移输入（A / B 两端各自的绝对 X、Y）：首次编辑记录历史，change 后刷新面板同步按钮状态
         var segOffInputs = [
@@ -4571,9 +5198,12 @@
                 return n.type === 'temp' ? '临时节点' : (n.cn || n.id);
             });
             html += '<button class="list-item' + (isSelected('segment', seg.id) ? ' active' : '') + '" data-jump="segment" data-id="' + seg.id + '">' +
-                '<span class="li-dot" style="background:' + (line ? line.color : '#006098') + ';border-color:' + (line ? line.color : '#006098') + '"></span>' +
+                '<span class="li-dot" style="background:' +
+                (seg.notOpen === true ? 'var(--not-open-color, #bdcbd2)' : (line ? line.color : '#006098')) +
+                ';border-color:' + (seg.notOpen === true ? 'var(--not-open-color, #bdcbd2)' : (line ? line.color : '#006098')) + '"></span>' +
                 '<span class="li-name">' + escapeHtml(names.join(' → ')) + '</span>' +
-                '<span class="li-meta">' + escapeHtml(meta.label) + '</span></button>';
+                '<span class="li-meta">' + escapeHtml(meta.label) +
+                (seg.notOpen === true ? ' · 未开通' : '') + '</span></button>';
         });
 
         html += '<div class="list-group-title">水域（' + project.waters.length + '）</div>';
@@ -4586,6 +5216,18 @@
                 '<span class="li-name">' + escapeHtml(water.name || water.id) + '</span>' +
                 '<span class="li-meta">' + (isPath ? '路径 · 线宽 ' + round2(waterPathWidth(water)) + 'px' : water.points.length + ' 顶点') +
                 '</span></button>';
+        });
+
+        // 自由文本
+        var texts = project.texts || [];
+        html += '<div class="list-group-title">自由文本（' + texts.length + '）</div>';
+        if (!texts.length) html += '<p class="side-hint">暂无自由文本。用左侧「文本 → 自由文本」工具在画布上点击即可添加。</p>';
+        texts.forEach(function (t) {
+            var first = textLines(t)[0] || '（空文本）';
+            html += '<button class="list-item' + (isSelected('text', t.id) ? ' active' : '') + '" data-jump="text" data-id="' + t.id + '">' +
+                '<span class="li-dot" style="background:' + textColor(t) + ';border-color:' + textColor(t) + '"></span>' +
+                '<span class="li-name">' + escapeHtml(first) + '</span>' +
+                '<span class="li-meta">' + round2(textSize(t)) + 'px</span></button>';
         });
 
         // 虚拟换乘组
@@ -4636,6 +5278,15 @@
                     return;
                 }
                 selection = { type: kind, id: id };
+                if (kind === 'text') {
+                    selectedNodeIds = [];
+                    selectedSegmentIds = [];
+                    var textTarget = findText(id);
+                    if (textTarget) centerOn(textTarget.x, textTarget.y);
+                    renderAll();
+                    renderInspector();
+                    return;
+                }
                 var target = kind === 'node' ? project.nodes[id] : (kind === 'segment' ? findSegment(id) : findWater(id));
                 if (target && kind === 'node') centerOn(target.x, target.y);
                 if (target && (kind === 'segment' || kind === 'water')) {
@@ -4685,6 +5336,137 @@
             $('line-color').value = line.color;
             $('line-name').value = line.name;
         }
+        syncLineBadge(line);
+    }
+
+    /** 线路徽标下拉候选：数字模板 + 仓库内既有的字母模板 */
+    var LINE_BADGE_TEMPLATES = null;
+    function lineBadgeTemplates() {
+        if (LINE_BADGE_TEMPLATES) return LINE_BADGE_TEMPLATES;
+        var list = [];
+        for (var i = 1; i <= OM_ICON_MAX; i++) list.push('icon@' + (i < 10 ? '0' + i : i) + '.svg');
+        // 仓库中既有的非数字线路徽标（快线等），可按需继续补充
+        list.push('icon@lg.svg', 'icon@xha.svg', 'icon@bh.svg');
+        LINE_BADGE_TEMPLATES = list;
+        return list;
+    }
+
+    /**
+     * 刷新线路徽标控件：候选列表 + 当前生效徽标的说明 + 下方徽标预览。
+     * 名称不含数字的线路（快线）如果不显式指定，导出时会随包生成文字徽标，
+     * 界面里要把这件事讲清楚，避免再出现「滨海快线显示成 6 号线」这类借用号码的问题。
+     */
+    function syncLineBadge(line) {
+        var input = $('line-svg');
+        var list = $('line-svg-list');
+        var hint = $('line-svg-hint');
+        if (!input || !list || !hint) return;
+        if (!list.childNodes.length) {
+            list.innerHTML = lineBadgeTemplates().map(function (name) {
+                return '<option value="' + name + '"></option>';
+            }).join('');
+        }
+        if (!line) {
+            input.value = '';
+            hint.textContent = '';
+            renderLineBadgePreview(null, '');
+            return;
+        }
+        input.value = line.svg || '';
+        if (line.svg) {
+            hint.textContent = '当前徽标：' + line.svg + '（assets/svg/ 下的模板文件）';
+            renderLineBadgePreview(line, line.svg);
+            return;
+        }
+        var m = /(\d+)/.exec(line.name || '');
+        var n = m ? parseInt(m[1], 10) : 0;
+        if (n >= 1 && n <= OM_ICON_MAX) {
+            var autoName = 'icon@' + (n < 10 ? '0' + n : n) + '.svg';
+            hint.textContent = '当前徽标：自动取线路名中的数字 → ' + autoName;
+            renderLineBadgePreview(line, autoName);
+        } else {
+            hint.textContent = '线路名不含数字，未指定徽标；导出时会随包生成文字徽标 ' + generatedIconName(line) +
+                '（内容为该线路名称），不会再借用其它线路的号码。若希望使用现成模板，请在上方填写，例如 icon@bh.svg。';
+            renderLineBadgePreview(line, generatedIconName(line));
+        }
+    }
+
+    /** 徽标模板缓存：文件名 → SVG 文本（找不到的记为 null，避免反复请求） */
+    var LINE_BADGE_CACHE = {};
+
+    /**
+     * 线路徽标预览区：按核心引擎的做法内联 assets/svg/ 下的模板，
+     * 并把 --svgclr / --svgtext 设成该线路的导出取值，做到所见即所得。
+     * 找不到模板（例如尚未随包生成/复制）或线路名不含数字时，直接渲染导出时会生成的文字徽标。
+     */
+    function renderLineBadgePreview(line, badgeName) {
+        var host = $('line-badge-preview');
+        if (!host) return;
+        host.innerHTML = '';
+        if (!line || !badgeName) {
+            host.innerHTML = '<span class="line-badge-preview-empty">（暂无线路）</span>';
+            return;
+        }
+        var color = line.color || '#006098';
+        var title = document.createElement('div');
+        title.className = 'line-badge-preview-title';
+        title.textContent = '徽标预览';
+        host.appendChild(title);
+
+        var stage = document.createElement('div');
+        stage.className = 'line-badge-preview-stage';
+        stage.style.setProperty('--svgclr', color);
+        stage.style.setProperty('--svgtext', '#ffffff');
+        host.appendChild(stage);
+
+        var caption = document.createElement('div');
+        caption.className = 'line-badge-preview-name';
+        host.appendChild(caption);
+
+        function useSvg(text, source) {
+            stage.innerHTML = text;
+            var svg = stage.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            }
+            caption.textContent = source;
+        }
+
+        function useGenerated(reason) {
+            useSvg(buildTextBadgeSvg(line.name || '线路'), reason);
+        }
+
+        if (badgeName === generatedIconName(line) && needsGeneratedIcon(line)) {
+            useGenerated(badgeName + '（导出时随包生成）');
+            return;
+        }
+        if (Object.prototype.hasOwnProperty.call(LINE_BADGE_CACHE, badgeName)) {
+            var cached = LINE_BADGE_CACHE[badgeName];
+            if (cached) useSvg(cached, badgeName);
+            else useGenerated(badgeName + '（仓库中暂无该模板，导出需自行提供；此处按文字徽标示意）');
+            return;
+        }
+        stage.innerHTML = '<span class="line-badge-preview-empty">载入中…</span>';
+        fetch('../assets/svg/' + encodeURIComponent(badgeName), { cache: 'no-cache' })
+            .then(function (res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.text();
+            })
+            .then(function (text) {
+                LINE_BADGE_CACHE[badgeName] = text;
+                // 面板可能在请求期间切到了别的线路
+                var current = findLine(activeLineId);
+                if (!current || $('line-badge-preview') !== host) return;
+                var expect = current.svg ? current.svg : lineIconFile(current);
+                if (expect !== badgeName) return;
+                useSvg(text, badgeName);
+            })
+            .catch(function () {
+                LINE_BADGE_CACHE[badgeName] = null;
+                useGenerated(badgeName + '（仓库中暂无该模板，导出需自行提供；此处按文字徽标示意）');
+            });
     }
 
     function bindLineControls() {
@@ -4695,8 +5477,20 @@
                 $('line-color').value = line.color;
                 $('line-name').value = line.name;
             }
+            syncLineBadge(line);
             updateStageInfo();
         });
+
+        var badgeInput = $('line-svg');
+        if (badgeInput) {
+            badgeInput.addEventListener('input', function () {
+                var line = findLine(activeLineId);
+                if (!line) return;
+                line.svg = this.value.trim();
+                renderList();
+                syncLineBadge(line);
+            });
+        }
 
         $('line-color').addEventListener('input', function () {
             var line = findLine(activeLineId);
@@ -4704,6 +5498,7 @@
             line.color = this.value;
             renderAll();
             renderList();
+            syncLineBadge(line);       // 徽标预览的底色取线路色，需要同步刷新
         });
 
         $('line-name').addEventListener('input', function () {
@@ -4762,6 +5557,8 @@
         renderInspector();
         syncTopButtons();
         $('stage-empty').hidden = true;
+        // 新建空白画布回到绘制默认：开启「线段自动选型」（导入工程时则保持关闭）
+        setAutoRoute(true, { silent: true });
         scheduleFit();
         if (!silent) toast('已创建 ' + w + ' × ' + h + ' 画布，原点 O 位于左上角顶点');
     }
@@ -4819,7 +5616,13 @@
     /** 示例工程文件（编辑器默认载入的样例，与「保存到本地」的工程 JSON 同格式） */
     var SAMPLE_URL = 'sample/cityedit_sample.json';
 
-    /** 把一份工程数据装载为当前工程（示例工程 / 外部文件共用） */
+    /**
+     * 把一份工程数据装载为当前工程（示例工程 / 外部文件共用）。
+     *
+     * 装载后统一**关闭「线段自动选型」**：导入/示例工程里的线段类型是作者已经定好的，
+     * 自动选型会让拖动节点时按几何重新判定类型、把原有走线改掉，因此加载工程时一律切到手动模式
+     * （需要时可在「路径编辑模式」里重新勾选「线段自动选型」）。
+     */
     function adoptProject(data, message) {
         project = normalizeProject(data);
         activeLineId = project.lines.length ? project.lines[0].id : null;
@@ -4828,13 +5631,16 @@
         clearSelection();
         draft = null;
         syncLineSelect();
+        var autoWasOn = autoRoute;
+        setAutoRoute(false, { silent: true });
         resetView();
         viewFitted = true;
         renderAll();
         renderInspector();
+        syncTopButtons();
         $('stage-empty').hidden = true;
         scheduleFit();
-        if (message) toast(message);
+        if (message) toast(message + (autoWasOn ? '（已关闭「线段自动选型」，线段类型沿用工程内已有设置）' : ''));
         return project;
     }
 
@@ -4875,6 +5681,35 @@
         }
     }
 
+    /**
+     * 编辑模式（目前是「线段自动选型 / 手动线段类型」）的本地记忆。
+     *
+     * 工程本体存在 `cgo-openmap-editor-project`，编辑模式单独存一份，
+     * 这样「刷新页面 → 恢复上次编辑的工程」时能把上次选择的模式一起还原，
+     * 而不是每次都回到默认值。
+     */
+    var MODE_KEY = 'cgo-openmap-editor-mode';
+
+    function saveModeToLocal() {
+        try {
+            localStorage.setItem(MODE_KEY, JSON.stringify({ autoRoute: autoRoute === true }));
+        } catch (e) { /* 隐私模式等场景下忽略 */ }
+    }
+
+    /** 读取并应用上次保存的编辑模式；返回是否成功还原 */
+    function loadModeFromLocal() {
+        try {
+            var raw = localStorage.getItem(MODE_KEY);
+            if (!raw) return false;
+            var mode = JSON.parse(raw);
+            if (!mode || typeof mode.autoRoute !== 'boolean') return false;
+            setAutoRoute(mode.autoRoute, { silent: true, persist: false });
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
     function loadFromLocal() {
         try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -4884,11 +5719,15 @@
             project = normalizeProject(data);
             activeLineId = project.lines.length ? project.lines[0].id : null;
             syncLineSelect();
+            // 还原上次选择的编辑模式（线段自动选型 / 手动线段类型）
+            var modeRestored = loadModeFromLocal();
             resetView();
             viewFitted = true;
             renderInspector();
             $('stage-empty').hidden = true;
-            toast('已恢复上次编辑的工程');
+            toast('已恢复上次编辑的工程' + (modeRestored
+                ? '（编辑模式：' + (autoRoute ? '线段自动选型' : '手动线段类型') + '）'
+                : ''));
             return true;
         } catch (e) {
             return false;
@@ -4902,6 +5741,11 @@
         base.segments = Array.isArray(data.segments) ? data.segments : [];
         base.waters = Array.isArray(data.waters) ? data.waters : [];
         base.lines = Array.isArray(data.lines) ? data.lines : [];
+        base.lines.forEach(function (l) {
+            if (!l.id) l.id = 'L' + (base.idSeq++);
+            if (typeof l.svg !== 'string') l.svg = '';
+            l.svg = l.svg.trim();
+        });
         base.idSeq = data.idSeq || 1;
         // 水域底图样式：沿用工程里的取值，缺省时回落到 createProject 的默认配色
         var srcWaterStyle = (data.waterStyle && typeof data.waterStyle === 'object') ? data.waterStyle : null;
@@ -5006,6 +5850,19 @@
         });
         project = base;
         pruneVirtualTransfers();
+        // 自由文本：字段合法化（字号/角度钳制，颜色留空表示跟随主题）
+        base.texts = Array.isArray(data.texts) ? data.texts : [];
+        base.texts.forEach(function (t, index) {
+            if (!t.id) t.id = 'T' + (base.idSeq++ + index);
+            if (typeof t.text !== 'string') t.text = t.text == null ? '' : String(t.text);
+            t.x = round2(parseFloat(t.x) || 0);
+            t.y = round2(parseFloat(t.y) || 0);
+            t.size = textSize(t);
+            t.rotate = textRotate(t);
+            t.bold = t.bold === true;
+            t.anchor = textAnchor(t);
+            if (!/^#[0-9a-fA-F]{6}$/.test(String(t.color || ''))) t.color = '';
+        });
         return base;
     }
 
@@ -5582,12 +6439,73 @@
 
     // ---------------------------- 代码文件生成 ----------------------------
 
-    /** 线路图标：线路名中的数字 → assets/svg/icon@NN.svg，否则使用通用徽标 icon@lg.svg */
-    function lineIconFile(name, index) {
-        var m = /(\d+)/.exec(name || '');
-        var n = m ? parseInt(m[1], 10) : (index + 1);
-        if (n >= 1 && n <= OM_ICON_MAX) return 'icon@' + (n < 10 ? '0' + n : n) + '.svg';
-        return 'icon@lg.svg';
+    /**
+     * 线路徽标文件名（assets/svg/ 下的模板）。
+     *
+     * 取值优先级：
+     *   1. 线路属性里显式指定的徽标（line.svg）——快线等名称不含数字的线路必须给出；
+     *   2. 线路名中的数字 → icon@NN.svg（如「6号线」→ icon@06.svg）；
+     *   3. 以上都没有 → 不借用其它线路的数字徽标（曾因此把「滨海快线」显示成 6 号线），
+     *      改为导出时自动生成一个文字徽标 icon@<线路ID>.svg，内容就是该线路名称。
+     */
+    function lineIconFile(line, index) {
+        var explicit = line && typeof line.svg === 'string' ? line.svg.trim() : '';
+        if (explicit) return explicit;
+        var name = (line && line.name) || '';
+        var m = /(\d+)/.exec(name);
+        if (m) {
+            var n = parseInt(m[1], 10);
+            if (n >= 1 && n <= OM_ICON_MAX) return 'icon@' + (n < 10 ? '0' + n : n) + '.svg';
+        }
+        void index;
+        return generatedIconName(line);
+    }
+
+    /** 需要自动生成的文字徽标文件名：icon@<线路ID>.svg（ID 只保留字母数字） */
+    function generatedIconName(line) {
+        var raw = (line && (line.id || line.name)) || 'line';
+        var slug = String(raw).toLowerCase().replace(/[^a-z0-9]+/g, '');
+        if (!slug) slug = 'line';
+        return 'icon@' + slug + '.svg';
+    }
+
+    /** 线路是否需要自动生成文字徽标（名称无数字且未显式指定） */
+    function needsGeneratedIcon(line) {
+        var explicit = line && typeof line.svg === 'string' ? line.svg.trim() : '';
+        if (explicit) return false;
+        var name = (line && line.name) || '';
+        var m = /(\d+)/.exec(name);
+        if (m) {
+            var n = parseInt(m[1], 10);
+            if (n >= 1 && n <= OM_ICON_MAX) return false;
+        }
+        return true;
+    }
+
+    /**
+     * 生成文字徽标 SVG（与 assets/svg/icon@NN.svg 同构：圆角矩形 + 白描边 + 线路名文字），
+     * 采用 var(--svgclr) / var(--svgtext)，核心引擎会把它内联进页面，因此变量与字体都能正确继承。
+     */
+    function buildTextBadgeSvg(text) {
+        var label = String(text == null ? '' : text).trim() || '线路';
+        var len = Array.from(label).length;
+        var fontSize = Math.min(64, Math.round(168 / Math.max(1, len)));
+        var boxWidth = 190;
+        return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + boxWidth + ' 150">\n' +
+            '  <rect y="25" width="' + boxWidth + '" height="100" rx="5" ry="5" style="fill: var(--svgclr);"/>\n' +
+            '  <rect x="2.5" y="27.5" width="' + (boxWidth - 5) + '" height="95" rx="4" ry="4" ' +
+            'style="fill: none; stroke: #ffffff; stroke-width: 5;"/>\n' +
+            '  <text x="' + (boxWidth / 2) + '" y="92" text-anchor="middle" ' +
+            'style="fill: var(--svgtext); font-family: inherit; font-size: ' + fontSize + 'px; font-weight: 700; ' +
+            'letter-spacing: 1px;">' + escapeXml(label) + '</text>\n' +
+            '</svg>\n';
+    }
+
+    function escapeXml(text) {
+        return String(text == null ? '' : text)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
     }
 
     function jsString(value) {
@@ -5647,10 +6565,19 @@
 
         // ---- 线路与折线 ----
         var lineEntries = [];
+        var generatedBadges = {};        // 需要随包生成的文字徽标：文件名 → SVG 内容
+        var notOpenItems = [];           // 未开通线段：{ name, points }
         project.lines.forEach(function (line, index) {
-            var segs = project.segments.filter(function (s) { return s.lineId === line.id; });
+            var allSegs = project.segments.filter(function (s) { return s.lineId === line.id; });
+            // 未开通线段单独走 data_notopen.js，不参与线路走向与站序
+            allSegs.filter(function (s) { return s.notOpen === true; }).forEach(function (seg) {
+                var pts = segmentDrawPoints(seg).map(function (p) { return { x: round2(p.x), y: round2(p.y) }; });
+                if (pts.length >= 2) notOpenItems.push({ name: line.name || line.id, points: pts });
+            });
+            var segs = allSegs.filter(function (s) { return s.notOpen !== true; });
             if (!segs.length) {
-                warnings.push('线路「' + (line.name || line.id) + '」没有线段，已跳过导出。');
+                warnings.push('线路「' + (line.name || line.id) + '」没有已开通线段' +
+                    (allSegs.length ? '（全部线段都标为未开通，已转入 data_notopen.js）' : '') + '，已跳过导出。');
                 return;
             }
             var paths = decomposeLinePaths(segs);
@@ -5711,10 +6638,17 @@
                 id: prefix + (lineEntries.length + 1),
                 name: line.name || ('线路' + (lineEntries.length + 1)),
                 color: line.color || LINE_PALETTE[lineEntries.length % LINE_PALETTE.length],
-                svg: lineIconFile(line.name, lineEntries.length),
+                svg: lineIconFile(line, lineEntries.length),
                 company: company,
                 ways: ways
             };
+            // 名称不含数字且未指定徽标的线路（如滨海快线）：随包生成文字徽标，避免借用到别的线路号码
+            if (needsGeneratedIcon(line)) {
+                var badgeName = generatedIconName(line);
+                if (!generatedBadges[badgeName]) {
+                    generatedBadges[badgeName] = buildTextBadgeSvg(entry.name);
+                }
+            }
             if (ways.length === 1 && ways[0].closed) {
                 entry.isLoop = true;
                 // 环线：末段站距为「最后一座车站回到首站」的闭合里程
@@ -5882,11 +6816,34 @@
             '// 付费/国铁虚拟换乘映射表\nconst VIRTUAL_TRANSFER_MAP = ' + virtualMapLiteral(false) + ';\n\n' +
             '// 付费/国铁虚拟换乘连线数组\nconst VIRTUAL_CONNECT_LINES = ' + virtualLinesLiteral(false) + ';\n';
 
-        // ---- data_notopen.js ----
+        // ---- data_notopen.js（未开通线段，与 city/beijing、city/qingdao 同构） ----
         var notopenOut = omHeader('未开通/在建线路走向 (city/' + cityId + '/data_notopen.js)', [
-            '编辑器暂不产出在建线路，若需要绘制规划或在建走向虚线，请按下列格式补充：',
-            'NOT_OPEN_LINES = [{ points: [{ x, y }, ...] }]'
-        ]) + 'const NOT_OPEN_LINES = [];\n';
+            notOpenItems.length
+                ? '编辑器中共有 ' + notOpenItems.length + ' 条线段标记为「未开通」，已按线路分组导出：'
+                : '编辑器中没有标记为「未开通」的线段；若需要绘制规划或在建走向虚线，',
+            notOpenItems.length
+                ? '每条线段一个对象，引擎会自动按 45°/90° 倒角生成灰色虚线。'
+                : '选中线段后在属性面板勾选「未开通线段（规划 / 在建）」即可自动写入本文件。',
+            '字段：points 为折线点阵 [{ x, y, r? }]；style 可选（color / width / dashArray，默认 ' +
+            'var(--not-open-color) / ' + NOT_OPEN_STYLE.width + ' / "' + NOT_OPEN_STYLE.dash.join(',') + '"）。'
+        ]) + 'const NOT_OPEN_LINES = ' + (function () {
+            if (!notOpenItems.length) return '[];\n';
+            var body = notOpenItems.map(function (item) {
+                var pts = item.points.map(function (p) {
+                    return '{ x: ' + round2(p.x) + ', y: ' + round2(p.y) + ' }';
+                });
+                var rows = '';
+                for (var i = 0; i < pts.length; i += 4) {
+                    rows += '\n            ' + pts.slice(i, i + 4).join(', ') + (i + 4 < pts.length ? ',' : '');
+                }
+                return '    { // ' + item.name + '：未开通段\n' +
+                    '        points: [' + rows + '\n        ],\n' +
+                    '        style: { color: "var(--not-open-color)", width: ' + NOT_OPEN_STYLE.width +
+                    ', opacity: 1, dashArray: "' + NOT_OPEN_STYLE.dash.join(',') + '" }\n' +
+                    '    }';
+            }).join(',\n');
+            return '[\n' + body + '\n];\n';
+        })();
 
         // ---- data_timetable.js ----
         var timetableOut = omHeader('首末班车时刻表 (city/' + cityId + '/data_timetable.js)', [
@@ -5901,21 +6858,50 @@
         var hasWater = waterPolys.length > 0;
         var waterAssetName = cityId + '_sea.svg';
         var waterStyleOut = waterStyle();
+        // 自由文本素材（先算出来，好一起写进 data_scattered.js）
+        var textItems = (project.texts || []).filter(function (t) {
+            return String(t.text == null ? '' : t.text).trim() !== '';
+        });
+        var hasTexts = textItems.length > 0;
+        var textAssetName = cityId + '_texts.svg';
+        var scatteredEntries = [];
+        if (hasWater) {
+            scatteredEntries.push('    {\n' +
+                '        id: ' + jsString(cityId + '-sea') + ',\n' +
+                '        file: ' + jsString('./city/' + cityId + '/assets/' + waterAssetName) + ',\n' +
+                '        x: ' + round2(project.canvas.width / 2) + ',\n' +
+                '        y: ' + round2(project.canvas.height / 2) + ',\n' +
+                '        width: ' + project.canvas.width + ',\n' +
+                '        height: ' + project.canvas.height + ',\n' +
+                '        opacity: ' + round2(waterStyleOut.opacity) + ',\n' +
+                '        zIndex: ' + waterStyleOut.zIndex + '\n    }');
+        }
+        if (hasTexts) {
+            scatteredEntries.push('    {\n' +
+                '        id: ' + jsString(cityId + '-texts') + ',\n' +
+                '        file: ' + jsString('./city/' + cityId + '/assets/' + textAssetName) + ',\n' +
+                '        x: ' + round2(project.canvas.width / 2) + ',\n' +
+                '        y: ' + round2(project.canvas.height / 2) + ',\n' +
+                '        width: ' + project.canvas.width + ',\n' +
+                '        height: ' + project.canvas.height + ',\n' +
+                '        opacity: 1,\n' +
+                '        zIndex: ' + TEXT_DEFAULT_ZINDEX + '\n    }');
+        }
         var scatteredOut = omHeader('地图背景装饰物与示意图素材配置 (city/' + cityId + '/data_scattered.js)', [
             hasWater
                 ? '编辑器中的水域已合并导出为 assets/' + waterAssetName + '，作为底层地理底图注入（亮/暗两套填充色写在 SVG 内部）。'
-                : '编辑器中没有水域，此处保留空数组，可自行加入城市特色地标矢量素材。',
+                : '编辑器中没有水域，可自行加入城市特色地标矢量素材。',
+            hasTexts
+                ? '编辑器中的自由文本已合并导出为 assets/' + textAssetName + '（' + textItems.length +
+                ' 段），同样以画布中心定位注入；跟随主题的文字用 .txt 类 + prefers-color-scheme 切换颜色。'
+                : '编辑器中没有自由文本。',
             '字段：id、file、x、y（素材中心点，核心以 translate(-50%,-50%) 居中定位）、width、height、opacity、zIndex。',
-            '水域底图建议 x/y 取画布中心、width/height 取画布尺寸、zIndex 1，与 city/qingdao、city/dalian 一致。'
-        ]) + 'const SCATTERED_DATA = ' + (hasWater ? '[\n    {\n' +
-            '        id: ' + jsString(cityId + '-sea') + ',\n' +
-            '        file: ' + jsString('./city/' + cityId + '/assets/' + waterAssetName) + ',\n' +
-            '        x: ' + round2(project.canvas.width / 2) + ',\n' +
-            '        y: ' + round2(project.canvas.height / 2) + ',\n' +
-            '        width: ' + project.canvas.width + ',\n' +
-            '        height: ' + project.canvas.height + ',\n' +
-            '        opacity: ' + round2(waterStyleOut.opacity) + ',\n' +
-            '        zIndex: ' + waterStyleOut.zIndex + '\n    },\n];\n' : '[];\n');
+            '水域底图建议 x/y 取画布中心、width/height 取画布尺寸、zIndex 1，与 city/qingdao、city/dalian 一致；',
+            '注意本层（#scattered-layer）位于线路与站点**下方**；若希望文字压在线路之上，',
+            '可按 snippets/foreground-texts.js 的做法把该 SVG 追加到 #labels-layer。'
+        ]) + 'const SCATTERED_DATA = ' + (scatteredEntries.length
+            ? '[\n' + scatteredEntries.join(',\n') + ',\n];\n'
+            : '[];\n');
 
         // ---- 水域底图 SVG（.sea 填色面 + .sea-line 水域填色线，均带亮/暗两套取值） ----
         var waterSvg = '';
@@ -5942,6 +6928,41 @@
             });
             svgParts.push('</svg>');
             waterSvg = svgParts.join('\n') + '\n';
+        }
+
+        // ---- 自由文本素材 assets/{city}_texts.svg ----
+        // 与水域底图同一套做法：一份画布尺寸的 SVG，颜色写在内部 style 里（跟随主题的用 .txt + 暗色媒体查询）
+        var textSvg = '';
+        if (hasTexts) {
+            var textParts = ['<?xml version="1.0" encoding="UTF-8"?>',
+                '<svg xmlns="http://www.w3.org/2000/svg" width="' + project.canvas.width + '" height="' + project.canvas.height +
+                '" viewBox="0 0 ' + project.canvas.width + ' ' + project.canvas.height + '">',
+                '  <style>',
+                '    .txt { fill: ' + TEXT_DEFAULT.light + '; }',
+                '    @media (prefers-color-scheme: dark) {',
+                '      .txt { fill: ' + TEXT_DEFAULT.dark + '; }',
+                '    }',
+                '    text { font-family: ' + TEXT_FONT_STACK + '; }',
+                '  </style>'];
+            textItems.forEach(function (t) {
+                var attr = ['x="' + round2(t.x) + '"', 'y="' + round2(t.y) + '"',
+                    'font-size="' + round2(textSize(t)) + '"',
+                    'text-anchor="' + textAnchor(t) + '"'];
+                if (t.bold) attr.push('font-weight="700"');
+                if (textRotate(t)) attr.push('transform="rotate(' + round2(textRotate(t)) + ' ' + round2(t.x) + ' ' + round2(t.y) + ')"');
+                var followsTheme = !/^#[0-9a-fA-F]{6}$/.test(String(t.color || ''));
+                if (followsTheme) attr.push('class="txt"');
+                else attr.push('fill="' + t.color + '"');
+                var lines = textLines(t);
+                var lineHeight = textSize(t) * 1.25;
+                var spans = lines.map(function (line, i) {
+                    return '<tspan x="' + round2(t.x) + '"' + (i === 0 ? '' : ' dy="' + round2(lineHeight) + '"') + '>' +
+                        escapeXml(line === '' ? ' ' : line) + '</tspan>';
+                }).join('');
+                textParts.push('  <text ' + attr.join(' ') + '>' + spans + '</text>');
+            });
+            textParts.push('</svg>');
+            textSvg = textParts.join('\n') + '\n';
         }
 
         // ---- staname.csv（站名检索别名库） ----
@@ -6096,6 +7117,7 @@
                 './city/' + cityId + '/data_notopen.js',
                 './city/' + cityId + '/staname.csv'
             ].concat(hasWater ? ['./city/' + cityId + '/assets/' + waterAssetName] : [])
+                .concat(hasTexts ? ['./city/' + cityId + '/assets/' + textAssetName] : [])
                 .map(function (p) { return "    '" + p + "',"; }).join('\n') + '\n';
 
         var manifestSnippet = JSON.stringify({
@@ -6114,6 +7136,8 @@
             temps: tempCount,
             lines: lineEntries.length,
             waters: project.waters.length,
+            notOpen: notOpenItems.length,
+            texts: textItems.length,
             canvas: project.canvas.width + ' × ' + project.canvas.height
         };
         var lineSummary = lineEntries.map(function (e) {
@@ -6122,8 +7146,33 @@
         var readme = buildOpenMapReadme({
             cityId: cityId, cityName: cityName, themeColor: themeColor,
             company: company, pxMeter: pxMeter, stats: stats,
-            lines: lineSummary, warnings: warnings, hasWater: hasWater
+            lines: lineSummary, warnings: warnings, hasWater: hasWater,
+            hasTexts: hasTexts, textAssetName: textAssetName,
+            badges: Object.keys(generatedBadges)
         });
+
+        // 自由文本若要压在线路之上，城市脚本里加这几行即可（默认走 data_scattered.js 的底图层）
+        var foregroundTextSnippet = omHeader('把自由文本放到前景（线路之上）(snippets/foreground-texts.js)', [
+            '用法：把本文件复制为 city/' + cityId + '/modules/' + cityId + '_texts.js，',
+            '并在 city/' + cityId + '/' + cityId + '.js 里用 document.write 同步引入（与其它城市模块一致）。',
+            '作用：编辑器导出的自由文本默认作为 data_scattered.js 的底图装饰物渲染（在线路与站点**下方**）；',
+            '      需要文字压在线路之上时，用本片段把同一份 SVG 追加到 #labels-layer。'
+        ]) +
+            '(function () {\n' +
+            "    var ASSET = './city/" + cityId + "/assets/" + (hasTexts ? textAssetName : cityId + '_texts.svg') + "';\n" +
+            '    function mountForegroundTexts() {\n' +
+            "        var host = document.getElementById('labels-layer');\n" +
+            '        if (!host || host.querySelector(\'img[data-foreground-texts]\')) return;\n' +
+            '        var img = document.createElement(\'img\');\n' +
+            '        img.src = ASSET;\n' +
+            "        img.setAttribute('data-foreground-texts', '1');\n" +
+            "        img.style.cssText = 'position:absolute;left:0;top:0;width:" + project.canvas.width +
+            'px;height:' + project.canvas.height + "px;pointer-events:none;';\n" +
+            '        host.appendChild(img);\n' +
+            '    }\n' +
+            '    if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', mountForegroundTexts);\n' +
+            '    else mountForegroundTexts();\n' +
+            '})();\n';
 
         // ---- 文件清单 ----
         var root = 'cgo-openmap-' + cityId + '/';
@@ -6141,9 +7190,18 @@
             { name: root + 'city/' + cityId + '/stacard/script.js', text: staCardOut },
             { name: root + 'snippets/city-registry-entry.js', text: registrySnippet },
             { name: root + 'snippets/sw-assets-to-cache.js', text: swAssets },
+            { name: root + 'snippets/foreground-texts.js', text: foregroundTextSnippet },
             { name: root + 'snippets/manifest-shortcut.json', text: manifestSnippet }
         ];
-        if (hasWater) files.splice(11, 0, { name: root + 'city/' + cityId + '/assets/' + waterAssetName, text: waterSvg });
+        // 素材文件（水域底图 / 自由文本素材）统一插入到清单前部，保证目录顺序稳定
+        var assetFiles = [];
+        if (hasWater) assetFiles.push({ name: root + 'city/' + cityId + '/assets/' + waterAssetName, text: waterSvg });
+        if (hasTexts) assetFiles.push({ name: root + 'city/' + cityId + '/assets/' + textAssetName, text: textSvg });
+        if (assetFiles.length) files.splice.apply(files, [11, 0].concat(assetFiles));
+        // 自动生成的文字徽标（名称不含数字的线路）放入 assets/svg/，与既有 icon@NN.svg 模板并列
+        Object.keys(generatedBadges).forEach(function (badgeName) {
+            files.push({ name: root + 'assets/svg/' + badgeName, text: generatedBadges[badgeName] });
+        });
 
         return {
             cityId: cityId, stats: stats, warnings: warnings,
@@ -6178,6 +7236,8 @@
         L.push('| 车站数 | ' + info.stats.stations + ' |');
         L.push('| 线路数 | ' + info.stats.lines + ' |');
         L.push('| 水域多边形 | ' + info.stats.waters + ' |');
+        L.push('| 未开通线段 | ' + (info.stats.notOpen || 0) + '（写入 `data_notopen.js`，不计入线路走向） |');
+        L.push('| 自由文本 | ' + (info.stats.texts || 0) + '（合并导出为 `assets/' + info.cityId + '_texts.svg`，登记在 `data_scattered.js`） |');
         L.push('| 站距比例 | ' + info.pxMeter + ' 米/像素（用于反算站间距，需按实际里程校正） |');
         L.push('| 运营公司 | ' + info.company + ' |');
         L.push('');
@@ -6195,16 +7255,27 @@
         L.push('├── data_timetable.js  # 首末班车时刻表（待补充）');
         L.push('├── staname.csv  # 站名检索别名库');
         if (info.hasWater) L.push('├── assets/' + info.cityId + '_sea.svg  # 编辑器水域导出的底图（.sea 类 + 亮/暗两套填充色）');
+        if (info.hasTexts) L.push('├── assets/' + info.textAssetName + '  # 编辑器自由文本导出的文字素材（.txt 类跟随亮/暗主题）');
         L.push('└── stacard/script.js  # 车站卡片占位实现（可替换为高德切片版本）');
         L.push('');
         L.push('snippets/city-registry-entry.js  # 粘贴进 city/data.js 的注册条目');
         L.push('snippets/sw-assets-to-cache.js  # 粘贴进 sw.js 的离线缓存清单');
+        L.push('snippets/foreground-texts.js  # 可选：把自由文本移到前景（线路之上）的城市模块');
         L.push('snippets/manifest-shortcut.json  # 粘贴进 manifest.json 的快捷入口');
+        if (info.badges && info.badges.length) {
+            L.push('');
+            L.push('assets/svg/  # 自动生成的线路文字徽标（名称不含数字的线路，如快线）');
+            info.badges.forEach(function (name) { L.push('└── ' + name); });
+        }
         L.push('```');
         L.push('');
         L.push('## 三、集成步骤');
         L.push('');
         L.push('1. **落地文件**：把 `city/' + info.cityId + '/` 整个目录复制到仓库 `city/` 下。');
+        if (info.badges && info.badges.length) {
+            L.push('   同时把 `assets/svg/` 下的 ' + info.badges.join('、') +
+                ' 复制到仓库根目录的 `assets/svg/`（数字线路直接复用仓库已有 `icon@NN.svg` 模板，无需复制）。');
+        }
         L.push('2. **注册城市**：打开 `city/data.js`，把 `snippets/city-registry-entry.js` 中的对象粘贴进 `CITY_REGISTRY`。');
         L.push('3. **更新离线缓存**：把 `snippets/sw-assets-to-cache.js` 中的路径补充进 `sw.js` 的 `ASSETS_TO_CACHE`，');
         L.push('   **并递增 `CACHE_NAME` 版本号**（项目铁律：任何文件变更都必须更新 SW 缓存版本）。');
@@ -6298,6 +7369,8 @@
             '<span class="om-stat"><b>' + pkg.stats.stations + '</b> 车站</span>' +
             '<span class="om-stat"><b>' + pkg.stats.lines + '</b> 线路</span>' +
             '<span class="om-stat"><b>' + pkg.stats.waters + '</b> 水域</span>' +
+            '<span class="om-stat"><b>' + (pkg.stats.notOpen || 0) + '</b> 未开通段</span>' +
+            '<span class="om-stat"><b>' + (pkg.stats.texts || 0) + '</b> 自由文本</span>' +
             '<span class="om-stat"><b>' + pkg.files.length + '</b> 文件</span>' +
             '</div>';
         var total = pkg.files.reduce(function (sum, f) { return sum + (f.text ? f.text.length : (f.data ? f.data.length : 0)); }, 0);
@@ -6678,18 +7751,30 @@
         return Math.max(30, Math.min(160, Math.floor(span / (count - 1))));
     }
 
+    /**
+     * 解析「排列方向」取值：
+     *   h  = 水平（X 递增）、h- = 水平反向（X 递减）、v = 垂直（Y 递增）、v- = 垂直反向（Y 递减）
+     */
+    function parseRlDir(value) {
+        var raw = String(value == null ? 'h' : value).trim().toLowerCase();
+        var horizontal = raw.charAt(0) !== 'v';
+        var descending = /-$/.test(raw);
+        return { horizontal: horizontal, descending: descending };
+    }
+
     function applyPlacementDefaults(count) {
         if (!project) return;
-        var dir = $('rl-dir').value;
+        var dir = parseRlDir($('rl-dir').value);
         var w = project.canvas.width, h = project.canvas.height;
         var fit = $('rl-fit').checked;
-        if (dir === 'h') {
-            $('rl-start-x').value = 120;
+        // 递减方向的起点取画布另一端，保证整排车站仍落在画布内
+        if (dir.horizontal) {
+            $('rl-start-x').value = dir.descending ? Math.round(w - 120) : 120;
             $('rl-start-y').value = Math.round(h / 2);
             if (fit) $('rl-gap').value = rlFitGap(count, w - 240);
         } else {
             $('rl-start-x').value = Math.round(w / 2);
-            $('rl-start-y').value = 120;
+            $('rl-start-y').value = dir.descending ? Math.round(h - 120) : 120;
             if (fit) $('rl-gap').value = rlFitGap(count, h - 240);
         }
     }
@@ -6759,7 +7844,7 @@
         var items = parseStationList($('rl-list').value).filter(function (s) { return s.cn || s.en; });
         if (items.length < 2) { toast('车站列表至少需要 2 座车站'); return; }
 
-        var dir = $('rl-dir').value === 'v' ? 'v' : 'h';
+        var dir = parseRlDir($('rl-dir').value);
         var start = snapPoint(parseFloat($('rl-start-x').value) || 0, parseFloat($('rl-start-y').value) || 0);
         var gapRaw = parseFloat($('rl-gap').value);
         var gap = snapPoint(isFinite(gapRaw) && gapRaw > 0 ? gapRaw : 80, 0).x || 80;
@@ -6786,8 +7871,10 @@
         withHistory(function () {
             var prev = null;
             items.forEach(function (st, i) {
-                var x = dir === 'h' ? start.x + gap * i : start.x;
-                var y = dir === 'h' ? start.y : start.y + gap * i;
+                // 递减方向：沿轴向为负步进（起点在画布另一端）
+                var step = dir.descending ? -gap * i : gap * i;
+                var x = dir.horizontal ? start.x + step : start.x;
+                var y = dir.horizontal ? start.y : start.y + step;
                 var node = newStationNode(x, y);
                 node.cn = st.cn || st.en;
                 node.en = keepEn ? (st.en || '') : '';
@@ -6881,15 +7968,25 @@
             '   · 两端位于对角带内        → 135° 折角（45° 斜边 + 轴平行段）',
             '   · 其余情况                → 90° 折角（取较短的一种 L 形走线）',
             '   · 斜 90° 折角需手动选择（自动选型不会自动采用）；',
+            '   · ⚠ 打开工程文件或载入示例工程时会自动关闭「线段自动选型」：工程里的线段类型是既成结果，',
+            '     开启自动选型会让拖动节点时按几何重新判定类型、把原有走线改掉；需要时可在「路径编辑模式」里重新勾选。',
+            '     （新建空白画布会恢复为开启；刷新页面恢复上次编辑的工程时，会还原上次选择的编辑模式。）',
             '5. 水域：依次点击添加顶点，双击或按 Enter 闭合，Esc 取消。',
-            '6. 方向吸附（自由路径、水域面、水域路径的绘制与水域顶点拖动都支持）：',
+            '6. 自由文本（画布注释：标题、方向提示、工程说明等）：',
+            '   · 用「文本 → 自由文本」工具在画布上点击即可放置，随后在右侧属性面板编辑内容（支持多行）、字号、',
+            '     旋转、锚点对齐（左/中/右）、粗体与颜色；颜色可勾选「跟随亮 / 暗主题」，导出后地图切主题会自动换色；',
+            '   · 点击文本即可选中并拖动（按网格吸附），方向键可微调，Delete 删除，Esc 取消选择；',
+            '   · 导出时全部文本合并为一份素材 assets/{city}_texts.svg，并在 data_scattered.js 里登记为一个装饰物',
+            '     （与水域底图同一套做法，x/y 取画布中心、宽高取画布尺寸）；该层在线路与站点**下方**，',
+            '     若希望文字压在线路之上，按包内 snippets/foreground-texts.js 的三行代码把它注入 #labels-layer。',
+            '7. 方向吸附（自由路径、水域面、水域路径的绘制与水域顶点拖动都支持）：',
             '   按住 Shift 时，新折点会相对上一个折点自动对齐到 0° / 45° / 90°（8 个方向），',
             '   并且同时落在网格上（45° 方向对齐轴向分量，因此坐标仍是整齐的整数），',
             '   状态栏会实时显示当前对齐角度；松开 Shift 即恢复普通网格吸附。',
-            '7. 「刷新线段配置」按钮：一键按当前节点布局重算全部自动走线线段；',
+            '8. 「刷新线段配置」按钮：一键按当前节点布局重算全部自动走线线段；',
             '   车站节点与临时节点一视同仁，含临时节点的连接同样会重算并保持夹角；',
             '   仅含 3 个以上转折点的手绘自由路径保持不变。',
-            '8. 拖动车站节点或临时节点时，与之相连的线段会实时重新计算走线与折角类型，',
+            '9. 拖动车站节点或临时节点时，与之相连的线段会实时重新计算走线与折角类型，',
             '   135° 折角的夹角始终严格为 135°。',
             '',
             '【三、属性编辑】',
@@ -6982,6 +8079,8 @@
             '   会自动拆分中英文站名。',
             '3. 「③ 应用到线路」：选择目标线路、设置起始坐标 / 站距 / 排列方向（勾选「站距自动适配画布」时',
             '   按站数自动铺开），点按钮即按列表顺序逐站创建车站并自动命名：',
+            '   · 排列方向有四种预设：水平（X 递增）、水平反向（X 递减）、垂直（Y 递增）、垂直反向（Y 递减）；',
+            '     选择递减方向时起点会自动取到画布另一端（右端 / 下端），列表顺序沿 −X 或 −Y 方向铺开；',
             '   · 中文站名写入站名，提供英文名时一并写入（可在选项里关闭）；',
             '   · 站编号按「前缀 + 两位序号」自动生成（如 M1 → M101、M102），与已有编号冲突时自动加后缀区分；',
             '   · 站名对齐在相邻车站间上下交替，减少长站名互相遮挡；',
@@ -7036,6 +8135,8 @@
     /** 内置示例：示例文件缺失或解析失败时使用，保证任何环境下都有样例可看 */
     function seedDemoProject() {
         createCanvas(2000, 1500, true);
+        // 内置示例与示例工程同样处理：关闭「线段自动选型」，保留示例里写死的线段类型
+        setAutoRoute(false, { silent: true });
 
         var l1 = createLine('1号线', LINE_PALETTE[0]);
         var l2 = createLine('2号线', LINE_PALETTE[1]);
@@ -7139,8 +8240,24 @@
     // ==========================================================================
 
     function syncAutoButton() {
-        $('btn-auto-route').classList.toggle('active', autoRoute);
-        $('chk-auto').checked = autoRoute;
+        var btn = $('btn-auto-route');
+        var chk = $('chk-auto');
+        if (btn) btn.classList.toggle('active', autoRoute);
+        if (chk) chk.checked = autoRoute;
+    }
+
+    /**
+     * 统一设置「线段自动选型」开关（同步勾选框、按钮状态与顶部状态栏，并记忆到本地）。
+     * @param {boolean} enabled
+     * @param {{silent?: boolean, toast?: string, persist?: boolean}} [options]
+     */
+    function setAutoRoute(enabled, options) {
+        var opts = options || {};
+        autoRoute = enabled === true;
+        syncAutoButton();
+        updateStageInfo();
+        if (opts.persist !== false) saveModeToLocal();
+        if (!opts.silent && opts.toast) toast(opts.toast);
     }
 
     function bindUI() {
@@ -7151,9 +8268,8 @@
                 if (!project) { toast('请先创建画布'); return; }
                 var next = activeTool === tool ? 'select' : tool;
                 // 手动选择具体线段类型时退出「自动选型」；点击「自动选型」按钮进入路径编辑模式
-                if (next.indexOf('seg') === 0) {
-                    autoRoute = false;
-                    syncAutoButton();
+                if (next.indexOf('seg') === 0 && autoRoute) {
+                    setAutoRoute(false, { silent: true });   // 切换为手动线段类型，并记住该模式
                 }
                 setTool(next);
             });
@@ -7175,19 +8291,18 @@
         });
         $('chk-grid').addEventListener('change', renderAll);
 
-        // 自动选型
+        // 自动选型（切换后写入本地，刷新恢复工程时一并还原）
         $('chk-auto').addEventListener('change', function () {
-            autoRoute = this.checked;
-            syncAutoButton();
-            updateStageInfo();
-            toast(autoRoute ? '已开启线段自动选型' : '已切换为手动线段类型');
+            setAutoRoute(this.checked, {
+                toast: this.checked ? '已开启线段自动选型' : '已切换为手动线段类型'
+            });
         });
         $('btn-auto-route').addEventListener('click', function () {
-            autoRoute = !autoRoute;
-            syncAutoButton();
-            if (autoRoute) setTool('segaxis'); else setTool('select');
+            var next = !autoRoute;
+            setAutoRoute(next, { silent: true });
+            if (next) setTool('segaxis'); else setTool('select');
             updateStageInfo();
-            toast(autoRoute ? '已进入路径编辑模式：按两端节点自动选择折线类型' : '已退出线段自动选型');
+            toast(next ? '已进入路径编辑模式：按两端节点自动选择折线类型' : '已退出线段自动选型');
         });
 
         // 一键刷新：按当前车站布局重算全部自动线段
@@ -7362,20 +8477,8 @@
                 try {
                     var data = JSON.parse(String(reader.result));
                     if (!data || !data.canvas) throw new Error('缺少 canvas 字段');
-                    project = normalizeProject(data);
-                    activeLineId = project.lines.length ? project.lines[0].id : null;
-                    undoStack.length = 0;
-                    redoStack.length = 0;
-                    clearSelection();
-                    draft = null;
-                    syncLineSelect();
-                    resetView();
-                    viewFitted = true;
-                    renderInspector();
-                    syncTopButtons();
-                    $('stage-empty').hidden = true;
-                    scheduleFit();
-                    toast('已打开工程文件：' + file.name);
+                    // 与「载入示例工程」共用装载逻辑：会关闭「线段自动选型」，保留工程内既有的线段类型
+                    adoptProject(data, '已打开工程文件：' + file.name);
                 } catch (err) {
                     toast('打开失败：' + err.message);
                 }

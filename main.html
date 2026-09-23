@@ -48,12 +48,12 @@
     <!-- style.css: 地图引擎核心样式、图层布局、动画与手势响应                          -->
     <!-- ========================================================================== -->
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260922.1220">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260922.1220">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260922.1220">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260922.1220">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260922.1220">
-    <link rel="stylesheet" href="css/style.css?v=260915.1930">
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260923.1217">
+    <link rel="stylesheet" href="css/style.css?v=260923.1217">
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -82,10 +82,19 @@
             }
         }
 
-        /* 浮动标题栏模式下，地图缩放控件避让顶部悬浮双岛栏 */
+        /* 浮动标题栏模式下，地图缩放控件避让顶部悬浮双岛栏（桌面端加大间距） */
         :root[header-mode="floating"] #modern-zoom-control,
         body[header-mode="floating"] #modern-zoom-control {
-            top: calc(env(safe-area-inset-top, 0px) + 76px);
+            top: calc(env(safe-area-inset-top, 0px) + 96px);
+        }
+
+        /* 移动端：缩放控件左侧与标题栏左岛左边缘对齐 */
+        @media (max-width: 768px) {
+            :root[header-mode="floating"] #modern-zoom-control,
+            body[header-mode="floating"] #modern-zoom-control {
+                top: calc(env(safe-area-inset-top, 0px) + 76px);
+                left: calc(10px + env(safe-area-inset-left, 0px));
+            }
         }
 
         /* 液态玻璃模式下的地图控件微质感增强 */
@@ -195,6 +204,8 @@
             </button>
         </div>
 
+        <!-- 全屏时顶部颜色填充层（跟随 panel-header 颜色，信号栏区域背景补色） -->
+        <div class="mobile-top-bar-backdrop"></div>
         <!-- 车站详情信息卡片面板 (由 core/script.js 与 city/beijing/stacard 动态填充) -->
         <div id="info-panel" style="display:none;"></div>
 
@@ -251,16 +262,16 @@
     <!--    - data_timetable.js: 首末班车时刻                                         -->
     <!--    - data_notopen.js: 在建线路虚线                                            -->
     <!-- 3. 核心引擎 (core/script.js) 读取上述数据并统一渲染                           -->
-    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js?v=260922.1220) -->
+    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js?v=260923.1217) -->
     <!-- ========================================================================== -->
     <!-- 折线倒角几何算法 (引擎与 Drunk 编辑模式共用，必须早于 core/script.js) -->
-    <script src="core/path-geometry.js?v=260915.1930"></script>
+    <script src="core/path-geometry.js?v=260923.1217"></script>
     <!-- 车站图元模板与尺寸 (引擎与 Drunk 编辑模式共用，必须早于 core/script.js) -->
-    <script src="core/station-icons.js?v=260915.1930"></script>
+    <script src="core/station-icons.js?v=260923.1217"></script>
     <!-- 城市注册总线与基础元数据 -->
-    <script src="city/data.js?v=260915.1930"></script>
+    <script src="city/data.js?v=260923.1217"></script>
     <!-- 车站信息板模块注册与渲染引擎 (多城市通用) -->
-    <script src="core/station-board.js?v=260915.1930"></script>
+    <script src="core/station-board.js?v=260923.1217"></script>
     <!-- 动态按序加载当前激活城市的专属业务与全套数据文件 (根据 URL ?city= 或 LocalStorage 判定) -->
     <script>
         (function () {
@@ -286,20 +297,20 @@
         })();
     </script>
     <!-- 核心地图渲染引擎 -->
-    <script type="module" src="core/script.js?v=260915.1930"></script>
+    <script type="module" src="core/script.js?v=260923.1217"></script>
     <!-- 辅助面板逻辑 -->
-    <script src="core/help.js?v=260915.1930"></script>
-    <script src="core/settings.js?v=260915.1930"></script>
+    <script src="core/help.js?v=260923.1217"></script>
+    <script src="core/settings.js?v=260923.1217"></script>
     <script>
         // 动态加载公告与运营通知系统
         (function () {
             var script = document.createElement('script');
-            script.src = "core/notice.js?v=260915.1930&t=" + Date.now();
+            script.src = "core/notice.js?v=260923.1217&t=" + Date.now();
             document.body.appendChild(script);
         })();
     </script>
     <!-- CGoUI Web Components 基础组件库 -->
-    <script type="module" src="core/cgo-ui.js?v=260922.1220"></script>
+    <script type="module" src="core/cgo-ui.js?v=260923.1217"></script>
     <script>
         // 图片加载完毕后添加 loaded 类，配合 CSS 实现平滑淡入
         document.addEventListener('DOMContentLoaded', function () {

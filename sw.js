@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260923.1600';
+const CACHE_NAME = 'cgo-openmap-v260923.1640';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -31,6 +31,24 @@ const ASSETS_TO_CACHE = [
     './city-editor/index.html',
     './city-editor/css/editor.css',
     './city-editor/js/editor.js',
+    // 编辑器示例工程（sample/cityedit_sample.json）引用的线路徽标模板
+    './assets/svg/icon@bh.svg',
+
+    // Drunk 转换工作台与城市编辑模式 (drunk)
+    // 注：drunk/tools/selfcheck.js 是 Node 端自检脚本，浏览器不会请求，故不预缓存
+    './drunk/index.html',
+    './drunk/css/drunk.css',
+    './drunk/js/drunk_logger.js',
+    './drunk/js/drunk_sanitizer.js',
+    './drunk/js/city_project_io.js',
+    './drunk/js/city_knowledge_matcher.js',
+    './drunk/js/pdf_vector_extractor.js',
+    './drunk/js/deepseek_vision.js',
+    './drunk/js/vision_detector.js',
+    './drunk/js/ocr_align_solver.js',
+    './drunk/js/topology_tracer.js',
+    './drunk/js/openmap_codegen.js',
+    './drunk/js/drunk_pipeline.js',
 
     // 样式表
     './css/style.css',
@@ -253,7 +271,6 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/data_legend.js',
     './city/fuzhou/data_timetable.js',
     './city/fuzhou/staname.csv',
-    './city/fuzhou/assets/fuzhou_waters.svg',
     './city/fuzhou/assets/fuzhou_sea.svg',
 
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
@@ -270,11 +287,12 @@ const ASSETS_TO_CACHE = [
     './assets/svg/icon@lg.svg',
     './assets/svg/icon@xha.svg',
 
+    // 福州线路徽标
+    './assets/svg/icon@fz_BE.svg',
+
     // 图标与清单素材
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',
-    './assets/icons/location.png',
-    './assets/icons/search.png',
     './assets/icons/mapicon.png',
     './assets/icons/mapicon2.png',
     './assets/icons/beian.png',

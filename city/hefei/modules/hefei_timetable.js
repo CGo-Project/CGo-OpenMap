@@ -43,7 +43,7 @@
 
             return `
                 <div style="margin:8px 0; padding:8px 10px; background:var(--card-sub-bg); border-radius:6px; font-size:11px; line-height:1.45;">
-                    <div style="font-weight:600; color:var(--text-main); margin-bottom:4px; display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="clock" size="13"></cgo-icon><span>首末班车</span></div>
+                    <div style="font-weight:600; color:var(--text-main); margin-bottom:4px; display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="time" size="13"></cgo-icon><span>首末班车</span></div>
                     <div style="color:var(--text-light); margin-bottom:6px;">周一至周四 / 周五至周日</div>
                     ${rows}
                 </div>

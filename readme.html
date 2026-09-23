@@ -27,14 +27,14 @@
     </script>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260922.1220">
-    <script type="module" src="core/cgo-ui.js?v=260922.1220"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260923.1217">
+    <script type="module" src="core/cgo-ui.js?v=260923.1217"></script>
 
     <!-- 仅引用本地 css/ 样式表以保障项目独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260922.1220">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260922.1220">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260922.1220">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260922.1220">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260923.1217">
 
     <style>
         /* Web Components 未注册前优雅占位，防闪烁 */
@@ -494,27 +494,26 @@
             opacity: 0.85;
         }
 
-        /* 移动端/异形屏顶部状态栏与信号栏实色安全区保护层 */
+        /* 移动端/异形屏顶部状态栏保护层：状态栏区实色，下方渐变消融 */
         .mobile-status-bar-fill {
             position: fixed;
-            top: -100px;
+            top: 0;
             left: 0;
             right: 0;
-            height: calc(100px + constant(safe-area-inset-top, 0px));
-            height: calc(100px + env(safe-area-inset-top, 0px));
-            background-color: var(--bg-color, #f8f9fa);
+            height: calc(constant(safe-area-inset-top, 0px) + 16px);
+            height: calc(env(safe-area-inset-top, 0px) + 16px);
+            background: linear-gradient(
+                to bottom,
+                var(--bg-color, #f8f9fa) constant(safe-area-inset-top, 0px),
+                transparent calc(constant(safe-area-inset-top, 0px) + 16px)
+            );
+            background: linear-gradient(
+                to bottom,
+                var(--bg-color, #f8f9fa) env(safe-area-inset-top, 0px),
+                transparent calc(env(safe-area-inset-top, 0px) + 16px)
+            );
             z-index: 50001;
             pointer-events: none;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root:not([data-theme='light']) .mobile-status-bar-fill {
-                background-color: var(--bg-color, #1a1a1a);
-            }
-        }
-
-        [data-theme='dark'] .mobile-status-bar-fill {
-            background-color: var(--bg-color, #1a1a1a);
         }
 
         /* 官方社群交流卡片 */
@@ -767,7 +766,7 @@
                 <div class="feature-card" style="border-color: var(--primary-color);">
                     <div class="feature-card-header">
                         <div class="feature-emblem" style="background: var(--primary-color); color: #fff;">
-                            <span style="font-size: 18px;">🍺</span>
+                            <cgo-icon name="drunk" size="20"></cgo-icon>
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; flex: 1;">
                             <h3 class="feature-title">Drunk 智能转换系统</h3>
@@ -797,8 +796,9 @@
                     </div>
                 </div>
                 <div class="port-banner-actions">
-                    <a href="./drunk/index.html" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台">
-                        <span>🍺 Drunk 智能转换 (测试版)</span>
+                    <a href="./drunk/index.html" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <cgo-icon name="drunk" size="14"></cgo-icon>
+                        <span>Drunk 智能转换 (测试版)</span>
                         <cgo-icon name="chevron-right" size="13"></cgo-icon>
                     </a>
                     <a href="./CONTRIBUTING.md" target="_blank" class="btn btn-info">
@@ -889,7 +889,7 @@
         </div>
     </footer>
 
-    <script src="core/tool-theme.js?v=260922.1220"></script>
+    <script src="core/tool-theme.js?v=260923.1217"></script>
     <script>
         document.getElementById('backBtn')?.addEventListener('click', function () {
             if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {

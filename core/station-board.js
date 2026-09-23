@@ -566,15 +566,12 @@
                 });
             }
 
-            // 5. 移动端展开/收起按钮
-            const expandBtn = infoPanel.querySelector('.panel-expand-btn');
-            if (expandBtn && typeof helpers.toggleMobilePanelSize === 'function') {
-                expandBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    helpers.toggleMobilePanelSize(station);
-                });
-                if (document.body.classList.contains('mobile-panel-expanded') && typeof helpers.updateExpandIcon === 'function') {
-                    helpers.updateExpandIcon(expandBtn, true);
+            // 5. 移动端抽屉把手 + 三档拖拽系统
+            if (window.innerWidth <= 640) {
+                if (typeof helpers.initMobileSheetDrag === 'function') {
+                    helpers.initMobileSheetDrag();
+                } else if (typeof initMobileSheetDrag === 'function') {
+                    initMobileSheetDrag();
                 }
             }
 
@@ -597,6 +594,10 @@
             if (typeof helpers.initPanelDrag === 'function') {
                 helpers.initPanelDrag();
             }
+            // 将 initMobileSheetDrag 加入 helpers 以支持新版本的模块调用
+            if (window.innerWidth <= 640 && typeof helpers.initMobileSheetDrag !== 'function') {
+                if (typeof initMobileSheetDrag === 'function') initMobileSheetDrag();
+            }
         }
     };
 
@@ -613,16 +614,13 @@
         slot: 'header',
         order: 10,
         render(context) {
-            const expandBtnHtml = (window.innerWidth <= 640)
-                ? `<button class="panel-expand-btn" title="展开/收起">
-                     <cgo-icon name="expand-less" size="18"></cgo-icon>
-                   </button>`
-                : '';
+            // 把手在移动端展示，由 CSS 控制：桌面端隐藏
+            const grabberHtml = `<div class="sheet-grabber"><span class="sheet-grabber-bar"></span></div>`;
             return `
                 <button class="panel-close-btn" title="关闭面板">
                     <cgo-icon name="close" size="24"></cgo-icon>
                 </button>
-                ${expandBtnHtml}
+                ${grabberHtml}
             `;
         }
     });

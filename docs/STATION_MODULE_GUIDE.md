@@ -71,7 +71,7 @@ window.StationBoard.registerModule({
         // 返回符合 HTML 标准的字符串
         return `
             <div class="my-module-box">
-                <div class="my-module-title" style="display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="location" size="14"></cgo-icon><span>${station.cn}文化小贴士</span></div>
+                <div class="my-module-title" style="display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="tourist" size="14"></cgo-icon><span>${station.cn}文化小贴士</span></div>
                 <div class="my-module-desc">本站周边汇聚丰富的历史名胜。</div>
             </div>
         `;
@@ -120,7 +120,7 @@ window.StationBoard.registerModule({
     render({ station }) {
         return `
             <div style="margin:10px 0; padding:12px; background:var(--card-sub-bg); border-left:3px solid var(--primary-color); border-radius:6px; font-size:12px;">
-                <div style="font-weight:bold; color:var(--text-main); margin-bottom:6px; display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="location" size="14"></cgo-icon><span>周边文旅与名胜</span></div>
+                <div style="font-weight:bold; color:var(--text-main); margin-bottom:6px; display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="tourist" size="14"></cgo-icon><span>周边文旅与名胜</span></div>
                 <div style="color:var(--text-light); line-height:1.5;">${station.culturalSpots}</div>
             </div>
         `;
@@ -138,7 +138,7 @@ window.StationBoard.registerModule({
     render({ station, lineInfo }) {
         return `
             <div style="margin:8px 0; padding:8px 10px; background:var(--card-sub-bg); border-radius:6px; font-size:11px;">
-                <div style="font-weight:600; color:var(--text-main); margin-bottom:4px; display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="clock" size="14"></cgo-icon><span>运营时刻表</span></div>
+                <div style="font-weight:600; color:var(--text-main); margin-bottom:4px; display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="time" size="14"></cgo-icon><span>运营时刻表</span></div>
                 <div style="display:flex; justify-content:space-between; color:var(--text-light);">
                     <span>首班车：05:30（开往终点站）</span>
                     <span>末班车：23:15</span>

@@ -489,7 +489,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 20px 50px 20px 20px;
+    padding: 20px 52px 20px 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
     --data1: transparent;
@@ -497,8 +497,9 @@ body {
 }
 
 .header-name-group {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     min-width: 0;
+    overflow: hidden;
 }
 
 .panel-cn-name {
@@ -508,6 +509,8 @@ body {
     letter-spacing: 1px;
     line-height: 1.2;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: inherit !important;
 }
 
@@ -519,6 +522,8 @@ body {
     margin-bottom: 0;
     line-height: 1.2;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .panel-badges {
@@ -526,8 +531,9 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-left: auto;
-    margin-right: 0px;
+    margin-left: 10px;
+    /* 为关闭按钮（32px宽 + right:10px）留出足够空间，避免重叠 */
+    margin-right: 0;
 }
 
 .line-badge {
@@ -569,6 +575,16 @@ body {
     color: #fff;
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
+}
+
+/* 抽屉把手：默认隐藏，仅在移动端媒体查询内显示 */
+.sheet-grabber {
+    display: none;
+}
+
+/* 顶部颜色填充层：默认隐藏 */
+.mobile-top-bar-backdrop {
+    display: none;
 }
 
 .panel-body {
@@ -1502,44 +1518,172 @@ body {
     z-index: 10;
 }
 
-/* 移动端特殊处理 */
+/* ============================================================
+   移动端三档抽屉面板系统 (max-width: 640px)
+   三档：收起(panel-sheet-collapsed) / 半屏(mobile-split-active默认) / 全屏(mobile-panel-expanded)
+   ============================================================ */
 @media (max-width: 640px) {
+
+    /* ── 全局底层基座：面板打开时的布局属性（不含 display，由 JS 内联样式控制显示/隐藏） ── */
     #info-panel {
-        max-height: 80vh;
-        /* 移动端底部弹窗 */
-        top: auto !important;
-        bottom: 0;
-        left: 0;
-        width: 100%;
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
         height: auto !important;
-        min-height: 0;
-        border-radius: 12px 12px 0 0;
-        /* ransform: translateZ(0); Removed to fix position: fixed child */
+        min-height: 0 !important;
+        max-height: none !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.15) !important;
+        overflow: visible !important;
+        flex-direction: column !important;
+        z-index: 2000 !important;
+        touch-action: none;
+        /* 档位切换动画 */
+        transition: top 0.38s cubic-bezier(0.22, 1, 0.36, 1) !important;
     }
 
+    /* ── 档位 1：半屏（默认档，mobile-split-active） ── */
+    body.mobile-split-active #info-panel {
+        display: flex !important;
+        top: 40dvh !important;
+    }
+
+    /* ── 档位 0：收起（仅露把手+头部） ── */
+    body.panel-sheet-collapsed #info-panel {
+        display: flex !important;
+        /* 90px = 20px把手感应区 + 70px panel-header min-height，完整显示标题区 */
+        top: calc(100dvh - 90px - env(safe-area-inset-bottom, 0px)) !important;
+        overflow: hidden !important;
+    }
+
+    /* 收起档且未在拖拽中：隐藏 body/tabs/footer，只露出 panel-header
+       拖拽开始时 panel-sheet-dragging 类出现，:not() 失效，自动恢复原生 display */
+    body.panel-sheet-collapsed:not(.panel-sheet-dragging) #info-panel .panel-body,
+    body.panel-sheet-collapsed:not(.panel-sheet-dragging) #info-panel .panel-tabs-container,
+    body.panel-sheet-collapsed:not(.panel-sheet-dragging) #info-panel .panel-footer {
+        display: none !important;
+    }
+
+    /* ── 档位 2：全屏 ── */
     body.mobile-panel-expanded #info-panel {
-        top: auto !important;
-        bottom: 0 !important;
-        height: auto !important;
-        min-height: calc(100% - 60px) !important;
-        max-height: calc(100% - 60px) !important;
-        width: 100% !important;
-        left: 0 !important;
+        display: flex !important;
+        top: calc(env(safe-area-inset-top, 0px) + 60px) !important;
+        border-radius: 0 !important;
+        transition: top 0.38s cubic-bezier(0.22, 1, 0.36, 1) !important;
+    }
+
+    /* ── 拖拽进行中：禁用 CSS 过渡，恢复 overflow（JS 用 setProperty important 控制 top）── */
+    body.panel-sheet-dragging #info-panel {
+        transition: none !important;
+        overflow: visible !important;
+    }
+
+    /* ── 抽屉拖拽把手 ── */
+    .sheet-grabber {
+        display: flex !important;
+        justify-content: center;
+        align-items: center;
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 72px;
+        height: 20px;
+        cursor: grab;
+        touch-action: none;
+        z-index: 2002;
+        background: transparent;
+        flex-shrink: 0;
+    }
+
+    .sheet-grabber-bar {
+        width: 40px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ── 旧展开按钮在移动端隐藏（由把手和三档系统取代） ── */
+    .panel-expand-btn {
+        display: none !important;
+    }
+
+    /* ── 面板头部在移动端圆角处理 ── */
+    body.mobile-split-active .panel-header,
+    body.panel-sheet-collapsed .panel-header {
+        border-radius: 20px 20px 0 0 !important;
+    }
+    body.mobile-panel-expanded .panel-header {
         border-radius: 0 !important;
     }
 
-    /* Mobile Fixed Footer */
+    /* ── 面板内容体 ── */
+    #info-panel .panel-body {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* ── 面板底部工具栏 ── */
     #info-panel .panel-footer {
-        position: fixed;
+        flex-shrink: 0;
+        position: sticky;
         bottom: 0;
         left: 0;
         width: 100%;
         margin-top: 0;
         z-index: 2002;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
     }
 
-    #info-panel .panel-body {
-        padding-bottom: 80px !important;
+    /* ── 顶部颜色填充层（全屏落定后填充信号栏背景） ── */
+    .mobile-top-bar-backdrop {
+        display: block !important;
+        visibility: hidden !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: calc(env(safe-area-inset-top, 0px) + 60px) !important;
+        background-color: var(--panel-header-bg, #00263b) !important;
+        pointer-events: none !important;
+        z-index: 11600 !important;
+        will-change: transform, opacity;
+        /* 收起/拖拽中：从下向上收拢 */
+        transform-origin: bottom center !important;
+        transform: scaleY(0) !important;
+        opacity: 0 !important;
+        transition:
+            transform 180ms cubic-bezier(0.4, 0, 1, 1),
+            opacity 140ms ease-out,
+            background-color 200ms ease,
+            visibility 0s linear 180ms !important;
+    }
+
+    /* 全屏落定且无拖拽：从下向上伸展填充 */
+    body.mobile-panel-docked-full:not(.panel-sheet-dragging) .mobile-top-bar-backdrop {
+        visibility: visible !important;
+        transform: scaleY(1) !important;
+        opacity: 1 !important;
+        transition:
+            transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 220ms ease,
+            background-color 200ms ease,
+            visibility 0s !important;
+    }
+
+    /* 移动端 badges 与关闭按钮间距：移动端面板时留出右侧空间 */
+    body.mobile-split-active .panel-badges,
+    body.mobile-panel-expanded .panel-badges,
+    body.panel-sheet-collapsed .panel-badges {
+        margin-right: 44px;
     }
 }
 
@@ -1555,7 +1699,7 @@ body {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
+    z-index: 99999 !important;
     display: none;
     backdrop-filter: blur(3px);
     animation: overlayFadeIn 0.2s ease-out;
@@ -1576,7 +1720,29 @@ body {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--divider);
+    z-index: 100000 !important;
     animation: settingsPopIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 全局对话框与遮罩层级保障：设置面板、关于面板、帮助对话框必须高于顶栏与浮动菜单栏 */
+#settings-overlay,
+#help-overlay,
+.help-overlay,
+.modal-overlay,
+.dialog-overlay,
+.swal-overlay,
+.swal2-container,
+.custom-modal-overlay,
+div[class*="overlay"],
+div[id*="overlay"] {
+    z-index: 99999 !important;
+}
+
+.settings-modal,
+.text-dialog,
+.help-dialog,
+.modal-dialog {
+    z-index: 100000 !important;
 }
 
 @keyframes settingsPopIn {
@@ -2303,33 +2469,6 @@ textarea {
         left: 20px !important;
     }
 
-    #settings-overlay {
-        z-index: 99999 !important;
-    }
-
-    #help-overlay,
-    .swal-overlay,
-    .custom-modal-overlay {
-        z-index: 99990 !important;
-    }
-
-    .settings-modal,
-    .text-dialog,
-    .help-dialog,
-    .modal-dialog {
-        z-index: 100000 !important;
-    }
-
-    #help-overlay,
-    #help-modal,
-    .modal-overlay,
-    .dialog-overlay,
-    .swal-overlay,
-    .swal2-container,
-    div[class*="overlay"],
-    div[id*="overlay"] {
-        z-index: 99999 !important;
-    }
 
     .panel-expand-btn {
         display: none !important;
@@ -2448,8 +2587,9 @@ textarea {
 
 /* 
    =========================================
-   19. 移动端专用布局 (Mobile Layout)
-   ========================================= 
+   19. 移动端专用布局补充 (Mobile Layout Supplements)
+   注：面板主体三档系统在上方 section 14 已定义
+   =========================================
 */
 @media (max-width: 640px) {
     .legend-close-btn {
@@ -2466,73 +2606,41 @@ textarea {
         display: none;
     }
 
-    body.mobile-split-active #info-panel {
-        display: flex !important;
-        flex-direction: column;
-        position: fixed;
-        top: 40% !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 60dvh !important;
-        border-radius: 20px 20px 0 0 !important;
-        box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.15);
-        z-index: 2000;
-        background-color: var(--card-bg) !important;
-        transition: top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        overflow: visible !important;
-    }
-
-    body.mobile-split-active .panel-header {
-        border-radius: 20px 20px 0 0 !important;
+    /* 移动端面板头部通用样式 */
+    body.mobile-split-active .panel-header,
+    body.mobile-panel-expanded .panel-header,
+    body.panel-sheet-collapsed .panel-header {
         min-height: 70px;
-        padding: 15px 45px 15px 20px;
+        padding: 15px 52px 15px 20px;
         align-items: center;
         justify-content: flex-start;
         background-color: var(--panel-header-bg) !important;
         color: var(--panel-header-text) !important;
     }
 
-    body.mobile-split-active .header-name-group {
-        flex: 0 1 auto;
-        margin-right: 10px;
-        min-width: 0;
-    }
-
-    body.mobile-split-active .panel-cn-name {
+    body.mobile-split-active .panel-cn-name,
+    body.mobile-panel-expanded .panel-cn-name {
         font-size: 20px;
     }
 
-    body.mobile-split-active .panel-en-name {
+    body.mobile-split-active .panel-en-name,
+    body.mobile-panel-expanded .panel-en-name {
         font-size: 12px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
 
-    body.mobile-split-active .panel-badges {
-        flex-shrink: 0;
-        justify-content: flex-start;
-        min-height: auto;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-right: 0px;
-    }
-
-    body.mobile-split-active .line-badge {
-        height: 30px;
-        width: auto;
-    }
-
-    body.mobile-split-active .panel-close-btn {
+    body.mobile-split-active .panel-close-btn,
+    body.mobile-panel-expanded .panel-close-btn,
+    body.panel-sheet-collapsed .panel-close-btn {
         display: flex;
         align-items: center;
         justify-content: center;
         position: absolute;
-        right: 15px;
+        right: 12px;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 24px;
         color: rgba(255, 255, 255, 0.9);
         background: rgba(255, 255, 255, 0.15);
         border-radius: 50%;
@@ -2542,17 +2650,10 @@ textarea {
         cursor: pointer;
     }
 
-    body.mobile-split-active #info-panel .panel-body {
-        flex: 1;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 120px !important;
-        overscroll-behavior: contain;
-    }
-
-    body.mobile-split-active #info-panel .panel-footer {
-        flex-shrink: 0;
-        border-top: 1px solid var(--divider) !important;
+    body.mobile-split-active .line-badge,
+    body.mobile-panel-expanded .line-badge {
+        height: 30px;
+        width: auto;
     }
 
     body.mobile-split-active .special-br {
@@ -2561,60 +2662,6 @@ textarea {
 
     body.mobile-split-active .special-br::before {
         content: "";
-    }
-
-
-    body.mobile-split-active #info-panel .panel-footer {
-        flex-shrink: 0;
-        border-top: 1px solid var(--divider) !important;
-        padding-bottom: calc(25px + env(safe-area-inset-bottom)) !important;
-    }
-
-    body.mobile-split-active .panel-expand-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: absolute;
-        top: -5px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60px;
-        height: 20px;
-        border-radius: 10px;
-        background-color: var(--ctrl-hover);
-        color: var(--text-main);
-        border: none !important;
-        box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.15);
-        padding: 0;
-        cursor: pointer;
-        z-index: 2001;
-        transition: background-color 0.2s;
-    }
-
-    body.mobile-split-active .panel-expand-btn svg {
-        width: 16px;
-        height: 16px;
-        opacity: 0.9;
-    }
-
-    body.mobile-panel-expanded #info-panel {
-        top: 60px !important;
-        height: calc(100dvh - 60px) !important;
-        border-radius: 0 !important;
-    }
-
-    body.mobile-panel-expanded .panel-header {
-        border-radius: 0 !important;
-    }
-
-    body.mobile-split-active .panel-expand-btn::after {
-        content: "";
-        position: absolute;
-        top: -15px;
-        bottom: -55px;
-        left: -400px;
-        right: -80px;
-        cursor: pointer;
     }
 
     .settings-row.desktop-only {

@@ -76,6 +76,8 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
 "guangzhou": {
     id: "guangzhou",
     name: "广州",
+    themeColor: null, // 城市专属主题色 (留空使用默认蓝色)
+    svglogo: null,    // 城市图标：优先设为 null 读取 CGoUI 官方图标；若未收录才填入自定义 SVG
     folder: "./city/guangzhou",
     mainLogic: "./city/guangzhou/guangzhou.js",
     center: { x: 900, y: 650 },
@@ -89,6 +91,12 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
     ]
 }
 ```
+
+> [!IMPORTANT]
+> **🎨 城市图标核心规范（参与者必须遵循）**：
+> - **原则**：**城市图标尽量不使用 SVG，优先使用 CGoUI 的内置图标**。
+> - **优先使用 CGoUI 图标**：CGoUI 现已收录 42+ 个主要城市（北京、上海、广州、深圳、天津、重庆、成都、武汉、南京、杭州、西安、郑州、长沙、香港、台北等）的官方单色矢量标志。只要 CGoUI 库中已有该城市，`svglogo` 字段**必须配置为 `null` 或留空**，系统将自动调用 `<cgo-icon name="{city_id}" size="22">`，实现原生极速渲染和深浅色模式自动适配。
+> - **降级使用自定义 SVG**：**仅当且只有**在 CGoUI 官方图标库中确实未收录该城市轨道交通标志时（例如悉尼等海外城市或新建城轨），才允许在 `svglogo` 中填写自定义 SVG 代码字符串；若无可用 SVG 亦可留空回退为默认列车图标。
 
 ### 第三步：更新 Service Worker、本地验证并提交 Pull Request
 1. **更新离线缓存**：打开 `sw.js`，递增 `CACHE_NAME` 版本号，并将新城市资源文件路径加入 `ASSETS_TO_CACHE` 清单中。
@@ -110,6 +118,7 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
 ```markdown
 ### 提交内容自查
 - [ ] 严格遵守纯前端大前提：除监控车站/网页等场景允许破例外，其他所有主要地图功能均为纯原生前端实现，未引入任何 Node.js 后端、PM2 守护、React/Vue 框架或打包编译器
+- [ ] 城市图标规范：城市图标尽量不使用自定义 SVG，优先使用 CGoUI 内置城市图标（`svglogo: null`）；仅在 CGoUI 未收录时才配置自定义 SVG
 - [ ] 已在 `city/{city_id}/` 下完整添加城市数据文件
 - [ ] 若包含自定义车站信息板模块（文旅/时刻/接驳/设施等），已在 `city/{city_id}/modules/` 下编写并于 `{city}.js` 中同步引入
 - [ ] 已在 `city/data.js` 中注册城市并填写 `maintainers` 主理人信息

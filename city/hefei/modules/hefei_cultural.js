@@ -124,7 +124,7 @@
                             font-weight: bold;
                             color: var(--text-main);
                         ">
-                            <cgo-icon name="location" size="14" style="color: var(--primary-color, #e71f24);"></cgo-icon>
+                            <cgo-icon name="tourist" size="14" style="color: var(--primary-color, #e71f24);"></cgo-icon>
                             <span>历史文化与名胜指引</span>
                         </div>
                         <div style="
