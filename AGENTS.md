@@ -453,6 +453,10 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
   - 外部链接 / 跳转指引：`<cgo-icon name="external" size="13"></cgo-icon>` / `<cgo-icon name="arrow-right" size="12"></cgo-icon>`
   - 校验通过 / 成功状态：`<cgo-icon name="check-circle" size="14"></cgo-icon>`
   - 警告提示 / 在建工程：`<cgo-icon name="warning" size="14"></cgo-icon>`
+- **城市官方徽标（City Logo）规范**：
+  - **核心准则**：在多城市注册（`city/data.js`）与首页城市卡片中，**城市图标尽量不使用自定义 SVG，优先使用 CGoUI 内置城市图标**。
+  - CGoUI 现已内置 42+ 个城市轨道交通官方单色矢量标志（如 `beijing`, `shanghai`, `guangzhou`, `shenzhen`, `chengdu`, `chongqing`, `wuhan`, `hangzhou`, `nanjing`, `xian`, `hongkong`, `taipei` 等）。
+  - 若城市已在 CGoUI 中收录，`svglogo` 必须设为 `null`；只有在 CGoUI 库中确实没有该城市图标时，才允许在 `svglogo` 中使用自定义 SVG 字符串。
 
 ---
 

@@ -29,14 +29,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260923.1129">
-    <script type="module" src="core/cgo-ui.js?v=260923.1129"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260923.1217">
+    <script type="module" src="core/cgo-ui.js?v=260923.1217"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260923.1129">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260923.1129">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260923.1129">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260923.1129">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260923.1217">
 
     <style>
         html {
@@ -622,8 +622,8 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=260923.1129"></script>
-    <script src="core/tool-theme.js?v=260923.1129"></script>
+    <script src="city/data.js?v=260923.1217"></script>
+    <script src="core/tool-theme.js?v=260923.1217"></script>
 
     <!-- 动态城市渲染与数据绑定 -->
     <script>
@@ -639,9 +639,16 @@
             window.location.href = './main.html?city=' + encodeURIComponent(cityId);
         };
         (function () {
-            // 规范化并包装城市徽标；优先使用 CGoUI 官方原生收录城市图标，缺失时回退自定义 SVG 或通用列车图标。
+            // 规范化并包装城市徽标；优先使用 CGoUI 官方原生收录城市图标（已内置 42+ 座城市），缺失时回退自定义 SVG 或通用列车图标。
             const CGO_BUILTIN_CITY_ICONS = new Set([
-                'beijing', 'changchun', 'dalian', 'fuzhou', 'hefei', 'qingdao', 'shanghai', 'shenyang'
+                'beijing', 'changchun', 'dalian', 'fuzhou', 'hefei', 'qingdao', 'shanghai', 'shenyang',
+                'changsha', 'changzhou', 'chengdu', 'chongqing', 'dongguan', 'foshan', 'guangzhou', 'guiyang',
+                'hangzhou', 'harbin', 'hongkong', 'jinan', 'kaohsiung', 'kunming', 'lanzhou', 'nanchang',
+                'nanjing', 'nanning', 'nantong', 'ningbo', 'shijiazhuang', 'shenzhen', 'suzhou', 'taipei',
+                'taiyuan', 'taoyuan', 'tianjin', 'wenzhou', 'wuhan', 'wuhu', 'wuxi', 'xiamen',
+                'xian', 'zhengzhou',
+                // 常用别名兼容
+                'xianggang', 'taibei', 'gaoxiong', 'haerbin', 'xi-an'
             ]);
 
             function formatCityLogoSvg(cityOrSvg) {
@@ -654,7 +661,16 @@
                 } else if (typeof cityOrSvg === 'string') {
                     rawSvg = cityOrSvg;
                 }
-                if (cityId && CGO_BUILTIN_CITY_ICONS.has(cityId)) {
+                const hasBuiltin = (name) => {
+                    if (!name) return false;
+                    if (CGO_BUILTIN_CITY_ICONS.has(name)) return true;
+                    if (window.CGO && typeof window.CGO.iconList === 'function') {
+                        return window.CGO.iconList().includes(name);
+                    }
+                    return false;
+                };
+
+                if (cityId && hasBuiltin(cityId)) {
                     return `<cgo-icon name="${cityId}" size="22"></cgo-icon>`;
                 }
                 if (!rawSvg || typeof rawSvg !== 'string' || !rawSvg.trim()) {

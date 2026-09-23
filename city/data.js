@@ -14,7 +14,7 @@
  * ==============================================================================
  * 当你需要为新城市（如上海、广州、深圳、成都、武汉等）制作线路图时：
  * 1. 在 `city/` 目录下创建以城市拼音/英文命名的新文件夹（例如 `city/shanghai/`）；
- * 2. 在下方 `CITY_REGISTRY` 对象中添加一条新城市配置记录（包含 id, name, center, mapSize, registerDate, maintainers 等）；
+ * 2. 在下方 `CITY_REGISTRY` 对象中添加一条新城市配置记录（包含 id, name, center, mapSize, registerDate, maintainers 等；城市图标尽量不使用 SVG，优先使用 CGoUI 内置官方图标并设 `svglogo: null`，未收录时方填自定义 SVG）；
  * 3. 在 `city/{city_id}/` 下编写对应的业务与数据文件（参考 `city/beijing/` 规范）；
  * 4. 在 `main.html` 底部引入新城市脚本，或通过 `main.html?city={city_id}` 动态访问；
  * 5. 在 `manifest.json` 的 `shortcuts` 数组中添加该城市的快捷直达方式；
