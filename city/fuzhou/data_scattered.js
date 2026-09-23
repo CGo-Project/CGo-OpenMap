@@ -17,7 +17,7 @@ const SCATTERED_DATA = [
         y: 800,
         width: 2500,
         height: 1600,
-        opacity: 1,
+        opacity: 0.5,
         zIndex: 1
     },
 ];

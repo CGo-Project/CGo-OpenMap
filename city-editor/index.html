@@ -5,7 +5,7 @@
     <!-- ========================================================================== -->
     <!-- CGo OpenMap - 线路图在线编辑器 (city-editor)                                 -->
     <!-- 纯静态原生 Web 实现：SVG 直角坐标系画布 + 左侧工具栏 + 右侧属性面板            -->
-    <!-- 依赖：css/cgo_clr.css?v=260922.2353 主题变量、css/cgo_element.css?v=260922.2353 基础元素、core/cgo-ui.js?v=260922.2353  -->
+    <!-- 依赖：css/cgo_clr.css 主题变量、css/cgo_element.css 基础元素、core/cgo-ui.js  -->
     <!-- ========================================================================== -->
     <meta charset="UTF-8">
     <meta name="viewport"
@@ -37,11 +37,11 @@
     <title>CGo OpenMap - 线路图在线编辑器</title>
 
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=260922.2353">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=260922.2353">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=260922.2353">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=260922.2353">
-    <link rel="stylesheet" href="css/editor.css?v=260922.2353">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=260922.1944">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=260922.1944">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=260922.1944">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=260922.1944">
+    <link rel="stylesheet" href="css/editor.css?v=260922.1944">
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -271,6 +271,22 @@
                             </button>
                         </div>
                     </div>
+
+                    <div class="tool-group">
+                        <div class="tool-group-label">文本</div>
+                        <div class="tool-grid">
+                            <button class="tool-btn" data-tool="text" title="自由文本：在画布上点击放置一段注释文字，随后在右侧属性面板里编辑内容、字号、颜色、对齐与旋转">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <text x="20" y="19" text-anchor="middle" font-size="15" font-weight="700"
+                                            fill="currentColor">A</text>
+                                        <path d="M6 22 H34" stroke="currentColor" stroke-width="1.6" opacity="0.5" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">自由文本</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -313,6 +329,15 @@
                         <input type="color" id="line-color" value="#E4002B">
                         <input type="text" id="line-name" value="1号线" maxlength="16" title="线路名称">
                     </div>
+                    <div class="field-row">
+                        <label for="line-svg">线路徽标</label>
+                        <input type="text" id="line-svg" list="line-svg-list" maxlength="48"
+                            placeholder="自动（按线路名数字）"
+                            title="assets/svg/ 下的徽标模板文件名；留空表示按线路名中的数字自动选择（如 6号线 → icon@06.svg）">
+                        <datalist id="line-svg-list"></datalist>
+                    </div>
+                    <p class="side-hint" id="line-svg-hint"></p>
+                    <div class="line-badge-preview" id="line-badge-preview" aria-live="polite"></div>
                     <div class="btn-row">
                         <button class="side-btn" id="btn-add-line">
                             <cgo-icon name="add" size="14"></cgo-icon>
@@ -382,6 +407,7 @@
                         <g id="draft-layer"></g>
                         <g id="node-layer"></g>
                         <g id="label-layer"></g>
+                        <g id="text-layer"></g>
                         <g id="overlay-layer"></g>
                     </g>
                 </svg>
@@ -578,7 +604,9 @@
                         <label for="rl-dir">排列方向</label>
                         <select id="rl-dir">
                             <option value="h">水平（X 递增）</option>
+                            <option value="h-">水平反向（X 递减）</option>
                             <option value="v">垂直（Y 递增）</option>
+                            <option value="v-">垂直反向（Y 递减）</option>
                         </select>
                     </div>
                 </div>
@@ -609,8 +637,8 @@
     <!-- ========================================================================== -->
     <!-- 4. 脚本加载：CGoUI 图标组件库 + 编辑器主逻辑                                   -->
     <!-- ========================================================================== -->
-    <script type="module" src="../core/cgo-ui.js?v=260922.2353"></script>
-    <script src="js/editor.js?v=260922.2353"></script>
+    <script type="module" src="../core/cgo-ui.js?v=260922.1944"></script>
+    <script src="js/editor.js?v=260922.1944"></script>
 </body>
 
 </html>

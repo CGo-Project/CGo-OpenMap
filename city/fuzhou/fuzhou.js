@@ -11,7 +11,7 @@
     const FuzhouCity = {
         id: "fuzhou",
         name: "福州",
-        themeColor: "#d7000f",
+        themeColor: "#079445",
         searchCity: "福州",
         center: { x: 1250, y: 800 },
         defaultScale: 1.0,
@@ -74,7 +74,7 @@
         searchCity: FuzhouCity.searchCity,
         title: "CGo OpenMap - 福州轨道交通线路图",
         keywords: "CGo OpenMap, 福州, 轨道交通, 线路图",
-        description: "由 CGo OpenMap 线路图在线编辑器生成的福州轨道交通线路图。",
+        description: "尝试性的功能，使用线路编辑器直接制作的福州轨道交通线路图。",
         registerDate: "2026-09-16",
         status: "active",
         maintainers: [],
