@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260923.1217';
+const CACHE_NAME = 'cgo-openmap-v260923.1550';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -234,6 +234,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (福州)
     './city/fuzhou/fuzhou.js',
     './city/fuzhou/modules/fuzhou_timetable.js',
+    './city/fuzhou/modules/fuzhou_site_space.js',
     './city/fuzhou/modules/fuzhou_cultural.js',
     './city/fuzhou/stacard/script.js',
     './city/fuzhou/data_stations.js',
@@ -243,7 +244,9 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/data_notopen.js',
     './city/fuzhou/data_legend.js',
     './city/fuzhou/data_timetable.js',
+    './city/fuzhou/data_site_space.js',
     './city/fuzhou/staname.csv',
+    './city/fuzhou/amap_data.json',
     './city/fuzhou/assets/fuzhou_sea.svg',
 
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）

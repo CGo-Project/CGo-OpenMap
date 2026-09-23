@@ -24,7 +24,8 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {
-            stanameCsvUrl: "./city/fuzhou/staname.csv"
+            stanameCsvUrl: "./city/fuzhou/staname.csv",
+            amapDataUrl: "./city/fuzhou/amap_data.json"
         },
         getNavigationUrl(stationName) {
             return `https://uri.amap.com/search?keyword=${encodeURIComponent(`${stationName}(地铁站)`)}&city=${encodeURIComponent("福州")}`;
@@ -38,11 +39,16 @@
         },
         stacard: {
             script: "./city/fuzhou/stacard/script.js",
+            geoDataUrl: "./city/fuzhou/amap_data.json",
             basePath: "./city/fuzhou/stacard/",
             getRenderer: () => window.FuzhouStaCard || window.StaCard || null
         },
         async initStaCard(options = {}) {
-            return await this.stacard.getRenderer()?.init?.({ basePath: this.stacard.basePath, ...options });
+            return await this.stacard.getRenderer()?.init?.({
+                basePath: this.stacard.basePath,
+                geoDataUrl: this.stacard.geoDataUrl,
+                ...options
+            });
         },
         hasStaCard(stationId, lineId, stationInfo) {
             return Boolean(this.stacard.getRenderer()?.hasCard?.(stationId, lineId, stationInfo));
@@ -54,12 +60,27 @@
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
         },
         stationBoard: {
-            scripts: [],
+            scripts: [
+                "modules/fuzhou_timetable.js",
+                "modules/fuzhou_site_space.js"
+            ],
             modules: {
-                "stacard": { enabled: true, order: 10, targetTab: "line-tab" }
+                "stacard": { enabled: true, order: 10, targetTab: "line-tab" },
+                "fuzhou-line-timetable": { enabled: true, order: 22, targetTab: "line-tab" },
+                // 车站空间示意图与出入口是车站级资料（换乘站各线为同一张图），放在「车站信息」栏目
+                "fuzhou-station-space": { enabled: true, order: 15, targetTab: "station-info" }
             }
         }
     };
+
+    // 城市专属模块必须在核心引擎执行前同步加载（与青岛 / 北京做法一致）；
+    // data_timetable.js 由 main.html 统一加载，此处只补车站空间图数据。
+    if (typeof document !== "undefined" && typeof document.write === "function") {
+        const v = window.CGO_ASSET_VERSION || Date.now();
+        document.write('<scr' + 'ipt src="./city/fuzhou/data_site_space.js?v=' + v + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/fuzhou/modules/fuzhou_timetable.js?v=' + v + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/fuzhou/modules/fuzhou_site_space.js?v=' + v + '"><\/scr' + 'ipt>');
+    }
 
     window.FUZHOU_CITY = FuzhouCity;
     window.CURRENT_CITY = FuzhouCity;
