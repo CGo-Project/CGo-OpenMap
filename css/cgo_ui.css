@@ -542,13 +542,8 @@ body[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
 .header-island.glass-surface::after {
     display: none !important;
 }
-/* .glass-surface 自带 ::before 微光圈，header-island 自身 ::before 也有微光圈，防止叠加双轨重影 */
-.header-island.glass-surface::before {
-    /* header-island 的 ::before 优先，glass-surface 的 ::before 通过 isolation isolate 隔离，
-       此处明确覆盖 header-island 原始 ::before 即可，无需 display:none */
-    /* 保持 header-island::before 的双轴微光圈，glass-surface::before 在 cgo_element.css 中已定义，
-       两者都适用于同一元素时 CSS 只能有一个 ::before，因此无重叠问题 */
-}
+/* 说明：.glass-surface 与 header-island 作用于同一元素时，CSS 仅会解析单个 ::before 伪元素，
+   样式在 cgo_element.css 中通过 isolation isolate 隔离，无需额外覆盖 ::before 规则 */
 
 /* 单胶囊悬浮菜单栏（未拆分双岛时）在 liquid / blur 模式下的适配 */
 :root[glass-mode='liquid'][header-mode='floating'] .tool-header:not(:has(.header-island)),
