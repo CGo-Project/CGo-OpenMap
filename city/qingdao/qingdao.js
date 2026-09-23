@@ -125,10 +125,15 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
 
-        // 青岛不展示由线路示意图坐标推算出的“约 xx 米”。
-        // 核心会在调用本城市钩子前组装 relatedLinesInfo，因此只在城市侧
-        // 删除估算距离的 span；data_lines.js 中真实 distances 生成的“(xxxx米)”保留。
+        // 青岛不展示由线路示意图坐标自动推算出的“约 xx 米”。
+        // 但 data_lines.js 允许人工录入“约2700”这类近似站间距；这类数据应保留。
+        // 因此先判断相邻区间是否存在有效的显式 distances，再决定是否删除估算 span。
         handleLineMerge(station, relatedLinesInfo) {
+            const hasExplicitDistance = (dist) => {
+                if (dist === undefined || dist === null) return false;
+                const value = String(dist).trim();
+                return value !== "" && value !== "0" && value !== "?" && value !== "??";
+            };
             const stripEstimatedDistance = (html) => {
                 if (typeof html !== "string") return html;
                 return html.replace(
@@ -136,10 +141,56 @@
                     ""
                 );
             };
+            const explicitSides = (line, stationId) => {
+                const result = { prev: false, next: false };
+                if (!line || !stationId) return result;
 
+                if (line.hasbranch) {
+                    const groups = [
+                        { ids: line["stationIds-way1"] || [], dists: line["distances-way1"] || line.distances || [] },
+                        { ids: line["stationIds-way2"] || [], dists: line["distances-way2"] || [] }
+                    ];
+                    for (const group of groups) {
+                        const idx = group.ids.indexOf(stationId);
+                        if (idx === -1) continue;
+                        if (idx > 0) result.prev = hasExplicitDistance(group.dists[idx - 1]);
+                        if (idx < group.ids.length - 1) result.next = hasExplicitDistance(group.dists[idx]);
+                        return result;
+                    }
+                    return result;
+                }
+
+                const ids = line.stationIds || [];
+                const dists = line.distances || [];
+                const distsReverse = line.distances2;
+                const idx = ids.indexOf(stationId);
+                if (idx === -1) return result;
+
+                if (line.isLoop === true && ids.length) {
+                    const prevIdx = (idx - 1 + ids.length) % ids.length;
+                    const prevDist = (distsReverse && distsReverse[prevIdx] !== undefined)
+                        ? distsReverse[prevIdx] : dists[prevIdx];
+                    result.prev = hasExplicitDistance(prevDist);
+                    result.next = hasExplicitDistance(dists[idx]);
+                    return result;
+                }
+
+                if (idx > 0) {
+                    const prevDist = (distsReverse && distsReverse[idx - 1] !== undefined)
+                        ? distsReverse[idx - 1] : dists[idx - 1];
+                    result.prev = hasExplicitDistance(prevDist);
+                }
+                if (idx < ids.length - 1) result.next = hasExplicitDistance(dists[idx]);
+                return result;
+            };
+
+            const allLines = (typeof window !== "undefined" && Array.isArray(window.linesData))
+                ? window.linesData : [];
             (relatedLinesInfo || []).forEach((info) => {
-                info.prev = stripEstimatedDistance(info.prev);
-                info.next = stripEstimatedDistance(info.next);
+                const line = allLines.find((item) => item.id === info.id);
+                const explicit = explicitSides(line, station?.id);
+                if (!explicit.prev) info.prev = stripEstimatedDistance(info.prev);
+                if (!explicit.next) info.next = stripEstimatedDistance(info.next);
             });
         },
         maintainers: [
