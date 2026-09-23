@@ -2,6 +2,8 @@
  * CGo OpenMap - 沈阳报站目的地指引模块
  *
  * 只展示已整理的报站提示目的地，不补充出口、距离或步行时间等未确认信息。
+ * 卡片 DOM 走共享层 `city/shenyang/shared/tip-card.js`（与上游官方模板一致），
+ * 本模块只维护目的地字典与命中判定。
  */
 (function () {
     const SHENYANG_DESTINATION_GUIDE = {
@@ -34,6 +36,12 @@
             || [];
     }
 
+    const tipCard = window.CGoTipCard;
+    if (!tipCard) {
+        console.warn("[shenyang_cultural] 共享层 CGoTipCard 未加载，报站目的地指引未注册");
+        return;
+    }
+
     if (window.StationBoard?.registerModule) {
         window.StationBoard.registerModule({
             id: "shenyang-cultural-destinations",
@@ -50,14 +58,12 @@
                     .map((destination) => escapeHtml(destination))
                     .join("、");
 
-                return `
-                    <div class="shenyang-cultural-destination-card">
-                        <cgo-icon name="info" size="18" class="shenyang-cultural-destination-icon"></cgo-icon>
-                        <div class="shenyang-cultural-destination-text">
-                            去往<strong>${destinationHtml}</strong>的乘客，请从该站下车
-                        </div>
-                    </div>
-                `;
+                return tipCard.render({
+                    title: "报站目的地指引",
+                    icon: "location",
+                    iconSize: 14,
+                    body: `去往<strong>${destinationHtml}</strong>的乘客，请从该站下车`
+                });
             }
         });
     }

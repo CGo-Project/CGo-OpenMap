@@ -98,7 +98,7 @@
         stacard: {
             script: "./city/dalian/stacard/script.js",
             geoDataUrl: "./city/dalian/amap_data.json",
-            getRenderer: () => window.DalianStaCard || window.StaCard || null
+            getRenderer: () => window.CGoStaCard || null
         },
         getNavigationUrl(stationName) {
             return `https://uri.amap.com/search?keyword=${encodeURIComponent(`${stationName}(地铁站)`)}&city=${encodeURIComponent("大连")}`;
@@ -136,7 +136,7 @@
                 "header-title": { enabled: true, order: 20 },
                 "header-badges": { enabled: true, order: 30 },
                 "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
-                "dalian-line-timetable": { enabled: true, targetTab: "line-tab", order: 15 },
+                "dalian-timetable": { enabled: true, targetTab: "line-tab", order: 15 },
                 "adjacent-stations": { enabled: true, targetTab: "line-tab", order: 20 },
                 "transfers": { enabled: true, targetTab: "line-tab", order: 30 },
                 "station-type": { enabled: true, targetTab: "station-info", order: 10 },
@@ -149,6 +149,9 @@
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
         const version = "260922.2235";
+        // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
+        document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         (DalianCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/dalian/${scriptPath}?v=${version}"><\/script>`);
         });

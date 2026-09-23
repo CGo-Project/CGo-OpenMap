@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260923.0144';
+const CACHE_NAME = 'cgo-openmap-v260923.1600';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -90,10 +90,13 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shenyang.js',
     './city/shenyang/modules/shenyang_map.js',
     './city/shenyang/modules/shenyang_station_board.js',
+    './city/shenyang/modules/shenyang_station_title.js',
     './city/shenyang/modules/shenyang_cultural.js',
     './city/shenyang/modules/shenyang_service_info.js',
+    './city/shenyang/modules/shenyang_calligraphy.js',
     './city/shenyang/stacard/script.js',
     './city/shenyang/stacard/data.js',
+    './city/shenyang/data_calligraphy.js',
     './city/shenyang/data_stations.js',
     './city/shenyang/data_lines.js',
     './city/shenyang/data_virtual_transfers.js',
@@ -101,15 +104,31 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/data_notopen.js',
     './city/shenyang/data_legend.js',
     './city/shenyang/data_timetable.js',
+    './city/shenyang/shared/timetable-renderer.js',
+    './city/shenyang/shared/stacard-engine.js',
+    './city/shenyang/shared/station-title.js',
+    './city/shenyang/shared/tip-card.js',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
     './city/shenyang/assets/airport.svg',
     './city/shenyang/assets/compass.svg',
     './city/shenyang/assets/fangcheng.svg',
+    './city/shenyang/assets/fangcheng_mono.svg',
     './city/shenyang/assets/railway.svg',
     './city/shenyang/assets/transfer-badge.svg',
     './city/shenyang/assets/tram-5.svg',
+    './city/shenyang/assets/calligraphy/hangkonghangtiandaxue.jpeg',
+    './city/shenyang/assets/calligraphy/xinhuijie.png',
+    './city/shenyang/assets/calligraphy/xinningjie.png',
+    './city/shenyang/assets/calligraphy/dongdayingjie.png',
+    './city/shenyang/assets/calligraphy/nongyedaxue.png',
+    './city/shenyang/assets/calligraphy/qianling.png',
+    './city/shenyang/assets/calligraphy/donglinggongyuan.png',
+    './city/shenyang/assets/calligraphy/shuiquan.png',
+    './city/shenyang/assets/calligraphy/boguanbeidajie.png',
+    './city/shenyang/assets/calligraphy/zhiwuyuan.png',
+    './city/shenyang/assets/calligraphy/shuangma.png',
 
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',

@@ -54,6 +54,96 @@
     display: block;
 }
 
+/* ==========================================================================
+   站名题字（名人 / 书法家题写站名）
+   题字素材为黑底白字图，以 luminance 蒙版将黑底褪为透明、字迹着色为
+   currentColor（标题栏文字色），亮 / 暗主题自动切换并保留飞白浓淡。
+   题字站的整个标题栏由 shenyang_calligraphy.js 挂载后加
+   .sy-calligraphy-header 类并注入 --sy-cali-line-color / --sy-cali-on-color
+   （线路底色 / 可读文字色），呈现线路色牌匾式 header（对齐 CGo 官方文化 header）。
+   ========================================================================== */
+.sy-calligraphy-title {
+    position: relative;
+    /* 宽度由题字图原始宽高比推导，高度基准 28.8px（略大于普通中文站名 18.5px）；
+       205px 上限为给右侧线路徽标预留空间（超宽图如 5 字站会被等比压窄，
+       由 aspect-ratio 同步收矮，字形不拉伸） */
+    width: min(calc(28.8px * var(--sy-cali-ratio, 4.7)), 205px);
+    aspect-ratio: var(--sy-cali-ratio, 4.7);
+    max-width: 100%;
+    line-height: 0;
+}
+
+.sy-calligraphy-glyph {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: currentColor;
+    /* mask-image 由模块以元素内联样式注入（内联 url 相对站点根解析，
+       不随样式表路径漂移）；此处只声明位置、尺寸与亮度模式 */
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    /* 黑底白字必须走亮度蒙版（白字显示、黑底透明），默认 alpha 蒙版会整块显色 */
+    -webkit-mask-source-type: luminance;
+    mask-mode: luminance;
+}
+
+/* 真实站名文本仅供屏幕阅读器朗读与 core/script.js 读取以同步侧栏标题，视觉上完全隐藏 */
+.sy-calligraphy-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 题字站标题栏：整块染线路标志色（原规则带 !important，此处同级覆盖）。
+   移动端 body.mobile-split-active .panel-header 同样带 background-color !important
+   且特异性(0,2,1)高于 .panel-header.sy-calligraphy-header(0,2,0)，
+   两边 !important 相遇时按特异性取胜，会把移动端锁回品牌深蓝，
+   故此处显式补一条更高特异性的选择器覆盖移动端。 */
+.panel-header.sy-calligraphy-header,
+body.mobile-split-active .panel-header.sy-calligraphy-header {
+    background-color: var(--sy-cali-line-color) !important;
+    color: var(--sy-cali-on-color, #ffffff) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.25);
+}
+
+/* 成组反色：关闭 / 展开按钮与英文站名跟随可读文字色。
+   注意：css/style.css 的 .panel-close-btn 用了 color:var(--close-btn-color)!important
+   （深色模式为半透明白），普通声明无法覆盖，此处必须同以 !important 应对，
+   否则题字 header 上的关闭图标会与题字 / 英文名的纯白不统一。 */
+.sy-calligraphy-header .panel-expand-btn {
+    color: var(--sy-cali-on-color, #ffffff);
+}
+
+.sy-calligraphy-header .panel-close-btn {
+    color: var(--sy-cali-on-color, #ffffff) !important;
+}
+
+.sy-calligraphy-header .panel-close-btn:hover {
+    color: var(--sy-cali-on-color, #ffffff) !important;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.sy-calligraphy-header .panel-en-name {
+    color: var(--sy-cali-on-color, #ffffff);
+    opacity: 0.85;
+}
+
+/* 方城地标（<img> 独立 SVG，拿不到 currentColor）由 shenyang_calligraphy.js 在
+   深底题字 header 上直接换用白色单色版 fangcheng_mono.svg，此处不再做滤镜反色。
+   线路徽标的近色反色在徽标 SVG 生成时按线路逐圆判定，见
+   shenyang_station_board.js 的 headerTint / colorsClose。 */
+
 /* 沈阳专属紧凑线路徽标：地铁使用彩色编号圆，有轨电车沿用矩形描边与线路色填充。 */
 .shenyang-line-badge {
     display: inline-flex;
@@ -74,12 +164,6 @@
     flex: 0 0 auto;
 }
 
-.shenyang-tramway-origin-note {
-    color: var(--text-light);
-    font-size: 10px;
-    font-weight: 400;
-}
-
 /* 线路悬停提示使用主题卡片底色，避免线路徽标与线网重叠。 */
 #line-tooltip {
     box-sizing: border-box;
@@ -93,41 +177,4 @@
 #line-tooltip .shenyang-line-badge {
     display: block;
     color: inherit;
-}
-
-/* 报站提示中的目的地指引：使用淡色圆角提示条，保持信息板的轻量层级。 */
-.shenyang-cultural-destination-card {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin: 0 0 14px;
-    padding: 9px 11px;
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
-    border-left: 3px solid var(--primary-color);
-    border-radius: 7px;
-    color: var(--text-main);
-    font-size: 12px;
-    line-height: 1.55;
-}
-
-.shenyang-cultural-destination-icon {
-    flex: 0 0 auto;
-    margin-top: 1px;
-    color: var(--primary-color);
-}
-
-.shenyang-cultural-destination-text {
-    min-width: 0;
-    color: var(--text-light);
-}
-
-.shenyang-cultural-destination-text strong {
-    font-weight: 700;
-    color: var(--text-main);
-    margin: 0 0.25em;
-}
-
-/* 在窄屏下保持图标与文案两列结构，同时允许长目的地自然换行。 */
-.shenyang-cultural-destination-text {
-    overflow-wrap: anywhere;
 }

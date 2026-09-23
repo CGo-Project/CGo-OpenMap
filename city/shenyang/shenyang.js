@@ -166,7 +166,7 @@
             script: "./city/shenyang/stacard/script.js",
             geoDataUrl: "./city/shenyang/amap_data.json",
             basePath: "./city/shenyang/stacard/",
-            getRenderer: () => window.ShenyangStaCard || window.StaCard || null
+            getRenderer: () => window.CGoStaCard || null
         },
         async initStaCard(options = {}) {
             return await this.stacard.getRenderer()?.init?.({
@@ -188,18 +188,23 @@
             scripts: [
                 "modules/shenyang_map.js",
                 "modules/shenyang_station_board.js",
+                "modules/shenyang_station_title.js",
+                "modules/shenyang_calligraphy.js",
                 "modules/shenyang_cultural.js",
                 "modules/shenyang_service_info.js"
             ],
             modules: {
                 "header-controls": { enabled: true, order: 10 },
                 "shenyang-fangcheng-decoration": { enabled: true, targetTab: "header", order: 15 },
-                "header-title": { enabled: true, order: 20 },
+                // 内置中英文标题由沈阳题字标题模块接管（题字站展示题字图，其余站回退标准结构）
+                "header-title": { enabled: false },
+                "shenyang-calligraphy-title": { enabled: true, targetTab: "header", order: 20 },
                 "header-badges": { enabled: true, order: 30 },
                 "shenyang-tramway-navigation": { enabled: true, targetTab: "footer", order: 11 },
                 "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
-                "shenyang-service-info": { enabled: true, targetTab: "line-tab", order: 15 },
-                "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 5 },
+                "shenyang-timetable": { enabled: true, targetTab: "line-tab", order: 15 },
+                "shenyang-calligrapher-intro": { enabled: true, targetTab: "station-info", order: 12 },
+                "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 15 },
                 "adjacent-stations": { enabled: true, targetTab: "line-tab", order: 20 },
                 "transfers": { enabled: true, targetTab: "line-tab", order: 30 },
                 "station-type": { enabled: true, targetTab: "station-info", order: 10 },
@@ -212,6 +217,12 @@
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
         const version = "260922.2235";
+        // 城市私有数据（须早于依赖它的模块加载）
+        document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
+        // 共享层（本目录下，须早于各城模块加载）
+        document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tip-card.js?v=${version}"><\/script>`);
         (ShenyangCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/shenyang/${scriptPath}?v=${version}"><\/script>`);
         });

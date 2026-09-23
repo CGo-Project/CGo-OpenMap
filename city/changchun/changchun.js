@@ -137,7 +137,7 @@
             script: "./city/changchun/stacard/script.js",
             geoDataUrl: "./city/changchun/amap_data.json",
             basePath: "./city/changchun/stacard/",
-            getRenderer: () => window.ChangchunStaCard || window.CHANGCHUN_STACARD || window.StaCard || null
+            getRenderer: () => window.CGoStaCard || null
         },
         async initStaCard(options = {}) {
             return await this.stacard.getRenderer()?.init?.({
@@ -159,7 +159,7 @@
             scripts: ["modules/changchun_service_info.js", "modules/changchun_station_title.js"],
             modules: {
                 "stacard": { enabled: true, order: 10, targetTab: "line-tab" },
-                "changchun-service-info": { enabled: true, order: 15, targetTab: "line-tab" }
+                "changchun-timetable": { enabled: true, order: 15, targetTab: "line-tab" }
             }
         }
     };
@@ -167,6 +167,9 @@
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
         const version = "260922.2235";
+        // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
+        document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         (ChangchunCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/changchun/${scriptPath}?v=${version}"><\/script>`);
         });

@@ -1,6 +1,9 @@
 /**
  * CGo OpenMap - 沈阳车站信息板品牌模块
  *
+ * 本模块负责紧凑线路徽标同步、同名站点击处理、有轨导航链接与方城标识；
+ * 侧栏站名标题归一化已拆到 modules/shenyang_station_title.js（走共享层）。
+ *
  * @event cgo:city-module-ready
  * @property {{ cityId: string, moduleId: string }} detail
  */
@@ -85,21 +88,25 @@
         return line ? [line] : null;
     }
 
-    function getReadableCircleTextColor(color) {
-        const hex = String(color || "").trim().match(/^#([0-9a-f]{6})$/i);
-        const rgb = String(color || "").match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
-        let channels = null;
-
+    /** 解析 #RRGGBB / rgb() 为 [r, g, b]（0-255），无法解析返回 null */
+    function parseColorChannels(color) {
+        const raw = String(color || "").trim();
+        const hex = raw.match(/^#([0-9a-f]{6})$/i);
+        const rgb = raw.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
         if (hex) {
             const value = hex[1];
-            channels = [
+            return [
                 parseInt(value.slice(0, 2), 16),
                 parseInt(value.slice(2, 4), 16),
                 parseInt(value.slice(4, 6), 16)
             ];
-        } else if (rgb) {
-            channels = rgb.slice(1, 4).map(Number);
         }
+        if (rgb) return rgb.slice(1, 4).map(Number);
+        return null;
+    }
+
+    function getReadableCircleTextColor(color) {
+        const channels = parseColorChannels(color);
         if (!channels) return "#ffffff";
 
         const [red, green, blue] = channels.map((channel) => {
@@ -117,7 +124,35 @@
             || getReadableCircleTextColor(line?.color);
     }
 
-    function createCompactLineBadgeSvg(lines) {
+    /**
+     * 判定两个颜色是否视觉接近（RGB 欧氏距离，0-441 空间）。
+     * 用于题字 header 染色：徽标圆底与 header 底色接近时徽标会「融」进背景，
+     * 需把该徽标的圆底与数字颜色对调。阈值 80 约为人眼明显可辨的下限留余量。
+     */
+    function colorsClose(colorA, colorB) {
+        const a = parseColorChannels(colorA);
+        const b = parseColorChannels(colorB);
+        if (!a || !b) return false;
+        const distance = Math.sqrt(
+            (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
+        );
+        return distance < 80;
+    }
+
+    // 暴露底色可读文字色等口径，供沈阳其他城市模块复用（如题字标题栏线路色染色），
+    // 避免亮度阈值在各模块各抄一份、日后调整时漏改。
+    window.ShenyangUi = Object.assign(window.ShenyangUi || {}, {
+        getReadableTextColor: getReadableCircleTextColor,
+        colorsClose
+    });
+
+    /**
+     * @param {Array} lines 线路数组
+     * @param {null|{color:string,onColor:string}} headerTint
+     *        徽标所在题字 header 的染色信息（底色 / 可读文字色）；
+     *        某条线路色与 header 底色接近时，该线路圆底与数字颜色对调防融合
+     */
+    function createCompactLineBadgeSvg(lines, headerTint = null) {
         const lineNumbers = lines.map(getLineNumber).filter(Boolean);
         if (!lineNumbers.length) return null;
 
@@ -148,9 +183,13 @@
             const transform = scaleX === 1
                 ? ""
                 : ` transform="translate(${centerX} 0) scale(${scaleX} 1) translate(${-centerX} 0)"`;
+            // 圆底与题字 header 底色接近 → 圆底/数字颜色对调（onColor 底 + 线路色数字）
+            const inverted = Boolean(headerTint && colorsClose(line.color, headerTint.color));
+            const circleFill = inverted ? headerTint.onColor : line.color;
+            const numberFill = inverted ? line.color : getBadgeNumberTextColor(line);
             return `
-                <circle cx="${centerX}" cy="${centerY}" r="${circleRadius}" fill="${line.color}" />
-                <text x="${centerX}" y="${centerY + numberVerticalOffset}" text-anchor="middle" dominant-baseline="middle" fill="${getBadgeNumberTextColor(line)}" font-family="var(--font-en, 'Arimo', 'Arial', sans-serif)" font-size="${fontSize}" font-weight="400"${transform}>${number}</text>
+                <circle cx="${centerX}" cy="${centerY}" r="${circleRadius}" fill="${circleFill}" />
+                <text x="${centerX}" y="${centerY + numberVerticalOffset}" text-anchor="middle" dominant-baseline="middle" fill="${numberFill}" font-family="var(--font-en, 'Arimo', 'Arial', sans-serif)" font-size="${fontSize}" font-weight="400"${transform}>${number}</text>
             `;
         }).join("");
 
@@ -194,10 +233,31 @@
             : LINE_BADGE_CONFIG.height;
     }
 
+    /**
+     * 读取徽标所在 header 的题字染色信息（底色 / 可读文字色）。
+     * 徽标同步在 rAF 中执行，晚于题字模块 onMounted 给 .panel-header 加类与变量，
+     * 故此处可直接读到。非题字 header 返回 null，徽标按常规线路色渲染。
+     */
+    function getHeaderTintForBadge(badge) {
+        const header = typeof badge.closest === "function"
+            ? badge.closest(".sy-calligraphy-header")
+            : null;
+        if (!header) return null;
+        const color = window.getComputedStyle(header)
+            .getPropertyValue("--sy-cali-line-color").trim();
+        if (!color) return null;
+        const onColor = window.getComputedStyle(header)
+            .getPropertyValue("--sy-cali-on-color").trim() || "#ffffff";
+        return { color, onColor };
+    }
+
     function renderCompactLineBadge(badge, lines) {
-        const compactBadge = lines.length === 1 && isTramLine(lines[0])
+        const isSingleTram = lines.length === 1 && isTramLine(lines[0]);
+        // 有轨矩形徽标反色规则不同（带白描边），题字取色也仅限地铁线，保持原样
+        const headerTint = isSingleTram ? null : getHeaderTintForBadge(badge);
+        const compactBadge = isSingleTram
             ? createTramwayBadgeSvg(lines[0])
-            : createCompactLineBadgeSvg(lines);
+            : createCompactLineBadgeSvg(lines, headerTint);
         if (!compactBadge) return false;
 
         const height = getBadgeHeight(badge);
@@ -246,59 +306,6 @@
         const finalBadge = badges[badges.length - 1];
         if (!renderCompactLineBadge(finalBadge, lines)) return;
         badges.slice(0, -1).forEach((badge) => badge.remove());
-    }
-
-    /**
-     * 强制标注「（有轨站）」的有轨站名。
-     * 用于「字面不同名、语义却高度混淆」的情况 —— 同名判定抓不到，需人工列出。
-     * 沈阳目前为空，如有此类站名再补。
-     */
-    const TRAM_FORCE_SUFFIX_NAMES = [];
-
-    /**
-     * 侧栏历史车站标题归一化（沈阳规则）
-     *   - 地铁站：站名以「站」结尾时**保留双写**（沈阳站 → 沈阳站站，与地铁官方站名一致）
-     *   - 有轨站：与地铁站同名时 → 「XX站（有轨站）」
-     *   - 国铁车站 → 「XX站（火车站）」
-     *   - 与国铁站同名的地铁站：沈阳不做特殊化，仍为「XX站站」
-     */
-    function buildSidebarStationTitle(station, stations) {
-        const name = String(station?.cn || "");
-        if (!name) return "";
-
-        const isTram = isTramStation(station);
-        const isRail = station.type === "rdot";
-        const isMetro = !isTram && !isRail;
-
-        // 末尾「站」去重：沈阳仅地铁站保留「XX站站」，其余去重为「XX站」
-        const base = (name.endsWith("站") && !isMetro) ? name : name + "站";
-
-        const others = Object.keys(stations)
-            .map((id) => stations[id])
-            .filter((other) => other && other.id !== station.id && other.cn === station.cn);
-        const hasMetro = others.some((other) => !isTramStation(other) && other.type !== "rdot");
-        const hasRail = others.some((other) => other.type === "rdot");
-
-        if (isTram) {
-            return (hasMetro || TRAM_FORCE_SUFFIX_NAMES.includes(name)) ? `${base}（有轨站）` : base;
-        }
-        if (isRail) return `${base}（火车站）`;
-        return base;
-    }
-
-    function normalizeSidebarHistoryTitles() {
-        const stations = window.processedStations || window.stationsData || {};
-        document.querySelectorAll(".station-history-section").forEach((section) => {
-            const sid = section.dataset?.sid;
-            const station = sid ? stations[sid] : null;
-            if (!station) return;
-            const titleEl = section.querySelector(".section-title-text")
-                || section.querySelector(".section-header > span:first-child");
-            if (!titleEl) return;
-            const next = buildSidebarStationTitle(station, stations);
-            // 仅在确有差异时写入，避免 MutationObserver 自触发死循环
-            if (next && titleEl.textContent !== next) titleEl.textContent = next;
-        });
     }
 
     function rewriteTramwayNavigation(infoPanel, context) {
@@ -402,7 +409,6 @@
             if (frameId) return;
             frameId = requestAnimationFrame(() => {
                 frameId = 0;
-                normalizeSidebarHistoryTitles();
                 syncCompactLineBadges();
             });
         };
@@ -436,12 +442,6 @@
             }
         });
     }
-
-    // 导出标题归一化能力，便于复用与自测
-    window.ShenyangStationTitle = {
-        buildTitle: buildSidebarStationTitle,
-        normalizeTitles: normalizeSidebarHistoryTitles
-    };
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", installCompactLineBadgeObserver, { once: true });
