@@ -1790,14 +1790,19 @@ body[data-glass-mode='blur'] .text-dialog {
 }
 
 /* =====================================================
-   §14  卡片 (Cards) - 默认采用 tool.html 苹果物理折射液态玻璃规范
+   §14  卡片 (Cards) - 液态玻璃卡片三档规范 (Glass Card Tier System)
    ===================================================== */
-.tool-card,
+
+/* ----------------------------------------------------
+   Tier A — 可交互卡片 (.tool-item / .glass-card / .interactive)
+   ---------------------------------------------------- */
+.tool-item,
 .glass-card,
-.tool-item {
+.tool-card.interactive,
+a.tool-card {
     position: relative;
-    border: none;
-    background: transparent;
+    border: none !important;
+    background: transparent !important;
     border-radius: var(--radius-lg, 12px);
     padding: 20px;
     margin-bottom: 20px;
@@ -1806,13 +1811,17 @@ body[data-glass-mode='blur'] .text-dialog {
     overflow: hidden;
     isolation: isolate;
     box-shadow: var(--glass-shadow);
-    transition: box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1));
+    transition: transform var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1)),
+                box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1));
+    cursor: pointer;
 }
 
-.tool-card:hover,
+.tool-item:hover,
 .glass-card:hover,
-.tool-item:hover {
+.tool-card.interactive:hover,
+a.tool-card:hover {
     box-shadow: var(--glass-shadow-hover);
+    transform: translateY(-4px);
 }
 
 /* 独立工具项专属几何与排版微调 */
@@ -1833,13 +1842,13 @@ body[data-glass-mode='blur'] .text-dialog {
     height: 100%;
 }
 
-/* Layer 0: 折射磨砂层 (完全对齐 tool.html) */
-.tool-card .liquid-glass-effect,
-.tool-card .glass-refraction,
+/* Tier A Layer 0: 折射磨砂层 (完全对齐 tool.html: blur(5px) saturate(130%)) */
+.tool-item .liquid-glass-effect,
+.tool-item .glass-refraction,
 .glass-card .liquid-glass-effect,
 .glass-card .glass-refraction,
-.tool-item .liquid-glass-effect,
-.tool-item .glass-refraction {
+.tool-card.interactive .liquid-glass-effect,
+a.tool-card .liquid-glass-effect {
     position: absolute;
     inset: 0;
     z-index: 0;
@@ -1855,55 +1864,63 @@ body[data-glass-mode='blur'] .text-dialog {
 }
 
 /* 当卡片未手动插入 .liquid-glass-effect 元素时的自动毛玻璃降级保护 */
-.tool-card:not(:has(.liquid-glass-effect)):not(:has(.glass-refraction)),
+.tool-item:not(:has(.liquid-glass-effect)):not(:has(.glass-refraction)),
 .glass-card:not(:has(.liquid-glass-effect)):not(:has(.glass-refraction)),
-.tool-item:not(:has(.liquid-glass-effect)):not(:has(.glass-refraction)) {
+.tool-card.interactive:not(:has(.liquid-glass-effect)),
+a.tool-card:not(:has(.liquid-glass-effect)) {
     backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
 }
 
-/* Layer 1: 半透明底色衬底层 (完全对齐 tool.html: 亮色 0.60, 暗色 0.60) */
-.tool-card::after,
+/* Tier A Layer 1: 半透明底色衬底层 (亮色 0.60 -> hover 0.68, 暗色 0.60 -> hover 0.68) */
+.tool-item::after,
 .glass-card::after,
-.tool-item::after {
+.tool-card.interactive::after,
+a.tool-card::after {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 1;
     border-radius: inherit;
-    background: var(--glass-bg, rgba(255, 255, 255, 0.60));
+    background: var(--glass-bg-card, rgba(255, 255, 255, 0.60));
     pointer-events: none;
     transition: background-color 0.25s ease;
 }
 
-.tool-card:hover::after,
+.tool-item:hover::after,
 .glass-card:hover::after,
-.tool-item:hover::after {
-    background: var(--glass-bg-hover, rgba(255, 255, 255, 0.68));
+.tool-card.interactive:hover::after,
+a.tool-card:hover::after {
+    background: var(--glass-bg-card-hover, rgba(255, 255, 255, 0.68));
 }
 
-[data-theme='dark'] .tool-card::after,
-:root:not([data-theme='light']) .tool-card::after,
+[data-theme='dark'] .tool-item::after,
+:root:not([data-theme='light']) .tool-item::after,
 [data-theme='dark'] .glass-card::after,
 :root:not([data-theme='light']) .glass-card::after,
-[data-theme='dark'] .tool-item::after,
-:root:not([data-theme='light']) .tool-item::after {
-    background: var(--glass-bg, rgba(31, 32, 34, 0.60));
+[data-theme='dark'] .tool-card.interactive::after,
+:root:not([data-theme='light']) .tool-card.interactive::after,
+[data-theme='dark'] a.tool-card::after,
+:root:not([data-theme='light']) a.tool-card::after {
+    background: var(--glass-bg-card, rgba(31, 32, 34, 0.60));
 }
 
-[data-theme='dark'] .tool-card:hover::after,
-:root:not([data-theme='light']) .tool-card:hover::after,
+[data-theme='dark'] .tool-item:hover::after,
+:root:not([data-theme='light']) .tool-item:hover::after,
 [data-theme='dark'] .glass-card:hover::after,
 :root:not([data-theme='light']) .glass-card:hover::after,
-[data-theme='dark'] .tool-item:hover::after,
-:root:not([data-theme='light']) .tool-item:hover::after {
-    background: var(--glass-bg-hover, rgba(38, 40, 44, 0.68));
+[data-theme='dark'] .tool-card.interactive:hover::after,
+:root:not([data-theme='light']) .tool-card.interactive:hover::after,
+[data-theme='dark'] a.tool-card:hover::after,
+:root:not([data-theme='light']) a.tool-card:hover::after {
+    background: var(--glass-bg-card-hover, rgba(38, 40, 44, 0.68));
 }
 
-/* Layer 2: 双轴微光圈层 (完全对齐 tool.html 极简微边框) */
-.tool-card::before,
+/* Tier A Layer 2: 双轴微光圈层 (完全对齐 tool.html 极简微边框) */
+.tool-item::before,
 .glass-card::before,
-.tool-item::before {
+.tool-card.interactive::before,
+a.tool-card::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -1931,10 +1948,275 @@ body[data-glass-mode='blur'] .text-dialog {
     transition: opacity 0.25s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Layer 3: 文字与内容保证绝对清晰 */
-.tool-card > *:not(.liquid-glass-effect):not(.glass-refraction),
+/* Tier A Layer 3: 文字与内容保证绝对清晰 */
+.tool-item > *:not(.liquid-glass-effect):not(.glass-refraction),
 .glass-card > *:not(.liquid-glass-effect):not(.glass-refraction),
-.tool-item > *:not(.liquid-glass-effect):not(.glass-refraction) {
+.tool-card.interactive > *:not(.liquid-glass-effect):not(.glass-refraction),
+a.tool-card > *:not(.liquid-glass-effect):not(.glass-refraction) {
+    position: relative;
+    z-index: 3;
+}
+
+
+/* ----------------------------------------------------
+   Tier B — 不可交互底板 (.glass-panel)
+   承载文字、图表、次级按钮等内容，充当背景分栏。严禁 hover 动画。
+   ---------------------------------------------------- */
+.glass-panel {
+    position: relative;
+    border: none !important;
+    background: transparent !important;
+    border-radius: var(--radius-lg, 12px);
+    padding: 24px;
+    margin-bottom: 20px;
+    color: var(--text-main);
+    box-sizing: border-box;
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow: var(--glass-shadow);
+    cursor: default;
+    /* Layer 0: 更强模糊与折射 (blur(14px) saturate(135%)) */
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+}
+
+:root[glass-mode='liquid'] .glass-panel,
+:root[data-glass-mode='liquid'] .glass-panel,
+body[glass-mode='liquid'] .glass-panel,
+body[data-glass-mode='liquid'] .glass-panel {
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+}
+
+.glass-panel .liquid-glass-effect,
+.glass-panel .glass-refraction {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    filter: var(--glass-refraction-filter, url(#glass-distortion));
+    pointer-events: none;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+/* Tier B Layer 1: 高不透明衬底 (亮色 0.82，暗色 0.82，无 hover 变化) */
+.glass-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82));
+    pointer-events: none;
+}
+
+[data-theme='dark'] .glass-panel::after,
+:root:not([data-theme='light']) .glass-panel::after {
+    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.82));
+}
+
+/* Tier B Layer 2: 弱化微光圈 */
+.glass-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 1px,
+        rgba(255, 255, 255, 0) 12px);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.glass-panel > *:not(.liquid-glass-effect):not(.glass-refraction) {
+    position: relative;
+    z-index: 3;
+}
+
+/* Tier B 严格禁止 hover 状态任何视觉或几何抖动 */
+.glass-panel:hover {
+    transform: none !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+.glass-panel:hover::after {
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82)) !important;
+}
+[data-theme='dark'] .glass-panel:hover::after,
+:root:not([data-theme='light']) .glass-panel:hover::after {
+    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.82)) !important;
+}
+
+
+/* ----------------------------------------------------
+   Tier C — 不可交互强调板 (.glass-surface)
+   重要承载区（如标题栏岛屿、顶部浮动控制区、精选卡片），完整双轴微光圈，严禁 hover 动画。
+   ---------------------------------------------------- */
+.glass-surface {
+    position: relative;
+    border: none !important;
+    background: transparent !important;
+    border-radius: var(--radius-lg, 12px);
+    padding: 24px;
+    margin-bottom: 20px;
+    color: var(--text-main);
+    box-sizing: border-box;
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow: var(--glass-shadow);
+    cursor: default;
+    /* Layer 0: 折射磨砂 (blur(14px) saturate(135%)) */
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+}
+
+:root[glass-mode='liquid'] .glass-surface,
+:root[data-glass-mode='liquid'] .glass-surface,
+body[glass-mode='liquid'] .glass-surface,
+body[data-glass-mode='liquid'] .glass-surface {
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+}
+
+.glass-surface .liquid-glass-effect,
+.glass-surface .glass-refraction {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    filter: var(--glass-refraction-filter, url(#glass-distortion));
+    pointer-events: none;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+/* Tier C Layer 1: 中不透明衬底 (亮色 0.72，暗色 0.72，无 hover 变化) */
+.glass-surface::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
+    pointer-events: none;
+}
+
+[data-theme='dark'] .glass-surface::after,
+:root:not([data-theme='light']) .glass-surface::after {
+    background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
+}
+
+/* Tier C Layer 2: 完整双轴微光圈 (保留完整 lit 0.95) */
+.glass-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background:
+        linear-gradient(to right,
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
+            rgba(0, 0, 0, 0) var(--lg-rim-side, 4px),
+            rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 4px)),
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) 0,
+            rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) var(--lg-rim-hold, 1px),
+            rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px),
+            rgba(255, 255, 255, 0) calc(100% - var(--lg-rim-fade, 12px)),
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) calc(100% - var(--lg-rim-hold, 1px)),
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.glass-surface > *:not(.liquid-glass-effect):not(.glass-refraction) {
+    position: relative;
+    z-index: 3;
+}
+
+/* Tier C 严格禁止 hover 状态任何变化 */
+.glass-surface:hover {
+    transform: none !important;
+    box-shadow: var(--glass-shadow) !important;
+}
+.glass-surface:hover::after {
+    background: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
+}
+[data-theme='dark'] .glass-surface:hover::after,
+:root:not([data-theme='light']) .glass-surface:hover::after {
+    background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
+}
+
+/* 兼容未显式分档的普通 .tool-card (默认作为静态底板卡片，避免非交互元素误触发 hover 上浮) */
+.tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface) {
+    position: relative;
+    border: none !important;
+    background: transparent !important;
+    border-radius: var(--radius-lg, 12px);
+    padding: 20px;
+    margin-bottom: 20px;
+    color: var(--text-main);
+    box-sizing: border-box;
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+}
+
+.tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82));
+    pointer-events: none;
+}
+
+[data-theme='dark'] .tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::after,
+:root:not([data-theme='light']) .tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::after {
+    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.82));
+}
+
+.tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 1px,
+        rgba(255, 255, 255, 0) 12px);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface) > *:not(.liquid-glass-effect):not(.glass-refraction) {
     position: relative;
     z-index: 3;
 }
@@ -2001,6 +2283,22 @@ body[glass-mode='flat'] .glass-card,
 body[data-glass-mode='flat'] .glass-card,
 .glass-card[glass-mode='flat'],
 .glass-card[data-glass-mode='flat'],
+:root[glass-mode='flat'] .glass-panel,
+:root[data-glass-mode='flat'] .glass-panel,
+:root[glass-mode='none'] .glass-panel,
+:root[data-glass-mode='none'] .glass-panel,
+body[glass-mode='flat'] .glass-panel,
+body[data-glass-mode='flat'] .glass-panel,
+.glass-panel[glass-mode='flat'],
+.glass-panel[data-glass-mode='flat'],
+:root[glass-mode='flat'] .glass-surface,
+:root[data-glass-mode='flat'] .glass-surface,
+:root[glass-mode='none'] .glass-surface,
+:root[data-glass-mode='none'] .glass-surface,
+body[glass-mode='flat'] .glass-surface,
+body[data-glass-mode='flat'] .glass-surface,
+.glass-surface[glass-mode='flat'],
+.glass-surface[data-glass-mode='flat'],
 :root[glass-mode='flat'] .tool-item,
 :root[data-glass-mode='flat'] .tool-item,
 :root[glass-mode='none'] .tool-item,
@@ -2033,6 +2331,26 @@ body[data-glass-mode='flat'] .tool-item,
 :root[data-glass-mode='flat'] .glass-card .liquid-glass-effect,
 :root[glass-mode='flat'] .glass-card .glass-refraction,
 :root[data-glass-mode='flat'] .glass-card .glass-refraction,
+:root[glass-mode='flat'] .glass-panel::before,
+:root[data-glass-mode='flat'] .glass-panel::before,
+.glass-panel[glass-mode='flat']::before,
+:root[glass-mode='flat'] .glass-panel::after,
+:root[data-glass-mode='flat'] .glass-panel::after,
+.glass-panel[glass-mode='flat']::after,
+:root[glass-mode='flat'] .glass-panel .liquid-glass-effect,
+:root[data-glass-mode='flat'] .glass-panel .liquid-glass-effect,
+:root[glass-mode='flat'] .glass-panel .glass-refraction,
+:root[data-glass-mode='flat'] .glass-panel .glass-refraction,
+:root[glass-mode='flat'] .glass-surface::before,
+:root[data-glass-mode='flat'] .glass-surface::before,
+.glass-surface[glass-mode='flat']::before,
+:root[glass-mode='flat'] .glass-surface::after,
+:root[data-glass-mode='flat'] .glass-surface::after,
+.glass-surface[glass-mode='flat']::after,
+:root[glass-mode='flat'] .glass-surface .liquid-glass-effect,
+:root[data-glass-mode='flat'] .glass-surface .liquid-glass-effect,
+:root[glass-mode='flat'] .glass-surface .glass-refraction,
+:root[data-glass-mode='flat'] .glass-surface .glass-refraction,
 :root[glass-mode='flat'] .tool-item::before,
 :root[data-glass-mode='flat'] .tool-item::before,
 .tool-item[glass-mode='flat']::before,

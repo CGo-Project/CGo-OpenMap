@@ -72,7 +72,7 @@
             display: inline;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 640px) {
             .title-full {
                 display: none;
             }
@@ -88,8 +88,8 @@
             top: calc(env(safe-area-inset-top, 0px) + 96px);
         }
 
-        /* 移动端：缩放控件左侧与标题栏左岛左边缘对齐 */
-        @media (max-width: 768px) {
+        /* 移动端 (<=640px)：缩放控件左侧与标题栏左岛左边缘对齐 */
+        @media (max-width: 640px) {
             :root[header-mode="floating"] #modern-zoom-control,
             body[header-mode="floating"] #modern-zoom-control {
                 top: calc(env(safe-area-inset-top, 0px) + 76px);
@@ -97,19 +97,19 @@
             }
         }
 
-        /* 液态玻璃模式下的地图控件微质感增强 */
+        /* 液态玻璃模式下的地图控件微质感增强 (Tier C 强调表面规范) */
         :root[glass-mode="liquid"] #modern-zoom-control,
         body[glass-mode="liquid"] #modern-zoom-control {
-            background-color: var(--glass-bg, rgba(255, 255, 255, 0.72)) !important;
-            backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
-            -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
+            background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
+            backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+            -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
             box-shadow: var(--glass-shadow);
             border: 1px solid var(--glass-border);
         }
 
         [data-theme="dark"]:root[glass-mode="liquid"] #modern-zoom-control,
         [data-theme="dark"] body[glass-mode="liquid"] #modern-zoom-control {
-            background-color: var(--glass-bg, rgba(31, 32, 34, 0.72)) !important;
+            background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
             box-shadow: var(--glass-shadow);
         }
     </style>
@@ -121,7 +121,7 @@
     <!-- 包含：返回按钮、主页链接、平台 Logo/标题、更多操作下拉菜单（偏好设置/帮助与关于） -->
     <!-- ========================================================================== -->
     <header class="tool-header">
-        <div class="header-island header-island-left">
+        <div class="header-island header-island-left glass-surface">
             <div class="header-left">
                 <a href="./index.html" class="btn btn-info" title="返回城市列表">
                     <cgo-icon name="back"></cgo-icon>
@@ -147,7 +147,7 @@
             </div>
         </div>
 
-        <div class="header-island header-island-right">
+        <div class="header-island header-island-right glass-surface">
             <div class="header-right">
                 <!-- 更多：选项下拉菜单 -->
                 <div class="dropdown options-dropdown">
