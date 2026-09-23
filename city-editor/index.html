@@ -353,6 +353,12 @@
                         <cgo-icon name="search" size="14"></cgo-icon>
                         <span>导入车站列表</span>
                     </button>
+                    <button class="side-btn" id="btn-mileage-source"
+                        title="按线路设置站间距来源：画布几何反算 / 实际里程 / 不添加站间距（导出 distances: [] 留空占位）">
+                        <cgo-icon name="route" size="14"></cgo-icon>
+                        <span>站间距来源</span>
+                    </button>
+                    <p class="side-hint" id="mileage-hint"></p>
                     <p class="side-hint">线路色会作为其上车站节点的描边色；同一车站被 ≥2 条线路连接时自动显示为换乘站样式。点「导入车站列表」可从百科表格 HTML 提取站名或手工输入，再按顺序批量生成车站。</p>
                 </div>
             </section>
@@ -629,6 +635,89 @@
         </div>
     </div>
 
+    <!-- ========================================================================== -->
+    <!-- 3d. 站间距来源对话框：按线路选择画布反算 / 实际里程 / 不添加（留空占位）          -->
+    <!-- ========================================================================== -->
+    <div class="editor-modal" id="sd-modal">
+        <div class="editor-modal-box sd-box">
+            <div class="editor-modal-head">
+                <span>站间距来源</span>
+                <button class="mini-btn" id="sd-close" title="关闭">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                </button>
+            </div>
+            <div class="editor-modal-body">
+                <p class="modal-tip">站间距来源<b>按线路单独设置</b>：可保持画布几何反算、录入<b>实际里程</b>（导出注释写明来源），
+                    或选择<b>不添加站间距</b>让该线路的 distances 留空占位。区间按「车站对」存放，站序调整后依然有效。</p>
+
+                <div class="sd-modes">
+                    <span class="sd-modes-label">本线路站间距来源</span>
+                    <label class="check-row"><input type="radio" name="sd-mode" value="canvas" checked><span>画布几何反算</span></label>
+                    <label class="check-row"><input type="radio" name="sd-mode" value="actual"><span>实际里程（下方录入）</span></label>
+                    <label class="check-row"><input type="radio" name="sd-mode" value="none"><span>不添加站间距（导出 <code>distances: []</code> 占位）</span></label>
+                </div>
+
+                <div class="om-grid">
+                    <div class="prop-field">
+                        <label for="sd-line">目标线路</label>
+                        <select id="sd-line"></select>
+                    </div>
+                    <div class="prop-field">
+                        <label for="sd-source">来源说明（写入导出注释）</label>
+                        <input type="text" id="sd-source" maxlength="40" spellcheck="false"
+                            placeholder="如：运营方公布 / OpenStreetMap">
+                    </div>
+                </div>
+
+                <div class="sd-toolbar">
+                    <div class="prop-field">
+                        <label for="sd-city-id">城市 ID</label>
+                        <input type="text" id="sd-city-id" maxlength="32" spellcheck="false" placeholder="如 fuzhou">
+                    </div>
+                    <button class="side-btn" id="sd-load-city"
+                        title="读取 ../city/{城市 ID}/data_lines.js 里该线路已登记的 distances，并按区间填入（站序相反也能匹配）">
+                        <cgo-icon name="map" size="14"></cgo-icon>
+                        <span>读取城市数据文件</span>
+                    </button>
+                    <button class="side-btn" id="sd-from-canvas" title="把画布几何反算值填入输入框，便于只校正偏差大的区间">
+                        <cgo-icon name="refresh" size="14"></cgo-icon>
+                        <span>按画布反算填入</span>
+                    </button>
+                    <button class="side-btn" id="sd-clear" title="清空全部输入框（点「应用到工程」后恢复为画布反算）">
+                        <cgo-icon name="delete" size="14"></cgo-icon>
+                        <span>清空输入</span>
+                    </button>
+                </div>
+                <p class="rl-status" id="sd-status"></p>
+
+                <div class="sd-rows" id="sd-rows"></div>
+
+                <div class="prop-field">
+                    <label for="sd-paste">粘贴里程表（可选，粘贴后点「解析并填充」）</label>
+                    <textarea id="sd-paste" spellcheck="false"
+                        placeholder="秀山 → 罗汉山 1100&#10;罗汉山 → 福州火车站 1520&#10;—— 或逐站站间距 ——&#10;秀山 1340&#10;罗汉山 1100&#10;—— 或累计里程 ——&#10;秀山 0&#10;罗汉山 1.1 km&#10;—— 或纯数字数组 ——&#10;[1340, 1100, 1520]"></textarea>
+                </div>
+                <div class="rl-action-row">
+                    <button class="side-btn side-btn-real" id="sd-parse">
+                        <cgo-icon name="filter" size="14"></cgo-icon>
+                        <span>解析并填充</span>
+                    </button>
+                    <span class="sd-legend">① 区间表「A → B 1100」　② 逐站站间距「B 1100」　③ 累计里程「B 1.1 km」　④ 纯数字数组「[1340, 1100]」；单位默认米</span>
+                </div>
+            </div>
+            <div class="editor-modal-foot">
+                <button class="side-btn" id="sd-cancel">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                    <span>取消</span>
+                </button>
+                <button class="side-btn side-btn-primary" id="sd-apply">
+                    <cgo-icon name="check" size="14"></cgo-icon>
+                    <span>应用到工程</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 隐藏文件选择器：打开 / 导入工程文件 -->
     <input type="file" id="file-input" accept=".json,application/json" style="display:none">
     <!-- 轻量提示条 -->
@@ -638,7 +727,7 @@
     <!-- 4. 脚本加载：CGoUI 图标组件库 + 编辑器主逻辑                                   -->
     <!-- ========================================================================== -->
     <script type="module" src="../core/cgo-ui.js?v=260923.1217"></script>
-    <script src="js/editor.js?v=260923.1217"></script>
+    <script src="js/editor.js?v=260923.1405"></script>
 </body>
 
 </html>
