@@ -1,2 +1,5 @@
 .DS_Store
 .workbuddy-ai/
+
+# 站点图元预览页：开发期验证用的单文件 HTML，不纳入版本库（保留在本地）
+docs/preview/
