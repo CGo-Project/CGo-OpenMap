@@ -32,6 +32,9 @@
 
     const FANGCHENG_MONO_SRC = "./city/shenyang/assets/fangcheng_mono.svg";
 
+    /** 题字站激活时挂在 body 上的类名：供 header 之外的元素（如移动端顶部填充层）联动染色 */
+    const SY_ACTIVE_CLASS = "sy-calligraphy-active";
+
     /** 按固定优先级选出题字 header 的代表线路色，均未命中时回退首条经停线路 */
     function pickHeaderLineColor(relatedLinesInfo) {
         const list = Array.isArray(relatedLinesInfo) ? relatedLinesInfo : [];
@@ -122,7 +125,14 @@
             // .panel-header 外壳由 core 装配，模块只能通过挂载后修饰；
             // 面板每次重渲染 header 均为全新 DOM，非题字站不会残留该 class。
             const station = context.station || {};
-            if (!getCalligraphy(station)) return;
+            if (!getCalligraphy(station) || !infoPanel) {
+                // 非题字站需清掉 body 上的染色状态，否则移动端顶部填充层
+                // 会残留上一站的线路色
+                document.body.classList.remove(SY_ACTIVE_CLASS);
+                document.body.style.removeProperty("--sy-cali-line-color");
+                document.body.style.removeProperty("--sy-cali-on-color");
+                return;
+            }
             const header = infoPanel.querySelector(".panel-header");
             if (!header) return;
 
@@ -133,8 +143,12 @@
 
             const onColor = window.ShenyangUi?.getReadableTextColor?.(picked.color) || "#ffffff";
             header.classList.add("sy-calligraphy-header");
-            header.style.setProperty("--sy-cali-line-color", picked.color);
-            header.style.setProperty("--sy-cali-on-color", onColor);
+            // 染色变量挂在 body 而非 header：body 是 header 与移动端顶部填充层
+            // (.mobile-top-bar-backdrop，位于 main.html 的 body 级) 的公共祖先，
+            // 一处赋值即可同时驱动两处颜色，避免两处各存一份
+            document.body.classList.add(SY_ACTIVE_CLASS);
+            document.body.style.setProperty("--sy-cali-line-color", picked.color);
+            document.body.style.setProperty("--sy-cali-on-color", onColor);
 
             // 方城地标在染色 header 上：深底（白字）切换为白色单色版；
             // 浅底（深字，如 10 号线浅绿）保留彩色原图——目前仅有白色 mono，

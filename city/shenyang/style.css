@@ -106,25 +106,36 @@
 }
 
 /* 题字站标题栏：整块染线路标志色（原规则带 !important，此处同级覆盖）。
-   移动端 body.mobile-split-active .panel-header 同样带 background-color !important
-   且特异性(0,2,1)高于 .panel-header.sy-calligraphy-header(0,2,0)，
-   两边 !important 相遇时按特异性取胜，会把移动端锁回品牌深蓝，
-   故此处显式补一条更高特异性的选择器覆盖移动端。 */
+   css/style.css 的移动端规则以「三档状态类」批量覆盖 header 背景：
+     body.mobile-split-active .panel-header,
+     body.mobile-panel-expanded .panel-header,
+     body.panel-sheet-collapsed .panel-header { background: var(--panel-header-bg) !important }
+   其特异性(0,2,1)高于 .panel-header.sy-calligraphy-header(0,2,0)，两边 !important
+   相遇时按特异性取胜，会让题字 header 在这三档下丢失线路色，
+   故此处逐一对应补出特异性更高的选择器(0,3,1)，保证三档皆保持染色。 */
 .panel-header.sy-calligraphy-header,
-body.mobile-split-active .panel-header.sy-calligraphy-header {
+body.mobile-split-active .panel-header.sy-calligraphy-header,
+body.mobile-panel-expanded .panel-header.sy-calligraphy-header,
+body.panel-sheet-collapsed .panel-header.sy-calligraphy-header {
     background-color: var(--sy-cali-line-color) !important;
     color: var(--sy-cali-on-color, #ffffff) !important;
     border-bottom-color: rgba(255, 255, 255, 0.25);
 }
 
-/* 成组反色：关闭 / 展开按钮与英文站名跟随可读文字色。
-   注意：css/style.css 的 .panel-close-btn 用了 color:var(--close-btn-color)!important
-   （深色模式为半透明白），普通声明无法覆盖，此处必须同以 !important 应对，
-   否则题字 header 上的关闭图标会与题字 / 英文名的纯白不统一。 */
-.sy-calligraphy-header .panel-expand-btn {
-    color: var(--sy-cali-on-color, #ffffff);
+/* 移动端全屏态顶部的颜色填充层（main.html 中 body 级的 .mobile-top-bar-backdrop，
+   默认 var(--panel-header-bg) 品牌深蓝）需与题字 header 同色，
+   否则状态栏区域会停在深蓝、与下方彩色 header 断成两截。
+   染色变量由题字模块挂在 body 上，故此处可直接取用。 */
+body.sy-calligraphy-active .mobile-top-bar-backdrop {
+    background-color: var(--sy-cali-line-color) !important;
 }
 
+/* 成组反色：关闭按钮与英文站名跟随可读文字色。
+   注意 1：css/style.css 的 .panel-close-btn 用了 color:var(--close-btn-color)!important
+   （深色模式为半透明白），普通声明无法覆盖，此处必须同以 !important 应对，
+   否则题字 header 上的关闭图标会与题字 / 英文名的纯白不统一。
+   注意 2：旧版移动端的 .panel-expand-btn 已由上游三档面板系统的抓取条
+   (.sheet-grabber) 取代，不再渲染，故不为其保留反色规则。 */
 .sy-calligraphy-header .panel-close-btn {
     color: var(--sy-cali-on-color, #ffffff) !important;
 }
