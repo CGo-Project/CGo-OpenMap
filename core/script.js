@@ -3120,7 +3120,9 @@ function initContextMenu() {
         const navStation = subwayGroup.length > 0 ? subwayGroup[0] : railGroup[0];
         if (navStation && navStation.type !== 'no') {
             const isRail = railGroup.length > 0 && subwayGroup.length === 0;
-            const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(name, isRail) : `https://uri.amap.com/search?keyword=${encodeURIComponent(name)}`;
+            // 第三参传 station 供城市侧判断站型（如区分有轨电车站 / 火车站），
+            // 「有轨」属城市私有知识，core 只负责把事实数据交出去
+            const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(name, isRail, { station: navStation }) : `https://uri.amap.com/search?keyword=${encodeURIComponent(name)}`;
             html += `<div class="ctx-divider">导航</div>`;
             html += `<a href="${mapUrl}" target="_blank" rel="noreferrer" class="ctx-menu-btn"><cgo-icon name="map" size="16"></cgo-icon> 高德导航</a>`;
         }
@@ -3138,7 +3140,7 @@ function initContextMenu() {
             type = 'rail';
         }
         html += getStationButtons(station, type);
-        const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(station.cn, type === 'rail') : `https://uri.amap.com/search?keyword=${encodeURIComponent(station.cn)}`;
+        const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(station.cn, type === 'rail', { station }) : `https://uri.amap.com/search?keyword=${encodeURIComponent(station.cn)}`;
         html += `<a href="${mapUrl}" target="_blank" rel="noreferrer" class="ctx-menu-btn"><cgo-icon name="map" size="16"></cgo-icon> 高德导航</a>`;
         return html;
     };

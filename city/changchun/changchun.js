@@ -121,8 +121,18 @@
 
             return null;
         },
-        getNavigationUrl(stationName) {
-            return `https://uri.amap.com/search?keyword=${encodeURIComponent(`${stationName}(地铁站)`)}&city=${encodeURIComponent("长春")}`;
+        /**
+         * 高德导航搜索词（与高德 POI 命名一致，三城统一口径，已实测）：
+         *   有轨电车站 → 「站名(有轨电车站)」
+         *   火车站 / 市郊铁路 → 「站名」（裸名，高德该 POI 原名即如此）
+         *   地铁站 → 「站名(地铁站)」
+         * 站型判断走本城市 isTramStation；station 由 core 作为第三参传入。
+         */
+        getNavigationUrl(stationName, isRailway = false, context = {}) {
+            const query = this.isTramStation(context?.station)
+                ? `${stationName}(有轨电车站)`
+                : isRailway ? stationName : `${stationName}(地铁站)`;
+            return `https://uri.amap.com/search?keyword=${encodeURIComponent(query)}&city=${encodeURIComponent("长春")}`;
         },
         formatOwnerName(rawOwnerName) {
             return rawOwnerName && rawOwnerName !== "未知运营"

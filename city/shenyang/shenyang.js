@@ -142,10 +142,15 @@
             stanameCsvUrl: "./city/shenyang/staname.csv",
             amapDataUrl: "./city/shenyang/amap_data.json"
         },
+        /**
+         * 高德导航搜索词（与高德 POI 命名一致，三城统一口径，已实测）：
+         *   有轨电车站 → 「站名(有轨电车站)」
+         *   火车站 / 市郊铁路 → 「站名」（裸名，高德该 POI 原名即如此）
+         *   地铁站 → 「站名(地铁站)」
+         * 站型判断走本城市 isTramStation；station 由 core 作为第三参传入。
+         */
         getNavigationUrl(stationName, isRailway = false, context = {}) {
-            const isTram = context?.isTram === true
-                || this.isTramStation(context?.station);
-            const query = isTram
+            const query = this.isTramStation(context?.station)
                 ? `${stationName}(有轨电车站)`
                 : isRailway ? stationName : `${stationName}(地铁站)`;
             return `https://uri.amap.com/search?keyword=${encodeURIComponent(query)}&city=${encodeURIComponent("沈阳")}`;
@@ -200,7 +205,6 @@
                 "header-title": { enabled: false },
                 "shenyang-calligraphy-title": { enabled: true, targetTab: "header", order: 20 },
                 "header-badges": { enabled: true, order: 30 },
-                "shenyang-tramway-navigation": { enabled: true, targetTab: "footer", order: 11 },
                 "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
                 "shenyang-timetable": { enabled: true, targetTab: "line-tab", order: 15 },
                 "shenyang-calligrapher-intro": { enabled: true, targetTab: "station-info", order: 12 },

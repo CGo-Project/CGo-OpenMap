@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 沈阳车站信息板品牌模块
  *
- * 本模块负责紧凑线路徽标同步、同名站点击处理、有轨导航链接与方城标识；
+ * 本模块负责紧凑线路徽标同步、同名站点击处理与方城标识；
  * 侧栏站名标题归一化已拆到 modules/shenyang_station_title.js（走共享层）。
  *
  * @event cgo:city-module-ready
@@ -53,14 +53,6 @@
             String(line.id || "").toUpperCase().startsWith("HNT")
             || String(line.name || "").includes("有轨")
         ));
-    }
-
-    function isTramStation(station) {
-        const lineList = getShenyangLinesData();
-        return Boolean(station?.relatedLines?.some((lineId) => {
-            const line = lineList.find((item) => item?.id === lineId);
-            return isTramLine(line || { id: lineId });
-        }));
     }
 
     function getLineForBadge(badge) {
@@ -308,19 +300,6 @@
         badges.slice(0, -1).forEach((badge) => badge.remove());
     }
 
-    function rewriteTramwayNavigation(infoPanel, context) {
-        const station = context?.station;
-        if (!infoPanel || !isTramStation(station)) return;
-
-        const city = context?.city || window.SHENYANG_CITY || window.CURRENT_CITY;
-        const mapUrl = city?.getNavigationUrl?.(station.cn, false, { station, isTram: true });
-        if (!mapUrl) return;
-
-        infoPanel.querySelectorAll('a[href*="uri.amap.com/search"]').forEach((link) => {
-            if (String(link.textContent || '').includes('高德导航')) link.href = mapUrl;
-        });
-    }
-
     function hasVirtualTransferBetween(candidates) {
         const candidateIds = new Set(candidates.map((station) => station.id));
         return candidates.some((station) => {
@@ -419,16 +398,6 @@
     }
 
     if (window.StationBoard?.registerModule) {
-        window.StationBoard.registerModule({
-            id: "shenyang-tramway-navigation",
-            name: "沈阳有轨电车导航",
-            slot: "footer",
-            order: 11,
-            shouldRender: ({ station }) => isTramStation(station),
-            render: () => "",
-            onMounted: rewriteTramwayNavigation
-        });
-
         window.StationBoard.registerModule({
             id: "shenyang-fangcheng-decoration",
             name: "沈阳方城标识",
