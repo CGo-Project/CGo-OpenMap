@@ -475,27 +475,31 @@
             opacity: 0.85;
         }
 
-        /* 移动端/异形屏顶部状态栏与信号栏实色安全区保护层：遮挡页面滚动穿透内容，填充与背景一致的实心底色 */
+        /* 移动端/异形屏顶部状态栏与信号栏保护层：
+           ① 状态栏区（0 → env safe-area-inset-top）实色遮挡，内容不穿透信号栏
+           ② 下方 16px 渐变淡出到透明，内容自然消融到信号栏后方
+           var(--bg-color) 自动跟随深色模式，无需额外 dark 选择器 */
         .mobile-status-bar-fill {
             position: fixed;
-            top: -100px;
+            top: 0;
             left: 0;
             right: 0;
-            height: calc(100px + constant(safe-area-inset-top, 0px));
-            height: calc(100px + env(safe-area-inset-top, 0px));
-            background-color: var(--bg-color, #f8f9fa);
+            height: calc(constant(safe-area-inset-top, 0px) + 16px);
+            height: calc(env(safe-area-inset-top, 0px) + 16px);
+            /* constant() 回退给旧版 iOS Safari */
+            background: linear-gradient(
+                to bottom,
+                var(--bg-color, #f8f9fa) constant(safe-area-inset-top, 0px),
+                transparent calc(constant(safe-area-inset-top, 0px) + 16px)
+            );
+            /* 现代浏览器使用 env() */
+            background: linear-gradient(
+                to bottom,
+                var(--bg-color, #f8f9fa) env(safe-area-inset-top, 0px),
+                transparent calc(env(safe-area-inset-top, 0px) + 16px)
+            );
             z-index: 50001;
             pointer-events: none;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root:not([data-theme='light']) .mobile-status-bar-fill {
-                background-color: var(--bg-color, #1a1a1a);
-            }
-        }
-
-        [data-theme='dark'] .mobile-status-bar-fill {
-            background-color: var(--bg-color, #1a1a1a);
         }
     </style>
 </head>

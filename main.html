@@ -82,10 +82,19 @@
             }
         }
 
-        /* 浮动标题栏模式下，地图缩放控件避让顶部悬浮双岛栏 */
+        /* 浮动标题栏模式下，地图缩放控件避让顶部悬浮双岛栏（桌面端加大间距） */
         :root[header-mode="floating"] #modern-zoom-control,
         body[header-mode="floating"] #modern-zoom-control {
-            top: calc(env(safe-area-inset-top, 0px) + 76px);
+            top: calc(env(safe-area-inset-top, 0px) + 96px);
+        }
+
+        /* 移动端：缩放控件左侧与标题栏左岛左边缘对齐 */
+        @media (max-width: 768px) {
+            :root[header-mode="floating"] #modern-zoom-control,
+            body[header-mode="floating"] #modern-zoom-control {
+                top: calc(env(safe-area-inset-top, 0px) + 76px);
+                left: calc(10px + env(safe-area-inset-left, 0px));
+            }
         }
 
         /* 液态玻璃模式下的地图控件微质感增强 */
@@ -195,6 +204,8 @@
             </button>
         </div>
 
+        <!-- 全屏时顶部颜色填充层（跟随 panel-header 颜色，信号栏区域背景补色） -->
+        <div class="mobile-top-bar-backdrop"></div>
         <!-- 车站详情信息卡片面板 (由 core/script.js 与 city/beijing/stacard 动态填充) -->
         <div id="info-panel" style="display:none;"></div>
 
