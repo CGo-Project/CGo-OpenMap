@@ -183,7 +183,10 @@
                         font-weight:700;
                         color:var(--text-main);
                         margin-bottom:2px;
-                    ">建设进度</div>
+                        display:flex;
+                        align-items:center;
+                        gap:6px;
+                    "><span>建设进度</span></div>
 
                     <div style="width:100%; box-sizing:border-box;">
                         ${rows.map((row, i) => `

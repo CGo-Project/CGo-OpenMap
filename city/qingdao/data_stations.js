@@ -12,7 +12,7 @@ const stationsData = {
         cn: "兴国路",
         en: "Xingguo Rd",
         align: "left",
-        offset: { x: -6, y: 0 },
+        offset: { x: -1, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "M0113": {
@@ -120,7 +120,7 @@ const stationsData = {
         x: 1330,
         y: 1380,
         cn: "观象山(市立医院)",
-        en: "Guanxiangshan<br>(Qingdao Municipal Hospital)",
+        en: "Guanxiangshan<br> (Qingdao Municipal Hospital)",
         align: "top-right",
         offset: { x: 0, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -320,7 +320,7 @@ const stationsData = {
         x: 1930,
         y: 800,
         cn: "佛耳崖",
-        en: "Fo'erya",
+        en: "Fo’erya",
         align: "top",
         offset: { x: 0, y: -1 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -447,8 +447,8 @@ const stationsData = {
     },
     "M0221": {
         type: "tsf",
-        x: 1867.5,
-        y: 1477.5,
+        x: 1868.5,
+        y: 1478.5,
         cn: "麦岛",
         en: "Maidao",
         align: "bottom-right",
@@ -470,7 +470,7 @@ const stationsData = {
         x: 1740,
         y: 1480,
         cn: "青岛中央法务区<br>(燕儿岛路)",
-        en: "Qingdao Central Legal-Services<br>District (Yan’erdao Rd)",
+        en: "Qingdao Central Legal-<br>Services District (Yan’erdao Rd)",
         align: "bottom",
         offset: { x: 0, y: 1 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -540,7 +540,7 @@ const stationsData = {
         x: 1280,
         y: 1330,
         cn: "国际邮轮港",
-        en: "Qingdap International Cruise Terminal",
+        en: "Qingdao International Cruise Terminal",
         align: "top-left",
         offset: { x: 2, y: 2 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -720,7 +720,7 @@ const stationsData = {
         x: 1610,
         y: 1475,
         cn: "五四广场",
-        en: "May 4th Square",
+        en: "May 4<sup>th</sup> Square",
         align: "bottom",
         offset: { x: 0, y: 6 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -730,7 +730,7 @@ const stationsData = {
         x: 1530,
         y: 1490,
         cn: "延安三路",
-        en: "Yan’an 3rd Rd",
+        en: "Yan’an 3<sup>rd</sup> Rd",
         align: "bottom",
         offset: { x: 0, y: 1 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -766,13 +766,13 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "M0321": {
-        type: "dot",
+        type: "tsf",
         x: 1330,
         y: 1490,
         cn: "人民会堂",
         en: "Hall of the People",
         align: "bottom",
-        offset: { x: 0, y: 1 },
+        offset: { x: 0, y: 3 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "M0322": {
@@ -900,7 +900,7 @@ const stationsData = {
         x: 1855,
         y: 1235,
         cn: "劲松三路",
-        en: "Jingsong 3rd Rd",
+        en: "Jingsong 3<sup>rd</sup> Rd",
         align: "top-left",
         offset: { x: 2, y: 2 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1260,7 +1260,7 @@ const stationsData = {
         x: 1010,
         y: 1700,
         cn: "钱塘江路(青职学院)",
-        en: "Qiantangjiang Rd (Qingdao Technical College)",
+        en: "Qiantangjiang Rd<br>(Qingdao Technical College)",
         align: "left",
         offset: { x: -1, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1620,7 +1620,7 @@ const stationsData = {
         x: 1730,
         y: 560,
         cn: "仙家寨(汽车北站)",
-        en: "Xianjiazhai(North Coach Station)",
+        en: "Xianjiazhai (North Coach Station)",
         align: "left",
         offset: { x: -1, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1730,7 +1730,7 @@ const stationsData = {
         x: 1150,
         y: 640,
         cn: "健身中心(红岛会展)",
-        en: "Fitness Center(Hongdao International<br>Convention and Exhibition Center)",
+        en: "Fitness Center (Hongdao International<br>Convention and Exhibition Center)",
         align: "top-right",
         offset: { x: -2, y: 2 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1750,7 +1750,7 @@ const stationsData = {
         x: 1270,
         y: 760,
         cn: "红岛科技馆(方特)",
-        en: "Hongdao Science and Technology Museum (Fangte)",
+        en: "Hongdao Science and<br>Technology Museum (Fangte)",
         align: "top-right",
         offset: { x: -2, y: 2 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1776,7 +1776,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "M0813": {
-        type: "no",
+        type: "tsf",
         x: 1720,
         y: 960,
         cn: "闫家山",
@@ -1786,7 +1786,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "M0814": {
-        type: "no",
+        type: "dot",
         x: 1670,
         y: 1060,
         cn: "小水清沟",
@@ -1796,17 +1796,17 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "M0815": {
-        type: "no",
+        type: "dot",
         x: 1610,
         y: 1150,
         cn: "大山",
-        en: "Danshan",
+        en: "Dashan",
         align: "right",
         offset: { x: 1, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "M0817": {
-        type: "no",
+        type: "tsf",
         x: 1610,
         y: 1380,
         cn: "澳柯玛桥",

@@ -91,6 +91,10 @@ window.QINGDAO_STATION_NAME_HISTORY = {
             },
             {
                 "type": "正式站名",
+                "name": "太平角公园(一疗)"
+            },
+            {
+                "type": "正式站名",
                 "name": "太平角公园"
             }
         ]
@@ -804,7 +808,7 @@ window.QINGDAO_STATION_NAME_HISTORY = {
             },
             {
                 "type": "正式站名",
-                "name": "下王埠"
+                "name": "下王埠(外贸学院)"
             }
         ]
     },

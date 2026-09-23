@@ -1,8 +1,8 @@
 /**
- * 青岛车站信息板：首末车时刻 / 机场直达列车
+ * 青岛车站信息板：首末车时刻 / 快速列车
  */
 (function () {
-    console.log("[QingdaoTimetable] v35 loaded");
+    console.log("[QingdaoTimetable] v36 loaded");
     if (!window.StationBoard || typeof window.StationBoard.registerModule !== "function") return;
 
     function getEntry(lineId, stationId) {
@@ -36,10 +36,10 @@
         return dirs;
     }
 
-    function parseDirect(items) {
+    function parseFast(items) {
         const routes = {};
         (items || []).forEach((item) => {
-            const m = (item.label || "").match(/^直达列车-(.+)-第(\d+)班$/);
+            const m = (item.label || "").match(/^快速列车-(.+)-第(\d+)班$/);
             if (!m) return;
             routes[m[1]] ||= [];
             routes[m[1]].push({ no: Number(m[2]), value: cleanTime(item.value) });
@@ -48,7 +48,7 @@
         return routes;
     }
 
-    function formatDirectTime(value) {
+    function formatFastTime(value) {
         if (!value || value === "—") return "—";
         const v = String(value).trim();
         const m = v.match(/^(\d{1,2}:\d{2})(?:\s*\(?到达\)?)?$/);
@@ -156,8 +156,7 @@
 
             const dirs = parseRegular(entry.items);
             const columnTemplate = getAdaptiveColumns(dirs);
-            const showDirect = context.station.id === "M0301" || context.station.id === "M0802";
-            const directs = showDirect ? parseDirect(entry.items) : {};
+            const fastGroups = parseFast(entry.items);
 
             const directionRows = Object.keys(dirs).map((dest, index, arr) => {
                 const d = dirs[dest];
@@ -240,57 +239,70 @@
                 `;
             }).join("");
 
-            const directRows = Object.keys(directs).map((route) => {
-                const trains = directs[route].filter(x => x.value && x.value !== "—");
+            const fastRows = Object.keys(fastGroups).map((period) => {
+                const trains = fastGroups[period].filter(x => x.value && x.value !== "—");
                 if (!trains.length) return "";
 
-                const chips = trains.map(x => `
-                    <div style="
-                        display:flex;
-                        flex-direction:column;
-                        align-items:center;
-                        justify-content:center;
-                        box-sizing:border-box;
-                        min-width:0;
-                        width:100%;
-                        height:62px;
-                        padding:5px 3px 6px;
-                        border:1px solid var(--border-color);
-                        border-radius:6px;
-                        background:var(--card-bg);
-                        overflow:hidden;
-                    ">
-                        <span style="font-size:9px; color:var(--text-light); line-height:1.1; white-space:nowrap;">第${x.no}班</span>
-                        <span style="
-                            margin-top:3px;
-                            font-size:11px;
-                            font-weight:650;
-                            color:var(--text-main);
-                            line-height:1.2;
-                            white-space:nowrap;
-                            font-variant-numeric:tabular-nums;
-                        ">${formatDirectTime(x.value)}</span>
-                    </div>
-                `).join("");
+                // 夜间 5 班时按用户时刻表排版：前两班一行、后三班一行。
+                // 其他情况（早间 3 班、澳柯玛桥夜间仅停 2 班）保持单行。
+                const rows = period === "夜间(市区方向)" && trains.length === 5
+                    ? [trains.slice(0, 2), trains.slice(2)]
+                    : [trains];
 
-                return `
-                    <div style="padding:8px 14px 0; box-sizing:border-box; width:100%;">
-                        <div style="font-size:11.5px; font-weight:650; color:var(--text-main); margin-bottom:6px; white-space:nowrap;">${route}</div>
+                const rowHtml = rows.map((row) => {
+                    const chips = row.map(x => `
+                        <div style="
+                            display:flex;
+                            flex-direction:column;
+                            align-items:center;
+                            justify-content:center;
+                            box-sizing:border-box;
+                            min-width:0;
+                            width:100%;
+                            height:62px;
+                            padding:5px 3px 6px;
+                            border:1px solid var(--border-color);
+                            border-radius:6px;
+                            background:var(--card-bg);
+                            overflow:hidden;
+                        ">
+                            <span style="font-size:9px; color:var(--text-light); line-height:1.1; white-space:nowrap;">第${x.no}班</span>
+                            <span style="
+                                margin-top:3px;
+                                font-size:11px;
+                                font-weight:650;
+                                color:var(--text-main);
+                                line-height:1.2;
+                                white-space:nowrap;
+                                font-variant-numeric:tabular-nums;
+                            ">${formatFastTime(x.value)}</span>
+                        </div>
+                    `).join("");
+
+                    return `
                         <div style="
                             display:grid;
-                            grid-template-columns:repeat(3, minmax(0, 1fr));
+                            grid-template-columns:repeat(${row.length}, minmax(0, 1fr));
                             gap:8px;
                             width:100%;
                             box-sizing:border-box;
+                            margin-top:8px;
                         ">
                             ${chips}
                         </div>
+                    `;
+                }).join("");
+
+                return `
+                    <div style="padding:8px 14px 0; box-sizing:border-box; width:100%;">
+                        <div style="font-size:11.5px; font-weight:650; color:var(--text-main); margin-bottom:2px; white-space:nowrap;">${period}</div>
+                        ${rowHtml}
                     </div>
                 `;
             }).join("");
 
             return `
-                <div data-qingdao-timetable-version="35" style="
+                <div data-qingdao-timetable-version="36" style="
                     width:100%;
                     box-sizing:border-box;
                     margin:8px 0;
@@ -306,7 +318,10 @@
                         font-size:13.5px;
                         font-weight:700;
                         color:var(--text-main);
-                    ">首末车时刻</div>
+                        display:flex;
+                        align-items:center;
+                        gap:6px;
+                    "><cgo-icon name="time" size="14"></cgo-icon><span>首末车时刻</span></div>
 
                     <div style="
                         display:grid;
@@ -328,7 +343,7 @@
                         ${directionRows}
                     </div>
 
-                    ${directRows ? `
+                    ${fastRows ? `
                         <div style="
                             width:100%;
                             box-sizing:border-box;
@@ -336,8 +351,8 @@
                             padding:10px 0 12px;
                             border-top:1px solid var(--border-color);
                         ">
-                            <div style="padding:0 14px; font-size:12.5px; font-weight:700; color:var(--text-main); margin-bottom:2px;">机场直达列车</div>
-                            ${directRows}
+                            <div style="padding:0 14px; font-size:12.5px; font-weight:700; color:var(--text-main); margin-bottom:2px; display:flex; align-items:center; gap:5px;"><cgo-icon name="train" size="13"></cgo-icon><span>快速列车</span></div>
+                            ${fastRows}
                         </div>
                     ` : ""}
                 </div>

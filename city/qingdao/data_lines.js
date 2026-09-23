@@ -21,6 +21,22 @@ const linesData = [
         ]
     },
     {
+        id: "QDM15U",
+        name: "15号线（在建段）",
+        color: "rgb(238, 155, 190)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 1490, y: 240 }, { x: 1750, y: 240 }, { x: 1850, y: 340 }, { x: 1850, y: 790 }, { x: 1880, y: 790 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
+    },
+    {
         id: "QDM13",
         name: "西海岸快线",
         color: "rgb(0, 168, 136)",
@@ -61,6 +77,22 @@ const linesData = [
         ]
     },
     {
+        id: "QDM11U",
+        name: "蓝谷快线（在建段）",
+        color: "rgb(56, 80, 162)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 2550, y: 150 }, { x: 2550, y: 100 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
+    },
+    {
         id: "QDM09",
         name: "9号线",
         color: "rgb(95, 167, 10)",
@@ -73,6 +105,22 @@ const linesData = [
             { x: 1530, y: 380 },
             { x: 2150, y: 380 }
         ]
+    },
+    {
+        id: "QDM09U",
+        name: "9号线（在建段）",
+        color: "rgb(95, 167, 10)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 2150, y: 380 }, { x: 1530, y: 380 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
     },
     {
         id: "QDM08B",
@@ -88,6 +136,22 @@ const linesData = [
             { x: 490, y: 500 },
             { x: 490, y: 340 }
         ]
+    },
+    {
+        id: "QDM08BU",
+        name: "8号线支线（在建段）",
+        color: "rgb(228, 23, 147)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 970, y: 500 }, { x: 490, y: 500 }, { x: 490, y: 340 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
     },
     {
         id: "QDM08",
@@ -126,6 +190,22 @@ const linesData = [
         ]
     },
     {
+        id: "QDM07NU",
+        name: "7号线北段（在建段）",
+        color: "rgb(174, 150, 219)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 2290, y: 100 }, { x: 1970, y: 100 }, { x: 1830, y: 240 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
+    },
+    {
         id: "QDM07S",
         name: "7号线",
         color: "rgb(174, 150, 219)",
@@ -138,6 +218,22 @@ const linesData = [
             { x: 1730, y: 720 },
             { x: 1730, y: 910 }
         ]
+    },
+    {
+        id: "QDM07SU",
+        name: "7号线南段（在建段）",
+        color: "rgb(174, 150, 219)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 1730, y: 720 }, { x: 1730, y: 910 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
     },
     {
         id: "QDM06",
@@ -160,6 +256,22 @@ const linesData = [
         ]
     },
     {
+        id: "QDM06U",
+        name: "6号线二期（在建段）",
+        color: "rgb(94, 171, 229)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 680, y: 1960 }, { x: 450, y: 1960 }, { x: 310, y: 1820 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
+    },
+    {
         id: "QDM05",
         name: "5号线",
         color: "rgb(157, 23, 151)",
@@ -179,6 +291,22 @@ const linesData = [
             { x: 2090, y: 1320 },
             { x: 2210, y: 1320 }
         ]
+    },
+    {
+        id: "QDM05U",
+        name: "5号线（在建段）",
+        color: "rgb(157, 23, 151)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 1870, y: 1480 }, { x: 1770, y: 1380 }, { x: 1470, y: 1380 }, { x: 1410, y: 1320 }, { x: 1410, y: 1080 }, { x: 1530, y: 960 }, { x: 1730, y: 960 }, { x: 2090, y: 1320 }, { x: 2210, y: 1320 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
     },
     {
         id: "QDM04",
@@ -243,6 +371,22 @@ const linesData = [
             { x: 1300, y: 1310 },
             { x: 1220, y: 1390 }
         ]
+    },
+    {
+        id: "QDM02U",
+        name: "2号线（在建段）",
+        color: "rgb(179, 39, 46)",
+        isVirtual: true,
+        stationIds: [],
+        distances: [],
+        useStrictRounding: false,
+        pathPoints: [{ x: 1850, y: 850 }, { x: 1850, y: 800 }, { x: 2230, y: 800 }],
+        overlayStyle: {
+            color: "var(--map-bg)",
+            width: "3.4",
+            opacity: 1,
+            dashArray: "none"
+        }
     },
     {
         id: "QDM01",
