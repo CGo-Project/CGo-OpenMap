@@ -29,14 +29,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260923.1217">
-    <script type="module" src="core/cgo-ui.js?v=260923.1217"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=260924.0237">
+    <script type="module" src="core/cgo-ui.js?v=260924.0237"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260923.1217">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260923.1217">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260923.1217">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260923.1217">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=260924.0237">
+    <link rel="stylesheet" href="css/cgo_element.css?v=260924.0237">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=260924.0237">
+    <link rel="stylesheet" href="css/cgo_components.css?v=260924.0237">
 
     <style>
         html {
@@ -403,8 +403,8 @@
             flex: 0 0 auto;
         }
 
-        /* 响应式适配 */
-        @media (max-width: 768px) {
+        /* 响应式适配 (CGoUI 640px 唯一断点规范) */
+        @media (max-width: 640px) {
             .city-grid {
                 grid-template-columns: 1fr;
                 gap: 16px;
@@ -421,19 +421,13 @@
             }
 
             .port-banner-actions .btn {
-                flex: 1 1 auto;
+                flex: 1 1 100%;
                 min-width: max-content;
                 padding: 0 14px;
             }
 
             .header-sub-badge {
                 display: none;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .port-banner-actions .btn {
-                flex: 1 1 100%;
             }
         }
 
@@ -510,7 +504,7 @@
 
     <!-- CGoUI 浮动双岛标题栏 -->
     <header class="tool-header">
-        <div class="header-island header-island-left">
+        <div class="header-island header-island-left glass-surface">
             <div class="header-center">
                 <div class="img-icon-wrapper header-logo-wrapper">
                     <img src="./assets/icons/mapicon.png" alt="CGo OpenMap" class="header-logo" loading="eager"
@@ -523,7 +517,7 @@
             </div>
         </div>
 
-        <div class="header-island header-island-right">
+        <div class="header-island header-island-right glass-surface">
             <div class="header-right">
                 <a href="./readme.html" class="btn btn-info" title="关于平台与开源说明">
                     <cgo-icon name="help"></cgo-icon>
@@ -559,8 +553,8 @@
             <!-- 由脚本读取城市注册表动态渲染 -->
         </div>
 
-        <!-- 移植与贡献横幅 -->
-        <div class="port-banner glass-card">
+        <!-- 移植与贡献横幅 (Tier B 不可交互底板) -->
+        <div class="port-banner glass-panel">
             <div class="liquid-glass-effect"></div>
             <div class="port-banner-content">
                 <div class="port-banner-icon">
@@ -622,8 +616,8 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=260923.1217"></script>
-    <script src="core/tool-theme.js?v=260923.1217"></script>
+    <script src="city/data.js?v=260924.0237"></script>
+    <script src="core/tool-theme.js?v=260924.0237"></script>
 
     <!-- 动态城市渲染与数据绑定 -->
     <script>

@@ -242,6 +242,33 @@ body[data-header-mode="floating"]::before,
     z-index: 900;
 }
 
+/* 移动端/异形屏顶部状态栏与信号栏保护层：
+   ① 状态栏区（0 → env safe-area-inset-top）实色遮挡，内容不穿透信号栏
+   ② 下方 16px 渐变淡出到透明，内容自然消融到信号栏后方
+   var(--bg-color) 自动跟随深色模式，无需额外 dark 选择器 */
+.mobile-status-bar-fill {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(constant(safe-area-inset-top, 0px) + 16px);
+    height: calc(env(safe-area-inset-top, 0px) + 16px);
+    /* constant() 回退给旧版 iOS Safari */
+    background: linear-gradient(
+        to bottom,
+        var(--theme-bg, var(--bg-color, #f8f9fa)) constant(safe-area-inset-top, 0px),
+        transparent calc(constant(safe-area-inset-top, 0px) + 16px)
+    );
+    /* 现代浏览器使用 env() */
+    background: linear-gradient(
+        to bottom,
+        var(--theme-bg, var(--bg-color, #f8f9fa)) env(safe-area-inset-top, 0px),
+        transparent calc(env(safe-area-inset-top, 0px) + 16px)
+    );
+    z-index: 50001;
+    pointer-events: none;
+}
+
 :root[header-mode="floating"] .header-island,
 :root[data-header-mode="floating"] .header-island,
 body[header-mode="floating"] .header-island,
@@ -262,6 +289,7 @@ body[data-header-mode="floating"] .header-island,
     box-sizing: border-box;
     pointer-events: auto;
     z-index: 1000;
+    overflow: visible !important;
     transition:
         left 0.25s ease,
         right 0.25s ease,
@@ -342,6 +370,7 @@ body[data-header-mode="floating"] .header-island-right,
 .tool-header.floating-header .header-island-right {
     right: calc(20px + env(safe-area-inset-right, 0px));
     gap: 8px;
+    overflow: visible !important;
 }
 
 :root[header-mode="floating"] .header-island .header-center,
@@ -372,12 +401,18 @@ body[header-mode="floating"] .tool-header:not(:has(.header-island)),
     background-color: var(--header-bg);
     pointer-events: auto;
     z-index: 1000;
+    overflow: visible !important;
 }
 
-/* 下拉菜单在浮动岛屿内展开时提权 */
+/* 下拉菜单在浮动岛屿内展开时提权并保障溢出可见 */
 .header-island:has(.dropdown-content.show),
-.tool-header:has(.dropdown-content.show) {
-    z-index: 3000 !important;
+.tool-header:has(.dropdown-content.show),
+.header-island:has(.dropdown.is-open),
+.tool-header:has(.dropdown.is-open),
+.header-island:has(cgo-dropdown[open]),
+.tool-header:has(cgo-dropdown[open]) {
+    z-index: 50002 !important;
+    overflow: visible !important;
 }
 
 /* 分体悬浮模式（桌面双岛）：返回与主页按钮默认隐藏文字标签，仅保留精致图标 */
@@ -408,18 +443,60 @@ body[header-mode="floating"] .header-island-left .header-left .btn,
     flex-shrink: 0;
 }
 
-/* 悬浮菜单栏 + 玻璃态 联动：档位 1 液态玻璃 (Liquid Glass 光学折射 + 边缘微光) */
+/* 悬浮菜单栏 + 玻璃态 联动：档位 1 液态玻璃 (Liquid Glass 光学折射 + 边缘微光，严格采用 Tier C 不可交互强调板规范) */
 :root[glass-mode='liquid'][header-mode='floating'] .header-island,
 :root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
 body[glass-mode='liquid'][header-mode='floating'] .header-island,
 body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
 .tool-header[header-mode='floating'][glass-mode='liquid'] .header-island,
 :root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island {
-    backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
-    -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
-    background-color: var(--glass-bg, rgba(255, 255, 255, 0.60));
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
+}
+
+:root[glass-mode='liquid'][header-mode='floating'] .header-island::before,
+:root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island::before,
+body[glass-mode='liquid'][header-mode='floating'] .header-island::before,
+body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island::before,
+.tool-header[header-mode='floating'][glass-mode='liquid'] .header-island::before,
+:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background:
+        linear-gradient(to right,
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
+            rgba(0, 0, 0, 0) var(--lg-rim-side, 4px),
+            rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 4px)),
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) 0,
+            rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) var(--lg-rim-hold, 1px),
+            rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px),
+            rgba(255, 255, 255, 0) calc(100% - var(--lg-rim-fade, 12px)),
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) calc(100% - var(--lg-rim-hold, 1px)),
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+}
+
+:root[glass-mode='liquid'][header-mode='floating'] .header-island > *,
+:root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island > *,
+body[glass-mode='liquid'][header-mode='floating'] .header-island > *,
+body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island > *,
+.tool-header[header-mode='floating'][glass-mode='liquid'] .header-island > *,
+:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island > * {
+    position: relative;
+    z-index: 2;
 }
 
 /* 悬浮菜单栏 + 玻璃态 联动：档位 2 磨砂模糊 (Blur 纯模糊高饱和) */
@@ -429,21 +506,21 @@ body[glass-mode='blur'][header-mode='floating'] .header-island,
 body[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
 .tool-header[header-mode='floating'][glass-mode='blur'] .header-island,
 :root[glass-mode='blur'] .tool-header[header-mode='floating'] .header-island {
-    backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
-    -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
-    background-color: var(--glass-bg, rgba(255, 255, 255, 0.72));
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
 }
 
-/* 暗色主题下的 Liquid Glass 悬浮菜单栏适配 (完全对齐 tool.html 极简清晰微边框) */
+/* 暗色主题下的 Liquid Glass 悬浮菜单栏适配 (Tier C 暗色: 0.72) */
 [data-theme='dark']:root[glass-mode='liquid'][header-mode='floating'] .header-island,
 [data-theme='dark']:root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
 [data-theme='dark'] body[glass-mode='liquid'][header-mode='floating'] .header-island,
 [data-theme='dark'] body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
 [data-theme='dark'] .tool-header[header-mode='floating'][glass-mode='liquid'] .header-island,
 [data-theme='dark']:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island {
-    background-color: var(--glass-bg, rgba(31, 32, 34, 0.62));
+    background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
 }
@@ -455,10 +532,31 @@ body[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
 [data-theme='dark'] body[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
 [data-theme='dark'] .tool-header[header-mode='floating'][glass-mode='blur'] .header-island,
 [data-theme='dark']:root[glass-mode='blur'] .tool-header[header-mode='floating'] .header-island {
-    background-color: var(--glass-bg, rgba(31, 32, 34, 0.75));
+    background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
 }
+
+/* 当 header-island 显式添加了 .glass-surface 类时的样式统一与防多层叠加 */
+.header-island.glass-surface,
+.tool-header.glass-surface {
+    padding: 0 12px !important;
+    margin: 0 !important;
+    background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
+    overflow: visible !important;
+}
+[data-theme='dark'] .header-island.glass-surface,
+[data-theme='dark'] .tool-header.glass-surface,
+:root:not([data-theme='light']) .header-island.glass-surface,
+:root:not([data-theme='light']) .tool-header.glass-surface {
+    background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
+    overflow: visible !important;
+}
+.header-island.glass-surface::after {
+    display: none !important;
+}
+/* 说明：.glass-surface 与 header-island 作用于同一元素时，CSS 仅会解析单个 ::before 伪元素，
+   样式在 cgo_element.css 中通过 isolation isolate 隔离，无需额外覆盖 ::before 规则 */
 
 /* 单胶囊悬浮菜单栏（未拆分双岛时）在 liquid / blur 模式下的适配 */
 :root[glass-mode='liquid'][header-mode='floating'] .tool-header:not(:has(.header-island)),
@@ -467,9 +565,9 @@ body[glass-mode='liquid'][header-mode='floating'] .tool-header:not(:has(.header-
 :root[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-island)),
 :root[data-glass-mode='blur'][data-header-mode='floating'] .tool-header:not(:has(.header-island)),
 body[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-island)) {
-    backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
-    -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
-    background-color: var(--glass-bg, rgba(255, 255, 255, 0.60));
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
 }
@@ -480,7 +578,7 @@ body[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-is
 [data-theme='dark']:root[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-island)),
 [data-theme='dark']:root[data-glass-mode='blur'][data-header-mode='floating'] .tool-header:not(:has(.header-island)),
 [data-theme='dark'] body[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-island)) {
-    background-color: var(--glass-bg, rgba(31, 32, 34, 0.62));
+    background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
 }
@@ -1506,7 +1604,8 @@ body.map-page {
     :root[data-header-mode="floating"] .header-island,
     body[header-mode="floating"] .header-island,
     .tool-header[header-mode="floating"] .header-island,
-    .tool-header.floating-header .header-island {
+    .tool-header.floating-header .header-island,
+    .header-island.glass-surface {
         display: contents !important;
     }
 
@@ -1542,6 +1641,7 @@ body.map-page {
         box-sizing: border-box !important;
         z-index: 50000 !important;
         pointer-events: auto !important;
+        overflow: visible !important;
     }
 
     :root[header-mode="floating"] body::before,
@@ -1558,16 +1658,16 @@ body.map-page {
         padding-top: calc(env(safe-area-inset-top, 0px) + 72px) !important;
     }
 
-    /* 移动端悬浮胶囊栏：液态玻璃 (Liquid Glass 光学折射) */
+    /* 移动端悬浮胶囊栏：液态玻璃 (Liquid Glass 光学折射，对齐 Tier C 不可交互强调板) */
     :root[glass-mode='liquid'][header-mode='floating'] .tool-header,
     :root[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header,
     body[glass-mode='liquid'][header-mode='floating'] .tool-header,
     body[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header,
     .tool-header[header-mode='floating'][glass-mode='liquid'],
     :root[glass-mode='liquid'] .tool-header[header-mode='floating'] {
-        backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%)) !important;
-        -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%)) !important;
-        background-color: var(--glass-bg, rgba(255, 255, 255, 0.60)) !important;
+        backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
+        -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
+        background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
         border: none !important;
         box-shadow: var(--glass-shadow) !important;
     }
@@ -1579,9 +1679,9 @@ body.map-page {
     body[data-glass-mode='blur'][data-header-mode='floating'] .tool-header,
     .tool-header[header-mode='floating'][glass-mode='blur'],
     :root[glass-mode='blur'] .tool-header[header-mode='floating'] {
-        backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%)) !important;
-        -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%)) !important;
-        background-color: var(--glass-bg, rgba(255, 255, 255, 0.72)) !important;
+        backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
+        -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
+        background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
         border: none !important;
         box-shadow: var(--glass-shadow) !important;
     }
@@ -1593,7 +1693,7 @@ body.map-page {
     [data-theme='dark'] body[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header,
     [data-theme='dark'] .tool-header[header-mode='floating'][glass-mode='liquid'],
     [data-theme='dark']:root[glass-mode='liquid'] .tool-header[header-mode='floating'] {
-        background-color: var(--glass-bg, rgba(31, 32, 34, 0.62)) !important;
+        background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
         border: none !important;
         box-shadow: var(--glass-shadow) !important;
     }
@@ -1604,7 +1704,7 @@ body.map-page {
     [data-theme='dark'] body[data-glass-mode='blur'][data-header-mode='floating'] .tool-header,
     [data-theme='dark'] .tool-header[header-mode='floating'][glass-mode='blur'],
     [data-theme='dark']:root[glass-mode='blur'] .tool-header[header-mode='floating'] {
-        background-color: var(--glass-bg, rgba(31, 32, 34, 0.75)) !important;
+        background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
         border: none !important;
         box-shadow: var(--glass-shadow) !important;
     }
