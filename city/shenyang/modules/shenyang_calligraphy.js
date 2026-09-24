@@ -4,12 +4,15 @@
  * 沈阳地铁部分车站的站名由名人或书法家题写。本模块注册两个信息板模块：
  *
  *   1. shenyang-calligraphy-title（slot: header, order: 20）
- *      接管内置 header-title：有题字素材的车站以题字图替换中文站名，
- *      英文站名保留；无题字素材的车站回退为内置的标准中英文标题结构。
+ *      接管内置 header-title：**有题字横图**的车站以题字图替换中文站名，
+ *      英文站名保留；其余车站（包括仅收录了题写者简介、尚无题字图的站）
+ *      回退为内置的标准中英文标题结构。
  *      城市配置中需将内置 "header-title" 置为 enabled: false。
  *
  *   2. shenyang-calligrapher-intro（targetTab: station-info, order: 12）
  *      在车站信息页签简要介绍题字人生平，卡片 DOM 走共享层 CGoTipCard。
+ *      只要数据文件收录了 calligrapher 即显示，不要求该站有题字横图；
+ *      若该站题字写的是车站旧名（inscribedOldName），引导句会相应改写。
  *
  * 主题适配：题字素材为黑底白字图，标题中以 CSS luminance 蒙版将黑底褪为
  * 透明、字迹着色为标题栏当前文字色（currentColor），亮 / 暗主题自动切换。
@@ -51,6 +54,15 @@
         const data = window.CALLIGRAPHY_DATA;
         if (!data || !station) return null;
         return data[station.id] || null;
+    }
+
+    /**
+     * 该站是否有可用的题字横图。
+     * 数据文件中部分站点（如 2 号线各站）只有官方公布的题写者简介、没有题字
+     * 横图，这类站点不接管标题栏站名，只在车站信息页签显示题写者简介卡片。
+     */
+    function hasGlyphImage(info) {
+        return Boolean(info && info.image);
     }
 
     const escapeAttribute = (value) => String(value ?? "")
@@ -116,17 +128,18 @@
         render(context) {
             const station = context.station || {};
             const info = getCalligraphy(station);
-            return info
+            // 仅有题写者简介、无题字横图的站不接管标题，回退标准中英文标题
+            return hasGlyphImage(info)
                 ? renderCalligraphyTitle(station, info)
                 : renderStandardTitle(station);
         },
         onMounted(infoPanel, context) {
-            // 仅题字站把整个标题栏染为首条经停线路的标志色。
+            // 仅「有题字横图」的站把整个标题栏染为首条经停线路的标志色。
             // .panel-header 外壳由 core 装配，模块只能通过挂载后修饰；
-            // 面板每次重渲染 header 均为全新 DOM，非题字站不会残留该 class。
+            // 面板每次重渲染 header 均为全新 DOM，其余站不会残留该 class。
             const station = context.station || {};
-            if (!getCalligraphy(station) || !infoPanel) {
-                // 非题字站需清掉 body 上的染色状态，否则移动端顶部填充层
+            if (!infoPanel || !hasGlyphImage(getCalligraphy(station))) {
+                // 无题字横图的站需清掉 body 上的染色状态，否则移动端顶部填充层
                 // 会残留上一站的线路色
                 document.body.classList.remove(SY_ACTIVE_CLASS);
                 document.body.style.removeProperty("--sy-cali-line-color");
@@ -181,9 +194,13 @@
                 if (!person.name) return "";
 
                 // 生平简介以数据文件收录的官方口径为准；intro 需自带姓名主语
-                // （如「阎肃，男，生于……」），否则第二句会以「男，」开头成为残句
-                const body = `本站站名由<strong>${escapeHtml(person.name)}</strong>题写。<br>`
-                    + `${escapeHtml(person.intro)}。`;
+                // （如「阎肃，男，生于……」），否则第二句会以「男，」开头成为残句。
+                // 若题字写的是车站旧名（如人民广场站的题字为「市府广场」），
+                // 引导句改用旧名表述，避免卡片与当前站名对不上
+                const lead = info.inscribedOldName
+                    ? `本站旧名“${escapeHtml(info.inscribedOldName)}”由<strong>${escapeHtml(person.name)}</strong>题写。`
+                    : `本站站名由<strong>${escapeHtml(person.name)}</strong>题写。`;
+                const body = `${lead}<br>${escapeHtml(person.intro)}。`;
 
                 return tipCard.render({
                     title: "站名题字",

@@ -73,6 +73,14 @@
     line-height: 0;
 }
 
+/* 题字元素复用了引擎的 .panel-cn-name 类，会继承其 margin-bottom:2px；
+   题字图下缘已含为容纳笔锋而预留的留白，再叠加外边距会让题字与英文名之间
+   的空隙偏大，故清零。复合选择器(0,2,0)高于 .panel-cn-name(0,1,0)，
+   不依赖样式表加载顺序 */
+.panel-cn-name.sy-calligraphy-title {
+    margin-bottom: 0;
+}
+
 .sy-calligraphy-glyph {
     display: block;
     width: 100%;

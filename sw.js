@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260923.1800';
+const CACHE_NAME = 'cgo-openmap-v260924.1226';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -136,6 +136,15 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/railway.svg',
     './city/shenyang/assets/transfer-badge.svg',
     './city/shenyang/assets/tram-5.svg',
+
+    // 1号线主线站名题字（书法家题写）
+    './city/shenyang/assets/calligraphy/qihaojie.png',
+    './city/shenyang/assets/calligraphy/sihaojie.png',
+    './city/shenyang/assets/calligraphy/shenyangzhan.png',
+    './city/shenyang/assets/calligraphy/taiyuanjie.png',
+    './city/shenyang/assets/calligraphy/yunfengbeijie.png',
+
+    // 1号线东延段站名题字（辽宁 / 沈阳书法界名家题写）
     './city/shenyang/assets/calligraphy/xinhuijie.png',
     './city/shenyang/assets/calligraphy/xinningjie.png',
     './city/shenyang/assets/calligraphy/dongdayingjie.png',
@@ -146,6 +155,20 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/boguanbeidajie.png',
     './city/shenyang/assets/calligraphy/zhiwuyuan.png',
     './city/shenyang/assets/calligraphy/shuangma.png',
+
+    // 2号线站名题字（作家 / 诗人题写，逐站实拍采集中）
+    './city/shenyang/assets/calligraphy/aotizhongxin.png',
+    './city/shenyang/assets/calligraphy/gongyezhanlanguan.png',
+    './city/shenyang/assets/calligraphy/hangkonghangtiandaxue.png',
+    './city/shenyang/assets/calligraphy/jinrongzhongxin.png',
+    './city/shenyang/assets/calligraphy/qingniangongyuan.png',
+    './city/shenyang/assets/calligraphy/quanyunlu.png',
+    './city/shenyang/assets/calligraphy/renminguangchang.png',
+    './city/shenyang/assets/calligraphy/shenyangbeizhan.png',
+    './city/shenyang/assets/calligraphy/shijidasha.png',
+    './city/shenyang/assets/calligraphy/shitushuguan.png',
+    './city/shenyang/assets/calligraphy/wulihe.png',
+    './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
 
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',
