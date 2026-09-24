@@ -1,0 +1,117 @@
+/* CGo OpenMap - 站名题字共享样式层 (city/shenyang/shared/calligraphy.css)
+ *
+ * ⚠️ 临时共享位置
+ * 本文件与 calligraphy.js 同址，供多城共用。计划在开发团队确认共享位置后随共享层
+ * 一并迁入 core/（与 stacard-engine.js、timetable-renderer.js、tip-card.js 等同批）。
+ *
+ * 加载方式：由 calligraphy.js 在被加载时按**自身脚本 URL** 推导路径并注入
+ * <link rel="stylesheet">，城市侧无需各自登记题字样式表，也不必复刻本文件。
+ *
+ * 前缀说明：类名与 CSS 变量暂沿用沈阳原有的 sy- / sy-cali- 前缀。跨城共享的通用
+ * 前缀待上游开发团队确认后再统一替换，届时需同步改本文件、calligraphy.js、
+ * city/shenyang/style.css 与 city/shenyang/modules/shenyang_station_board.js
+ * （后者读取 .sy-calligraphy-header 与 --sy-cali-* 做线路徽标近色反色）。
+ *
+ * ==========================================================================
+   站名题字（名人 / 书法家题写站名）
+   题字素材为黑底白字图，以 luminance 蒙版将黑底褪为透明、字迹着色为
+   currentColor（标题栏文字色），亮 / 暗主题自动切换并保留飞白浓淡。
+   题字站的整个标题栏由 calligraphy.js 挂载后加
+   .sy-calligraphy-header 类并注入 --sy-cali-line-color / --sy-cali-on-color
+   （线路底色 / 可读文字色），呈现线路色牌匾式 header（对齐 CGo 官方文化 header）。
+   ========================================================================== */
+.sy-calligraphy-title {
+    position: relative;
+    /* 宽度由题字图原始宽高比推导，高度基准 28.8px（略大于普通中文站名 18.5px）；
+       205px 上限为给右侧线路徽标预留空间（超宽图如 5 字站会被等比压窄，
+       由 aspect-ratio 同步收矮，字形不拉伸） */
+    width: min(calc(28.8px * var(--sy-cali-ratio, 4.7)), 205px);
+    aspect-ratio: var(--sy-cali-ratio, 4.7);
+    max-width: 100%;
+    line-height: 0;
+}
+
+/* 题字元素复用了引擎的 .panel-cn-name 类，会继承其 margin-bottom:2px；
+   题字图下缘已含为容纳笔锋而预留的留白，再叠加外边距会让题字与英文名之间
+   的空隙偏大，故清零。复合选择器(0,2,0)高于 .panel-cn-name(0,1,0)，
+   不依赖样式表加载顺序 */
+.panel-cn-name.sy-calligraphy-title {
+    margin-bottom: 0;
+}
+
+.sy-calligraphy-glyph {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: currentColor;
+    /* mask-image 由模块以元素内联样式注入（内联 url 相对站点根解析，
+       不随样式表路径漂移）；此处只声明位置、尺寸与亮度模式 */
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    /* 黑底白字必须走亮度蒙版（白字显示、黑底透明），默认 alpha 蒙版会整块显色 */
+    -webkit-mask-source-type: luminance;
+    mask-mode: luminance;
+}
+
+/* 真实站名文本仅供屏幕阅读器朗读与 core/script.js 读取以同步侧栏标题，视觉上完全隐藏 */
+.sy-calligraphy-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 题字站标题栏：整块染线路标志色（原规则带 !important，此处同级覆盖）。
+   css/style.css 的移动端规则以「三档状态类」批量覆盖 header 背景：
+     body.mobile-split-active .panel-header,
+     body.mobile-panel-expanded .panel-header,
+     body.panel-sheet-collapsed .panel-header { background: var(--panel-header-bg) !important }
+   其特异性(0,2,1)高于 .panel-header.sy-calligraphy-header(0,2,0)，两边 !important
+   相遇时按特异性取胜，会让题字 header 在这三档下丢失线路色，
+   故此处逐一对应补出特异性更高的选择器(0,3,1)，保证三档皆保持染色。 */
+.panel-header.sy-calligraphy-header,
+body.mobile-split-active .panel-header.sy-calligraphy-header,
+body.mobile-panel-expanded .panel-header.sy-calligraphy-header,
+body.panel-sheet-collapsed .panel-header.sy-calligraphy-header {
+    background-color: var(--sy-cali-line-color) !important;
+    color: var(--sy-cali-on-color, #ffffff) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.25);
+}
+
+/* 移动端全屏态顶部的颜色填充层（main.html 中 body 级的 .mobile-top-bar-backdrop，
+   默认 var(--panel-header-bg) 品牌深蓝）需与题字 header 同色，
+   否则状态栏区域会停在深蓝、与下方彩色 header 断成两截。
+   染色变量由共享层挂在 body 上，故此处可直接取用。 */
+body.sy-calligraphy-active .mobile-top-bar-backdrop {
+    background-color: var(--sy-cali-line-color) !important;
+}
+
+/* 成组反色：关闭按钮与英文站名跟随可读文字色。
+   注意 1：css/style.css 的 .panel-close-btn 用了 color:var(--close-btn-color)!important
+   （深色模式为半透明白），普通声明无法覆盖，此处必须同以 !important 应对，
+   否则题字 header 上的关闭图标会与题字 / 英文名的纯白不统一。
+   注意 2：旧版移动端的 .panel-expand-btn 已由上游三档面板系统的抓取条
+   (.sheet-grabber) 取代，不再渲染，故不为其保留反色规则。 */
+.sy-calligraphy-header .panel-close-btn {
+    color: var(--sy-cali-on-color, #ffffff) !important;
+}
+
+.sy-calligraphy-header .panel-close-btn:hover {
+    color: var(--sy-cali-on-color, #ffffff) !important;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.sy-calligraphy-header .panel-en-name {
+    color: var(--sy-cali-on-color, #ffffff);
+    opacity: 0.85;
+}

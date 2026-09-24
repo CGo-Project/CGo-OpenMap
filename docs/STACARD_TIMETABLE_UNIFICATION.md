@@ -38,9 +38,11 @@ city/shenyang/shared/stacard-engine.js       # ES module，export createStaCard
 city/shenyang/shared/timetable-renderer.js   # classic script，挂 CGoTimetable / CGoDayType
 city/shenyang/shared/station-title.js        # classic script，挂 CGoStationTitle
 city/shenyang/shared/tip-card.js             # classic script，挂 CGoTipCard
+city/shenyang/shared/calligraphy.js          # classic script，挂 CGoCalligraphy（站名题字共享层）
+city/shenyang/shared/calligraphy.css         # 题字样式，由 calligraphy.js 按自身 URL 推导路径注入
 ```
 
-四个文件顶部均写明「临时共享位置 + 计划迁入 `core/`」，便于评审时一眼看清意图，也避免后续维护者误以为是沈阳专属逻辑。
+六个文件顶部均写明「临时共享位置 + 计划迁入 `core/`」，便于评审时一眼看清意图，也避免后续维护者误以为是沈阳专属逻辑。
 
 ### 2.2 引用方式
 
@@ -50,6 +52,7 @@ city/shenyang/shared/tip-card.js             # classic script，挂 CGoTipCard
 | 大连 / 长春 stacard | `import { createStaCard } from "../../shenyang/shared/stacard-engine.js"` |
 | 三城 timetable / station-title | `document.write('<script src="./city/shenyang/shared/{文件}?v=' + version + '"><\/script>')` |
 | 沈阳 tip-card | 同上 |
+| 各城 calligraphy | 同上（题字样式表不必登记，由 calligraphy.js 按自身 `currentScript.src` 同目录推导并注入 `<link>`） |
 
 stacard 城市模块已是 ES module，相对 `import` 天然可用，**不改 `main.html`**。
 timetable 的路径相对页面而非相对城市目录，故三城写法完全一致。
@@ -69,9 +72,11 @@ timetable 的路径相对页面而非相对城市目录，故三城写法完全�
 2. `git mv city/shenyang/shared/timetable-renderer.js core/timetable-renderer.js`
 3. `git mv city/shenyang/shared/station-title.js core/station-title.js`
 4. `git mv city/shenyang/shared/tip-card.js core/tip-card.js`
-5. 改 3 处 stacard 的 `import` 路径 + 3 处 `{city}.js` 的 `document.write` 路径
-6. 更新 `sw.js` 的 `ASSETS_TO_CACHE`
-7. **零逻辑改动** —— 这正是选「共享文件」而非「三份复制」的主要理由
+5. `git mv city/shenyang/shared/calligraphy.js core/calligraphy.js`
+6. `git mv city/shenyang/shared/calligraphy.css core/calligraphy.css`（**必须与 calligraphy.js 同目录**，样式表路径由 `currentScript.src` 同目录推导）
+7. 改 3 处 stacard 的 `import` 路径 + 3 处 `{city}.js` 的 `document.write` 路径
+8. 更新 `sw.js` 的 `ASSETS_TO_CACHE`
+9. **零逻辑改动** —— 这正是选「共享文件」而非「三份复制」的主要理由
 
 ### 2.5 未采纳的方案
 
@@ -239,7 +244,7 @@ CGoTipCard.render({ title, icon, iconSize, body })
 </div>
 ```
 
-各地配置：北京 / 合肥 / 福州为「历史文化与名胜指引」+ `location` 14px；沈阳为「报站目的地指引」+ 同一图标与顺序（`order: 15`）。
+各地配置：北京 / 合肥 / 福州为「历史文化与名胜指引」+ `location` 14px；沈阳为「报站目的地指引」+ `speaker` 14px（报站属广播播报语义，故不用地理位置图标），挂载位置与顺序一致（`order: 15`）。
 
 > 该 DOM 与 `city/beijing/modules/beijing_cultural.js`（上游「官方模板示范」）归一化比对后逐属性一致。北京 / 合肥 / 福州三份逐字复制的实现将来可一并迁移到本渲染器。
 

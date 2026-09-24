@@ -220,13 +220,14 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260922.2235";
+        const version = "260924.2007";
         // 城市私有数据（须早于依赖它的模块加载）
         document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
         // 共享层（本目录下，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/tip-card.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/calligraphy.js?v=${version}"><\/script>`);
         (ShenyangCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/shenyang/${scriptPath}?v=${version}"><\/script>`);
         });

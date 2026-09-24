@@ -60,7 +60,7 @@
 
                 return tipCard.render({
                     title: "报站目的地指引",
-                    icon: "location",
+                    icon: "speaker",
                     iconSize: 14,
                     body: `去往<strong>${destinationHtml}</strong>的乘客，请从该站下车`
                 });
