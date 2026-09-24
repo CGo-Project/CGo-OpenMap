@@ -1734,7 +1734,7 @@ const stationsData = {
         "x": 1178,
         "y": 734,
         "cn": "大经路",
-        "en": "Daijing Lu",
+        "en": "Dajing Lu",
         "align": "top-left",
         "offset": {
             "x": -6,
