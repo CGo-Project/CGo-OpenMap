@@ -47,18 +47,27 @@
     const ACTIVE_CLASS = "sy-calligraphy-active";
 
     /**
+     * 本脚本自身的 URL，用于推导同目录的 calligraphy.css。
+     *
+     * ⚠️ 必须在**脚本执行期**读取 currentScript：register() 由城市薄配置在另一个脚本里
+     * 调用，那时 currentScript 已指向城市脚本，据此推导会得到
+     * `city/{city}/modules/calligraphy.css` 这种错误路径（样式表 404 后，题字图与
+     * header 染色规则会一并失效，表现为「题字和染色 header 都不见了」）。
+     */
+    const SELF_URL = document.currentScript?.src || "";
+
+    /**
      * 按自身脚本 URL 推导并注入题字样式表（幂等）。
-     * 用 currentScript.src 而非城市侧写死路径：共享层将来迁入 core/ 时，
+     * 用 SELF_URL 而非写死路径：共享层将来迁入 core/ 时，
      * 只要 calligraphy.css 仍与 calligraphy.js 同目录即无需改动此处。
      */
     function injectStyle() {
-        const current = document.currentScript;
-        if (!current || !current.src) return;
+        if (!SELF_URL) return;
         if (document.head?.querySelector(`link[${STYLE_FLAG_ATTR}]`)) return;
 
         const link = document.createElement("link");
         link.rel = "stylesheet";
-        link.href = new URL(STYLE_FILE, current.src).href;
+        link.href = new URL(STYLE_FILE, SELF_URL).href;
         link.setAttribute(STYLE_FLAG_ATTR, "");
         (document.head || document.documentElement).appendChild(link);
     }
