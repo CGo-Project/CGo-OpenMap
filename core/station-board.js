@@ -878,7 +878,8 @@
             const btnWhiteTiny = `padding:8px 0; background:var(--btn-info-bg); color:var(--text-main); border:1px solid var(--border-color); font-size:11px; box-shadow:0 2px 5px rgba(0,0,0,0.05); ${baseBtnStyle}`;
 
             const isSuburbanOrRail = isSuburbanStation || isRwyStation;
-            const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(station.cn, isSuburbanOrRail) : `https://uri.amap.com/search?keyword=${encodeURIComponent(station.cn)}`;
+            // 第三参传 station 供城市侧判断站型（如区分有轨电车站 / 火车站）
+            const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(station.cn, isSuburbanOrRail, { station }) : `https://uri.amap.com/search?keyword=${encodeURIComponent(station.cn)}`;
             const url12306 = city.getRailway12306Url ? city.getRailway12306Url(station.cn) : `https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc&fs=${encodeURIComponent((station.cn || '').replace(/站$/, ''))}`;
             const isRwy2Station = station.relatedLines && station.relatedLines.includes('Rwy2');
 

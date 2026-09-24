@@ -16,14 +16,14 @@ const VIRTUAL_TRANSFER_MAP = {
     "T510": ["0923"],
     "0923": ["T510"],
     // 沈阳站
-    "0114": ["SYZ"],
-    "SYZ": ["0114"],
+    "0114": ["SYT"],
+    "SYT": ["0114"],
     // 沈阳北站
-    "0207": ["SYB"],
-    "SYB": ["0207"],
+    "0207": ["SBT"],
+    "SBT": ["0207"],
     // 沈阳南站
-    "0422": ["SYN"],
-    "SYN": ["0422"],
+    "0422": ["SOT"],
+    "SOT": ["0422"],
 };
 const VIRTUAL_CONNECT_LINES = [
     { from: "T501", to: "0215" },
@@ -31,7 +31,7 @@ const VIRTUAL_CONNECT_LINES = [
     { from: "T506", to: "0921" },
     { from: "T508", to: "0922" },
     { from: "T510", to: "0923" },
-    { from: "0114", to: "SYZ" },
-    { from: "0207", to: "SYB" },
-    { from: "0422", to: "SYN" },
+    { from: "0114", to: "SYT" },
+    { from: "0207", to: "SBT" },
+    { from: "0422", to: "SOT" },
 ];

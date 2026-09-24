@@ -93,7 +93,8 @@
             status: "active",
             maintainers: [
                 { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" },
-                { name: "从恒隆到细河", role: "运营数据支持" }
+                { name: "从恒隆到细河", role: "运营数据支持" },
+                { name: "普兰店大鹅", role: "有轨数据支持" }
             ],
             isDefault: false
         },
