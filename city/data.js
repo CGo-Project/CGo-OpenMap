@@ -282,8 +282,8 @@
             svglogo: null, // 已接入 CGoUI 内置 fuzhou 官方矢量图标
             folder: "./city/fuzhou",
             mainLogic: "./city/fuzhou/fuzhou.js",
-            center: { x: 2000, y: 1250 },
-            defaultScale: 1.0,
+            center: { x: 1500, y: 1250 },
+            defaultScale: 0.6,
             mapSize: { width: 4000, height: 2500 },
             searchCity: "福州",
             title: "CGo OpenMap - 福州轨道交通线路图",
@@ -292,7 +292,9 @@
             registerDate: "2026-09-16",
             officialMapUrl: "https://www.fzmtr.com/xlcx",
             status: "active",
-            maintainers: [],
+            maintainers: [
+                { name: "福南所CRH1A-A-1186", role: "城市主理人", github: "https://github.com/CRH1A-A-1186" }
+            ],
             isDefault: false
         },
     };

@@ -211,6 +211,11 @@
             },
             /** 线路：{ id, name, color } */
             lines: [],
+            /**
+             * 站间距来源：{ [lineId]: { source: 'OpenStreetMap', values: { 'M101>M102': 1340 }, updatedAt } }
+             * 按区间（两端车站键，无方向）存放实际里程，导出时优先于画布几何反算值。
+             */
+            lineDistances: {},
             /** 递增 ID 计数 */
             idSeq: 1
         };
@@ -3133,6 +3138,10 @@
                     selection = selectedSegmentIds.length
                         ? { type: 'segment', id: selectedSegmentIds[selectedSegmentIds.length - 1] }
                         : null;
+                } else if (hit.kind === 'node' && selectedNodeIds.length > 1 && selectedNodeIds.indexOf(hit.id) >= 0) {
+                    // 左键按住「已在多选集合里」的节点：保留整个选择集，便于整组拖动
+                    selection = { type: 'node', id: hit.id };
+                    selectedSegmentIds = [];       // 节点多选与线段多选互斥
                 } else {
                     selection = { type: hit.kind, id: hit.id };
                     selectedNodeIds = hit.kind === 'node' ? [hit.id] : [];
@@ -3140,8 +3149,12 @@
                 }
                 var node = hit.kind === 'node' ? project.nodes[hit.id] : null;
                 if (node) {
+                    // 多选状态下按住其中任一节点拖动 → 整组按同一位移平移
+                    var dragIds = (selectedNodeIds.length > 1 && selectedNodeIds.indexOf(hit.id) >= 0)
+                        ? selectedNodeIds.slice()
+                        : [hit.id];
                     dragState = {
-                        kind: 'node', id: hit.id, moved: false,
+                        kind: 'node', id: hit.id, ids: dragIds, moved: false,
                         lastX: node.x, lastY: node.y, historyPushed: false
                     };
                     try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
@@ -3359,6 +3372,23 @@
             if (!node) { dragState = null; return; }
             if (!dragState.historyPushed) { pushHistory(); dragState.historyPushed = true; }
             var snapped = snapPoint(world.x, world.y);
+            var group = (dragState.ids && dragState.ids.length > 1) ? dragState.ids : null;
+            if (group) {
+                // 多选整组拖动：整组共用同一位移做**增量**平移（相对位置与线形严格不变）。
+                // 位移取「被拖节点当前位置 → 当前吸附点」，逐帧累加即可；
+                // 注意不能每帧传入「从起点算起的累计位移」——两端都在选中集里的线段是按位移累加的，
+                // 那样会每帧重复平移一次，表现为连线飞走。
+                var gdx = round2(snapped.x - node.x), gdy = round2(snapped.y - node.y);
+                if (gdx || gdy) {
+                    translateNodes(group, gdx, gdy, true);
+                    dragState.moved = true;
+                    $('stage-coord').textContent = '整组平移 ' + group.length + ' 个节点：x ' +
+                        (gdx >= 0 ? '+' : '') + gdx + ', y ' + (gdy >= 0 ? '+' : '') + gdy;
+                    renderAll();
+                    renderInspector();
+                }
+                return;
+            }
             node.x = snapped.x;
             node.y = snapped.y;
             // 拖动时同步线段端点；相连的自动走线线段按新位置实时重算（夹角始终保持）
@@ -3473,7 +3503,8 @@
         if (dragState && dragState.kind === 'node' && dragState.moved) {
             // 节点拖动：把「拖动前」快照补记入历史，撤销才能回到拖动前的位置
             if (!dragState.historyPushed) pushHistory();
-            toast('已移动节点');
+            var dragCount = (dragState.ids && dragState.ids.length) ? dragState.ids.length : 1;
+            toast(dragCount > 1 ? '已整组移动 ' + dragCount + ' 个节点' : '已移动节点');
         }
         if (dragState && dragState.kind === 'segmentCorner' && dragState.moved) {
             toast('已调整折角圆角半径为 ' + round2(segmentRadii(findSegment(dragState.segId))[dragState.index - 1]) + ' px');
@@ -3542,6 +3573,74 @@
     }
 
     /**
+     * 按同一位移整体平移一组节点，并同步它们相连的线段。
+     * 「多选车站后左键整组拖动」与「方向键平移」共用这一份实现。
+     *
+     * 两种位移模式：
+     *   · rigid=true（整组拖动）：所有节点共用**完全相同**的位移，组内相对位置与线形严格不变，
+     *     被拖动的那个节点由调用方吸附到格点；
+     *   · rigid=false（方向键平移）：逐个节点按「对齐网格」吸附到格点，因此各节点实际位移
+     *     最多相差不到一格。
+     *
+     * 注意：两种模式都必须是**增量**平移（传入的是本帧位移，而不是从拖动起点算起的累计位移）。
+     * 因为「两端都在集合内」的线段是逐帧累加平移的，若传入累计位移会每帧重复平移一次，
+     * 表现为连线飞走。
+     *
+     * 线段的跟随规则：
+     *   · 线段两端都在本次移动集合里且实际位移一致 → 整条折线按该位移整体平移，折点一同前移；
+     *   · 只有一端移动 → 端点跟随节点；可自动走线的线段按自身类型重算走线，
+     *     手绘自由路径保持原形状。
+     * @param {Array<string>} ids 要平移的节点 ID 集合
+     * @param {number} dx 本帧世界坐标横向位移
+     * @param {number} dy 本帧世界坐标纵向位移
+     * @param {boolean} [rigid] 是否整组刚体平移（所有节点共用同一位移）
+     * @returns {Object} id → 实际位移 { dx, dy }
+     */
+    function translateNodes(ids, dx, dy, rigid) {
+        var moved = {};
+        var rigidDx = round2(dx), rigidDy = round2(dy);
+        (ids || []).forEach(function (id) {
+            var node = project.nodes[id];
+            if (!node) return;
+            if (rigid) {
+                node.x = round2(node.x + rigidDx);
+                node.y = round2(node.y + rigidDy);
+                moved[id] = { dx: rigidDx, dy: rigidDy };
+                return;
+            }
+            var target = snapPoint(node.x + dx, node.y + dy);
+            moved[id] = { dx: round2(target.x - node.x), dy: round2(target.y - node.y) };
+            node.x = target.x;
+            node.y = target.y;
+        });
+        project.segments.forEach(function (seg) {
+            var pts = seg.points || [];
+            if (pts.length < 2) return;
+            var first = pts[0], last = pts[pts.length - 1];
+            var moveA = first && first.nid ? moved[first.nid] : null;
+            var moveB = last && last.nid ? moved[last.nid] : null;
+            if (moveA && moveB && moveA.dx === moveB.dx && moveA.dy === moveB.dy) {
+                // 两端同步平移 → 整条折线整体平移，折点随之前移
+                pts.forEach(function (p) {
+                    p.x = round2(p.x + moveA.dx);
+                    p.y = round2(p.y + moveA.dy);
+                });
+                return;
+            }
+            // 端点（含中间途经点）跟随节点
+            pts.forEach(function (p) {
+                if (p.nid && moved[p.nid]) {
+                    p.x = project.nodes[p.nid].x;
+                    p.y = project.nodes[p.nid].y;
+                }
+            });
+            // 可自动走线的线段按类型重算折角；手绘自由路径保持原形状
+            if (isAutoRoutable(seg)) recomputeSegmentRoute(seg);
+        });
+        return moved;
+    }
+
+    /**
      * 方向键平移选中的节点。
      *
      * 步长：开启「对齐网格」时为一格网格，关闭时为 1px；按住 Shift 为 10 倍步长。
@@ -3579,40 +3678,7 @@
         var step = (snapEnabled() ? gridSize() : 1) * (coarse ? 10 : 1);
         var dx = dirX * step, dy = dirY * step;
         withHistory(function () {
-            // 1) 平移节点，并记录吸附后的实际位移
-            var moved = {};
-            ids.forEach(function (id) {
-                var node = project.nodes[id];
-                var target = snapPoint(node.x + dx, node.y + dy);
-                moved[id] = { dx: round2(target.x - node.x), dy: round2(target.y - node.y) };
-                node.x = target.x;
-                node.y = target.y;
-            });
-            // 2) 同步相连线段
-            project.segments.forEach(function (seg) {
-                var pts = seg.points || [];
-                if (pts.length < 2) return;
-                var first = pts[0], last = pts[pts.length - 1];
-                var moveA = first && first.nid ? moved[first.nid] : null;
-                var moveB = last && last.nid ? moved[last.nid] : null;
-                if (moveA && moveB && moveA.dx === moveB.dx && moveA.dy === moveB.dy) {
-                    // 两端同步平移 → 整条折线整体平移，折点随之前移
-                    pts.forEach(function (p) {
-                        p.x = round2(p.x + moveA.dx);
-                        p.y = round2(p.y + moveA.dy);
-                    });
-                    return;
-                }
-                // 端点（含中间途经点）跟随节点
-                pts.forEach(function (p) {
-                    if (p.nid && moved[p.nid]) {
-                        p.x = project.nodes[p.nid].x;
-                        p.y = project.nodes[p.nid].y;
-                    }
-                });
-                // 可自动走线的线段按类型重算折角；手绘自由路径保持原形状
-                if (isAutoRoutable(seg)) recomputeSegmentRoute(seg);
-            });
+            translateNodes(ids, dx, dy);
         });
         renderAll();
         renderInspector();
@@ -3998,7 +4064,8 @@
             ids.length + ' 个节点<span class="prop-tag" style="margin-left:auto">多选</span></div>';
         html += '<div class="prop-note">车站 ' + stations + ' 个，临时节点 ' + temps + ' 个。<br>' +
             'Ctrl+C 复制 · Ctrl+V 粘贴到鼠标位置 · Ctrl+D 原位复制 · Delete 删除 · Esc 取消选择。<br>' +
-            '按住 Shift 或 Ctrl 点击节点可增减选择；按住鼠标右键拖动可框选节点（框选不选中线段）；点击单个节点可编辑其详细属性。</div>';
+            '按住 Shift 或 Ctrl 点击节点可增减选择；按住鼠标右键拖动可框选节点（框选不选中线段）；点击单个节点可编辑其详细属性。<br>' +
+            '选中多个节点后，左键按住其中任一节点拖动即可整组平移；也可用方向键平移（Shift + 方向键为 10 倍步长）。</div>';
 
         // ---- 批量修改（仅对选中的车站节点生效）----
         if (stations) {
@@ -5337,6 +5404,7 @@
             $('line-name').value = line.name;
         }
         syncLineBadge(line);
+        if (typeof updateMileageHint === 'function') updateMileageHint();
     }
 
     /** 线路徽标下拉候选：数字模板 + 仓库内既有的字母模板 */
@@ -5478,6 +5546,7 @@
                 $('line-name').value = line.name;
             }
             syncLineBadge(line);
+            updateMileageHint();
             updateStageInfo();
         });
 
@@ -5747,6 +5816,28 @@
             l.svg = l.svg.trim();
         });
         base.idSeq = data.idSeq || 1;
+        // 站间距来源：'none'（留空占位）允许没有数值；'actual' 只保留「区间键 → 正整数米」的合法条目
+        base.lineDistances = {};
+        var srcDistances = (data.lineDistances && typeof data.lineDistances === 'object') ? data.lineDistances : {};
+        Object.keys(srcDistances).forEach(function (lid) {
+            var store = srcDistances[lid];
+            if (!store || typeof store !== 'object' || !store.values || typeof store.values !== 'object') return;
+            var values = {};
+            Object.keys(store.values).forEach(function (key) {
+                var v = parseFloat(store.values[key]);
+                if (!isFinite(v) || v <= 0) return;
+                if (!/>/.test(key)) return;
+                values[key] = Math.round(v);
+            });
+            var none = store.mode === 'none';
+            if (!none && !Object.keys(values).length) return;
+            base.lineDistances[lid] = {
+                mode: none ? 'none' : 'actual',
+                source: typeof store.source === 'string' ? store.source : '',
+                values: values,
+                updatedAt: typeof store.updatedAt === 'string' ? store.updatedAt : ''
+            };
+        });
         // 水域底图样式：沿用工程里的取值，缺省时回落到 createProject 的默认配色
         var srcWaterStyle = (data.waterStyle && typeof data.waterStyle === 'object') ? data.waterStyle : null;
         if (srcWaterStyle) {
@@ -5931,7 +6022,11 @@
             linesOut += '        color: "' + entry.line.color + '",\n';
             linesOut += '        stationIds: [' + entry.topo.stationCodes.map(function (c) {
                 return '"' + escapeJson(c) + '"';
-            }).join(', ') + ']\n';
+            }).join(', ') + ']';
+            // 已录入实际里程时补一行 distances（未录入则不写，避免把画布估算值当成实际里程带出去）
+            var realDists = realDistancesForCodes(entry.line, entry.topo.stationCodes);
+            if (realDists) linesOut += ',\n        distances: [' + realDists.join(', ') + ']';
+            linesOut += '\n';
             linesOut += '    }' + (index === lines.length - 1 ? '' : ',') + '\n';
         });
         linesOut += '];\n';
@@ -6524,21 +6619,13 @@
     }
 
     /**
-     * 依据当前工程生成 CGo OpenMap 城市工程包内容。
-     * @param {{cityId:string,cityName:string,themeColor:string,linePrefix:string,pxMeter:number,company:string}} opts
+     * 分配车站键（OpenMap Station ID）。
+     *
+     * 导出与「站间距来源」面板共用同一份分配结果，保证两侧的站序、站键完全一致：
+     * 站编号为空时暂用内部节点 ID，重号时追加 _2、_3 后缀。
+     * @returns {{keyOf:Object, stationOrder:string[], missingCode:string[], duplicateCode:string[], tempCount:number}}
      */
-    function buildOpenMapPackage(opts) {
-        var o = opts || {};
-        var cityId = slugCityId(o.cityId) || 'newcity';
-        var cityName = String(o.cityName || '').trim() || cityId;
-        var prefix = String(o.linePrefix || 'M').trim().replace(/[^A-Za-z0-9_-]/g, '') || 'M';
-        var pxMeter = positiveNumber(o.pxMeter, OM_PX_METER_DEFAULT);
-        var themeColor = /^#[0-9a-fA-F]{6}$/.test(String(o.themeColor || '')) ? String(o.themeColor) : '#00263b';
-        var company = String(o.company || '').trim() || (cityName + '轨道交通');
-        var warnings = [];
-        var today = new Date().toISOString().slice(0, 10);
-
-        // ---- 车站键（OpenMap Station ID）分配 ----
+    function allocateStationKeys() {
         var keyOf = {};
         var usedKeys = {};
         var stationOrder = Object.keys(project.nodes).filter(function (id) { return project.nodes[id].type === 'station'; });
@@ -6554,85 +6641,134 @@
             usedKeys[key] = true;
             keyOf[id] = key;
         });
-        if (missingCode.length) {
-            warnings.push(missingCode.length + ' 个车站未填写「站编号」，已暂用内部节点 ID 作为车站键，请在 data_stations.js 中改为规范编号（如 M101）。');
+        return {
+            keyOf: keyOf,
+            stationOrder: stationOrder,
+            missingCode: missingCode,
+            duplicateCode: duplicateCode,
+            tempCount: Object.keys(project.nodes).filter(function (id) { return project.nodes[id].type === 'temp'; }).length
+        };
+    }
+
+    /**
+     * 计算一条线路的走线（ways）。
+     *
+     * 导出与「站间距来源」面板共用：面板里列出的区间必须与导出的 stationIds / distances
+     * 完全对应，因此两处**必须**走同一个函数，严禁各算一份。
+     * @returns {{ways:Array, notOpenItems:Array, warnings:string[]}}
+     */
+    function buildLineWays(line, keyOf, pxMeter) {
+        var warnings = [];
+        var notOpenItems = [];
+        var empty = { ways: [], notOpenItems: notOpenItems, warnings: warnings };
+        var allSegs = project.segments.filter(function (s) { return s.lineId === line.id; });
+        // 未开通线段单独走 data_notopen.js，不参与线路走向与站序
+        allSegs.filter(function (s) { return s.notOpen === true; }).forEach(function (seg) {
+            var pts = segmentDrawPoints(seg).map(function (p) { return { x: round2(p.x), y: round2(p.y) }; });
+            if (pts.length >= 2) notOpenItems.push({ name: line.name || line.id, points: pts });
+        });
+        var segs = allSegs.filter(function (s) { return s.notOpen !== true; });
+        if (!segs.length) {
+            warnings.push('线路「' + (line.name || line.id) + '」没有已开通线段' +
+                (allSegs.length ? '（全部线段都标为未开通，已转入 data_notopen.js）' : '') + '，已跳过导出。');
+            return empty;
         }
-        if (duplicateCode.length) {
-            warnings.push('存在重复站编号（' + duplicateCode.slice(0, 6).join('、') + (duplicateCode.length > 6 ? ' 等' : '') +
+        var paths = decomposeLinePaths(segs);
+        var built = paths.map(function (p) {
+            var pts = chainToPolyline(p.chain);
+            var info = polylineToStations(pts, keyOf, pxMeter);
+            return {
+                points: pts, stationIds: info.stationIds, distances: info.distances,
+                tail: info.tail, hasUnanchoredEnd: info.hasUnanchoredEnd,
+                closed: p.closed, endKeys: [p.startKey, p.endKey], length: polylineLength(pts)
+            };
+        }).filter(function (p) { return p.points.length >= 2; });
+
+        if (!built.length) {
+            warnings.push('线路「' + (line.name || line.id) + '」的线段未形成有效走线，已跳过导出。');
+            return empty;
+        }
+        built.sort(function (a, b) { return b.length - a.length; });
+
+        // 站点过少的孤立走线不导出
+        built = built.filter(function (w, wi) {
+            if (w.stationIds.length >= 1) return true;
+            warnings.push('线路「' + (line.name || line.id) + '」有一条不含车站的走线（仅临时节点），已跳过。');
+            return false;
+        });
+        if (!built.length) return empty;
+
+        var ways = [];
+        if (built.length >= 2 && !built[0].closed) {
+            // Y 字形：把共享汇合点的两条走线串成主干，其余作为支线
+            var junction = sharedEndKey(built[0], built[1]);
+            if (junction) {
+                var merged = mergeWays(built[0], built[1], junction, keyOf, pxMeter);
+                if (merged) {
+                    ways.push(merged);
+                    if (built.length > 2) {
+                        ways.push(built[2]);
+                        warnings.push('线路「' + (line.name || line.id) + '」共有 ' + built.length +
+                            ' 条末端走线，OpenMap 标准主线仅支持 way1(主干) + way2(一条支线)，已导出其中最长的两条，' +
+                            (built.length - 2) + ' 条较短支线未包含，请手工补充。');
+                    }
+                }
+            }
+            if (!ways.length) {
+                ways = built.slice(0, 2);
+                warnings.push('线路「' + (line.name || line.id) + '」的多条走线不共享汇合点（可能是若干互不相连的区段），' +
+                    '已按两条独立走线导出为 way1/way2，请确认结构。');
+            }
+        } else {
+            ways = built.slice(0, built.length > 2 ? 2 : built.length);
+            if (built.length > 2) {
+                warnings.push('线路「' + (line.name || line.id) + '」存在 ' + built.length +
+                    ' 条走线，已导出前两条，其余请手工补充。');
+            }
+        }
+        return { ways: ways, notOpenItems: notOpenItems, warnings: warnings };
+    }
+
+    /**
+     * 依据当前工程生成 CGo OpenMap 城市工程包内容。
+     * @param {{cityId:string,cityName:string,themeColor:string,linePrefix:string,pxMeter:number,company:string}} opts
+     */
+    function buildOpenMapPackage(opts) {
+        var o = opts || {};
+        var cityId = slugCityId(o.cityId) || 'newcity';
+        var cityName = String(o.cityName || '').trim() || cityId;
+        var prefix = String(o.linePrefix || 'M').trim().replace(/[^A-Za-z0-9_-]/g, '') || 'M';
+        var pxMeter = positiveNumber(o.pxMeter, OM_PX_METER_DEFAULT);
+        var themeColor = /^#[0-9a-fA-F]{6}$/.test(String(o.themeColor || '')) ? String(o.themeColor) : '#00263b';
+        var company = String(o.company || '').trim() || (cityName + '轨道交通');
+        var warnings = [];
+        var today = new Date().toISOString().slice(0, 10);
+        /** 站间距来源统计：{ total: 区间总数, real: 采用实际里程的区间数, none: 留空占位的区间数 } */
+        var mileageTotals = { total: 0, real: 0, none: 0 };
+
+        // ---- 车站键（OpenMap Station ID）分配 ----
+        var keys = allocateStationKeys();
+        var keyOf = keys.keyOf;
+        var stationOrder = keys.stationOrder;
+        var tempCount = keys.tempCount;
+        if (keys.missingCode.length) {
+            warnings.push(keys.missingCode.length + ' 个车站未填写「站编号」，已暂用内部节点 ID 作为车站键，请在 data_stations.js 中改为规范编号（如 M101）。');
+        }
+        if (keys.duplicateCode.length) {
+            warnings.push('存在重复站编号（' + keys.duplicateCode.slice(0, 6).join('、') + (keys.duplicateCode.length > 6 ? ' 等' : '') +
                 '），导出时已自动追加 _2、_3 后缀区分，建议在编辑器中统一改为唯一编号。');
         }
-        var tempCount = Object.keys(project.nodes).filter(function (id) { return project.nodes[id].type === 'temp'; }).length;
 
         // ---- 线路与折线 ----
         var lineEntries = [];
         var generatedBadges = {};        // 需要随包生成的文字徽标：文件名 → SVG 内容
         var notOpenItems = [];           // 未开通线段：{ name, points }
         project.lines.forEach(function (line, index) {
-            var allSegs = project.segments.filter(function (s) { return s.lineId === line.id; });
-            // 未开通线段单独走 data_notopen.js，不参与线路走向与站序
-            allSegs.filter(function (s) { return s.notOpen === true; }).forEach(function (seg) {
-                var pts = segmentDrawPoints(seg).map(function (p) { return { x: round2(p.x), y: round2(p.y) }; });
-                if (pts.length >= 2) notOpenItems.push({ name: line.name || line.id, points: pts });
-            });
-            var segs = allSegs.filter(function (s) { return s.notOpen !== true; });
-            if (!segs.length) {
-                warnings.push('线路「' + (line.name || line.id) + '」没有已开通线段' +
-                    (allSegs.length ? '（全部线段都标为未开通，已转入 data_notopen.js）' : '') + '，已跳过导出。');
-                return;
-            }
-            var paths = decomposeLinePaths(segs);
-            var built = paths.map(function (p) {
-                var pts = chainToPolyline(p.chain);
-                var info = polylineToStations(pts, keyOf, pxMeter);
-                return {
-                    points: pts, stationIds: info.stationIds, distances: info.distances,
-                    tail: info.tail, hasUnanchoredEnd: info.hasUnanchoredEnd,
-                    closed: p.closed, endKeys: [p.startKey, p.endKey], length: polylineLength(pts)
-                };
-            }).filter(function (p) { return p.points.length >= 2; });
-
-            if (!built.length) {
-                warnings.push('线路「' + (line.name || line.id) + '」的线段未形成有效走线，已跳过导出。');
-                return;
-            }
-            built.sort(function (a, b) { return b.length - a.length; });
-
-            // 站点过少的孤立走线不导出
-            built = built.filter(function (w, wi) {
-                if (w.stationIds.length >= 1) return true;
-                warnings.push('线路「' + (line.name || line.id) + '」有一条不含车站的走线（仅临时节点），已跳过。');
-                return false;
-            });
-            if (!built.length) return;
-
-            var ways = [];
-            if (built.length >= 2 && !built[0].closed) {
-                // Y 字形：把共享汇合点的两条走线串成主干，其余作为支线
-                var junction = sharedEndKey(built[0], built[1]);
-                if (junction) {
-                    var merged = mergeWays(built[0], built[1], junction, keyOf, pxMeter);
-                    if (merged) {
-                        ways.push(merged);
-                        if (built.length > 2) {
-                            ways.push(built[2]);
-                            warnings.push('线路「' + (line.name || line.id) + '」共有 ' + built.length +
-                                ' 条末端走线，OpenMap 标准主线仅支持 way1(主干) + way2(一条支线)，已导出其中最长的两条，' +
-                                (built.length - 2) + ' 条较短支线未包含，请手工补充。');
-                        }
-                    }
-                }
-                if (!ways.length) {
-                    ways = built.slice(0, 2);
-                    warnings.push('线路「' + (line.name || line.id) + '」的多条走线不共享汇合点（可能是若干互不相连的区段），' +
-                        '已按两条独立走线导出为 way1/way2，请确认结构。');
-                }
-            } else {
-                ways = built.slice(0, built.length > 2 ? 2 : built.length);
-                if (built.length > 2) {
-                    warnings.push('线路「' + (line.name || line.id) + '」存在 ' + built.length +
-                        ' 条走线，已导出前两条，其余请手工补充。');
-                }
-            }
+            var route = buildLineWays(line, keyOf, pxMeter);
+            route.warnings.forEach(function (w) { warnings.push(w); });
+            route.notOpenItems.forEach(function (item) { notOpenItems.push(item); });
+            if (!route.ways.length) return;
+            var ways = route.ways;
 
             var entry = {
                 id: prefix + (lineEntries.length + 1),
@@ -6662,6 +6798,15 @@
                         '导出的 pathPoints 会延伸到该位置，请确认是否需要在端点处补一座车站。');
                 }
             });
+            // 站间距来源：已录入实际里程的区间按实际值写入（环线闭合段一并处理）
+            entry.mileage = applyMileageToWays(line, ways);
+            if (entry.mileage.mode === 'none') {
+                // 「不添加站间距」：distances 一律留空占位，不写画布反算值
+                ways.forEach(function (w) { w.distances = []; });
+                mileageTotals.none += entry.mileage.total;
+            }
+            mileageTotals.total += entry.mileage.total;
+            mileageTotals.real += entry.mileage.real;
             lineEntries.push(entry);
         });
 
@@ -6701,11 +6846,33 @@
         stationsOut += '};\n';
 
         // ---- data_lines.js ----
+        // 站间距来源注释：实际里程 / 画布几何反算 / 留空占位，三者可同时出现
+        var mileageCanvas = Math.max(0, mileageTotals.total - mileageTotals.real - mileageTotals.none);
+        var mileageParts = [];
+        if (mileageTotals.real) {
+            mileageParts.push(mileageTotals.real + ' 个区间为实际里程（来源：' + mileageSourceSummary() + '）');
+        }
+        if (mileageCanvas) {
+            mileageParts.push(mileageCanvas + ' 个区间按导出参数「' + pxMeter + ' 米/像素」由画布几何反算');
+        }
+        if (mileageTotals.none) {
+            mileageParts.push(mileageTotals.none + ' 个区间按要求留空（distances: [] 占位，不按坐标推算或反算）');
+        }
+        var mileageNote = mileageParts.length <= 1
+            ? '站间距：' + (mileageParts[0] || '全部留空（distances: [] 占位）') + '。'
+            : '站间距为混合来源：' + mileageParts.join('；') + '。';
+        if (mileageCanvas) {
+            mileageNote += '画布反算值仅供占位，请按实际里程校正（可在「站间距来源」录入实际里程或改为留空）。';
+        }
+        if (mileageTotals.real && mileageCanvas) {
+            warnings.push('站间距为混合来源：' + mileageTotals.real + '/' + mileageTotals.total +
+                ' 个区间已录入实际里程，其余仍为画布反算值，可在「站间距来源」中补齐。');
+        }
         var linesOut = omHeader('线路数据库与矢量走向配置 (city/' + cityId + '/data_lines.js)', [
             'stationsData 中的车站键必须与下方 stationIds 完全对应；',
             'distances 为相邻车站的站间距（米），长度应等于 stationIds.length - 1（环线等于 stationIds.length）；',
             'pathPoints 为线路绘制的折线点阵（引擎自动计算 45°/90° 平滑圆角，点上的 r 可指定自定义圆角半径）。',
-            '站间距按导出参数「' + pxMeter + ' 米/像素」由画布几何反算，请按实际里程校正。'
+            mileageNote
         ]) + 'const linesData = [\n';
         lineEntries.forEach(function (entry, index) {
             var block = [];
@@ -7138,7 +7305,11 @@
             waters: project.waters.length,
             notOpen: notOpenItems.length,
             texts: textItems.length,
-            canvas: project.canvas.width + ' × ' + project.canvas.height
+            canvas: project.canvas.width + ' × ' + project.canvas.height,
+            /** 站间距来源：实际里程区间数 / 留空占位区间数 / 区间总数 */
+            mileageReal: mileageTotals.real,
+            mileageNone: mileageTotals.none,
+            mileageTotal: mileageTotals.total
         };
         var lineSummary = lineEntries.map(function (e) {
             return { id: e.id, name: e.name, ways: e.ways.length, loop: !!e.isLoop, branch: !!e.hasbranch };
@@ -7239,6 +7410,14 @@
         L.push('| 未开通线段 | ' + (info.stats.notOpen || 0) + '（写入 `data_notopen.js`，不计入线路走向） |');
         L.push('| 自由文本 | ' + (info.stats.texts || 0) + '（合并导出为 `assets/' + info.cityId + '_texts.svg`，登记在 `data_scattered.js`） |');
         L.push('| 站距比例 | ' + info.pxMeter + ' 米/像素（用于反算站间距，需按实际里程校正） |');
+        L.push('| 站间距来源 | ' + ((info.stats.mileageReal || 0) || (info.stats.mileageNone || 0)
+            ? [
+                (info.stats.mileageReal || 0) ? (info.stats.mileageReal + ' 个区间为实际里程') : '',
+                (info.stats.mileageNone || 0) ? (info.stats.mileageNone + ' 个区间留空占位（`distances: []`）') : '',
+                (info.stats.mileageTotal || 0) - (info.stats.mileageReal || 0) - (info.stats.mileageNone || 0) > 0
+                    ? '其余按画布几何反算' : ''
+            ].filter(Boolean).join('；')
+            : '全部按画布几何反算（可在「站间距来源」中录入实际里程或改为留空）') + ' |');
         L.push('| 运营公司 | ' + info.company + ' |');
         L.push('');
         L.push('## 二、文件清单');
@@ -7371,6 +7550,12 @@
             '<span class="om-stat"><b>' + pkg.stats.waters + '</b> 水域</span>' +
             '<span class="om-stat"><b>' + (pkg.stats.notOpen || 0) + '</b> 未开通段</span>' +
             '<span class="om-stat"><b>' + (pkg.stats.texts || 0) + '</b> 自由文本</span>' +
+            '<span class="om-stat" title="已录入实际里程的区间数 / 区间总数（其余按画布几何反算或留空）"><b>' +
+            (pkg.stats.mileageReal || 0) + '/' + (pkg.stats.mileageTotal || 0) + '</b> 区间实际里程</span>' +
+            ((pkg.stats.mileageNone || 0)
+                ? '<span class="om-stat" title="「不添加站间距」的区间：导出 distances: [] 占位"><b>' +
+                    pkg.stats.mileageNone + '</b> 区间留空</span>'
+                : '') +
             '<span class="om-stat"><b>' + pkg.files.length + '</b> 文件</span>' +
             '</div>';
         var total = pkg.files.reduce(function (sum, f) { return sum + (f.text ? f.text.length : (f.data ? f.data.length : 0)); }, 0);
@@ -7411,6 +7596,588 @@
         } finally {
             btn.innerHTML = oldHtml;
             btn.disabled = false;
+        }
+    }
+
+    // ==========================================================================
+    // 16b. 站间距来源（实际里程的导入 / 编辑 / 校验）
+    // ==========================================================================
+    //
+    // 导出的 distances 有两种来源：
+    //   1. 画布几何反算（默认）：按导出参数「pxMeter 米/像素」由折线长度折算；
+    //   2. 实际里程（本模块）：由运营方公布资料、百科里程表、OpenStreetMap 沿线几何等
+    //      可靠来源取得，按**区间**录入工程，导出时优先于画布反算值。
+    //
+    // 数据按区间而不是数组下标存放，站序调整后依然有效：
+    //   project.lineDistances = { [lineId]: { source: 'OpenStreetMap', values: { 'M101>M102': 1340 } } }
+    // 区间键由两端车站键（站编号）拼成，键内按字典序排序，因此 A>B 与 B>A 等价、无方向性。
+
+    var sdLineId = null;    // 「站间距来源」对话框当前编辑的线路
+    var sdRows = [];        // 当前线路的区间行（结构与导出的 stationIds / distances 完全一致）
+
+    /** 区间键（无方向）：两端车站键按字典序拼接 */
+    function mileagePairKey(a, b) {
+        var x = String(a == null ? '' : a), y = String(b == null ? '' : b);
+        return x <= y ? x + '>' + y : y + '>' + x;
+    }
+
+    /**
+     * 站名的宽松比对键：去空白、全角括号转半角、去末尾「站」。
+     * 括号内的线路标注**保留**（「三叉街（滨海快线）」与「三叉街」是两座不同的车站）。
+     */
+    function mileageNameKey(name) {
+        return String(name == null ? '' : name)
+            .replace(/[\s\u3000]/g, '')
+            .replace(/（/g, '(').replace(/）/g, ')')
+            .replace(/站$/, '')
+            .toLowerCase();
+    }
+
+    /** 某条线路已录入的来源信息（未录入时为 null） */
+    function mileageStoreOf(line) {
+        var store = (project && project.lineDistances && line) ? project.lineDistances[line.id] : null;
+        return (store && typeof store === 'object') ? store : null;
+    }
+
+    /**
+     * 站间距来源模式：
+     *   'canvas' 画布几何反算（默认，未做任何设置）
+     *   'actual' 实际里程（按区间录入的数值）
+     *   'none'   不添加站间距（导出 distances: [] 占位，不写任何推算值）
+     */
+    function mileageModeOf(line) {
+        var store = mileageStoreOf(line);
+        if (!store) return 'canvas';
+        if (store.mode === 'none') return 'none';
+        return (store.values && Object.keys(store.values).length) ? 'actual' : 'canvas';
+    }
+
+    /** 某条线路已录入的实际里程表：区间键 → 米 */
+    function mileageTableFor(line) {
+        var store = mileageStoreOf(line);
+        return (store && store.values && typeof store.values === 'object') ? store.values : {};
+    }
+
+    /** 已录入实际里程的来源列表（去重），用于导出注释 */
+    function mileageSourceSummary() {
+        var names = [];
+        var all = (project && project.lineDistances) || {};
+        Object.keys(all).forEach(function (lid) {
+            var store = all[lid];
+            if (!store || !store.values || !Object.keys(store.values).length) return;
+            var name = String(store.source || '').trim() || '未标注来源';
+            if (names.indexOf(name) < 0) names.push(name);
+        });
+        return names.length ? names.join('、') : '未标注来源';
+    }
+
+    /**
+     * 把已录入的实际里程写入走线的 distances（导出前调用，就地改写）。
+     * 环线的闭合区间（末站 → 首站）同样按区间键匹配。
+     * 「不添加站间距」模式在这里不动数值，由导出侧统一清空为 []。
+     * @returns {{total:number, real:number, mode:string, source:string}}
+     */
+    function applyMileageToWays(line, ways) {
+        var mode = mileageModeOf(line);
+        var table = mode === 'actual' ? mileageTableFor(line) : {};
+        var total = 0, real = 0;
+        (ways || []).forEach(function (way) {
+            var ids = way.stationIds || [];
+            var dists = way.distances || [];
+            for (var i = 0; i < dists.length; i++) {
+                var a = null, b = null;
+                if (i < ids.length - 1) { a = ids[i]; b = ids[i + 1]; }
+                else if (way.closed && ids.length > 1 && i === ids.length) { a = ids[ids.length - 1]; b = ids[0]; }
+                if (a == null || b == null) continue;
+                total++;
+                var v = table[mileagePairKey(a, b)];
+                if (typeof v === 'number' && isFinite(v) && v > 0) { dists[i] = Math.round(v); real++; }
+            }
+        });
+        var store = mileageStoreOf(line);
+        return { total: total, real: real, mode: mode, source: (store && store.source) || '' };
+    }
+
+    /**
+     * 若某条线路的全部区间都已录入实际里程，返回按站序排列的米数数组；否则返回 null。
+     * 「不添加站间距」的线路返回空数组 —— 只输出 distances: [] 占位，不写任何推算值。
+     * 「导出城市代码」只输出站序，不写画布反算值——估算值不能冒充实际里程。
+     */
+    function realDistancesForCodes(line, codes) {
+        if (mileageModeOf(line) === 'none') return [];
+        var table = mileageTableFor(line);
+        if (!codes || codes.length < 2) return null;
+        var out = [];
+        for (var i = 1; i < codes.length; i++) {
+            var v = table[mileagePairKey(codes[i - 1], codes[i])];
+            if (typeof v !== 'number' || !isFinite(v) || v <= 0) return null;
+            out.push(Math.round(v));
+        }
+        return out;
+    }
+
+    /**
+     * 当前工程某条线路的区间列表（与导出的 stationIds / distances 一一对应）。
+     * 走 buildLineWays，保证面板里列出的区间与导出结果不会各算一份。
+     */
+    function mileageRowsFor(line) {
+        var keys = allocateStationKeys();
+        var pxHost = $('om-px-meter');
+        var pxMeter = positiveNumber(pxHost ? pxHost.value : '', OM_PX_METER_DEFAULT);
+        var route = buildLineWays(line, keys.keyOf, pxMeter);
+        var nameOf = {};
+        keys.stationOrder.forEach(function (id) {
+            var n = project.nodes[id] || {};
+            nameOf[keys.keyOf[id]] = n.cn || n.code || keys.keyOf[id];
+        });
+        var table = mileageTableFor(line);
+        var rows = [];
+        (route.ways || []).forEach(function (way, wi) {
+            var ids = way.stationIds || [];
+            var dists = (way.distances || []).slice();
+            // 环线的闭合区间在导出时才追加，这里一并列出
+            if (way.closed && ids.length > 1) dists.push(Math.max(1, way.tail || 0));
+            var label = route.ways.length > 1 ? (wi === 0 ? '主线（way1）' : '支线' + wi) : '';
+            for (var i = 0; i < dists.length; i++) {
+                var a = i < ids.length - 1 ? ids[i] : ids[ids.length - 1];
+                var b = i < ids.length - 1 ? ids[i + 1] : ids[0];
+                if (a == null || b == null) continue;
+                var actual = table[mileagePairKey(a, b)];
+                rows.push({
+                    a: a, b: b,
+                    nameA: nameOf[a] || a, nameB: nameOf[b] || b,
+                    canvas: dists[i],
+                    actual: (typeof actual === 'number' && isFinite(actual) && actual > 0) ? Math.round(actual) : null,
+                    group: label
+                });
+            }
+        });
+        return { rows: rows, route: route, keyOf: keys.keyOf };
+    }
+
+    // ---------------------------- 对话框 ----------------------------
+
+    function sdStatus(message, kind) {
+        var host = $('sd-status');
+        if (!host) return;
+        host.textContent = message || '';
+        host.className = 'rl-status' + (kind ? ' is-' + kind : '');
+    }
+
+    /** 线路面板上的站间距来源提示 */
+    function updateMileageHint() {
+        var host = $('mileage-hint');
+        if (!host) return;
+        if (!project || !project.lines.length) { host.textContent = ''; return; }
+        var line = findLine(activeLineId) || project.lines[0];
+        var store = mileageStoreOf(line);
+        var mode = mileageModeOf(line);
+        var n = (store && store.values) ? Object.keys(store.values).length : 0;
+        if (mode === 'none') {
+            host.textContent = '「' + (line.name || line.id) + '」已设为不添加站间距，导出写 distances: [] 占位。';
+        } else if (mode === 'actual') {
+            host.textContent = '「' + (line.name || line.id) + '」已录入 ' + n + ' 个区间的实际里程（来源：' +
+                (String(store.source || '').trim() || '未标注') + '），导出时优先采用实际值。';
+        } else {
+            host.textContent = '「' + (line.name || line.id) + '」尚未录入实际里程，导出的站间距会按画布几何反算。';
+        }
+    }
+
+    function openMileageDialog() {
+        if (!project) { toast('请先创建画布'); return; }
+        if (!project.lines.length) { toast('请先在「线路」中新建一条线路'); return; }
+        var sel = $('sd-line');
+        sel.innerHTML = project.lines.map(function (l) {
+            return '<option value="' + l.id + '">' + escapeHtml(l.name || l.id) + '</option>';
+        }).join('');
+        var active = (activeLineId && findLine(activeLineId)) ? activeLineId : project.lines[0].id;
+        sel.value = active;
+        $('sd-paste').value = '';
+        syncMileageDialog();
+        $('sd-modal').classList.add('open');
+    }
+
+    function closeMileageDialog() { $('sd-modal').classList.remove('open'); }
+
+    /** 按当前选中的线路重建区间表 */
+    function syncMileageDialog() {
+        var line = findLine($('sd-line').value);
+        if (!line) return;
+        sdLineId = line.id;
+        var info = mileageRowsFor(line);
+        sdRows = info.rows;
+        var store = mileageStoreOf(line);
+        $('sd-source').value = (store && store.source) || '';
+        setMileageMode(mileageModeOf(line), true);
+        renderMileageRows();
+        updateMileageControls();
+        if (sdMode() === 'none') {
+            sdStatus('已设为「不添加站间距」：导出写 distances: [] 占位，共 ' + sdRows.length + ' 个区间。', 'ok');
+        } else if (!sdRows.length) {
+            sdStatus('该线路没有可编辑的区间：请先在画布上连线，或检查线段是否都标成了「未开通」。', 'warn');
+        } else {
+            sdStatus('共 ' + sdRows.length + ' 个区间。可直接编辑，或从下方粘贴里程表 / 读取城市数据文件后点「应用到工程」。', '');
+        }
+        updateMileageStatus();
+    }
+
+    /** 当前对话框选中的来源模式 */
+    function sdMode() {
+        var checked = document.querySelector('input[name="sd-mode"]:checked');
+        return checked ? checked.value : 'canvas';
+    }
+
+    function setMileageMode(mode, silent) {
+        var radios = document.querySelectorAll('input[name="sd-mode"]');
+        Array.prototype.forEach.call(radios, function (r) { r.checked = (r.value === mode); });
+        if (!silent) updateMileageControls();
+    }
+
+    /** 只有「实际里程」模式下才允许编辑数值与导入 */
+    function updateMileageControls() {
+        var editable = sdMode() === 'actual';
+        Array.prototype.forEach.call(document.querySelectorAll('#sd-rows .sd-input'), function (el) { el.disabled = !editable; });
+        ['sd-paste', 'sd-parse', 'sd-load-city', 'sd-from-canvas', 'sd-clear', 'sd-source'].forEach(function (id) {
+            var el = $(id);
+            if (el) el.disabled = !editable;
+        });
+        var host = $('sd-rows');
+        if (host) host.classList.toggle('is-locked', !editable);
+    }
+
+    function renderMileageRows() {
+        var host = $('sd-rows');
+        if (!host) return;
+        if (!sdRows.length) { host.innerHTML = ''; return; }
+        var html = '';
+        var lastGroup = null;
+        sdRows.forEach(function (row, i) {
+            if (row.group && row.group !== lastGroup) {
+                html += '<p class="sd-group">' + escapeHtml(row.group) + '</p>';
+                lastGroup = row.group;
+            }
+            var real = row.actual != null;
+            html += '<div class="sd-row">' +
+                '<span class="sd-name" title="' + escapeHtml(row.a + ' → ' + row.b) + '">' +
+                escapeHtml(row.nameA) + ' → ' + escapeHtml(row.nameB) + '</span>' +
+                '<input class="sd-input" type="number" min="1" step="10" inputmode="numeric" data-idx="' + i + '"' +
+                ' placeholder="' + row.canvas + '" value="' + (real ? row.actual : '') + '">' +
+                '<span class="sd-chip' + (real ? ' is-real' : '') + '">画布 ' + row.canvas + '</span>' +
+                '</div>';
+        });
+        host.innerHTML = html;
+        Array.prototype.forEach.call(host.querySelectorAll('.sd-input'), function (input) {
+            input.addEventListener('input', onMileageInput);
+        });
+    }
+
+    function onMileageInput(ev) {
+        var idx = parseInt(ev.target.getAttribute('data-idx'), 10);
+        var row = sdRows[idx];
+        if (!row) return;
+        var raw = String(ev.target.value || '').trim();
+        var v = raw === '' ? NaN : parseFloat(raw);
+        row.actual = (isFinite(v) && v > 0) ? Math.round(v) : null;
+        var chip = ev.target.parentElement.querySelector('.sd-chip');
+        if (chip) chip.className = 'sd-chip' + (row.actual == null ? '' : ' is-real');
+        updateMileageStatus();
+    }
+
+    function mileageRowStats() {
+        var total = 0, filled = 0, sumActual = 0, sumCanvasAll = 0, sumCanvasFilled = 0;
+        sdRows.forEach(function (r) {
+            total++;
+            sumCanvasAll += r.canvas;
+            if (r.actual != null) { filled++; sumActual += r.actual; sumCanvasFilled += r.canvas; }
+        });
+        return { total: total, filled: filled, sumActual: sumActual, sumCanvasAll: sumCanvasAll, sumCanvasFilled: sumCanvasFilled };
+    }
+
+    function updateMileageStatus() {
+        var s = mileageRowStats();
+        var mode = sdMode();
+        if (mode === 'none') {
+            sdStatus('不添加站间距：导出的 distances 为 [] 占位（共 ' + s.total + ' 个区间），不写入画布反算值。', 'ok');
+            return;
+        }
+        if (mode === 'canvas') {
+            sdStatus('画布几何反算：全线路合计 ' + (s.sumCanvasAll / 1000).toFixed(2) + ' km（可在上方切换为实际里程或留空）。', '');
+            return;
+        }
+        if (!s.total) return;
+        var text = s.filled + '/' + s.total + ' 个区间已录入实际里程，合计 ' + (s.sumActual / 1000).toFixed(2) +
+            ' km；全线路画布反算合计 ' + (s.sumCanvasAll / 1000).toFixed(2) + ' km';
+        if (s.filled && s.sumCanvasFilled) {
+            var diff = (s.sumActual - s.sumCanvasFilled) / s.sumCanvasFilled * 100;
+            text += '；已录入区间按画布反算为 ' + (s.sumCanvasFilled / 1000).toFixed(2) +
+                ' km（实际值 ' + (diff >= 0 ? '+' : '') + diff.toFixed(1) + '%）';
+        }
+        sdStatus(text, s.filled === s.total ? 'ok' : '');
+    }
+
+    /** 把对话框里的选择写入工程 */
+    function applyMileageDialog() {
+        var line = findLine(sdLineId);
+        if (!line) return;
+        var mode = sdMode();
+        var values = {}, filled = 0;
+        sdRows.forEach(function (r) {
+            if (r.actual == null) return;
+            values[mileagePairKey(r.a, r.b)] = r.actual;
+            filled++;
+        });
+        var source = String($('sd-source').value || '').trim();
+        withHistory(function () {
+            if (!project.lineDistances) project.lineDistances = {};
+            if (mode === 'none') {
+                project.lineDistances[line.id] = {
+                    mode: 'none', source: '', values: {}, updatedAt: new Date().toISOString().slice(0, 10)
+                };
+            } else if (mode === 'actual' && filled) {
+                project.lineDistances[line.id] = {
+                    mode: 'actual', source: source, values: values, updatedAt: new Date().toISOString().slice(0, 10)
+                };
+            } else {
+                // 画布几何反算（或「实际里程」但一段都没填）：清除本线设置
+                delete project.lineDistances[line.id];
+            }
+        });
+        updateMileageHint();
+        closeMileageDialog();
+        if (mode === 'none') {
+            toast('「' + (line.name || line.id) + '」已设为不添加站间距，导出 distances 为空数组占位');
+        } else if (mode === 'actual' && filled) {
+            toast('已保存「' + (line.name || line.id) + '」的实际站间距：' + filled + ' 个区间，导出时优先采用');
+        } else {
+            toast('已清除「' + (line.name || line.id) + '」的站间距设置，导出将按画布几何反算');
+        }
+    }
+
+    /** 按画布反算值填入（便于只校正偏差大的区间） */
+    function fillMileageFromCanvas() {
+        if (sdMode() !== 'actual') { sdStatus('请先把「站间距来源」切换为「实际里程」再填入数值。', 'warn'); return; }
+        sdRows.forEach(function (r) { r.actual = r.canvas; });
+        renderMileageRows();
+        updateMileageControls();
+        updateMileageStatus();
+        sdStatus('已按画布反算值填入全部区间，请逐段校正为实际里程后点「应用到工程」。', '');
+    }
+
+    /** 清空所有输入框（到「应用」时才真正清除工程里的数据） */
+    function clearMileageInputs() {
+        if (sdMode() !== 'actual') { sdStatus('请先把「站间距来源」切换为「实际里程」再清空数值。', 'warn'); return; }
+        sdRows.forEach(function (r) { r.actual = null; });
+        renderMileageRows();
+        updateMileageControls();
+        updateMileageStatus();
+        sdStatus('已清空输入框，点「应用到工程」即恢复为画布几何反算。', '');
+    }
+
+    /**
+     * 解析里程文本并填充区间输入框。支持四种写法（每行一条）：
+     *   A. 区间表：      秀山 → 罗汉山 1100    /  秀山,罗汉山,1100
+     *   B. 逐站站间距：  罗汉山 1100          （数值为该站与上一站之间）
+     *   C. 逐站累计里程：罗汉山 1.1 km        （数值为累计里程，自动按相邻差值折算）
+     *   D. 纯数字数组：  [1340, 1100, 1520]   （按当前站序依次对应）
+     * 单位默认米；带 km / 公里 / 千米 后缀时按 1000 折算。
+     * 行内出现「间距 / 站距」按 B 解释，出现「里程 / 累计」按 C 解释，否则按数值是否单调递增自动判定。
+     */
+    function parseMileageText(text, rows) {
+        var notes = [];
+        var lines = String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n')
+            .map(function (s) { return s.trim(); }).filter(Boolean);
+        if (!lines.length) return { filled: 0, mode: '', notes: ['没有可解析的内容'] };
+
+        // 站名 → 车站键 / 区间下标
+        var keyOfName = {};
+        rows.forEach(function (r) {
+            if (!keyOfName[mileageNameKey(r.nameA)]) keyOfName[mileageNameKey(r.nameA)] = r.a;
+            if (!keyOfName[mileageNameKey(r.nameB)]) keyOfName[mileageNameKey(r.nameB)] = r.b;
+        });
+        var rowOfPair = {};
+        rows.forEach(function (r, i) { rowOfPair[mileagePairKey(r.a, r.b)] = i; });
+        function rowOfStationKey(key, preferEnd) {
+            var found = -1;
+            rows.forEach(function (r, i) {
+                if (found >= 0) return;
+                if (preferEnd ? r.b === key : (r.a === key || r.b === key)) found = i;
+            });
+            if (found < 0) {
+                rows.forEach(function (r, i) { if (found < 0 && r.a === key) found = i; });
+            }
+            return found;
+        }
+
+        // D. 纯数字数组
+        var joined = lines.join(' ');
+        if (/^[\[\]()（）\d.,，、;；\s]+$/.test(joined)) {
+            var nums = (joined.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+            if (!nums.length) return { filled: 0, mode: '数字数组', notes: ['未识别到数字'] };
+            if (nums.length !== rows.length) {
+                notes.push('数字个数 ' + nums.length + ' 与区间数 ' + rows.length + ' 不一致，已按站序填入前 ' +
+                    Math.min(nums.length, rows.length) + ' 个');
+            }
+            var nFilled = 0;
+            for (var i = 0; i < rows.length && i < nums.length; i++) {
+                if (nums[i] > 0) { rows[i].actual = Math.round(nums[i]); nFilled++; }
+            }
+            return { filled: nFilled, mode: '数字数组', notes: notes };
+        }
+
+        // A / B / C：逐行
+        var pairs = [];      // { idx, value }
+        var singles = [];    // { idx, value }
+        var unmatched = 0;
+        var sawCumulativeWord = false, sawGapWord = false;
+        lines.forEach(function (raw) {
+            var line = raw.replace(/^[-*•·—–]+\s*/, '').replace(/^\d+\s*[.、)．）]\s*/, '');
+            if (/累计|里程/.test(line)) sawCumulativeWord = true;
+            if (/间距|站距/.test(line)) sawGapWord = true;
+            var m = /^(.*?)[\s,，:：=]+(-?\d+(?:\.\d+)?)\s*(km|KM|公里|千米|m|米)?\s*$/.exec(line);
+            if (!m) { unmatched++; return; }
+            var label = m[1].trim().replace(/[|｜]+$/, '');
+            var val = parseFloat(m[2]);
+            var unit = String(m[3] || '').toLowerCase();
+            if (!isFinite(val)) { unmatched++; return; }
+            if (unit === 'km' || unit === '公里' || unit === '千米') val = val * 1000;
+
+            // 区间表：标签里含两个站名
+            var seg = /^(.*?)\s*(?:→|->|—|–|~|～|至|到)\s*(.*)$/.exec(label);
+            if (!seg) {
+                var cols = label.split(/[,，\t]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+                if (cols.length >= 2) { seg = [null, cols[0], cols[1]]; label = cols[0] + '→' + cols[1]; }
+            }
+            if (seg) {
+                var ka = keyOfName[mileageNameKey(seg[1])], kb = keyOfName[mileageNameKey(seg[2])];
+                var idx = (ka && kb) ? rowOfPair[mileagePairKey(ka, kb)] : undefined;
+                if (idx === undefined) { unmatched++; return; }
+                pairs.push({ idx: idx, value: val });
+                return;
+            }
+            var k = keyOfName[mileageNameKey(label)];
+            if (!k) { unmatched++; return; }
+            var si = rowOfStationKey(k, true);
+            if (si < 0) { unmatched++; return; }
+            singles.push({ idx: si, value: val });
+        });
+
+        // C. 累计里程 → 差分。显式词优先，否则看数值形态（单调不减且首值接近 0）
+        var useCumulative = false;
+        if (singles.length >= 2) {
+            var ordered = singles.slice().sort(function (a, b) { return a.idx - b.idx; });
+            var mono = ordered.every(function (e, i) { return i === 0 || e.value >= ordered[i - 1].value; });
+            var minV = Math.min.apply(null, ordered.map(function (e) { return e.value; }));
+            var maxV = Math.max.apply(null, ordered.map(function (e) { return e.value; }));
+            if (sawCumulativeWord) useCumulative = true;
+            else if (!sawGapWord) useCumulative = mono && (minV <= 50 || minV === 0) && maxV >= 500;
+        }
+        var entries = pairs.slice();
+        if (useCumulative) {
+            // 差分只在同一条走线（主线 / 同一条支线）内相邻两站之间进行，避免跨组相减
+            var ordered2 = singles.slice().sort(function (a, b) { return a.idx - b.idx; });
+            var prev = null;
+            ordered2.forEach(function (cur) {
+                var sameGroup = prev && rows[prev.idx] && rows[cur.idx] && rows[prev.idx].group === rows[cur.idx].group;
+                if (sameGroup) {
+                    var d = cur.value - prev.value;
+                    if (d > 0) entries.push({ idx: cur.idx, value: d });
+                }
+                prev = cur;
+            });
+            notes.push('按「累计里程」差分折算');
+        } else {
+            entries = entries.concat(singles);
+        }
+        if (unmatched) notes.push(unmatched + ' 行未能匹配到区间');
+
+        var filled = 0;
+        entries.forEach(function (e) {
+            if (!(e.value > 0) || !rows[e.idx]) return;
+            rows[e.idx].actual = Math.round(e.value);
+            filled++;
+        });
+        return {
+            filled: filled,
+            mode: pairs.length && !singles.length ? '区间表' : (useCumulative ? '累计里程表' : '逐站表'),
+            notes: notes
+        };
+    }
+
+    function importMileageText() {
+        if (sdMode() !== 'actual') { sdStatus('请先把「站间距来源」切换为「实际里程」再导入数据。', 'warn'); return; }
+        if (!sdRows.length) { sdStatus('该线路没有可编辑的区间。', 'warn'); return; }
+        var parsed = parseMileageText($('sd-paste').value, sdRows);
+        renderMileageRows();
+        updateMileageStatus();
+        if (!parsed.filled) {
+            sdStatus('没有解析到可用的里程数据' + (parsed.notes.length ? '：' + parsed.notes.join('；') : '') +
+                '。支持的写法见下方说明。', 'warn');
+            return;
+        }
+        sdStatus('已按「' + parsed.mode + '」填充 ' + parsed.filled + ' 个区间' +
+            (parsed.notes.length ? '（' + parsed.notes.join('；') + '）' : '') + '，确认后点「应用到工程」。', 'ok');
+    }
+
+    /**
+     * 从 city/{cityId}/data_lines.js 读取该线路已登记的 distances 并填充。
+     * 车站在城市数据里的键（站编号）与本工程的站键一致时逐区间对应，因此方向相反也能匹配。
+     */
+    async function loadMileageFromCity() {
+        var line = findLine(sdLineId);
+        if (!line) return;
+        if (sdMode() !== 'actual') { sdStatus('请先把「站间距来源」切换为「实际里程」再读取城市数据文件。', 'warn'); return; }
+        var cityId = slugCityId($('sd-city-id').value);
+        if (!cityId) { sdStatus('请先填写城市 ID（如 fuzhou）', 'warn'); return; }
+        var btn = $('sd-load-city');
+        var old = btn ? btn.innerHTML : '';
+        if (btn) { btn.disabled = true; btn.innerHTML = '<cgo-icon name="loading" size="14"></cgo-icon><span>读取中…</span>'; }
+        try {
+            var res = await fetch('../city/' + cityId + '/data_lines.js', { cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var text = await res.text();
+            var data = new Function('"use strict";\n' + text + '\n;return typeof linesData === "undefined" ? null : linesData;')();
+            if (!Array.isArray(data)) throw new Error('未在文件中找到 linesData');
+            var name = String(line.name || '').trim();
+            var target = data.filter(function (l) { return String(l.name || '').trim() === name; })[0];
+            if (!target) throw new Error('该文件中没有名为「' + name + '」的线路');
+            var groups = [];
+            if (target.hasbranch) {
+                [['way1', 'stationIds-way1', 'distances-way1'], ['way2', 'stationIds-way2', 'distances-way2']]
+                    .forEach(function (t) {
+                        if (Array.isArray(target[t[1]]) && Array.isArray(target[t[2]])) groups.push({ ids: target[t[1]], ds: target[t[2]] });
+                    });
+            } else if (Array.isArray(target.stationIds) && Array.isArray(target.distances)) {
+                groups.push({ ids: target.stationIds, ds: target.distances });
+            }
+            // 兜底：只有 stationIds 没有 distances 时不作数
+            if (!groups.length) throw new Error('该线路没有 stationIds / distances 数据');
+
+            var rowOfPair = {};
+            sdRows.forEach(function (r, i) { rowOfPair[mileagePairKey(r.a, r.b)] = i; });
+            var applied = 0, skipped = 0;
+            groups.forEach(function (g) {
+                for (var i = 1; i < g.ids.length; i++) {
+                    var v = g.ds[i - 1];
+                    var idx = rowOfPair[mileagePairKey(g.ids[i - 1], g.ids[i])];
+                    if (typeof v !== 'number' || !isFinite(v) || v <= 0 || idx === undefined) { skipped++; continue; }
+                    sdRows[idx].actual = Math.round(v);
+                    applied++;
+                }
+            });
+            renderMileageRows();
+            updateMileageStatus();
+            if (!applied) {
+                sdStatus('已读到 city/' + cityId + '/data_lines.js 的「' + name + '」，但 ' + skipped +
+                    ' 段都没有可用的 distances（空数组或与本工程站编号对应不上）。', 'warn');
+                return;
+            }
+            sdStatus('已从 city/' + cityId + '/data_lines.js 读取「' + name + '」：填充 ' + applied + ' 个区间' +
+                (skipped ? '，' + skipped + ' 段无数据或与本工程站编号对应不上' : '') + '，确认后点「应用到工程」。', 'ok');
+            if ($('sd-source') && !String($('sd-source').value || '').trim()) $('sd-source').value = '城市数据文件';
+        } catch (e) {
+            sdStatus('读取失败：' + (e.message || e) + '。需通过本地静态服务器访问，且 city/' + cityId + '/data_lines.js 存在。', 'warn');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = old; }
         }
     }
 
@@ -7472,14 +8239,19 @@
 
     // ---------------------------- 百科表格 HTML 提取 ----------------------------
     //
-    // 百科的车站表格有两个坑：
+    // 百科的车站表格有三个坑：
     //   1. 表格里除站名外还有「所属行政区 / 换乘线路 / 车站形式」等列，其中
     //      「福州地铁5号线」这类换乘线路名和「地下二层岛式」这类车站形式，
     //      单看文本都像是合法站名，必须按语义剔除；
     //   2. 其他列普遍带 rowspan/colspan（同一行政区多行合并），按行取文本会整体错位，
-    //      因此需要先把表格还原成二维网格，再按表头定位「站名列」。
+    //      因此需要先把表格还原成二维网格，再按表头定位「站名列」；
+    //   3. 表头常写在 <tbody> 里的 <th> 中，站名单元格又把中文名与英文名分放在两个 <div>
+    //      段落里（且外层还有 div/span 嵌套），按整格文本判定会因过长/含空格被误当成噪声，
+    //      因此单元格要按块级元素拆段落，逐段识别中英文名。
     // 因此提取分两条路：能识别出表格结构时按「表头 + 网格」精确取列；否则退化为
     // 「逐行候选站名 + 最密集连续区间」的文本启发式。
+    // 英文名统一做归一化：去掉末尾的 Station，但 Railway Station / Coach Station 等
+    // 枢纽专名后缀保留（详见 normalizeStationEnglish）。
 
     /** 解码 HTML 实体 */
     function decodeHtmlEntities(text) {
@@ -7500,6 +8272,29 @@
             .replace(/<!--[\s\S]*?-->/g, ' ')
             .replace(/<[^>]*>/g, ' ');
         return decodeHtmlEntities(text).replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * 把单元格 HTML 按**块级元素**拆成段落文本。
+     *
+     * 百科（百度百科等）的站名单元格里，中文名与英文名各占一个 `<div class="para_…">`：
+     *   <td><div><span>嵩屿码头站</span></div><div><span>Songyu Wharf Station</span></div></td>
+     * 若像 htmlToPlainText 那样统一替换成空格，会得到「嵩屿码头站 Songyu Wharf Station」，
+     * 后续按「整格文本是不是站名」判定时会因为过长、含空格而被当成噪声丢掉。
+     * 因此这里保留段落边界（`<br>` 与块级结束标签 → 换行），逐段再做站名识别。
+     * @returns {string[]} 非空段落文本
+     */
+    function cellHtmlToParts(html) {
+        var text = String(html == null ? '' : html)
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<!--[\s\S]*?-->/g, ' ')
+            .replace(/<\s*br\s*\/?>/gi, '\n')
+            .replace(/<\s*\/\s*(div|p|li|tr|td|th|h[1-6]|section|article|figcaption)\s*>/gi, '\n');
+        return decodeHtmlEntities(text.replace(/<[^>]*>/g, ''))
+            .split('\n')
+            .map(function (s) { return s.replace(/\s+/g, ' ').trim(); })
+            .filter(Boolean);
     }
 
     /**
@@ -7573,9 +8368,41 @@
         return s;
     }
 
+    /**
+     * 英文站名归一化：去掉末尾的「Station」。
+     *
+     * 百科表格普遍写作「嵩屿码头 Songyu Wharf Station」，而线网图的英文名不带 Station
+     * （仓库既有数据：南门兜 `Nanmendou`、大兴机场 `Daxing Airport`）。
+     * 例外：国铁与公路客运枢纽的「Railway Station / Coach Station / Bus Station」等
+     * 属专名组成部分，保留原样（仓库既有数据：福州火车站 `Fuzhou Railway Station`）。
+     */
+    function normalizeStationEnglish(name) {
+        var s = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
+        if (!s) return '';
+        if (/\b(Railway|Railroad|Coach|Bus|Subway|Metro|Tram)\s+Stations?$/i.test(s)) return s;
+        var trimmed = s.replace(/\s+Stations?$/i, '').trim();
+        return trimmed || s;
+    }
+
+    /**
+     * 去掉单元格/行文本里的脚注与标记噪声，便于识别站名本体。
+     *
+     * 百科会把引用脚注直接串在站名后面（如「国际博览中心站 [54]」「沙坡尾站[7-8]」），
+     * 拼进来后整段会超过站名长度上限而被误判为噪声，导致整行丢失。
+     */
+    function stripStationCellNoise(text) {
+        return String(text == null ? '' : text)
+            .replace(/\[\s*\d+(?:\s*[-–~—]\s*\d+)?\s*\]/g, ' ')          // [54]、[7-8]
+            .replace(/[〔【]\s*\d+(?:\s*[-–~—]\s*\d+)?\s*[〕】]/g, ' ')   // 〔1〕、【2】
+            .replace(/[（(]\s*\d+(?:\s*[-–~—]\s*\d+)?\s*[)）]/g, ' ')     // (54) 全/半角括号脚注
+            .replace(/\s*\*+\s*$/g, ' ')                                  // 末尾星号标记
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
     /** 单行去掉序号/符号后，是否像一个站名（不是则返回空串） */
     function stationNameCandidate(line) {
-        var s = String(line == null ? '' : line).trim();
+        var s = stripStationCellNoise(String(line == null ? '' : line).trim());
         if (!s) return '';
         s = s.replace(/^[-*•·—–]+\s*/, '');
         s = s.replace(/^\d+\s*[.、)．）:：]?\s*/, '');
@@ -7592,6 +8419,10 @@
         if (/^(号线|地铁|车站|线路|换乘|位于|全长|共设|起于|止于|途经|截至|其中|以及|由于|因此|同时|此外)/.test(s)) return '';
         // 行政区/地理名（百科车站表格里常与站名同列出现）
         if (/^[\u4e00-\u9fa5]{2,4}(区|市|县|省|镇|乡|街道|新区)$/.test(s)) return '';
+        // 分节标题（表格里横跨整行的标题，文字上多为区间/工程分段）：
+        // 「林埭西至华侨大学段」「漳州（角美）延伸段」「一期工程」「XX区间」等
+        if (/(延伸段|延伸线|区间|标段|工程段)$/.test(s)) return '';
+        if (/^.{2,}(至|到).{2,}(段|区间)$/.test(s)) return '';
         return normalizeStationName(s);
     }
 
@@ -7608,7 +8439,9 @@
     /**
      * 解析一个 HTML 表格为二维网格，按 rowspan/colspan 还原合并单元格
      * （被合并覆盖的位置填空串，保证每行的列下标与表头一致）。
-     * @returns {{rows:Array, grid:Array<Array<string>>}|null}
+     * 同时给出每个位置**左上角单元格**的段落数组（partsGrid）与跨行列数（spansGrid），
+     * 前者供站名列逐段识别中英文名，后者用于剔除「横跨整行的分节标题」。
+     * @returns {{rows:Array, grid:Array<Array<string>>, partsGrid:Array<Array<string[]|null>>, spansGrid:Array<Array<{colspan:number,rowspan:number}|null>>}|null}
      */
     function parseTableGrid(tableHtml) {
         var rows = [];
@@ -7622,6 +8455,7 @@
                 var cs = parseInt((/colspan\s*=\s*["']?(\d+)/i.exec(attrs) || [])[1], 10);
                 cells.push({
                     text: htmlToPlainText(cm[3]),
+                    parts: cellHtmlToParts(cm[3]),
                     rowspan: (isFinite(rs) && rs > 0) ? rs : 1,
                     colspan: (isFinite(cs) && cs > 0) ? cs : 1,
                     head: cm[1].toLowerCase() === 'th'
@@ -7632,23 +8466,71 @@
         if (!rows.length) return null;
 
         var grid = [];
+        var partsGrid = [];
+        var spansGrid = [];
         rows.forEach(function (cells, r) {
             grid[r] = grid[r] || [];
+            partsGrid[r] = partsGrid[r] || [];
+            spansGrid[r] = spansGrid[r] || [];
             var col = 0;
             cells.forEach(function (cell) {
                 while (grid[r][col] !== undefined) col++;
                 for (var i = 0; i < cell.rowspan; i++) {
                     for (var j = 0; j < cell.colspan; j++) {
                         grid[r + i] = grid[r + i] || [];
+                        partsGrid[r + i] = partsGrid[r + i] || [];
+                        spansGrid[r + i] = spansGrid[r + i] || [];
                         if (grid[r + i][col + j] === undefined) {
                             grid[r + i][col + j] = (i === 0 && j === 0) ? cell.text : '';
+                            partsGrid[r + i][col + j] = (i === 0 && j === 0) ? cell.parts : null;
+                            spansGrid[r + i][col + j] = (i === 0 && j === 0) ? { colspan: cell.colspan, rowspan: cell.rowspan } : null;
                         }
                     }
                 }
                 col += cell.colspan;
             });
         });
-        return { rows: rows, grid: grid };
+        return { rows: rows, grid: grid, partsGrid: partsGrid, spansGrid: spansGrid };
+    }
+
+    /**
+     * 从一个单元格的段落里取出站名（中文名 + 英文名）。
+     *
+     * 逐段尝试，避免「整格拼接后过长」被误判为噪声；同时兼容中英文写在**同一段**的表格
+     * （如「人民广场 People's Square」），此时用 splitStationName 拆分后校验中文名。
+     * @returns {{cn:string, en:string}|null} 都没识别出来时返回 null
+     */
+    function stationNameFromCellParts(parts) {
+        var list = (parts || [])
+            .map(function (s) { return stripStationCellNoise(String(s == null ? '' : s).trim()); })
+            .filter(Boolean);
+        if (!list.length) return null;
+        var cn = '', en = '';
+        for (var i = 0; i < list.length; i++) {
+            var direct = stationNameCandidate(list[i]);
+            if (direct) {
+                cn = direct;
+                // 「人民广场（People's Square）」这类同段中英写法：补出英文名
+                var paired = splitStationName(list[i]);
+                if (paired.cn && paired.en) en = paired.en;
+                break;
+            }
+            var pair = splitStationName(list[i]);
+            if (pair.cn && pair.en) {
+                var cnOnly = stationNameCandidate(pair.cn);
+                if (cnOnly) { cn = cnOnly; en = pair.en; break; }
+            }
+        }
+        for (var k = 0; k < list.length && !en; k++) {
+            var s = list[k];
+            if (!/^[A-Za-z][A-Za-z0-9'’\-.\s]*$/.test(s)) continue;
+            if (s.length < 2 || s.length > 60) continue;
+            if (!/[A-Za-z]{2,}/.test(s)) continue;
+            if (cn && s === cn) continue;
+            en = s;
+        }
+        if (!cn && !en) return null;
+        return { cn: cn, en: normalizeStationEnglish(en) };
     }
 
     /** 从一个 HTML 表格中按「表头定位站名列」抽取车站 */
@@ -7656,6 +8538,8 @@
         var parsed = parseTableGrid(tableHtml);
         if (!parsed) return [];
         var grid = parsed.grid;
+        var partsGrid = parsed.partsGrid || [];
+        var spansGrid = parsed.spansGrid || [];
 
         // 1) 在前几行里找表头，并定位站名列
         var headerRow = -1, stationCol = -1, bestScore = 0;
@@ -7669,14 +8553,24 @@
         }
         if (stationCol < 0) { stationCol = 0; headerRow = -1; }   // 无表头时退回第一列
 
-        // 2) 取该列的数据行
+        // 2) 取该列的数据行：按单元格段落识别中英文名，兼容 rowspan 覆盖（覆盖处跳过）
         var out = [];
         var seen = {};
         for (var i = (headerRow >= 0 ? headerRow + 1 : 0); i < grid.length; i++) {
-            var name = stationNameCandidate((grid[i] || [])[stationCol]);
-            if (!name || seen[name]) continue;
-            seen[name] = true;
-            out.push(name);
+            // 分节标题行（「漳州（角美）延伸段」「林埭西至华侨大学段」等）：单元格横跨多列，
+            // 不是车站行，必须剔除，否则会被当成一个站名。
+            var span = (spansGrid[i] || [])[stationCol];
+            if (span && span.colspan > 1) continue;
+            var picked = stationNameFromCellParts((partsGrid[i] || [])[stationCol]);
+            if (!picked) {
+                var whole = stationNameCandidate((grid[i] || [])[stationCol]);
+                if (whole) picked = { cn: whole, en: '' };
+            }
+            if (!picked || (!picked.cn && !picked.en)) continue;
+            var key = picked.cn || picked.en;
+            if (seen[key]) continue;
+            seen[key] = true;
+            out.push(picked.cn ? (picked.cn + (picked.en ? ' ' + picked.en : '')) : picked.en);
         }
         return out;
     }
@@ -7968,7 +8862,7 @@
             '   · 两端位于对角带内        → 135° 折角（45° 斜边 + 轴平行段）',
             '   · 其余情况                → 90° 折角（取较短的一种 L 形走线）',
             '   · 斜 90° 折角需手动选择（自动选型不会自动采用）；',
-            '   · ⚠ 打开工程文件或载入示例工程时会自动关闭「线段自动选型」：工程里的线段类型是既成结果，',
+            '   · 注意：打开工程文件或载入示例工程时会自动关闭「线段自动选型」：工程里的线段类型是既成结果，',
             '     开启自动选型会让拖动节点时按几何重新判定类型、把原有走线改掉；需要时可在「路径编辑模式」里重新勾选。',
             '     （新建空白画布会恢复为开启；刷新页面恢复上次编辑的工程时，会还原上次选择的编辑模式。）',
             '5. 水域：依次点击添加顶点，双击或按 Enter 闭合，Esc 取消。',
@@ -7988,6 +8882,10 @@
             '   仅含 3 个以上转折点的手绘自由路径保持不变。',
             '9. 拖动车站节点或临时节点时，与之相连的线段会实时重新计算走线与折角类型，',
             '   135° 折角的夹角始终严格为 135°。',
+            '10. 多选车站后可整组拖动：按住 Shift 或 Ctrl 左键点选，或按住鼠标右键拖动框选，',
+            '   选中多个节点后左键按住其中任一节点拖动，整组节点按同一位移一起移动；',
+            '   两端都在选中集里的线段会整体平移（折点与线形不变），只有一端移动的线段按类型重算走线。',
+            '   每次整组拖动只记一条撤销记录，Ctrl+Z 可一次回到拖动前。',
             '',
             '【三、属性编辑】',
             '1. 左键点击车站节点 → 右侧「属性」面板可编辑站编号、中英文站名、站名字号、',
@@ -8087,7 +8985,36 @@
             '   · 勾选「自动按站序连线」时同步生成线段，整批导入可用一次 Ctrl+Z 撤销。',
             '本模块完全在本地完成，不发起任何联网请求。',
             '',
-            '【六、快捷键】',
+            '【六、站间距来源（实际里程 / 留空）】',
+            '点击左侧「线路」中的「站间距来源」，可把线路的站间距从「画布几何反算」换成实际里程，或干脆不写：',
+            '1. 面板顶部三选一：',
+            '   · 画布几何反算（默认）：按导出参数「米/像素」由画布折线折算，distances 里是估算值；',
+            '   · 实际里程：按区间录入可靠来源的数值，导出时优先采用，data_lines.js 注释写明来源；',
+            '   · 不添加站间距：distances 一律写成空数组 []（仅占位），不写任何推算值 —— 与合肥等城市',
+            '     以及「未经可靠来源核实的站间距不得按坐标推算或补写」的数据规范一致。',
+            '   选择「不添加站间距」时下方的区间表与导入按钮会锁定，只作参考。',
+            '2. 面板按当前站序列出全部区间（主线 / 支线分别成组），每行直接填米数；右侧小字是该区间的',
+            '   画布反算值，填入实际值后高亮。',
+            '3. 三种填充方式：',
+            '   · 粘贴里程表后点「解析并填充」，支持四种写法（每行一条）：',
+            '     ① 区间表     秀山 → 罗汉山 1100    /  秀山,罗汉山,1100',
+            '     ② 逐站站间距  罗汉山 1100          （数值表示该站与上一站之间）',
+            '     ③ 累计里程表  罗汉山 1.1 km        （自动按相邻差值折算；行内写「里程 / 累计」可强制指定）',
+            '     ④ 纯数字数组  [1340, 1100, 1520]   （按当前站序依次对应）',
+            '     单位默认米，带 km / 公里 / 千米 后缀按 1000 折算；站名匹配忽略空白与末尾的「站」，',
+            '     但括号里的线路标注会保留（「三叉街（滨海快线）」与「三叉街」是两座不同的车站）。',
+            '   · 「按画布反算填入」：先把反算值铺满，再只改偏差大的区间；',
+            '   · 「读取城市数据文件」：填城市 ID（如 fuzhou）后读取 city/{id}/data_lines.js 中该线路已有的',
+            '     distances 并按区间填入——城市文件里若已登记可靠来源的实际里程可直接复用，站序相反也能匹配',
+            '     （区间无方向）。需通过本地静态服务器访问。',
+            '4. 「应用到工程」把面板数值写入工程（可用 Ctrl+Z 撤销）并随工程保存；「实际里程」模式下清空全部',
+            '   输入框后应用、或切回「画布几何反算」后应用，都会清除该线路的设置。来源一栏建议写明出处',
+            '   （如「运营方公布」「OpenStreetMap」），导出时写入注释。',
+            '5. 「导出城市代码」只在该线路全部区间都已录入实际里程时才输出 distances；「不添加站间距」的线路',
+            '   输出 distances: [] 占位；画布反算的线路不输出 distances（估算值不冒充实际里程）。',
+            '   城市工程包（zip）按区间混合处理，并在注释与 README 里说明各有几个区间是实际值 / 反算值 / 留空。',
+            '',
+            '【七、快捷键】',
             '工具切换：L 线段（按当前样式） / S 车站节点 / N 临时节点 / 0 选择模式',
             '         1 车站节点 / 2 临时节点 / 3 135°折角 / 4 90°折角 /',
             '         5 轴平行直线 / 6 自由路径 / 7 水域 / 8 斜 90°折角',
@@ -8105,7 +9032,7 @@
             '折角快捷调整：Shift+左键点击线段 = 翻转折角方向（选中线段后拖动折角圆点 = 改圆角半径）',
             '视图：滚轮缩放 / 中键或空格拖拽平移 / 触控端双指捏合缩放',
             '',
-            '【七、导出】',
+            '【八、导出】',
             '「更多」菜单可导出工程 JSON（继续编辑）、城市代码（stationsData / linesData，',
             '坐标自动转换为 OpenMap 标准数据层坐标系）以及 SVG 图片。',
             '「导出 OpenMap 工程包」会按项目城市目录规范一键生成 zip 压缩包，内含：',
@@ -8415,6 +9342,24 @@
             el.addEventListener('input', renderOpenMapPreview);
             el.addEventListener('change', renderOpenMapPreview);
         });
+
+        // 站间距来源对话框（实际里程：逐段编辑 / 粘贴导入 / 读取城市数据文件）
+        $('btn-mileage-source').addEventListener('click', function () { openMileageDialog(); });
+        $('sd-close').addEventListener('click', closeMileageDialog);
+        $('sd-cancel').addEventListener('click', closeMileageDialog);
+        $('sd-modal').addEventListener('click', function (ev) { if (ev.target === $('sd-modal')) closeMileageDialog(); });
+        $('sd-line').addEventListener('change', syncMileageDialog);
+        Array.prototype.forEach.call(document.querySelectorAll('input[name="sd-mode"]'), function (radio) {
+            radio.addEventListener('change', function () {
+                updateMileageControls();
+                updateMileageStatus();
+            });
+        });
+        $('sd-parse').addEventListener('click', function () { importMileageText(); });
+        $('sd-from-canvas').addEventListener('click', function () { fillMileageFromCanvas(); });
+        $('sd-clear').addEventListener('click', function () { clearMileageInputs(); });
+        $('sd-load-city').addEventListener('click', function () { loadMileageFromCity(); });
+        $('sd-apply').addEventListener('click', function () { applyMileageDialog(); });
 
         // 导入车站列表对话框（百科表格 HTML 提取 / 手工输入 → 应用到线路）
         $('btn-import-real-line').addEventListener('click', function () { openStationListDialog(); });

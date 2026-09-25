@@ -1593,6 +1593,172 @@ body.editor-body {
     max-height: min(90vh, 860px);
 }
 
+/* 站间距来源对话框：区间逐段编辑表 */
+.editor-modal-box.sd-box {
+    width: min(760px, 100%);
+    max-height: min(90vh, 880px);
+}
+
+.sd-box .editor-modal-body {
+    overflow: auto;
+}
+
+.sd-modes {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--info-bg, #e8f0fe);
+}
+
+.sd-modes-label {
+    color: var(--text-main, #00263b);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.sd-modes .check-row {
+    margin: 0;
+    font-size: 12.5px;
+}
+
+.sd-modes code {
+    padding: 0 4px;
+    border-radius: 3px;
+    background: rgba(0, 38, 59, 0.08);
+    font-size: 11.5px;
+}
+
+.sd-rows.is-locked {
+    opacity: 0.55;
+    background: var(--hover-bg, rgba(0, 96, 152, 0.06));
+}
+
+.sd-rows.is-locked .sd-input {
+    cursor: not-allowed;
+}
+
+.sd-toolbar {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.sd-toolbar .prop-field {
+    flex: 1 1 160px;
+    min-width: 140px;
+}
+
+.sd-toolbar .side-btn {
+    width: auto;
+    padding: 6px 12px;
+    flex: 0 0 auto;
+}
+
+.sd-rows {
+    max-height: 300px;
+    overflow: auto;
+    padding: 4px 2px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--card-bg, #fff);
+}
+
+.sd-group {
+    margin: 6px 8px 2px;
+    color: var(--text-light, #636f75);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.sd-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 8px;
+}
+
+.sd-row:hover {
+    background: var(--hover-bg, rgba(0, 96, 152, 0.06));
+}
+
+.sd-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--text-main, #00263b);
+    font-size: 12.5px;
+}
+
+.sd-input {
+    flex: 0 0 104px;
+    width: 104px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--card-bg, #fff);
+    color: var(--text-main, #00263b);
+    font-family: inherit;
+    font-size: 12.5px;
+    text-align: right;
+    box-sizing: border-box;
+}
+
+.sd-input:focus {
+    outline: none;
+    border-color: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 2px rgba(0, 96, 152, 0.16);
+}
+
+.sd-chip {
+    flex: 0 0 96px;
+    color: var(--text-light, #636f75);
+    font-size: 11.5px;
+    text-align: right;
+}
+
+.sd-chip.is-real {
+    color: var(--success-color, #34a853);
+    font-weight: 600;
+}
+
+.sd-legend {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-light, #636f75);
+    font-size: 11.5px;
+    line-height: 1.6;
+}
+
+#sd-paste {
+    width: 100%;
+    min-height: 96px;
+    max-height: 200px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 4px);
+    background: var(--card-bg, #fff);
+    color: var(--text-main, #00263b);
+    font-family: inherit;
+    font-size: 12.5px;
+    line-height: 1.7;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+#sd-paste:focus {
+    outline: none;
+    border-color: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 2px rgba(0, 96, 152, 0.16);
+}
+
 .rl-box .editor-modal-body {
     overflow: auto;
 }
