@@ -14,6 +14,16 @@ const SCATTERED_DATA = [
         zIndex: 1
     },
     {
+        id: "compass",
+        file: "./city/qingdao/assets/compass.svg",
+        x: 180,
+        y: 95,
+        width: 90,
+        height: 90,
+        opacity: 1,
+        zIndex: 5
+    },
+    {
         id: "railway-qingdao",
         file: "./city/qingdao/assets/China_Railway.svg",
         x: 1266,
@@ -98,6 +108,16 @@ const SCATTERED_DATA = [
         file: "./city/qingdao/assets/Long_Distance_Bus.svg",
         x: 1748,
         y: 560,
+        width: 21,
+        height: 21,
+        opacity: 1,
+        zIndex: 15
+    },
+    {
+        id: "coach-xiaocunzhuang",
+        file: "./city/qingdao/assets/Long_Distance_Bus.svg",
+        x: 1512,
+        y: 1200,
         width: 21,
         height: 21,
         opacity: 1,

@@ -269,6 +269,7 @@ const ASSETS_TO_CACHE = [
 
     // 城市配置与业务数据 (青岛)
     './city/qingdao/qingdao.js',
+    './city/qingdao/style.css',
     './city/qingdao/stacard/script.js',
     './city/qingdao/data_stations.js',
     './city/qingdao/data_lines.js',
@@ -280,12 +281,15 @@ const ASSETS_TO_CACHE = [
     './city/qingdao/data_station_names.js',
     './city/qingdao/data_construction.js',
     './city/qingdao/modules/qingdao_station_name_history.js',
+    './city/qingdao/modules/qingdao_travel_guide.js',
     './city/qingdao/modules/qingdao_engineering_name_notice.js',
     './city/qingdao/modules/qingdao_timetable.js',
     './city/qingdao/modules/qingdao_construction.js',
+    './city/qingdao/modules/qingdao_line_badges.js',
     './city/qingdao/amap_data.json',
     './city/qingdao/staname.csv',
     './city/qingdao/assets/qingdao_sea.svg',
+    './city/qingdao/assets/compass.svg',
     './city/qingdao/assets/Aircraft.svg',
     './city/qingdao/assets/China_Railway.svg',
     './city/qingdao/assets/Long_Distance_Bus.svg',

@@ -29,7 +29,7 @@
         render() {
             return `
                 <div class="info-row" data-qingdao-engineering-name-notice-version="62">
-                    <span class="info-label">提示</span>
+                    <span class="info-label" style="display:inline-flex; align-items:center; gap:4px;"><cgo-icon name="warning" size="13"></cgo-icon><span>提示</span></span>
                     <span class="info-value" style="
                         line-height:1.5;
                         text-align:left;
