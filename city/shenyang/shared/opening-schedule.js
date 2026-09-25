@@ -508,7 +508,7 @@
             noticeTimer = null;
         }
         const root = container?.querySelector(".cgo-opening-pending");
-        const opensAt = root ? parseOpensAt(root.dataset.opensAt) : null;
+        const opensAt = root ? parseOpensAt(root.dataset.cgoOpensAt) : null;
         if (!root || !opensAt) return;
 
         const fields = {};
