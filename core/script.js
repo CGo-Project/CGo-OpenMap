@@ -254,6 +254,22 @@ async function initStaCardSystem() {
 }
 
 /**
+ * 应用城市开通时刻表 (城市可选能力)
+ *
+ * 未开通区段与车站的预计开通时刻由各城 data_opening.js 维护，
+ * 共享层 city/shenyang/shared/opening-schedule.js 负责按当前时刻把状态转为
+ * 已开通或保持未开通。这里只提供通用入口，未接入该能力的城市整段不产生任何影响。
+ * 在模块顶层、init() 之前调用：既要早于 processData()，让派生出的车站站型与经停线路
+ * 与最终状态一致；也要早于 DOMContentLoaded，好让 core/notice.js 推送「新开通线路」通知时
+ * 能读到本次已生效的条目。
+ */
+function applyOpeningSchedule() {
+    if (!window.CGoOpening || typeof window.CGoOpening.applySchedule !== 'function') return;
+    const schedule = (typeof CGO_OPENING_SCHEDULE !== 'undefined') ? CGO_OPENING_SCHEDULE : [];
+    window.CGoOpening.applySchedule(schedule);
+}
+
+/**
  * 地图总入口初始化函数 (Main Initialization)
  */
 async function init() {
@@ -3844,6 +3860,10 @@ function initInputControls() {
 }
 
 initContextMenu();
+
+// 开通时刻的应用要早于渲染，也要早于 DOMContentLoaded（notice.js 在后者推送新开通通知）
+applyOpeningSchedule();
+
 init();
 
 /**

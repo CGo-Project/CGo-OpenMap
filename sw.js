@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.1640';
+const CACHE_NAME = 'cgo-openmap-v260926.1641';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -120,6 +120,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/data_virtual_transfers.js',
     './city/shenyang/data_scattered.js',
     './city/shenyang/data_notopen.js',
+    './city/shenyang/data_opening.js',
     './city/shenyang/data_legend.js',
     './city/shenyang/data_timetable.js',
     './city/shenyang/shared/timetable-renderer.js',
@@ -128,6 +129,8 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/tip-card.js',
     './city/shenyang/shared/calligraphy.js',
     './city/shenyang/shared/calligraphy.css',
+    './city/shenyang/shared/opening-schedule.js',
+    './city/shenyang/shared/opening-schedule.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
@@ -281,6 +284,7 @@ const ASSETS_TO_CACHE = [
     './city/dalian/data_virtual_transfers.js',
     './city/dalian/data_scattered.js',
     './city/dalian/data_notopen.js',
+    './city/dalian/data_opening.js',
     './city/dalian/data_legend.js',
     './city/dalian/data_timetable.js',
     './city/dalian/amap_data.json',
@@ -302,6 +306,7 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_virtual_transfers.js',
     './city/changchun/data_scattered.js',
     './city/changchun/data_notopen.js',
+    './city/changchun/data_opening.js',
     './city/changchun/data_legend.js',
     './city/changchun/data_timetable.js',
     './city/changchun/amap_data.json',

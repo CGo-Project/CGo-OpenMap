@@ -200,10 +200,12 @@
         const card = document.createElement('div');
         card.className = 'nal-notice-card';
         const cat = CAT_CONFIG[item.category] || { title: '通知', color: '#666' };
-        card.style.borderLeftColor = cat.color;
+        // 强调色：条目自带时优先（如新开通线路用那条线的标志色），否则用分类色
+        const accent = item.accentColor || cat.color;
+        card.style.borderLeftColor = accent;
         card.innerHTML = `
             <div class="nal-notice-content">
-                <div class="nal-notice-header" style="color:${cat.color}">
+                <div class="nal-notice-header" style="color:${accent}">
                     ${cat.icon ? `<cgo-icon name="${cat.icon}" size="14" style="margin-right:4px; vertical-align:-2px; display:inline-flex;"></cgo-icon>` : ''} ${cat.title}
                 </div>
                 <div class="nal-notice-desc">${item.summary}</div>
@@ -253,6 +255,13 @@
 
     function init() {
         injectNoticeStyles();
+
+        // 合并共享层产出的「新开通线路」通知（见 city/shenyang/shared/opening-schedule.js）：
+        // 并入 items 后既会走下面的一次性推送，也会出现在「帮助与关于」的公告列表里。
+        if (typeof window.CGoOpening?.getOpenNotices === 'function') {
+            window.NAL_NOTICE.items = window.NAL_NOTICE.items.concat(window.CGoOpening.getOpenNotices());
+        }
+
         const readIds = getReadIds();
         const validItems = window.NAL_NOTICE.items.filter(item => {
             return checkValidity(item) && (!readIds.includes(item.id) || item.alwaysShow);
@@ -261,7 +270,8 @@
         validItems.forEach((item, index) => {
             setTimeout(() => {
                 showNotification(item);
-                markAsRead(item.id);
+                // 调试参数覆盖下产生的通知只用于看效果，不消费已读记录
+                if (!item.skipReadMark) markAsRead(item.id);
             }, 1000 + (index * 300));
         });
     }

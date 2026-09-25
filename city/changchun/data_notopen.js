@@ -4,8 +4,11 @@
  * 官方交互图脚本未提供未开通线路的结构化站点与路径数据，暂不从静态图估算，
  * 待取得可核验的官方图层后再补入虚线线路。
  */
+// lineId 用于与开通时刻表 (data_opening.js) 关联，见 city/shenyang/shared/README.md；
+// 未登记开通时刻的条目一律保持永久未开通。
 const NOT_OPEN_LINES = [
     { // 1号线
+        lineId: "CCM01",
         points: [
             {
                 "x": 1080,
@@ -18,6 +21,7 @@ const NOT_OPEN_LINES = [
         ]
     },
     { // 3号线
+        lineId: "CCM03",
         points: [
             {
                 "x": 1836,
@@ -30,6 +34,7 @@ const NOT_OPEN_LINES = [
         ]
     },
     { // 5号线
+        lineId: "CCM05",
         points: [
             {
                 "x": 1298,
@@ -58,6 +63,7 @@ const NOT_OPEN_LINES = [
         ]
     },
     { // G54
+        lineId: "CCG54",
         points: [
             {
                 "x": 965,
@@ -70,6 +76,7 @@ const NOT_OPEN_LINES = [
         ]
     },
     { // G55
+        lineId: "CCG55",
         points: [
             {
                 "x": 970,
