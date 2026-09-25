@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.1640';
+const CACHE_NAME = 'cgo-openmap-v260926.2100';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -63,6 +63,7 @@ const ASSETS_TO_CACHE = [
     './core/tool-theme.js',
     './core/station-board.js',
     './core/script.js',
+    './core/city-neighbors.js',
     './core/help.js',
     './core/path-geometry.js',
     './core/station-icons.js',
@@ -243,6 +244,21 @@ const ASSETS_TO_CACHE = [
     './city/hongkong/assets/line/TCL.svg',
     './city/hongkong/assets/line/LR.svg',
     './city/hongkong/assets/line/HSR.svg',
+
+    // 城市配置与业务数据 (深圳)
+    './city/shenzhen/shenzhen.js',
+    './city/shenzhen/style.css',
+    './city/shenzhen/stacard/script.js',
+    './city/shenzhen/data_stations.js',
+    './city/shenzhen/data_lines.js',
+    './city/shenzhen/data_virtual_transfers.js',
+    './city/shenzhen/data_scattered.js',
+    './city/shenzhen/data_notopen.js',
+    './city/shenzhen/data_legend.js',
+    './city/shenzhen/data_timetable.js',
+    './city/shenzhen/assets/shenzhen_deco.svg',
+    './city/shenzhen/assets/line/L6B.svg',
+    './city/shenzhen/amap_data.json',
 
     // 城市配置与业务数据 (青岛)
     './city/qingdao/qingdao.js',
