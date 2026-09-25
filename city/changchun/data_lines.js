@@ -25,6 +25,7 @@ const linesData = [
         "name": "1号线",
         "color": "#E50011",
         "svg": "icon@01.svg",
+        "company": "长春市轨道交通集团有限公司",
         "stationIds": [
             "0121",
             "0122",
@@ -64,6 +65,7 @@ const linesData = [
         "name": "2号线",
         "color": "#3B6A96",
         "svg": "icon@02.svg",
+        "company": "长春市轨道交通集团有限公司",
         "stationIds": [
             "0221",
             "0222",
@@ -113,6 +115,7 @@ const linesData = [
         "name": "3号线",
         "color": "#009943",
         "svg": "icon@03.svg",
+        "company": "长春市轨道交通集团有限公司",
         "stationIds": [
             "0321",
             "0322",
@@ -199,6 +202,7 @@ const linesData = [
         "name": "4号线",
         "color": "#7D4697",
         "svg": "icon@04.svg",
+        "company": "长春市轨道交通集团有限公司",
         "stationIds": [
             "0124",
             "0422",
@@ -246,6 +250,7 @@ const linesData = [
         "name": "5号线",
         "color": "#A57823",
         "svg": "icon@05.svg",
+        "company": "长春市轨道交通集团有限公司",
         "stationIds": [
             "0424-1",
             "0502",
@@ -298,6 +303,7 @@ const linesData = [
         "name": "6号线",
         "color": "#e98f99",
         "svg": "icon@06.svg",
+        "company": "长春市轨道交通集团有限公司",
         "stationIds": [
             "0224",
             "0225",
@@ -354,6 +360,7 @@ const linesData = [
         "name": "7号线",
         "color": "#a5308c",
         "svg": "icon@07.svg",
+        "company": "长春市轨道交通集团有限公司",
         "stationIds": [
             "0221",
             "0722",
@@ -395,6 +402,7 @@ const linesData = [
         "name": "8号线",
         "color": "#25B7BC",
         "svg": "icon@08.svg",
+        "company": "长春市轨道交通集团有限公司",
         "stationIds": [
             "0121",
             "0822",
