@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260923.1217';
+const CACHE_NAME = 'cgo-openmap-v260926.1640';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -170,6 +170,34 @@ const ASSETS_TO_CACHE = [
     './city/sydney/assets/line/CONV.svg',
     './city/sydney/assets/line/MW.svg',
     './city/sydney/assets/line/WSA.svg',
+
+    // 城市配置与业务数据 (香港)
+    './city/hongkong/hongkong.js',
+    './city/hongkong/style.css',
+    './city/hongkong/stacard/script.js',
+    './city/hongkong/data_stations.js',
+    './city/hongkong/data_lines.js',
+    './city/hongkong/data_virtual_transfers.js',
+    './city/hongkong/data_scattered.js',
+    './city/hongkong/data_notopen.js',
+    './city/hongkong/data_legend.js',
+    './city/hongkong/data_timetable.js',
+    './city/hongkong/staname.csv',
+    './city/hongkong/data_fares.js',
+    './city/hongkong/data_buses.js',
+    './city/hongkong/assets/hongkong_deco.svg',
+    './city/hongkong/assets/line/AEL.svg',
+    './city/hongkong/assets/line/DRL.svg',
+    './city/hongkong/assets/line/EAL.svg',
+    './city/hongkong/assets/line/ISL.svg',
+    './city/hongkong/assets/line/KTL.svg',
+    './city/hongkong/assets/line/SIL.svg',
+    './city/hongkong/assets/line/TKL.svg',
+    './city/hongkong/assets/line/TWL.svg',
+    './city/hongkong/assets/line/TML.svg',
+    './city/hongkong/assets/line/TCL.svg',
+    './city/hongkong/assets/line/LR.svg',
+    './city/hongkong/assets/line/HSR.svg',
 
     // 城市配置与业务数据 (青岛)
     './city/qingdao/qingdao.js',
