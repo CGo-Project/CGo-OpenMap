@@ -190,7 +190,7 @@
         }
 
         /* ══════════════════════════════════════════════════════
-           Liquid Glass 液态玻璃卡片体系升级
+           Liquid Glass Tier B 不可交互底板卡片体系 (0.82 固定透明度，零 hover 抖动)
            ══════════════════════════════════════════════════════ */
         :root[glass-mode="liquid"] .feature-card,
         :root[glass-mode="liquid"] .port-banner,
@@ -199,23 +199,24 @@
             position: relative;
             background: transparent !important;
             border: none !important;
-            border-radius: var(--radius-lg, 16px);
+            border-radius: var(--radius-lg, 12px);
             box-shadow: var(--glass-shadow) !important;
-            backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
-            -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(12px) saturate(140%));
+            backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+            -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
             overflow: hidden;
             isolation: isolate;
-            transition: box-shadow 0.28s cubic-bezier(0.32, 0.72, 0, 1), transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+            cursor: default;
         }
 
+        /* Tier B 严格禁止 hover 状态任何视觉或几何抖动 */
         :root[glass-mode="liquid"] .feature-card:hover,
         :root[glass-mode="liquid"] .port-banner:hover,
         :root[glass-mode="liquid"] .community-card:hover {
-            box-shadow: var(--glass-shadow-hover) !important;
-            transform: translateY(-3px);
+            box-shadow: var(--glass-shadow) !important;
+            transform: none !important;
         }
 
-        /* 液态玻璃背景层 */
+        /* Tier B Layer 1：高不透明衬底 (0.82 固定) */
         :root[glass-mode="liquid"] .feature-card::after,
         :root[glass-mode="liquid"] .port-banner::after,
         :root[glass-mode="liquid"] .community-card::after,
@@ -224,28 +225,28 @@
             position: absolute;
             inset: 0;
             z-index: 0;
-            background: var(--glass-bg, rgba(255, 255, 255, 0.60));
+            border-radius: inherit;
+            background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82));
             pointer-events: none;
-            transition: background-color 0.25s ease;
         }
 
         [data-theme="dark"]:root[glass-mode="liquid"] .feature-card::after,
         [data-theme="dark"]:root[glass-mode="liquid"] .port-banner::after,
         [data-theme="dark"]:root[glass-mode="liquid"] .community-card::after,
         [data-theme="dark"]:root[glass-mode="liquid"] .meta-info-box::after {
-            background: var(--glass-bg, rgba(31, 32, 34, 0.60));
+            background: var(--glass-bg-panel, rgba(31, 32, 34, 0.82));
         }
 
+        /* Tier B hover 保持原色不变 */
         :root[glass-mode="liquid"] .feature-card:hover::after,
         :root[glass-mode="liquid"] .port-banner:hover::after,
         :root[glass-mode="liquid"] .community-card:hover::after {
-            background: var(--glass-bg-hover, rgba(255, 255, 255, 0.68));
+            background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82)) !important;
         }
-
         [data-theme="dark"]:root[glass-mode="liquid"] .feature-card:hover::after,
         [data-theme="dark"]:root[glass-mode="liquid"] .port-banner:hover::after,
         [data-theme="dark"]:root[glass-mode="liquid"] .community-card:hover::after {
-            background: var(--glass-bg-hover, rgba(38, 40, 44, 0.68));
+            background: var(--glass-bg-panel, rgba(31, 32, 34, 0.82)) !important;
         }
 
         /* 液态玻璃双轴微光圈 */
@@ -539,8 +540,8 @@
             box-shadow: var(--shadow-md);
         }
 
-        /* 响应式适配 */
-        @media (max-width: 768px) {
+        /* 响应式适配 (CGoUI 640px 唯一断点规范) */
+        @media (max-width: 640px) {
             .portal-content {
                 padding: 20px 16px 40px;
             }
@@ -565,7 +566,7 @@
             }
 
             .port-banner-actions .btn {
-                flex: 1 1 auto;
+                flex: 1 1 100%;
                 min-width: max-content;
                 padding: 0 14px !important;
                 height: 36px;
@@ -578,13 +579,6 @@
                 display: inline !important;
             }
         }
-
-        @media (max-width: 480px) {
-            .port-banner-actions .btn {
-                flex: 1 1 100%;
-                justify-content: center;
-            }
-        }
     </style>
 </head>
 
@@ -594,7 +588,7 @@
 
     <!-- CGoUI 悬浮双岛模式顶部导航 -->
     <header class="tool-header">
-        <div class="header-island header-island-left">
+        <div class="header-island header-island-left glass-surface">
             <div class="header-left">
                 <button class="btn btn-info" id="backBtn" title="返回上一页">
                     <cgo-icon name="back"></cgo-icon>
@@ -616,7 +610,7 @@
             </div>
         </div>
 
-        <div class="header-island header-island-right">
+        <div class="header-island header-island-right glass-surface">
             <div class="header-right">
                 <a href="https://github.com/NokiaimuL/CGo-OpenMap" target="_blank" class="btn btn-info btn-icon-only"
                     title="GitHub 开源仓库">

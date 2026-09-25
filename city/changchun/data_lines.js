@@ -6,6 +6,21 @@
 
 const linesData = [
     {
+        id: "Rwy", // 记录地图上单独的铁路车站站点
+        name: "中国铁路",
+        svg: "icon@56.svg",
+        svgclr: "#00263b",
+        svgtext: "#ffffff",
+        company: "中国铁路沈阳局",
+        color: "#bdcbd2",
+        overlayStyle: { color: "#00263b", width: 3.4, opacity: 0.5, dashArray: "12, 12" },
+        isPointOnly: true,
+        // 记得在这里把相关站点的 stationIds 加进去
+        stationIds: ["CRT", "CCT"],
+        distances: [],
+        pathPoints: []
+    },
+    {
         "id": "CCM01",
         "name": "1号线",
         "color": "#E50011",
@@ -406,7 +421,40 @@ const linesData = [
                 "y": 80
             }
         ]
-    }
+    },
+    {
+        id: "CCG54",
+        name: "G54路",
+        company: "长春公共交通集团",
+        color: "#085a40ff",
+        svg: "./city/changchun/assets/tram-54.svg",
+        overlayStyle: { color: "white", width: 1.6, opacity: 1, dashArray: "0, 0" },
+        stationIds: ["G5401", "G5402", "G5403", "G5404", "G5405", "G5406", "G5407", "G5408", "G5409", "G5410", "G5411", "G5412", "G5413", "G5414", "G5415", "G5416"],
+        pathPoints: [
+            { x: 960, y: 930 },
+            { x: 910, y: 980 },
+            { x: 680, y: 980 },
+            { x: 620, y: 920 },
+            { x: 620, y: 755 },
+        ]
+    },
+    {
+        id: "CCG55",
+        name: "G55路",
+        company: "长春公共交通集团",
+        color: "#ad2520ff",
+        svg: "./city/changchun/assets/tram-55.svg",
+        overlayStyle: { color: "white", width: 1.6, opacity: 1, dashArray: "0, 0" },
+        stationIds: ["G5401", "G5402", "G5403", "G5404", "G5405", "G5406", "G5407", "G5408", "G5409", "G5410", "G5511", "G5512", "G5513", "G5514", "G5515", "G5516", "G5517", "G5518", "G5519"],
+        pathPoints: [
+            { x: 965, y: 935 },
+            { x: 912, y: 988 },
+            { x: 678, y: 988 },
+            { x: 615, y: 925 },
+            { x: 360, y: 925 },
+            { x: 290, y: 855 },
+        ]
+    },
 ];
 
 const LINE_META = {};

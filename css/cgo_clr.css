@@ -266,6 +266,10 @@
     --glass-backdrop-filter-surface: blur(14px) saturate(135%) url(#glass-distortion);
     --glass-bg: rgba(255, 255, 255, 0.60);
     --glass-bg-hover: rgba(255, 255, 255, 0.68);
+    --glass-bg-card: rgba(255, 255, 255, 0.60);
+    --glass-bg-card-hover: rgba(255, 255, 255, 0.68);
+    --glass-bg-surface: rgba(255, 255, 255, 0.72);
+    --glass-bg-panel: rgba(255, 255, 255, 0.82);
     --glass-border: rgba(255, 255, 255, 0.40);
     --glass-shadow:
         0 0 0 0.5px rgba(0, 0, 0, 0.06),
@@ -288,6 +292,10 @@
     --lg-rim-dark: 0;
     --glass-bg: rgba(31, 32, 34, 0.60);
     --glass-bg-hover: rgba(38, 40, 44, 0.68);
+    --glass-bg-card: rgba(31, 32, 34, 0.60);
+    --glass-bg-card-hover: rgba(38, 40, 44, 0.68);
+    --glass-bg-surface: rgba(31, 32, 34, 0.72);
+    --glass-bg-panel: rgba(31, 32, 34, 0.82);
     --glass-border: rgba(255, 255, 255, 0.09);
     --glass-shadow:
         0 0 0 0.5px rgba(255, 255, 255, 0.09),
@@ -309,6 +317,10 @@
         --lg-rim-dark: 0;
         --glass-bg: rgba(31, 32, 34, 0.60);
         --glass-bg-hover: rgba(38, 40, 44, 0.68);
+        --glass-bg-card: rgba(31, 32, 34, 0.60);
+        --glass-bg-card-hover: rgba(38, 40, 44, 0.68);
+        --glass-bg-surface: rgba(31, 32, 34, 0.72);
+        --glass-bg-panel: rgba(31, 32, 34, 0.82);
         --glass-border: rgba(255, 255, 255, 0.09);
         --glass-shadow:
             0 0 0 0.5px rgba(255, 255, 255, 0.09),
@@ -340,6 +352,10 @@ body[data-glass-mode='blur'],
     --glass-backdrop-filter-surface: blur(14px) saturate(135%);
     --glass-bg: rgba(255, 255, 255, 0.60);
     --glass-bg-hover: rgba(255, 255, 255, 0.68);
+    --glass-bg-card: rgba(255, 255, 255, 0.60);
+    --glass-bg-card-hover: rgba(255, 255, 255, 0.68);
+    --glass-bg-surface: rgba(255, 255, 255, 0.72);
+    --glass-bg-panel: rgba(255, 255, 255, 0.82);
     --glass-border: rgba(255, 255, 255, 0.40);
     --glass-shadow:
         0 0 0 0.5px rgba(0, 0, 0, 0.06),
@@ -369,6 +385,10 @@ body[data-glass-mode='liquid'],
     --glass-backdrop-filter-surface: blur(14px) saturate(135%) url(#glass-distortion);
     --glass-bg: rgba(255, 255, 255, 0.60);
     --glass-bg-hover: rgba(255, 255, 255, 0.68);
+    --glass-bg-card: rgba(255, 255, 255, 0.60);
+    --glass-bg-card-hover: rgba(255, 255, 255, 0.68);
+    --glass-bg-surface: rgba(255, 255, 255, 0.72);
+    --glass-bg-panel: rgba(255, 255, 255, 0.82);
     --glass-border: rgba(255, 255, 255, 0.40);
     --glass-shadow:
         0 0 0 0.5px rgba(0, 0, 0, 0.06),
@@ -399,6 +419,10 @@ body[data-glass-mode='liquid'],
 [data-theme='dark'] [data-glass-mode='liquid'] {
     --glass-bg: rgba(31, 32, 34, 0.60);
     --glass-bg-hover: rgba(38, 40, 44, 0.68);
+    --glass-bg-card: rgba(31, 32, 34, 0.60);
+    --glass-bg-card-hover: rgba(38, 40, 44, 0.68);
+    --glass-bg-surface: rgba(31, 32, 34, 0.72);
+    --glass-bg-panel: rgba(31, 32, 34, 0.82);
     --glass-border: rgba(255, 255, 255, 0.09);
     --glass-shadow:
         0 0 0 0.5px rgba(255, 255, 255, 0.09),
@@ -428,6 +452,10 @@ body[data-glass-mode='liquid'],
     :root:not([data-theme='light']) [data-glass-mode='liquid'] {
         --glass-bg: rgba(31, 32, 34, 0.60);
         --glass-bg-hover: rgba(38, 40, 44, 0.68);
+        --glass-bg-card: rgba(31, 32, 34, 0.60);
+        --glass-bg-card-hover: rgba(38, 40, 44, 0.68);
+        --glass-bg-surface: rgba(31, 32, 34, 0.72);
+        --glass-bg-panel: rgba(31, 32, 34, 0.82);
         --glass-border: rgba(255, 255, 255, 0.09);
         --glass-shadow:
             0 0 0 0.5px rgba(255, 255, 255, 0.09),
@@ -462,6 +490,11 @@ body[data-glass-mode='none'],
     --glass-backdrop-filter: none;
     --glass-backdrop-filter-surface: none;
     --glass-bg: var(--card-bg, #ffffff);
+    --glass-bg-hover: var(--card-bg, #ffffff);
+    --glass-bg-card: var(--card-bg, #ffffff);
+    --glass-bg-card-hover: var(--card-bg, #ffffff);
+    --glass-bg-surface: var(--card-bg, #ffffff);
+    --glass-bg-panel: var(--card-bg, #ffffff);
     --glass-border: var(--border-color, #dee2e6);
     --glass-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.06));
     --glass-shadow-hover: var(--shadow-md, 0 4px 15px rgba(0, 0, 0, 0.08));

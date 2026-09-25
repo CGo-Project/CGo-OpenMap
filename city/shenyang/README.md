@@ -26,4 +26,6 @@
 
 ## 车站运营信息
 
-`stacard/data.js` 保存沈阳车站的位置、首末班车和出入口数据，`modules/shenyang_service_info.js` 将这些数据注册为 `shenyang-service-info` StationBoard 模块。城市配置中的 `stationBoard.scripts` 是该城市自定义模块的唯一清单，由 `shenyang.js` 在加载时写入页面。
+`stacard/data.js` 保存沈阳车站的位置、首末班车和出入口数据，`modules/shenyang_service_info.js` 将这些数据注册为 `shenyang-timetable` StationBoard 模块。城市配置中的 `stationBoard.scripts` 是该城市自定义模块的唯一清单，由 `shenyang.js` 在加载时写入页面。
+
+首末班车的渲染交由三城共享层 `shared/timetable-renderer.js` 处理（该文件为临时共享位置，计划在开发团队确认后迁入 `core/`，详见 `docs/STACARD_TIMETABLE_UNIFICATION.md`）；本模块只负责取数、季节阈值与多行组合。
