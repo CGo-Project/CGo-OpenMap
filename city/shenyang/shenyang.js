@@ -220,7 +220,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260926.1646";
+        const version = "260926.1655";
         // 城市私有数据（须早于依赖它的模块加载）
         document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
         // 共享层（本目录下，须早于各城模块加载）
