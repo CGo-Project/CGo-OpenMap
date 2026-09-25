@@ -248,6 +248,30 @@ const stationsData = {
             "y": 0
         }
     },
+    "0140": {
+        "type": "no",
+        "x": 1080,
+        "y": 1920,
+        "cn": "柳家",
+        "en": "Liujia",
+        "align": "right",
+        "offset": {
+            "x": 6,
+            "y": 0
+        }
+    },
+    "0141": {
+        "type": "no",
+        "x": 1080,
+        "y": 1980,
+        "cn": "永春南",
+        "en": "Yongchun Nan",
+        "align": "right",
+        "offset": {
+            "x": 6,
+            "y": 0
+        }
+    },
     "0221": {
         "type": "tsf",
         "x": 100,

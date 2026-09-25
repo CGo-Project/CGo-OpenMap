@@ -60,7 +60,7 @@
         searchCity: "长春",
         center: { x: 1150, y: 950 },
         defaultScale: 0.7,
-        mapSize: { width: 2300, height: 1900 },
+        mapSize: { width: 2300, height: 2060 },
         officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
         LINE_META: {},
         LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM05", "CCM06", "CCM07", "CCM08"],
