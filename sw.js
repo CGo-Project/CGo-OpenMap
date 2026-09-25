@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.1647';
+const CACHE_NAME = 'cgo-openmap-v260926.1650';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -148,6 +148,10 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/shenyangzhan.png',
     './city/shenyang/assets/calligraphy/taiyuanjie.png',
     './city/shenyang/assets/calligraphy/yunfengbeijie.png',
+    './city/shenyang/assets/calligraphy/zhongjie.png',
+    './city/shenyang/assets/calligraphy/dongzhongjie.png',
+    './city/shenyang/assets/calligraphy/pangjiangjie.png',
+    './city/shenyang/assets/calligraphy/limingguangchang.png',
 
     // 1号线东延段站名题字（辽宁 / 沈阳书法界名家题写）
     './city/shenyang/assets/calligraphy/xinhuijie.png',
