@@ -115,3 +115,67 @@ body.sy-calligraphy-active .mobile-top-bar-backdrop {
     color: var(--sy-cali-on-color, #ffffff);
     opacity: 0.85;
 }
+
+/* ==========================================================================
+   题字信息缺失时的投稿引导（短标签 + 悬停 / 聚焦展开的气泡）
+
+   文案分两层：卡片上只留一行短标签（说明缺什么），完整引导连同联系方式
+   收进气泡，避免常驻占用卡片高度。
+   气泡用真实元素承载而非 ::after + attr(data-tooltip)——正文含可点击的
+   主理人链接，attr() 只能显示纯文本。
+   展开条件用父容器 :hover 与 :focus-within（标签带 tabindex）：
+   触屏上点按标签即展开、点按别处收起，桌面端悬停即见，均无需 JS。
+   气泡向下弹出：题字卡片位于「车站信息」页签中上部，上方空间有限。
+   ========================================================================== */
+.sy-cali-hint {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--primary-color);
+    cursor: help;
+}
+
+/* 虚线底边暗示可查看详情；键盘聚焦时不另加轮廓，避免与虚线叠成两层指示 */
+.sy-cali-hint-label {
+    border-bottom: 1px dashed currentColor;
+    line-height: 1.4;
+}
+
+.sy-cali-hint-label:focus-visible {
+    outline: none;
+}
+
+.sy-cali-hint-panel {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 8px);
+    width: min(300px, 68dvw);
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(16, 32, 51, 0.94);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.6;
+    text-align: left;
+    box-shadow: 0 14px 32px rgba(16, 32, 51, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease;
+    z-index: 160;
+    white-space: normal;
+}
+
+.sy-cali-hint:hover .sy-cali-hint-panel,
+.sy-cali-hint:focus-within .sy-cali-hint-panel {
+    opacity: 1;
+    /* 展开后恢复指针事件，气泡内的链接才可点击 */
+    pointer-events: auto;
+}
+
+.sy-cali-hint-panel a {
+    color: #7cc4ff;
+    text-decoration: underline;
+}
