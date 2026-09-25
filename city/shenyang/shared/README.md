@@ -197,8 +197,13 @@ core/script.js init()
 2. **保持解耦**：本目录不得引用具体城市的站名、线路 ID 或私有数据；
    城市侧通过配置文件或 `{city}.js` 里的薄配置接入。
 3. **同步文档**：新增共享能力后，在本文件第二节与第三节各补一行，让后来者能直接找到入口。
-4. **自维护能力统一 `cgo` 前缀**：上游要求这类由各城自行维护的功能与核心明确区分，因此本目录
-   新增的对外接口、全局变量、CSS 类名与 `data-*` 属性一律带 `cgo` / `CGo` 前缀，例如
-   `window.CGoOpening`、`CGO_OPENING_SCHEDULE`、`.cgo-opening-pending`、`data-cgo-unit`，
-   事件名为 `cgo:` 命名空间（如 `cgo:opening-schedule-ready`）。
-   这样既便于检索归属，也避免与上游后续引入的同名标识符冲突。
+4. **自维护能力统一 `cgo` 前缀**：本目录新增的对外接口、全局变量、CSS 类名与 `data-*` 属性
+   一律带 `cgo` / `CGo` 前缀，例如 `window.CGoOpening`、`CGO_OPENING_SCHEDULE`、
+   `.cgo-opening-pending`、`data-cgo-unit`，事件走 `cgo:` 命名空间
+   （如 `cgo:opening-schedule-ready`）。这样既便于检索归属，也避免与后续新增的同名标识符冲突。
+
+   > ⚠️ **前缀不代表官方归属**：`cgo` 是本项目统一的命名空间，上游核心同样在用
+   > （`window.CGoPathGeometry`、`window.CGoStationIcons`、`CGO_ASSET_VERSION`、`cgo-icon`），
+   > 因此带该前缀**并不表示**某项能力已被上游收录或获得背书。判断一个能力属于核心还是
+   > 各城自维护，看它的**位置**：`core/` 为上游核心；`city/{city}/shared/`、各城 `modules/`
+   > 与 `data_*.js` 为自维护内容（第三节即其清单）。
