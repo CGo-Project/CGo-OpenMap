@@ -1030,19 +1030,6 @@ const stationsData = {
             "y": -4
         }
     },
-    "0424-1": {
-        "type": "no",
-        "hideLabel": true,
-        "x": 1298,
-        "y": 614,
-        "cn": "东大桥",
-        "en": "Dongdaqiao",
-        "align": "top-right",
-        "offset": {
-            "x": 6,
-            "y": -4
-        }
-    },
     "0425": {
         "type": "dot",
         "x": 1332,
@@ -1738,6 +1725,19 @@ const stationsData = {
         "align": "top",
         "offset": {
             "x": 0,
+            "y": -4
+        }
+    },
+    "0501": {
+        "type": "no",
+        "hideLabel": true,
+        "x": 1288,
+        "y": 624,
+        "cn": "东大桥",
+        "en": "Dongdaqiao",
+        "align": "top-right",
+        "offset": {
+            "x": 6,
             "y": -4
         }
     },

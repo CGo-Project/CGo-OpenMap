@@ -252,7 +252,7 @@ const linesData = [
         "svg": "icon@05.svg",
         "company": "长春市轨道交通集团有限公司",
         "stationIds": [
-            "0424-1",
+            "0501",
             "0502",
             "0503",
             "0127-1",
@@ -273,8 +273,8 @@ const linesData = [
         ],
         "pathPoints": [
             {
-                "x": 1298,
-                "y": 614,
+                "x": 1288,
+                "y": 624,
             },
             {
                 "x": 1160,

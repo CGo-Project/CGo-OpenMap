@@ -37,8 +37,8 @@ const NOT_OPEN_LINES = [
         lineId: "CCM05",
         points: [
             {
-                "x": 1298,
-                "y": 614,
+                "x": 1288,
+                "y": 624,
             },
             {
                 "x": 1160,
