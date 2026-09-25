@@ -141,6 +141,19 @@
       ]
     },
     {
+      "name": "深圳轨道交通线路图",
+      "short_name": "深圳",
+      "description": "查看深圳地铁线路图与口岸通关信息",
+      "url": "./main.html?city=shenzhen",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "青岛轨道交通",
       "short_name": "青岛",
       "description": "查看青岛轨道交通线网图",
