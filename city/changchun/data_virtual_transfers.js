@@ -14,6 +14,9 @@ const VIRTUAL_TRANSFER_MAP = {
     "0229": ["G5412"],
     "G5401": ["0507"],
     "0507": ["G5401"],
+    //东大桥：3 号线与 5 号线站厅不连通，付费出站换乘
+    "0424": ["0424-1"],
+    "0424-1": ["0424"],
 };
 const VIRTUAL_CONNECT_LINES = [
     { from: "CCT", to: "0124"},
@@ -23,4 +26,5 @@ const VIRTUAL_CONNECT_LINES = [
     { from: "G5406", to: "0331"},
     { from: "G5412", to: "0229"},
     { from: "G5401", to: "0507"},
+    { from: "0424", to: "0424-1"},
 ];

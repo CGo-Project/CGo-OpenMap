@@ -177,6 +177,19 @@
     }
 
     /**
+     * 条目的「暂缓开通」车站：所在区段开通时仍保持未开通状态。
+     *
+     * 用于"整条线开通、个别站暂缓"的情形（如长春 5 号线一期 2026-09-28 开通初期运营时
+     * 长影旧址博物馆站暂缓开通）。这些车站既不参与站型转换，也不显示开通倒计时——
+     * 因为倒计时的时刻指向的是所在区段而非它自己，显示出来会误导；
+     * footer 因此回落到引擎原有的「该车站目前尚未运营」，等主理人拿到明确开通时刻后，
+     * 单独登记一条 stationIds 指向它的条目即可。
+     */
+    function holdStationIds(entry) {
+        return (Array.isArray(entry.holdStations) ? entry.holdStations : []).map(String);
+    }
+
+    /**
      * 把线路上对 oldId 的引用整体改指到 newId。
      * 合并后若站序中本就存在 newId，会出现相邻重复站，交给引擎按普通站重复绘制即可，
      * 不影响拓扑正确性（长春各线均不存在这种情况）。
@@ -234,10 +247,12 @@
             if (target) target.type = entry.mergedAs || DEFAULT_MERGE_TYPE;
         });
 
-        // 2. 其余未开通车站转为开通后站型
+        // 2. 其余未开通车站转为开通后站型（暂缓开通的站不在本次转换范围内）
         const openType = entry.opensAs || DEFAULT_OPEN_TYPE;
+        const holdIds = holdStationIds(entry);
         stationIds.forEach((sid) => {
             if (mergeFromIds.includes(sid) || mergeToIds.includes(sid)) return;
+            if (holdIds.includes(sid)) return;
             const station = stations[sid];
             if (!station) return;
             // 数据里已按开通态写好（未开通期间被本层压成 no）时恢复原站型
@@ -260,8 +275,11 @@
         const stations = stationsDataRef();
         if (!stations) return;
         const line = linesDataRef()?.find((item) => String(item?.id) === String(entry.lineId)) || null;
+        // 暂缓开通的站不登记：它既不随本次开通转正，也不该显示指向本条目的倒计时
+        const holdIds = holdStationIds(entry);
         const ids = entryStationIds(entry, line)
-            .concat(Object.keys(entry.merge || {}).map(String));
+            .concat(Object.keys(entry.merge || {}).map(String))
+            .filter((id) => !holdIds.includes(id));
 
         new Set(ids).forEach((sid) => {
             const station = stations[sid];
