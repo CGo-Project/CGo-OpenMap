@@ -43,6 +43,39 @@
 
     const DEFAULT_PENDING_TEXT = "本站有书法家题写站名，题写者信息待补充。";
 
+    /**
+     * 「内容缺失 → 欢迎投稿」引导（短标签 + 悬停 / 聚焦展开的气泡）。
+     *
+     * 题字功能的素材完全依赖实地采集：题字横图要有人到站拍摄，题写者信息要靠落款辨认，
+     * 两者都可能长期缺位。与其只留一句「待补充」，不如把补齐路径告诉访客——
+     * 常有人正好身处那座城市、那个车站。但完整引导连同联系方式常驻卡片会占去近三分之一
+     * 高度，故收进气泡，卡片上只留一行短标签（样式见同目录 calligraphy.css 的 .sy-cali-hint）。
+     *
+     * 主理人取自城市注册表（与「关于与帮助」弹窗同一数据源，不在此重复硬编码姓名），
+     * 主理人虚位以待时退化为贡献指南入口。
+     *
+     * @param {string} label  - 短标签文案，直接说明缺什么
+     * @param {string} detail - 气泡内的一句话说明
+     */
+    function contributionHintHtml(label, detail) {
+        const city = (typeof window.CityDataManager?.getCurrentCity === "function")
+            ? window.CityDataManager.getCurrentCity()
+            : null;
+        const people = (Array.isArray(city?.maintainers) ? city.maintainers : [])
+            .filter((person) => person && !person.isRecruiting && person.name && person.name !== "待认领");
+        const owner = people.find((person) => String(person.role || "").includes("主理人")) || people[0] || null;
+        const contact = owner
+            ? (owner.github
+                ? `城市主理人 <a href="${owner.github}" target="_blank">${escapeHtml(owner.name)}</a>`
+                : `城市主理人 ${escapeHtml(owner.name)}`)
+            : `<a href="./CONTRIBUTING.md" target="_blank">项目贡献指南</a>`;
+        return `<div class="sy-cali-hint">`
+            + `<span class="sy-cali-hint-label" tabindex="0">${escapeHtml(label)}</span>`
+            + `<span class="sy-cali-hint-panel" role="tooltip">${escapeHtml(detail)}<br>`
+            + `若你有条件实地拍摄，欢迎将照片投稿给${contact}，或加入官方 QQ 交流群 619357751 一并提供，我们会据此补全。`
+            + `</span></div>`;
+    }
+
     /** 题字站激活时挂在 body 上的类名：供 header 之外的元素（如移动端顶部填充层）联动染色 */
     const ACTIVE_CLASS = "sy-calligraphy-active";
 
@@ -303,7 +336,7 @@
                         title: "站名题字",
                         icon: "edit",
                         iconSize: 14,
-                        body: pendingText
+                        body: pendingText + contributionHintHtml("题写者待考，欢迎投稿", "本站题写者的落款、印章或站内说明牌尚待考证。")
                     });
                 }
 
@@ -314,7 +347,11 @@
                 const lead = info.inscribedOldName
                     ? `本站旧名“${escapeHtml(info.inscribedOldName)}”由<strong>${escapeHtml(person.name)}</strong>题写。`
                     : `本站站名由<strong>${escapeHtml(person.name)}</strong>题写。`;
-                const body = `${lead}<br>${escapeHtml(person.intro)}。`;
+                // 题写者已知但横图未采集时，一并向访客征求实拍照片
+                const hint = info.image
+                    ? ""
+                    : contributionHintHtml("缺题字横图，欢迎投稿", "本站题字横图尚未收录，标题栏暂以普通文字显示站名。");
+                const body = `${lead}<br>${escapeHtml(person.intro)}。${hint}`;
 
                 return tipCard.render({
                     title: "站名题字",

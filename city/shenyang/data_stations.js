@@ -556,8 +556,8 @@ const stationsData = {
         y: 1160,
         cn: "营盘街",
         en: "YINGPANJIE",
-        align: "left",
-        offset: { x: -10, y: 0 },
+        align: "right",
+        offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "0217": {
@@ -1509,8 +1509,8 @@ const stationsData = {
         cn: "奥体游泳馆",
         en: "",
         //en: "Olympic Aquatic Stadium",
-        align: "bottom-left",
-        offset: { x: 0, y: -4 },
+        align: "left",
+        offset: { x: 0, y: 0 },
         textScale: { cn: 0.9, en: 1 }
     },
     "T505": {

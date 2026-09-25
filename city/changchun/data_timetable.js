@@ -146,12 +146,23 @@ ccLine("CCM07", "0239", [
 ].slice().reverse());
 
 // 8 号线未提供时刻表图片，保留空数据；官方查询入口仍按全局规则登记。
-for (const line of (typeof linesData !== "undefined" ? linesData : [])) {
-    if (line?.id === "CCM05") continue;
-    for (const stationId of line?.stationIds || []) {
-        const station = typeof stationsData !== "undefined" ? stationsData[stationId] : null;
-        if (!station?.cn || station.type === "no") continue;
-        (GLOBAL_SCHEDULE_DATA[line.id] ||= {})[stationId] = CHANGCHUN_OFFICIAL_MAP_URL;
+//
+// 未开通线路的车站在开通时刻之前一律为 type "no"，会被下面的判定自然跳过；
+// 而共享层 opening-schedule.js 把它们转为正常站型发生在本文件解析之后，
+// 因此还要监听转换完成事件再登记一次，否则新开通过来的车站会漏掉官方查询入口。
+{
+    const registerScheduleEntries = () => {
+        for (const line of (typeof linesData !== "undefined" ? linesData : [])) {
+            for (const stationId of line?.stationIds || []) {
+                const station = typeof stationsData !== "undefined" ? stationsData[stationId] : null;
+                if (!station?.cn || station.type === "no") continue;
+                (GLOBAL_SCHEDULE_DATA[line.id] ||= {})[stationId] = CHANGCHUN_OFFICIAL_MAP_URL;
+            }
+        }
+    };
+    registerScheduleEntries();
+    if (typeof document !== "undefined") {
+        document.addEventListener("cgo:opening-schedule-ready", registerScheduleEntries);
     }
 }
 

@@ -425,6 +425,24 @@ node drunk/tools/selfcheck.js
 
 AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板模块、调整线网排版及装饰元素）时，**必须且只能严格参考现有成熟城市的标准化实现模板**，杜绝随意自创新格式：
 
+### 6.0 🚨 三城共享层与「持续更新中的模块」
+
+沈阳（`city/shenyang/`）、大连（`city/dalian/`）、长春（`city/changchun/`）三城共用一份位于
+`city/shenyang/shared/` 的**共享层**（临时位置，计划迁入 `core/`）。上游开发团队建议：这类
+持续演进的功能**由各城市自行维护、不设为核心强制字段**。
+
+- **完整清单、对外接口与开发约定**：[city/shenyang/shared/README.md](city/shenyang/shared/README.md)；
+- 其中的**首末班车渲染、车站地图卡片、侧栏站名标题、提示卡片、站名题字、开通时刻**等模块
+  仍在持续增补，各模块当前由哪个城市在推进、以哪座城市为参考实现，均在该文档第三节列明；
+- 若参与者想为自己的城市实现同类内容，**直接参考该文档标注的城市实现模式即可**，不必从零设计；
+  新增共享能力后请同步更新该文档第二节与第三节。
+- **命名约定**：这类自维护能力一律带 `cgo` / `CGo` 前缀（如 `window.CGoOpening`、
+  `CGO_OPENING_SCHEDULE`、`.cgo-opening-*`、`data-cgo-*`，事件走 `cgo:` 命名空间），
+  便于检索归属、避免与后续新增的同名标识符冲突。
+  ⚠️ 但该前缀**不代表官方归属**——`cgo` 是项目统一命名空间，上游核心也在用
+  （`CGoPathGeometry`、`CGoStationIcons`、`CGO_ASSET_VERSION`、`cgo-icon`）；
+  区分核心与自维护要看**位置**：`core/` 为上游核心，`city/{city}/` 下为各城自维护内容。
+
 ### 6.1 现有城市几大核心功能模板参考
 1. **自定义站名外观和线路标志图标**：
    - **推荐参考实现**：**沈阳样式**（`city/shenyang/shenyang.js` 与 `city/shenyang/style.css`）。

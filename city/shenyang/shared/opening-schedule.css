@@ -1,0 +1,78 @@
+/* CGo OpenMap - 未开通车站开通倒计时共享样式 (city/shenyang/shared/opening-schedule.css)
+ *
+ * ⚠️ 临时共享位置
+ * 本文件与 opening-schedule.js 同址，供沈阳、大连、长春三城共用，由该脚本按自身
+ * URL 推导并注入（同 calligraphy.css 的做法）。计划随共享层一并迁入 core/。
+ *
+ * 文案与辅助色使用项目既有 CSS 变量，自动适配亮色 / 暗色主题与液态玻璃模式；
+ * 数字方块按设计要求固定为黑底白字，刻意不随主题变化。
+ */
+
+/* 整块容器：占满 footer 宽度，开通日期在上、倒计时在下；子块水平居中 */
+.cgo-opening-pending {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 开通日期整行居中 */
+.cgo-opening-pending-title {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-light);
+    text-align: center;
+}
+
+/* 「距开通 / 还有」两行占同一个格子（格子内部换行），四个方块组排在它右侧并垂直居中；
+   方块外的字号刻意小于方块内的数字（18px），突出倒计时数字本身。 */
+.cgo-opening-countdown {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-light);
+}
+
+/* 「距开通 / 还有」两行：行距比正文紧凑，并按末端对齐（「还有」靠右） */
+.cgo-opening-countdown-prefix {
+    line-height: 1.2;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* 一组 = 数字方块 + 紧随其后的单位，单位与方块之间只留 3px */
+.cgo-opening-countdown-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+/*
+ * 黑底白字的倒计时牌数字。
+ * 三项配合保证「位数变化时方块宽度与数字位置都不跳动」：
+ *   - box-sizing: content-box + min-width 至少容下两位数字（不受全局 border-box 影响）；
+ *   - font-variant-numeric: tabular-nums 让每个数字等宽；
+ *   - text-align: right 让数字末端（个位）对齐。
+ * 暗色主题下靠这层浅描边保证方块边界仍可辨识。
+ */
+.cgo-opening-countdown-num {
+    display: inline-block;
+    box-sizing: content-box;
+    /* 数字宽约 1ch，2ch 即两位；位数更多时内容会自动撑开，不会裁切 */
+    min-width: 2ch;
+    /* 行高不继承容器的 1.6：否则 18px 数字会撑出 28.8px 行盒，方块上下留白过大 */
+    line-height: 1.2;
+    padding: 3px 6px;
+    border-radius: 5px;
+    background: #000000;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    font-size: 18px;
+    font-weight: bold;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}

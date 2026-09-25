@@ -158,10 +158,13 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260922.2235";
+        const version = "260926.1702";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
+        // 未开通区段与车站的开通时刻（共享层读取并应用）
+        document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/dalian/data_opening.js?v=${version}"><\/script>`);
         (DalianCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/dalian/${scriptPath}?v=${version}"><\/script>`);
         });

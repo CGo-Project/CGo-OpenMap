@@ -889,7 +889,10 @@
                 || null;
 
             if (isNoStation) {
-                return '<div style="padding:10px; color:#999;">该车站目前尚未运营</div>';
+                // 城市登记了该站的开通时刻时，由共享层输出开通日期与倒计时；
+                // 未接入该能力的城市仍回落下面这行通用文案。
+                const pendingHtml = window.CGoOpening?.renderPendingNotice?.(station) || '';
+                return pendingHtml || '<div style="padding:10px; color:#999;">该车站目前尚未运营</div>';
             }
 
             if (isRwyStation) {
@@ -936,6 +939,13 @@
                 <a href="${mapUrl}" target="_blank" onclick="resetMapState()" style="${btnWhite}">高德导航</a>
             `;
             return `<div style="display:flex; gap:12px;">${btnsHtml}</div>`;
+        },
+        /**
+         * 未开通车站的倒计时按秒刷新，交由共享层接管；
+         * 未接入该能力（无 window.CGoOpening）或本就不是未开通站时为空操作。
+         */
+        onMounted(container) {
+            window.CGoOpening?.mountPendingNotice?.(container);
         }
     });
 

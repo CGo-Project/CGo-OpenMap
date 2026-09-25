@@ -119,10 +119,32 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "吴东民", intro: "吴东民，1956年生，海南万宁人，中国书法家协会第五、六、七届副主席，海南省书法家协会主席" }
     },
     "0119": {
+        image: "./city/shenyang/assets/calligraphy/zhongjie.png",
+        ratio: 1.287,
+        alt: "中街站",
         calligrapher: { name: "朱关田", intro: "朱关田，1944年生，浙江绍兴人，中国书法家协会第四、五届副主席、顾问，西泠印社副社长" }
     },
     "0120": {
+        image: "./city/shenyang/assets/calligraphy/dongzhongjie.png",
+        ratio: 2.072,
+        alt: "东中街站",
         calligrapher: { name: "旭宇", intro: "旭宇，本名许玉堂，河北玉田人，中国书法家协会第四、五届副主席，河北省书法家协会名誉主席" }
+    },
+    "0121": {
+        // 落款为三字全名，与高占祥公开作品款识的署名习惯一致
+        // （「甲戍年秋高占祥书」「丙子年春，高占祥敬书」，钤「高占祥印」「高占祥」）
+        image: "./city/shenyang/assets/calligraphy/pangjiangjie.png",
+        ratio: 2.145,
+        alt: "滂江街站",
+        calligrapher: { name: "高占祥", intro: "高占祥，1935年生，北京通县人，作家、诗人、文艺评论家、书法家，曾任文化部常务副部长、中国文联党组书记" }
+    },
+    "0122": {
+        // 落款为三字全名，与申万胜公开作品款识一致（「白居易诗白云泉申万胜」，钤「申万胜印」）；
+        // 其为中国书协第四、五、六届副主席，与 1 号线主线「邀请书协副主席以上题写」的口径吻合
+        image: "./city/shenyang/assets/calligraphy/limingguangchang.png",
+        ratio: 2.645,
+        alt: "黎明广场站",
+        calligrapher: { name: "申万胜", intro: "申万胜，1946年生，贵州金沙人，中国书法家协会第四、五、六届副主席、行书专业委员会主任，解放军艺术学院原院长" }
     },
 
     // 1 号线东延线（2025 年开通）：站名由辽宁 / 沈阳书法界名家题写，
@@ -232,8 +254,8 @@ const CALLIGRAPHY_DATA = {
     "0111": { pendingCalligrapher: true },  // 保工街
     "0112": { pendingCalligrapher: true },  // 铁西广场
     "0116": { pendingCalligrapher: true },  // 南市场
-    "0121": { pendingCalligrapher: true },  // 滂江街
-    "0122": { pendingCalligrapher: true },  // 黎明广场
+    // 0121 滂江街、0122 黎明广场原亦列于本组，已据站内题字墙落款辨认补入题写者
+    // （高占祥 / 申万胜），连同实拍题字横图一并移入上方 1 号线主线组
 
     // -------------------------------------------------------------------------
     // 3号线（2024—2025 年分段开通）：题字于2026年更新，题写者多为辽宁省 /
