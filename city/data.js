@@ -165,6 +165,28 @@
             ],
             isDefault: false
         },
+        "hongkong": {
+            id: "hongkong",
+            name: "香港",
+            themeColor: "#001F50", // 綫路圖站名深藍
+            svglogo: null, // 已接入 CGoUI 内置 hongkong 矢量图标
+            folder: "./city/hongkong",
+            mainLogic: "./city/hongkong/hongkong.js",
+            center: { x: 1030, y: 600 },
+            defaultScale: 0.55,
+            mapSize: { width: 2055, height: 1238 },
+            searchCity: "香港",
+            title: "CGo OpenMap - 香港鐵路綫路圖",
+            keywords: "CGo OpenMap, 香港鐵路, 港鐵, 香港地铁, 线路图, 同台换乘",
+            description: "覆盖港铁十条重铁线路、轻铁与高铁香港段，支持同台换乘指南与优先同台换乘的行程规划（非官方）。",
+            officialMapUrl: "https://www.mtr.com.hk/ch/customer/services/system_map.html",
+            registerDate: "2026-09-24",
+            status: "active",
+            maintainers: [
+                { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
+            ],
+            isDefault: false
+        },
         "dalian": {
             id: "dalian",
             name: "大连",
