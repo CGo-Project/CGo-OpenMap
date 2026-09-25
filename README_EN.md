@@ -52,7 +52,7 @@ It is built with native Web technologies and is designed to be **ready to use, l
 >
 > The only exception is a narrow class of background monitoring tasks, such as monitoring station operating status or external Web pages, where Node.js/PM2 may be used for lightweight background services. The map engine and all major interactive map features must remain native front-end code.
 
-The repository currently includes complete or reference implementations for **Beijing, Shenyang, Dalian, Changchun, Qingdao, Hefei, Fuzhou, Shanghai, and Sydney**. The common rendering engine is separated from city-specific business data, so new cities can be ported by following the standardized data model without rewriting the core renderer.
+The repository currently includes complete or reference implementations for **Beijing, Shenyang, Dalian, Changchun, Qingdao, Hefei, Fuzhou, Shanghai, Sydney, and Hong Kong**. The common rendering engine is separated from city-specific business data, so new cities can be ported by following the standardized data model without rewriting the core renderer.
 
 The project also includes **Drunk**, an intelligent transit-map conversion workbench. It can take a high-resolution image, vector PDF, or Adobe Illustrator project and help convert it into CGo OpenMap city data through vector parsing, AI-assisted topology recognition, knowledge-base matching, visual editing, and code export.
 
@@ -254,6 +254,7 @@ CGo OpenMap follows an **open collaboration + city stewardship** model. Contribu
 - **Dalian:** [jrzhang](https://github.com/beepingflijo) — City Maintainer; duckinglim — operations-data support
 - **Changchun:** [jrzhang](https://github.com/beepingflijo) — City Maintainer
 - **Sydney:** [Ryan Si](https://github.com/ryan-si) — City Maintainer
+- **Hong Kong:** [Ryan Si](https://github.com/ryan-si) — City Maintainer (unofficial recreation with cross-platform interchange guide and route planner)
 - **Platform architecture:** [NaL](https://github.com/NokiaimuL/) & [Ryan](https://github.com/ryan-si)
 - **Geographic data:** [Amap / Gaode Maps Open Platform](https://lbs.amap.com/)
 

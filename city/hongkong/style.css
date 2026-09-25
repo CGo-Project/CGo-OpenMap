@@ -1,0 +1,2692 @@
+/**
+ * CGo OpenMap - 香港城市專屬樣式 (city/hongkong/style.css)
+ *
+ * 取值按綫路圖實測（PDF pt × 0.5 = 畫布像素）：
+ *   1. 海域 #BBE2F1、陸地 #FFFFFF、深圳 #EDEDED；綫路描邊 16.3pt → 8.15px，無底色隔離描邊；
+ *   2. 車站圓環直徑 26.8pt、描邊 4pt → 半徑 6.7px / 2px；換乘連珠描邊 4.5pt → 2.25px；
+ *   3. 輕鐵綫寬 6.8pt → 3.4px；站名、圖元與文字主色為深藍 #001F50；
+ *   4. 站名字體：Noto Serif TC / Source Sans 3（SIL OFL 1.1），由 hongkong.js 逐行貼合原圖墨跡框。
+ */
+
+/* 界面文字字體：網頁字體就緒前（未加 .hk-webfonts）只用系統明體 / 宋體與無襯綫字體，
+   避免字體棧含正在下載的網頁字體時文字被瀏覽器暫時隱藏 */
+.map-hongkong {
+    --hk-serif: "Songti TC", "STSong", "Noto Serif CJK TC", "PMingLiU", "MingLiU", "SimSun", serif;
+    --hk-sans: "Myriad Pro", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+.map-hongkong.hk-webfonts {
+    --hk-serif: "Noto Serif TC", "Songti TC", "STSong", "PMingLiU", serif;
+    --hk-sans: "Source Sans 3", "Myriad Pro", "Segoe UI", Arial, sans-serif;
+}
+
+.map-hongkong {
+    --map-bg: #BBE2F1;
+    --hk-ink: #001F50;
+    --hk-ring-fill: #FFFFFF;
+    --hk-region: #C1C4C6;
+    --hk-halo: #FFFFFF;
+    --hk-dim: 0.18;
+}
+
+[data-theme='dark'].map-hongkong {
+    --map-bg: #0f1d27;
+    --hk-ink: #dbe4ee;
+    --hk-ring-fill: #121a20;
+    --hk-region: #55606a;
+    --hk-halo: #121a20;
+}
+
+.map-hongkong #map-container,
+.map-hongkong #map-content {
+    background-color: var(--map-bg);
+}
+
+.map-hongkong #map-content {
+    width: 2055px;
+    height: 1238px;
+}
+
+/* ── 綫路：原圖無隔離描邊，平頭端點 ─────────────────────────────── */
+.map-hongkong .line-visual-outer {
+    display: none;
+}
+
+.map-hongkong .line-visual-inner {
+    stroke-width: 8.15px;
+    stroke-linecap: butt;
+    stroke-linejoin: round;
+}
+
+.map-hongkong .line-visual-group.active .line-visual-inner {
+    stroke-width: 9.5px !important;
+}
+
+.map-hongkong .line-interaction {
+    stroke-width: 16px;
+}
+
+.map-hongkong .line-visual-group[data-visual-id^="LR"] .line-visual-inner {
+    stroke-width: 3.4px;
+}
+
+.map-hongkong .line-visual-group[data-visual-id^="LR"].active .line-visual-inner {
+    stroke-width: 4.2px !important;
+}
+
+/* ── 車站圖元 ─────────────────────────────────────────────────── */
+.map-hongkong .station.hk-marker {
+    overflow: visible;
+    z-index: 16;
+}
+
+.map-hongkong .station.hk-marker.hk-ic {
+    z-index: 22;
+}
+
+.map-hongkong .station.hk-marker svg {
+    overflow: visible;
+    shape-rendering: geometricPrecision;
+}
+
+.map-hongkong .hk-ring {
+    fill: var(--hk-ring-fill);
+    stroke: var(--hk-ink);
+    stroke-width: 2px;
+}
+
+.map-hongkong .hk-cap {
+    fill: var(--hk-ring-fill);
+    stroke: var(--hk-ink);
+    stroke-width: 2.25px;
+}
+
+.map-hongkong .station.hk-marker.active {
+    transform: translate(-50%, -50%) scale(1.3);
+    filter: none;
+}
+
+.map-hongkong .station.hk-marker.active .hk-ring,
+.map-hongkong .station.hk-marker.active .hk-cap {
+    stroke: #D0021B;
+}
+
+/* ── 站名：兩行各自絕對定位，由 hongkong.js 按字體度量貼合 ─────── */
+/* 首次排版（系統字體即可）前隱藏，避免閃現引擎預設的小號站名；不再等待網頁字體 */
+.map-hongkong #labels-layer {
+    visibility: hidden;
+}
+
+.hk-labels-ready.map-hongkong #labels-layer {
+    visibility: visible;
+}
+
+/* 網頁字體到達時的交替：舊字體快照淡出，新字體由輕微模糊淡入 */
+.hk-font-ghost {
+    pointer-events: none !important;
+    transition: opacity .45s ease, filter .45s ease;
+}
+
+.hk-font-ghost.hk-font-out {
+    opacity: 0;
+    filter: blur(1.5px);
+}
+
+.hk-font-enter {
+    opacity: 0;
+    filter: blur(2px);
+}
+
+.hk-font-enter.hk-font-in {
+    opacity: 1;
+    filter: blur(0);
+    transition: opacity .5s ease .05s, filter .5s ease .05s;
+}
+
+.map-hongkong .label-group.hk-label {
+    white-space: nowrap;
+}
+
+.map-hongkong .label-group.hk-label .stacn,
+.map-hongkong .label-group.hk-label .staen {
+    display: block;
+    color: var(--hk-ink) !important;
+    -webkit-text-stroke: 0;
+    paint-order: stroke fill;
+}
+
+.map-hongkong .label-group.hk-halo .stacn,
+.map-hongkong .label-group.hk-halo .staen {
+    -webkit-text-stroke: 3px var(--hk-halo);
+}
+
+.map-hongkong .label-group.hk-label.active .stacn,
+.map-hongkong .label-group.hk-label.active .staen {
+    color: #D0021B !important;
+    -webkit-text-stroke: 3px var(--hk-ring-fill);
+}
+
+/* ── 底圖裝飾、區域名與圖例文字 ───────────────────────────────── */
+.map-hongkong #scattered-layer img {
+    image-rendering: auto;
+}
+
+.hk-deco-svg,
+.hk-deco-svg svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* 深色模式：只重新著色海陸與中性色，綫路色與圖例色塊保持不變 */
+[data-theme='dark'].map-hongkong .hk-deco-svg [fill="#BBE2F1"] { fill: #0f1d27; }
+[data-theme='dark'].map-hongkong .hk-deco-svg [fill="#FFFFFF"] { fill: #1c2228; }
+[data-theme='dark'].map-hongkong .hk-deco-svg [fill="#EDEDED"] { fill: #262a2e; }
+[data-theme='dark'].map-hongkong .hk-deco-svg [stroke="#C1C4C6"] { stroke: #4a5157; }
+[data-theme='dark'].map-hongkong .hk-deco-svg [fill="#C1C4C6"] { fill: #4a5157; }
+[data-theme='dark'].map-hongkong .hk-deco-svg [stroke="#001F50"] { stroke: #dbe4ee; }
+[data-theme='dark'].map-hongkong .hk-deco-svg .hk-icons rect { fill: #dbe4ee; }
+[data-theme='dark'].map-hongkong .hk-deco-svg .hk-icons g[fill="#FFF"] { fill: #1c2228; }
+
+#hk-text-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 6;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.hk-labels-ready #hk-text-layer {
+    visibility: visible;
+}
+
+.hk-deco-text {
+    position: absolute;
+    color: var(--hk-ink);
+}
+
+.hk-deco-text > svg {
+    display: block;
+}
+
+.hk-deco-text.hk-region {
+    color: var(--hk-region);
+}
+
+
+/* ── 行程規劃：路綫高亮，其餘淡化 ─────────────────────────────── */
+#hk-route-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    z-index: 14;
+    pointer-events: none;
+}
+
+#map-content.hk-routing #lines-layer,
+#map-content.hk-routing #highlight-layer {
+    opacity: var(--hk-dim);
+    transition: opacity .25s;
+}
+
+#map-content.hk-routing .station:not(.hk-on-route):not(.active),
+#map-content.hk-routing .label-group:not(.hk-on-route):not(.active) {
+    opacity: 0.28;
+}
+
+/* 路綫與原綫同寬（16.3pt → 8.15px）、平頭，逐點疊在原綫之上 */
+.hk-rt-case {
+    display: none;
+}
+
+.hk-rt-line {
+    fill: none;
+    stroke-width: 8.15px;
+    stroke-linecap: butt;
+    stroke-linejoin: round;
+}
+
+.hk-rt-flow {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.75);
+    stroke-width: 2.2px;
+    stroke-dasharray: 2 14;
+    stroke-linecap: round;
+    animation: hk-flow 1.1s linear infinite;
+}
+
+@keyframes hk-flow {
+    to { stroke-dashoffset: -16; }
+}
+
+.hk-rt-walk {
+    fill: none;
+    stroke: var(--hk-ink);
+    stroke-width: 3px;
+    stroke-dasharray: 1 6;
+    stroke-linecap: round;
+}
+
+.hk-rt-pin {
+    fill: none;
+    stroke-width: 3px;
+}
+
+.hk-rt-o { stroke: #00A040; }
+.hk-rt-d { stroke: #D0021B; }
+
+@media (prefers-reduced-motion: reduce) {
+    .hk-rt-flow, .hk-xp-pulse { animation: none !important; }
+}
+
+/* ── 同台換乘站標示 ───────────────────────────────────────────── */
+#hk-xp-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 34;
+    pointer-events: none;
+    display: none;
+}
+
+body.hk-xp-on #hk-xp-layer {
+    display: block;
+}
+
+.hk-xp-mark {
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.hk-xp-pulse {
+    position: absolute;
+    left: -17px;
+    top: -17px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2.5px solid #D0021B;
+    animation: hk-pulse 1.6s ease-out infinite;
+}
+
+@keyframes hk-pulse {
+    0% { transform: scale(0.7); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+.hk-xp-tag {
+    position: absolute;
+    left: 10px;
+    top: -26px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 6px 1px 4px;
+    border-radius: 10px;
+    background: #D0021B;
+    color: #fff;
+    font: 700 10px/16px "Noto Sans TC", "Noto Sans SC", sans-serif;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .2);
+}
+
+#modern-zoom-control button#hk-xp-btn.on,
+#modern-zoom-control button#hk-route-btn.on,
+body.hk-route-open #modern-zoom-control button#hk-route-btn {
+    background-color: var(--primary-color) !important;
+    color: var(--btn-text, #fff) !important;
+}
+
+/* ── 資訊卡：同台換乘指南 / 步行換乘 / 行程入口 ───────────────── */
+.hk-xp-card,
+.hk-walk-card {
+    margin: 10px 12px 4px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--btn-info-bg, rgba(0, 0, 0, .03));
+    border: 1px solid var(--border-color, var(--divider));
+    font-size: 12px;
+    color: var(--text-main);
+}
+
+.hk-xp-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.hk-xp-title span {
+    font-weight: 500;
+    font-size: 10px;
+    color: var(--text-light);
+    margin-left: auto;
+}
+
+.hk-xp-note {
+    color: var(--text-light);
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.hk-xp-ask {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.hk-xp-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.hk-xp-chip {
+    border: 1.5px solid var(--lc);
+    background: transparent;
+    color: var(--text-main);
+    border-radius: 14px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+
+.hk-xp-chip:hover,
+.hk-xp-chip.on {
+    background: var(--lc);
+    color: #fff;
+}
+
+.hk-xp-answer {
+    line-height: 1.6;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: var(--card-bg);
+    margin-bottom: 8px;
+}
+
+.hk-islands {
+    display: grid;
+    gap: 8px;
+}
+
+.hk-island {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--divider);
+    transition: opacity .2s, box-shadow .2s;
+}
+
+.hk-islands:has(.focus) .hk-island:not(.focus) {
+    opacity: .35;
+}
+
+.hk-island.focus {
+    box-shadow: 0 0 0 2px var(--primary-color);
+}
+
+.hk-trk {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-left: 5px solid var(--lc);
+    background: var(--card-bg);
+}
+
+.hk-trk-dir {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.hk-trk-dir i {
+    font-style: normal;
+    font-size: 10px;
+    color: var(--text-light);
+}
+
+.hk-trk-train {
+    margin-left: auto;
+    width: 38px;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--lc);
+    opacity: .35;
+}
+
+.hk-trk.from .hk-trk-train,
+.hk-trk.to .hk-trk-train {
+    opacity: 1;
+}
+
+.hk-trk.from::after,
+.hk-trk.to::after {
+    position: absolute;
+    right: 52px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--lc);
+}
+
+.hk-trk.from::after { content: "落車"; }
+.hk-trk.to::after { content: "上車"; }
+
+.hk-plat {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-light);
+    background: repeating-linear-gradient(90deg, var(--divider) 0 6px, transparent 6px 10px);
+}
+
+.hk-xp-foot {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--text-light);
+}
+
+.hk-lbadge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.hk-walk-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 5px 0;
+    border-top: 1px dashed var(--divider);
+}
+
+.hk-walk-row:first-of-type {
+    border-top: none;
+}
+
+.hk-walk-row a,
+#hk-route-card a[data-jump] {
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--text-main);
+    text-decoration: underline dotted;
+}
+
+.hk-walk-row small {
+    color: var(--text-light);
+}
+
+.hk-route-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.hk-route-actions button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 0;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, var(--divider));
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.hk-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 2.5px solid;
+    flex: none;
+}
+
+.hk-dot.hk-o { border-color: #00A040; }
+.hk-dot.hk-d { border-color: #D0021B; }
+
+/* 資訊卡底欄原為橫排：行程按鈕獨佔一行 */
+.map-hongkong .panel-footer:has(.hk-route-actions) {
+    flex-wrap: wrap;
+}
+
+/* ── 行程規劃面板 ─────────────────────────────────────────────── */
+#hk-route-card {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 340px;
+    max-height: calc(100vh - 120px);
+    display: none;
+    flex-direction: column;
+    background: var(--card-bg);
+    color: var(--text-main);
+    border-radius: 12px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .25);
+    z-index: 1900;
+    overflow: hidden;
+    font-size: 13px;
+}
+
+#hk-route-card.show {
+    display: flex;
+}
+
+.hk-rt-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--panel-header-bg);
+    color: var(--panel-header-text);
+    font-weight: 700;
+}
+
+.hk-rt-close {
+    margin-left: auto;
+    border: none;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+}
+
+.hk-rt-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 6px 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--divider);
+}
+
+.hk-rt-form label {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hk-rt-form select {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, var(--divider));
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    font-size: 13px;
+}
+
+.hk-rt-swap {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color, var(--divider));
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(90deg);
+}
+
+.hk-rt-result {
+    overflow-y: auto;
+    padding: 10px 12px 12px;
+}
+
+.hk-rt-empty {
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+.hk-rt-sum {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.hk-rt-sum b {
+    font-size: 18px;
+}
+
+.hk-rt-sum span {
+    color: var(--text-light);
+    font-size: 12px;
+}
+
+.hk-rt-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.hk-rt-ride {
+    border-left: 5px solid var(--lc);
+    padding: 4px 0 6px 10px;
+    margin: 2px 0 2px 6px;
+}
+
+.hk-rt-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hk-rt-body {
+    margin-top: 3px;
+    color: var(--text-main);
+}
+
+.hk-rt-body em {
+    font-style: normal;
+    color: var(--text-light);
+    margin-left: 8px;
+    font-size: 12px;
+}
+
+.hk-rt-x {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    padding: 6px 8px;
+    margin: 4px 0;
+    border-radius: 8px;
+    background: var(--btn-info-bg);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.hk-rt-x.hk-xp {
+    background: rgba(208, 2, 27, .08);
+    color: var(--text-main);
+}
+
+.hk-rt-x.hk-xp b {
+    color: #D0021B;
+}
+
+.hk-rt-foot {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text-light);
+}
+
+@media (max-width: 640px) {
+    #hk-route-card {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        width: auto;
+        max-height: 55vh;
+    }
+}
+
+/* ==========================================================================
+   香港定制車站資訊板（只作用於 .map-hongkong，不影響其他城市）
+   ========================================================================== */
+.map-hongkong #info-panel {
+    --hk-panel-navy: #001F50;
+    border-radius: 12px;
+}
+
+[data-theme='dark'].map-hongkong #info-panel {
+    --hk-panel-navy: #0c1f35;
+}
+
+/* 標題欄：深藍底 + 襯綫站名（與綫路圖同字體）+ 車站代號 + 底部綫路色帶 */
+.map-hongkong #info-panel .panel-header {
+    background-color: var(--hk-panel-navy) !important;
+    padding: 16px 52px 20px 18px;
+}
+
+.map-hongkong #info-panel .hk-head .panel-cn-name {
+    font-family: var(--hk-serif);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 2px;
+}
+
+.map-hongkong #info-panel .hk-head .panel-en-name {
+    font-family: var(--hk-sans);
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: .2px;
+    color: rgba(255, 255, 255, .78) !important;
+}
+
+.hk-head-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 10.5px;
+    color: rgba(255, 255, 255, .7);
+}
+
+.hk-code {
+    font: 700 10.5px/1 var(--hk-sans);
+    letter-spacing: 1px;
+    padding: 3px 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, .92);
+    color: var(--hk-panel-navy, #001F50);
+}
+
+.hk-stripe {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 5px;
+}
+
+/* 去掉分頁內容區的固定最小高度，消除「下一站」下方的大片空白 */
+.map-hongkong #info-panel .panel-tabs-body {
+    min-height: 0;
+}
+
+.map-hongkong #info-panel .panel-body {
+    padding: 8px 14px 12px;
+}
+
+/* 月台方向牌 */
+.hk-dirs {
+    display: grid;
+    gap: 6px;
+    margin: 4px 0 2px;
+}
+
+.hk-terminus {
+    font-size: 11px;
+    color: var(--text-light);
+}
+
+.hk-dir {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px 8px 8px;
+    border-radius: 8px;
+    background: var(--btn-info-bg);
+    border: 1px solid var(--divider);
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+}
+
+.hk-dir:hover {
+    background: var(--list-hover);
+}
+
+.hk-dir:active {
+    transform: scale(.99);
+}
+
+.hk-dir-arrow {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+
+.hk-dir-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.hk-dir-to {
+    font-size: 15px;
+    line-height: 1.25;
+    color: var(--text-main);
+}
+
+.hk-dir-to b {
+    font-family: var(--hk-serif);
+    font-weight: 700;
+}
+
+.hk-dir-to i {
+    font-style: normal;
+    font-family: var(--hk-sans);
+    font-weight: 600;
+    font-size: 11.5px;
+    color: var(--text-light);
+    margin-left: 6px;
+}
+
+.hk-dir-next {
+    font-size: 11.5px;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+.hk-dir-next b {
+    color: var(--text-main);
+}
+
+.hk-dir-go {
+    flex: none;
+    color: var(--text-light);
+}
+
+/* 車站資訊 */
+.hk-info {
+    font-size: 12px;
+    color: var(--text-main);
+    padding-top: 4px;
+}
+
+.hk-info small {
+    display: block;
+    font-size: 10.5px;
+    color: var(--text-light);
+    margin-bottom: 3px;
+}
+
+.hk-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.hk-info-grid > div {
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--btn-info-bg);
+    border: 1px solid var(--divider);
+}
+
+.hk-info-grid b {
+    font-size: 13.5px;
+}
+
+.hk-mono {
+    font-family: var(--hk-sans);
+    letter-spacing: 1px;
+}
+
+.hk-info-lines,
+.hk-info-pay {
+    margin-bottom: 10px;
+}
+
+.hk-info-lines .hk-lbadge {
+    margin: 0 4px 4px 0;
+}
+
+.hk-info-pay span {
+    display: inline-block;
+    margin: 0 4px 4px 0;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--divider);
+    font-size: 11px;
+}
+
+.hk-tips {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    display: grid;
+    gap: 5px;
+}
+
+.hk-tips li {
+    display: flex;
+    gap: 7px;
+    align-items: flex-start;
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: rgba(0, 117, 194, .07);
+    line-height: 1.5;
+}
+
+.hk-tips cgo-icon {
+    flex: none;
+    margin-top: 2px;
+    color: #0075C2;
+}
+
+.hk-info-foot {
+    font-size: 10px;
+    color: var(--text-light);
+}
+
+/* 底欄：行程入口 + Google 地圖 */
+.map-hongkong #info-panel .panel-footer {
+    padding: 10px 14px 12px;
+}
+
+.hk-foot {
+    display: grid;
+    gap: 8px;
+}
+
+.hk-foot .hk-route-actions {
+    margin: 0;
+}
+
+.hk-foot .hk-route-actions button {
+    padding: 8px 0;
+    font-size: 12.5px;
+}
+
+.hk-gmaps {
+    display: flex;
+    gap: 8px;
+}
+
+.hk-gmaps a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.hk-gm-main {
+    flex: 1;
+    padding: 11px 0;
+    background: var(--hk-panel-navy, #001F50);
+    color: #fff !important;
+    box-shadow: 0 2px 6px rgba(0, 31, 80, .25);
+}
+
+.hk-gm-sub {
+    width: 44px;
+    background: var(--btn-info-bg);
+    color: var(--text-main) !important;
+    border: 1px solid var(--divider);
+}
+
+/* 同台換乘 / 步行換乘卡片在資訊板內收窄外邊距 */
+.map-hongkong #info-panel .hk-xp-card,
+.map-hongkong #info-panel .hk-walk-card {
+    margin: 4px 0 8px;
+}
+
+/* 無綫路分頁時只保留分享按鈕，收起分頁欄高度 */
+.map-hongkong #info-panel .panel-tabs-container.hk-notabs {
+    min-height: 0;
+    justify-content: flex-end;
+}
+
+/* 同台換乘指南：未選方向前只顯示方向按鈕，選定後只展開對應的島式月台 */
+.map-hongkong #info-panel .hk-island {
+    display: none;
+}
+
+.map-hongkong #info-panel .hk-island.focus {
+    display: block;
+    box-shadow: none;
+}
+
+.map-hongkong #info-panel .hk-xp-card:not(:has(.hk-island.focus)) .hk-xp-foot {
+    display: none;
+}
+
+.map-hongkong #info-panel .hk-xp-note {
+    font-size: 11.5px;
+    margin-bottom: 6px;
+}
+
+.map-hongkong #info-panel .hk-xp-answer {
+    margin-bottom: 6px;
+}
+
+/* 四綫換乘站（如金鐘）分頁較多：收窄分頁間距 */
+.map-hongkong #info-panel .tab-item {
+    padding-left: 9px;
+    padding-right: 9px;
+}
+
+/* ── 圖例放大 ─────────────────────────────────────────────────── */
+#hk-legend-hot {
+    position: absolute;
+    z-index: 12;
+    border-radius: 8px;
+    cursor: zoom-in;
+    transition: box-shadow .2s, background-color .2s;
+}
+
+#hk-legend-hot:hover {
+    box-shadow: 0 0 0 3px rgba(0, 117, 194, .55), 0 6px 18px rgba(0, 31, 80, .18);
+}
+
+.hk-legend-hint {
+    position: absolute;
+    right: 6px;
+    top: -22px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px 2px 6px;
+    border-radius: 10px;
+    background: #001F50;
+    color: #fff;
+    font: 600 10.5px/16px "Noto Sans TC", "Noto Sans SC", sans-serif;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity .2s, transform .2s;
+    pointer-events: none;
+}
+
+#hk-legend-hot:hover .hk-legend-hint {
+    opacity: 1;
+    transform: none;
+}
+
+@media (hover: none) {
+    .hk-legend-hint { opacity: .9; transform: none; }
+}
+
+#hk-legend-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 20, 45, 0);
+    backdrop-filter: blur(0);
+    pointer-events: none;
+    visibility: hidden;
+    /* 淡出動畫結束後才隱藏，關閉後不再攔截任何點擊 */
+    transition: background .25s, backdrop-filter .25s, visibility 0s linear .3s;
+}
+
+/* 項目全局樣式會給 button 設 pointer-events: auto，會蓋過父層的 none：
+   關閉狀態下強制所有子元素都不接收點擊，否則透明的圖例行會攔住車站點擊 */
+#hk-legend-modal:not(.show),
+#hk-legend-modal:not(.show) * {
+    pointer-events: none !important;
+}
+
+#hk-legend-modal.show {
+    background: rgba(0, 20, 45, .38);
+    backdrop-filter: blur(3px);
+    pointer-events: auto;
+    visibility: visible;
+    transition: background .25s, backdrop-filter .25s, visibility 0s;
+}
+
+.hk-lg-card {
+    width: min(720px, 100%);
+    max-height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--card-bg);
+    color: var(--text-main);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .3);
+    opacity: 0;
+    transform: scale(.92) translateY(12px);
+    transform-origin: 10% 90%;
+    transition: opacity .22s, transform .28s cubic-bezier(.2, .8, .2, 1.1);
+}
+
+#hk-legend-modal.show .hk-lg-card {
+    opacity: 1;
+    transform: none;
+}
+
+.hk-lg-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    background: #001F50;
+    color: #fff;
+    font-size: 16px;
+}
+
+.hk-lg-top b {
+    font-family: var(--hk-serif);
+    letter-spacing: 2px;
+}
+
+.hk-lg-top span {
+    font: 600 12px var(--hk-sans);
+    opacity: .75;
+}
+
+.hk-lg-close {
+    margin-left: auto;
+    border: none;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+}
+
+.hk-lg-body {
+    overflow-y: auto;
+    padding: 12px 16px 16px;
+}
+
+.hk-lg-h {
+    font-weight: 700;
+    font-size: 13px;
+    margin: 4px 0 8px;
+}
+
+.hk-lg-h span {
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--text-light);
+    margin-left: 6px;
+}
+
+.hk-lg-lines,
+.hk-lg-syms {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.hk-lg-line,
+.hk-lg-sym {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--divider);
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    text-align: left;
+    font: inherit;
+}
+
+.hk-lg-line[data-l] {
+    cursor: pointer;
+    transition: border-color .15s, transform .1s, background .15s;
+}
+
+.hk-lg-line[data-l]:hover {
+    border-color: var(--text-light);
+    background: var(--list-hover);
+}
+
+.hk-lg-line[data-l]:active {
+    transform: scale(.985);
+}
+
+.hk-lg-sw {
+    flex: none;
+    width: 46px;
+    height: 12px;
+    border-radius: 6px;
+}
+
+.hk-lg-name {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.hk-lg-name b {
+    font-family: var(--hk-serif);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.hk-lg-name em {
+    font-style: normal;
+    font-family: var(--hk-sans);
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.hk-lg-name small {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+.hk-lg-go {
+    margin-left: auto;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    color: var(--text-light);
+    opacity: 0;
+    transition: opacity .15s;
+}
+
+.hk-lg-line[data-l]:hover .hk-lg-go {
+    opacity: 1;
+}
+
+.hk-lg-ic {
+    flex: none;
+    width: 46px;
+    display: flex;
+    justify-content: center;
+}
+
+.hk-lg-ic svg {
+    width: 44px;
+    height: 20px;
+    overflow: visible;
+}
+
+/* 綫路單獨顯示：其餘綫路與車站淡化 */
+#map-content.hk-linefocus #lines-layer {
+    opacity: .16;
+    transition: opacity .25s;
+}
+
+#map-content.hk-linefocus .station:not(.hk-on-line),
+#map-content.hk-linefocus .label-group:not(.hk-on-line) {
+    opacity: .25;
+}
+
+#hk-focus-chip {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1800;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 20px;
+    border: none;
+    background: var(--card-bg);
+    color: var(--text-main);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .18);
+    cursor: pointer;
+    font-size: 13px;
+}
+
+#hk-focus-chip i {
+    width: 22px;
+    height: 7px;
+    border-radius: 4px;
+}
+
+#hk-focus-chip b {
+    font-family: var(--hk-serif);
+}
+
+#hk-focus-chip span {
+    font: 600 11px var(--hk-sans);
+    color: var(--text-light);
+}
+
+@media (max-width: 640px) {
+    #hk-legend-modal {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .hk-lg-card {
+        width: 100%;
+        max-height: 82vh;
+        border-radius: 16px 16px 0 0;
+        transform: translateY(40px);
+    }
+
+    .hk-lg-lines,
+    .hk-lg-syms {
+        grid-template-columns: 1fr;
+    }
+
+    .hk-lg-go {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hk-lg-card, #hk-legend-modal { transition: none; }
+}
+
+/* ── 畫布邊緣漸隱：縮小後陸地與出圖綫路不再被畫布邊界生硬截斷，而是淡入海面 ── */
+.map-hongkong {
+    --hk-fade-l: 70px;
+    --hk-fade-r: 90px;
+    --hk-fade-t: 110px;
+    --hk-fade-b: 34px;   /* 底部留白較窄：圖例框底邊距畫布底約 34px */
+}
+
+.map-hongkong #scattered-layer,
+.map-hongkong #lines-layer,
+.map-hongkong #highlight-layer,
+.map-hongkong #hk-text-layer {
+    -webkit-mask-image:
+        linear-gradient(to right, transparent 0, #000 var(--hk-fade-l), #000 calc(100% - var(--hk-fade-r)), transparent 100%),
+        linear-gradient(to bottom, transparent 0, #000 var(--hk-fade-t), #000 calc(100% - var(--hk-fade-b)), transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+        linear-gradient(to right, transparent 0, #000 var(--hk-fade-l), #000 calc(100% - var(--hk-fade-r)), transparent 100%),
+        linear-gradient(to bottom, transparent 0, #000 var(--hk-fade-t), #000 calc(100% - var(--hk-fade-b)), transparent 100%);
+    mask-composite: intersect;
+}
+
+/* ── 行程流程：地圖標記、頂部提示條、資訊板主按鈕 ─────────────── */
+#hk-pin-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    z-index: 24;
+    pointer-events: none;
+}
+
+.hk-pin-pulse {
+    fill: none;
+    stroke-width: 3px;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: hk-pin 1.4s ease-out infinite;
+}
+
+.hk-pin-pulse.hk-rt-o { stroke: #00A040; }
+.hk-pin-pulse.hk-rt-d { stroke: #D0021B; }
+
+@keyframes hk-pin {
+    0% { transform: scale(1); opacity: .9; }
+    100% { transform: scale(2.3); opacity: 0; }
+}
+
+#hk-trip-banner {
+    position: fixed;
+    left: 50%;
+    top: 84px;
+    z-index: 1850;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100vw - 24px);
+    padding: 8px 8px 8px 14px;
+    border-radius: 24px;
+    background: #001F50;
+    color: #fff;
+    box-shadow: 0 6px 20px rgba(0, 31, 80, .35);
+    font-size: 13.5px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -10px);
+    transition: opacity .2s, transform .25s;
+}
+
+#hk-trip-banner.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+}
+
+.hk-tb-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hk-tb-text b {
+    font-family: var(--hk-serif);
+}
+
+.hk-tb-text em {
+    font-style: normal;
+    color: #ffd76a;
+    font-weight: 700;
+}
+
+#hk-trip-banner button {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, .15);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+#hk-trip-banner .hk-dot.hk-o { border-color: #4be08a; }
+#hk-trip-banner .hk-dot.hk-d { border-color: #ff6b7d; }
+
+/* 選點模式：車站可點提示 */
+body.hk-picking .map-hongkong .station:hover,
+body.hk-picking .station.hk-marker:hover {
+    transform: translate(-50%, -50%) scale(1.35);
+}
+
+.hk-cta {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 11px 10px 9px;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+    animation: hk-cta-in .35s cubic-bezier(.2, .8, .2, 1.2);
+}
+
+.hk-cta-to { background: linear-gradient(135deg, #D0021B, #a80016); }
+.hk-cta-from { background: linear-gradient(135deg, #00A040, #007a31); }
+
+.hk-cta-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.hk-cta-sub {
+    font-size: 11.5px;
+    opacity: .9;
+}
+
+@keyframes hk-cta-in {
+    from { transform: scale(.94); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+.hk-cta-alt {
+    display: flex;
+    justify-content: space-between;
+}
+
+.hk-cta-alt button,
+.hk-trip-hint button {
+    border: none;
+    background: none;
+    color: var(--text-light);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
+    text-decoration: underline dotted;
+}
+
+.hk-trip-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: var(--btn-info-bg);
+    border: 1px dashed var(--divider);
+    font-size: 12.5px;
+    color: var(--text-main);
+}
+
+.hk-trip-hint button {
+    margin-left: auto;
+}
+
+.hk-trip-now {
+    font-size: 11.5px;
+    color: var(--text-light);
+    text-align: center;
+}
+
+/* ── 實時班次 ─────────────────────────────────────────────────── */
+.hk-live {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    margin-top: 4px;
+    font-size: 11.5px;
+    color: var(--text-light);
+}
+
+.hk-live > span {
+    white-space: nowrap;
+}
+
+.hk-live i {
+    font-style: normal;
+    font-size: 10px;
+    margin-left: 2px;
+}
+
+.hk-live-first {
+    color: #D0021B;
+    font-weight: 800;
+}
+
+[data-theme='dark'] .hk-live-first {
+    color: #ff6b7d;
+}
+
+.hk-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #00A040;
+    box-shadow: 0 0 0 0 rgba(0, 160, 64, .6);
+    animation: hk-live 1.6s infinite;
+}
+
+@keyframes hk-live {
+    0% { box-shadow: 0 0 0 0 rgba(0, 160, 64, .55); }
+    100% { box-shadow: 0 0 0 7px rgba(0, 160, 64, 0); }
+}
+
+.hk-plat-no {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 17px;
+    height: 17px;
+    margin-right: 2px;
+    border-radius: 50%;
+    background: var(--text-main);
+    color: var(--card-bg);
+    font-weight: 800;
+    font-size: 10.5px;
+}
+
+.hk-live-delay {
+    color: #fff;
+    background: #D0021B;
+    border-radius: 4px;
+    padding: 0 5px;
+}
+
+.hk-live-off {
+    font-style: italic;
+}
+
+/* ── 行程卡片（重新設計） ─────────────────────────────────────── */
+.hk-rt-trip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px 8px;
+}
+
+.hk-rt-end {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+
+.hk-rt-end b {
+    font-family: var(--hk-serif);
+    font-size: 17px;
+}
+
+.hk-rt-end small {
+    font-size: 10.5px;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hk-rt-ph {
+    color: var(--text-light);
+}
+
+.hk-rt-edit {
+    border-bottom: 1px solid var(--divider);
+}
+
+.hk-rt-edit summary {
+    cursor: pointer;
+    padding: 0 14px 8px;
+    font-size: 11.5px;
+    color: var(--text-light);
+}
+
+.hk-rt-edit .hk-rt-form {
+    border-bottom: none;
+    padding-top: 0;
+}
+
+.hk-rt-ride {
+    cursor: pointer;
+    border-radius: 0 8px 8px 0;
+    transition: background .15s;
+}
+
+.hk-rt-ride:hover,
+.hk-rt-ride.focus {
+    background: var(--btn-info-bg);
+}
+
+.hk-rt-head em {
+    margin-left: auto;
+    font-style: normal;
+    font-size: 11.5px;
+    color: var(--text-light);
+}
+
+.hk-rt-live {
+    margin-top: 5px;
+}
+
+.hk-platnum {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-right: 2px;
+}
+
+.hk-trk-plat {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 2px;
+    font-size: 10.5px;
+    color: var(--text-light);
+}
+
+/* ── 行程卡起訖站欄位（取代原生下拉框） ────────────────────────── */
+.hk-rt-fields {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 6px 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--divider);
+}
+
+.hk-rt-fields .hk-rt-swap {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}
+
+.hk-rt-field {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    padding: 7px 10px;
+    border-radius: 9px;
+    border: 1px solid var(--divider);
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    transition: border-color .15s, background .15s;
+}
+
+.hk-rt-field:hover {
+    border-color: var(--text-light);
+}
+
+.hk-rt-field > cgo-icon {
+    margin-left: auto;
+    flex: none;
+    color: var(--text-light);
+}
+
+.hk-rf-main {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.hk-rf-main small {
+    font-size: 10.5px;
+    color: var(--text-light);
+    flex: none;
+}
+
+.hk-rf-main b {
+    font-family: var(--hk-serif);
+    font-size: 15.5px;
+    flex: none;
+}
+
+.hk-rf-main em {
+    font-style: normal;
+    font-size: 11px;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hk-rf-ph {
+    color: var(--text-light);
+    font-size: 13.5px;
+}
+
+.hk-rf-lns {
+    display: flex;
+    gap: 2px;
+    flex: none;
+}
+
+.hk-rf-ln {
+    width: 5px;
+    height: 14px;
+    border-radius: 2px;
+}
+
+/* ── 車站選擇器 ───────────────────────────────────────────────── */
+#hk-picker {
+    position: fixed;
+    inset: 0;
+    z-index: 100001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 20, 45, 0);
+    visibility: hidden;
+    pointer-events: none;
+    transition: background .2s, visibility 0s linear .25s;
+}
+
+#hk-picker:not(.show) * {
+    pointer-events: none !important;
+}
+
+#hk-picker.show {
+    background: rgba(0, 20, 45, .35);
+    visibility: visible;
+    pointer-events: auto;
+    transition: background .2s, visibility 0s;
+}
+
+.hk-pk-card {
+    width: min(640px, 100%);
+    height: min(620px, calc(100vh - 40px));
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--card-bg);
+    color: var(--text-main);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .3);
+    opacity: 0;
+    transform: translateY(14px) scale(.97);
+    transition: opacity .2s, transform .25s cubic-bezier(.2, .8, .2, 1.1);
+}
+
+#hk-picker.show .hk-pk-card {
+    opacity: 1;
+    transform: none;
+}
+
+.hk-pk-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    background: #001F50;
+    color: #fff;
+    font-size: 15px;
+}
+
+.hk-pk-top .hk-dot.hk-o { border-color: #4be08a; }
+.hk-pk-top .hk-dot.hk-d { border-color: #ff6b7d; }
+
+.hk-pk-close {
+    margin-left: auto;
+    border: none;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    display: flex;
+}
+
+.hk-pk-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 12px 6px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--divider);
+    background: var(--btn-info-bg);
+    color: var(--text-light);
+}
+
+.hk-pk-search:focus-within {
+    border-color: #0075C2;
+}
+
+.hk-pk-search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-main);
+    font-size: 15px;
+    padding: 10px 0;
+}
+
+.hk-pk-recent {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    padding: 0 12px;
+    font-size: 11px;
+    color: var(--text-light);
+}
+
+.hk-pk-recent:not(:empty) {
+    padding-bottom: 6px;
+}
+
+.hk-pk-chip {
+    border: 1px solid var(--divider);
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    border-radius: 12px;
+    padding: 2px 9px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.hk-pk-body {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 172px 1fr;
+    border-top: 1px solid var(--divider);
+}
+
+.hk-pk-lines {
+    overflow-y: auto;
+    padding: 6px;
+    border-right: 1px solid var(--divider);
+    background: var(--btn-info-bg);
+}
+
+.hk-pk-lines button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 8px;
+    margin-bottom: 2px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-main);
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+.hk-pk-lines button i {
+    flex: none;
+    width: 6px;
+    height: 26px;
+    border-radius: 3px;
+    background: var(--lc);
+}
+
+.hk-pk-lines button span {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+}
+
+.hk-pk-lines button b {
+    font-family: var(--hk-serif);
+    font-size: 14px;
+}
+
+.hk-pk-lines button em {
+    font-style: normal;
+    font-size: 10.5px;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hk-pk-lines button:hover {
+    background: var(--list-hover);
+}
+
+.hk-pk-lines button.on {
+    background: var(--card-bg);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
+}
+
+.hk-pk-list {
+    overflow-y: auto;
+    padding: 4px 10px 12px;
+    scroll-behavior: smooth;
+}
+
+.hk-pk-h {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    padding: 8px 2px 6px;
+    background: var(--card-bg);
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.hk-pk-h i {
+    align-self: center;
+    width: 18px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--lc);
+}
+
+.hk-pk-h small {
+    flex-basis: 100%;
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--text-light);
+}
+
+.hk-pk-st {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 4px 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-main);
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+.hk-pk-st:hover {
+    background: var(--list-hover);
+}
+
+.hk-pk-st.current {
+    background: rgba(0, 117, 194, .09);
+}
+
+.hk-pk-st.disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+/* 綫路模式：左側畫出綫路與站點圓環，像一條縮小的綫路圖 */
+.hk-pk-rail {
+    position: relative;
+    flex: none;
+    align-self: stretch;
+    width: 18px;
+}
+
+.hk-pk-rail::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: -4px;
+    bottom: -4px;
+    width: 6px;
+    background: var(--lc);
+}
+
+.hk-pk-rails .hk-pk-st:first-child .hk-pk-rail::before { top: 50%; }
+.hk-pk-rails .hk-pk-st:last-child .hk-pk-rail::before { bottom: 50%; }
+
+.hk-pk-rail i {
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 2.5px solid #001F50;
+    box-sizing: border-box;
+}
+
+[data-theme='dark'] .hk-pk-rail i {
+    border-color: #dbe4ee;
+}
+
+.hk-pk-rails .hk-pk-st {
+    border-radius: 0 8px 8px 0;
+    padding-left: 2px;
+}
+
+.hk-pk-name {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+}
+
+.hk-pk-name b {
+    font-family: var(--hk-serif);
+    font-size: 15.5px;
+}
+
+.hk-pk-name em {
+    font-style: normal;
+    font-size: 11.5px;
+    color: var(--text-light);
+}
+
+.hk-pk-meta {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex: none;
+}
+
+.hk-pk-ln {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.hk-pk-meta code {
+    margin-left: 5px;
+    font: 600 10.5px var(--hk-sans);
+    letter-spacing: .5px;
+    color: var(--text-light);
+}
+
+.hk-pk-tag {
+    font-size: 10.5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--divider);
+}
+
+.hk-pk-empty {
+    padding: 30px 10px;
+    text-align: center;
+    color: var(--text-light);
+}
+
+@media (max-width: 640px) {
+    #hk-picker {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .hk-pk-card {
+        width: 100%;
+        height: 86vh;
+        border-radius: 16px 16px 0 0;
+        transform: translateY(40px);
+    }
+
+    .hk-pk-body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+
+    /* 手機：綫路改為橫向可滑動的膠囊 */
+    .hk-pk-lines {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-right: none;
+        border-bottom: 1px solid var(--divider);
+        scrollbar-width: none;
+    }
+
+    .hk-pk-lines::-webkit-scrollbar {
+        display: none;
+    }
+
+    .hk-pk-lines button {
+        width: auto;
+        flex: none;
+        margin: 0;
+        padding: 6px 10px 6px 8px;
+    }
+
+    .hk-pk-lines button i {
+        height: 20px;
+    }
+
+    .hk-pk-lines button em {
+        display: none;
+    }
+}
+
+/* ── 車費 ─────────────────────────────────────────────────────── */
+.hk-fare {
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    background: var(--btn-info-bg);
+    border: 1px solid var(--divider);
+}
+
+.hk-fare-main {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hk-fare-main small {
+    font-size: 11px;
+    color: var(--text-light);
+}
+
+.hk-fare-v {
+    font-size: 19px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.hk-fare-note {
+    font-size: 11px;
+    color: var(--text-light);
+}
+
+.hk-fare-types {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.hk-fare-types button {
+    border: 1px solid var(--divider);
+    background: var(--card-bg);
+    color: var(--text-main);
+    border-radius: 12px;
+    padding: 2px 9px;
+    font-size: 11.5px;
+    cursor: pointer;
+}
+
+.hk-fare-types button.on {
+    background: #001F50;
+    border-color: #001F50;
+    color: #fff;
+}
+
+[data-theme='dark'] .hk-fare-types button.on {
+    background: #dbe4ee;
+    border-color: #dbe4ee;
+    color: #0c1f35;
+}
+
+/* ── 行程追蹤與到站提醒 ─────────────────────────────────────────── */
+.hk-track {
+    margin-bottom: 10px;
+}
+
+.hk-track:not(:empty) {
+    padding: 10px;
+    border-radius: 10px;
+    border: 1.5px solid #0075C2;
+    background: rgba(0, 117, 194, .06);
+}
+
+.hk-tk-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 0;
+    border: none;
+    border-radius: 8px;
+    background: #0075C2;
+    color: #fff;
+    font-weight: 800;
+    font-size: 13.5px;
+    cursor: pointer;
+}
+
+.hk-tk-tip {
+    margin-top: 6px;
+    font-size: 10.5px;
+    color: var(--text-light);
+    text-align: center;
+}
+
+.hk-tk-now {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.hk-track .hk-live {
+    margin-bottom: 8px;
+}
+
+.hk-tk-eta {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0;
+    font-size: 13px;
+}
+
+.hk-tk-eta b {
+    font-size: 24px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.hk-tk-eta span {
+    width: 100%;
+    font-size: 11.5px;
+    color: var(--text-light);
+}
+
+.hk-tk-strip {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 16px;
+    margin: 6px 4px 8px;
+}
+
+.hk-tk-strip::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 4px;
+    margin-top: -2px;
+    border-radius: 2px;
+    background: var(--lc);
+    opacity: .35;
+}
+
+.hk-tk-strip i {
+    position: relative;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 2px solid var(--lc);
+    box-sizing: border-box;
+}
+
+.hk-tk-strip i.past {
+    background: var(--lc);
+}
+
+.hk-tk-strip i.here {
+    width: 16px;
+    height: 16px;
+    background: var(--lc);
+    box-shadow: 0 0 0 4px rgba(0, 117, 194, .18);
+}
+
+.hk-tk-strip i.end {
+    border-color: #D0021B;
+}
+
+.hk-tk-next {
+    font-size: 12.5px;
+    margin-bottom: 8px;
+}
+
+.hk-tk-alert {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #D0021B;
+    color: #fff;
+    font-size: 14px;
+    animation: hk-alert 1s ease-in-out infinite alternate;
+}
+
+@keyframes hk-alert {
+    from { box-shadow: 0 0 0 0 rgba(208, 2, 27, .5); }
+    to { box-shadow: 0 0 0 6px rgba(208, 2, 27, 0); }
+}
+
+.hk-tk-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hk-tk-row .hk-tk-btn {
+    flex: 1;
+}
+
+.hk-tk-link {
+    border: none;
+    background: none;
+    color: var(--text-light);
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: underline dotted;
+}
+
+.hk-tk-done {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    color: #00A040;
+    font-size: 14px;
+}
+
+/* 行程追蹤時常駐頂部的狀態條（行程卡收起後仍可見），提醒時轉紅 */
+#hk-track-bar {
+    position: fixed;
+    left: 50%;
+    top: 84px;
+    z-index: 1860;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    max-width: calc(100vw - 24px);
+    padding: 8px 14px;
+    border-radius: 22px;
+    background: #001F50;
+    color: #fff;
+    font-size: 13px;
+    white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(0, 31, 80, .35);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -10px);
+    transition: opacity .2s, transform .25s, background .2s;
+}
+
+#hk-track-bar.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, 0);
+}
+
+#hk-track-bar span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.hk-track-alert #hk-track-bar {
+    background: #D0021B;
+    animation: hk-alert 1s ease-in-out infinite alternate;
+}
+
+/* 追蹤條出現時，選點提示條讓位 */
+body:has(#hk-track-bar.show) #hk-trip-banner {
+    top: 128px;
+}
+
+/* ── 附近巴士 / 小巴 ─────────────────────────────────────────── */
+.hk-bus {
+    margin-top: 10px;
+}
+
+.hk-bus-open {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    border: 1px solid var(--divider);
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.hk-bus-open cgo-icon:last-child {
+    margin-left: auto;
+    transition: transform .2s;
+}
+
+.hk-bus.open .hk-bus-open cgo-icon:last-child {
+    transform: rotate(180deg);
+}
+
+.hk-bus-body {
+    padding-top: 8px;
+}
+
+.hk-bus-q {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--divider);
+    background: var(--card-bg);
+    color: var(--text-main);
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.hk-bus-ops {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.hk-bus-ops button {
+    border: 1px solid var(--divider);
+    background: var(--card-bg);
+    color: var(--text-main);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.hk-bus-ops button.on {
+    background: #001F50;
+    border-color: #001F50;
+    color: #fff;
+}
+
+.hk-bus-list {
+    display: grid;
+    gap: 3px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.hk-bus-r {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 8px;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 7px;
+    background: var(--btn-info-bg);
+}
+
+.hk-bus-r b {
+    grid-row: 1 / span 2;
+    justify-self: start;
+    min-width: 40px;
+    padding: 3px 6px;
+    border-radius: 5px;
+    background: #fff;
+    border: 1.5px solid #001F50;
+    color: #001F50;
+    font: 800 13px var(--hk-sans);
+    text-align: center;
+}
+
+.hk-k-mini b { border-color: #00A040; color: #00A040; }
+.hk-k-tram b { border-color: #0b6b3a; color: #0b6b3a; }
+.hk-k-ferry b { border-color: #0075C2; color: #0075C2; }
+
+.hk-bus-r span {
+    font-size: 12.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hk-bus-r small {
+    font-size: 10.5px;
+    color: var(--text-light);
+}
+
+.hk-bus-empty,
+.hk-bus-more,
+.hk-bus-src {
+    font-size: 11px;
+    color: var(--text-light);
+    padding: 6px 2px;
+}
+
+/* ── 開場動畫（呼吸感的逐層淡入）─────────────────────────────────
+   1. 海陸底圖由淡轉實並微微收攏；
+   2. 綫路按原圖繪製次序逐條「畫出」（hongkong.js 以描邊偏移驅動）；
+   3. 車站以畫面中心為圓心向外一圈圈浮現（延遲由 --hk-d 提供）；
+   4. 站名從輕微模糊中清晰；區域名最後淡入。 */
+.hk-intro-pending.map-hongkong #scattered-layer,
+.hk-intro-pending.map-hongkong #lines-layer,
+.hk-intro-pending.map-hongkong #stations-layer,
+.hk-intro-pending.map-hongkong #labels-layer,
+.hk-intro-pending.map-hongkong #hk-text-layer {
+    opacity: 0;
+}
+
+.hk-intro.map-hongkong #scattered-layer {
+    animation: hk-intro-bg .6s cubic-bezier(.2, .7, .25, 1) both;
+    transform-origin: 50% 50%;
+}
+
+@keyframes hk-intro-bg {
+    from { opacity: .15; transform: scale(1.02); }
+    to { opacity: 1; transform: none; }
+}
+
+.hk-intro.map-hongkong #stations-layer .station svg {
+    animation: hk-intro-pop .42s cubic-bezier(.2, .9, .3, 1.35) both;
+    animation-delay: var(--hk-d, 500ms);
+}
+
+@keyframes hk-intro-pop {
+    from { opacity: 0; transform: scale(.35); }
+    to { opacity: 1; transform: none; }
+}
+
+.hk-intro.map-hongkong #labels-layer .label-group {
+    animation: hk-intro-label .55s ease-out both;
+    animation-delay: var(--hk-d, 650ms);
+}
+
+@keyframes hk-intro-label {
+    from { opacity: 0; filter: blur(4px); }
+    to { opacity: 1; filter: blur(0); }
+}
+
+.hk-intro.map-hongkong #hk-text-layer {
+    animation: hk-intro-fade .7s ease .55s both;
+}
+
+@keyframes hk-intro-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 字體交替的快照不重播開場動畫 */
+.hk-font-ghost,
+.hk-font-ghost * {
+    animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hk-intro.map-hongkong #scattered-layer,
+    .hk-intro.map-hongkong #stations-layer .station svg,
+    .hk-intro.map-hongkong #labels-layer .label-group,
+    .hk-intro.map-hongkong #hk-text-layer {
+        animation: none !important;
+    }
+}

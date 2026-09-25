@@ -50,7 +50,7 @@
 > **本项目所有内容必须为纯前端，禁止使用任何其他技术（如 Node.js 服务端应用、PM2 进程守护/管理、Express/Koa 后端服务、React/Vue/Angular 重型框架及 Vite/Webpack 构建打包流程）**。项目始终遵循纯原生 Web 标准（HTML5、SVG、CSS3、Vanilla JS、Web Components），确保在任何静态 Web 服务器或托管平台（GitHub Pages、Cloudflare Pages、Nginx 纯静态目录等）开箱即用，零后端与构建依赖。  
 > **📌 唯一破例例外场景**：仅在涉及**监控车站运营状态、监控目标网页**等特殊后台巡检或服务场景下，**可以破例**使用 Node.js / PM2 进行后台监控与进程守护；**其他所有主要地图功能一律严格禁止破例**，必须为纯原生前端实现！
 
-目前引擎内置北京轨道交通、沈阳地铁、大连地铁、长春轨道交通、青岛轨道交通、合肥轨道交通、福州轨道交通与悉尼轨道交通（Sydney Trains / Sydney Metro）线网作为完整实现与参考范例，底层采用通用引擎与城市业务数据完全解耦的架构设计。开发者可以基于标准化数据格式，快速移植并部署任意城市（如广州、深圳、成都、武汉等）的轨道交通网络。
+目前引擎内置北京轨道交通、沈阳地铁、大连地铁、长春轨道交通、青岛轨道交通、合肥轨道交通、福州轨道交通、悉尼轨道交通（Sydney Trains / Sydney Metro）、香港铁路线网与深圳轨道交通作为完整实现与参考范例（深圳与香港两图可互相衔接切换），底层采用通用引擎与城市业务数据完全解耦的架构设计。开发者可以基于标准化数据格式，快速移植并部署任意城市（如广州、成都、武汉等）的轨道交通网络。
 
 项目配套提供 **Drunk 线路图智能转换系统**，无需手动测量繁重的站点坐标，通过上传高清图片、矢量 PDF 或 Adobe Illustrator 工程，即可借助 AI 视觉大模型与矢量解析引擎一键生成符合规范的标准城市代码。
 
@@ -308,6 +308,8 @@ openmap/
 - **大连线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人） · duckinglim（运营数据支持）
 - **长春线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人）
 - **悉尼线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人）
+- **香港线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人；非官方复刻，支持同台换乘指南与行程规划）
+- **深圳线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人；按深圳市交通运输局公布的官方运营线路网络图非官方复刻，与香港线路图衔接，口岸车站提供通关信息）
 - **平台架构**：[NaL](https://github.com/NokiaimuL/) & [Ryan](https://github.com/ryan-si)
 - **地理数据**：[高德地图开放平台](https://lbs.amap.com/)
 

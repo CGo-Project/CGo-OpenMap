@@ -93,7 +93,8 @@
             status: "active",
             maintainers: [
                 { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" },
-                { name: "从恒隆到细河", role: "运营数据支持" }
+                { name: "从恒隆到细河", role: "运营数据支持" },
+                { name: "普兰店大鹅", role: "有轨数据支持" }
             ],
             isDefault: false
         },
@@ -163,6 +164,70 @@
             maintainers: [
                 { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
             ],
+            isDefault: false
+        },
+        "hongkong": {
+            id: "hongkong",
+            name: "香港",
+            themeColor: "#001F50", // 綫路圖站名深藍
+            svglogo: null, // 已接入 CGoUI 内置 hongkong 矢量图标
+            folder: "./city/hongkong",
+            mainLogic: "./city/hongkong/hongkong.js",
+            center: { x: 1030, y: 600 },
+            defaultScale: 0.55,
+            mapSize: { width: 2055, height: 1238 },
+            searchCity: "香港",
+            title: "CGo OpenMap - 香港鐵路綫路圖",
+            keywords: "CGo OpenMap, 香港鐵路, 港鐵, 香港地铁, 线路图, 同台换乘",
+            description: "覆盖港铁十条重铁线路、轻铁与高铁香港段，支持同台换乘指南与优先同台换乘的行程规划（非官方）。",
+            officialMapUrl: "https://www.mtr.com.hk/ch/customer/services/system_map.html",
+            registerDate: "2026-09-24",
+            status: "active",
+            maintainers: [
+                { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
+            ],
+            // 示意图线宽（綫路描邊 8.15px），供邻城绘制香港影子时换算比例
+            lineWidth: 8.15,
+            shadowDeco: "./city/hongkong/assets/hongkong_deco.svg",
+            // 与深圳衔接：往上滑可见深圳线网影子，继续上滑进入深圳；缩到很小时两城并看
+            minScale: 0.18,
+            neighbors: [{
+                id: "shenzhen", edge: "top",
+                // 两图线宽之比 8.15 / 5.4 ≈ 1.5；深圳图的深港边界贴香港图顶边，罗湖对准罗湖
+                scale: 1.5, offset: { x: -1050.64, y: -2046.9 },
+                title: ["深圳", "Shenzhen"]
+            }],
+            isDefault: false
+        },
+        "shenzhen": {
+            id: "shenzhen",
+            name: "深圳",
+            themeColor: "#009B4D", // 深圳地铁标识绿
+            svglogo: null, // 已接入 CGoUI 内置 shenzhen 官方矢量图标
+            folder: "./city/shenzhen",
+            mainLogic: "./city/shenzhen/shenzhen.js",
+            center: { x: 960, y: 760 },
+            defaultScale: 0.62,
+            mapSize: { width: 1921, height: 1586 },
+            searchCity: "深圳",
+            title: "CGo OpenMap - 深圳轨道交通线路图",
+            keywords: "CGo OpenMap, 深圳地铁, 深圳轨道交通, 线路图, 口岸, 港铁",
+            description: "覆盖深圳地铁 1~14、16、20 号线及 6 号线支线，与香港线路图衔接，口岸车站提供通关信息（非官方）。",
+            officialMapUrl: "https://www.szmc.net/map/",
+            registerDate: "2026-09-25",
+            status: "active",
+            maintainers: [
+                { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
+            ],
+            lineWidth: 5.4,
+            shadowDeco: "./city/shenzhen/assets/shenzhen_deco.svg",
+            minScale: 0.25,
+            neighbors: [{
+                id: "hongkong", edge: "bottom",
+                // 与香港侧的配置互为逆变换
+                scale: 1 / 1.5, offset: { x: 700.43, y: 1364.6 },
+                title: ["香港", "Hong Kong"]
+            }],
             isDefault: false
         },
         "dalian": {

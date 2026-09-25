@@ -1,17 +1,17 @@
 /**
  * CGo OpenMap - 沈阳车站位置与首末班车模块
  *
+ * 取数逻辑（有轨端点表、季节阈值、位置与出入口）留在本模块；
+ * 「归一化行 → HTML」「终点站代号解析」「季节标签差异判定」交由共享渲染层处理
+ * （city/shenyang/shared/timetable-renderer.js）。
+ *
+ * 本模块同时渲染「位置」「首末班车」「出入口」三行，故用 renderCardShell +
+ * renderInfoRow 自行组合，而非直接调用 renderCard。
+ *
  * @event cgo:city-module-ready
  * @property {{ cityId: string, moduleId: string }} detail
  */
 (function () {
-    const escapeHtml = (value) => String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
-
     function getInfo(stationId, lineId) {
         return window.SHENYANG_STACARD_DATA?.[String(stationId)]?.[String(lineId)] || null;
     }
@@ -40,109 +40,95 @@
         );
     }
 
-    function resolveDestinationStationId(lineId, destination) {
-        if (!destination) return "";
-        if (destination !== "line-first" && destination !== "line-last") return String(destination);
-
-        const line = getLineById(lineId);
-        if (!line) return "";
-        const stationIds = line.hasbranch
-            ? (line["stationIds-way1"] || line.stationIds || [])
-            : (line.stationIds || []);
-        if (!stationIds.length) return "";
-        return destination === "line-first" ? stationIds[0] : stationIds[stationIds.length - 1];
-    }
-
-    function getStationNameById(stationId) {
-        if (typeof stationsData === "undefined") return "";
-        return stationsData[String(stationId)]?.cn || "";
-    }
-
+    /**
+     * 季节：阈值属城市数据（沈阳为 4–10 月夏令时），故保留在本模块，
+     * 不随共享层统一。
+     */
     function getSeason() {
         const parts = new Intl.DateTimeFormat("en-US", {
             timeZone: "Asia/Shanghai",
             month: "numeric"
         }).formatToParts(new Date());
         const month = Number(parts.find((part) => part.type === "month")?.value);
+        const isSummer = month >= 4 && month <= 10;
         return {
-            key: month >= 4 && month <= 10 ? "summer" : "winter",
-            label: month >= 4 && month <= 10 ? "夏令时" : "冬令时"
+            key: isSummer ? "summer" : "winter",
+            otherKey: isSummer ? "winter" : "summer",
+            label: isSummer ? "夏令时" : "冬令时"
         };
     }
 
-    function formatServiceHours(serviceHours, season, lineId) {
-        if (!Array.isArray(serviceHours)) return "";
+    /** 地铁：serviceHours → 归一化行；seasonKey 决定取夏冬哪一套时刻 */
+    function serviceRows(serviceHours, lineId, seasonKey) {
+        if (!Array.isArray(serviceHours)) return [];
+        const line = getLineById(lineId);
         return serviceHours.map((item) => {
-            const destinationId = resolveDestinationStationId(lineId, item.destination);
-            const destinationName = getStationNameById(destinationId);
-            const timeRange = item?.[season.key];
-            if (!destinationName || !timeRange) return "";
-
-            const first = timeRange.first ? escapeHtml(timeRange.first) : "";
-            const last = timeRange.last ? escapeHtml(timeRange.last) : "";
-            const hours = first && last
-                ? `${first}-${last}`
-                : first ? `首班 ${first}` : last ? `末班 ${last}` : "";
-            if (!hours) return "";
-            const noteText = String(item.note || "").trim();
-            const note = noteText ? `（${escapeHtml(noteText)}）` : "";
-            const leadingNote = noteText === "推算" ? `<small>${note}</small>` : "";
-            const trailingNote = noteText === "推算" ? "" : note;
-            return `${leadingNote}开往${escapeHtml(destinationName)}：${hours}${trailingNote}`;
-        }).filter(Boolean).join("<br>");
+            const timeRange = item?.[seasonKey];
+            return {
+                destination: CGoTimetable.resolveDestination(line, item?.destination),
+                first: timeRange?.first || "",
+                last: timeRange?.last || "",
+                note: item?.note || ""
+            };
+        }).filter((row) => row.destination && (row.first || row.last));
     }
 
-    function formatTramwayHours(timetableInfos, timetable) {
-        if (!Array.isArray(timetableInfos) || !timetableInfos.length) return "";
-        return timetableInfos.map((timetableInfo) => {
-            const first = timetableInfo.first ? escapeHtml(timetableInfo.first) : "";
-            const last = timetableInfo.last ? escapeHtml(timetableInfo.last) : "";
-            const timeRange = first && last
-                ? `${first}-${last}`
-                : first ? `首班 ${first}` : `末班 ${last}`;
-            if (!timeRange) return "";
-            const origin = timetableInfo.stationName
-                ? `${escapeHtml(timetableInfo.stationName)}始发：`
-                : "";
-            const note = timetable.dailySinglePair
-                ? ` <small class="shenyang-tramway-origin-note">（每日1对）</small>`
-                : "";
-            return `${origin}${timeRange}${note}`;
-        }).filter(Boolean).join("<br>");
+    /** 有轨：端点站始发时刻 → 归一化行（该表不区分工作日/节假日与夏冬） */
+    function tramwayRows(lineId) {
+        const infos = getTramwayOriginInfos(lineId);
+        if (!infos.length) return [];
+        const timetable = getTramwayTimetable(lineId) || {};
+        return infos.map((info) => ({
+            destination: info.stationName || "",
+            first: info.first || "",
+            last: info.last || "",
+            mode: "origin",
+            note: timetable.dailySinglePair ? "每日1对" : ""
+        })).filter((row) => row.destination && (row.first || row.last));
+    }
+
+    /** 某线路在某季节下的全部行；有轨无季节维度，两季返回相同结果 */
+    function rowsFor(info, lineId, seasonKey) {
+        if (isTramLine(lineId)) return tramwayRows(lineId);
+        return serviceRows(info?.serviceHours, lineId, seasonKey);
     }
 
     function renderRows(info, lineId) {
         const season = getSeason();
-        const rows = [];
-        const safeInfo = info || {};
-        const tramway = getTramwayOriginInfos(lineId);
-        const timetable = getTramwayTimetable(lineId) || {};
-        if (safeInfo.location) rows.push(["位置", escapeHtml(safeInfo.location)]);
+        const isTram = isTramLine(lineId);
+        const rows = rowsFor(info, lineId, season.key);
+        const blocks = [];
 
-        const serviceHours = isTramLine(lineId)
-            ? formatTramwayHours(tramway, timetable)
-            : formatServiceHours(safeInfo.serviceHours, season, lineId);
-        if (serviceHours) {
-            const serviceLabel = isTramLine(lineId)
-                ? "首末班车"
-                : `首末班车<br><small>${escapeHtml(season.label)}</small>`;
-            rows.push([serviceLabel, serviceHours]);
-        }
-        if (Array.isArray(safeInfo.exits) && safeInfo.exits.length) {
-            rows.push(["出入口", safeInfo.exits.map(escapeHtml).join("、")]);
+        if (info?.location) {
+            blocks.push(CGoTimetable.renderInfoRow("位置", CGoTimetable.escapeHtml(info.location)));
         }
 
-        return rows.map(([label, value]) => `
-            <div class="info-row">
-                <span class="info-label">${label}</span>
-                <span class="info-value">${value || "暂无数据"}</span>
-            </div>
-        `).join("");
+        const timetableText = CGoTimetable.renderRows(rows);
+        if (timetableText) {
+            // 季节标签：仅当夏冬时刻确有差异时才显示；有轨无季节维度，恒不显示
+            const otherRows = isTram ? [] : rowsFor(info, lineId, season.otherKey);
+            const seasonLabel = !isTram && !CGoTimetable.sameRows(rows, otherRows)
+                ? season.label
+                : "";
+            blocks.push(CGoTimetable.renderInfoRow(
+                CGoTimetable.buildLabel("首末班车", { seasonLabel }),
+                timetableText
+            ));
+        }
+
+        if (Array.isArray(info?.exits) && info.exits.length) {
+            blocks.push(CGoTimetable.renderInfoRow(
+                "出入口",
+                info.exits.map(CGoTimetable.escapeHtml).join("、")
+            ));
+        }
+
+        return CGoTimetable.renderCardShell(blocks.join(""));
     }
 
     if (window.StationBoard?.registerModule) {
         window.StationBoard.registerModule({
-            id: "shenyang-service-info",
+            id: "shenyang-timetable",
             name: "沈阳车站运营信息",
             targetTab: "line-tab",
             order: 15,
@@ -155,18 +141,12 @@
             render({ station, lineInfo }) {
                 const info = getInfo(station?.id, lineInfo?.id);
                 if (!info && !(isTramLine(lineInfo?.id) && getTramwayOriginInfos(lineInfo?.id).length > 0)) return "";
-                return `
-                    <div class="shenyang-service-info-card" style="margin:8px 0 14px 0;">
-                        <div class="stacard-info-content" style="width:100%;box-sizing:border-box;padding:4px 0;border-bottom:1px dashed var(--divider,rgba(0,0,0,.08));">
-                            ${renderRows(info, lineInfo.id)}
-                        </div>
-                    </div>
-                `;
+                return renderRows(info, lineInfo?.id);
             }
         });
     }
 
     document.dispatchEvent(new CustomEvent("cgo:city-module-ready", {
-        detail: { cityId: "shenyang", moduleId: "shenyang-service-info" }
+        detail: { cityId: "shenyang", moduleId: "shenyang-timetable" }
     }));
 })();
