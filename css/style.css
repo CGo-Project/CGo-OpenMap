@@ -94,6 +94,20 @@ body {
     background-color: var(--map-bg) !important;
 }
 
+/* 从邻城切换过来时，在视口对齐前先隐藏地图（见 core/city-neighbors.js） */
+html.nb-arrive #map-content {
+    opacity: 0;
+}
+
+html.nb-fadein #map-content {
+    transition: opacity .38s ease, transform .75s cubic-bezier(.22, .61, .36, 1) !important;
+}
+
+/* 交互期间提升为合成层，见 core/script.js 的 markMapMoving() */
+#map-content.is-moving {
+    will-change: transform;
+}
+
 .animate-zoom {
     transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }

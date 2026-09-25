@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260923.1550';
+const CACHE_NAME = 'cgo-openmap-v260926.2100';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -63,6 +63,7 @@ const ASSETS_TO_CACHE = [
     './core/tool-theme.js',
     './core/station-board.js',
     './core/script.js',
+    './core/city-neighbors.js',
     './core/help.js',
     './core/path-geometry.js',
     './core/station-icons.js',
@@ -108,10 +109,13 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shenyang.js',
     './city/shenyang/modules/shenyang_map.js',
     './city/shenyang/modules/shenyang_station_board.js',
+    './city/shenyang/modules/shenyang_station_title.js',
     './city/shenyang/modules/shenyang_cultural.js',
     './city/shenyang/modules/shenyang_service_info.js',
+    './city/shenyang/modules/shenyang_calligraphy.js',
     './city/shenyang/stacard/script.js',
     './city/shenyang/stacard/data.js',
+    './city/shenyang/data_calligraphy.js',
     './city/shenyang/data_stations.js',
     './city/shenyang/data_lines.js',
     './city/shenyang/data_virtual_transfers.js',
@@ -119,13 +123,55 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/data_notopen.js',
     './city/shenyang/data_legend.js',
     './city/shenyang/data_timetable.js',
+    './city/shenyang/shared/timetable-renderer.js',
+    './city/shenyang/shared/stacard-engine.js',
+    './city/shenyang/shared/station-title.js',
+    './city/shenyang/shared/tip-card.js',
+    './city/shenyang/shared/calligraphy.js',
+    './city/shenyang/shared/calligraphy.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
     './city/shenyang/assets/airport.svg',
     './city/shenyang/assets/compass.svg',
     './city/shenyang/assets/fangcheng.svg',
+    './city/shenyang/assets/fangcheng_mono.svg',
     './city/shenyang/assets/railway.svg',
+    './city/shenyang/assets/transfer-badge.svg',
+    './city/shenyang/assets/tram-5.svg',
+
+    // 1号线主线站名题字（书法家题写）
+    './city/shenyang/assets/calligraphy/qihaojie.png',
+    './city/shenyang/assets/calligraphy/sihaojie.png',
+    './city/shenyang/assets/calligraphy/shenyangzhan.png',
+    './city/shenyang/assets/calligraphy/taiyuanjie.png',
+    './city/shenyang/assets/calligraphy/yunfengbeijie.png',
+
+    // 1号线东延段站名题字（辽宁 / 沈阳书法界名家题写）
+    './city/shenyang/assets/calligraphy/xinhuijie.png',
+    './city/shenyang/assets/calligraphy/xinningjie.png',
+    './city/shenyang/assets/calligraphy/dongdayingjie.png',
+    './city/shenyang/assets/calligraphy/nongyedaxue.png',
+    './city/shenyang/assets/calligraphy/qianling.png',
+    './city/shenyang/assets/calligraphy/donglinggongyuan.png',
+    './city/shenyang/assets/calligraphy/shuiquan.png',
+    './city/shenyang/assets/calligraphy/boguanbeidajie.png',
+    './city/shenyang/assets/calligraphy/zhiwuyuan.png',
+    './city/shenyang/assets/calligraphy/shuangma.png',
+
+    // 2号线站名题字（作家 / 诗人题写，逐站实拍采集中）
+    './city/shenyang/assets/calligraphy/aotizhongxin.png',
+    './city/shenyang/assets/calligraphy/gongyezhanlanguan.png',
+    './city/shenyang/assets/calligraphy/hangkonghangtiandaxue.png',
+    './city/shenyang/assets/calligraphy/jinrongzhongxin.png',
+    './city/shenyang/assets/calligraphy/qingniangongyuan.png',
+    './city/shenyang/assets/calligraphy/quanyunlu.png',
+    './city/shenyang/assets/calligraphy/renminguangchang.png',
+    './city/shenyang/assets/calligraphy/shenyangbeizhan.png',
+    './city/shenyang/assets/calligraphy/shijidasha.png',
+    './city/shenyang/assets/calligraphy/shitushuguan.png',
+    './city/shenyang/assets/calligraphy/wulihe.png',
+    './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
 
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',
@@ -171,6 +217,49 @@ const ASSETS_TO_CACHE = [
     './city/sydney/assets/line/MW.svg',
     './city/sydney/assets/line/WSA.svg',
 
+    // 城市配置与业务数据 (香港)
+    './city/hongkong/hongkong.js',
+    './city/hongkong/style.css',
+    './city/hongkong/stacard/script.js',
+    './city/hongkong/data_stations.js',
+    './city/hongkong/data_lines.js',
+    './city/hongkong/data_virtual_transfers.js',
+    './city/hongkong/data_scattered.js',
+    './city/hongkong/data_notopen.js',
+    './city/hongkong/data_legend.js',
+    './city/hongkong/data_timetable.js',
+    './city/hongkong/staname.csv',
+    './city/hongkong/data_fares.js',
+    './city/hongkong/data_buses.js',
+    './city/hongkong/assets/hongkong_deco.svg',
+    './city/hongkong/assets/line/AEL.svg',
+    './city/hongkong/assets/line/DRL.svg',
+    './city/hongkong/assets/line/EAL.svg',
+    './city/hongkong/assets/line/ISL.svg',
+    './city/hongkong/assets/line/KTL.svg',
+    './city/hongkong/assets/line/SIL.svg',
+    './city/hongkong/assets/line/TKL.svg',
+    './city/hongkong/assets/line/TWL.svg',
+    './city/hongkong/assets/line/TML.svg',
+    './city/hongkong/assets/line/TCL.svg',
+    './city/hongkong/assets/line/LR.svg',
+    './city/hongkong/assets/line/HSR.svg',
+
+    // 城市配置与业务数据 (深圳)
+    './city/shenzhen/shenzhen.js',
+    './city/shenzhen/style.css',
+    './city/shenzhen/stacard/script.js',
+    './city/shenzhen/data_stations.js',
+    './city/shenzhen/data_lines.js',
+    './city/shenzhen/data_virtual_transfers.js',
+    './city/shenzhen/data_scattered.js',
+    './city/shenzhen/data_notopen.js',
+    './city/shenzhen/data_legend.js',
+    './city/shenzhen/data_timetable.js',
+    './city/shenzhen/assets/shenzhen_deco.svg',
+    './city/shenzhen/assets/line/L6B.svg',
+    './city/shenzhen/amap_data.json',
+
     // 城市配置与业务数据 (青岛)
     './city/qingdao/qingdao.js',
     './city/qingdao/stacard/script.js',
@@ -201,6 +290,7 @@ const ASSETS_TO_CACHE = [
     './city/dalian/modules/dalian_map.js',
     './city/dalian/modules/dalian_timetable.js',
     './city/dalian/modules/dalian_transfers.js',
+    './city/dalian/modules/dalian_station_title.js',
     './city/dalian/stacard/script.js',
     './city/dalian/data_stations.js',
     './city/dalian/data_lines.js',
@@ -221,6 +311,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (长春)
     './city/changchun/changchun.js',
     './city/changchun/modules/changchun_service_info.js',
+    './city/changchun/modules/changchun_station_title.js',
     './city/changchun/stacard/script.js',
     './city/changchun/data_stations.js',
     './city/changchun/data_lines.js',
@@ -230,6 +321,10 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_legend.js',
     './city/changchun/data_timetable.js',
     './city/changchun/amap_data.json',
+    './city/changchun/assets/railway.svg',
+    './city/changchun/assets/transfer-badge.svg',
+    './city/changchun/assets/tram-54.svg',
+    './city/changchun/assets/tram-55.svg',
 
     // 城市配置与业务数据 (福州)
     './city/fuzhou/fuzhou.js',

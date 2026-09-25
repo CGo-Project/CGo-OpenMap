@@ -1,16 +1,15 @@
 /**
  * CGo OpenMap - 大连官方首末班车信息板模块
  *
+ * 取数逻辑（贯通区段合并、九里开发方向合并、推算标记、调休日历）留在本模块；
+ * 「归一化行 → HTML」「日期类型判定」「标签差异判定」交由共享渲染层处理
+ * （city/shenyang/shared/timetable-renderer.js）。
+ *
  * @event cgo:city-module-ready
  * @property {{ cityId: string, moduleId: string }} detail
  */
 (function () {
-    const escapeHtml = (value) => String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
+    const getCalendar = () => window.DALIAN_TIMETABLE_CALENDAR;
 
     function getEntries(stationId, lineId) {
         if (typeof window.getDalianTimetableInfoEntries === "function") {
@@ -20,13 +19,11 @@
         return info ? [{ lineId: String(lineId), info }] : [];
     }
 
-    function getServiceDayLabel(date = new Date()) {
-        const dayType = typeof window.getDalianTimetableDayType === "function"
-            ? window.getDalianTimetableDayType(date)
-            : [0, 6].includes(date.getDay()) ? "restday" : "workday";
-        return dayType === "restday" ? "节假日" : "工作日";
-    }
-
+    /**
+     * 收集归一化行
+     *
+     * 业务逻辑与原实现一致，仅输出字段名对齐统一契约（destinationName → destination）。
+     */
     function collectRows(stationId, lineId, date = new Date()) {
         const entries = getEntries(stationId, lineId);
         if (!entries.length) return [];
@@ -40,7 +37,7 @@
         entries.forEach(({ info }) => {
             getSchedules(info).forEach((schedule) => {
                 (schedule.directions || []).forEach((direction) => {
-                    const destinationName = direction.destinationName || "未知终点";
+                    const destination = direction.destinationName || "未知终点";
                     const destinationId = String(direction.destinationStationId || "");
                     const first = String(direction.first || "");
                     const last = String(direction.last || "");
@@ -53,7 +50,7 @@
                         : `${destinationId}|${first}|${last}|${estimated}`;
                     const existing = rowIndex.get(key);
                     if (!existing) {
-                        const row = { destinationName, first, last, estimated };
+                        const row = { destination, first, last, estimated };
                         rowIndex.set(key, row);
                         rows.push(row);
                         return;
@@ -69,21 +66,22 @@
         return rows;
     }
 
-    function renderRows(rows) {
-        return rows.map((row) => {
-            const first = escapeHtml(row.first);
-            const last = escapeHtml(row.last);
-            const time = first && last
-                ? `${first}-${last}`
-                : first ? `首班 ${first}` : `末班 ${last}`;
-            const estimateLabel = row.estimated ? "<small>（推算）</small>" : "";
-            return `${estimateLabel}开往${escapeHtml(row.destinationName)}：${time}`;
-        }).join("<br>");
+    /**
+     * 日期类型标签：仅当「工作日」与「节假日」时刻确有差异时才显示
+     *
+     * 标签用于区分当前用的是哪一套时刻表，不是装饰；两者完全相同时隐去。
+     */
+    function buildDayTypeMeta(stationId, lineId, rows, today) {
+        const dayType = CGoDayType.resolve(today, { calendar: getCalendar() });
+        const otherKey = dayType.key === "workday" ? "restday" : "workday";
+        const otherDate = CGoDayType.findDate(otherKey, today, { calendar: getCalendar() });
+        const otherRows = otherDate ? collectRows(stationId, lineId, otherDate) : [];
+        return CGoTimetable.sameRows(rows, otherRows) ? {} : { dayTypeLabel: dayType.label };
     }
 
     if (window.StationBoard?.registerModule) {
         window.StationBoard.registerModule({
-            id: "dalian-line-timetable",
+            id: "dalian-timetable",
             name: "大连首末班车",
             targetTab: "line-tab",
             order: 15,
@@ -94,21 +92,15 @@
                 const today = new Date();
                 const rows = collectRows(station?.id, lineInfo?.id, today);
                 if (!rows.length) return "";
-                return `
-                    <div class="dalian-line-timetable-card" style="margin:8px 0 14px 0;">
-                        <div class="stacard-info-content" style="width:100%;box-sizing:border-box;padding:4px 0;border-bottom:1px dashed var(--divider,rgba(0,0,0,.08));">
-                            <div class="info-row">
-                                <span class="info-label">首末班车<br><small>${getServiceDayLabel(today)}</small></span>
-                                <span class="info-value">${renderRows(rows)}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                return CGoTimetable.renderCard({
+                    rows,
+                    meta: buildDayTypeMeta(station?.id, lineInfo?.id, rows, today)
+                });
             }
         });
     }
 
     document.dispatchEvent(new CustomEvent("cgo:city-module-ready", {
-        detail: { cityId: "dalian", moduleId: "dalian-line-timetable" }
+        detail: { cityId: "dalian", moduleId: "dalian-timetable" }
     }));
 })();

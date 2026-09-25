@@ -1,17 +1,14 @@
 /**
  * CGo OpenMap - 长春车站首末班车模块
  *
+ * 取数逻辑（季节阈值、四维数据的读取方式）留在本模块；
+ * 「归一化行 → HTML」「日期类型判定」「季节与日期类型标签的差异判定」交由共享渲染层
+ * 处理（city/shenyang/shared/timetable-renderer.js）。
+ *
  * 时刻数据来自用户提供的长春轨道交通首末班车图片；官网查询链接仍由
  * data_timetable.js 中的 GLOBAL_SCHEDULE_DATA 单独维护。
  */
 (function () {
-    const escapeHtml = (value) => String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
-
     const getEntries = (stationId, lineId) => {
         const lineData = window.CHANGCHUN_TIMETABLE_DATA?.[String(lineId)];
         return lineData?.[String(stationId)] || [];
@@ -22,53 +19,65 @@
         return stationsData[String(stationId)]?.cn || String(stationId || "");
     };
 
-    const getSeason = () => {
+    /**
+     * 季节：阈值属城市数据（长春为 5–10 月夏令时），故保留在本模块，
+     * 不随共享层统一。
+     */
+    function getSeason() {
         const month = Number(new Intl.DateTimeFormat("en-US", {
             timeZone: "Asia/Shanghai",
             month: "numeric"
         }).format(new Date()));
-        return month >= 5 && month <= 10
-            ? { key: "summer", label: "夏令时" }
-            : { key: "winter", label: "冬令时" };
-    };
+        const isSummer = month >= 5 && month <= 10;
+        return {
+            key: isSummer ? "summer" : "winter",
+            otherKey: isSummer ? "winter" : "summer",
+            label: isSummer ? "夏令时" : "冬令时"
+        };
+    }
 
-    const getDayType = () => {
-        const weekday = new Intl.DateTimeFormat("en-US", {
-            timeZone: "Asia/Shanghai",
-            weekday: "short"
-        }).format(new Date());
-        return ["Sat", "Sun"].includes(weekday)
-            ? { key: "weekend", label: "节假日" }
-            : { key: "workday", label: "工作日" };
-    };
+    /**
+     * 数据中「休息日」的键名为 weekend，与统一契约的 restday 对应。
+     * 长春无调休日历，日期类型由共享层按星期判定。
+     */
+    const dayKeyOf = (key) => (key === "restday" ? "weekend" : "workday");
 
-    const formatFirst = (first, dayType) => {
-        if (!first) return "";
-        return escapeHtml(first[dayType.key] || first.workday || first.weekend || "");
-    };
+    /** 生成某季节 + 某日期类型下的归一化行 */
+    function buildRows(entries, seasonKey, dayKey) {
+        return entries.map((entry) => {
+            const firstSlot = entry?.first || {};
+            return {
+                destination: getStationName(entry?.destination),
+                // 首班按日期类型取值，缺项时沿用原实现的回退链（workday → weekend）
+                first: firstSlot[dayKey] || firstSlot.workday || firstSlot.weekend || "",
+                last: entry?.[seasonKey] || ""
+            };
+        }).filter((row) => row.destination && (row.first || row.last));
+    }
 
-    const renderScheduleRow = (entries, season, dayType) => {
-        const schedule = entries.map((entry) => {
-            const destination = escapeHtml(getStationName(entry.destination));
-            const first = formatFirst(entry.first, dayType);
-            const last = escapeHtml(entry[season.key] || "");
-            if (!destination || (!first && !last)) return "";
-            const timeRange = first && last ? `${first}-${last}` : first || last;
-            return `开往${destination}：${escapeHtml(timeRange)}`;
-        }).filter(Boolean).join("<br>");
-        if (!schedule) return "";
-        return `
-            <div class="info-row">
-                <span class="info-label">首末班车<br><small>${season.label} ${dayType.label}</small></span>
-                <span class="info-value">${schedule}</span>
-            </div>
-        `;
-    };
+    /**
+     * 标签：仅当该维度确有差异时才显示
+     *
+     * 标签用于区分当前用的是哪一套时刻表，不是装饰；某维度取另一分支后
+     * 结果完全相同则隐去该维度标签。
+     */
+    function buildMeta(entries, season, dayType) {
+        const dayKey = dayKeyOf(dayType.key);
+        const otherDayKey = dayKey === "workday" ? "weekend" : "workday";
+        const rows = buildRows(entries, season.key, dayKey);
+        const meta = {};
+        if (!CGoTimetable.sameRows(rows, buildRows(entries, season.otherKey, dayKey))) {
+            meta.seasonLabel = season.label;
+        }
+        if (!CGoTimetable.sameRows(rows, buildRows(entries, season.key, otherDayKey))) {
+            meta.dayTypeLabel = dayType.label;
+        }
+        return meta;
+    }
 
-    const register = () => {
-        if (!window.StationBoard?.registerModule) return;
+    if (window.StationBoard?.registerModule) {
         window.StationBoard.registerModule({
-            id: "changchun-service-info",
+            id: "changchun-timetable",
             name: "长春首末班车",
             targetTab: "line-tab",
             order: 15,
@@ -78,21 +87,16 @@
             render({ station, lineInfo }) {
                 const entries = getEntries(station?.id, lineInfo?.id);
                 if (!entries.length) return "";
+
                 const season = getSeason();
-                const dayType = getDayType();
-                return `
-                    <section class="changchun-service-info-card" style="margin:8px 0 14px 0;">
-                        <div class="stacard-info-content" style="width:100%;box-sizing:border-box;padding:4px 0;border-bottom:1px dashed var(--divider,rgba(0,0,0,.08));">
-                            ${renderScheduleRow(entries, season, dayType)}
-                        </div>
-                    </section>
-                `;
+                const dayType = CGoDayType.resolve(new Date());
+                const rows = buildRows(entries, season.key, dayKeyOf(dayType.key));
+                return CGoTimetable.renderCard({ rows, meta: buildMeta(entries, season, dayType) });
             }
         });
-    };
+    }
 
-    register();
     document.dispatchEvent(new CustomEvent("cgo:city-module-ready", {
-        detail: { cityId: "changchun", moduleId: "changchun-service-info" }
+        detail: { cityId: "changchun", moduleId: "changchun-timetable" }
     }));
 })();

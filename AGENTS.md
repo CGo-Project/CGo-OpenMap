@@ -98,6 +98,7 @@ openmap/
 │   ├── cgo-ui.js               # Web Components 组件库 (<cgo-icon> 等)
 │   ├── path-geometry.js        # 折线倒角几何 (引擎与 Drunk 编辑模式共用的唯一真源)
 │   ├── station-icons.js        # 车站图元模板与尺寸 (引擎与 Drunk 共用的唯一真源)
+│   ├── city-neighbors.js       # 邻城衔接：邻城影子、拉到边缘切换城市、缩小后双城并看 (按注册表 neighbors 配置)
 │   ├── settings.js             # 偏好设置面板逻辑 (主题、全屏、清除缓存)
 │   ├── help.js                 # 帮助与关于弹窗逻辑
 │   ├── notice.js               # 动态公告与消息提示
@@ -241,6 +242,31 @@ const linesData = [
   - `color`: 线路主色
   - `svgclr` (可选): 图标底色（默认同 `color`）
   - `svgtext` (可选): 图标文字颜色（默认 `#FFFFFF`）
+
+### 4.4.1 邻城衔接（`neighbors`，如深圳 ⇄ 香港）
+
+地理上相邻、但在系统里仍各自独立的两座城市，可在 `city/data.js` 的注册项里互相声明 `neighbors`，
+由 `core/city-neighbors.js` 统一处理（引擎不含任何城市私有判断）：
+
+```javascript
+"hongkong": {
+    lineWidth: 8.15,                       // 本城示意图线宽，邻城据此换算影子比例
+    shadowDeco: "./city/hongkong/assets/hongkong_deco.svg", // 作为影子时的底图（可选）
+    minScale: 0.18,                        // 允许缩得更小，才能同屏看到两座城市
+    neighbors: [{
+        id: "shenzhen", edge: "top",       // 邻城在本城哪一侧：top / bottom / left / right
+        scale: 1.5, offset: { x: -1050.64, y: -2046.9 }, // 本城坐标 = offset + scale × 邻城坐标
+        title: ["深圳", "Shenzhen"]
+    }]
+}
+```
+
+- **影子**：邻城线网只画在本城画布之外、邻城所在一侧的半平面里；
+- **拉到边缘进入**：可多露出一段影子，继续拉（拖拽按位移、滚轮/方向键逐次累计）出现进度环，拉满后过渡到邻城，
+  URL 带 `nbfrom` / `at`（邻城坐标与等效缩放）/ `sel`（可选，落地后选中的车站），到达后还原同一画面再滑回邻城画布；
+- **双城并看**：缩放低于「本城 ∪ 邻城」刚好装进视口的比例时，边界放宽到两城并集，点击影子直接进入；
+- 两侧的 `scale` / `offset` 必须互为逆变换；`scale` 建议取两图线宽之比，保证影子与本城线路粗细一致；
+- 城市可声明 `minScale` / `maxScale` 覆盖默认缩放范围（0.5 ~ 3.0）。
 
 ### 4.5 可定制模块化车站信息板（`core/station-board.js`）
 
