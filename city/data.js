@@ -186,6 +186,48 @@
             maintainers: [
                 { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
             ],
+            // 示意图线宽（綫路描邊 8.15px），供邻城绘制香港影子时换算比例
+            lineWidth: 8.15,
+            shadowDeco: "./city/hongkong/assets/hongkong_deco.svg",
+            // 与深圳衔接：往上滑可见深圳线网影子，继续上滑进入深圳；缩到很小时两城并看
+            minScale: 0.18,
+            neighbors: [{
+                id: "shenzhen", edge: "top",
+                // 两图线宽之比 8.15 / 5.4 ≈ 1.5；深圳图的深港边界贴香港图顶边，罗湖对准罗湖
+                scale: 1.5, offset: { x: -1050.64, y: -2046.9 },
+                title: ["深圳", "Shenzhen"]
+            }],
+            isDefault: false
+        },
+        "shenzhen": {
+            id: "shenzhen",
+            name: "深圳",
+            themeColor: "#009B4D", // 深圳地铁标识绿
+            svglogo: null, // 已接入 CGoUI 内置 shenzhen 官方矢量图标
+            folder: "./city/shenzhen",
+            mainLogic: "./city/shenzhen/shenzhen.js",
+            center: { x: 960, y: 760 },
+            defaultScale: 0.62,
+            mapSize: { width: 1921, height: 1586 },
+            searchCity: "深圳",
+            title: "CGo OpenMap - 深圳轨道交通线路图",
+            keywords: "CGo OpenMap, 深圳地铁, 深圳轨道交通, 线路图, 口岸, 港铁",
+            description: "覆盖深圳地铁 1~14、16、20 号线及 6 号线支线，与香港线路图衔接，口岸车站提供通关信息（非官方）。",
+            officialMapUrl: "https://www.szmc.net/map/",
+            registerDate: "2026-09-25",
+            status: "active",
+            maintainers: [
+                { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
+            ],
+            lineWidth: 5.4,
+            shadowDeco: "./city/shenzhen/assets/shenzhen_deco.svg",
+            minScale: 0.25,
+            neighbors: [{
+                id: "hongkong", edge: "bottom",
+                // 与香港侧的配置互为逆变换
+                scale: 1 / 1.5, offset: { x: 700.43, y: 1364.6 },
+                title: ["香港", "Hong Kong"]
+            }],
             isDefault: false
         },
         "dalian": {

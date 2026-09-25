@@ -1,0 +1,268 @@
+/**
+ * CGo OpenMap - 深圳城市专属样式 (city/shenzhen/style.css)
+ *
+ * 取值按官方运营线路网络图实测（PDF pt × 0.4235 = 画布像素）：
+ *   1. 外框 #F8F7F7、陆地 #FFFFFF、海域 #DBEAF2、香港区域 #EEEDEF；线路描边 12.75pt → 5.4px；
+ *   2. 普通站为线路色圆环（描边 2.83pt → 1.2px），换乘站为深色 #231916 描边的白色胶囊（3.97pt → 1.68px）；
+ *   3. 站名主色 #231916；字体 Noto Sans SC / Arimo，由 shenzhen.js 逐行贴合原图墨迹框。
+ */
+
+.map-shenzhen {
+    --map-bg: #F8F7F7;
+    --sz-ink: #231916;
+    --sz-ring-fill: #FFFFFF;
+    --sz-hk-ink: #898989;
+}
+
+[data-theme='dark'].map-shenzhen {
+    --map-bg: #15181b;
+    --sz-ink: #e4e6e8;
+    --sz-ring-fill: #1d2125;
+    --sz-hk-ink: #8d949a;
+}
+
+.map-shenzhen #map-container,
+.map-shenzhen #map-content {
+    background-color: var(--map-bg);
+}
+
+.map-shenzhen #map-content {
+    width: 1921px;
+    height: 1586px;
+}
+
+/* ── 线路：原图无隔离描边，圆头端点 ─────────────────────────────── */
+.map-shenzhen .line-visual-outer {
+    display: none;
+}
+
+.map-shenzhen .line-visual-inner {
+    stroke-width: 5.4px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.map-shenzhen .line-visual-group.active .line-visual-inner {
+    stroke-width: 6.6px !important;
+}
+
+.map-shenzhen .line-visual-group[data-visual-id="EAL"] .line-visual-inner {
+    stroke-width: 5px;
+    stroke-linecap: butt;
+}
+
+/* ── 车站图元 ─────────────────────────────────────────────────── */
+.map-shenzhen .station.sz-marker {
+    overflow: visible;
+    z-index: 16;
+}
+
+.map-shenzhen .station.sz-marker.sz-ic {
+    z-index: 22;
+}
+
+.map-shenzhen .station.sz-marker svg {
+    overflow: visible;
+    shape-rendering: geometricPrecision;
+}
+
+.map-shenzhen .sz-mk {
+    fill: var(--sz-ring-fill);
+    stroke: var(--c);
+}
+
+.map-shenzhen .sz-mk-ic {
+    stroke: var(--sz-ink);
+}
+
+.map-shenzhen .sz-mk-hk {
+    stroke: #9F9FA0;
+}
+
+.map-shenzhen .station.sz-marker.active {
+    transform: translate(-50%, -50%) scale(1.35);
+    filter: none;
+}
+
+.map-shenzhen .station.sz-marker.active .sz-mk {
+    stroke: #D0021B;
+}
+
+/* ── 站名：各行绝对定位，由 shenzhen.js 按字体度量贴合 ─────────── */
+.map-shenzhen #labels-layer {
+    visibility: hidden;
+}
+
+.sz-labels-ready.map-shenzhen #labels-layer {
+    visibility: visible;
+}
+
+.map-shenzhen .label-group.sz-label {
+    white-space: nowrap;
+}
+
+.map-shenzhen .label-group.sz-label .stacn,
+.map-shenzhen .label-group.sz-label .staen {
+    display: block;
+    color: var(--sz-ink) !important;
+    -webkit-text-stroke: 0;
+    paint-order: stroke fill;
+}
+
+.map-shenzhen .label-group.sz-label-hk .stacn,
+.map-shenzhen .label-group.sz-label-hk .staen {
+    color: var(--sz-hk-ink) !important;
+}
+
+.map-shenzhen .label-group.type-no .stacn,
+.map-shenzhen .label-group.type-no .staen {
+    color: var(--sz-ink) !important;
+}
+
+.map-shenzhen .label-group.sz-label.active .stacn,
+.map-shenzhen .label-group.sz-label.active .staen {
+    color: #D0021B !important;
+    -webkit-text-stroke: 3px var(--sz-ring-fill);
+}
+
+/* ── 底图装饰与注记文字 ───────────────────────────────────────── */
+/* 引擎先以 <img> 放入装饰底图，shenzhen.js 随即换成内联 SVG；<img> 不跟随深色主题，替换前先隐藏以免闪白 */
+.map-shenzhen #scattered-layer img[src*="shenzhen_deco"]:not(.sz-deco-fallback) {
+    visibility: hidden;
+}
+
+.sz-deco-svg,
+.sz-deco-svg svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#sz-text-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 6;
+    pointer-events: none;
+}
+
+.sz-deco-text {
+    position: absolute;
+    color: var(--sz-ink);
+}
+
+.sz-deco-text span {
+    display: block;
+}
+
+.sz-dt-region { color: #B4B4B5; }
+.sz-dt-region:first-child,
+.sz-dt-region:nth-child(2) { color: #C9C9CA; }
+.sz-dt-hk { color: #898989; }
+.sz-dt-badge { color: #fff; }
+.sz-dt-note,
+.sz-dt-warn { color: #231916; }
+
+/* 深色模式：只重新着色海陆与中性色，线路色与编号牌保持不变 */
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-land { fill: #1d2125; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-sea { fill: #0f1d27; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-hk { fill: #262a2e; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-frame { fill: #15181b; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-bd { fill: #4a5157; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-tram-l { fill: #5a6168; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-tram-s { fill: #1d2125; stroke: #5a6168; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-brk,
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-cmp { fill: #c9cdd1; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-icon-bg { fill: #c9cdd1; }
+[data-theme='dark'].map-shenzhen .sz-deco-svg .sz-icon-fg { fill: #1d2125; }
+[data-theme='dark'].map-shenzhen .sz-dt-region { color: #4a5157; }
+[data-theme='dark'].map-shenzhen .sz-dt-note,
+[data-theme='dark'].map-shenzhen .sz-dt-warn { color: #231916; }
+
+/* ── 信息板：口岸与港铁车站卡片 ───────────────────────────────── */
+.sz-port-card {
+    margin: 10px 12px 4px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--divider);
+    background: var(--panel-bg-soft, rgba(127, 127, 127, .06));
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-main);
+}
+
+.sz-port-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+.sz-port-title span {
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--text-light);
+    margin-left: 2px;
+}
+
+.sz-port-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+}
+
+.sz-port-row cgo-icon {
+    margin-top: 3px;
+    flex: none;
+    color: var(--text-light);
+}
+
+.sz-port-row > span {
+    flex: 1;
+    min-width: 0;
+}
+
+.sz-port-muted {
+    color: var(--text-light);
+    font-size: 12px;
+}
+
+.sz-port-st {
+    font-weight: 500;
+    font-size: 12px;
+    padding: 1px 8px;
+    border-radius: 999px;
+}
+
+.sz-port-st.open { background: rgba(0, 155, 77, .12); color: #0a8a47; }
+.sz-port-st.soon { background: rgba(230, 140, 0, .14); color: #b86b00; }
+.sz-port-st.closed { background: rgba(127, 127, 127, .14); color: var(--text-light); }
+
+.sz-port-hk {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    column-gap: 8px;
+    align-items: center;
+    width: 100%;
+    margin-top: 10px;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary-color);
+    color: #fff;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+}
+
+.sz-port-hk > cgo-icon:first-child { grid-row: 1 / 3; }
+.sz-port-hk > span { font-weight: 600; }
+.sz-port-hk > small { grid-column: 2; opacity: .8; font-size: 11px; }
+.sz-port-hk > cgo-icon:last-child { grid-column: 3; grid-row: 1 / 3; }
