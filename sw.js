@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.1811';
+const CACHE_NAME = 'cgo-openmap-v260926.2200';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -63,6 +63,7 @@ const ASSETS_TO_CACHE = [
     './core/tool-theme.js',
     './core/station-board.js',
     './core/script.js',
+    './core/city-neighbors.js',
     './core/help.js',
     './core/path-geometry.js',
     './core/station-icons.js',
@@ -272,8 +273,24 @@ const ASSETS_TO_CACHE = [
     './city/hongkong/assets/line/LR.svg',
     './city/hongkong/assets/line/HSR.svg',
 
+    // 城市配置与业务数据 (深圳)
+    './city/shenzhen/shenzhen.js',
+    './city/shenzhen/style.css',
+    './city/shenzhen/stacard/script.js',
+    './city/shenzhen/data_stations.js',
+    './city/shenzhen/data_lines.js',
+    './city/shenzhen/data_virtual_transfers.js',
+    './city/shenzhen/data_scattered.js',
+    './city/shenzhen/data_notopen.js',
+    './city/shenzhen/data_legend.js',
+    './city/shenzhen/data_timetable.js',
+    './city/shenzhen/assets/shenzhen_deco.svg',
+    './city/shenzhen/assets/line/L6B.svg',
+    './city/shenzhen/amap_data.json',
+
     // 城市配置与业务数据 (青岛)
     './city/qingdao/qingdao.js',
+    './city/qingdao/style.css',
     './city/qingdao/stacard/script.js',
     './city/qingdao/data_stations.js',
     './city/qingdao/data_lines.js',
@@ -285,12 +302,15 @@ const ASSETS_TO_CACHE = [
     './city/qingdao/data_station_names.js',
     './city/qingdao/data_construction.js',
     './city/qingdao/modules/qingdao_station_name_history.js',
+    './city/qingdao/modules/qingdao_travel_guide.js',
     './city/qingdao/modules/qingdao_engineering_name_notice.js',
     './city/qingdao/modules/qingdao_timetable.js',
     './city/qingdao/modules/qingdao_construction.js',
+    './city/qingdao/modules/qingdao_line_badges.js',
     './city/qingdao/amap_data.json',
     './city/qingdao/staname.csv',
     './city/qingdao/assets/qingdao_sea.svg',
+    './city/qingdao/assets/compass.svg',
     './city/qingdao/assets/Aircraft.svg',
     './city/qingdao/assets/China_Railway.svg',
     './city/qingdao/assets/Long_Distance_Bus.svg',
@@ -344,6 +364,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (福州)
     './city/fuzhou/fuzhou.js',
     './city/fuzhou/modules/fuzhou_timetable.js',
+    './city/fuzhou/modules/fuzhou_site_space.js',
     './city/fuzhou/modules/fuzhou_cultural.js',
     './city/fuzhou/stacard/script.js',
     './city/fuzhou/data_stations.js',
@@ -353,7 +374,9 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/data_notopen.js',
     './city/fuzhou/data_legend.js',
     './city/fuzhou/data_timetable.js',
+    './city/fuzhou/data_site_space.js',
     './city/fuzhou/staname.csv',
+    './city/fuzhou/amap_data.json',
     './city/fuzhou/assets/fuzhou_sea.svg',
 
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）

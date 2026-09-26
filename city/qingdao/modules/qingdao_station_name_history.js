@@ -69,3 +69,40 @@
 
     console.log("[QingdaoStationNameHistory] v68 loaded");
 })();
+
+/**
+ * 青岛信息卡英文站名强制换行。
+ *
+ * core 的 header-title 默认会把英文站名里的 <br> 转成空格；北京“首经贸”则
+ * 通过 special-br 恢复人工指定的断行。青岛复用同一机制，但泛化到所有数据中
+ * 主动写有 <br> 的英文站名。断行位置直接取 stationsData，地图与信息卡共用同一真源。
+ */
+(function () {
+    if (!window.StationBoard || typeof window.StationBoard.registerModule !== "function") return;
+
+    // 英文标题直接读取 stationsData：数据中的 <br> 是唯一断行真源。
+    window.StationBoard.registerModule({
+        id: "header-title",
+        name: "中英文站名标题",
+        slot: "header",
+        order: 20,
+        render(context) {
+            const station = context.station || {};
+            const enName = station.en || "";
+            const hasForcedBreak = /<br\s*\/?\s*>/i.test(enName);
+            const enNameDisplay = hasForcedBreak
+                ? enName.replace(/<br\s*\/?\s*>/gi, '<span class="special-br"></span>')
+                : enName.replace(/<br\s*\/?\s*>/gi, " ");
+
+            return `
+                <div class="header-name-group">
+                    <div class="panel-cn-name">${station.cn || ""}</div>
+                    <div class="panel-en-name">${enNameDisplay}</div>
+                </div>
+            `;
+        }
+    });
+
+    console.log("[QingdaoStationTitle] English forced line breaks enabled");
+})();
+

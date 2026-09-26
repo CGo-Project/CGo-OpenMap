@@ -1,0 +1,39 @@
+/**
+ * CGo OpenMap - 青岛城市专属样式 (city/qingdao/style.css)
+ *
+ * 城市侧样式统一由 qingdao.js 动态加载；不修改 core/。
+ */
+
+/* 虚拟在建线仅用于同一 #lines-layer 内的视觉覆盖和绘制顺序，不参与鼠标/触摸交互。 */
+.map-qingdao .line-visual-group[data-visual-id$="U"] .line-interaction {
+    pointer-events: none !important;
+    cursor: default !important;
+}
+
+/* 青岛线路统一使用方头、尖角；白色覆盖线与主体保持一致。 */
+.map-qingdao #lines-layer .line-visual-outer,
+.map-qingdao #lines-layer .line-visual-inner,
+.map-qingdao #lines-layer .line-visual-overlay,
+.map-qingdao #lines-layer .line-interaction {
+    stroke-linecap: butt !important;
+    stroke-linejoin: miter !important;
+}
+
+/* 即使核心默认 tsf 图元被回退，也隐藏其中自带的换乘箭头。 */
+.map-qingdao .station.tsf svg path {
+    display: none !important;
+}
+
+/* 英文序数词角标。 */
+.map-qingdao .staen sup {
+    font-size: 0.62em;
+    line-height: 0;
+    position: relative;
+    top: -0.24em;
+}
+
+/* 下王埠（外贸学院）：长站名左对齐，并整体向右移动约两个中文字符宽度。 */
+.map-qingdao #label_M0208 {
+    text-align: left !important;
+    margin-left: 23px;
+}

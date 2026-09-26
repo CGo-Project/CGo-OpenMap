@@ -240,6 +240,21 @@ let HeadlessSvgRenderer = null;
 let isMapDragging = false;        // 地图是否处于拖拽状态
 
 /**
+ * 当前城市允许的缩放范围（城市可在配置中声明 minScale / maxScale，缺省 0.5 ~ 3.0）。
+ * 例如与邻城衔接的城市需要缩得更小，才能在同一视口里同时看到两座城市。
+ */
+function getScaleLimits() {
+    const city = getActiveCity();
+    const min = typeof city.minScale === 'number' ? city.minScale : 0.5;
+    const max = typeof city.maxScale === 'number' ? city.maxScale : 3.0;
+    return { min, max };
+}
+function clampScale(v) {
+    const { min, max } = getScaleLimits();
+    return Math.min(max, Math.max(min, v));
+}
+
+/**
  * 初始化车站卡片系统 (StaCard API)
  */
 async function initStaCardSystem() {
@@ -1286,9 +1301,7 @@ function bindEvents() {
     const btnOut = document.getElementById('mz-out');
     const updateZoom = (val) => {
         hideLineTooltipNow();
-        let newScale = parseFloat(val);
-        if (newScale < 0.5) newScale = 0.5;
-        if (newScale > 3.0) newScale = 3.0;
+        const newScale = clampScale(parseFloat(val));
         mapContent.classList.add('animate-zoom');
         const containerW = mapContainer.clientWidth;
         const containerH = mapContainer.clientHeight;
@@ -1303,7 +1316,12 @@ function bindEvents() {
         if (zoomVal) zoomVal.innerText = Math.round(newScale * 100) + '%';
         updateMapTransform();
     };
-    if (mzSlider) mzSlider.addEventListener('input', (e) => updateZoom(e.target.value));
+    if (mzSlider) {
+        const { min, max } = getScaleLimits();
+        mzSlider.min = String(min);
+        mzSlider.max = String(max);
+        mzSlider.addEventListener('input', (e) => updateZoom(e.target.value));
+    }
     if (btnIn) btnIn.addEventListener('click', () => updateZoom(currentScale + 0.1));
     if (btnOut) btnOut.addEventListener('click', () => updateZoom(currentScale - 0.1));
     const stationClickHandler = (e) => {
@@ -1506,6 +1524,22 @@ function centerMap() {
  */
 function localUpdateMapTransform() {
     mapContent.style.transform = `translate(${currentX}px, ${currentY}px) scale(${currentScale})`;
+    markMapMoving();
+}
+
+/**
+ * 拖动 / 缩放期间把地图提升为独立合成层（will-change: transform），由 GPU 直接平移缩放已栅格化的图层，
+ * 避免每一帧重绘全部站名文字；停手片刻后撤销提升，让浏览器按最终缩放比例重新清晰栅格化。
+ * （常驻 will-change 会让放大后的文字发糊，所以只在交互期间开启。）
+ */
+let mapMovingTimer = null;
+function markMapMoving() {
+    if (!mapContent.classList.contains('is-moving')) mapContent.classList.add('is-moving');
+    clearTimeout(mapMovingTimer);
+    // 带 CSS 过渡的移动（按钮缩放、飞跃定位、切城滑动）要等过渡结束再撤销
+    const settle = mapContent.classList.contains('nb-glide') || document.documentElement.classList.contains('nb-fadein') ? 950
+        : mapContent.classList.contains('animate-zoom') ? 450 : 220;
+    mapMovingTimer = setTimeout(() => mapContent.classList.remove('is-moving'), settle);
 }
 
 /**
@@ -2634,8 +2668,7 @@ function updateTooltipPos(x, y) {
 function triggerUpdateZoom(newScale) {
     const slider = document.getElementById('mz-slider');
     if (slider) {
-        if (newScale < 0.5) newScale = 0.5;
-        if (newScale > 3.0) newScale = 3.0;
+        newScale = clampScale(newScale);
         slider.value = newScale;
         slider.dispatchEvent(new Event('input'));
     }
@@ -3690,8 +3723,7 @@ function initInputControls() {
     const slider = document.getElementById('map-container');
     if (!slider) return;
     const zoomToPoint = (targetScale, clientX, clientY) => {
-        if (targetScale < 0.5) targetScale = 0.5;
-        if (targetScale > 3.0) targetScale = 3.0;
+        targetScale = clampScale(targetScale);
         const rect = slider.getBoundingClientRect();
         const centerX = (clientX !== undefined) ? (clientX - rect.left) : (rect.width / 2);
         const centerY = (clientY !== undefined) ? (clientY - rect.top) : (rect.height / 2);
@@ -4020,6 +4052,9 @@ init();
     window.linesData = linesData;
     window.enforceBoundaries = enforceBoundaries;
     window.updateMapTransform = updateMapTransform;
+    window.getScaleLimits = getScaleLimits;
+    // 供城市或扩展模块在自定义边界规则中复用引擎自带的边界限制
+    window.localEnforceBoundaries = localEnforceBoundaries;
     window.stationsData = typeof stationsData !== 'undefined' ? stationsData : undefined;
 
     // 共享 DOM 常量挂载

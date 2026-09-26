@@ -10,6 +10,8 @@
             if (hm) document.documentElement.setAttribute('header-mode', hm);
             var gm = localStorage.getItem('cgo_glass_mode');
             if (gm) document.documentElement.setAttribute('glass-mode', gm);
+            // 从邻城切换过来时先隐藏地图，由 core/city-neighbors.js 对齐视口后再淡入
+            if (/[?&]nbfrom=/.test(location.search)) document.documentElement.classList.add('nb-arrive');
         })();
     </script>
     <!-- ========================================================================== -->
@@ -298,6 +300,8 @@
     </script>
     <!-- 核心地图渲染引擎 -->
     <script type="module" src="core/script.js?v=260926.2200"></script>
+    <!-- 邻城衔接（影子、上拉进入与双城并看；仅对声明了 neighbors 的城市生效，须晚于 core/script.js） -->
+    <script type="module" src="core/city-neighbors.js?v=260926.2200"></script>
     <!-- 辅助面板逻辑 -->
     <script src="core/help.js?v=260926.2200"></script>
     <script src="core/settings.js?v=260926.2200"></script>

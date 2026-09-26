@@ -5,7 +5,7 @@
  * - 对象保留 url，继续支持车站信息板“官网查询”；
  * - items 原样保存用户工作簿的列标题和值；
  * - 可表达“全程/终到某站”等多个末班车；
- * - 可表达8号线机场直达列车第1/2/3班。
+ * - 可表达8号线快速列车的早间/夜间分组与多班次时刻。
  */
 const GLOBAL_SCHEDULE_DATA = {
     "QDM15": {
@@ -638,153 +638,244 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "胶州北站",
             sourceCn: "胶州北站",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
+                { label: "快速列车-早间(机场方向)-第1班", value: "05:53(到达)" },
+                { label: "快速列车-早间(机场方向)-第2班", value: "06:08(到达)" },
+                { label: "快速列车-早间(机场方向)-第3班", value: "06:28(到达)" },
                 { label: "首车-往胶州北站", value: "-" },
-                { label: "首车-往青岛北站", value: "05:45" },
+                { label: "首车-往五四广场", value: "05:45" },
                 { label: "末车-往胶州北站", value: "-" },
-                { label: "末车-往青岛北站", value: "22:00" },
+                { label: "末车-往五四广场", value: "22:00" }
             ]
         },
         "M0802": {
             cn: "胶东机场",
             sourceCn: "胶东机场",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
-                { label: "直达列车-青岛北站→胶东机场-第1班", value: "05:48到达" },
-                { label: "直达列车-青岛北站→胶东机场-第2班", value: "06:13到达" },
-                { label: "直达列车-青岛北站→胶东机场-第3班", value: "06:38到达" },
+                { label: "快速列车-早间(机场方向)-第1班", value: "05:47(到达)" },
+                { label: "快速列车-早间(机场方向)-第2班", value: "06:02(到达)" },
+                { label: "快速列车-早间(机场方向)-第3班", value: "06:22(到达)" },
+                { label: "快速列车-夜间(市区方向)-第1班", value: "21:42" },
+                { label: "快速列车-夜间(市区方向)-第2班", value: "22:02" },
+                { label: "快速列车-夜间(市区方向)-第3班", value: "22:25" },
+                { label: "快速列车-夜间(市区方向)-第4班", value: "22:45" },
+                { label: "快速列车-夜间(市区方向)-第5班", value: "23:15" },
                 { label: "首车-往胶州北站", value: "06:57" },
-                { label: "首车-往青岛北站", value: "05:50" },
-                { label: "末车-往胶州北站", value: "22:52" },
-                { label: "末车-往青岛北站", value: "22:05" },
-                { label: "直达列车-胶东机场→青岛北站-第1班", value: "22:25" },
-                { label: "直达列车-胶东机场→青岛北站-第2班", value: "22:45" },
-                { label: "直达列车-胶东机场→青岛北站-第3班", value: "23:15" }
+                { label: "首车-往五四广场", value: "05:50" },
+                { label: "末车-往胶州北站", value: "23:10" },
+                { label: "末车-往五四广场", value: "22:05" },
             ]
         },
         "M0803": {
             cn: "胶东",
             sourceCn: "胶东",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
                 { label: "首车-往胶州北站", value: "06:52" },
-                { label: "首车-往青岛北站", value: "05:45" },
-                { label: "末车-往胶州北站", value: "22:47" },
-                { label: "末车-往青岛北站", value: "22:10" },
+                { label: "首车-往五四广场", value: "05:45" },
+                { label: "末车-往胶州北站", value: "23:05" },
+                { label: "末车-往五四广场", value: "22:10" }
             ]
         },
         "M0804": {
             cn: "大涧",
             sourceCn: "大涧",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
                 { label: "首车-往胶州北站", value: "06:46" },
-                { label: "首车-往青岛北站", value: "05:51" },
-                { label: "末车-往胶州北站", value: "22:41" },
-                { label: "末车-往青岛北站", value: "22:17" },
+                { label: "首车-往五四广场", value: "05:51" },
+                { label: "末车-往胶州北站", value: "22:59" },
+                { label: "末车-往五四广场", value: "22:17" }
             ]
         },
         "M0805": {
             cn: "红岛火车站",
             sourceCn: "红岛火车站",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
                 { label: "首车-往胶州北站", value: "06:42" },
-                { label: "首车-往青岛北站", value: "05:55" },
-                { label: "末车-往胶州北站", value: "22:37" },
-                { label: "末车-往青岛北站", value: "22:21" },
+                { label: "首车-往五四广场", value: "05:55" },
+                { label: "末车-往胶州北站", value: "22:55" },
+                { label: "末车-往五四广场", value: "22:21" }
             ]
         },
         "M0806": {
             cn: "健康中心",
             sourceCn: "健康中心",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
                 { label: "首车-往胶州北站", value: "06:39" },
-                { label: "首车-往青岛北站", value: "05:58" },
-                { label: "末车-往胶州北站", value: "22:34" },
-                { label: "末车-往青岛北站", value: "22:24" },
+                { label: "首车-往五四广场", value: "05:58" },
+                { label: "末车-往胶州北站", value: "22:52" },
+                { label: "末车-往五四广场", value: "22:24" }
             ]
         },
         "M0807": {
             cn: "健身中心(红岛会展)",
             sourceCn: "健身中心(红岛会展)",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
                 { label: "首车-往胶州北站", value: "06:36" },
-                { label: "首车-往青岛北站", value: "06:00" },
-                { label: "末车-往胶州北站", value: "22:31" },
-                { label: "末车-往青岛北站", value: "22:26" },
+                { label: "首车-往五四广场", value: "06:00" },
+                { label: "末车-往胶州北站", value: "22:49" },
+                { label: "末车-往五四广场", value: "22:26" }
             ]
         },
         "M0808": {
             cn: "观涛",
             sourceCn: "观涛",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
                 { label: "首车-往胶州北站", value: "06:32" },
-                { label: "首车-往青岛北站", value: "06:05" },
-                { label: "末车-往胶州北站", value: "22:27" },
-                { label: "末车-往青岛北站", value: "22:30" },
+                { label: "首车-往五四广场", value: "06:05" },
+                { label: "末车-往胶州北站", value: "22:45" },
+                { label: "末车-往五四广场", value: "22:30" }
             ]
         },
         "M0809": {
             cn: "红岛科技馆(方特)",
             sourceCn: "红岛科技馆(方特)",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
                 { label: "首车-往胶州北站", value: "06:29" },
-                { label: "首车-往青岛北站", value: "06:08" },
-                { label: "末车-往胶州北站", value: "22:24" },
-                { label: "末车-往青岛北站", value: "22:34" },
+                { label: "首车-往五四广场", value: "06:08" },
+                { label: "末车-往胶州北站", value: "22:42" },
+                { label: "末车-往五四广场", value: "22:34" }
             ]
         },
         "M0810": {
             cn: "大洋",
             sourceCn: "大洋",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
                 { label: "首车-往胶州北站", value: "06:26" },
-                { label: "首车-往青岛北站", value: "06:10" },
-                { label: "末车-往胶州北站", value: "22:21" },
-                { label: "末车-往青岛北站", value: "22:36" },
+                { label: "首车-往五四广场", value: "06:10" },
+                { label: "末车-往胶州北站", value: "22:39" },
+                { label: "末车-往五四广场", value: "22:36" }
             ]
         },
         "M0301": {
             cn: "青岛北站",
             sourceCn: "青岛北站",
             url: "https://www.qd-metro.com/operate.php",
-            source: "青岛地铁首末班车时刻表(用户提供)",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
             items: [
-                { label: "直达列车-青岛北站→胶东机场-第1班", value: "05:20" },
-                { label: "直达列车-青岛北站→胶东机场-第2班", value: "05:45" },
-                { label: "直达列车-青岛北站→胶东机场-第3班", value: "06:10" },
+                { label: "快速列车-早间(机场方向)-第1班", value: "05:19(到达)" },
+                { label: "快速列车-早间(机场方向)-第2班", value: "05:34(到达)" },
+                { label: "快速列车-早间(机场方向)-第3班", value: "05:54(到达)" },
+                { label: "快速列车-夜间(市区方向)-第1班", value: "22:09(到达)" },
+                { label: "快速列车-夜间(市区方向)-第2班", value: "22:29(到达)" },
+                { label: "快速列车-夜间(市区方向)-第3班", value: "22:52(到达)" },
+                { label: "快速列车-夜间(市区方向)-第4班", value: "23:12(到达)" },
+                { label: "快速列车-夜间(市区方向)-第5班", value: "23:42(到达)" },
                 { label: "首车-往胶州北站", value: "06:20" },
-                { label: "首车-往青岛北站", value: "-" },
-                { label: "末车-往胶州北站", value: "22:15" },
-                { label: "末车-往青岛北站", value: "-" },
-                { label: "直达列车-胶东机场→青岛北站-第1班", value: "22:53到达" },
-                { label: "直达列车-胶东机场→青岛北站-第2班", value: "23:13到达" },
-                { label: "直达列车-胶东机场→青岛北站-第3班", value: "23:43到达" }
+                { label: "首车-往五四广场", value: "06:00" },
+                { label: "末车-往胶州北站", value: "22:33" },
+                { label: "末车-往五四广场", value: "22:43" },
             ]
         },
         "M0812": { url: "https://www.qd-metro.com/operate.php" },
-        "M0813": { url: "https://www.qd-metro.com/operate.php" },
-        "M0814": { url: "https://www.qd-metro.com/operate.php" },
-        "M0815": { url: "https://www.qd-metro.com/operate.php" },
-        "M0418": { url: "https://www.qd-metro.com/operate.php" },
-        "M0817": { url: "https://www.qd-metro.com/operate.php" },
-        "M0316": { url: "https://www.qd-metro.com/operate.php" }
+        "M0813": {
+            cn: "闫家山",
+            sourceCn: "闫家山",
+            url: "https://www.qd-metro.com/operate.php",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
+            items: [
+                { label: "首车-往胶州北站", value: "06:22" },
+                { label: "首车-往五四广场", value: "06:05" },
+                { label: "末车-往胶州北站", value: "22:27" },
+                { label: "末车-往五四广场", value: "22:48" }
+            ]
+        },
+        "M0814": {
+            cn: "小水清沟",
+            sourceCn: "小水清沟",
+            url: "https://www.qd-metro.com/operate.php",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
+            items: [
+                { label: "首车-往胶州北站", value: "06:20" },
+                { label: "首车-往五四广场", value: "06:07" },
+                { label: "末车-往胶州北站", value: "22:25" },
+                { label: "末车-往五四广场", value: "22:50" }
+            ]
+        },
+        "M0815": {
+            cn: "大山",
+            sourceCn: "大山",
+            url: "https://www.qd-metro.com/operate.php",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
+            items: [
+                { label: "首车-往胶州北站", value: "06:18" },
+                { label: "首车-往五四广场", value: "06:09" },
+                { label: "末车-往胶州北站", value: "22:23" },
+                { label: "末车-往五四广场", value: "22:53" }
+            ]
+        },
+        "M0418": {
+            cn: "西吴家村",
+            sourceCn: "西吴家村",
+            url: "https://www.qd-metro.com/operate.php",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
+            items: [
+                { label: "快速列车-早间(机场方向)-第1班", value: "05:10(到达)" },
+                { label: "快速列车-早间(机场方向)-第2班", value: "05:25(到达)" },
+                { label: "快速列车-早间(机场方向)-第3班", value: "05:45(到达)" },
+                { label: "快速列车-夜间(市区方向)-第1班", value: "22:18(到达)" },
+                { label: "快速列车-夜间(市区方向)-第2班", value: "22:38(到达)" },
+                { label: "快速列车-夜间(市区方向)-第3班", value: "23:01(到达)" },
+                { label: "快速列车-夜间(市区方向)-第4班", value: "23:21(到达)" },
+                { label: "快速列车-夜间(市区方向)-第5班", value: "23:51(到达)" },
+                { label: "首车-往胶州北站", value: "06:15" },
+                { label: "首车-往五四广场", value: "06:12" },
+                { label: "末车-往胶州北站", value: "22:20" },
+                { label: "末车-往五四广场", value: "22:56" }
+            ]
+        },
+        "M0817": {
+            cn: "澳柯玛桥",
+            sourceCn: "澳柯玛桥",
+            url: "https://www.qd-metro.com/operate.php",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
+            items: [
+                { label: "快速列车-夜间(市区方向)-第1班", value: "22:21(到达)" },
+                { label: "快速列车-夜间(市区方向)-第2班", value: "22:41(到达)" },
+                { label: "首车-往胶州北站", value: "06:12" },
+                { label: "首车-往五四广场", value: "06:15" },
+                { label: "末车-往胶州北站", value: "22:17" },
+                { label: "末车-往五四广场", value: "22:58" }
+            ]
+        },
+        "M0316": {
+            cn: "五四广场",
+            sourceCn: "五四广场",
+            url: "https://www.qd-metro.com/operate.php",
+            source: "青岛地铁8号线首末班车时刻表(用户提供)",
+            items: [
+                { label: "快速列车-早间(机场方向)-第1班", value: "05:07" },
+                { label: "快速列车-早间(机场方向)-第2班", value: "05:22" },
+                { label: "快速列车-早间(机场方向)-第3班", value: "05:42" },
+                { label: "快速列车-夜间(市区方向)-第1班", value: "22:23(到达)" },
+                { label: "快速列车-夜间(市区方向)-第2班", value: "22:43(到达)" },
+                { label: "快速列车-夜间(市区方向)-第3班", value: "23:04(到达)" },
+                { label: "快速列车-夜间(市区方向)-第4班", value: "23:24(到达)" },
+                { label: "快速列车-夜间(市区方向)-第5班", value: "23:54(到达)" },
+                { label: "首车-往胶州北站", value: "06:10" },
+                { label: "首车-往五四广场", value: "-" },
+                { label: "末车-往胶州北站", value: "22:15" },
+                { label: "末车-往五四广场", value: "-" }
+            ]
+        }
     },
     "QDM07N": {
         "M0701": { url: "https://www.qd-metro.com/operate.php" },
