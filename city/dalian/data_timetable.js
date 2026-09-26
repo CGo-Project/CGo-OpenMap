@@ -5,6 +5,10 @@
  * 接口：/bas/smartstation/v1/ipis/station/detail
  * 查询参数：service_id=01，按工作日/周末分组保留官方方向、终点、首班与末班字段。
  * 采集时间：2026-09-08T13:18:07.823Z
+ *
+ * destinationStationId 与沈阳统一语义：线路端点写 "line-first" / "line-last" 代号，
+ * 非端点的贯通区间车（如 13 号线开往开发区 0308）保留站 ID。
+ * 展示侧统一由共享层 CGoTimetable.resolveDestination 解析。
  */
 
 const DALIAN_TIMETABLE_DATA = {
@@ -28,7 +32,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "06:51",
                             "last": "20:16"
@@ -52,7 +56,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "06:51",
                             "last": "20:16"
@@ -89,7 +93,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "06:54",
                             "last": "20:19"
@@ -113,7 +117,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "06:54",
                             "last": "20:19"
@@ -150,7 +154,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:01",
                             "last": "20:26"
@@ -174,7 +178,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:01",
                             "last": "20:26"
@@ -211,7 +215,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:08",
                             "last": "20:33"
@@ -235,7 +239,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:08",
                             "last": "20:33"
@@ -272,7 +276,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:12",
                             "last": "20:37"
@@ -296,7 +300,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:12",
                             "last": "20:37"
@@ -333,7 +337,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:15",
                             "last": "20:40"
@@ -357,7 +361,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:15",
                             "last": "20:40"
@@ -394,7 +398,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:19",
                             "last": "20:44"
@@ -418,7 +422,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:19",
                             "last": "20:44"
@@ -455,7 +459,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:22",
                             "last": "20:47"
@@ -479,7 +483,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:22",
                             "last": "20:47"
@@ -516,7 +520,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:25",
                             "last": "20:50"
@@ -540,7 +544,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:25",
                             "last": "20:50"
@@ -577,7 +581,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:27",
                             "last": "20:52"
@@ -601,7 +605,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "07:27",
                             "last": "20:52"
@@ -685,7 +689,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "05:55",
                             "last": "20:15"
@@ -702,7 +706,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "05:55",
                             "last": "20:15"
@@ -730,7 +734,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "06:46",
                             "last": "20:11"
@@ -754,7 +758,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "1336",
+                            "destinationStationId": "line-last",
                             "destinationName": "普兰店振兴街",
                             "first": "06:46",
                             "last": "20:11"
@@ -791,14 +795,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "05:58",
                             "last": "20:18"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:17",
                             "last": "20:37"
@@ -815,14 +819,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "05:58",
                             "last": "20:18"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:17",
                             "last": "20:37"
@@ -852,14 +856,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "06:03",
                             "last": "20:23"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:13",
                             "last": "20:33"
@@ -876,14 +880,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "06:03",
                             "last": "20:23"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:13",
                             "last": "20:33"
@@ -913,14 +917,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "06:06",
                             "last": "20:27"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:10",
                             "last": "20:30"
@@ -937,14 +941,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "06:06",
                             "last": "20:27"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:10",
                             "last": "20:30"
@@ -974,14 +978,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "06:09",
                             "last": "20:29"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:07",
                             "last": "20:27"
@@ -998,14 +1002,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "06:09",
                             "last": "20:29"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:07",
                             "last": "20:27"
@@ -1035,14 +1039,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "06:13",
                             "last": "20:33"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:03",
                             "last": "20:23"
@@ -1059,14 +1063,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0308",
+                            "destinationStationId": "line-last",
                             "destinationName": "开发区",
                             "first": "06:13",
                             "last": "20:33"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:03",
                             "last": "20:23"
@@ -1096,14 +1100,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:03",
                             "last": "21:33"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:32",
                             "last": "20:02"
@@ -1120,14 +1124,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:03",
                             "last": "21:33"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:32",
                             "last": "20:02"
@@ -1155,7 +1159,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:00",
                             "last": "20:20"
@@ -1172,7 +1176,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0320",
+                            "destinationStationId": "line-first",
                             "destinationName": "九里",
                             "first": "06:00",
                             "last": "20:20"
@@ -1202,14 +1206,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:17",
                             "last": "22:47"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:55",
                             "last": "22:25"
@@ -1226,14 +1230,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:17",
                             "last": "22:47"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:55",
                             "last": "22:25"
@@ -1261,7 +1265,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:00",
                             "last": "19:30"
@@ -1278,7 +1282,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:00",
                             "last": "19:30"
@@ -1308,14 +1312,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "05:58",
                             "last": "22:03"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:04",
                             "last": "19:34"
@@ -1332,14 +1336,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "05:58",
                             "last": "22:03"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:04",
                             "last": "19:34"
@@ -1369,14 +1373,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "05:59",
                             "last": "21:58"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:09",
                             "last": "19:39"
@@ -1393,14 +1397,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "05:59",
                             "last": "21:58"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:09",
                             "last": "19:39"
@@ -1430,14 +1434,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:00",
                             "last": "21:52"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:14",
                             "last": "19:44"
@@ -1454,14 +1458,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:00",
                             "last": "21:52"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:14",
                             "last": "19:44"
@@ -1491,14 +1495,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:39",
                             "last": "23:09"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:34",
                             "last": "22:04"
@@ -1515,14 +1519,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:39",
                             "last": "23:09"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:34",
                             "last": "22:04"
@@ -1550,14 +1554,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:00",
                             "last": "21:48"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:18",
                             "last": "19:48"
@@ -1574,14 +1578,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:00",
                             "last": "21:48"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:18",
                             "last": "19:48"
@@ -1611,14 +1615,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:00",
                             "last": "21:42"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:24",
                             "last": "19:54"
@@ -1635,14 +1639,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:00",
                             "last": "21:42"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:24",
                             "last": "19:54"
@@ -1672,14 +1676,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:06",
                             "last": "21:37"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:28",
                             "last": "19:58"
@@ -1696,14 +1700,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:06",
                             "last": "21:37"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:28",
                             "last": "19:58"
@@ -1733,14 +1737,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:00",
                             "last": "21:30"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:35",
                             "last": "20:05"
@@ -1757,14 +1761,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:00",
                             "last": "21:30"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:35",
                             "last": "20:05"
@@ -1794,14 +1798,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:27",
                             "last": "20:42"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:41",
                             "last": "20:11"
@@ -1818,14 +1822,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:42",
                             "last": "20:42"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:41",
                             "last": "20:11"
@@ -1855,14 +1859,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:24",
                             "last": "20:39"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:45",
                             "last": "20:15"
@@ -1879,14 +1883,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:39",
                             "last": "20:39"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0311",
+                            "destinationStationId": "line-last",
                             "destinationName": "金石滩",
                             "first": "06:45",
                             "last": "20:15"
@@ -1916,7 +1920,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:15",
                             "last": "20:30"
@@ -1933,7 +1937,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0301",
+                            "destinationStationId": "line-first",
                             "destinationName": "大连站",
                             "first": "06:30",
                             "last": "20:30"
@@ -1963,7 +1967,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:30",
                             "last": "22:30"
@@ -1980,7 +1984,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:30",
                             "last": "22:30"
@@ -2010,14 +2014,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:32",
                             "last": "22:32"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:15",
                             "last": "23:35"
@@ -2034,14 +2038,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:32",
                             "last": "22:32"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:15",
                             "last": "23:35"
@@ -2071,14 +2075,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:34",
                             "last": "22:34"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:13",
                             "last": "23:33"
@@ -2095,14 +2099,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:34",
                             "last": "22:34"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:13",
                             "last": "23:33"
@@ -2132,14 +2136,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:37",
                             "last": "22:37"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:11",
                             "last": "23:31"
@@ -2156,14 +2160,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:37",
                             "last": "22:37"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:11",
                             "last": "23:31"
@@ -2193,14 +2197,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:39",
                             "last": "22:39"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:08",
                             "last": "23:28"
@@ -2217,14 +2221,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:39",
                             "last": "22:39"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:08",
                             "last": "23:28"
@@ -2254,14 +2258,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:42",
                             "last": "22:42"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:05",
                             "last": "23:26"
@@ -2278,14 +2282,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:42",
                             "last": "22:42"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:05",
                             "last": "23:26"
@@ -2315,14 +2319,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:44",
                             "last": "22:44"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:03",
                             "last": "23:24"
@@ -2339,14 +2343,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:44",
                             "last": "22:44"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:03",
                             "last": "23:24"
@@ -2376,14 +2380,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:46",
                             "last": "22:46"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:01",
                             "last": "23:22"
@@ -2400,14 +2404,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:46",
                             "last": "22:46"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "06:01",
                             "last": "23:22"
@@ -2435,14 +2439,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:15",
                             "last": "22:45"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:57",
                             "last": "22:27"
@@ -2459,14 +2463,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:15",
                             "last": "22:45"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:57",
                             "last": "22:27"
@@ -2496,14 +2500,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:48",
                             "last": "22:48"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:59",
                             "last": "23:20"
@@ -2520,14 +2524,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:48",
                             "last": "22:48"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:59",
                             "last": "23:20"
@@ -2557,14 +2561,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:50",
                             "last": "22:50"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:57",
                             "last": "23:18"
@@ -2581,14 +2585,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:50",
                             "last": "22:50"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:57",
                             "last": "23:18"
@@ -2618,14 +2622,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:53",
                             "last": "22:53"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:54",
                             "last": "23:15"
@@ -2642,14 +2646,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:53",
                             "last": "22:53"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:54",
                             "last": "23:15"
@@ -2679,14 +2683,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:55",
                             "last": "22:55"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:52",
                             "last": "23:12"
@@ -2703,14 +2707,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:55",
                             "last": "22:55"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:52",
                             "last": "23:12"
@@ -2738,14 +2742,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:52",
                             "last": "22:52"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:59",
                             "last": "22:59"
@@ -2762,14 +2766,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:52",
                             "last": "22:52"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:59",
                             "last": "22:59"
@@ -2799,14 +2803,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:59",
                             "last": "22:59"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:49",
                             "last": "23:09"
@@ -2823,14 +2827,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:59",
                             "last": "22:59"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:49",
                             "last": "23:09"
@@ -2860,14 +2864,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "06:01",
                             "last": "23:01"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:47",
                             "last": "23:07"
@@ -2884,14 +2888,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "06:01",
                             "last": "23:01"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:47",
                             "last": "23:07"
@@ -2921,14 +2925,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "06:03",
                             "last": "23:03"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:45",
                             "last": "23:05"
@@ -2945,14 +2949,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "06:03",
                             "last": "23:03"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:45",
                             "last": "23:05"
@@ -2982,14 +2986,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "06:05",
                             "last": "23:05"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:43",
                             "last": "23:03"
@@ -3006,14 +3010,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "06:05",
                             "last": "23:05"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:43",
                             "last": "23:03"
@@ -3043,14 +3047,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "06:07",
                             "last": "23:07"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:41",
                             "last": "23:01"
@@ -3067,14 +3071,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "06:07",
                             "last": "23:07"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:41",
                             "last": "23:01"
@@ -3104,14 +3108,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:44",
                             "last": "23:10"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:38",
                             "last": "22:58"
@@ -3128,14 +3132,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:44",
                             "last": "23:10"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:38",
                             "last": "22:58"
@@ -3165,14 +3169,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:46",
                             "last": "23:12"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:36",
                             "last": "22:56"
@@ -3189,14 +3193,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:46",
                             "last": "23:12"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:36",
                             "last": "22:56"
@@ -3226,14 +3230,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:48",
                             "last": "23:14"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:34",
                             "last": "22:54"
@@ -3250,14 +3254,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:48",
                             "last": "23:14"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:34",
                             "last": "22:54"
@@ -3287,14 +3291,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:33",
                             "last": "23:18"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:30",
                             "last": "22:50"
@@ -3311,14 +3315,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:33",
                             "last": "23:18"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:30",
                             "last": "22:50"
@@ -3348,14 +3352,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:35",
                             "last": "23:21"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:48",
                             "last": "22:48"
@@ -3372,14 +3376,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:35",
                             "last": "23:21"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:48",
                             "last": "22:48"
@@ -3409,14 +3413,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:38",
                             "last": "23:23"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:45",
                             "last": "22:45"
@@ -3433,14 +3437,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:38",
                             "last": "23:23"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:45",
                             "last": "22:45"
@@ -3470,14 +3474,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:40",
                             "last": "23:26"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:42",
                             "last": "22:42"
@@ -3494,14 +3498,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:40",
                             "last": "23:26"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:42",
                             "last": "22:42"
@@ -3531,14 +3535,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:43",
                             "last": "23:28"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:40",
                             "last": "22:40"
@@ -3555,14 +3559,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:43",
                             "last": "23:28"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:40",
                             "last": "22:40"
@@ -3592,14 +3596,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:45",
                             "last": "23:30"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:38",
                             "last": "22:38"
@@ -3616,14 +3620,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:45",
                             "last": "23:30"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:38",
                             "last": "22:38"
@@ -3653,14 +3657,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:47",
                             "last": "23:33"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:35",
                             "last": "22:35"
@@ -3677,14 +3681,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:47",
                             "last": "23:33"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:35",
                             "last": "22:35"
@@ -3714,14 +3718,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:50",
                             "last": "23:35"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:33",
                             "last": "22:33"
@@ -3738,14 +3742,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0102",
+                            "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:50",
                             "last": "23:35"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:33",
                             "last": "22:33"
@@ -3775,14 +3779,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:18",
                             "last": "23:18"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:33",
                             "last": "22:33"
@@ -3799,14 +3803,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:18",
                             "last": "23:18"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:33",
                             "last": "22:33"
@@ -3834,7 +3838,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:30",
                             "last": "22:30"
@@ -3851,7 +3855,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0201",
+                            "destinationStationId": "line-first",
                             "destinationName": "海之韵",
                             "first": "05:30",
                             "last": "22:30"
@@ -3881,7 +3885,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:30",
                             "last": "22:30"
@@ -3898,7 +3902,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:30",
                             "last": "22:30"
@@ -3928,14 +3932,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:16",
                             "last": "23:16"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:35",
                             "last": "22:35"
@@ -3952,14 +3956,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:16",
                             "last": "23:16"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:35",
                             "last": "22:35"
@@ -3989,14 +3993,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:13",
                             "last": "23:13"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:38",
                             "last": "22:38"
@@ -4013,14 +4017,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:13",
                             "last": "23:13"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:38",
                             "last": "22:38"
@@ -4050,14 +4054,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:11",
                             "last": "23:11"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:40",
                             "last": "22:40"
@@ -4074,14 +4078,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:11",
                             "last": "23:11"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:40",
                             "last": "22:40"
@@ -4111,14 +4115,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:08",
                             "last": "23:08"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:42",
                             "last": "22:42"
@@ -4135,14 +4139,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:08",
                             "last": "23:08"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:42",
                             "last": "22:42"
@@ -4172,14 +4176,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:06",
                             "last": "23:06"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:44",
                             "last": "22:44"
@@ -4196,14 +4200,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:06",
                             "last": "23:06"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:44",
                             "last": "22:44"
@@ -4233,14 +4237,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:04",
                             "last": "23:04"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:47",
                             "last": "22:47"
@@ -4257,14 +4261,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:04",
                             "last": "23:04"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:47",
                             "last": "22:47"
@@ -4294,14 +4298,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:00",
                             "last": "23:00"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:51",
                             "last": "22:51"
@@ -4318,14 +4322,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "06:00",
                             "last": "23:00"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:51",
                             "last": "22:51"
@@ -4355,14 +4359,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:58",
                             "last": "22:58"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:53",
                             "last": "22:53"
@@ -4379,14 +4383,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:58",
                             "last": "22:58"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:53",
                             "last": "22:53"
@@ -4416,14 +4420,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:56",
                             "last": "22:56"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:55",
                             "last": "22:55"
@@ -4440,14 +4444,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:56",
                             "last": "22:56"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:55",
                             "last": "22:55"
@@ -4477,14 +4481,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:54",
                             "last": "22:54"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:57",
                             "last": "22:57"
@@ -4501,14 +4505,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:54",
                             "last": "22:54"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "05:57",
                             "last": "22:57"
@@ -4538,14 +4542,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:49",
                             "last": "22:49"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:02",
                             "last": "23:02"
@@ -4562,14 +4566,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:49",
                             "last": "22:49"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:02",
                             "last": "23:02"
@@ -4599,14 +4603,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:47",
                             "last": "22:47"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:04",
                             "last": "23:04"
@@ -4623,14 +4627,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:47",
                             "last": "22:47"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:04",
                             "last": "23:04"
@@ -4660,14 +4664,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:44",
                             "last": "22:44"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:06",
                             "last": "23:06"
@@ -4684,14 +4688,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:44",
                             "last": "22:44"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:06",
                             "last": "23:06"
@@ -4721,14 +4725,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:42",
                             "last": "22:42"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:08",
                             "last": "23:08"
@@ -4745,14 +4749,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:42",
                             "last": "22:42"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:08",
                             "last": "23:08"
@@ -4782,14 +4786,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:40",
                             "last": "22:40"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:10",
                             "last": "23:10"
@@ -4806,14 +4810,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:40",
                             "last": "22:40"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:10",
                             "last": "23:10"
@@ -4843,14 +4847,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:37",
                             "last": "22:37"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:13",
                             "last": "23:13"
@@ -4867,14 +4871,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:37",
                             "last": "22:37"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:13",
                             "last": "23:13"
@@ -4904,14 +4908,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:35",
                             "last": "22:35"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:15",
                             "last": "23:15"
@@ -4928,14 +4932,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:35",
                             "last": "22:35"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:15",
                             "last": "23:15"
@@ -4965,14 +4969,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:33",
                             "last": "22:33"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:17",
                             "last": "23:17"
@@ -4989,14 +4993,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:33",
                             "last": "22:33"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:17",
                             "last": "23:17"
@@ -5026,7 +5030,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:30",
                             "last": "22:30"
@@ -5043,7 +5047,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0101",
+                            "destinationStationId": "line-first",
                             "destinationName": "姚家",
                             "first": "05:30",
                             "last": "22:30"
@@ -5071,7 +5075,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:05",
                             "last": "20:30"
@@ -5088,7 +5092,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:05",
                             "last": "20:30"
@@ -5118,14 +5122,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:47",
                             "last": "21:32"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:09",
                             "last": "20:34"
@@ -5142,14 +5146,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:47",
                             "last": "21:32"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:09",
                             "last": "20:34"
@@ -5179,14 +5183,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:41",
                             "last": "21:26"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:14",
                             "last": "20:39"
@@ -5203,14 +5207,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:41",
                             "last": "21:26"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:14",
                             "last": "20:39"
@@ -5240,14 +5244,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:36",
                             "last": "21:21"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:20",
                             "last": "20:45"
@@ -5264,14 +5268,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:36",
                             "last": "21:21"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:20",
                             "last": "20:45"
@@ -5301,14 +5305,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:27",
                             "last": "21:12"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:28",
                             "last": "20:53"
@@ -5325,14 +5329,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:27",
                             "last": "21:12"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:28",
                             "last": "20:53"
@@ -5362,14 +5366,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:18",
                             "last": "21:03"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:37",
                             "last": "21:02"
@@ -5386,14 +5390,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:18",
                             "last": "21:03"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:37",
                             "last": "21:02"
@@ -5423,14 +5427,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:09",
                             "last": "20:54"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:46",
                             "last": "21:11"
@@ -5447,14 +5451,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:09",
                             "last": "20:54"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0808",
+                            "destinationStationId": "line-last",
                             "destinationName": "旅顺新港",
                             "first": "06:46",
                             "last": "21:11"
@@ -5484,7 +5488,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:05",
                             "last": "20:50"
@@ -5501,7 +5505,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0801",
+                            "destinationStationId": "line-first",
                             "destinationName": "河口",
                             "first": "06:05",
                             "last": "20:50"
@@ -5531,7 +5535,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:00",
                             "last": "22:30"
@@ -5548,7 +5552,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:00",
                             "last": "22:30"
@@ -5578,14 +5582,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:02",
                             "last": "22:32"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:12",
                             "last": "22:42"
@@ -5602,14 +5606,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:02",
                             "last": "22:32"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:12",
                             "last": "22:42"
@@ -5639,14 +5643,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:04",
                             "last": "22:34"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:09",
                             "last": "22:39"
@@ -5663,14 +5667,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:04",
                             "last": "22:34"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:09",
                             "last": "22:39"
@@ -5700,14 +5704,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:06",
                             "last": "22:36"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:06",
                             "last": "22:36"
@@ -5724,14 +5728,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:06",
                             "last": "22:36"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:06",
                             "last": "22:36"
@@ -5761,14 +5765,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:08",
                             "last": "22:38"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:04",
                             "last": "22:34"
@@ -5785,14 +5789,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:08",
                             "last": "22:38"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:04",
                             "last": "22:34"
@@ -5822,14 +5826,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:10",
                             "last": "22:40"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:02",
                             "last": "22:32"
@@ -5846,14 +5850,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:10",
                             "last": "22:40"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:02",
                             "last": "22:32"
@@ -5883,14 +5887,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:13",
                             "last": "22:43"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:00",
                             "last": "22:30"
@@ -5907,14 +5911,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:13",
                             "last": "22:43"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "06:00",
                             "last": "22:30"
@@ -5944,14 +5948,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:22",
                             "last": "22:52"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:51",
                             "last": "22:21"
@@ -5968,14 +5972,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:22",
                             "last": "22:52"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:51",
                             "last": "22:21"
@@ -6005,14 +6009,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:24",
                             "last": "22:54"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:48",
                             "last": "22:18"
@@ -6029,14 +6033,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:24",
                             "last": "22:54"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:48",
                             "last": "22:18"
@@ -6066,14 +6070,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:27",
                             "last": "22:57"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:45",
                             "last": "22:15"
@@ -6090,14 +6094,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:27",
                             "last": "22:57"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:45",
                             "last": "22:15"
@@ -6127,14 +6131,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:29",
                             "last": "22:59"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:43",
                             "last": "22:13"
@@ -6151,14 +6155,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:29",
                             "last": "22:59"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:43",
                             "last": "22:13"
@@ -6188,14 +6192,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:32",
                             "last": "23:02"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:40",
                             "last": "22:10"
@@ -6212,14 +6216,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:32",
                             "last": "23:02"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:40",
                             "last": "22:10"
@@ -6249,14 +6253,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:34",
                             "last": "23:04"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:38",
                             "last": "22:08"
@@ -6273,14 +6277,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:34",
                             "last": "23:04"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:38",
                             "last": "22:08"
@@ -6310,14 +6314,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:37",
                             "last": "23:07"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:36",
                             "last": "22:06"
@@ -6334,14 +6338,14 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "up",
-                            "destinationStationId": "0518",
+                            "destinationStationId": "line-last",
                             "destinationName": "后关",
                             "first": "06:37",
                             "last": "23:07"
                         },
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:36",
                             "last": "22:06"
@@ -6371,7 +6375,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:30",
                             "last": "22:00"
@@ -6388,7 +6392,7 @@ const DALIAN_TIMETABLE_DATA = {
                     "directions": [
                         {
                             "direction": "down",
-                            "destinationStationId": "0501",
+                            "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:30",
                             "last": "22:00"
@@ -6405,14 +6409,17 @@ const DALIAN_TIMETABLE_DATA = {
  *
  * 这里不修改官网原始记录，只在缺少DLM13记录的支线车站新增明确标记的估算对象：
  * 例如十九局开往开发区的首班比九里晚3分钟，则反推开往普兰店振兴街的首班比九里早3分钟。
+ *
+ * destinationStationId 已与沈阳统一语义：线路端点写 "line-first" / "line-last" 代号，
+ * 非端点的贯通区间车保留站 ID，因此本配置也用代号表达（DLM99 与 DLM13 的末站方向）。
  */
 const DALIAN_TIMETABLE_ESTIMATE_INFO = {};
 const DALIAN_TIMETABLE_ESTIMATE_CONFIG = {
     sourceLineId: "DLM99",
     targetLineId: "DLM13",
     referenceStationId: "0320",
-    sourceDestinationStationId: "0308",
-    targetDestinationStationId: "1336",
+    sourceDestinationStationId: "line-last",
+    targetDestinationStationId: "line-last",
     stationIds: ["0319", "0318", "0317", "0316", "0315"]
 };
 

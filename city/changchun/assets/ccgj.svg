@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="60px" height="60px" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>长春公交集团</title>
+    <!--
+        长春公交集团标志（由使用者提供）。
+        原图为白色填充，这里改为 currentColor 与 fill-rule，便于在 DOM 内联时
+        随按钮文字色染色并适配亮/暗主题（内联用法见 city/changchun/changchun.js 的 CCGJ_ICON）。
+    -->
+    <path d="M2.5,53Q15,48,30,48Q45,48,57,53L30,6L2.5,53Z" fill="currentColor" fill-rule="evenodd"/>
+</svg>

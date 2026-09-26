@@ -208,6 +208,35 @@
     }
 
     /* ======================================================================
+     * 季节判定
+     * ==================================================================== */
+
+    /**
+     * 季节判定：机制共用，阈值属城市数据
+     *
+     * 各城带季节维度的时刻表（沈阳 4–10 月、长春 5–10 月）此前各自复制了一份
+     * 判定与文案，实际只有阈值不同（连取值方式都不一致），故收敛到这里；
+     * 无季节维度的城市（大连）不调用即可。
+     * @param {{ summerFrom?: number, summerTo?: number, summerLabel?: string, winterLabel?: string }} config
+     * @returns {{ key: "summer"|"winter", otherKey: "summer"|"winter", label: string }}
+     */
+    function getSeason(config = {}) {
+        const from = Number(config.summerFrom) || 1;
+        const to = Number(config.summerTo) || 12;
+        const month = Number(new Intl.DateTimeFormat("en-US", {
+            timeZone: SHANGHAI_TZ,
+            month: "numeric"
+        }).formatToParts(new Date()).find((part) => part.type === "month")?.value);
+        // 支持跨年区间（summerFrom > summerTo）
+        const isSummer = from <= to ? month >= from && month <= to : month >= from || month <= to;
+        return {
+            key: isSummer ? "summer" : "winter",
+            otherKey: isSummer ? "winter" : "summer",
+            label: isSummer ? (config.summerLabel || "夏令时") : (config.winterLabel || "冬令时")
+        };
+    }
+
+    /* ======================================================================
      * 卡片渲染
      * ==================================================================== */
 
@@ -262,6 +291,7 @@
     window.CGoTimetable = {
         escapeHtml,
         resolveDestination,
+        getSeason,
         formatTime,
         renderRow,
         renderRows,

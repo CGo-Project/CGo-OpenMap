@@ -40,23 +40,8 @@
         );
     }
 
-    /**
-     * 季节：阈值属城市数据（沈阳为 4–10 月夏令时），故保留在本模块，
-     * 不随共享层统一。
-     */
-    function getSeason() {
-        const parts = new Intl.DateTimeFormat("en-US", {
-            timeZone: "Asia/Shanghai",
-            month: "numeric"
-        }).formatToParts(new Date());
-        const month = Number(parts.find((part) => part.type === "month")?.value);
-        const isSummer = month >= 4 && month <= 10;
-        return {
-            key: isSummer ? "summer" : "winter",
-            otherKey: isSummer ? "winter" : "summer",
-            label: isSummer ? "夏令时" : "冬令时"
-        };
-    }
+    /** 季节阈值属城市数据（沈阳 4–10 月夏令时）；判定与文案由共享层统一提供 */
+    const SEASON_CONFIG = { summerFrom: 4, summerTo: 10 };
 
     /** 地铁：serviceHours → 归一化行；seasonKey 决定取夏冬哪一套时刻 */
     function serviceRows(serviceHours, lineId, seasonKey) {
@@ -94,7 +79,7 @@
     }
 
     function renderRows(info, lineId) {
-        const season = getSeason();
+        const season = CGoTimetable.getSeason(SEASON_CONFIG);
         const isTram = isTramLine(lineId);
         const rows = rowsFor(info, lineId, season.key);
         const blocks = [];

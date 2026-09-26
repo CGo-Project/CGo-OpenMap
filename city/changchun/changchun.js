@@ -53,6 +53,17 @@
         + `<circle cx="5" cy="5" r="3.8" fill="var(--map-bg)"/>`
         + `</svg>`;
 
+    /**
+     * 长春公交集团标志（源: assets/ccgj.svg，viewBox 0 0 60 60）
+     *
+     * 有轨电车 G54/G55 归长春公交集团运营，官网查询也落在公交集团平台，
+     * 图标不能沿用长春轨道交通的徽标。与上面的国铁徽标同样内联而非 <img>，
+     * 目的是让 fill 吃到 currentColor，跟随按钮文字色并适配亮/暗主题。
+     */
+    const CCGJ_ICON = `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">`
+        + `<path d="M2.5,53Q15,48,30,48Q45,48,57,53L30,6L2.5,53Z" fill="currentColor" fill-rule="evenodd"/>`
+        + `</svg>`;
+
     const ChangchunCity = {
         id: "changchun",
         name: "长春",
@@ -174,15 +185,83 @@
         }
     };
 
+    /**
+     * 行程规划的城市侧配置
+     *
+     * 共享层负责算法、面板、坐标索引与站外换乘收集，本城只描述「数据长什么样」：
+     * - coords：坐标兜底数据源（地铁各线站距已按官方行程查询接口的站间里程写入 distances）
+     * - reader：把抄录的时刻摊平成构建器要的时间条目（dest / period / label / time）
+     * - fareSystems / fare：计费系统划分与票价规则（地铁轻轨并网，有轨各线单独购票）
+     * 上述配置都在实际规划时才被读取，故不必担心此刻共享层尚未加载。
+     */
+    window.CGO_ROUTE_CONFIG = {
+        coords: ChangchunCity.dataFiles.amapDataUrl,
+        cityIcon: "changchun",
+        /**
+         * 官网查询按钮的图标：地铁与轻轨指向长春轨道交通官网，用 CGoUI 内置城市徽标；
+         * 有轨电车（G54/G55）归长春公交集团，改用公交集团标志（内联 SVG 才能染色）。
+         */
+        officialIcon(lineId) {
+            return ChangchunCity.isTramLine(lineId) ? { svg: CCGJ_ICON } : { name: "changchun" };
+        },
+        /**
+         * 计费系统：地铁与轻轨同网同价（CCM* 按制式默认并网）；G54 与 G55 各自购票
+         * —— 两线在共线段各站可互相换乘，但换乘须重新购票。
+         */
+        fareSystems: {
+            "CCG54": "tram-54",
+            "CCG55": "tram-55"
+        },
+        /**
+         * 票价规则（按计费系统，单位：元）
+         * - metro：长春市发改委《轨道交通实行同网同价》方案——轻轨与地铁同价，
+         *   2 元起步可乘 7 公里，3~6 元的分界里程依次为 7 / 13 / 19 / 27 / 35 公里，
+         *   35 公里以上每 1 元可乘 10 公里
+         * - tram-54 / tram-55：单一票价 2 元（长春公交官网口径）
+         */
+        fare: {
+            metro(km) {
+                const cuts = [7, 13, 19, 27, 35];
+                if (km <= cuts[0]) return 2;
+                for (let i = 1; i < cuts.length; i += 1) {
+                    if (km <= cuts[i]) return i + 2;
+                }
+                return 6 + Math.ceil((km - 35) / 10);
+            },
+            "tram-54"() {
+                return 2;
+            },
+            "tram-55"() {
+                return 2;
+            }
+        },
+        /**
+         * 抄录数据按 [线路][车站] 存放，每站两条（首班方向与末班方向各一条），
+         * 每条含首班（工作日/周末）与夏、冬两季末班，故拆成四条独立的链。
+         */
+        reader(line, sid) {
+            const rows = window.CHANGCHUN_TIMETABLE_DATA?.[String(line.id)]?.[String(sid)] || [];
+            const slot = window.CGoRouteData.hourSlots;
+            return rows.flatMap((row) => slot(row.destination, [
+                ["first", "工作日首", row.first?.workday], ["first", "周末首", row.first?.restday],
+                ["last", "夏末", row.summer], ["last", "冬末", row.winter]
+            ]));
+        }
+    };
+
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260926.1702";
+        const version = "260926.1650";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_opening.js?v=${version}"><\/script>`);
+        // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
+        document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
         (ChangchunCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/changchun/${scriptPath}?v=${version}"><\/script>`);
         });

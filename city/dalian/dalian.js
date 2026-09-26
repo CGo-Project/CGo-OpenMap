@@ -156,15 +156,106 @@
         }
     };
 
+    /**
+     * 行程规划的城市侧配置
+     *
+     * 共享层负责算法、面板、坐标索引与站外换乘收集，本城只描述「数据长什么样」：
+     * - coords：坐标兜底数据源（官方只公布票价、不公布里程，地铁站距已按票价档位反解写入 distances）
+     * - reader：把官方首末班摊平成构建器要的时间条目（dest / period / label / time）
+     * - fareSystems / fare：计费系统划分与票价规则（地铁与有轨不并网，有轨各线单独购票）
+     * 上述配置都在实际规划时才被读取，故不必担心此刻共享层尚未加载。
+     */
+    window.CGO_ROUTE_CONFIG = {
+        coords: DalianCity.dataFiles.amapDataUrl,
+        cityIcon: "dalian",
+        /**
+         * 计费系统：地铁线网（DLM*）按制式默认并网，有轨各自独立购票
+         * —— 201 路与其区间段同一票制（华乐广场凭换乘票接驳），202 路单算。
+         */
+        fareSystems: {
+            "DL201": "tram-201",
+            "DL201-1": "tram-201",
+            "DL202": "tram-202"
+        },
+        /**
+         * 票价规则（按计费系统，单位：元）
+         * - metro：大连市发改委《关于大连地铁线网票制票价的通知》（大发改价格字〔2021〕714 号）
+         *   ——按里程分段计价，6 公里以内（含）2 元；
+         *   3~8 元的分界里程依次为 6 / 12 / 18 / 26 / 34 / 44 / 54 公里，
+         *   54 公里以上每 1 元可乘 15 公里，不封顶
+         * - tram-201：以大连火车站（20108）为分段点，段内 1 元、跨段 2 元（现金口径）
+         * - tram-202：单一票价 1 元（现金口径，202 路区间同价）
+         */
+        fare: {
+            metro(km) {
+                const cuts = [6, 12, 18, 26, 34, 44, 54];
+                if (km <= cuts[0]) return 2;
+                for (let i = 1; i < cuts.length; i += 1) {
+                    if (km <= cuts[i]) return i + 2;
+                }
+                return 8 + Math.ceil((km - 54) / 15);
+            },
+            "tram-201"(km, context = {}) {
+                const order = (typeof linesData !== "undefined" && Array.isArray(linesData)
+                    ? linesData.find((line) => line.id === "DL201")?.stationIds
+                    : null) || [];
+                const split = order.indexOf("20108");   // 大连火车站
+                // 分段点两侧都属「段内」，故只有该段同时出现分段点以西与以东的站才算跨段
+                // （从大连火车站出发往任一侧坐，都是段内 1 元）
+                const indexes = (context.stops || [])
+                    .map((sid) => order.indexOf(sid))
+                    .filter((index) => index >= 0);
+                const crossed = split >= 0
+                    && indexes.some((index) => index < split)
+                    && indexes.some((index) => index > split);
+                return crossed ? 2 : 1;
+            },
+            "tram-202"() {
+                return 1;
+            }
+        },
+        /**
+         * 官方接口按「工作日/周末」给出每站每方向的 first / last，故契约里
+         * 用 label 把两类日期拆成独立链（链内逐站取时刻差即区间用时，
+         * 不同车次类型也分开成链，避免同站时刻互相覆盖）。
+         * isEstimated 的推算记录不参与，以免污染实测区间用时。
+         */
+        reader(line, sid) {
+            const info = window.DALIAN_TIMETABLE_DATA?.[String(sid)]?.[String(line.id)];
+            const slot = window.CGoRouteData.hourSlots;
+            const workdays = DALIAN_TIMETABLE_WORKDAY_CODES;
+            const restdays = DALIAN_TIMETABLE_RESTDAY_CODES;
+            const out = [];
+            (info?.schedules || []).forEach((schedule) => {
+                if (schedule.isEstimated) return;
+                const days = (schedule.includeWeekdays || []).map(Number);
+                const dayLabel = days.length && days.every((day) => restdays.includes(day)) ? "周末"
+                    : days.length && days.every((day) => workdays.includes(day)) ? "工作日" : "每日";
+                const trip = schedule.trainTypeName || "班次";
+                (schedule.directions || []).forEach((dir) => {
+                    out.push(...slot(dir.destinationStationId, [
+                        ["first", `${dayLabel}${trip}首`, dir.first],
+                        ["last", `${dayLabel}${trip}末`, dir.last]
+                    ]));
+                });
+            });
+            return out;
+        }
+    };
+
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260926.1702";
+        const version = "260926.1610";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/dalian/data_opening.js?v=${version}"><\/script>`);
+        // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
+        document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
         (DalianCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/dalian/${scriptPath}?v=${version}"><\/script>`);
         });

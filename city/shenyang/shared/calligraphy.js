@@ -21,7 +21,9 @@
  *      城市配置中需将内置 "header-title" 置为 enabled: false。
  *   2. {idPrefix}-calligrapher-intro（targetTab: station-info, order: 12）
  *      题字人简介卡片；仅登记「有题字」事实的占位条目（pendingCalligrapher）
- *      显示题写者待考说明。卡片 DOM 走共享层 CGoTipCard。
+ *      显示题写者待考说明，占位条目可用 pendingNote 覆盖城市默认待考文案
+ *      （用于「题字实物无落款、疑为集字」等与通用表述不符的情形）。
+ *      卡片 DOM 走共享层 CGoTipCard。
  *
  * 兼容性注意：题字标题必须保留 .panel-cn-name 类名与可读站名文本
  * （.sy-calligraphy-text 为裁剪但可读取的文本），core/script.js 在面板吸附
@@ -330,13 +332,15 @@
 
                 // 占位条目（pendingCalligrapher）：题字实物已确证、题写者尚未考证出来。
                 // 这与「题写者已知、题字横图未采集」是两种不同状态，故走单独的待考文案，
-                // 只陈述「本站有题字」这一事实，不臆测题写渊源
+                // 只陈述「本站有题字」这一事实，不臆测题写渊源。
+                // 条目可用 pendingNote 覆盖城市默认待考文案（如题字无落款、疑为集字的站）
                 if (!person.name) {
                     return tipCard.render({
                         title: "站名题字",
                         icon: "edit",
                         iconSize: 14,
-                        body: pendingText + contributionHintHtml("题写者待考，欢迎投稿", "本站题写者的落款、印章或站内说明牌尚待考证。")
+                        body: (info.pendingNote || pendingText)
+                            + contributionHintHtml("题写者待考，欢迎投稿", "本站题写者的落款、印章或站内说明牌尚待考证。")
                     });
                 }
 

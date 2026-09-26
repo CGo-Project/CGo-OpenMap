@@ -2292,11 +2292,16 @@ function initMobileSheetDrag() {
     }
 
     // ── 拖拽状态 ─────────────────────────────────────────────────────
+    const DRAG_START_THRESHOLD = 6;   // 位移超过该值才判定为拖拽；以下视为轻点，交给 click
     let drag = null;
 
     function onPointerDown(e) {
         if (window.innerWidth > 640) return;
-        const isGrabber = e.target.closest('.sheet-grabber, .panel-header');
+        const target = e.target;
+        // 按钮 / 链接 / 表单控件上按下时不接管：一旦面板捕获指针，浏览器就会把随后的
+        // click 派发给面板而不是该控件，导致面板内按钮（底栏、标题栏关闭等）全都点不动
+        if (target.closest('button, a, input, select, textarea, label')) return;
+        const isGrabber = target.closest('.sheet-grabber, .panel-header');
         const isContent = !isGrabber;
 
         // 内容区：只有当面板是半屏或全屏时才接管（且向上拖才能升档）
@@ -2323,18 +2328,24 @@ function initMobileSheetDrag() {
             velocity:  0,
             startStage: getCurrentStage(),
             isGrabber,
-            pointerId: e.pointerId
+            pointerId: e.pointerId,
+            captured:  false      // 指针捕获与拖拽态延迟到真正拖动时（见 onPointerMove）
         };
-        panel.setPointerCapture && panel.setPointerCapture(e.pointerId);
-        document.body.classList.add('panel-sheet-dragging');
-        // 拖拽时收回顶部填色
-        document.body.classList.remove('mobile-panel-docked-full');
     }
 
     function onPointerMove(e) {
         if (!drag) return;
         const detents = getDetents();
         const dy = e.clientY - drag.startY;
+        // 轻点不进入拖拽：只有位移超过阈值才捕获指针并切到拖拽态，
+        // 否则 click 会被派发到面板上，面板内的按钮就点不动了
+        if (!drag.captured) {
+            if (Math.abs(dy) < DRAG_START_THRESHOLD) return;
+            panel.setPointerCapture && panel.setPointerCapture(drag.pointerId);
+            drag.captured = true;
+            document.body.classList.add('panel-sheet-dragging');
+            document.body.classList.remove('mobile-panel-docked-full');   // 拖拽时收回顶部填色
+        }
         const rawTop = drag.startTop + dy;
         const clamped = Math.max(detents.full, Math.min(detents.collapsed, rawTop));
 
@@ -2354,8 +2365,10 @@ function initMobileSheetDrag() {
 
     function onPointerUp(e) {
         if (!drag) return;
-        panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
-        document.body.classList.remove('panel-sheet-dragging');
+        if (drag.captured) {
+            panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
+            document.body.classList.remove('panel-sheet-dragging');
+        }
         // 恢复 transition：先清除内联属性，再交回 CSS 控制
         panel.style.removeProperty('transition');
         panel.style.removeProperty('top');
@@ -2400,8 +2413,10 @@ function initMobileSheetDrag() {
 
     function onPointerCancel(e) {
         if (!drag) return;
-        panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
-        document.body.classList.remove('panel-sheet-dragging');
+        if (drag.captured) {
+            panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
+            document.body.classList.remove('panel-sheet-dragging');
+        }
         panel.style.removeProperty('transition');
         panel.style.removeProperty('top');
         // 就近吸附
