@@ -218,9 +218,59 @@
         }
     };
 
+    /**
+     * 行程规划的城市侧配置
+     *
+     * 共享层负责算法、面板、坐标索引与站外换乘收集，本城只描述「数据长什么样」：
+     * - coords：坐标兜底数据源，供缺官方站距的线路算里程（有轨 5 号线属此列）
+     * - reader：把 serviceHours 摊平成构建器要的时间条目（dest / period / label / time）
+     * - fare：本城票价政策；不配则该城结果不显示票价
+     * 三者都在实际规划时才被读取，因此不必担心此刻共享层尚未加载
+     * （本文件下方的 loadStationBoardModules() 会用 document.write 先引入共享层）。
+     */
+    window.CGO_ROUTE_CONFIG = {
+        coords: "./city/shenyang/amap_data.json",
+        cityIcon: "shenyang",   // 官网查询按钮使用城市官方徽标（CGoUI 内置）
+        reader(line, sid) {
+            const hours = window.SHENYANG_STACARD_DATA?.[String(sid)]?.[String(line.id)]?.serviceHours || [];
+            const slot = window.CGoRouteData.hourSlots;
+            return hours.flatMap((hour) => slot(hour.destination, [
+                ["first", "夏首", hour.summer?.first], ["last", "夏末", hour.summer?.last],
+                ["first", "冬首", hour.winter?.first], ["last", "冬末", hour.winter?.last]
+            ]));
+        },
+        /**
+         * 票价规则：输入为一段连续同制式乘车的总公里数
+         * - metro：沈阳市发改委口径——起步 2 元 6 公里，之后每 1 元可乘 4、4、7、7、10、10 公里；
+         *   即 0-6 公里 2 元、6-10 3 元、10-14 4 元、14-21 5 元、21-28 6 元，
+         *   28 公里以上每 10 公里加 1 元，线网 7 元封顶
+         * - tram：浑南现代有轨电车——2 元起价、4 元封顶（0-8 公里 2 元、8-16 公里 3 元、16 公里以上 4 元），
+         *   换乘线路须重新购票（由内核按「连续同制式段」分别结算）
+         */
+        fare: {
+            metro(km) {
+                if (km <= 6) return 2;
+                if (km <= 10) return 3;
+                if (km <= 14) return 4;
+                if (km <= 21) return 5;
+                if (km <= 28) return 6;
+                return Math.min(7, 6 + Math.ceil((km - 28) / 10));
+            },
+            tram(km) {
+                if (km <= 8) return 2;
+                if (km <= 16) return 3;
+                return 4;
+            }
+        }
+    };
+
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260926.1702";
+        const version = "260926.1610";
+        // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
+        document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
         // 城市私有数据（须早于依赖它的模块加载）
         document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
         // 共享层（本目录下，须早于各城模块加载）

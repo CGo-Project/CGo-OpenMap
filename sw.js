@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.2100';
+const CACHE_NAME = 'cgo-openmap-v260926.2200';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -132,6 +132,11 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/calligraphy.css',
     './city/shenyang/shared/opening-schedule.js',
     './city/shenyang/shared/opening-schedule.css',
+    // 行程规划（三城共用）：数据构建器 / 规划内核 / 面板
+    './city/shenyang/shared/route-data.js',
+    './city/shenyang/shared/route-planner.js',
+    './city/shenyang/shared/route-panel.js',
+    './city/shenyang/shared/route-panel.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
@@ -143,11 +148,14 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/transfer-badge.svg',
     './city/shenyang/assets/tram-5.svg',
 
-    // 1号线主线站名题字（书法家题写）
+    // 1号线站名题字（书法家题写）
     './city/shenyang/assets/calligraphy/qihaojie.png',
     './city/shenyang/assets/calligraphy/sihaojie.png',
     './city/shenyang/assets/calligraphy/shenyangzhan.png',
     './city/shenyang/assets/calligraphy/taiyuanjie.png',
+    './city/shenyang/assets/calligraphy/nanshichang.png',
+    './city/shenyang/assets/calligraphy/qingniandajie.png',
+    './city/shenyang/assets/calligraphy/huaiyuanmen.png',
     './city/shenyang/assets/calligraphy/yunfengbeijie.png',
     './city/shenyang/assets/calligraphy/zhongjie.png',
     './city/shenyang/assets/calligraphy/dongzhongjie.png',
@@ -179,6 +187,19 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/shitushuguan.png',
     './city/shenyang/assets/calligraphy/wulihe.png',
     './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
+
+    // 3号线站名题字（2026 年全线开通后安装，书法家题写；待考站题写者尚未考证）
+    './city/shenyang/assets/calligraphy/shayang.png',
+    './city/shenyang/assets/calligraphy/nanbamalu.png',
+    './city/shenyang/assets/calligraphy/jiaxingjie.png',
+    './city/shenyang/assets/calligraphy/fangxingguangchang.png',
+    './city/shenyang/assets/calligraphy/sanhaojie.png',
+    './city/shenyang/assets/calligraphy/zhongkeyuanjinshusuo.png',
+    './city/shenyang/assets/calligraphy/nanta.png',
+    './city/shenyang/assets/calligraphy/wenfulu.png',
+    './city/shenyang/assets/calligraphy/fuminjie.png',
+    './city/shenyang/assets/calligraphy/jiangdongjie.png',
+    './city/shenyang/assets/calligraphy/fangjialan.png',
 
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',
@@ -334,6 +355,7 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_legend.js',
     './city/changchun/data_timetable.js',
     './city/changchun/amap_data.json',
+    './city/changchun/assets/ccgj.svg',
     './city/changchun/assets/railway.svg',
     './city/changchun/assets/transfer-badge.svg',
     './city/changchun/assets/tram-54.svg',

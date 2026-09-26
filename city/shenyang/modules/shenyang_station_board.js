@@ -362,11 +362,33 @@
             groups.forEach(renderBadgeGroup);
         });
 
+        // 搜索结果与行程规划候选项：同一行内多条线路合并为一个紧凑徽标；只有一条线路时
+        // 同样使用本城的定制圆标（与车站信息板保持一致）。
+        // 时序注意：core 的 SVG 注入是逐个 await fetch 的，可能在只注入一半时就被本函数扫到；
+        // 故必须等整行徽标都注入完成再处理，否则会被先固化成不完整的结果
+        // （冷启动首渲染的竞态即源于此）。
+        document.querySelectorAll(".search-item, .cgo-rt-item").forEach((item) => {
+            const badges = [...item.querySelectorAll(":scope > .search-line-icon")]
+                .filter((badge) => !badge.dataset.shenyangBadge);
+            if (!badges.length) return;
+            // 必须等整行徽标都注入完成，否则会被先固化成不完整的结果
+            if (!badges.every((badge) => badge.classList.contains("svg-icon-inlined"))) return;
+            if (badges.length >= 2) {
+                renderBadgeGroup(badges);
+                return;
+            }
+            // 单线路同样走定制圆标（此前整行只有一条线路时被跳过，导致显示核心默认图标）
+            const line = getLineForBadge(badges[0]);
+            if (line) renderCompactLineBadge(badges[0], [line]);
+        });
+
         // 搜索结果使用 .search-line-icon，仍复用同一套沈阳自定义线路徽标。
         document.querySelectorAll(
             ".line-badge.svg-icon-inlined:not([data-shenyang-badge]), "
             + ".search-line-icon.svg-icon-inlined:not([data-shenyang-badge])"
         ).forEach((badge) => {
+            // 位于多徽标行内的，交由上面的整行合并处理，此处不单独处理
+            if (badge.closest(".search-item, .cgo-rt-item")) return;
             const line = getLineForBadge(badge);
             if (line) renderCompactLineBadge(badge, [line]);
         });

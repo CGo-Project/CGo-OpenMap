@@ -28,9 +28,13 @@
         dataGlobals: ["CALLIGRAPHY_DATA"],
         /**
          * 换乘题字站 header 取色优先级（按稳定线路 ID，不依赖 relatedLinesInfo 的排序）。
-         * 目前已知有题字的为 1、2、3 号线；表中列入全部运营线以备后续扩展。
+         * 站名题字目前只出现在 1、2、3 号线，故这三条线必须排在其余线路之前：
+         * 3 号线沿线的换乘题字站（砂阳 3/4、大通湖街 3/9、江东街 3/10）其题字均随
+         * 3 号线安装，若让 4 / 9 / 10 号线先命中，header 会染成无题字传统线路的颜色。
+         * 1、2 号线的换乘题字站（青年大街 1/2、工业展览馆 2/3）因 1、2 号线本就靠前，
+         * 不受本次顺序调整影响。
          */
-        lineColorPriority: ["SYM01", "SYM02", "SYM09", "SYM10", "SYM04", "SYM03"],
+        lineColorPriority: ["SYM01", "SYM02", "SYM03", "SYM09", "SYM10", "SYM04"],
         /** 沈阳的取色实现由 shenyang_station_board.js 暴露，与线路徽标共用同一套判定 */
         getReadableTextColor: (color) => window.ShenyangUi?.getReadableTextColor?.(color) || "#ffffff",
         /**

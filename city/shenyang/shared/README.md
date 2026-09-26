@@ -25,13 +25,14 @@
 
 | 文件 | 对外接口 | 加载方式 | 职责 |
 | :--- | :--- | :--- | :--- |
-| `timetable-renderer.js` | `window.CGoTimetable`、`window.CGoDayType` | classic script，各城 `{city}.js` 引入 | 首末班车「归一化行 → HTML」、日期类型判定、终点站代号解析、季节与日期类型标签的差异判定 |
-| `stacard-engine.js` | 具名导出 `createStaCardEngine` | ES module，各城 `stacard/script.js` 相对 import | 高德瓦片地图卡片：坐标索引、占位 HTML、瓦片网格、缩放交互、ResizeObserver 生命周期 |
+| `timetable-renderer.js` | `window.CGoTimetable`、`window.CGoDayType` | classic script，各城 `{city}.js` 引入 | 首末班车「归一化行 → HTML」、日期类型判定（`workday` / `restday`，可选调休日历）、**季节判定（阈值由城市传入）**、终点站代号解析、季节与日期类型标签的差异判定 |
+| `stacard-engine.js` | 具名导出 `createStaCard` | ES module，各城 `stacard/script.js` 相对 import | 高德瓦片地图卡片：坐标索引、占位 HTML、瓦片网格、缩放交互、ResizeObserver 生命周期 |
 | `station-title.js` | `window.CGoStationTitle.createStationTitleNormalizer` | classic script | 侧栏站名标题归一化（站类判定、标题拼装、MutationObserver 安装与防自触发） |
 | `tip-card.js` | `window.CGoTipCard.render` | classic script | 车站信息板提示卡片 DOM（与上游官方模板结构一致） |
 | `calligraphy.js` + `calligraphy.css` | `window.CGoCalligraphy.register` | classic script | 站名题字渲染机制（沈阳特色，其他城市可选用）；样式表由脚本按自身 URL 注入 |
 | `opening-schedule.js` | `window.CGoOpening` | classic script | 未开通区段与车站的**开通时刻**：状态转换、待开通登记、到点自动刷新，以及未开通车站 footer 的开通文案与倒计时（详见第四节） |
 | `opening-schedule.css` | — | 由 `opening-schedule.js` 按自身 URL 注入 | 上述倒计时框的样式（同 `calligraphy.css` 的做法） |
+| `route-data.js` + `route-planner.js` + `route-panel.js` + `route-panel.css` | `window.CGoRouteData`（`build` / `amapCoordIndex` / `collectVirtualTransfers` / `hourSlots`）、`window.CGoRoutePlanner`、`window.CGoRoutePanel` | classic script，各城 `{city}.js` **按 data → planner → panel 的顺序**引入 | 行程规划：网络构建（时刻表实测区间用时 + 坐标里程兜底 + 站外换乘）、多目标 Dijkstra（最快 / 最短 / 最少换乘 / 最省）、按计费系统结算票价（`fareSystems` 把各自购票的有轨等拆成独立系统）、结果面板与图上高亮 |
 
 ---
 
@@ -49,6 +50,7 @@
 | 车站提示卡片 | 共享层出 DOM，城市只写命中判定与文案 | `shared/tip-card.js`、`city/shenyang/modules/shenyang_cultural.js` |
 | 站名题字 | 沈阳专属，其他城市可选用 | `shared/calligraphy.js`、`city/shenyang/modules/shenyang_calligraphy.js` |
 | **开通时刻** | 长春已接入（5 号线一期），沈阳、大连为空表待用 | `shared/opening-schedule.js`、各城 `data_opening.js` |
+| **行程规划** | 三城已接入：共享层出算法、面板与坐标索引，城市只写 `reader` 取数 + `fareSystems` / `fare` 票价（沈阳、大连、长春均可显示票价） | `shared/route-data.js`、`shared/route-planner.js`、`shared/route-panel.js`、各城 `{city}.js` 的 `CGO_ROUTE_CONFIG` |
 
 ---
 

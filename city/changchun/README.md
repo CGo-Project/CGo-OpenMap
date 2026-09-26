@@ -16,8 +16,13 @@
 
 ## 站间距说明
 
-已核查官方交互线路图 SVG 源码，源码仅包含线路示意几何和站点位置，没有可核验的实际站间里程字段。根据项目规范，`data_lines.js` 暂不填写 `distances`，避免把示意图单位长度误作真实米数。
+官方交互线路图 SVG 源码仅包含线路示意几何和站点位置，没有可核验的站间里程字段；但官网「行程查询」（`http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html`）背后的接口
+`http://app.ccetravel.cn/micro/other/urban/trave/query/list` 会一次性下发全网相邻站对的实测站间距离（`betweenStations[].distance`，单位米）。
+
+因此 `data_lines.js` 的 `distances` 直接采用该接口的站间距离，不再按坐标估算：接口未收录的区段（1 号线南延、3 号线南延尚未开通）按官方规划里程均分。换乘站与预留换乘节点因站码不同，匹配时以站名兜底。
 
 ## 首末班车
 
-`data_timetable.js` 和 `modules/changchun_service_info.js` 登记并展示用户提供的 1、2、3、4、6、7 号线首末班车图片数据。左栏按“首末班车 + 夏/冬令时 + 工作日/节假日”显示，右栏按方向列出“开往终点：首班-末班”。8 号线暂无可靠时刻表，保持空数据并自动隐藏模块。`GLOBAL_SCHEDULE_DATA` 仍登记已运营站点的官方交互线路图入口。
+`data_timetable.js` 和 `modules/changchun_service_info.js` 登记并展示长春轨道交通官网各线路首末班车图的数据（1、2、3、4、6、7、8 号线）。左栏按“首末班车 + 夏/冬令时 + 工作日/节假日”显示，右栏按方向列出“开往终点：首班-末班”。
+
+`GLOBAL_SCHEDULE_DATA` 按运营方登记官网查询入口：地铁与轻轨指向长春轨道交通官网交互地图；有轨电车 G54/G55 归长春公交集团，指向公交集团查询平台（该平台只收录公交与有轨，不含地铁线路）。行程规划面板「官网查询」按钮的图标随之区分，由 `CGO_ROUTE_CONFIG.officialIcon(lineId)` 给出——地铁用 CGoUI 内置城市徽标，有轨用内联的公交集团标志（`assets/ccgj.svg`，内联才能吃到 `currentColor` 染色）。

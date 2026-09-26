@@ -1,0 +1,762 @@
+/**
+ * CGo OpenMap - 行程规划面板样式（共享层）
+ *
+ * 由 route-panel.js 按自身 URL 注入（与 calligraphy.css 的做法一致），
+ * 故使用方无需在页面里手工引用本文件。
+ *
+ * 骨架刻意复用车站详情面板的全局类与主题变量
+ * （.panel-header / .panel-body / .panel-footer / .panel-close-btn、--card-bg、
+ *  --panel-header-bg、--panel-header-text、--divider 等），
+ * 因此标题栏、内容区、底栏的观感与行为随主题与各城配色自动保持一致。
+ */
+
+/* ── 顶栏入口按钮 ───────────────────────────────────────────────── */
+#cgo-route-entry {
+    margin-bottom: 8px;
+}
+
+/* ── 面板容器（与 #info-panel 同款观感，位置错开不遮挡）──────────── */
+.cgo-rt-panel {
+    position: fixed;
+    top: 20px;
+    left: 84px;      /* 默认停在 modern-zoom-control 右侧 */
+    right: auto;
+    z-index: 2100;   /* 高于车站信息面板（2000） */
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 110px);
+    display: none;
+    flex-direction: column;
+    background: var(--card-bg);
+    color: var(--text-main);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.cgo-rt-panel.show {
+    display: flex;
+}
+
+/* 面板栈：同时打开多个面板时，非栈顶的面板整体收起。
+   用独立类而非改动各自的显示状态，因此栈顶关闭后收回该类即可原样恢复；
+   核心的车站信息面板也复用这个类（只加类，不改它的内联 display）。 */
+.cgo-rt-stacked-hidden {
+    display: none !important;
+}
+
+/* 车站面板需要单独提权：移动端核心用 `body.<档位类> #info-panel { display: flex !important }`
+   控制抽屉档位（mobile-split-active / panel-sheet-collapsed / mobile-panel-expanded）。
+   与本条同为 !important 时按选择器权重决胜，单类选择器（0,1,0）压不过它（1,1,1），
+   车站面板就会照旧显示、把刚打开的规划面板盖在下面 —— 移动端「看不到路线规划面板」即由此而来。
+   带上 body 档位类与 #info-panel 后权重升到（1,2,1），才能确实压住。 */
+body.mobile-split-active #info-panel.cgo-rt-stacked-hidden,
+body.panel-sheet-collapsed #info-panel.cgo-rt-stacked-hidden,
+body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
+#info-panel.cgo-rt-stacked-hidden {
+    display: none !important;
+}
+
+.cgo-rt-title {
+    flex: 1;
+    margin-left: 8px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.cgo-rt-panel .panel-body {
+    max-height: 60vh;
+}
+
+/* ── 起终点输入区（左轨道 + 虚线 + 输入框 + 交换）────────────────── */
+.cgo-rt-fields {
+    display: grid;
+    grid-template-columns: 18px 1fr 34px;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.cgo-rt-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 0;
+}
+
+.cgo-rt-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+}
+
+.cgo-rt-dot.from { background: #1e88e5; }
+.cgo-rt-dot.to { background: #e53935; }
+
+.cgo-rt-rail-line {
+    flex: 1;
+    width: 0;
+    margin: 4px 0;
+    border-left: 2px dashed var(--border-color);
+}
+
+.cgo-rt-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cgo-rt-field {
+    position: relative;
+}
+
+.cgo-rt-field input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    font: inherit;
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    outline: none;
+}
+
+.cgo-rt-field input:focus {
+    border-color: var(--primary-color);
+    background: var(--card-bg);
+}
+
+.cgo-rt-field input::placeholder {
+    color: var(--text-main);
+    opacity: 0.45;
+}
+
+.cgo-rt-swap {
+    align-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.cgo-rt-swap:hover {
+    background: var(--btn-info-bg);
+}
+
+/* 对调起终点：vi-way 旋转 90° 作为「交换」语义 */
+.cgo-rt-swap-icon {
+    display: inline-flex;   /* 自定义元素默认 inline，需转为可变换的盒子 */
+    transform: rotate(90deg);
+}
+
+/* ── 搜索建议 ──────────────────────────────────────────────────── */
+.cgo-rt-suggest {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 5;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
+    display: none;
+}
+
+.cgo-rt-suggest.show {
+    display: block;
+}
+
+/* 候选项复用核心检索面板的 .search-item / .search-line-icon / .search-item-text 样式；
+   多线路徽标由城市模块合并为单个紧凑徽标，故此处不再自定义徽标外观 */
+
+.cgo-rt-empty {
+    padding: 14px 10px;
+    text-align: center;
+    opacity: 0.55;
+}
+
+/* ── 快捷按钮行 ────────────────────────────────────────────────── */
+.cgo-rt-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.cgo-rt-quick {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 6px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600 !important;   /* 全局表单重置为 font-weight: inherit !important，需同级覆盖 */
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-rt-quick:hover {
+    background: var(--border-color);
+}
+
+/* 选点进行中：按钮就地变为「取消选点」并以危险色填充 */
+.cgo-rt-quick.danger {
+    color: var(--btn-text, #fff);
+    background: var(--danger-color);
+}
+
+.cgo-rt-quick.danger:hover {
+    background: var(--danger-hover, var(--danger-color));
+}
+
+/* ── 结果面板：标题栏起讫站 ────────────────────────────────────── */
+.cgo-rt-od {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 15px;
+}
+
+.cgo-rt-od b {
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cgo-rt-od cgo-icon {
+    flex: none;
+    opacity: 0.7;
+}
+
+/* 结果面板标题栏右侧放两个图标按钮（重新选择 + 关闭），故给标题留出双份空间 */
+.cgo-rt-result-head {
+    position: relative;
+    padding-right: 96px;
+}
+
+.cgo-rt-result-head .cgo-rt-again {
+    position: absolute;
+    top: 50%;
+    right: 50px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--panel-header-text, #fff);
+    background: rgba(255, 255, 255, 0.14);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.cgo-rt-result-head .cgo-rt-again:hover {
+    background: rgba(255, 255, 255, 0.26);
+}
+
+/* ── 候选路线页签栏（多条路线时才出现）──────────────────────────── */
+.cgo-rt-routebar {
+    display: none;
+    flex: none;            /* 不参与纵向收缩：面板高度受限时否则会把页签压成一条细缝 */
+    min-height: 38px;
+    background: var(--btn-info-bg);
+    border-bottom: 1px solid var(--divider, var(--border-color));
+    overflow-x: auto;
+    overflow-y: hidden;    /* 单轴设 auto 会让另一轴也变 auto，这里显式裁掉纵向 */
+    scrollbar-width: none;
+}
+
+.cgo-rt-routebar.show {
+    display: flex;
+}
+
+.cgo-rt-routebar::-webkit-scrollbar {
+    display: none;
+}
+
+.cgo-rt-tab {
+    flex: 1 0 auto;
+    padding: 9px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500 !important;
+    color: var(--text-main);
+    opacity: 0.62;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cgo-rt-tab:hover {
+    background: var(--border-color);
+}
+
+.cgo-rt-tab.active {
+    opacity: 1;
+    font-weight: 700 !important;
+    color: var(--primary-color);
+    background: var(--card-bg);
+    border-bottom-color: var(--primary-color);
+}
+
+/* ── 结果区：汇总 ──────────────────────────────────────────────── */
+.cgo-rt-sum {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 4px 0 8px;
+}
+
+.cgo-rt-sum b {
+    font-size: 18px;
+}
+
+.cgo-rt-sum span {
+    font-size: 12px;
+    opacity: 0.65;
+}
+
+.cgo-rt-labels {
+    padding-bottom: 8px;
+    font-size: 12px;
+    opacity: 0.6;
+    border-bottom: 1px solid var(--divider, var(--border-color));
+}
+
+/* ── 行程步骤脊线：乘车段用线路色，换乘段用灰色 ─────────────────── */
+.cgo-rt-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.cgo-rt-leg {
+    --leg-line: var(--border-color);
+}
+
+.cgo-rt-leg.ride {
+    --leg-line: var(--line-color, var(--primary-color));
+}
+
+.cgo-rt-leg-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0 5px;
+}
+
+.cgo-rt-mode {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    color: #fff;
+    background: var(--line-color, var(--primary-color));
+}
+
+.cgo-rt-mode.xfer,
+.cgo-rt-mode.walk,
+.cgo-rt-mode.arrive {
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+}
+
+.cgo-rt-leg-name {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+
+.cgo-rt-leg-name b {
+    font-weight: 700;
+}
+
+.cgo-rt-leg-name em {
+    font-style: normal;
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.cgo-rt-leg-line {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0 4px 30px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* 左侧粗边：与 22px 图标容器的中心对齐、平头断口；途经车站列表同样续上这一段 */
+.cgo-rt-leg-line::before,
+.cgo-rt-stoplist::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: var(--leg-line);
+}
+
+.cgo-rt-leg-line.muted {
+    font-size: 12px;
+    opacity: 0.65;
+}
+
+.cgo-rt-leg-line .line-badge {
+    flex: none;
+}
+
+.cgo-rt-leg-line b {
+    font-weight: 700;
+}
+
+.cgo-rt-leg.arrive .cgo-rt-leg-head {
+    padding-bottom: 12px;
+}
+
+/* 途经车站的展开按钮与列表 */
+.cgo-rt-expand {
+    margin-left: auto;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-rt-expand cgo-icon {
+    transition: transform 0.18s;
+}
+
+.cgo-rt-expand.open cgo-icon {
+    transform: rotate(180deg);
+}
+
+.cgo-rt-stoplist {
+    position: relative;       /* 供左侧粗边定位 */
+    display: flex;
+    flex-direction: column;   /* 一行一个站名 */
+    gap: 3px;
+    padding: 4px 0 8px 30px;
+}
+
+/* 作者样式 display:flex 会盖掉 UA 的 [hidden]{display:none}，需显式声明收起态 */
+.cgo-rt-stoplist[hidden] {
+    display: none;
+}
+
+.cgo-rt-stoplist span {
+    font-size: 12px;
+    line-height: 1.6;
+    opacity: 0.75;            /* 纯文本列表，不用 chip 底色 */
+    cursor: pointer;
+}
+
+.cgo-rt-stoplist span:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.cgo-rt-leg [data-jump] {
+    cursor: pointer;
+}
+
+.cgo-rt-leg [data-jump]:hover {
+    text-decoration: underline;
+}
+
+/* ── 面板底栏（覆盖 .panel-footer 的居中，改为两端布局）────────── */
+.cgo-rt-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    text-align: left;
+}
+
+.cgo-rt-status {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+.cgo-rt-status::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+    flex: none;
+}
+
+.cgo-rt-go,
+.cgo-rt-again {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700 !important;   /* 同 .cgo-rt-quick：覆盖全局表单重置 */
+    color: var(--btn-text, #fff);
+    background: var(--primary-color);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.cgo-rt-go:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.cgo-rt-again {
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+    border: 1px solid var(--border-color);
+}
+
+/* ── 地图选点态：指针光标提示可点选车站 ────────────────────────── */
+/* 站名标签通常不接收指针事件，选点期间一并打开，使标签也进入点击热区 */
+#map-content.cgo-picking,
+#map-content.cgo-picking .station,
+#map-content.cgo-picking #labels-layer,
+#map-content.cgo-picking .label-group,
+#map-content.cgo-picking .label-group * {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+/* ── 底栏入口行：设为起点 / 设为终点 / 官网查询 / 高德导航 ─────── */
+.cgo-rt-entry-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.cgo-rt-fbtn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 13px;
+    font-weight: 600 !important;   /* 同 .cgo-rt-quick：覆盖全局表单重置 */
+    white-space: nowrap;
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+    transition: background 0.12s, transform 0.12s;
+}
+
+/* 纯图标按钮：收缩为正方形，不参与等分 */
+.cgo-rt-fbtn.icon-only {
+    flex: none;
+    width: 44px;
+    padding: 0;
+}
+
+/* 官网查询按钮里的城市自有图标（如长春公交集团标志）：内联 SVG 跟随按钮文字色染色。
+   用 <img> 加载的话 SVG 处于独立文档，拿不到 currentColor 与主题变量。 */
+.cgo-rt-fbtn-svg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.cgo-rt-fbtn-svg svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+
+.cgo-rt-fbtn:hover {
+    background: var(--border-color);
+}
+
+.cgo-rt-fbtn:active {
+    transform: scale(0.97);
+}
+
+/* 设为终点：强调按钮 */
+.cgo-rt-fbtn.emphasis {
+    color: var(--btn-text, #fff);
+    background: var(--primary-color);
+    border-color: transparent;
+}
+
+.cgo-rt-fbtn.emphasis:hover {
+    filter: brightness(1.08);
+    background: var(--primary-color);
+}
+
+.cgo-rt-fbtn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ── 图上高亮：规划线路保留，其余线网与底图装饰淡化 ─────────────── */
+/* 引擎的每个图层都带 z-index（散点 5 / 线网 10 / 未开通 12 / 线路高亮 13 / 站点 20 / 站名 30），
+   而本层默认 z-index:auto 会被它们整片盖住：站点一被选中，核心就把该线路克隆进
+   #highlight-layer(13) 且完全不透明，规划路径被压在其下，看起来就像半透明的。
+   故显式抬到 14 —— 压过所有线网类图层；站点层另行处理（见下一条），
+   以免 15px 底色描边反过来盖住站点图元。 */
+#cgo-route-layer {
+    z-index: 14;
+}
+
+/* 站点层同理：引擎给它声明了 z-index，但浏览器算出来的使用值是 auto（层叠级别 0），
+   会被上面的 14 盖住，规划路径的 15px 底色描边就会吞掉沿途的站点图元。
+   故在图上规划期间把它抬到同一层，靠 DOM 顺序（本层由 ensureRouteLayer 插在它之前）
+   重新压回路径之上；只在这一个状态下生效，不影响平时。 */
+#map-content.cgo-routing #stations-layer {
+    z-index: 14;
+}
+
+/* 只淡化引擎的线网层与散点层；规划路径绘制在独立的 #cgo-route-layer 内，不参与淡化 */
+#map-content.cgo-routing #lines-layer {
+    opacity: 0.16;
+}
+
+#map-content.cgo-routing #scattered-layer {
+    opacity: 0.16;
+}
+
+#map-content.cgo-routing .station:not(.cgo-on-route),
+#map-content.cgo-routing .label-group:not(.cgo-on-route) {
+    opacity: 0.16;
+}
+
+/* ── 抽屉把手（仅移动端显示，与车站详情面板的 .sheet-grabber 同一观感）── */
+.cgo-rt-grabber {
+    display: none;
+}
+
+/* 移动端与车站详情面板一致（断点同为 640px）：底部抽屉、全宽贴底、顶部圆角与向上阴影；
+   高度分半屏 / 全屏两档，由把手拖动切换。
+   定位与尺寸均加 !important：面板拖动后会留下内联 left/top/width，
+   若不加则视口切换布局时这些内联值会继续生效，导致尺寸与位置不更新。 */
+@media (max-width: 640px) {
+    .cgo-rt-panel {
+        top: auto !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: 40vh;                     /* 半屏档：用 height 而非 max-height，
+                                             否则内容不足时既撑不高也切不到全屏档 */
+        max-height: calc(100vh - 60px) !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .cgo-rt-panel.drawer-full {
+        /* ⚠️ 这里绝不能加 !important：拖动靠内联 height 覆盖档位高度，
+           一旦带上 !important，内联声明会被压死，面板就卡在全屏档拖不回去了。
+           类选择器（0,2,0）本身就压得过上面的 .cgo-rt-panel（0,1,0）。 */
+        height: calc(100vh - 60px);      /* 全屏档：顶部留出状态区 */
+    }
+
+    .cgo-rt-panel .panel-body {
+        max-height: none;                 /* 高度交给面板整体约束 */
+    }
+
+    .cgo-rt-grabber {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        height: 20px;
+        cursor: grab;
+        touch-action: none;
+        /* 与标题栏同色：让把手区与面板标题栏连成一片整块深色区；
+           圆角随面板（20px 20px 0 0），否则深色块会在抽屉两角盖出直角 */
+        background: var(--panel-header-bg);
+        border-radius: inherit;
+    }
+
+    .cgo-rt-grabber::before {
+        content: "";
+        width: 40px;
+        height: 4px;
+        border-radius: 999px;
+        /* 横条落在深色底上，改用浅色描边，与车站详情面板 .sheet-grabber-bar 同一观感 */
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 标题栏同样具备拖档能力，触摸拖动必须禁掉浏览器手势接管，
+       否则 pointermove 会被页面滚动/缩放打断，跟手逻辑失效 */
+    .cgo-rt-panel .panel-header {
+        cursor: grab;
+        touch-action: none;
+        user-select: none;                /* 标题栏是纯标签文字，长按不该选中 */
+        -webkit-user-select: none;
+        /* 移动端把手区已与标题栏同色，顶部内边距收紧，避免深色区过厚挤占内容高度 */
+        padding-top: 10px;
+    }
+
+    /* 标题栏里的按钮照常显示可点光标 */
+    .cgo-rt-panel .panel-header button,
+    .cgo-rt-panel .panel-header a {
+        cursor: pointer;
+    }
+
+    /* 跟手拖动时禁掉文本选中：结果面板标题栏是「起点 → 终点」的站名文字 */
+    .cgo-rt-panel.cgo-rt-dragging,
+    .cgo-rt-panel.cgo-rt-dragging * {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+}
