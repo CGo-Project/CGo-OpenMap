@@ -34,6 +34,9 @@
  *   walkMinutes, xferMinutes, bend              // 可选，覆盖 DEFAULTS
  * }
  *
+ * 贯通运行不带在 config 里：它由城市侧的 lineLinks 声明，经 CGoLineLink 解析后
+ * 直接作为 network.through 下发（见 build 末尾），城市配置无需重复传参。
+ *
  * 构建网络
  * async build(config) -> { network, stats }
  *   内部会先等坐标索引就绪再建图——大连、长春全网缺 distances，里程完全由坐标推算，
@@ -287,11 +290,17 @@
             });
         });
 
+        // 贯通运行：同一条走廊上由两条线接续跑同一条交路（如大连 3 号线支线 ⇄ 13 号线在九里贯通）。
+        // 声明由城市侧给出（city/{city}.js 的 lineLinks），这里只做转发，
+        // 规划内核据此在衔接站把它们视作同一列车——通过时不记换乘、不计换乘耗时。
+        const through = window.CGoLineLink?.throughPairs?.() || [];
+
         return {
             network: {
                 lines,
                 stations: Object.fromEntries(Object.entries(stationsData).map(([sid, s]) => [sid, { type: s.type }])),
                 walk,
+                through,
                 xferMinutes: Number(config.xferMinutes) || DEFAULTS.xferMinutes,
                 fare: config.fare || null
             },

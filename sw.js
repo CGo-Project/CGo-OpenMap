@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.2200';
+const CACHE_NAME = 'cgo-openmap-v260926.2630';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -132,11 +132,15 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/calligraphy.css',
     './city/shenyang/shared/opening-schedule.js',
     './city/shenyang/shared/opening-schedule.css',
-    // 行程规划（三城共用）：数据构建器 / 规划内核 / 面板
+    // 行程规划（三城共用）：线路接续声明解析 / 数据构建器 / 规划内核 / 面板
+    './city/shenyang/shared/line-link.js',
     './city/shenyang/shared/route-data.js',
     './city/shenyang/shared/route-planner.js',
     './city/shenyang/shared/route-panel.js',
     './city/shenyang/shared/route-panel.css',
+    // 跨城市「查找最近车站」（三城共用）：接管核心 LBS 的 confirm，改用 cgo-modal 三选一
+    './city/shenyang/shared/nearest-station.js',
+    './city/shenyang/shared/nearest-station.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',

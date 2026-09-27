@@ -266,11 +266,13 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260926.1610";
+        const version = "260926.2630";
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
+        // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
+        document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
         // 城市私有数据（须早于依赖它的模块加载）
         document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
         // 共享层（本目录下，须早于各城模块加载）

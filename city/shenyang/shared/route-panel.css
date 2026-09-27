@@ -112,26 +112,29 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     position: relative;
 }
 
+/* 起终点输入框与检索框（#station-search-input）保持同一套输入外观：
+   同样的描边、圆角、字号、底色与聚焦态，两种形态下各自对齐同形态的检索框 */
 .cgo-rt-field input {
     width: 100%;
     box-sizing: border-box;
     padding: 10px 12px;
-    font: inherit;
-    color: var(--text-main);
-    background: var(--btn-info-bg);
-    border: 1px solid transparent;
-    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: var(--text-main) !important;
+    background-color: var(--bg-color) !important;
+    border: 1px solid var(--divider) !important;
+    border-radius: 6px;
     outline: none;
+    transition: border-color 0.2s;
 }
 
 .cgo-rt-field input:focus {
-    border-color: var(--primary-color);
-    background: var(--card-bg);
+    border-color: #00263b;
+    background-color: #fff;
 }
 
 .cgo-rt-field input::placeholder {
-    color: var(--text-main);
-    opacity: 0.45;
+    color: #bdcbd2;
 }
 
 .cgo-rt-swap {
@@ -275,13 +278,15 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     background: rgba(255, 255, 255, 0.26);
 }
 
-/* ── 候选路线页签栏（多条路线时才出现）──────────────────────────── */
+/* ── 候选路线页签栏（多条路线时才出现）────────────────────────────
+   观感对齐车站详情面板的 <cgo-tabs>（core/cgo-ui.js 里的 .bar / .tab）：
+   同款底色、同款内边距与字号、同款「主色底边 + 加粗」选中态；
+   区别只在页签按内容宽度左排（不拉伸均分），放不下时横向滚动。 */
 .cgo-rt-routebar {
     display: none;
     flex: none;            /* 不参与纵向收缩：面板高度受限时否则会把页签压成一条细缝 */
-    min-height: 38px;
-    background: var(--btn-info-bg);
-    border-bottom: 1px solid var(--divider, var(--border-color));
+    background: var(--tab-bg, var(--btn-info-bg));
+    border-bottom: 1px solid var(--border-color, var(--divider));
     overflow-x: auto;
     overflow-y: hidden;    /* 单轴设 auto 会让另一轴也变 auto，这里显式裁掉纵向 */
     scrollbar-width: none;
@@ -296,26 +301,27 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
 }
 
 .cgo-rt-tab {
-    flex: 1 0 auto;
-    padding: 9px 14px;
+    flex: 0 0 auto;
+    padding: 12px 20px;
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500 !important;
-    color: var(--text-main);
-    opacity: 0.62;
+    color: var(--text-light);
     background: transparent;
     border: none;
     border-bottom: 3px solid transparent;
     cursor: pointer;
     white-space: nowrap;
+    transition: color 0.2s, background-color 0.2s;
 }
 
 .cgo-rt-tab:hover {
-    background: var(--border-color);
+    color: var(--text-main);
+    background: var(--tab-hover, var(--border-color));
 }
 
-.cgo-rt-tab.active {
-    opacity: 1;
+/* 选中态刻意不用 .active：核心的 clearHighlights() 会清掉全文档的 .active（详见 route-panel.js 注释） */
+.cgo-rt-tab.cgo-rt-tab-active {
     font-weight: 700 !important;
     color: var(--primary-color);
     background: var(--card-bg);
@@ -668,6 +674,13 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     opacity: 0.16;
 }
 
+/* 规划路线与核心那套「线路聚焦高亮」不同时出现：后者最扎眼的一笔是把选中线路克隆进
+   #highlight-layer，而该层不参与上面的淡化，于是规划路径旁边会平白多出一条亮线。
+   主网层里的 .active 图元已经被 #lines-layer 的 opacity 一并压到 0.16，无需另行处理。 */
+#map-content.cgo-routing #highlight-layer {
+    display: none;
+}
+
 #map-content.cgo-routing #scattered-layer {
     opacity: 0.16;
 }
@@ -679,6 +692,23 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
 
 /* ── 抽屉把手（仅移动端显示，与车站详情面板的 .sheet-grabber 同一观感）── */
 .cgo-rt-grabber {
+    display: none;
+}
+
+/* ── 全屏档顶部填色遮罩（仅移动端）──────────────────────────────────
+   与核心车站面板的 .mobile-top-bar-backdrop 同一观感与动画：全屏落定后从下
+   往上展开，把抽屉顶端到视口顶部之间那段（面板全屏时留出的 60px 信号栏区）
+   补成标题栏色，免得露出被淡化后的地图底色，顶出一截断层。
+   刻意不复用核心那个元素：它由 body 的 mobile-panel-docked-full 驱动，属于
+   车站面板档位机的产物，规划面板借道加同一个类会污染对方的状态。 */
+.cgo-rt-backdrop {
+    display: none;
+}
+
+/* ── 地图选点的胶囊提示条（仅移动端）──────────────────────────────
+   进入选点时面板缩到最小化把视野让出来，这条提示浮在地图上告诉用户点哪里、
+   以及怎么退出；配色与标题栏一致，取消按钮反白。 */
+.cgo-rt-picker-tip {
     display: none;
 }
 
@@ -694,9 +724,12 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
         bottom: 0 !important;
         width: 100% !important;
         max-width: none !important;
-        height: 40vh;                     /* 半屏档：用 height 而非 max-height，
-                                             否则内容不足时既撑不高也切不到全屏档 */
-        max-height: calc(100vh - 60px) !important;
+        /* 半屏档按内容撑开：40vh 装不下「起终点输入区 + 快捷按钮 + 底栏」，
+           底栏会把输入区压掉半行。改内容自适应，60vh 封顶；内容更高的面板
+           （结果面板）超出部分交给 .panel-body 滚动。
+           用 height 而不是 max-height 定档：内容不足时 max-height 既撑不高也切不到全屏档。 */
+        height: auto;
+        max-height: 60vh !important;
         border-radius: 20px 20px 0 0 !important;
         box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.15) !important;
     }
@@ -706,6 +739,20 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
            一旦带上 !important，内联声明会被压死，面板就卡在全屏档拖不回去了。
            类选择器（0,2,0）本身就压得过上面的 .cgo-rt-panel（0,1,0）。 */
         height: calc(100vh - 60px);      /* 全屏档：顶部留出状态区 */
+        max-height: calc(100vh - 60px) !important;
+        /* 全屏时面板顶端与填色遮罩同色相连，收掉圆角才不会在接缝处留出缺口 */
+        border-radius: 0 !important;
+    }
+
+    /* 最小化档：只留把手与标题栏，内容区与底栏整块折叠。
+       高度交给「把手 + 标题栏」自然撑开，拖动期间的内联 height 由 settle() 清除。 */
+    .cgo-rt-panel.drawer-min {
+        height: auto;
+    }
+
+    .cgo-rt-panel.drawer-min .panel-body,
+    .cgo-rt-panel.drawer-min .panel-footer {
+        display: none !important;
     }
 
     .cgo-rt-panel .panel-body {
@@ -759,4 +806,185 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
         user-select: none;
         -webkit-user-select: none;
     }
+
+    /* 全屏档的顶部填色遮罩：高度与面板预留的 60px 严格对应（含刘海安全区） */
+    .cgo-rt-backdrop {
+        display: block;
+        visibility: hidden;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: calc(env(safe-area-inset-top, 0px) + 60px);
+        background-color: var(--panel-header-bg, #00263b);
+        pointer-events: none;             /* 纯底色，不能挡住地图交互 */
+        z-index: 2099;                    /* 面板 2100 之下、地图层之上 */
+        will-change: transform, opacity;
+        transform-origin: bottom center;  /* 收放都贴着面板顶端 */
+        transform: scaleY(0);
+        opacity: 0;
+        transition:
+            transform 180ms cubic-bezier(0.4, 0, 1, 1),
+            opacity 140ms ease-out,
+            visibility 0s linear 180ms;
+    }
+
+    .cgo-rt-backdrop.show {
+        visibility: visible;
+        transform: scaleY(1);
+        opacity: 1;
+        transition:
+            transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 220ms ease,
+            visibility 0s;
+    }
+
+    /* 选点提示条：浮在地图上方的胶囊，避开顶部状态区 */
+    .cgo-rt-picker-tip {
+        display: flex;
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 72px);
+        left: 50%;
+        max-width: calc(100vw - 32px);
+        align-items: center;
+        gap: 10px;
+        padding: 8px 8px 8px 14px;
+        border-radius: 999px;
+        background: var(--panel-header-bg, #00263b);
+        color: var(--panel-header-text, #fff);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        z-index: 2101;                    /* 压过面板与全屏遮罩，选点期间它必须可见 */
+        visibility: hidden;
+        opacity: 0;
+        transform: translateX(-50%) translateY(-8px);
+        transition:
+            opacity 180ms ease,
+            transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+            visibility 0s linear 180ms;
+    }
+
+    .cgo-rt-picker-tip.show {
+        visibility: visible;
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+        transition:
+            opacity 180ms ease,
+            transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+            visibility 0s;
+    }
+
+    .cgo-rt-picker-dot {
+        flex: none;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--primary-color, #006098);
+    }
+
+    .cgo-rt-picker-text {
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cgo-rt-picker-cancel {
+        flex: none;
+        padding: 6px 14px;
+        border: 0;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        /* 反白：落在深色胶囊上，用标题栏的文字色作底、底色作字 */
+        color: var(--panel-header-bg, #00263b);
+        background: var(--panel-header-text, #fff);
+        cursor: pointer;
+    }
+}
+
+/* ==========================================================================
+   固定侧栏形态（桌面端 body.legend-pinned）
+   两个面板去掉标题栏，改用侧栏统一的 panel-section 入驻 #legend-content：
+   查询面板紧随「搜索」区块，结果面板进入动态内容区。浮层与移动端抽屉不受影响，
+   两套形态的切换与状态保留由 route-panel.js 的 syncRoutePanels 负责。
+   ========================================================================== */
+
+/* ── 查询面板：高度随内容，不参与剩余空间的分配（空间留给图例与动态区）── */
+body.legend-pinned #cgo-route-card.cgo-rt-section {
+    flex-shrink: 0;
+}
+
+/* 核心把 .section-body 写死成 display:block !important，这里必须同带 !important
+   且权重更高，才能把内容区还原成浮层形态那套 flex 列骨架 */
+body.legend-pinned .cgo-rt-section-body {
+    display: flex !important;
+    flex-direction: column;
+    min-height: 0;
+    /* 起终点候选下拉要能探出区块，不能被裁掉 */
+    overflow: visible;
+}
+
+body.legend-pinned #cgo-route-card .cgo-rt-section-body > .panel-body {
+    flex: none;              /* 内容多高就多高，别被 flex 拉长 */
+}
+
+/* 侧栏里的检索框是紧凑档（见 style.css 的 body.legend-pinned #station-search-input），
+   起终点输入框跟着收一档，两行并排时高度才不会比搜索框高出一截 */
+body.legend-pinned #cgo-route-card .cgo-rt-field input {
+    padding: 6px 10px;
+    height: 32px;
+    font-size: 13px;
+    border-radius: 4px;
+}
+
+/* ── 结果面板：入驻动态内容区，展开时独占剩余空间 ─────────────────── */
+body.legend-pinned #cgo-route-result.cgo-rt-section {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+body.legend-pinned #cgo-route-result.cgo-rt-section:not(.collapsed) {
+    flex: 1;
+    min-height: 0;
+}
+
+body.legend-pinned #cgo-route-result .cgo-rt-section-body {
+    flex: 1;
+    overflow: hidden;
+    padding: 0 !important;   /* 正文自带内边距，区块不再重复给（页签栏则需整宽） */
+}
+
+/* 页签栏与底栏固定不动，只有结果正文滚动 */
+body.legend-pinned #cgo-route-result .cgo-rt-routebar,
+body.legend-pinned #cgo-route-result .cgo-rt-section-body > .panel-footer {
+    flex: none;
+}
+
+body.legend-pinned #cgo-route-result .cgo-rt-result-body {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+}
+
+/* 折叠态在同一行右侧铺开本方案乘坐过的线路色块（与历史车站区块同一套表现） */
+body.legend-pinned #cgo-route-result.collapsed .header-color-squares {
+    display: inline-flex;
+}
+
+/* 标题可能很长（起点站名→终点站名（路线模式）），压到箭头之前先自己截断 */
+body.legend-pinned #cgo-route-result .section-title-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 查询面板标题较短，同样占满左侧，让箭头稳定贴右 */
+body.legend-pinned #cgo-route-card .section-title-text {
+    flex: 1;
+    min-width: 0;
 }

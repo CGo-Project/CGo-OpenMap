@@ -113,6 +113,15 @@
         /** 未开通车站（type "no"）不可达；stations 未收录的站按可用处理，避免数据不全而阻塞 */
         const reachable = (sid) => stations[sid]?.type !== "no";
 
+        /**
+         * 贯通直通索引：`衔接站|从线|到线` → 声明。
+         * 命中即表示这两条线在该站跑的是同一列车（如大连 3 号线支线 ⇄ 13 号线在九里贯通），
+         * 通过时既不算换乘、也不付换乘耗时——乘客是坐在车上过去的，没有下车再上车这回事。
+         */
+        const throughMap = new Map(
+            (network.through || []).map((pair) => [`${pair.at}|${pair.from}|${pair.to}`, pair])
+        );
+
         const stateKey = (sid, lineId, wi, dir) => `${sid}|${lineId}|${wi}|${dir}`;
 
         /** 沿当前状态前进一步；越界且非环线则无去路 */
@@ -277,16 +286,21 @@
                     }
                 }
 
-                // ② 同站换乘：切到本站其他线路（同线不同支也算换乘）
+                // ② 同站换乘：切到本站其他线路（同线不同支也算换乘）。
+                //    命中贯通声明的则不是换乘——那是同一列车换了条线继续开，代价为 0。
                 (boardable.get(sid) || []).forEach(({ lineId: toLineId, wi: toWi, idx: toIdx }) => {
                     if (toLineId === lineId && toWi === wi) return;
                     if (!lineById.has(toLineId)) return;
-                    const minutes = xferMinutes(sid, lineId, toLineId);
+                    const direct = throughMap.get(`${sid}|${lineId}|${toLineId}`) || null;
+                    const minutes = direct ? 0 : xferMinutes(sid, lineId, toLineId);
+                    const weight = direct ? 0 : objective.xfer(sid, lineId, toLineId);
                     const toLine = lineById.get(toLineId);
                     [1, -1].forEach((toDir) => {
                         if (!hasService(toLine, toWi, toIdx, toDir)) return;
-                        relax(stateKey(sid, toLineId, toWi, toDir), cost + objective.xfer(sid, lineId, toLineId), key,
-                            { t: "xfer", at: sid, fromLine: lineId, toLine: toLineId, minutes });
+                        relax(stateKey(sid, toLineId, toWi, toDir), cost + weight, key,
+                            direct
+                                ? { t: "xfer", at: sid, fromLine: lineId, toLine: toLineId, minutes, through: true, name: direct.name }
+                                : { t: "xfer", at: sid, fromLine: lineId, toLine: toLineId, minutes });
                     });
                 });
 
@@ -319,7 +333,8 @@
                 if (!info) return;                      // 起点状态本身
                 if (info.t === "xfer") {
                     flush();
-                    steps.push({ t: "xfer", at: info.at, fromLine: info.fromLine, toLine: info.toLine, minutes: info.minutes });
+                    // 整条透传：贯通衔接会多带 through / name 两个字段给下游按「同一列车」展示
+                    steps.push({ ...info });
                     cursor = info.at;
                     return;
                 }
@@ -358,7 +373,8 @@
 
             const stops = steps.filter((s) => s.t === "ride")
                 .reduce((sum, s) => sum + Math.max(0, s.stops.length - 1), 0);
-            const transfers = steps.filter((s) => s.t === "xfer"
+            // 贯通衔接不计入换乘：那是同一列车换了条线继续开，不是下车再上车
+            const transfers = steps.filter((s) => (s.t === "xfer" && !s.through)
                 || (s.t === "walk" && s.kind === "transfer")).length;
             const distance = Math.round(steps.filter((s) => s.t === "ride")
                 .reduce((total, s) => total + (s.km || 0), 0) * 10) / 10;
@@ -415,7 +431,8 @@
          * 票价结算：同一计费系统内连续乘车合并计费，切到别的系统就分别结算
          * ——浑南有轨「换乘线路乘车须重新购票」、大连 201 与 202 各自购票、
          * 长春 G54 与 G55 各自购票，都由城市用 fareSystems 拆成独立系统表达。
-         * 出站步行不必单独结算：站外换乘接的多是别家的线，切系统时已重新计费。
+         * 付费出站换乘同样要重新购票：乘客已经出了付费区，同系统也不能并成一段按最低里程计
+         * （城市把这类连通登记在 VIRTUAL_TRANSFER_MAP 里，免费的那种在 VIRTUAL_FREE_TRANSFER_MAP）。
          * 每段的计费里程取该段「进站—出站」之间的最短里程，而非所选路线的实际里程；
          * 按段计价的线路（如大连 201 路）改用结算上下文里的实际乘车站序自行判定。
          */
@@ -433,6 +450,8 @@
                 system = null; entry = exit = null; riddenKm = 0; stops = [];
             };
             steps.forEach((s) => {
+                // 付费出站换乘：计费段到此为止，后半程另行购票
+                if (s.t === "walk" && s.free === false) { settle(); return; }
                 if (s.t !== "ride") return;
                 const next = lineSystem(s.line);
                 if (system && next !== system) settle();
