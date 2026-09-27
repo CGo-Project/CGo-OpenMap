@@ -1,0 +1,295 @@
+/**
+ * CGo OpenMap - 兰州城市专属样式 (city/lanzhou/style.css)
+ * ==============================================================================
+ * 站点未被点击时，站名同样保留白色描边
+ * ------------------------------------------------------------------------------
+ * 背景：核心引擎 css/style.css 中，站名描边只在「选中态」生效——
+ *       .label-group.active .stacn / .staen { -webkit-text-stroke: <宽度> var(--map-bg); }
+ *       因此未点击的站名没有任何描边，在底图色块上可读性偏弱。
+ *
+ * 本表为「未选中」的站名补上同一条描边，规则与核心样式表的选中态保持一致：
+ *   - 描边色同样取 var(--map-bg)（亮色主题=#ffffff 白色，暗色主题=#1a1a1a），
+ *     从而自动适配亮/暗主题（铁律三），观感与点击后完全一致；
+ *   - 描边宽度同样取 --sta-stroke-width-cn / --sta-stroke-width-en 两个变量；
+ *   - 配合核心样式中已有的 paint-order: stroke fill，描边画在文字填充之下，
+ *     文字本体保持清晰，不会被描边吃掉笔画。
+ *
+ * 优先级说明：选择器带 .label-group 前缀（0,2,0），仅用于稳定覆盖核心样式表的
+ * 基础规则 .stacn / .staen（0,1,0）；选中态规则 .label-group.active .stacn / .staen
+ * （0,3,0）优先级更高，故「点击后的显示状况」不受本表任何影响。
+ * ==============================================================================
+ */
+
+.label-group .stacn {
+    -webkit-text-stroke: var(--sta-stroke-width-cn) var(--map-bg);
+}
+
+.label-group .staen {
+    -webkit-text-stroke: var(--sta-stroke-width-en) var(--map-bg);
+}
+
+/**
+ * ==============================================================================
+ * 票价表（车站卡片底部操作栏按钮 + 全屏图片查看层）
+ * ------------------------------------------------------------------------------
+ * 由 city/lanzhou/modules/lanzhou_fare_table.js 使用：
+ *   - .lanzhou-fare-table-btn   位于「官网查询 / 高德导航」按钮行上方的整行按钮；
+ *   - .lanzhou-fare-viewer      点击后弹出的全屏票价表图片查看层（可缩放 / 平移）。
+ *
+ * 版式与配色约定（与核心 footer-actions 的「高德导航」按钮严格一致）：
+ *   - 背景  var(--btn-info-bg)   —— 浅色 #e9ecef / 深色 #373838，随主题自动适配；
+ *   - 文字  var(--text-main)     —— 浅色 #00263b / 深色 #e5e8ea；
+ *   - 边框  var(--border-color)  —— 浅色 #dee2e6 / 深色 #333333；
+ *   - 悬浮  var(--btn-info-hover)—— 浅色 #dee2e6 / 深色 #4a4b4c；
+ *   - font: inherit 保证字体族与行高与同排按钮完全相同，故高度逐像素一致。
+ * ==============================================================================
+ */
+
+/* ── 车站卡片底部「票价表」按钮 ─────────────────────────────────────────── */
+
+.lanzhou-fare-table-btn {
+    /* 关键：继承同排按钮一致的字体族与行高（按钮默认 UA 字体/行高会与 <a> 不一致） */
+    font: inherit;
+    font-weight: bold;
+    /* 去除各平台原生按钮外观（iOS / macOS 下避免控件默认底色与圆角干扰） */
+    appearance: none;
+    -webkit-appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    /* 宽度含边框 → 与「官网查询 … 高德导航」整行等宽且不溢出 */
+    box-sizing: border-box;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+/* 常规尺寸：与核心 btnWhite（普通地铁站 / 国铁站）完全一致 */
+.lanzhou-fare-table-btn[data-size="normal"] {
+    padding: 12px 0;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+/* 小号尺寸：与核心 btnWhiteTiny（市郊铁路站 / Rwy2 混合站）完全一致 */
+.lanzhou-fare-table-btn[data-size="tiny"] {
+    padding: 8px 0;
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.lanzhou-fare-table-btn:hover {
+    background: var(--btn-info-hover);
+}
+
+.lanzhou-fare-table-btn:active {
+    transform: translateY(1px);
+}
+
+.lanzhou-fare-table-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.lanzhou-fare-table-btn cgo-icon {
+    color: currentColor;
+}
+
+/* ── 票价表全屏查看层 ─────────────────────────────────────────────────── */
+
+.lanzhou-fare-viewer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* 高于移动端抽屉面板(2000/11600)与图例层(9999)，与偏好设置弹层同级 */
+    z-index: 99999;
+    display: none;
+    flex-direction: column;
+    /* 遮罩在亮/暗主题下均为深色（灯箱惯例），层内文字用浅色，保证两种主题下都清晰 */
+    background: rgba(0, 0, 0, 0.78);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    touch-action: none;
+    overscroll-behavior: contain;
+    animation: lanzhouFareViewerFadeIn 0.18s ease-out;
+}
+
+html[data-theme="dark"] .lanzhou-fare-viewer {
+    background: rgba(0, 0, 0, 0.88);
+}
+
+.lanzhou-fare-viewer.is-open {
+    display: flex;
+}
+
+@keyframes lanzhouFareViewerFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 顶部工具条：主题变量着色，深浅模式自动适配 */
+.lanzhou-fare-viewer-bar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px 8px 14px;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    background: var(--card-bg);
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.lanzhou-fare-viewer-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 0;
+}
+
+.lanzhou-fare-viewer-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.lanzhou-fare-viewer-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.lanzhou-fare-viewer-btn:hover {
+    background: var(--btn-info-hover);
+}
+
+.lanzhou-fare-viewer-btn:active {
+    transform: scale(0.94);
+}
+
+.lanzhou-fare-viewer-btn.is-close {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--btn-text);
+}
+
+.lanzhou-fare-viewer-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* 舞台：图片缩放与平移的画布 */
+.lanzhou-fare-viewer-stage {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+}
+
+.lanzhou-fare-viewer-stage.is-dragging {
+    cursor: grabbing;
+}
+
+.lanzhou-fare-viewer-img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    transform-origin: center center;
+    transform: translate(-50%, -50%);
+    border-radius: 3px;
+    /* 深色遮罩下勾出图片轮廓；亮色主题下同样只在深色遮罩上显示，不会突兀 */
+    outline: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    background: var(--card-bg);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    will-change: transform;
+}
+
+/* 图片未就绪前先隐藏，避免以原始尺寸闪一帧 */
+.lanzhou-fare-viewer-img.is-loading {
+    opacity: 0;
+}
+
+.lanzhou-fare-viewer-loading {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.45);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 13px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* 底部操作提示（位于深色遮罩上，两种主题统一使用浅色文字） */
+.lanzhou-fare-viewer-hint {
+    flex: 0 0 auto;
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(0, 0, 0, 0.25);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 移动端：加大触摸目标 */
+@media (max-width: 640px) {
+    .lanzhou-fare-viewer-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .lanzhou-fare-viewer-hint {
+        font-size: 10px;
+    }
+}
+
+/* 尊重系统「减少动态效果」偏好 */
+@media (prefers-reduced-motion: reduce) {
+    .lanzhou-fare-viewer {
+        animation: none;
+    }
+
+    .lanzhou-fare-table-btn,
+    .lanzhou-fare-viewer-btn {
+        transition: none;
+    }
+}
