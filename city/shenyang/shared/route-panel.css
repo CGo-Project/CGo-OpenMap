@@ -11,8 +11,9 @@
  */
 
 /* ── 顶栏入口按钮 ───────────────────────────────────────────────── */
+/* 底端不留边距：按钮下方紧挨着注入的分隔线，纵向间距由那条分隔线自带（见 injectTopButton） */
 #cgo-route-entry {
-    margin-bottom: 8px;
+    margin-bottom: 0;
 }
 
 /* ── 面板容器（与 #info-panel 同款观感，位置错开不遮挡）──────────── */
@@ -278,53 +279,25 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     background: rgba(255, 255, 255, 0.26);
 }
 
-/* ── 候选路线页签栏（多条路线时才出现）────────────────────────────
-   观感对齐车站详情面板的 <cgo-tabs>（core/cgo-ui.js 里的 .bar / .tab）：
-   同款底色、同款内边距与字号、同款「主色底边 + 加粗」选中态；
-   区别只在页签按内容宽度左排（不拉伸均分），放不下时横向滚动。 */
+/* ── 候选路线页签栏 ────────────────────────────────────────────
+   结构直接复用车站详情面板的 .panel-tabs-container：背景、分隔线、页签的
+   内边距/字号/hover 都来自核心 css/style.css 的 .panel-tabs-nav 与 .tab-item，
+   这里只补两点：
+     · 默认隐藏，出结果后按 .show 展开（核心那套是常显的）；
+     · 选中态用专属类名 cgo-rt-tab-active 而不是 .active——核心的 clearHighlights()
+       是 `document.querySelectorAll('.active')` 一把清空，页签选中态会被它顺手抹掉。 */
 .cgo-rt-routebar {
     display: none;
     flex: none;            /* 不参与纵向收缩：面板高度受限时否则会把页签压成一条细缝 */
-    background: var(--tab-bg, var(--btn-info-bg));
-    border-bottom: 1px solid var(--border-color, var(--divider));
-    overflow-x: auto;
-    overflow-y: hidden;    /* 单轴设 auto 会让另一轴也变 auto，这里显式裁掉纵向 */
-    scrollbar-width: none;
 }
 
 .cgo-rt-routebar.show {
     display: flex;
 }
 
-.cgo-rt-routebar::-webkit-scrollbar {
-    display: none;
-}
-
-.cgo-rt-tab {
-    flex: 0 0 auto;
-    padding: 12px 20px;
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500 !important;
-    color: var(--text-light);
-    background: transparent;
-    border: none;
-    border-bottom: 3px solid transparent;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color 0.2s, background-color 0.2s;
-}
-
-.cgo-rt-tab:hover {
+.cgo-rt-routebar .tab-item.cgo-rt-tab-active {
     color: var(--text-main);
-    background: var(--tab-hover, var(--border-color));
-}
-
-/* 选中态刻意不用 .active：核心的 clearHighlights() 会清掉全文档的 .active（详见 route-panel.js 注释） */
-.cgo-rt-tab.cgo-rt-tab-active {
-    font-weight: 700 !important;
-    color: var(--primary-color);
-    background: var(--card-bg);
+    font-weight: bold;
     border-bottom-color: var(--primary-color);
 }
 
@@ -374,6 +347,11 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     padding: 10px 0 5px;
 }
 
+/* 线路编号徽标：固定 22×22（缺省圆角方形，城市声明 lineCodeShape: "circle" 时地铁改圆形——
+   沈阳的画法：地铁圆、有轨方，与线路图例的形状习惯一致）。
+   形状不随编号长短变形：宽度写死并由内层 .cgo-rt-code 承接溢出，
+   编号偏宽时由 JS 按 canvas 实测文字宽度做横向压缩（见 route-panel.js 的 fitModeCodes），
+   字距随整体缩放一并收紧，圆底/方底始终保持正形。 */
 .cgo-rt-mode {
     flex: none;
     display: flex;
@@ -381,9 +359,34 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     justify-content: center;
     width: 22px;
     height: 22px;
+    box-sizing: border-box;
     border-radius: 6px;
     color: #fff;
     background: var(--line-color, var(--primary-color));
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.cgo-rt-mode.circle {
+    border-radius: 999px;
+}
+
+.cgo-rt-mode.square {
+    border-radius: 6px;
+}
+
+/* 编号文字单独成层，横向压缩只作用于文字本体，不牵动圆底/方底。
+   flex: none 不可省：让它按内容撑到自然宽度、由父级居中，溢出部分两侧对称，
+   scaleX 以元素中心为原点缩放后文字才是正的居中；若被 flex 压到容器宽度，
+   溢出会全挤向右侧，缩放后文字会明显偏左。 */
+.cgo-rt-code {
+    flex: none;
+    display: block;
+    white-space: nowrap;
+    transform: scaleX(var(--cgo-rt-code-sx, 1));
+    transform-origin: center center;
 }
 
 .cgo-rt-mode.xfer,
@@ -437,11 +440,12 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     opacity: 0.65;
 }
 
-.cgo-rt-leg-line .line-badge {
-    flex: none;
+.cgo-rt-leg-line b {
+    font-weight: 700;
 }
 
-.cgo-rt-leg-line b {
+.cgo-rt-leg-line .cgo-rt-line-name {
+    flex: none;
     font-weight: 700;
 }
 
@@ -449,27 +453,34 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     padding-bottom: 12px;
 }
 
-/* 途经车站的展开按钮与列表 */
-.cgo-rt-expand {
-    margin-left: auto;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    color: var(--text-main);
-    background: var(--btn-info-bg);
-    border: none;
-    border-radius: 999px;
+/* 「乘坐 X 站 · X 分钟」整条可点：展开 / 收起途经车站列表。
+   悬停背景从左侧粗线右侧起（与上游 map 页同一控件的悬停态一致），
+   故用 margin 让开粗线、再用等量 padding 把文字顶回原来的对齐线；
+   粗线是相对本元素的 ::before，margin 会带着它一起位移，需按 -margin 抵消回来。 */
+.cgo-rt-leg-line.cgo-rt-expandable {
+    margin-left: 16px;
+    margin-right: 4px;
+    padding-left: 14px;       /* 16 + 14 = 30px，文字仍与其它行对齐 */
+    border-radius: 8px;
     cursor: pointer;
+    transition: background-color 0.18s;
 }
 
-.cgo-rt-expand cgo-icon {
+.cgo-rt-leg-line.cgo-rt-expandable::before {
+    left: -8px;               /* 抵消 margin-left，粗线留在原位 */
+}
+
+.cgo-rt-leg-line.cgo-rt-expandable:hover {
+    background: var(--tab-hover, var(--btn-info-bg));
+}
+
+.cgo-rt-expand-caret {
+    flex: none;
+    color: var(--text-main);
     transition: transform 0.18s;
 }
 
-.cgo-rt-expand.open cgo-icon {
+.cgo-rt-leg-line.cgo-rt-expandable.open .cgo-rt-expand-caret {
     transform: rotate(180deg);
 }
 
@@ -727,9 +738,12 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
         /* 半屏档按内容撑开：40vh 装不下「起终点输入区 + 快捷按钮 + 底栏」，
            底栏会把输入区压掉半行。改内容自适应，60vh 封顶；内容更高的面板
            （结果面板）超出部分交给 .panel-body 滚动。
-           用 height 而不是 max-height 定档：内容不足时 max-height 既撑不高也切不到全屏档。 */
+           用 height 而不是 max-height 定档：内容不足时 max-height 既撑不高也切不到全屏档。
+           高度一律用 dvh：移动端浏览器的 100vh 是地址栏收起时的大视口，比实际可见高度大，
+           面板会比屏幕还高、顶栏被挤到页面标题栏上面（dvh 取当前动态视口，与核心面板一致）。 */
         height: auto;
         max-height: 60vh !important;
+        max-height: 60dvh !important;
         border-radius: 20px 20px 0 0 !important;
         box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.15) !important;
     }
@@ -737,9 +751,16 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     .cgo-rt-panel.drawer-full {
         /* ⚠️ 这里绝不能加 !important：拖动靠内联 height 覆盖档位高度，
            一旦带上 !important，内联声明会被压死，面板就卡在全屏档拖不回去了。
-           类选择器（0,2,0）本身就压得过上面的 .cgo-rt-panel（0,1,0）。 */
-        height: calc(100vh - 60px);      /* 全屏档：顶部留出状态区 */
+           类选择器（0,2,0）本身就压得过上面的 .cgo-rt-panel（0,1,0）。
+           顶端的预留量必须与核心车站面板同口径（style.css 的
+           `top: calc(env(safe-area-inset-top, 0px) + 60px)`）：
+           面板是「贴底 + 定高」定位，顶端 = 视口高 − 高度，
+           少减 safe-area-inset-top 就会顶进刘海/状态栏、压住页面标题栏。
+           高度用 dvh：移动端浏览器的 100vh 取地址栏收起时的大视口，比实际可见高度大。 */
+        height: calc(100vh - 60px);      /* 回退：不支持 dvh / env 的旧内核 */
+        height: calc(100dvh - 60px - env(safe-area-inset-top, 0px));
         max-height: calc(100vh - 60px) !important;
+        max-height: calc(100dvh - 60px - env(safe-area-inset-top, 0px)) !important;
         /* 全屏时面板顶端与填色遮罩同色相连，收掉圆角才不会在接缝处留出缺口 */
         border-radius: 0 !important;
     }
@@ -781,6 +802,21 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
         /* 横条落在深色底上，改用浅色描边，与车站详情面板 .sheet-grabber-bar 同一观感 */
         background: rgba(255, 255, 255, 0.78);
         box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    /* 标题栏圆角必须为 0。面板顶部的圆角由紧贴顶边的 .cgo-rt-grabber 承担；
+       标题栏在把手之下，若也跟着画一层 20px 圆角，两块深色区交界处就会露出面板底色，
+       看上去是「双层圆角」（用户反馈的现象）。
+       核心那两条 `body.mobile-split-active .panel-header { border-radius: 20px 20px 0 0 !important }`
+       与 `body.mobile-panel-expanded .panel-header { border-radius: 0 !important }` 是给车站面板
+       写的通用规则（那条面板没有独立把手，圆角确实落在标题栏上），会一并命中本面板，
+       故这里按核心三条档位规则各自的权重逐条压掉——顺带也免了「核心的 mobile-split-active
+       要等 150ms 去抖才加上、标题栏圆角迟到」那类时序问题。 */
+    body .cgo-rt-panel .panel-header,
+    body.mobile-split-active .cgo-rt-panel .panel-header,
+    body.panel-sheet-collapsed .cgo-rt-panel .panel-header,
+    body.mobile-panel-expanded .cgo-rt-panel .panel-header {
+        border-radius: 0 !important;
     }
 
     /* 标题栏同样具备拖档能力，触摸拖动必须禁掉浏览器手势接管，

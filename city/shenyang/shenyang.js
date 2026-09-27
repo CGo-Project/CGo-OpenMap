@@ -230,6 +230,9 @@
      */
     window.CGO_ROUTE_CONFIG = {
         coords: "./city/shenyang/amap_data.json",
+        // 线路编号徽标的城市覆盖：有轨 5 号线写作 T5，与地铁 5 号线区分开
+        lineCodes: { HNT5: "T5" },
+        lineCodeShape: "circle",   // 本城地铁用圆形编号徽标（有轨与其他城市保持圆角方形）
         cityIcon: "shenyang",   // 官网查询按钮使用城市官方徽标（CGoUI 内置）
         reader(line, sid) {
             const hours = window.SHENYANG_STACARD_DATA?.[String(sid)]?.[String(line.id)]?.serviceHours || [];
@@ -266,7 +269,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260926.2630";
+        const version = "260927.1606";
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
@@ -278,6 +281,8 @@
         // 共享层（本目录下，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
+        // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
+        document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/tip-card.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/calligraphy.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）

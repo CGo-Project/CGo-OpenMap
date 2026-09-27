@@ -25,7 +25,7 @@
 
 | 文件 | 对外接口 | 加载方式 | 职责 |
 | :--- | :--- | :--- | :--- |
-| `timetable-renderer.js` | `window.CGoTimetable`、`window.CGoDayType` | classic script，各城 `{city}.js` 引入 | 首末班车「归一化行 → HTML」、日期类型判定（`workday` / `restday`，可选调休日历）、**季节判定（阈值由城市传入）**、终点站代号解析、季节与日期类型标签的差异判定 |
+| `timetable-renderer.js` | `window.CGoTimetable`、`window.CGoDayType` | classic script，各城 `{city}.js` 引入 | 首末班车「归一化行 → HTML」、日期类型判定（`workday` / `restday`，可选调休日历）、**季节判定（阈值由城市传入）**、终点站代号解析（`line-first` / `line-last` 跳过未开通车站）、未开通车站过滤、按日期类型取行（`rowsForDayType`）、季节与日期类型标签的差异判定。<br>行模型见文件内 typedef：`first` / `last` 一律是字符串，日期类型分档落在**行**上（行带 `dayType`，缺省为通用），共享层不猜值的形状 |
 | `stacard-engine.js` | 具名导出 `createStaCard` | ES module，各城 `stacard/script.js` 相对 import | 高德瓦片地图卡片：坐标索引、占位 HTML、瓦片网格、缩放交互、ResizeObserver 生命周期 |
 | `station-title.js` | `window.CGoStationTitle.createStationTitleNormalizer` | classic script | 侧栏站名标题归一化（站类判定、标题拼装、MutationObserver 安装与防自触发） |
 | `tip-card.js` | `window.CGoTipCard.render` | classic script | 车站信息板提示卡片 DOM（与上游官方模板结构一致） |
@@ -33,7 +33,7 @@
 | `opening-schedule.js` | `window.CGoOpening` | classic script | 未开通区段与车站的**开通时刻**：状态转换、待开通登记、到点自动刷新，以及未开通车站 footer 的开通文案与倒计时（详见第四节） |
 | `opening-schedule.css` | — | 由 `opening-schedule.js` 按自身 URL 注入 | 上述倒计时框的样式（同 `calligraphy.css` 的做法） |
 | `line-link.js` | `window.CGoLineLink`（`list` / `atStation` / `ofLine` / `throughPairs` / `mergeStationLines`） | classic script，各城 `{city}.js` 引入，须早于 `route-data.js` | 线路接续声明解析：城市用 `lineLinks` 声明「哪两条线在哪个站接续、是否贯通运行」。声明 `through: true` 时，规划内核把经由衔接站的跨线视作同一列车（不计换乘、无换乘耗时），车站详情也把整条贯通区段合并成一条线、相邻站跨线相连 |
-| `route-data.js` + `route-planner.js` + `route-panel.js` + `route-panel.css` | `window.CGoRouteData`（`build` / `amapCoordIndex` / `collectVirtualTransfers` / `hourSlots`）、`window.CGoRoutePlanner`、`window.CGoRoutePanel` | classic script，各城 `{city}.js` **按 data → planner → panel 的顺序**引入 | 行程规划：网络构建（时刻表实测区间用时 + 坐标里程兜底 + 站外换乘 + 贯通直通）、多目标 Dijkstra（最快 / 最短 / 最少换乘 / 最省）、按计费系统结算票价（`fareSystems` 把各自购票的有轨等拆成独立系统，付费出站换乘另行购票）、结果面板与图上高亮 |
+| `route-data.js` + `route-planner.js` + `route-panel.js` + `route-panel.css` | `window.CGoRouteData`（`build` / `amapCoordIndex` / `collectVirtualTransfers` / `hourSlots`）、`window.CGoRoutePlanner`、`window.CGoRoutePanel` | classic script，各城 `{city}.js` **按 data → planner → panel 的顺序**引入 | 行程规划：网络构建（时刻表实测区间用时 + 坐标里程兜底 + 站外换乘 + 贯通直通 + 未开通车站的穿过判定）、多目标 Dijkstra（最快 / 最短 / 最少换乘 / 最省）、按计费系统结算票价（`fareSystems` 把各自购票的有轨等拆成独立系统，付费出站换乘另行购票）、结果面板与图上高亮。「我的位置」按需取坐标索引 |
 | `nearest-station.js` + `nearest-station.css` | 无对外接口（自动接管 `#locate-btn`） | classic script，各城 `{city}.js` 引入 | 跨城市「查找最近车站」：在 `#locate-btn` 上以**捕获阶段**扣下核心 `findNearestStation` 的点击，本模块自足地定位、换算 GCJ-02、比对全城站点后，改用 `cgo-modal` 三选一（切换到更近的城市 / 查看当前城市最近车站 / 取消），替掉核心那个同步 `confirm`；样式表由脚本按自身 URL 注入 |
 
 ---

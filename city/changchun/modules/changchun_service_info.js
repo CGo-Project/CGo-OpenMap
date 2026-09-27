@@ -27,25 +27,48 @@
     const SEASON_CONFIG = { summerFrom: 5, summerTo: 10 };
 
     /**
-     * 生成某季节 + 某日期类型下的归一化行
+     * 用 lineId 还原 linesData 里的线路对象。
      *
-     * 日期类型键名与共享层契约一致（workday / restday）；长春无调休日历，
-     * 由共享层 CGoDayType 按星期判定。
+     * 信息板给模块的 lineInfo 只有站名/徽标/上下站一类展示字段，**不含 stationIds**，
+     * 而解析 line-first / line-last 代号必须拿站序，所以这里回查一次原始线路对象
+     * （与沈阳 shenyang_service_info.js 的 getLineById 同一做法）。
+     */
+    function getLineById(lineId) {
+        if (typeof linesData === "undefined" || !Array.isArray(linesData)) return null;
+        return linesData.find((line) => line?.id === lineId) || null;
+    }
+
+    /**
+     * 生成某季节下的归一化行
+     *
+     * 日期类型的分档一律落在**行**上（共享层契约）：首班在工作日/周末之间有差异时
+     * 摊平成两行、各带 dayType，行内的值始终是字符串；无差异时留空 dayType，
+     * 表示两种日期类型通用。这样共享层只按当天类型过滤行，不必兼容值的形状。
      *
      * destination 与沈阳保持同一语义（终点站）：既可能是 "line-first" / "line-last"
      * 代号，也可能是具体站 ID（区间车、或线路延长后时刻表尚未覆盖的旧终点），
      * 两者都交由共享层 resolveDestination 解析，本模块不再自行查站名。
      */
-    function buildRows(line, entries, seasonKey, dayKey) {
-        return entries.map((entry) => {
-            const firstSlot = entry?.first || {};
-            return {
-                destination: CGoTimetable.resolveDestination(line, entry?.destination),
-                // 首班按日期类型取值，缺项时沿用原实现的回退链（workday → restday）
-                first: firstSlot[dayKey] || firstSlot.workday || firstSlot.restday || "",
-                last: entry?.[seasonKey] || ""
-            };
-        }).filter((row) => row.destination && (row.first || row.last));
+    function buildRows(line, entries, seasonKey) {
+        const rows = [];
+        entries.forEach((entry) => {
+            const destination = CGoTimetable.resolveDestination(line, entry?.destination);
+            if (!destination) return;
+            const last = String(entry?.[seasonKey] || "");
+            const firstSlots = entry?.first || {};
+            const slots = (firstSlots.workday || firstSlots.restday)
+                ? [
+                    { dayType: "workday", first: firstSlots.workday },
+                    { dayType: "restday", first: firstSlots.restday }
+                ]
+                : [{ dayType: "", first: firstSlots.workday || firstSlots.restday || "" }];
+            slots.forEach((slot) => {
+                const first = String(slot.first || "");
+                if (!first && !last) return;
+                rows.push({ destination, first, last, dayType: slot.dayType });
+            });
+        });
+        return rows;
     }
 
     /**
@@ -57,12 +80,12 @@
     function buildMeta(line, entries, season, dayType) {
         const dayKey = dayType.key;
         const otherDayKey = dayKey === "workday" ? "restday" : "workday";
-        const rows = buildRows(line, entries, season.key, dayKey);
         const meta = {};
-        if (!CGoTimetable.sameRows(rows, buildRows(line, entries, season.otherKey, dayKey))) {
+        const rows = CGoTimetable.rowsForDayType(buildRows(line, entries, season.key), dayKey);
+        if (!CGoTimetable.sameRows(rows, CGoTimetable.rowsForDayType(buildRows(line, entries, season.otherKey), dayKey))) {
             meta.seasonLabel = season.label;
         }
-        if (!CGoTimetable.sameRows(rows, buildRows(line, entries, season.key, otherDayKey))) {
+        if (!CGoTimetable.sameRows(rows, CGoTimetable.rowsForDayType(buildRows(line, entries, season.key), otherDayKey))) {
             meta.dayTypeLabel = dayType.label;
         }
         return meta;
@@ -77,17 +100,18 @@
             shouldRender({ station, lineInfo }) {
                 // 未开通车站（含暂缓开通）不展示运营时刻——否则会抢跑，
                 // 把「尚未开通」的站显示出时刻表；开通时刻到期后站型转正即自动展示。
-                if (String(station?.type || "") === "no") return false;
+                if (!CGoTimetable.isOperableStation(station)) return false;
                 return getEntries(station?.id, lineInfo?.id).length > 0;
             },
             render({ station, lineInfo }) {
                 const entries = getEntries(station?.id, lineInfo?.id);
                 if (!entries.length) return "";
 
+                const line = getLineById(lineInfo?.id) || lineInfo;
                 const season = CGoTimetable.getSeason(SEASON_CONFIG);
                 const dayType = CGoDayType.resolve(new Date());
-                const rows = buildRows(lineInfo, entries, season.key, dayType.key);
-                return CGoTimetable.renderCard({ rows, meta: buildMeta(lineInfo, entries, season, dayType) });
+                const rows = CGoTimetable.rowsForDayType(buildRows(line, entries, season.key), dayType.key);
+                return CGoTimetable.renderCard({ rows, meta: buildMeta(line, entries, season, dayType) });
             }
         });
     }

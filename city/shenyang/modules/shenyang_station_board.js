@@ -25,6 +25,13 @@
             numberScaleX: 0.8
         }
     };
+    /**
+     * 徽标内西文（线路编号 / Line N / Tramway Line N）字体栈。
+     * 刻意把系统 Arial/Helvetica 排在 cgo-ui 的 --font-en（Arimo）之前：
+     * Arimo 属几何无衬线体，数字字面偏窄小，放在 24px 圆底里不够饱满；
+     * 系统缺 Arial/Helvetica 时（如 Linux/Android）再回落到 cgo-ui 提供的 Arimo。
+     */
+    const BADGE_EN_FONT = "Arial, Helvetica, var(--font-en, Arimo, sans-serif)";
     const FANGCHENG_DECORATION = {
         src: "./city/shenyang/assets/fangcheng.svg",
         title: "本站位于沈阳方城文化旅游区"
@@ -181,7 +188,7 @@
             const numberFill = inverted ? line.color : getBadgeNumberTextColor(line);
             return `
                 <circle cx="${centerX}" cy="${centerY}" r="${circleRadius}" fill="${circleFill}" />
-                <text x="${centerX}" y="${centerY + numberVerticalOffset}" text-anchor="middle" dominant-baseline="middle" fill="${numberFill}" font-family="var(--font-en, 'Arimo', 'Arial', sans-serif)" font-size="${fontSize}" font-weight="400"${transform}>${number}</text>
+                <text x="${centerX}" y="${centerY + numberVerticalOffset}" text-anchor="middle" dominant-baseline="middle" fill="${numberFill}" font-family="${BADGE_EN_FONT}" font-size="${fontSize}" font-weight="400"${transform}>${number}</text>
             `;
         }).join("");
 
@@ -192,7 +199,7 @@
                     ${circleMarkup}
                     <g transform="translate(${labelX} ${centerY})" fill="currentColor" text-anchor="start">
                         <text x="0" y="-5.2" dominant-baseline="middle" font-family="var(--font-sans, 'Noto Sans SC', sans-serif)" font-size="11" font-weight="700">号线</text>
-                        <text x="0" y="6.2" dominant-baseline="middle" font-family="var(--font-en, 'Arimo', 'Arial', sans-serif)" font-size="8.5" font-weight="700">${englishLabel}</text>
+                        <text x="0" y="6.2" dominant-baseline="middle" font-family="${BADGE_EN_FONT}" font-size="8.5" font-weight="700">${englishLabel}</text>
                     </g>
                 </svg>
             `
@@ -212,7 +219,7 @@
                 <svg class="shenyang-line-badge-svg shenyang-tramway-badge-svg" viewBox="0 0 ${width} 32" aria-hidden="true" focusable="false" xmlns="${SVG_NS}">
                     <rect x="1" y="1" width="${width - 2}" height="30" rx="2" fill="${line.color}" stroke="#ffffff" stroke-width="2" />
                     <text x="${centerX}" y="11" text-anchor="middle" dominant-baseline="middle" fill="#ffffff" font-family="var(--font-sans, 'Noto Sans SC', sans-serif)" font-size="11" font-weight="400">有轨${number}号线</text>
-                    <text x="${centerX}" y="22" text-anchor="middle" dominant-baseline="middle" fill="#ffffff" font-family="var(--font-en, 'Arimo', 'Arial', sans-serif)" font-size="8.5" font-weight="400">Tramway Line ${number}</text>
+                    <text x="${centerX}" y="22" text-anchor="middle" dominant-baseline="middle" fill="#ffffff" font-family="${BADGE_EN_FONT}" font-size="8.5" font-weight="400">Tramway Line ${number}</text>
                 </svg>
             `
         };

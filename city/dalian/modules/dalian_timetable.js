@@ -90,6 +90,8 @@
             targetTab: "line-tab",
             order: 15,
             shouldRender({ station, lineInfo }) {
+                // 未开通车站（含暂缓开通）不展示运营时刻，避免抢跑
+                if (!CGoTimetable.isOperableStation(station)) return false;
                 return collectRows(station?.id, lineInfo?.id).length > 0;
             },
             render({ station, lineInfo }) {

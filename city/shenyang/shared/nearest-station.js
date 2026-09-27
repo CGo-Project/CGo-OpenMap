@@ -245,6 +245,30 @@
         });
     }
 
+    /**
+     * 对外统一的「定位 → 本市最近车站」入口，供行程规划等其他模块复用。
+     *
+     * 之所以必须收敛到这一处：按坐标找站很容易各自走偏，而这里有三件容易各写一份的事——
+     *   1. 定位拿回的是 WGS-84，站点坐标表却是高德 GCJ-02（国内差数百米，足以换一个站）；
+     *   2. 距离要用球面 distance，而不是经纬度的直角距离（经度在高纬度要按 cos 折算，
+     *      沈阳一带 1° 经度只相当于 0.75° 纬度，直角距离会系统性偏向东西方向）；
+     *   3. 候选集必须是图上真实渲染的车站（processedStations），否则选出没有 sid 的站点无法落点。
+     *
+     * 只做「定位 + 算最近站」，不弹选择器、不跨城跳转——那是查找按钮自己的交互。
+     * @returns {Promise<{sid:string,name:string,distance:number}>} 本市最近的车站与球面距离（米）
+     * @throws {Error} 消息可直接展示给用户（不支持定位 / 定位失败 / 无坐标数据 / 匹配失败）
+     */
+    async function find() {
+        const city = activeCity();
+        if (!city || !amapUrlOf(city)) throw new Error("该城市暂无坐标数据");
+        const fix = await getFix();
+        const points = await loadCityGeo(city);
+        if (!points) throw new Error("站点坐标数据加载失败");
+        const local = nearestOfActiveCity(points, fix.lat, fix.lng);
+        if (!local) throw new Error("无法定位最近车站（数据匹配失败）");
+        return local;
+    }
+
     /* ======================================================================
      * 选择弹窗
      * ==================================================================== */
@@ -434,6 +458,9 @@
         link.href = self.replace(/\.js(\?.*)?$/, ".css$1");
         document.head.appendChild(link);
     })();
+
+    /** 对外接口：各模块取「最近车站」一律走这里，别再自建一份坐标比对 */
+    window.CGoNearestStation = { find };
 
     function init() {
         document.getElementById(BTN_ID)?.addEventListener("click", onLocateClick, true);

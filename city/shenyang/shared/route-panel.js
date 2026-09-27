@@ -466,8 +466,8 @@
         if (state.planner) return state.planner;
         const config = window.CGO_ROUTE_CONFIG;
         if (!window.CGoRouteData || !window.CGoRoutePlanner || !config) return null;
-        // 构建是异步的：内部先等坐标索引就绪再建图——大连、长春全网缺 distances，
-        // 里程完全由坐标推算，索引未就绪时所有区间都会算不出里程而不可通行
+        // 构建是异步的：内部先等坐标索引就绪再建图——站距缺失的区间（含以 "?" 占位的推算值）
+        // 由坐标推算里程，索引未就绪时那些区间会算不出里程而不可通行
         const { network } = await window.CGoRouteData.build({
             linesData: allLines(),
             stationsData: allStations(),
@@ -564,7 +564,7 @@
     /** 结果面板的内容区：页签栏 + 正文（两种形态共用） */
     function resultContentHtml() {
         return `
-            <div class="cgo-rt-routebar"></div>
+            <div class="cgo-rt-routebar panel-tabs-container"></div>
             <div class="panel-body cgo-rt-result-body"></div>
         `;
     }
@@ -585,7 +585,7 @@
     }
 
     /**
-     * 固定侧栏形态：标题取「起点站→终点站（路线模式）」，
+     * 固定侧栏形态：标题取「起点站→终点站（当前方案标签）」，
      * 折叠时在 header-color-squares 里按乘坐顺序铺开每一段线路的标志色，
      * 与侧栏历史车站区块的折叠态表现一致（两者的填充都在 renderActiveRoute 里完成）。
      */
@@ -633,8 +633,20 @@
 
     function bindResultEvents(panel) {
         panel.querySelector('[data-close="result"]')?.addEventListener("click", () => closePanel("result"));
+        // 页签与分享按钮都在 routebar 上做事件委托：分享按钮是出结果后才由 paintRouteBar
+        // 注入的，面板创建时该节点还不存在，直接 querySelector 会取空、监听根本绑不上。
         // 原「重新选择」按钮已移除：回到查询面板改起终点，直接展开查询面板的 section-header 即可
         panel.querySelector(".cgo-rt-routebar").addEventListener("click", (event) => {
+            if (event.target.closest('[data-share="route"]')) {
+                event.stopPropagation();
+                shareRoute();
+                return;
+            }
+            if (event.target.closest('[data-fit="route"]')) {
+                event.stopPropagation();
+                fitEntireRoute();
+                return;
+            }
             const tab = event.target.closest("[data-route]");
             if (!tab) return;
             state.routeIndex = Number(tab.dataset.route) || 0;
@@ -667,23 +679,60 @@
             } else {
                 // 展开时让查询面板、图例与历史车站区块一起让位，正文才拿得到完整高度
                 makeRoomForResult();
+                // 重新露出来就按新的可用区再取一次全景：收起期间用户可能已经拖过地图
+                fitEntireRoute({ park: false });
                 applyHighlight(currentRoute());
             }
         });
     }
 
-    /** 线路徽标占位符：沿用核心与检索面板同一套机制（注入 SVG 后由城市模块定制为紧凑圆标） */
-    function lineBadgeHtml(lineId) {
-        const line = lineOf(lineId);
-        if (!line?.svg) return "";
-        const meta = window.getLineSvgMeta?.(line.svg || line.id);
-        const style = meta ? `--svgclr:${meta.svgclr};--svgtext:${meta.svgtext};` : "";
-        return `<span class="svg-icon-placeholder line-badge" data-src="${window.getSvgPath?.(line.svg) || ""}" style="${style}"></span>`;
+    /** 有轨还是地铁：决定编号徽标的形状与编号写法 */
+    const isTramLine = (lineId) => (lineOf(lineId)?.mode === "tram"
+        || String(lineId).toUpperCase().startsWith("HNT"));
+
+    /**
+     * 线路编号：面板里那个小徽标承载的短代号。
+     *
+     * 默认从线路名里抽数字（"1号线" → "1"、"201路" → "201"），
+     * 城市可用 CGO_ROUTE_CONFIG.lineCodes 覆盖个别线路——例如沈阳把有轨 5 号线写作 "T5"，
+     * 好与地铁 5 号线区分开。
+     */
+    function lineCode(lineId) {
+        const id = String(lineId || "").split("#")[0];
+        const override = window.CGO_ROUTE_CONFIG?.lineCodes;
+        if (override?.[id]) return String(override[id]);
+        const name = String(lineOf(id)?.name || "");
+        return name.match(/\d+/)?.[0] || name.slice(0, 3) || id.slice(0, 3);
     }
 
-    /** 交通方式图标：有轨与地铁区分 */
-    const modeIcon = (lineId) => (lineOf(lineId)?.mode === "tram"
-        || String(lineId).toUpperCase().startsWith("HNT")) ? "tram" : "train";
+    /** 编号徽标的边长（px），与 route-panel.css 的 .cgo-rt-mode 一致；形状不变，只压文字 */
+    const MODE_BADGE_SIZE = 22;
+    /** 编号可用宽度占徽标边长的比例：方形只留一点边距，圆形还要躲开弧线的内收 */
+    const MODE_CODE_ROOM = { square: 0.9, circle: 0.74 };
+    let measureCtx = null;
+
+    /**
+     * 把编号文字横向压扁到徽标可用宽度内。徽标本身固定为正方形 / 正圆形（见 .cgo-rt-mode
+     * 的 width/height），编号偏长（"T5"、"201"）时变形的是文字，而不是把徽标撑成扁的。
+     *
+     * 用 canvas 量文字宽度而非读 DOM：面板折叠时徽标处于 display:none，量不出宽度，
+     * 而 canvas 只依赖字体本身，任何可见状态下都能给出正确结果。
+     */
+    function fitModeCodes(root) {
+        const codes = root?.querySelectorAll(".cgo-rt-mode > .cgo-rt-code");
+        if (!codes?.length) return;
+        measureCtx = measureCtx || document.createElement("canvas").getContext("2d");
+        codes.forEach((code) => {
+            const badge = code.parentElement;
+            const style = window.getComputedStyle(badge);
+            measureCtx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+            const width = measureCtx.measureText(code.textContent).width;
+            const room = MODE_BADGE_SIZE * (badge.classList.contains("circle")
+                ? MODE_CODE_ROOM.circle
+                : MODE_CODE_ROOM.square);
+            code.style.setProperty("--cgo-rt-code-sx", (width > room ? room / width : 1).toFixed(3));
+        });
+    }
 
     /**
      * 把 steps 归并成展示用的段列表。
@@ -737,7 +786,11 @@
                 const terminus = rideTerminus(last);
                 const stopsCount = segments.reduce((n, seg) => n + Math.max(0, seg.stops.length - 1), 0);
                 const minutes = segments.reduce((n, seg) => n + (seg.minutes || 0), 0);
-                const badges = segments.map((seg) => lineBadgeHtml(seg.line)).join("");
+                // 编号形状：城市声明 lineCodeShape: "circle" 时地铁用圆形，其余一概圆角方形
+                // （有轨即便在沈阳也保持方形，好与同号地铁线区分开）
+                const codeCircle = window.CGO_ROUTE_CONFIG?.lineCodeShape === "circle" && !isTramLine(first.line);
+                const code = lineCode(first.line);
+                const codeClass = codeCircle ? "circle" : "square";
                 // 途经站只列中途停站：上车站与下车站已由上下行文案表达；
                 // 贯通衔接点会被相邻两段各记一次，按相邻去重压成一份
                 const allStops = segments.flatMap((seg) => seg.stops)
@@ -748,21 +801,18 @@
                 legs.push(`
                     <li class="cgo-rt-leg ride" style="--line-color:${line?.color || "var(--primary-color, #006098)"}">
                         <div class="cgo-rt-leg-head">
-                            <span class="cgo-rt-mode"><cgo-icon name="${modeIcon(first.line)}" size="16"></cgo-icon></span>
+                            <span class="cgo-rt-mode ${codeClass}"><span class="cgo-rt-code">${code}</span></span>
                             <span class="cgo-rt-leg-name">
                                 <b data-jump="${start}">${stationName(start)}</b><em>${action}</em>
                             </span>
                         </div>
                         <div class="cgo-rt-leg-line">
-                            ${badges}
+                            <span class="cgo-rt-line-name">${group.throughName || line?.name || ""}</span>
                             <span>开往 <b data-jump="${terminus}">${stationName(terminus)}</b></span>
                         </div>
-                        <div class="cgo-rt-leg-line">
-                            <span>${stopsCount} 站 · ${Math.round(minutes)} 分钟</span>
-                            ${middle.length ? `
-                                <button class="cgo-rt-expand" data-expand="${index}" title="查看途经车站">
-                                    <cgo-icon name="chevron-down" size="14"></cgo-icon>
-                                </button>` : ""}
+                        <div class="cgo-rt-leg-line${middle.length ? " cgo-rt-expandable" : ""}"${middle.length ? ` data-expand="${index}" title="查看途经车站"` : ""}>
+                            ${middle.length ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
+                            <span>乘坐 ${stopsCount} 站 · ${Math.round(minutes)} 分钟</span>
                         </div>
                         ${middle.length ? `
                             <div class="cgo-rt-stoplist" data-list="${index}" hidden>
@@ -832,17 +882,27 @@
     function paintRouteBar(panel, routes) {
         const bar = panel?.querySelector(".cgo-rt-routebar");
         if (!bar) return;
-        if (routes.length > 1) {
-            bar.innerHTML = routes.map((route, index) => `
-                <button class="cgo-rt-tab${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}">
-                    ${route.labels[0]}
-                </button>
-            `).join("");
-            bar.classList.add("show");
-        } else {
+        if (!routes.length) {
             bar.innerHTML = "";
             bar.classList.remove("show");
+            return;
         }
+        bar.innerHTML = `
+            <div class="panel-tabs-nav">
+                ${routes.map((route, index) => `
+                    <div class="tab-item${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}">
+                        ${route.labels[0]}
+                    </div>
+                `).join("")}
+            </div>
+            <button class="panel-share-btn" title="查看全程" data-fit="route">
+                <cgo-icon name="map" size="20"></cgo-icon>
+            </button>
+            <button class="panel-share-btn" title="分享路线信息" data-share="route">
+                <cgo-icon name="external" size="20"></cgo-icon>
+            </button>
+        `;
+        bar.classList.add("show");
     }
 
     function renderRoutes(routes) {
@@ -865,22 +925,97 @@
         }
     }
 
-    function renderActiveRoute() {
+    /**
+     * 轻提示：转发到核心的 toast（core/script.js 的 showToast，经 CGO.showToast 暴露）。
+     * 核心未暴露时退化为面板内的状态行，功能不丢。
+     */
+    function showToast(message, type = "success") {
+        const toast = window.CGO?.showToast;
+        if (typeof toast === "function") {
+            toast.call(window.CGO, message, type);
+            return;
+        }
+        setStatus(message);
+    }
+
+    /**
+     * 分享：把当前行程描述复制到剪贴板。
+     *
+     * 起讫站取实际乘车的首末站（与结果面板标题栏同一口径）：起讫点本身可能只是
+     * 出站换乘的落点，末段是出站步行时步行落点才是真正的终点。
+     */
+    async function shareRoute() {
         const route = currentRoute();
         if (!route) return;
-        const panel = ensureResultPanel();
-        panel.querySelectorAll(".cgo-rt-tab").forEach((tab) => {
-            tab.classList.toggle("cgo-rt-tab-active", Number(tab.dataset.route) === state.routeIndex);
-        });
-
-        // 标题栏显示起讫站：取实际乘车的首末站（起讫点本身可能只是出站换乘的落点）；
-        // 末段是出站步行时，步行落点才是真正的终点（如末段从地铁站步行到国铁站）
         const rides = route.steps.filter((step) => step.t === "ride");
         const lastStep = route.steps[route.steps.length - 1];
         const head = rides[0]?.stops[0] || state.from;
         const tail = lastStep?.t === "walk" ? lastStep.b
             : (rides.length ? rides[rides.length - 1].stops.slice(-1)[0] : state.to);
-        // 浮层形态才有的标题栏起讫站（固定侧栏形态改由 section-title-text 承担）
+        const text = `我目前在${stationName(head)}，距离${stationName(tail)}还有 ${route.stops} 站左右，`
+            + `大约 ${Math.round(route.minutes)} 分钟到达。本信息由 ${location.href} 提供，仅供参考。`;
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast("行程信息已复制，可直接粘贴分享");
+        } catch (error) {
+            showToast("复制失败，请手动复制行程信息", "error");
+            setStatus(text);
+        }
+    }
+
+    /**
+     * 路线在标题里呈现的起讫站：取实际乘车的首末站（用户填的起讫点可能只是出站换乘的落点）；
+     * 末段是出站步行时，步行落点才是真正的终点（如末段从地铁站步行到国铁站）。
+     * 侧栏区块标题、浮层起讫行与页面标题都取这一份，口径才不会分叉。
+     */
+    function routeEndpoints(route) {
+        const rides = route.steps.filter((step) => step.t === "ride");
+        const lastStep = route.steps[route.steps.length - 1];
+        return {
+            head: rides[0]?.stops[0] || state.from,
+            tail: lastStep?.t === "walk" ? lastStep.b
+                : (rides.length ? rides[rides.length - 1].stops.slice(-1)[0] : state.to)
+        };
+    }
+
+    /**
+     * 页面标题（浏览器标签页）也会随焦点切换：核心在选中车站时把它写成「XX站详细信息」
+     * （见 core/script.js 的 updateShareMeta），规划路线展开时则换成「起点站→终点站」导航路线。
+     * 这里存一份占用前的原值，退出路线焦点时原样还回去——两条来源都会先收起对方再改标题，
+     * 所以一份原值就够，不会有互相覆盖的窗口。
+     */
+    let titleBeforeRoute = null;
+
+    /**
+     * 上一次取景所对应的方案：用方案对象引用 + 页签序号标识，用来识别「路径真的换了」。
+     */
+    let lastFittedRoute = null;
+    let lastFittedIndex = -1;
+
+    /** 上一次取景时的布局签名（形态 / 抽屉档位 / 画布尺寸），用来识别「可用区变了」 */
+    let lastFittedLayout = null;
+
+    function beginRouteTitle(title) {
+        if (titleBeforeRoute === null) titleBeforeRoute = document.title;
+        document.title = title;
+    }
+
+    function endRouteTitle() {
+        if (titleBeforeRoute === null) return;
+        document.title = titleBeforeRoute;
+        titleBeforeRoute = null;
+    }
+
+    function renderActiveRoute() {
+        const route = currentRoute();
+        if (!route) return;
+        const panel = ensureResultPanel();
+        panel.querySelectorAll(".cgo-rt-routebar .tab-item").forEach((tab) => {
+            tab.classList.toggle("cgo-rt-tab-active", Number(tab.dataset.route) === state.routeIndex);
+        });
+
+        // 标题栏显示起讫站（浮层形态的起讫行与侧栏区块标题共用同一份口径）
+        const { head, tail } = routeEndpoints(route);
         const odFrom = panel.querySelector(".cgo-rt-od-from");
         const odTo = panel.querySelector(".cgo-rt-od-to");
         if (odFrom) odFrom.textContent = stationName(head);
@@ -897,21 +1032,31 @@
             ${route.labels.length > 1 ? `<div class="cgo-rt-labels">${route.labels.join(" · ")}</div>` : ""}
             <ol class="cgo-rt-steps">${renderLegs(route, tail)}</ol>
         `;
-        injectSvgs(body);   // 注入线路徽标，城市模块随后会将其定制为紧凑圆标
+        injectSvgs(body);   // 面板其余部分仍可能有需注入的 SVG 占位（结果区本身已改用文字线路名）
+        fitModeCodes(body); // 编号徽标固定正形，编号偏长时压文字而不是撑徽标
+        // 布局变了（pin/unpin、桌面↔移动端、抽屉换档）就按新可用区重取一次；
+        // 路径变了（新出结果、切换方案页签）也重取一次。两者只取一次景，避免同一轮里连算两遍。
+        const visible = isResultVisible();
+        const layoutChanged = refitIfLayoutChanged();
+        const routeChanged = route !== lastFittedRoute || state.routeIndex !== lastFittedIndex;
+        lastFittedRoute = route;
+        lastFittedIndex = state.routeIndex;
         // 面板不可见时不点亮线网（侧栏里的折叠、浮层里的隐藏都算不可见），
         // 否则核心脚本把站点高亮写回 DOM 时会连规划路径一起亮起来
-        if (isResultVisible()) applyHighlight(route);
+        // 取景先行落位，再染高亮（高亮只动类与独立图层、不写 transform，但先后定死更稳）
+        if (visible && routeChanged && !layoutChanged) fitEntireRoute({ park: false });
+        if (visible) applyHighlight(route);
     }
 
     /**
-     * 固定侧栏形态的结果面板标题：正文为「起点站→终点站（路线模式）」，
+     * 固定侧栏形态的结果面板标题：正文为「起点站→终点站（当前方案标签）」，
      * 折叠时在同一行的 header-color-squares 里按乘坐顺序铺开每一段线路的标志色，
      * 表现与侧栏历史车站区块一致（乘同一线路折返时只铺一次）。
      */
     function syncResultSectionHeader(panel, route, head, tail) {
         const title = panel.querySelector(".section-title-text");
         if (title) {
-            // 括号里用当前选中页签的标签（最快 / 最少换乘 …），与页签栏文案保持一致；
+            // 括号里用当前选中页签的标签（时间最快 / 距离最短 / 票价最低），与页签栏文案保持一致；
             // 只有一条路线时页签栏不显示，但标签本身依然有值
             const tag = route.labels?.[0] || "";
             title.textContent = `${stationName(head)}→${stationName(tail)}${tag ? `（${tag}）` : ""}`;
@@ -932,6 +1077,113 @@
             square.title = line.name;
             squares.appendChild(square);
         });
+    }
+
+    /**
+     * 路线涉及的所有站点（含出站换乘的落点）的坐标包围盒；取不到坐标时返回 null。
+     */
+    function routeBounds(route) {
+        const stations = allStations();
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        const push = (sid) => {
+            const station = stations[sid];
+            if (!station || !Number.isFinite(station.x) || !Number.isFinite(station.y)) return;
+            minX = Math.min(minX, station.x);
+            maxX = Math.max(maxX, station.x);
+            minY = Math.min(minY, station.y);
+            maxY = Math.max(maxY, station.y);
+        };
+        route.steps.forEach((step) => {
+            if (step.t === "ride") step.stops.forEach(push);
+            else if (step.t === "xfer") push(step.at);
+            else { push(step.a); push(step.b); }
+        });
+        return minX === Infinity ? null : { minX, minY, maxX, maxY };
+    }
+
+    /**
+     * 桌面浮层形态下，把结果浮层就近停到标题栏下方的左上 / 右上角：浮层原本可能正压在
+     * 路线要落的位置上。左侧不放——那里是缩放控件的地盘，浮层贴到它的右边缘。
+     */
+    function parkFloatPanel() {
+        const panel = livePanel(RESULT_ID);
+        if (!panel || panel.dataset.cgoMode !== "float" || !panel.classList.contains("show")) return;
+        const zoom = document.getElementById("modern-zoom-control")?.getBoundingClientRect();
+        const rect = panel.getBoundingClientRect();
+        const containerW = document.getElementById("map-container")?.clientWidth || window.innerWidth;
+        const onLeftHalf = rect.left + rect.width / 2 < containerW / 2;
+        const left = onLeftHalf
+            ? (zoom?.right ?? 0) + 18
+            : containerW - rect.width - 20;
+        panel.style.left = `${Math.max(0, Math.round(left))}px`;
+        panel.style.top = `${Math.round(zoom?.top ?? 20)}px`;
+    }
+
+    /**
+     * 「查看全程」：把整条路线缩放到刚好全部可见（缩放由共享层经核心钳制在城市的 minScale / maxScale 内）。
+     * 桌面浮层形态下先把结果浮层挪到角落——浮层一动可用宽度就变了，
+     * 故紧接着同步刷新一次视口内边距，再交给共享层的取景接口落位。
+     * @param {{park?:boolean}} [options] 是否顺带把浮层挪到角落。
+     *   仅用户手动点「查看全程」按钮时才挪（缺省 true）——自动取景（出结果、切方案、展开面板）
+     *   不该动用户摆好的浮层位置。
+     */
+    function fitEntireRoute(options = {}) {
+        const route = currentRoute();
+        if (!route) return;
+        const box = routeBounds(route);
+        if (!box) return;
+        if (options.park !== false && panelMode() === "float") parkFloatPanel();
+        window.CGoViewportInset?.refresh?.();
+        window.CGoViewportInset?.fit?.(box, { padding: 60 });
+    }
+
+    /**
+     * 布局签名：形态（浮层 / 侧栏）、结果面板的移动端抽屉档位、画布尺寸。
+     *
+     * 取景结果由「路线包围盒」与「可用区」共同决定，所以可用区一变就得重取一次，
+     * 否则路线会有一部分落在浮层下或屏幕外。这四项恰好覆盖了全部会改变可用区的切换：
+     *   - pin / unpin —— 侧栏模式下 #map-container 被推开 360px（见 style.css），尺寸随之改变；
+     *   - 桌面 ↔ 移动端、窗口最大化 / 还原 —— 画布尺寸改变；
+     *   - 移动端半屏 ↔ 最小化 ↔ 全屏 —— 抽屉档位改变，底部遮挡随之改变。
+     * 刻意不含浮层位置：用户拖动浮层时不该把视角拽走。
+     */
+    function layoutSignature() {
+        const panel = livePanel(RESULT_ID);
+        const stage = !panel ? "none"
+            : panel.classList.contains("drawer-min") ? "min"
+                : panel.classList.contains("drawer-full") ? "full" : "half";
+        const container = document.getElementById("map-container");
+        return [panelMode(), stage, container?.clientWidth || 0, container?.clientHeight || 0].join("|");
+    }
+
+    /**
+     * 布局变化的取景延迟：pin / unpin 时 #map-container 有 0.3s 的 left / width 过渡
+     * （见 style.css），过渡途中量到的画布尺寸仍是旧值，据此取景会偏大，
+     * 等动画结束路线反而被裁掉。故等过渡落定再取景；连续变化只保留最后一次。
+     */
+    const LAYOUT_REFIT_DELAY = 340;
+    let layoutRefitTimer = null;
+
+    /**
+     * 布局变了就按新的可用区重取一次全景，返回本次布局变化是否已被接管
+     * （调用方据此避免同一次改动里重复取景）。
+     * 签名先落定、取景再延后，所以取景自身引发的回流不会触发第二轮。
+     */
+    function refitIfLayoutChanged() {
+        const signature = layoutSignature();
+        const changed = signature !== lastFittedLayout;
+        lastFittedLayout = signature;
+        if (!changed) return false;
+        clearTimeout(layoutRefitTimer);
+        layoutRefitTimer = setTimeout(() => {
+            layoutRefitTimer = null;
+            // 落定后再确认一次：这段延迟里用户可能已经收起了结果面板
+            if (currentRoute() && isResultVisible()) fitEntireRoute({ park: false });
+        }, LAYOUT_REFIT_DELAY);
+        return true;
     }
 
     /* ======================================================================
@@ -1065,6 +1317,8 @@
         document.querySelectorAll(".cgo-on-route").forEach((el) => el.classList.remove("cgo-on-route"));
         const layer = document.getElementById(ROUTE_LAYER_ID);
         if (layer) layer.innerHTML = "";
+        // 高亮与页面标题同属「规划路线焦点」，一并退出
+        endRouteTitle();
     }
 
     function applyHighlight(result) {
@@ -1085,6 +1339,9 @@
         });
         content.classList.add("cgo-routing");
         drawRoutePath(result);
+        // 页面标题随规划路线一起切换（收起时由 clearHighlight 还原）
+        const { head, tail } = routeEndpoints(result);
+        beginRouteTitle(`「${stationName(head)}→${stationName(tail)}」导航路线`);
     }
 
     /* ======================================================================
@@ -1266,6 +1523,8 @@
         panel.classList.toggle("drawer-min", stage === "min");
         panel.classList.toggle("drawer-full", stage === "full");
         syncBackdrop();
+        // 抽屉换档等于底部遮挡变了，路线要按新的可用区重新取景
+        refitIfLayoutChanged();
     }
 
     /** 每次呼出都回到半屏档起步，并清掉上次留下的内联高度与填色 */
@@ -1601,14 +1860,22 @@
     }
 
     /**
-     * 收起结果面板区块，与点它自己的 section-header 走同一套收尾（折叠即退出线路高亮）。
-     * 车站详情面板要停靠进动态内容区时用它让位——两者同区，同时展开会平分正文高度。
+     * 收起结果面板，与用户主动收起走同一套收尾（收起即退出线路高亮）。
+     * 两种形态的「收起」写法不同：侧栏里加 collapsed（保留区块），浮层里摘掉 show 并退出面板栈。
+     * 浮层分支不能省——否则点车站时结果浮层仍占着栈顶，车站详情会被面板栈压住，
+     * 而它的内联 display 本来就是 flex（栈隐藏只加类、不改内联），
+     * observeInfoPanel 看不到变化也就不会把它提到栈顶，表现出来就是「点了车站却打不开详情」。
      */
     function collapseResultSection() {
         const panel = livePanel(RESULT_ID);
-        if (!panel?.classList.contains("show") || panel.dataset.cgoMode !== "section") return;
-        if (panel.classList.contains("collapsed")) return;
-        panel.classList.add("collapsed");
+        if (!panel?.classList.contains("show")) return;
+        if (panel.dataset.cgoMode === "section") {
+            if (panel.classList.contains("collapsed")) return;
+            panel.classList.add("collapsed");
+        } else {
+            panel.classList.remove("show");
+            popPanel(RESULT_ID);
+        }
         clearHighlight();
     }
 
@@ -1621,12 +1888,27 @@
     }
 
     /**
-     * 侧栏里让位给车站详情（它停靠在历史车站区块里）：图例与路线结果一并收起。
-     * 侧栏的共存规则是「最多一个区块展开，搜索除外」——搜索矮且独立，留着不碍事。
+     * 侧栏里让位给车站详情（它停靠在历史车站区块里）：规划行程、图例与路线结果一并收起。
+     * 规划行程必须一起收——它是互斥观察器裁定「车站详情该不该展开」的依据之一：
+     * 只收图例与结果的话，观察器看到 planExpanded 仍为 true，会立刻把用户刚展开的车站详情
+     * 收回去（那条分支本意是拦核心自动停靠的车站详情，见 bindExclusiveSections）。
      */
     function yieldSidebarToStation() {
+        setPlanExpanded(false);
         document.getElementById("section-legend-tree")?.classList.add("collapsed");
         collapseResultSection();
+    }
+
+    /**
+     * 刚迁进侧栏时的收敛：核心固定面板会把「搜索 / 图例 / 规划行程」一并 remove('collapsed')
+     * （见 script.js 的 menuBtn 处理器），从移动端浮层切到桌面侧栏时就会三块同时摊开
+     * （用户反馈的「图例 + 搜索 + 路线结果」即由此而来）。
+     * 这里只裁掉真正冲突的两类：结果可见 → 让位给结果；规划行程展开 → 让位给它。
+     * 「搜索 + 图例」本身是侧栏的合法默认态，不动。
+     */
+    function settleSidebarSections() {
+        if (isResultVisible()) { makeRoomForResult(); return; }
+        if (planExpanded) yieldSidebarToPlan();
     }
 
     /**
@@ -1674,6 +1956,23 @@
      * 批量展开时按 DOM 顺序保留前者（搜索），与核心的默认预期一致。
      */
     let exclusiveObserver = null;
+
+    /**
+     * 侧栏此刻是否「除刚展开的搜索外全都折叠」。
+     *
+     * 用于决定展开搜索时要不要顺手把图例也带出来：侧栏只剩一行搜索框太空，
+     * 带上图例才有内容可看。判断口径与互斥规则一致——规划行程、图例、
+     * 车站详情区块、路线结果，四者都折着才算空。
+     */
+    function sidebarOtherwiseEmpty() {
+        const legend = document.getElementById("section-legend-tree");
+        const dynamic = document.getElementById("sidebar-dynamic-content");
+        return !planExpanded
+            && (!legend || legend.classList.contains("collapsed"))
+            && !isResultVisible()
+            && !dynamic?.querySelector(".station-history-section:not(.collapsed)");
+    }
+
     function bindExclusiveSections() {
         const search = document.getElementById("section-search");
         const legend = document.getElementById("section-legend-tree");
@@ -1704,6 +2003,9 @@
             }
             if (id === "section-search") {
                 setPlanExpanded(false);   // 搜索只与规划行程互斥，不与图例 / 车站详情 / 结果互斥
+                // 侧栏此刻已空无一物（连图例都折着）时，把图例一并带出来——
+                // 否则展开搜索后侧栏只剩孤零零一行，用户还得再点一次
+                if (legend && sidebarOtherwiseEmpty()) legend.classList.remove("collapsed");
                 return;
             }
             if (id === "section-legend-tree") {
@@ -1755,8 +2057,7 @@
             const header = event.target.closest(".station-history-section > .section-header");
             if (!header) return;
             if (header.parentElement.classList.contains("collapsed")) {
-                // 用户明确要开车站详情：规划行程与路线结果都让位
-                setPlanExpanded(false);
+                // 用户明确要开车站详情：规划行程、图例与路线结果都让位
                 yieldSidebarToStation();
             }
         }, true);
@@ -1775,6 +2076,11 @@
         if (!content || content.dataset.cgoRouteOpenWatched === "true") return;
         content.dataset.cgoRouteOpenWatched = "true";
         content.addEventListener("click", (event) => {
+            // 地图选点中：这一击是给规划填起终点（由 onPickClick 接住），不是要打开车站详情，
+            // 因此不该让位——否则刚点完起点，规划面板就被自己折叠了。
+            // 两个监听同挂在 #map-content 的捕获阶段，且本监听注册更早，所以只能在这里判断；
+            // onPickClick 里的 stopPropagation 拦不住同元素上已先执行的其他监听器。
+            if (state.picking) return;
             if (event.target.closest("[data-sid]")) yieldSidebarToStation();
         }, true);
     }
@@ -1852,6 +2158,9 @@
         syncPanels();
     }
 
+    /** 上一次归位时的形态；用于识别「移动端浮层 ⇄ 桌面侧栏」的跨形态迁移（首帧为 null） */
+    let lastPanelMode = null;
+
     /**
      * 把已打开的面板归位到当前形态该在的地方；pin 状态翻转导致形态不符时按打开/折叠状态重建。
      * 核心在 pin、unpin、resize、切换城市时都会重建 #legend-content，rebuildSidebarHistory
@@ -1860,6 +2169,9 @@
      */
     function syncRoutePanels() {
         const mode = panelMode();
+        // 真正跨形态迁移（首帧不算，那时只是首次入驻，应当保留核心的默认展开态）
+        const modeSwitched = lastPanelMode !== null && lastPanelMode !== mode;
+        lastPanelMode = mode;
         let modeChanged = false;
 
         // —— 规划行程：固定侧栏里是常驻区块，不参与下面那套「未打开就撤下」的规则 ——
@@ -1929,6 +2241,9 @@
         } else {
             disconnectExclusiveSections();
         }
+        // 跨形态迁进侧栏时先收敛一次：核心固定面板时会顺手摊开搜索 / 图例 / 规划行程，
+        // 不收敛就会出现「图例 + 搜索 + 路线结果」三块并排展开
+        if (modeSwitched && mode === "section") settleSidebarSections();
         if (modeChanged) {
             // 形态切换是重建外壳，新外壳里的输入框、页签与结果正文都是空的，先按 state 重放内容
             repaintPanels();
@@ -1936,6 +2251,9 @@
         } else {
             syncPanels();
         }
+        // 兜住「不触发重绘的布局变化」：桌面 ↔ 移动端、窗口最大化 / 还原都只改画布尺寸，
+        // 结果面板既不重建也不重放内容（pin / unpin 那类会重绘的已在上面的 renderActiveRoute 里取景）
+        refitIfLayoutChanged();
     }
 
     let syncQueued = false;
@@ -1972,35 +2290,39 @@
         }).observe(content, { childList: true, subtree: true });
     }
 
-    /** 浏览器定位：取最近车站作为起点（失败时给出提示，不做静默降级） */
-    function useMyLocation() {
-        if (!navigator.geolocation) { setStatus("当前环境不支持定位"); return; }
+    /**
+     * 浏览器定位：取最近车站填进空的起点/终点（失败时给出提示，不做静默降级）。
+     *
+     * 最近站的判定交给共享层的唯一真源 `window.CGoNearestStation.find()`（nearest-station.js），
+     * 与「查找最近车站」按钮共用同一套定位坐标基准与距离口径。此处原先自建了一份候选遍历：
+     * 拿原始 WGS-84 的定位去比高德 GCJ-02 的站点坐标（国内差数百米），距离又用经纬度直角距离
+     * （经度未按 cos 折算），于是同一个位置会算出与那个按钮不同的车站。
+     */
+    async function useMyLocation() {
+        if (typeof window.CGoNearestStation?.find !== "function") {
+            setStatus("定位能力未就绪，请手动选择");
+            return;
+        }
         setStatus("正在定位…");
-        navigator.geolocation.getCurrentPosition((pos) => {
-            const config = window.CGO_ROUTE_CONFIG;
-            if (!config?.coordOf) { setStatus("该城市暂无坐标数据"); return; }
-            const { latitude, longitude } = pos.coords;
-            let best = null;
-            Object.entries(allStations()).forEach(([sid, station]) => {
-                if (station.type === "no") return;
-                const raw = config.coordOf(station.cn);
-                if (!raw) return;
-                const [lng, lat] = raw.split(",").map(Number);
-                const d = Math.hypot(lat - latitude, lng - longitude);
-                if (!best || d < best.d) best = { sid, d };
-            });
-            if (!best) { setStatus("附近没有可用车站"); return; }
-            state.from = best.sid;
+        try {
+            const hit = await window.CGoNearestStation.find();
+            // 智能选空位：起点空着就填起点，起点定了而终点还空着就填终点；
+            // 两个都填过则覆盖起点——「我的位置」的本义是从我所在的地方出发。
+            const field = !state.from ? "from" : (!state.to ? "to" : "from");
+            state[field] = hit.sid;
             syncFields();
             refreshResult();
-            setStatus("已设为起点（最近车站）");
-        }, () => setStatus("定位失败，请手动选择"));
+            setStatus(`已将「${stationName(hit.sid)}」设为${field === "from" ? "起点" : "终点"}`);
+        } catch (error) {
+            setStatus(error?.message || "定位失败，请手动选择");
+        }
     }
 
     /* ======================================================================
      * 入口：顶栏 + 车站信息板底栏
      * ==================================================================== */
 
+    /** 顶栏入口按钮与其后的分隔线：两侧都紧贴，纵向间距交给分隔线自己的 4px 上下边距 */
     function injectTopButton() {
         if (document.getElementById(ENTRY_ID)) return;
         const anchor = document.getElementById("mz-menu");
@@ -2010,7 +2332,12 @@
         button.title = "行程规划";
         button.innerHTML = `<cgo-icon name="route" style="width:20px;height:20px;"></cgo-icon>`;
         button.addEventListener("click", toggle);
+        // mz-menu 与入口按钮的底端边距都清掉，改由分隔线自带上下边距撑开
+        anchor.style.marginBottom = "0";
         anchor.insertAdjacentElement("afterend", button);
+        const divider = document.createElement("div");
+        divider.style.cssText = "width: 20px; height: 1px; background-color: #e0e0e0; margin: 4px 0;";
+        button.insertAdjacentElement("afterend", divider);
     }
 
     function registerFooterModule() {

@@ -251,10 +251,12 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260926.2630";
+        const version = "260927.1606";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
+        // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
+        document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_opening.js?v=${version}"><\/script>`);

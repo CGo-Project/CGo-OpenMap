@@ -39,8 +39,8 @@
  *
  * 构建网络
  * async build(config) -> { network, stats }
- *   内部会先等坐标索引就绪再建图——大连、长春全网缺 distances，里程完全由坐标推算，
- *   若在索引就绪前构建，所有区间都会算不出里程而不可通行。
+ *   内部会先等坐标索引就绪再建图——官方站距并非每条区间都有（推算值一律写 "?" 占位），
+ *   缺失区间由坐标推算里程，若在索引就绪前构建，那些区间都会算不出里程而不可通行。
  */
 (function () {
     "use strict";
@@ -49,6 +49,8 @@
     const SPREAD_MAX = 1;             // 多链允许的最大分歧（分钟）
     const MODEL_SPEED = 0.9;          // 距离模型纯运行速度（km / 分钟）
     const DEFAULTS = { bend: 1.05, walkMinutes: 6, xferMinutes: 2 };
+    /** 未开通车站与未开通区段「重叠」判定的画布像素容差（编辑器画的折线未必逐点压准站心） */
+    const NOT_OPEN_OVERLAP_TOLERANCE = 10;
 
     const toMinutes = (value) => {
         const m = /^(\d{1,2}):(\d{2})$/.exec(String(value ?? "").trim());
@@ -201,7 +203,10 @@
                 (lo2 - lo1) * Math.PI / 180 * Math.cos(la1 * Math.PI / 180));
         };
         return group.ids.slice(0, -1).map((sid, i) => {
-            if (group.dist[i]) return group.dist[i] / 1000;
+            // 官方站距优先；"?" / "??" 这类占位（该段没有可靠里程，前端只显示「约XXX米」）
+            // 与完全缺失同等对待，一起走坐标兜底
+            const official = Number(group.dist[i]);
+            if (Number.isFinite(official) && official > 0) return official / 1000;
             const a = coordOf(stationsData[sid]?.cn), b = coordOf(stationsData[group.ids[i + 1]]?.cn);
             return a && b ? meters(a, b) / 1000 * bend : 0;
         });
@@ -295,10 +300,52 @@
         // 规划内核据此在衔接站把它们视作同一列车——通过时不记换乘、不计换乘耗时。
         const through = window.CGoLineLink?.throughPairs?.() || [];
 
+        // 未开通车站能否「穿过」，取决于它是否与未开通区段重叠：
+        //   · 重叠（站点落在 NOT_OPEN_LINES 的虚线上）→ 该站是随区段一起未开通的，
+        //     列车根本还没开到这里，连穿过都不行（如长春 5 号线全线）；
+        //   · 不重叠 → 线路已在运营，只是这一站暂缓开通（如北京陶然桥、青岛下王埠），
+        //     列车照常经过、只是不停车，所以可以穿过。
+        //
+        // 已开通车站不参与这个判定——它们本来就能上下车，不存在「能否穿过」的问题，
+        // 因此下面的循环只对 type "no" 的站做重叠比对。
+        //
+        // NOT_OPEN_LINES 是城市数据（画布折线点阵），这里只做几何比对，不掺城市业务。
+        const notOpenPolylines = (typeof NOT_OPEN_LINES !== "undefined" && Array.isArray(NOT_OPEN_LINES) ? NOT_OPEN_LINES : [])
+            .map((item) => (Array.isArray(item?.points) ? item.points : [])
+                .map((point) => ({ x: Number(point?.x), y: Number(point?.y) }))
+                .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)))
+            .filter((points) => points.length >= 2);
+        /** 点到线段的最短距离（画布像素） */
+        const distanceToSegment = (px, py, ax, ay, bx, by) => {
+            const dx = bx - ax, dy = by - ay;
+            const lengthSq = dx * dx + dy * dy;
+            const t = lengthSq ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSq)) : 0;
+            return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+        };
+        /** 该站是否落在未开通区段上（容差按画布线宽量级取，编辑器画的折线未必逐点压准站心） */
+        const overlapsNotOpenSegment = (station) => {
+            const px = Number(station?.x), py = Number(station?.y);
+            if (!Number.isFinite(px) || !Number.isFinite(py)) return false;
+            return notOpenPolylines.some((points) => points.some((point, i) => {
+                if (i === 0) return false;
+                const prev = points[i - 1];
+                return distanceToSegment(px, py, prev.x, prev.y, point.x, point.y) <= NOT_OPEN_OVERLAP_TOLERANCE;
+            }));
+        };
+        const passThrough = new Set();
+        Object.entries(stationsData).forEach(([sid, station]) => {
+            // 已开通车站不参与重叠判定：它们无需考虑能否穿过
+            if (String(station?.type || "") !== "no") return;
+            if (!overlapsNotOpenSegment(station)) passThrough.add(String(sid));
+        });
+
         return {
             network: {
                 lines,
-                stations: Object.fromEntries(Object.entries(stationsData).map(([sid, s]) => [sid, { type: s.type }])),
+                stations: Object.fromEntries(Object.entries(stationsData).map(([sid, s]) => [sid, {
+                    type: s.type,
+                    passThrough: passThrough.has(String(sid))
+                }])),
                 walk,
                 through,
                 xferMinutes: Number(config.xferMinutes) || DEFAULTS.xferMinutes,

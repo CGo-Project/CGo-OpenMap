@@ -117,11 +117,42 @@
      * ==================================================================== */
 
     /**
+     * 车站是否处于可运营状态：未开通车站（type "no"）不参与首末班车展示。
+     * 车站字典里查不到的按可用处理，避免数据缺失时误清空整张卡片。
+     */
+    function isOperableStation(station) {
+        if (!station) return true;
+        return String(station.type || "") !== "no";
+    }
+
+    /**
+     * 取当前日期类型下应展示的行。
+     *
+     * 日期类型的分档一律落在**行**上，行内的 first / last 只是字符串——
+     * 这样共享层不必去猜值的形状（早期长春把 { workday, restday } 塞在值里、
+     * 沈阳的值是裸字符串，渲染层就得为两种形状各写一条分支，越做越重）。
+     * 不带 dayType 的行视为工作日与周末通用，任何日期类型下都展示。
+     *
+     * @param {Array} rows - 归一化行
+     * @param {string} [dayType] - 当前日期类型（如 "workday" / "restday"）
+     * @returns {Array} 过滤后的行
+     */
+    function rowsForDayType(rows, dayType) {
+        if (!Array.isArray(rows)) return [];
+        const key = String(dayType || "");
+        return rows.filter((row) => !row?.dayType || String(row.dayType) === key);
+    }
+
+    /**
      * 解析终点站为显示名
      *
      * "line-first" / "line-last" 为线路首站 / 末站代号，其余值按站 ID 处理。
      * 两种情况都统一解析为车站中文名；查不到名称时回退为原始值，便于暴露数据问题。
      * 分支线沿用既有行为：取 stationIds-way1，缺省回退主站序。
+     *
+     * 代号取自**实际运营的车站**：未开通车站（type "no"）一律跳过，
+     * 因此含未开通区段的线路，"line-last" 会落到该线最后一个已开通车站上，
+     * 而不是那个尚未对外运营的终点站。
      *
      * @param {object} line - linesData 中的线路对象
      * @param {string} value - 站 ID 或代号
@@ -132,17 +163,22 @@
         const raw = String(value ?? "");
         let id = raw;
 
+        const stations = context.stations
+            || (typeof stationsData !== "undefined" ? stationsData : null);
+
         if (raw === "line-first" || raw === "line-last") {
             if (!line) return "";
             const stationIds = line.hasbranch
                 ? (line["stationIds-way1"] || line.stationIds || [])
                 : (line.stationIds || []);
             if (!Array.isArray(stationIds) || !stationIds.length) return "";
-            id = String(raw === "line-first" ? stationIds[0] : stationIds[stationIds.length - 1]);
+            const operable = stationIds
+                .map(String)
+                .filter((sid) => isOperableStation(stations?.[sid]));
+            if (!operable.length) return "";
+            id = String(raw === "line-first" ? operable[0] : operable[operable.length - 1]);
         }
 
-        const stations = context.stations
-            || (typeof stationsData !== "undefined" ? stationsData : null);
         return stations?.[id]?.cn || id;
     }
 
@@ -154,18 +190,36 @@
      * 归一化行模型
      * @typedef {object} TimetableRow
      * @property {string} destination - 终点站 / 始发站显示名
-     * @property {string} [first]     - 首班时刻
+     * @property {string} [first]     - 首班时刻（字符串；季节由数据行切开，不在此分档）
      * @property {string} [last]      - 末班时刻
+     * @property {"workday"|"restday"} [dayType] - 该行适用的日期类型；
+     *        缺省表示工作日与周末通用，任何日期类型下都展示
      * @property {"towards"|"origin"} [mode] - 文案形态，缺省 "towards"（开往X）；
      *        "origin" 用于线路端点站的始发时刻（X始发）
      * @property {string} [note]      - 标注文本，note 为「推算」时按推算样式前置
      * @property {boolean} [estimated]- 推算标记，等价于 note === "推算"
      */
 
+    /**
+     * 时刻规范化：小时统一补足两位（"5:51" → "05:51"）。
+     *
+     * 三城数据录入时的写法不一致（长春写 "5:51"、沈阳与大连写 "05:58"），
+     * 展示层统一成两位宽度，免得同一张卡片里两种宽度混排。
+     * 不是时刻的字符串（空值、占位符等）原样返回，便于暴露数据问题。
+     *
+     * @param {string} value - 原始时刻
+     * @returns {string}
+     */
+    function normalizeClock(value) {
+        const text = String(value ?? "").trim();
+        const match = /^(\d{1,2}):(\d{2})$/.exec(text);
+        return match ? `${match[1].padStart(2, "0")}:${match[2]}` : text;
+    }
+
     /** 格式化首末时刻："06:30-22:00" / "首班 06:30" / "末班 22:00" */
     function formatTime(row) {
-        const first = escapeHtml(row?.first);
-        const last = escapeHtml(row?.last);
+        const first = escapeHtml(normalizeClock(row?.first));
+        const last = escapeHtml(normalizeClock(row?.last));
         if (first && last) return `${first}-${last}`;
         if (first) return `首班 ${first}`;
         if (last) return `末班 ${last}`;
@@ -291,7 +345,10 @@
     window.CGoTimetable = {
         escapeHtml,
         resolveDestination,
+        isOperableStation,
+        rowsForDayType,
         getSeason,
+        normalizeClock,
         formatTime,
         renderRow,
         renderRows,

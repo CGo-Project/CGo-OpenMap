@@ -110,8 +110,25 @@
             });
         });
 
-        /** 未开通车站（type "no"）不可达；stations 未收录的站按可用处理，避免数据不全而阻塞 */
-        const reachable = (sid) => stations[sid]?.type !== "no";
+        /**
+         * 能否在该站上下车：未开通车站（type "no"）不行。
+         * 起讫点、上车站、换乘落地都以此为准。
+         */
+        const canBoardAt = (sid) => stations[sid]?.type !== "no";
+
+        /**
+         * 能否乘车经过该站。
+         *
+         * 未开通车站里还要再分两种：落在未开通区段上的（整线未开通，如长春 5 号线）
+         * 连穿过都不行；已开通线路上的暂缓开通站（如北京陶然桥）则列车照常经过、
+         * 只是不停车——所以能穿过。这个区别由 route-data 在建图时判定并写入 passThrough。
+         * stations 未收录的站按可用处理，避免数据不全而阻塞。
+         */
+        const passable = (sid) => {
+            const station = stations[sid];
+            if (!station || station.type !== "no") return true;
+            return Boolean(station.passThrough);
+        };
 
         /**
          * 贯通直通索引：`衔接站|从线|到线` → 声明。
@@ -180,14 +197,14 @@
          */
         const OBJECTIVES = {
             time: {
-                label: "最快",
+                label: "时间最快",
                 hop: (line, a, b) => hopMinutes(line, a, b),
                 xfer: (sid, from, to) => xferMinutes(sid, from, to),
                 walk: (minutes) => minutes,
                 boardingWalk: (minutes) => minutes
             },
             distance: {
-                label: "最短",
+                label: "距离最短",
                 hop: (line, a, b) => hopKm(line, a, b),
                 xfer: () => 0.08,
                 walk: (minutes) => minutes,
@@ -209,7 +226,7 @@
                 boardingWalk: (minutes) => 1 + minutes * 1e-4
             },
             fare: {
-                label: "最省",
+                label: "票价最低",
                 hop: (line, a, b) => {
                     const km = hopKm(line, a, b);
                     return km === null ? null : km * (line.mode === "tram" ? 1.6 : 1);
@@ -227,7 +244,7 @@
         function plan(from, to, objectiveKey = "time") {
             const objective = OBJECTIVES[objectiveKey] || OBJECTIVES.time;
             if (!from || !to) return null;
-            if (!reachable(from) || !reachable(to)) return null;
+            if (!canBoardAt(from) || !canBoardAt(to)) return null;
             if (from === to) return { minutes: 0, stops: 0, transfers: 0, distance: 0, fare: 0, steps: [] };
 
             const dist = new Map();
@@ -244,7 +261,7 @@
 
             /** 在某站登上所有可乘状态；info 记录这次上车前发生了什么（起点 / 换乘 / 步行） */
             const board = (sid, base, fromKey, info) => {
-                if (!reachable(sid)) return;
+                if (!canBoardAt(sid)) return;
                 (boardable.get(sid) || []).forEach(({ lineId, wi, idx }) => {
                     const line = lineById.get(lineId);
                     [1, -1].forEach((dir) => {
@@ -276,7 +293,7 @@
                 // ① 乘车：前进一站（idx 由站序反查，故状态键无需携带下标）
                 const idx = line.ways[wi].indexOf(sid);
                 const next = idx < 0 ? null : step({ lineId, wi, idx, dir });
-                if (next && reachable(next.sid)) {
+                if (next && passable(next.sid)) {
                     const minutes = hopMinutes(line, sid, next.sid);
                     const weight = objective.hop(line, sid, next.sid);
                     // 该目标缺数据（如区间无坐标）时退化为时间口径，保证各目标的连通性一致
@@ -285,6 +302,9 @@
                         relax(stateKey(next.sid, lineId, wi, dir), cost + stepCost, key, { t: "ride", line: lineId });
                     }
                 }
+
+                // 被穿过的未开通车站：列车只是经过，不能在此下车换乘或出站（只能继续乘车）
+                if (!canBoardAt(sid)) continue;
 
                 // ② 同站换乘：切到本站其他线路（同线不同支也算换乘）。
                 //    命中贯通声明的则不是换乘——那是同一列车换了条线继续开，代价为 0。
@@ -413,7 +433,7 @@
                     [1, -1].forEach((dir) => {
                         if (!hasService(line, wi, idx, dir)) return;
                         const next = step({ lineId, wi, idx, dir });
-                        if (!next || !reachable(next.sid)) return;
+                        if (!next || !passable(next.sid)) return;
                         const km = hopKm(line, sid, next.sid);
                         if (km === null) return;
                         const nextCost = cost + km;

@@ -1,66 +1,30 @@
 /**
- * CGo OpenMap - 大连地理底图、站名与图例交互模块
+ * CGo OpenMap - 大连画布尺寸、站名与图例交互模块
+ *
+ * 海域底图已按项目规范迁到 data_scattered.js（散点装饰层），
+ * 主题适配由 modules/dalian_sea.js 负责，本模块不再自建地理图层。
  *
  * @event cgo:city-module-ready
  * @property {{ cityId: string, moduleId: string }} detail
- * @event dalian:geography-rendered
- * @property {{ asset: string }} detail
  */
 (function () {
     const DALIAN_LABEL_STYLE_ID = "dalian-label-enhancements";
-    const DALIAN_SEA_ASSET = "./city/dalian/assets/dalian_sea.svg";
     let legendSyncSuppressed = false;
 
     function getCity() {
         return window.DALIAN_CITY || {};
     }
 
-    function installGeography() {
+    /**
+     * 画布尺寸：引擎只按 city.mapSize 计算边界，DOM 上的 #map-content 仍是样式表里的默认尺寸
+     * （1850×1300），这里把它对齐到本市实际画布，否则大连接近画布边缘的装饰会被裁掉。
+     */
+    function installMapCanvas() {
         const mapContent = document.getElementById("map-content");
-        const scatteredLayer = document.getElementById("scattered-layer");
         const mapSize = getCity().mapSize;
-        if (!mapContent || !scatteredLayer || !mapSize) return;
-
+        if (!mapContent || !mapSize) return;
         mapContent.style.setProperty("width", `${mapSize.width}px`, "important");
         mapContent.style.setProperty("height", `${mapSize.height}px`, "important");
-
-        const svgNamespace = "http://www.w3.org/2000/svg";
-        let layer = document.getElementById("dalian-geography-layer");
-        if (!layer) {
-            layer = document.createElementNS(svgNamespace, "svg");
-            layer.id = "dalian-geography-layer";
-            layer.setAttribute("aria-hidden", "true");
-            layer.style.cssText = [
-                "position:absolute",
-                "inset:0",
-                "width:100%",
-                "height:100%",
-                "overflow:visible",
-                "pointer-events:none",
-                "z-index:1"
-            ].join(";");
-            mapContent.insertBefore(layer, scatteredLayer);
-        }
-
-        layer.setAttribute("viewBox", `0 0 ${mapSize.width} ${mapSize.height}`);
-        layer.setAttribute("preserveAspectRatio", "none");
-        layer.replaceChildren();
-
-        const seaDecoration = document.createElementNS(svgNamespace, "image");
-        seaDecoration.setAttribute("x", "0");
-        seaDecoration.setAttribute("y", "0");
-        seaDecoration.setAttribute("width", String(mapSize.width));
-        seaDecoration.setAttribute("height", String(mapSize.height));
-        seaDecoration.setAttribute("preserveAspectRatio", "none");
-        seaDecoration.setAttribute("aria-hidden", "true");
-        seaDecoration.setAttribute("pointer-events", "none");
-        seaDecoration.setAttribute("href", DALIAN_SEA_ASSET);
-        seaDecoration.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", DALIAN_SEA_ASSET);
-        layer.appendChild(seaDecoration);
-
-        document.dispatchEvent(new CustomEvent("dalian:geography-rendered", {
-            detail: { asset: DALIAN_SEA_ASSET }
-        }));
     }
 
     function getStationMap() {
@@ -266,7 +230,7 @@
     }
 
     function install() {
-        installGeography();
+        installMapCanvas();
         installLabelEnhancements();
         installLegendSyncIsolation();
     }

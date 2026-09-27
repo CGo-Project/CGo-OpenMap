@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.2630';
+const CACHE_NAME = 'cgo-openmap-v260927.1606';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -127,6 +127,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/timetable-renderer.js',
     './city/shenyang/shared/stacard-engine.js',
     './city/shenyang/shared/station-title.js',
+    './city/shenyang/shared/viewport-inset.js',
     './city/shenyang/shared/tip-card.js',
     './city/shenyang/shared/calligraphy.js',
     './city/shenyang/shared/calligraphy.css',
@@ -324,6 +325,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (大连)
     './city/dalian/dalian.js',
     './city/dalian/modules/dalian_map.js',
+    './city/dalian/modules/dalian_sea.js',
     './city/dalian/modules/dalian_timetable.js',
     './city/dalian/modules/dalian_transfers.js',
     './city/dalian/modules/dalian_station_title.js',
