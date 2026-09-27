@@ -251,7 +251,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260927.1801";
+        const version = "260928.0119";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
@@ -268,6 +268,8 @@
         document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
+        // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
+        document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
         (DalianCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/dalian/${scriptPath}?v=${version}"><\/script>`);
         });

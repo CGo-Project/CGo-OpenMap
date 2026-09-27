@@ -220,7 +220,7 @@
                 </div>
                 <div class="cgo-rt-actions">
                     <button class="cgo-rt-quick" data-quick="locate">
-                        <cgo-icon name="location" size="14"></cgo-icon>我的位置
+                        <cgo-icon name="location" size="14"></cgo-icon>定位
                     </button>
                     <button class="cgo-rt-quick" data-quick="pick">
                         <cgo-icon name="map" size="14"></cgo-icon>地图选点
@@ -691,6 +691,14 @@
         || String(lineId).toUpperCase().startsWith("HNT"));
 
     /**
+     * 国铁散点线（中国铁路）：线路名里没有可抽的编号，徽标若照常走编号规则会退化成
+     * 「中国铁」三个字挤在 22px 里；这类线路改用 railway 图标 + 线路徽标底色。
+     * 判据与 sidebar-refit.js 的同名函数一致：国铁散点线按 AGENTS.md 的定义即 isPointOnly。
+     */
+    const isRailwayLine = (line) => Boolean(line)
+        && (line.isPointOnly === true || String(line.name || "") === "中国铁路");
+
+    /**
      * 线路编号：面板里那个小徽标承载的短代号。
      *
      * 默认从线路名里抽数字（"1号线" → "1"、"201路" → "201"），
@@ -789,8 +797,12 @@
                 // 编号形状：城市声明 lineCodeShape: "circle" 时地铁用圆形，其余一概圆角方形
                 // （有轨即便在沈阳也保持方形，好与同号地铁线区分开）
                 const codeCircle = window.CGO_ROUTE_CONFIG?.lineCodeShape === "circle" && !isTramLine(first.line);
-                const code = lineCode(first.line);
                 const codeClass = codeCircle ? "circle" : "square";
+                // 国铁散点线没有编号可抽：徽标换成 railway 图标，底色就地覆盖成线路徽标底色
+                // svgclr（改在本徽标的局部 --line-color 上，不动整段行程的线网走向色）
+                const modeHtml = isRailwayLine(line)
+                    ? `<span class="cgo-rt-mode square" style="--line-color:${line.svgclr || line.color}"><cgo-icon name="railway" size="16"></cgo-icon></span>`
+                    : `<span class="cgo-rt-mode ${codeClass}"><span class="cgo-rt-code">${lineCode(first.line)}</span></span>`;
                 // 途经站只列中途停站：上车站与下车站已由上下行文案表达；
                 // 贯通衔接点会被相邻两段各记一次，按相邻去重压成一份
                 const allStops = segments.flatMap((seg) => seg.stops)
@@ -801,7 +813,7 @@
                 legs.push(`
                     <li class="cgo-rt-leg ride" style="--line-color:${line?.color || "var(--primary-color, #006098)"}">
                         <div class="cgo-rt-leg-head">
-                            <span class="cgo-rt-mode ${codeClass}"><span class="cgo-rt-code">${code}</span></span>
+                            ${modeHtml}
                             <span class="cgo-rt-leg-name">
                                 <b data-jump="${start}">${stationName(start)}</b><em>${action}</em>
                             </span>
@@ -2340,6 +2352,34 @@
         button.insertAdjacentElement("afterend", divider);
     }
 
+    /**
+     * 底栏入口行的宽度自适应（三档降级，档位由实测决定而非写死阈值）。
+     *
+     * 为什么要实测：能不能放下只取决于「这颗按钮自己的内容有多宽」，而按钮里装着
+     * 图标 + 四个汉字，宽度随字体、字号、城市文案而变——用固定断点一定会错位。
+     * 于是这里从满档开始实测本行的 scrollWidth 是否超过 clientWidth，超了就降一档再量，
+     * 直到放得下；档位写在 data-cgo-fit 上，具体长什么样交给 route-panel.css 决定。
+     *
+     *   全档 full：四颗按钮都带完整文案
+     *   二档 icons：带文案的非强调按钮（设为起点）收成图标方块
+     *   三档 short：强调按钮（设为终点）的文案简化为「终点」
+     *   四档 icon：强调按钮也只留图标
+     *
+     * 逐档实测最多触发三次强制重排，且只在挂载与本行尺寸变化时各跑一次，代价可忽略。
+     */
+    const ENTRY_FIT_LEVELS = ["full", "icons", "short", "icon"];
+
+    function fitEntryRow(row) {
+        // 不可见时（车站面板折叠、被别的面板顶掉）量不出尺寸，留待 ResizeObserver 回调；
+        // 若此时硬判，clientWidth 为 0 会被当成「放得下」，档位就永远停在满档了。
+        if (!row || !row.clientWidth) return;
+        for (const level of ENTRY_FIT_LEVELS) {
+            row.dataset.cgoFit = level;
+            // 1px 容差：scrollWidth/clientWidth 都是取整值，边界上会假报溢出
+            if (row.scrollWidth <= row.clientWidth + 1) return;
+        }
+    }
+
     function registerFooterModule() {
         if (!window.StationBoard?.registerModule) return;
         window.StationBoard.registerModule({
@@ -2406,6 +2446,9 @@
                     closeInfoPanel();
                     openPlan({ to: context.station?.id });
                 });
+                // 宽度自适应：侧栏与浮层两套形态、以及侧栏宽度本身都会变，尺寸一变就重新判档
+                fitEntryRow(row);
+                if ("ResizeObserver" in window) new ResizeObserver(() => fitEntryRow(row)).observe(row);
             }
         });
     }

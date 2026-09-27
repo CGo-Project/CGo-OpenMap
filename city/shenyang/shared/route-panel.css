@@ -194,20 +194,26 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
 /* ── 快捷按钮行 ────────────────────────────────────────────────── */
 .cgo-rt-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     margin-top: 12px;
 }
 
 .cgo-rt-quick {
-    flex: 1;
+    /* basis 用 auto（而不是 flex: 1 的 0）才能真的换行：flex-basis 为 0 时三个按钮
+       的「假设主尺寸」都是 0，换行算法认为一行放得下，于是谁都不下移、只会被挤扁。
+       标签本身不许换行——挤不下时整颗按钮另起一行，而不是把「地图选点」断成两行 */
+    flex: 1 1 auto;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 5px;
-    padding: 8px 6px;
+    /* 同样收一档：三颗按钮在侧栏宽度下要能挤在一行 */
+    padding: 7px 5px;
     font: inherit;
     font-size: 12px;
     font-weight: 600 !important;   /* 全局表单重置为 font-weight: inherit !important，需同级覆盖 */
+    white-space: nowrap;
     color: var(--text-main);
     background: var(--btn-info-bg);
     border: none;
@@ -302,10 +308,13 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
 }
 
 /* ── 结果区：汇总 ──────────────────────────────────────────────── */
+/* 纵向排列：侧栏窄，横排时后面那串「里程 · 站数 · 换乘 · 票价」会被挤到换行、
+   与「约 X 分钟」对齐不齐；改成上下两行，主时间在上、明细在下 */
 .cgo-rt-sum {
     display: flex;
-    align-items: baseline;
-    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
     padding: 4px 0 8px;
 }
 
@@ -585,6 +594,9 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
 }
 
 /* ── 底栏入口行：设为起点 / 设为终点 / 官网查询 / 高德导航 ─────── */
+/* 宽度不足时按实测逐档降级：档位（data-cgo-fit）由 route-panel.js 的 fitEntryRow 写入，
+   本文件只负责每一档长什么样。用实测而非固定断点，是因为「放不放得下」取决于
+   图标 + 中文标签的实际宽度，随字体与城市文案变化，写死阈值一定会在某些环境下错位。 */
 .cgo-rt-entry-btn {
     display: flex;
     align-items: center;
@@ -599,7 +611,8 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     justify-content: center;
     gap: 6px;
     height: 44px;
-    padding: 0 10px;
+    /* 侧栏里这一行很窄，内边距收一档：省下的宽度直接给到按钮文案 */
+    padding: 0 8px;
     font-size: 13px;
     font-weight: 600 !important;   /* 同 .cgo-rt-quick：覆盖全局表单重置 */
     white-space: nowrap;
@@ -660,6 +673,47 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
 .cgo-rt-fbtn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+}
+
+/* ── 宽度不足时的逐档降级（档位由 route-panel.js 实测写入 data-cgo-fit） ──────
+   档位：full（全文案）→ icons（非强调按钮收成图标方块）→ short（强调按钮简化为「终点」）
+        → icon（强调按钮也只留图标）。
+   每档都只做「让位」不改变行高，收窄即可放回上一档（ResizeObserver 会重判）。── */
+.cgo-rt-entry-btn:is([data-cgo-fit="icons"], [data-cgo-fit="short"], [data-cgo-fit="icon"]) .cgo-rt-fbtn:not(.emphasis):not(.icon-only) {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+}
+
+/* title 属性仍在，收成图标后悬浮仍能看到「设为起点」 */
+.cgo-rt-entry-btn:is([data-cgo-fit="icons"], [data-cgo-fit="short"], [data-cgo-fit="icon"]) .cgo-rt-fbtn:not(.emphasis):not(.icon-only) > span {
+    display: none;
+}
+
+/* 三档：强调按钮的标签简化为「终点」，图标保留便于识别。
+   文案与 route-panel.js 里的「设为终点」是一对，改标签时两处要一起改。 */
+.cgo-rt-entry-btn:is([data-cgo-fit="short"], [data-cgo-fit="icon"]) .cgo-rt-fbtn.emphasis {
+    padding: 0 8px;
+}
+
+.cgo-rt-entry-btn:is([data-cgo-fit="short"], [data-cgo-fit="icon"]) .cgo-rt-fbtn.emphasis > span {
+    display: none;
+}
+
+.cgo-rt-entry-btn[data-cgo-fit="short"] .cgo-rt-fbtn.emphasis::after {
+    content: "终点";
+}
+
+/* 四档：实在放不下时，强调按钮也只留图标（title 仍是「设为终点」） */
+.cgo-rt-entry-btn[data-cgo-fit="icon"] .cgo-rt-fbtn.emphasis {
+    flex: none;
+    width: 44px;
+    padding: 0;
+}
+
+.cgo-rt-entry-btn[data-cgo-fit="icon"] .cgo-rt-fbtn.emphasis::after {
+    content: none;
 }
 
 /* ── 图上高亮：规划线路保留，其余线网与底图装饰淡化 ─────────────── */
@@ -1010,17 +1064,20 @@ body.legend-pinned #cgo-route-result.collapsed .header-color-squares {
     display: inline-flex;
 }
 
-/* 标题可能很长（起点站名→终点站名（路线模式）），压到箭头之前先自己截断 */
+/* 标题保持「贴着内容」的宽度而非撑满：它后面紧跟折叠态才显示的迷你线路标（见
+   sidebar-refit.css），标题若能自由伸展，徽标就会被顶到行的中间去。
+   长标题（起点站名→终点站名（路线模式））仍靠 min-width: 0 + ellipsis 先自己截断，
+   折叠箭头由 space-between 与 .header-color-squares 的 margin-right: auto 一起顶到最右。 */
 body.legend-pinned #cgo-route-result .section-title-text {
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* 查询面板标题较短，同样占满左侧，让箭头稳定贴右 */
+/* 查询面板标题较短，同样不再撑满，箭头位置不受影响 */
 body.legend-pinned #cgo-route-card .section-title-text {
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
 }

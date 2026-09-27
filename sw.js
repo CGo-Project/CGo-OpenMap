@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260927.1801';
+const CACHE_NAME = 'cgo-openmap-v260928.0119';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -142,6 +142,9 @@ const ASSETS_TO_CACHE = [
     // 跨城市「查找最近车站」（三城共用）：接管核心 LBS 的 confirm，改用 cgo-modal 三选一
     './city/shenyang/shared/nearest-station.js',
     './city/shenyang/shared/nearest-station.css',
+    // 固定侧栏「浮岛卡片」改造（三城共用）：几何跟随标题栏浮岛、卡片等距、标题栏线路标
+    './city/shenyang/shared/sidebar-refit.js',
+    './city/shenyang/shared/sidebar-refit.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
