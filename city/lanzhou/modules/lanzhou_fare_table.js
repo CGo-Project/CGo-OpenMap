@@ -59,7 +59,7 @@
     /** 票价表弹层根节点 ID（全局单例） */
     const VIEWER_ID = "lanzhou-fare-viewer";
     /** 本模块版本号（与 lanzhou.js 中 document.write 的 ?v= 保持一致） */
-    const VERSION = "260927.160000";
+    const VERSION = "260927.180000";
 
     /* ===================================================================== */
     /* ====== 可自由编辑区：票价表配置表 (EDIT HERE) ========================= */
@@ -81,9 +81,9 @@
         hint: "滚轮 / 双指捏合缩放 · 拖动平移 · 图片上双击复位",
 
         /** 是否在国铁火车站（Rwy）卡片中显示 */
-        showOnRailwayStations: true,
+        showOnRailwayStations: false,
         /** 是否在市郊铁路（S1 等）卡片中显示 */
-        showOnSuburbanStations: true,
+        showOnSuburbanStations: false,
         /** 精确排除的车站 ID 列表（命中即不显示该站按钮） */
         excludeStations: [],
 
@@ -172,6 +172,7 @@
         pinch: null,
         lastTap: null,
         suppressClick: false,
+        downTarget: null,
         userAdjusted: false,
         transitionTimer: null,
         escHandler: null,
@@ -255,7 +256,7 @@
         stage.addEventListener("pointercancel", onPointerUp);
         stage.addEventListener("click", onStageClick);
         stage.addEventListener("dblclick", (e) => {
-            if (e.target === viewer.img) { e.preventDefault(); resetToFit(true); }
+            if (pressedTarget(e) === viewer.img) { e.preventDefault(); resetToFit(true); }
         });
         stage.addEventListener("wheel", onWheel, { passive: false });
 
@@ -370,6 +371,9 @@
         clearTransition();
         // 新的按下动作重新开始计：避免上一次拖动残留的「抑制点击」吞掉本次空白点击
         viewer.suppressClick = false;
+        // 按下时即 setPointerCapture，之后的 click / dblclick 的 target 会变成舞台本身，
+        // 故记下按下时的真实目标，供「点空白关闭」「图片上双击复位」判定
+        if (viewer.pointers.size === 0) viewer.downTarget = e.target;
         viewer.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
         if (viewer.pointers.size === 1) {
@@ -451,10 +455,16 @@
         viewer.lastTap = { t: now, x: e.clientX, y: e.clientY };
     }
 
+    /** 按下时的真实目标（指针被舞台捕获后，click 的 target 不再可靠） */
+    function pressedTarget(e) {
+        return viewer.downTarget || e.target;
+    }
+
     function onStageClick(e) {
         if (viewer.suppressClick) { viewer.suppressClick = false; return; }
         // 仅点击图片之外的空白区域才关闭（图片上双击用于复位）
-        if (e.target !== viewer.stage && e.target !== viewer.loading) return;
+        const target = pressedTarget(e);
+        if (target !== viewer.stage && target !== viewer.loading) return;
         closeViewer();
     }
 

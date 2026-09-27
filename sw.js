@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.2400';
+const CACHE_NAME = 'cgo-openmap-v260927.1800';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -387,9 +387,11 @@ const ASSETS_TO_CACHE = [
     './city/lanzhou/modules/lanzhou_timetable.js',
     './city/lanzhou/modules/lanzhou_travel_guide.js',
     './city/lanzhou/modules/lanzhou_operation_status.js',
+    './city/lanzhou/modules/lanzhou_fare_table.js',
     './city/lanzhou/staname.csv',
     './city/lanzhou/amap_data.json',
     './city/lanzhou/assets/lanzhou_river.svg',
+    './city/lanzhou/assets/pricetable.jpg',
 
     // 福州线路徽标
     './assets/svg/icon@fz_BE.svg',

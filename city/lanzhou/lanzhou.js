@@ -304,8 +304,8 @@
         document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_station_names.js?v=260927.140000"><\/scr' + 'ipt>');
         document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_timetable.js?v=260917.145004"><\/scr' + 'ipt>');
         document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_travel_guide.js?v=260925.143000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_operation_status.js?v=260926.140000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_fare_table.js?v=260927.160000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_operation_status.js?v=260927.180000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_fare_table.js?v=260927.180000"><\/scr' + 'ipt>');
     }
 
     // ==========================================================================
