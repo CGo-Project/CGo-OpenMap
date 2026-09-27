@@ -1188,7 +1188,7 @@
     display: block;
     margin-top: 0;
     line-height: 6.35px;
-    white-space: normal;
+    white-space: nowrap;
     font-family: var(--font-en);
     font-weight: 500;
     paint-order: stroke fill;
