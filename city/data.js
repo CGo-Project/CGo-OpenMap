@@ -297,6 +297,30 @@
             ],
             isDefault: false
         },
+        "lanzhou": {
+            id: "lanzhou",
+            name: "兰州",
+            themeColor: "#19A7FD",
+            folder: "./city/lanzhou",
+            mainLogic: "./city/lanzhou/lanzhou.js",
+            center: { x: 1200, y: 1200 },
+            defaultScale: 1.0,
+            // 画布总尺寸 (根据线网图宽高设定)
+            mapSize: { width: 2600, height: 2000 },
+            // 高德地图检索所属行政区名称
+            searchCity: "兰州",
+            officialMapUrl: "https://www.lzgdjt.com/",
+            // 网页元数据
+            title: "CGo OpenMap - 兰州轨道交通线路图",
+            keywords: "兰州地铁, 线路图, 轨道交通",
+            description: "包含已运营1、2号线、中川城际以及规划中3-5、7、8号线",
+            registerDate: "2026-09-26",
+            status: "active",
+            maintainers: [
+                { name: "Bingcaowan", role: "城市主理人", github: "https://github.com/icegrassbay" }
+            ],
+            isDefault: false // 设为默认激活
+        }
     };
 
     // ==========================================================================

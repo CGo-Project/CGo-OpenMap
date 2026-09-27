@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2700" height="2000" viewBox="0 0 2700 2000">
+  <!--
+    CGo OpenMap · 兰州 · 黄河水域底图
+    ==============================================================================
+    坐标约定：本文件使用「画布最终坐标」，与 data_stations.js / data_lines.js
+    渲染后的坐标系完全一致（即源数据整体平移 x+500, y+800 之后的值）。
+    因此 SVG 的 viewBox 直接等于城市 mapSize (2700 x 2000)，由 data_scattered.js
+    以 x:1350 / y:1000（画布中心）居中铺满，可 1:1 对位站点。
+
+    河道走线（画布坐标，源锚点 +500/+800）：
+      (-300,1350) (30,1350) (280,1100) (480,1100) (670,1290)
+      (800,1290) (800,1230) (1580,1230) (1580,1175) (2600,1175)
+
+    渲染方式：等宽描边中心线（stroke）。全部拐角均为 45°/90°，已按
+    core/script.js generateRoundedPath() 的同一算法（二次贝塞尔 Q，以转角顶点
+    为控制点，limitFactor = 0.9）以圆角半径 r = 30 逐一倒角，风格与线路一致。
+    调整河宽只需改下方 stroke-width；调整圆角柔和度改倒角半径 r（需重算 d）。
+
+    端头淡出（避免缩小时河道断头）：
+      西端被 viewBox 裁在 x=0、东端停在 x=2600，都是硬切口；而 #map-container 与
+      #map-content 同底色（画布边界不可见），缩到比视口小之后地图还会被强制居中
+      (core/script.js localEnforceBoundaries)，切口必然露在画面里且拖不走。
+      故用 mask + 横向线性渐变把两端在不透明↔全透明之间收尾：
+        x=0 处 alpha=0 → 向右 250px 渐显至全不透明 → x>2350 渐隐 → x=2600 归零。
+      渐变走 alpha（亮度遮罩：白=不透明、黑=全透明），亮/暗主题下同样成立，
+      无需再配一套色标；要改渐隐长度只需改 linearGradient 的两个 offset
+      （offset = 画布 x 坐标 / 2600）。
+
+    图层：本 SVG 由 #scattered-layer 承载（z-index:5），位于线路层(10)、
+    未开通层(12)、车站层(20)、站名层(30) 之下，即「河流在线路下方」。
+
+    主题：内嵌 <style> 为 <img> 外链模式下的兜底（只跟随操作系统主题）；
+    data_scattered.js 会把本 SVG 内联进 DOM，从而跟随页面手动亮暗切换。
+  -->
+  <style>
+    .river {
+      fill: none;
+      stroke: #dceff4;
+      stroke-width: 12;
+      stroke-linecap: butt;
+      stroke-linejoin: round;
+    }
+    @media (prefers-color-scheme: dark) {
+      .river { stroke: #17323b; }
+    }
+  </style>
+  <!--
+    端头淡出遮罩：mask 默认按亮度取值（白=不透明，黑=全透明）。
+    渐变沿画布 x 轴铺在 0 → 2600：两端 alpha 归零，中段保持全不透明；
+    x<0 落在首位色标之外，按 pad 取首色（全黑=全透明），恰好把被裁的西端一并隐去。
+    遮罩区域刻意留足余量（含河道 12px 描边的外扩），避免描边边缘被裁掉。
+  -->
+  <defs>
+    <linearGradient id="lanzhouRiverFade" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="2600" y2="0">
+      <stop offset="0" stop-color="#000"/>
+      <stop offset="0.0962" stop-color="#fff"/>
+      <stop offset="0.9038" stop-color="#fff"/>
+      <stop offset="1" stop-color="#000"/>
+    </linearGradient>
+    <mask id="lanzhouRiverFadeMask" maskUnits="userSpaceOnUse" x="-400" y="1000" width="3100" height="400">
+      <rect x="-400" y="1000" width="3100" height="400" fill="url(#lanzhouRiverFade)"/>
+    </mask>
+  </defs>
+  <path class="river" mask="url(#lanzhouRiverFadeMask)" d="M -300 1350 L 0 1350 Q 30 1350 51.21 1328.79 L 258.79 1121.21 Q 280 1100 310 1100 L 450 1100 Q 480 1100 501.21 1121.21 L 648.79 1268.79 Q 670 1290 700 1290 L 770 1290 Q 800 1290 800 1260 L 800 1260 Q 800 1230 830 1230 L 1550 1230 Q 1580 1230 1580 1200 L 1580 1205 Q 1580 1175 1610 1175 L 2600 1175"/>
+</svg>
