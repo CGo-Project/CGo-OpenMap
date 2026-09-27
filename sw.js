@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260926.2300';
+const CACHE_NAME = 'cgo-openmap-v260927.1800';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -370,6 +370,28 @@ const ASSETS_TO_CACHE = [
     './assets/svg/icon@15.svg',
     './assets/svg/icon@lg.svg',
     './assets/svg/icon@xha.svg',
+
+    // 城市配置与业务数据 (兰州)
+    './city/lanzhou/lanzhou.js',
+    './city/lanzhou/style.css',
+    './city/lanzhou/stacard/script.js',
+    './city/lanzhou/data_stations.js',
+    './city/lanzhou/data_lines.js',
+    './city/lanzhou/data_virtual_transfers.js',
+    './city/lanzhou/data_scattered.js',
+    './city/lanzhou/data_notopen.js',
+    './city/lanzhou/data_legend.js',
+    './city/lanzhou/data_timetable.js',
+    './city/lanzhou/data_station_names.js',
+    './city/lanzhou/modules/lanzhou_station_names.js',
+    './city/lanzhou/modules/lanzhou_timetable.js',
+    './city/lanzhou/modules/lanzhou_travel_guide.js',
+    './city/lanzhou/modules/lanzhou_operation_status.js',
+    './city/lanzhou/modules/lanzhou_fare_table.js',
+    './city/lanzhou/staname.csv',
+    './city/lanzhou/amap_data.json',
+    './city/lanzhou/assets/lanzhou_river.svg',
+    './city/lanzhou/assets/pricetable.jpg',
 
     // 福州线路徽标
     './assets/svg/icon@fz_BE.svg',
