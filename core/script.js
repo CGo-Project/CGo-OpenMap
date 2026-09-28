@@ -1194,8 +1194,9 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
         panel.style.display = 'block';
         panel.style.opacity = '1';
         mapContent.classList.add('animate-zoom');
-        currentX = (viewportW / 2) - (s.x * currentScale);
-        currentY = (viewportH / 2) - (s.y * currentScale);
+        const focus = getViewportCenter();
+        currentX = focus.x - (s.x * currentScale);
+        currentY = focus.y - (s.y * currentScale);
         enforceBoundaries();
         updateMapTransform();
     } else {
@@ -1211,16 +1212,19 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
             document.body.classList.add('mobile-split-active');
             infoPanel.style.display = 'flex';
             currentScale = 1.4;
-            const targetVisualX = viewportW / 2;
-            const targetVisualY = viewportH * 0.2;
+            // 底部抽屉与浮层遮挡由 getViewportCenter 统一扣除，落点即上半可用区的中心
+            const focus = getViewportCenter();
+            const targetVisualX = focus.x;
+            const targetVisualY = focus.y;
             currentX = targetVisualX - (s.x * currentScale);
             currentY = targetVisualY - (s.y * currentScale);
         } else {
             document.body.classList.remove('mobile-split-active');
             if (pageX === undefined || pageY === undefined) {
                 mapContent.classList.add('animate-zoom');
-                currentX = (viewportW / 2) - (s.x * currentScale);
-                currentY = (viewportH / 2) - (s.y * currentScale);
+                const focus = getViewportCenter();
+                currentX = focus.x - (s.x * currentScale);
+                currentY = focus.y - (s.y * currentScale);
                 showPanelAt(viewportW / 2 - 160, viewportH / 2 - 100);
             } else {
                 showPanelAt(pageX, pageY);
@@ -1500,6 +1504,34 @@ function getMapTopOffset() {
 }
 
 /**
+ * 视口内边距：浮在画布边缘的控件（左侧缩放条、打开的面板浮层、移动端底部抽屉）所占的尺寸，
+ * 由功能模块通过 `window.CGoViewportInsets = { left, right, bottom }`（px）声明——
+ * 引擎只消费不定义，谁开的面板谁报数。缺省或全为 0 时，边界与居中计算与不加内边距时完全一致。
+ */
+function getViewportInsets() {
+    const raw = window.CGoViewportInsets || {};
+    const pick = (value) => (typeof value === 'number' && isFinite(value) && value > 0 ? value : 0);
+    return { left: pick(raw.left), right: pick(raw.right), bottom: pick(raw.bottom) };
+}
+
+/**
+ * 当前「可视可用区」的中心：所有把某个车站居中到眼前的动作都以它为落点，
+ * 浮层一打开，自动定位的车站就不会被面板压住。
+ * 底部取「移动端三档抽屉的 0.6 档」与模块声明的内边距中的较大者——两者占同一块底部区域。
+ */
+function getViewportCenter() {
+    const insets = getViewportInsets();
+    const containerW = mapContainer.clientWidth;
+    const containerH = mapContainer.clientHeight;
+    const isSplitMode = document.body.classList.contains('mobile-split-active');
+    const bottomOffset = Math.max(isSplitMode ? containerH * 0.6 : 0, insets.bottom);
+    return {
+        x: insets.left + Math.max(0, containerW - insets.left - insets.right) / 2,
+        y: Math.max(0, containerH - bottomOffset) / 2
+    };
+}
+
+/**
  * 地图初始居中 (根据城市配置 center 与默认缩放等级重置视口中心，自动避让浮动标题栏)
  */
 function centerMap() {
@@ -1508,15 +1540,38 @@ function centerMap() {
     const containerH = mapContainer.clientHeight;
     const topOffset = getMapTopOffset();
     const isSplitMode = document.body.classList.contains('mobile-split-active');
-    const bottomOffset = isSplitMode ? containerH * 0.62 : 0;
+    const insets = getViewportInsets();
+    const bottomOffset = Math.max(isSplitMode ? containerH * 0.62 : 0, insets.bottom);
+    const availableW = Math.max(200, containerW - insets.left - insets.right);
     const availableH = Math.max(200, containerH - topOffset - bottomOffset);
 
     const targetX = city.center ? city.center.x : 900;
     const targetY = city.center ? city.center.y : 640;
-    currentX = (containerW / 2) - (targetX * currentScale);
+    currentX = insets.left + (availableW / 2) - (targetX * currentScale);
     currentY = topOffset + (availableH / 2) - (targetY * currentScale);
     if (typeof enforceBoundaries === 'function') enforceBoundaries();
     updateMapTransform();
+}
+
+/**
+ * 按目标缩放与平移直接设置地图视图，供功能模块取景用（如行程规划的「查看全程」）。
+ * 引擎的平移 / 缩放是模块私有量，外部没法落位，故留这一个最小的设置口——
+ * 取景算法留在调用方，这里只负责落位、夹取边界并同步缩放控件读数。
+ * @param {{x?:number, y?:number, scale?:number}} view
+ * @returns {boolean} 是否已应用
+ */
+function setMapView(view) {
+    if (!view) return false;
+    if (Number.isFinite(view.scale)) currentScale = clampScale(view.scale);
+    if (Number.isFinite(view.x)) currentX = view.x;
+    if (Number.isFinite(view.y)) currentY = view.y;
+    enforceBoundaries();
+    updateMapTransform();
+    const slider = document.getElementById('mz-slider');
+    if (slider) slider.value = currentScale;
+    const zoomVal = document.getElementById('zoom-val');
+    if (zoomVal) zoomVal.innerText = Math.round(currentScale * 100) + '%';
+    return true;
 }
 
 /**
@@ -1556,14 +1611,19 @@ function localEnforceBoundaries() {
 
     // 移动端分屏模式下底栏高度偏移补偿 (60% 高度抽屉)
     const isSplitMode = document.body.classList.contains('mobile-split-active');
-    const bottomOffset = isSplitMode ? containerH * 0.62 : 0;
+    const insets = getViewportInsets();
+    // 底部遮挡：抽屉与浮层占同一块区域，取较大者
+    const bottomOffset = Math.max(isSplitMode ? containerH * 0.62 : 0, insets.bottom);
     const topOffset = getMapTopOffset();
+    // 水平可用区扣掉左右内边距；内边距为 0 时下述算式与原来的 [0, containerW] 逐字等价
+    const availW = Math.max(0, containerW - insets.left - insets.right);
 
-    if (mapW >= containerW) {
-        if (currentX > 0) currentX = 0;
-        if (currentX < containerW - mapW) currentX = containerW - mapW;
+    if (mapW >= availW) {
+        if (currentX > insets.left) currentX = insets.left;
+        const minX = insets.left + availW - mapW;
+        if (currentX < minX) currentX = minX;
     } else {
-        currentX = (containerW - mapW) / 2;
+        currentX = insets.left + (availW - mapW) / 2;
     }
     if (mapH >= containerH) {
         if (currentY > topOffset) currentY = topOffset;
@@ -2326,11 +2386,16 @@ function initMobileSheetDrag() {
     }
 
     // ── 拖拽状态 ─────────────────────────────────────────────────────
+    const DRAG_START_THRESHOLD = 6;   // 位移超过该值才判定为拖拽；以下视为轻点，交给 click
     let drag = null;
 
     function onPointerDown(e) {
         if (window.innerWidth > 640) return;
-        const isGrabber = e.target.closest('.sheet-grabber, .panel-header');
+        const target = e.target;
+        // 按钮 / 链接 / 表单控件上按下时不接管：一旦面板捕获指针，浏览器就会把随后的
+        // click 派发给面板而不是该控件，导致面板内按钮（底栏、标题栏关闭等）全都点不动
+        if (target.closest('button, a, input, select, textarea, label')) return;
+        const isGrabber = target.closest('.sheet-grabber, .panel-header');
         const isContent = !isGrabber;
 
         // 内容区：只有当面板是半屏或全屏时才接管（且向上拖才能升档）
@@ -2357,18 +2422,24 @@ function initMobileSheetDrag() {
             velocity:  0,
             startStage: getCurrentStage(),
             isGrabber,
-            pointerId: e.pointerId
+            pointerId: e.pointerId,
+            captured:  false      // 指针捕获与拖拽态延迟到真正拖动时（见 onPointerMove）
         };
-        panel.setPointerCapture && panel.setPointerCapture(e.pointerId);
-        document.body.classList.add('panel-sheet-dragging');
-        // 拖拽时收回顶部填色
-        document.body.classList.remove('mobile-panel-docked-full');
     }
 
     function onPointerMove(e) {
         if (!drag) return;
         const detents = getDetents();
         const dy = e.clientY - drag.startY;
+        // 轻点不进入拖拽：只有位移超过阈值才捕获指针并切到拖拽态，
+        // 否则 click 会被派发到面板上，面板内的按钮就点不动了
+        if (!drag.captured) {
+            if (Math.abs(dy) < DRAG_START_THRESHOLD) return;
+            panel.setPointerCapture && panel.setPointerCapture(drag.pointerId);
+            drag.captured = true;
+            document.body.classList.add('panel-sheet-dragging');
+            document.body.classList.remove('mobile-panel-docked-full');   // 拖拽时收回顶部填色
+        }
         const rawTop = drag.startTop + dy;
         const clamped = Math.max(detents.full, Math.min(detents.collapsed, rawTop));
 
@@ -2388,8 +2459,10 @@ function initMobileSheetDrag() {
 
     function onPointerUp(e) {
         if (!drag) return;
-        panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
-        document.body.classList.remove('panel-sheet-dragging');
+        if (drag.captured) {
+            panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
+            document.body.classList.remove('panel-sheet-dragging');
+        }
         // 恢复 transition：先清除内联属性，再交回 CSS 控制
         panel.style.removeProperty('transition');
         panel.style.removeProperty('top');
@@ -2434,8 +2507,10 @@ function initMobileSheetDrag() {
 
     function onPointerCancel(e) {
         if (!drag) return;
-        panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
-        document.body.classList.remove('panel-sheet-dragging');
+        if (drag.captured) {
+            panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
+            document.body.classList.remove('panel-sheet-dragging');
+        }
         panel.style.removeProperty('transition');
         panel.style.removeProperty('top');
         // 就近吸附
@@ -4038,6 +4113,7 @@ init();
     window.enforceBoundaries = enforceBoundaries;
     window.updateMapTransform = updateMapTransform;
     window.getScaleLimits = getScaleLimits;
+    window.setMapView = setMapView;
     // 供城市或扩展模块在自定义边界规则中复用引擎自带的边界限制
     window.localEnforceBoundaries = localEnforceBoundaries;
     window.stationsData = typeof stationsData !== 'undefined' ? stationsData : undefined;

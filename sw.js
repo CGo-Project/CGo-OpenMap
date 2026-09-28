@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260927.1800';
+const CACHE_NAME = 'cgo-openmap-v260928.0907';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -127,11 +127,24 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/timetable-renderer.js',
     './city/shenyang/shared/stacard-engine.js',
     './city/shenyang/shared/station-title.js',
+    './city/shenyang/shared/viewport-inset.js',
     './city/shenyang/shared/tip-card.js',
     './city/shenyang/shared/calligraphy.js',
     './city/shenyang/shared/calligraphy.css',
     './city/shenyang/shared/opening-schedule.js',
     './city/shenyang/shared/opening-schedule.css',
+    // 行程规划（三城共用）：线路接续声明解析 / 数据构建器 / 规划内核 / 面板
+    './city/shenyang/shared/line-link.js',
+    './city/shenyang/shared/route-data.js',
+    './city/shenyang/shared/route-planner.js',
+    './city/shenyang/shared/route-panel.js',
+    './city/shenyang/shared/route-panel.css',
+    // 跨城市「查找最近车站」（三城共用）：接管核心 LBS 的 confirm，改用 cgo-modal 三选一
+    './city/shenyang/shared/nearest-station.js',
+    './city/shenyang/shared/nearest-station.css',
+    // 固定侧栏「浮岛卡片」改造（三城共用）：几何跟随标题栏浮岛、卡片等距、标题栏线路标
+    './city/shenyang/shared/sidebar-refit.js',
+    './city/shenyang/shared/sidebar-refit.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
@@ -143,11 +156,14 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/transfer-badge.svg',
     './city/shenyang/assets/tram-5.svg',
 
-    // 1号线主线站名题字（书法家题写）
+    // 1号线站名题字（书法家题写）
     './city/shenyang/assets/calligraphy/qihaojie.png',
     './city/shenyang/assets/calligraphy/sihaojie.png',
     './city/shenyang/assets/calligraphy/shenyangzhan.png',
     './city/shenyang/assets/calligraphy/taiyuanjie.png',
+    './city/shenyang/assets/calligraphy/nanshichang.png',
+    './city/shenyang/assets/calligraphy/qingniandajie.png',
+    './city/shenyang/assets/calligraphy/huaiyuanmen.png',
     './city/shenyang/assets/calligraphy/yunfengbeijie.png',
     './city/shenyang/assets/calligraphy/zhongjie.png',
     './city/shenyang/assets/calligraphy/dongzhongjie.png',
@@ -179,6 +195,19 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/shitushuguan.png',
     './city/shenyang/assets/calligraphy/wulihe.png',
     './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
+
+    // 3号线站名题字（2026 年全线开通后安装，书法家题写；待考站题写者尚未考证）
+    './city/shenyang/assets/calligraphy/shayang.png',
+    './city/shenyang/assets/calligraphy/nanbamalu.png',
+    './city/shenyang/assets/calligraphy/jiaxingjie.png',
+    './city/shenyang/assets/calligraphy/fangxingguangchang.png',
+    './city/shenyang/assets/calligraphy/sanhaojie.png',
+    './city/shenyang/assets/calligraphy/zhongkeyuanjinshusuo.png',
+    './city/shenyang/assets/calligraphy/nanta.png',
+    './city/shenyang/assets/calligraphy/wenfulu.png',
+    './city/shenyang/assets/calligraphy/fuminjie.png',
+    './city/shenyang/assets/calligraphy/jiangdongjie.png',
+    './city/shenyang/assets/calligraphy/fangjialan.png',
 
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',
@@ -299,6 +328,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (大连)
     './city/dalian/dalian.js',
     './city/dalian/modules/dalian_map.js',
+    './city/dalian/modules/dalian_sea.js',
     './city/dalian/modules/dalian_timetable.js',
     './city/dalian/modules/dalian_transfers.js',
     './city/dalian/modules/dalian_station_title.js',
@@ -334,6 +364,7 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_legend.js',
     './city/changchun/data_timetable.js',
     './city/changchun/amap_data.json',
+    './city/changchun/assets/ccgj.svg',
     './city/changchun/assets/railway.svg',
     './city/changchun/assets/transfer-badge.svg',
     './city/changchun/assets/tram-54.svg',

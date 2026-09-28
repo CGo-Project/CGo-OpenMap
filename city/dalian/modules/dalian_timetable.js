@@ -34,7 +34,7 @@
         const rows = [];
         const rowIndex = new Map();
 
-        entries.forEach(({ info }) => {
+        entries.forEach(({ lineId: entryLineId, info }) => {
             getSchedules(info).forEach((schedule) => {
                 (schedule.directions || []).forEach((direction) => {
                     const destination = direction.destinationName || "未知终点";
@@ -43,11 +43,15 @@
                     const last = String(direction.last || "");
                     if (!first && !last) return;
 
-                    const isJiuliDevelopmentDirection = String(stationId) === "0320" && destinationId === "0308";
+                    // 九里→开发区 方向的贯通合并：destinationStationId 已统一为代号，
+                    // 故按所属线路判定（DLM99 末站方向即开发区，DLM13 保留站 ID）
+                    const isJiuliDevelopmentDirection = String(stationId) === "0320"
+                        && ((entryLineId === "DLM99" && destinationId === "line-last")
+                            || destinationId === "0308");
                     const estimated = Boolean(info?.isEstimated || direction?.isEstimated);
                     const key = isJiuliDevelopmentDirection
                         ? "jiuli-development-zone"
-                        : `${destinationId}|${first}|${last}|${estimated}`;
+                        : `${entryLineId}|${destinationId}|${first}|${last}|${estimated}`;
                     const existing = rowIndex.get(key);
                     if (!existing) {
                         const row = { destination, first, last, estimated };
@@ -86,6 +90,8 @@
             targetTab: "line-tab",
             order: 15,
             shouldRender({ station, lineInfo }) {
+                // 未开通车站（含暂缓开通）不展示运营时刻，避免抢跑
+                if (!CGoTimetable.isOperableStation(station)) return false;
                 return collectRows(station?.id, lineInfo?.id).length > 0;
             },
             render({ station, lineInfo }) {

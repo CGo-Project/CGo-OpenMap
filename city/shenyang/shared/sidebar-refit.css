@@ -1,0 +1,292 @@
+/* CGo OpenMap - 固定侧栏「浮岛卡片」改造样式（三城共享层）
+ *
+ * 由同目录 sidebar-refit.js 按自身 URL 注入（与 calligraphy.css / route-panel.css 同一做法），
+ * 三城在 {city}.js 里引入 sidebar-refit.js 即可，无需手工引用本文件。
+ *
+ * 目标形态（向官方 /map 页面靠拢）：桌面端固定侧栏（body.legend-pinned）不再是一条贴着
+ * 屏幕左缘的通栏，而是「挂在标题栏浮岛下方、宽度与浮岛等宽」的浮起圆角卡片；卡片内部的
+ * 各区块退成一张张「去掉底色 + 细描边 + 圆角」的小卡片，彼此等距。
+ *
+ * 只覆盖固定侧栏形态：浮层弹窗（桌面端未固定 / 移动端抽屉）与其余城市完全不受影响，
+ * 故全部规则都锁在 @media (min-width: 641px) + body.legend-pinned 之下。
+ *
+ * 与核心 css/style.css 的层叠关系：本文件由城市脚本在解析期注入 <head>，
+ * 晚于 style.css 出现，同名同权重的 !important 声明以本文件为准；
+ * 核心用 id 提权的少数规则（如 #map-container 的位移）这里用同等权重的选择器压回去。
+ *
+ * 几何变量由 sidebar-refit.js 按标题栏浮岛实测写回 <html>；下面的值与当前实测一致，
+ * 脚本未执行（或浮岛量不到）时也能对上，不依赖 JS 才能成形。
+ */
+
+@media (min-width: 641px) {
+    :root {
+        /* 标题栏浮岛左缘（含安全区）／浮岛宽度 */
+        --cgo-sb-left: 20px;
+        --cgo-sb-width: 284px;
+        /* 滚动区内边距：卡片与侧栏列左/右缘之间的留白，同时也决定卡片的最终宽度 */
+        --cgo-sb-inset: 8px;
+        /* 侧栏列宽 = 浮岛左缘 + 浮岛宽 + 二倍内边距。
+           比浮岛宽出二倍内边距，是为了让卡片本身的宽度与浮岛等宽（左右各留一条内边距）。
+           侧栏本体、拖拽提示框、平移后的标题栏浮岛、画布左缘都取这一个值，改一处全跟着走 */
+        --cgo-sb-column: calc(var(--cgo-sb-left) + var(--cgo-sb-width) + var(--cgo-sb-inset) * 2);
+        /* 侧栏顶边 = 浮岛底边 + 12px（与引擎 getMapTopOffset 的留白口径一致） */
+        --cgo-sb-top: 84px;
+        /* 浮动缩放条与侧栏右缘之间的留白：控件浮在画布上，让开侧栏那条右侧描边 */
+        --cgo-sb-zoom-gap: 26px;
+        /* 内部小卡片之间的等距 */
+        --cgo-sb-card-gap: 8px;
+        /* 标题栏线路标边长（结果面板 .cgo-rt-mode 22px 的等比缩小） */
+        --cgo-sb-badge: 16px;
+    }
+
+    /* ── 1. 侧栏本体：铺满窗口上下左边缘，内容让开标题栏浮岛 ───────────────────── */
+    body.legend-pinned .legend-modal {
+        /* 整列贴着窗口的左、上、下边缘（右缘＝--cgo-sb-column），
+           内容区顶部再垫一层 --cgo-sb-top 把第一张卡片让到浮岛下方，
+           于是滚动时卡片会滑到浮岛底下（浮岛 z-index 更高且不透明），不算遮挡。 */
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: var(--cgo-sb-column) !important;
+        height: auto !important;
+        max-height: none !important;
+        /* 侧栏整体不再是通栏：底色、阴影、圆角一并撤掉，改由下面每张区块卡片各自承担。
+           圆角也要撤：容器若还带圆角，首尾卡片的圆角会被容器裁掉一角。
+           右缘留一条描边，作为「侧栏列」与画布的分界。 */
+        background: transparent !important;
+        border: none !important;
+        border-right: 1px solid var(--border-color) !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    /* 标题栏左浮岛随侧栏左对齐：对齐的目标是**侧栏窗口（卡片）**的两条边，不是侧栏列。
+       列是 [0, --cgo-sb-column]，而卡片在列内还各让出一条 --cgo-sb-inset：
+       [--cgo-sb-inset, --cgo-sb-column - --cgo-sb-inset]。
+       浮岛原先照列宽铺满，于是比卡片左右各多探出 8px（左缘顶到窗口边、右缘压过卡片右缘）。
+       这里按卡片的范围来：left 取内边距、宽度取列宽减去二倍内边距。
+       侧栏收起（pinned-hidden）或取消固定时本条不再命中，浮岛按核心原有的
+       left/width + 0.25s 过渡自行归位。 */
+    body.legend-pinned:not(.pinned-hidden) .tool-header .header-island-left {
+        left: var(--cgo-sb-inset) !important;
+        width: calc(var(--cgo-sb-column) - var(--cgo-sb-inset) * 2) !important;
+    }
+
+    /* 顶端的返回按钮与固定按钮一并撤下：返回按钮只在浮层形态里有意义，
+       固定按钮由 sidebar-refit.js 搬到浮动缩放条的检索面板按钮位（见下方第 5 节）；
+       承载它们的那条 40px 假标题栏（::before）随之取消。 */
+    body.legend-pinned .legend-modal::before {
+        content: none !important;
+        display: none !important;
+    }
+
+    body.legend-pinned .legend-modal > .legend-close-btn,
+    body.legend-pinned .legend-modal > .legend-pin-btn {
+        display: none !important;
+    }
+
+    /* 滚动区的顶部内边距就是「避让标题栏浮岛」的那一层：--cgo-sb-top = 浮岛底边 + 12px，
+       第一张卡片因此落在浮岛下方；四边各留 8px 给卡片投影余地（滚动区 overflow-x 是 hidden，
+       内边距归零时卡片四边的投影正好被裁掉，只剩卡片缝里能看到投影）。 */
+    body.legend-pinned #legend-content {
+        padding: var(--cgo-sb-top) var(--cgo-sb-inset) var(--cgo-sb-inset) !important;
+    }
+
+    /* ── 2. 区块：各自是一张浮起的小卡片，卡片之间等距 ────────────────────────── */
+    /* 「面板去掉背景色」的前提是侧栏整体还垫着一层底色；现在侧栏已经透明，
+       卡片必须自带底色，否则地图会直接透过卡片、上面的文字也没法看。
+       描边只留一条：早先「1px 描边 + 8px 投影」在亮色下会是两条可见的边线，
+       看着就像卡片外面还套了一层容器；投影收到贴着卡片的一点深度即可。 */
+    body.legend-pinned .panel-section {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+        margin: 0 !important;
+    }
+
+    /* 内容裁到卡片圆角内，免得区块内的底色/分隔线从圆角处探出去。
+       用 overflow: clip 而不是 hidden：clip 不会生成滚动容器，
+       车站信息板里 position: sticky 的页签栏仍以自己那层滚动区为准。
+       规划行程卡片例外——它的起终点候选下拉要能探出卡片。 */
+    body.legend-pinned .panel-section:not(#cgo-route-card) {
+        overflow: clip;
+    }
+
+    /* 动态内容区（车站区块的容器）在核心里是 overflow: hidden，会把里面车站卡片的投影裁掉。
+       改成 visible 而不是给它加内边距：它的子级与搜索/图例卡片是同一列，
+       再垫一层内边距会让车站卡片比上面几张缩进一档、列看着不齐。
+       这里的 overflow 只是裁切、不承担滚动（flex: 1 在块级父容器里本就不生效），
+       放开后车站区块仍由 #legend-content 统一滚动，行为不变。 */
+    body.legend-pinned #sidebar-dynamic-content {
+        overflow: visible !important;
+    }
+
+    /* 等距：只在相邻兄弟之间留缝，末尾不留尾巴。
+       #sidebar-dynamic-content 里的车站区块同样是 .panel-section，一并吃到同一份间距。 */
+    body.legend-pinned #legend-content > * + *,
+    body.legend-pinned #sidebar-dynamic-content > * + * {
+        margin-top: var(--cgo-sb-card-gap) !important;
+    }
+
+    body.legend-pinned .panel-section.collapsed {
+        border: 1px solid var(--border-color) !important;
+    }
+
+    /* 折叠头不再自带底色（底色由卡片承担），只保留悬浮时的轻微反馈；
+       内圆角照旧跟着卡片收边（半径 = 卡片 12px - 描边 1px），悬浮底色才不会顶出直角 */
+    body.legend-pinned .section-header {
+        background-color: transparent !important;
+        border-radius: 11px 11px 0 0;
+    }
+
+    /* 展开态下折叠头与正文之间加一条细分隔（底色透明后，没有它标题行与正文会粘在一起）；
+       折叠态不加——那时折叠头就是整张卡片，多一条线会与卡片描边重合 */
+    body.legend-pinned .panel-section:not(.collapsed) > .section-header {
+        border-bottom: 1px solid var(--divider) !important;
+    }
+
+    body.legend-pinned .panel-section.collapsed .section-header {
+        border-radius: 11px;
+    }
+
+    /* ── 3. 标题栏线路标：结果面板同款正方/正圆徽标的缩小版，紧贴标题文本 ───────── */
+    /* 原本是 8px 纯色方块且被空间均分推到中间；现在改成徽标并贴到站名/起终点文案之后，
+       折叠箭头仍靠 margin-right: auto 顶到最右。 */
+    body.legend-pinned .header-color-squares {
+        gap: 4px;
+        margin: 0 0 0 6px !important;
+        margin-right: auto !important;
+    }
+
+    body.legend-pinned .header-color-square {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--cgo-sb-badge);
+        height: var(--cgo-sb-badge);
+        margin: 0;
+        border-radius: 4px;
+        overflow: hidden;
+        color: #fff;
+        /* 与结果面板的 .cgo-rt-mode 同一套口径：优先系统 Arial/Helvetica，
+           系统没有时回落到 CGoUI 的 --font-en（Arimo） */
+        font-family: Arial, Helvetica, var(--font-en, Arimo, sans-serif);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    /* 形状随城市：CGO_ROUTE_CONFIG.lineCodeShape 为 "circle" 时地铁用正圆（有轨保持方形），
+       类名由 sidebar-refit.js 按结果面板同一套判定打上 */
+    body.legend-pinned .header-color-square.circle {
+        border-radius: 999px;
+    }
+
+    /* 线路编号单独成层：编偏长（"10"、"T5"）时由 JS 按 canvas 实测文字宽度横向压缩，
+       徽标本身始终保持正形（与 route-panel.css 的 .cgo-rt-mode / .cgo-rt-code 同一套做法） */
+    body.legend-pinned .header-color-square > .cgo-rt-code {
+        flex: none;
+        display: block;
+        white-space: nowrap;
+        transform: scaleX(var(--cgo-rt-code-sx, 1));
+        transform-origin: center center;
+    }
+
+    /* 标题保持「贴着内容」宽度：徽标才能紧跟在站名之后；
+       长标题（起点站→终点站）仍靠 min-width: 0 + ellipsis 截断，折叠箭头位置不受影响 */
+    body.legend-pinned .section-title-text {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    /* ── 4. 画布与缩放条：画布左缘接到侧栏右缘 ────────────────────────────────── */
+    /* 画布可见区一直铺到侧栏右缘（--cgo-sb-column），中间不再留缝：
+       侧栏那条右描边就是画布的左边界 */
+    body.legend-pinned:not(.pinned-hidden) #map-container {
+        left: var(--cgo-sb-column) !important;
+        width: calc(100% - var(--cgo-sb-column)) !important;
+    }
+
+    /* 画布让位后，侧栏那一侧露出的是画布外层容器的底色（页面底色 --bg-color #f8f9fa），
+       在亮色下会显成一条灰「轨道」——看着像侧栏外面还套了一层容器。
+       把这一层改成地图底色，侧栏四周就与地图同底，视觉上等同于浮在地图之上。
+       （暗色下两者本来就是同一个 #1a1a1a，此条只对亮色可见。） */
+    body.legend-pinned:not(.pinned-hidden) div:has(> #map-container) {
+        background-color: var(--map-bg) !important;
+    }
+
+    body.legend-pinned:not(.pinned-hidden) #modern-zoom-control {
+        left: calc(var(--cgo-sb-left) + var(--cgo-sb-width) + var(--cgo-sb-zoom-gap)) !important;
+    }
+
+    /* 收起态：容器左缘已经是 0，核心自己的 translateX(-100%) 就足以整块移出屏幕，
+       这里不再覆盖 transform */
+
+    /* ── 5. 缩放条里的取消固定按钮：占检索面板按钮所在的顶部位置 ──────────────── */
+    #modern-zoom-control > .legend-pin-btn {
+        position: static !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        z-index: auto !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        border: none;
+        border-radius: 50% !important;
+        background-color: var(--ctrl-btn-bg) !important;
+        color: var(--ctrl-icon) !important;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    /* 与条内其余按钮同一套悬浮反馈；固定态不再用主题色填充，保持整条控件的中性观感 */
+    #modern-zoom-control > .legend-pin-btn:hover,
+    #modern-zoom-control > .legend-pin-btn.active {
+        background-color: var(--ctrl-hover) !important;
+        color: var(--capsule-text) !important;
+    }
+
+    /* ── 6. CGoUI 弹窗（cgo-modal）与侧栏的层叠次序 ────────────────────────────── */
+    /* 「查找最近车站」这类弹窗的遮罩写在组件 shadow DOM 里，是 z-index: 99990；
+       而固定侧栏所在的 #legend-overlay 是 99999 —— 遮罩因此被整列侧栏压住：
+       页面其余部分正常变暗，唯独侧栏那一列不暗。弹窗卡片自身 100000，仍在侧栏之上，
+       所以失效的只是「压暗」这一半，看着就像侧栏盖住了弹窗背景。
+
+       宿主 <cgo-modal> 只是个 0×0 的挂载点（position: static / z-index: auto），
+       不生成层叠上下文，内层的 99990 会直接参与文档根层叠上下文的比较。给它一个高于
+       侧栏的 z-index，宿主自带一层层叠上下文，遮罩与卡片整包都落在侧栏之上。
+       宿主仍是 0×0、内层依旧 fixed 到视口，弹窗自身布局不受影响。
+
+       ⚠️ 治本的位置在 core：把 cgo-modal 的遮罩抬到 99999 之上（或把侧栏那个 99999 降下来），
+       本层先兜住三城。 */
+    body.legend-pinned cgo-modal {
+        position: fixed;
+        z-index: 100010;
+    }
+
+    /* ── 7. 拖到侧边的停靠提示框 ──────────────────────────────────────────────── */
+    /* 拖拽发生在「尚未固定」时，故本节不锁 body.legend-pinned。
+       形态：上缘顶到窗口顶部，只在右缘留一条虚线（作为侧栏列的落点边），
+       底色再透一些，并加一层背景模糊——被拖起来的面板拖到左边时，
+       透过提示框看到的是虚化的地图，而不是一块实心的蓝。
+       模糊档位取 CGoUI 玻璃体系的轻档 --glass-backdrop-blur（blur(5px) saturate(130%)），
+       而不是表面档的 14px：提示框是拖拽过程中的临时反馈，雾面太重反而盖住地图。 */
+    #drag-ghost {
+        top: 0 !important;
+        height: 100% !important;
+        left: 0 !important;
+        width: var(--cgo-sb-column) !important;
+        background-color: rgba(52, 152, 219, 0.08) !important;
+        border: none !important;
+        border-right: 2px dashed rgba(52, 152, 219, 0.55) !important;
+        backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
+        -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
+    }
+}
