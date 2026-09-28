@@ -1297,21 +1297,78 @@
     }
 
     /**
-     * 截取线路折线在「上车站 → 下车站」之间的那一段（保留原走向与拐点）。
+     * 折线在 from → to 之间的一段（线性截取，不跨首尾接缝）。
      * 站点坐标未必落在折线上（走向由 pathPoints 定义），故两端取投影点。
      */
-    function slicePath(points, from, to) {
+    function sliceArc(points, from, to) {
         if (!points || points.length < 2) return null;
+        let seq = points;
+        let a = projectOnPath(seq, from);
+        let b = projectOnPath(seq, to);
+        if (!a || !b) return null;
+        if (!(a.seg < b.seg || (a.seg === b.seg && a.t <= b.t))) {
+            // 折线走向与乘车方向相反：改在反向序列上取，切出来天然就是 from → to。
+            // 只试一次——站点恰好落在折线顶点时（本站站点全部精确落线），两端并列最近，
+            // 正反两个序列都可能取到「更靠前」的那一段，两者的先后关系因此可以都不满足；
+            // 无界递归会直接爆栈（RangeError: Maximum call stack size exceeded）。
+            // 对齐不了就返回 null，交给调用方退回两站直连。
+            seq = points.slice().reverse();
+            a = projectOnPath(seq, from);
+            b = projectOnPath(seq, to);
+            if (!a || !b) return null;
+            if (!(a.seg < b.seg || (a.seg === b.seg && a.t <= b.t))) return null;
+        }
+        const out = [a.point, ...seq.slice(a.seg + 1, b.seg + 1), b.point];
+        return out.length >= 2 ? out : null;
+    }
+
+    /**
+     * 跨接缝的那一条弧：折线首尾相接成环时，从 from 顺向走到折线末端，
+     * 再从折线首端接到 to（环线两站之间存在两条弧，线性截取只能给出不跨接缝的那条）。
+     */
+    function sliceArcWrapped(points, from, to) {
+        if (!points || points.length < 2) return null;
+        const head = points[0], tail = points[points.length - 1];
+        if (Math.hypot(head.x - tail.x, head.y - tail.y) > 1) return null;   // 折线本身不闭合
         const a = projectOnPath(points, from);
         const b = projectOnPath(points, to);
         if (!a || !b) return null;
-        if (!(a.seg < b.seg || (a.seg === b.seg && a.t <= b.t))) {
-            // 折线走向与乘车方向相反：在反向序列上切即可，
-            // 此时起讫站在序列中的先后关系已与乘车方向一致，切出来天然就是 from → to，不能再倒回来
-            return slicePath(points.slice().reverse(), from, to);
-        }
-        const out = [a.point, ...points.slice(a.seg + 1, b.seg + 1), b.point];
+        const out = [a.point, ...points.slice(a.seg + 1), ...points.slice(0, b.seg + 1), b.point];
         return out.length >= 2 ? out : null;
+    }
+
+    /** 这条弧上压着给定车站中的几个（用于在环线的两条弧之间取舍） */
+    function stopsOnArc(arc, stops) {
+        if (!arc || !Array.isArray(stops)) return 0;
+        let hit = 0;
+        stops.forEach((sid) => {
+            const xy = stationXY(sid);
+            const projected = xy ? projectOnPath(arc, xy) : null;
+            if (projected && projected.dist <= 1) hit += 1;
+        });
+        return hit;
+    }
+
+    const arcLength = (arc) => arc.reduce((total, point, index) => (
+        index ? total + Math.hypot(point.x - arc[index - 1].x, point.y - arc[index - 1].y) : 0), 0);
+
+    /**
+     * 截取线路折线在「上车站 → 下车站」之间的那一段（保留原走向与拐点）。
+     *
+     * 环线（options.loop）的折线首尾相接，两站之间存在两条弧：不跨接缝的那条与跨过接缝的那条，
+     * 线性截取只能给出前者。这里把两条都算出来，用「弧上覆盖了本次乘车的哪些车站」判定该用哪条
+     * ——覆盖多者优先，同分取更短者。否则环线上跨接缝的近路会被画成绕环一整圈的远路。
+     */
+    function slicePath(points, from, to, options) {
+        const direct = sliceArc(points, from, to);
+        if (!options?.loop) return direct;
+        const wrapped = sliceArcWrapped(points, from, to);
+        if (!direct) return wrapped;
+        if (!wrapped) return direct;
+        const onDirect = stopsOnArc(direct, options.stops);
+        const onWrapped = stopsOnArc(wrapped, options.stops);
+        if (onWrapped !== onDirect) return onWrapped > onDirect ? wrapped : direct;
+        return arcLength(wrapped) < arcLength(direct) ? wrapped : direct;
     }
 
     /**
@@ -1340,7 +1397,8 @@
                     // 起讫站都更贴近的那条走向，才是本站所在的这一支
                     const score = from.dist + to.dist;
                     if (score >= bestScore) return;
-                    const sliced = slicePath(segment.points, head, tail);
+                    const sliced = slicePath(segment.points, head, tail,
+                        { loop: Boolean(line.isLoop), stops: step.stops });
                     if (!sliced) return;
                     bestScore = score;
                     points = sliced;
