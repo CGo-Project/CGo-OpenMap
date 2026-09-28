@@ -858,6 +858,14 @@
                 const middle = allStops.slice(1, -1);
                 const action = boarded === 0 ? "出发" : "上车";
                 boarded++;
+                // 环线没有终点站：方向报「下一站 + 内环 / 外环」（中国等右侧通行城市默认内环顺时针）。
+                // 环别按站序判定，取的 dir 正是内核沿站序给出的 ±1，两者同一口径。
+                const nextStop = allStops[1];
+                const ring = line?.isLoop && nextStop
+                    ? (window.CGoLoopDirection?.of(line, first.dir) || "") : "";
+                const directionHtml = ring
+                    ? `开往 <b data-jump="${nextStop}">${stationName(nextStop)}</b>（${ring}）`
+                    : `开往 <b data-jump="${terminus}">${stationName(terminus)}</b>`;
                 legs.push(`
                     <li class="cgo-rt-leg ride" style="--line-color:${line?.color || "var(--primary-color, #006098)"}">
                         <div class="cgo-rt-leg-head">
@@ -868,7 +876,7 @@
                         </div>
                         <div class="cgo-rt-leg-line">
                             <span class="cgo-rt-line-name">${group.throughName || line?.name || ""}</span>
-                            <span>开往 <b data-jump="${terminus}">${stationName(terminus)}</b></span>
+                            <span>${directionHtml}</span>
                         </div>
                         <div class="cgo-rt-leg-line${middle.length ? " cgo-rt-expandable" : ""}"${middle.length ? ` data-expand="${index}" title="查看途经车站"` : ""}>
                             ${middle.length ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}

@@ -198,6 +198,9 @@
      *        "origin" 用于线路端点站的始发时刻（X始发）
      * @property {string} [note]      - 标注文本，note 为「推算」时按推算样式前置
      * @property {boolean} [estimated]- 推算标记，等价于 note === "推算"
+     * @property {string} [ring]      - 环线环别（"内环" / "外环"），渲染成「开往X（内环）」。
+     *        环线没有终点站，destination 该填「该站该方向的下一站」，
+     *        环别取共享层 CGoLoopDirection.of(line, dir)（中国等右侧通行城市默认内环顺时针）
      */
 
     /**
@@ -229,7 +232,8 @@
     }
 
     /**
-     * 渲染单行为「开往X: 06:30-22:00」；mode 为 origin 时渲染为「X始发: 06:30-22:00」
+     * 渲染单行为「开往X: 06:30-22:00」；mode 为 origin 时渲染为「X始发: 06:30-22:00」；
+     * 行上带 ring（环线环别）时渲染为「开往X（内环）: 06:30-22:00」。
      *
      * 换行优先级分两级：先「冒号之后」，再「连字符之后」。
      *
@@ -247,7 +251,11 @@
         if (!time) return "";
 
         const destination = escapeHtml(row?.destination);
-        const head = row?.mode === "origin" ? `${destination}始发` : `开往${destination}`;
+        // 环线报「下一站（内环 / 外环）」：环别由数据侧按 CGoLoopDirection.of(line, dir) 填好
+        const ring = String(row?.ring || "").trim();
+        const head = row?.mode === "origin"
+            ? `${destination}始发`
+            : `开往${destination}${ring ? `（${escapeHtml(ring)}）` : ""}`;
 
         // 注释统一以 <small> 降级显示：推算类前置，其余后置
         const note = String(row?.note || "").trim();

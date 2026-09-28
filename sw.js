@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260928.5100';
+const CACHE_NAME = 'cgo-openmap-v260928.5200';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -125,6 +125,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/data_opening.js',
     './city/shenyang/data_legend.js',
     './city/shenyang/data_timetable.js',
+    './city/shenyang/shared/loop-direction.js',
     './city/shenyang/shared/timetable-renderer.js',
     './city/shenyang/shared/stacard-engine.js',
     './city/shenyang/shared/station-title.js',
