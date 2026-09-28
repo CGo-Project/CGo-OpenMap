@@ -269,7 +269,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260928.0119";
+        const version = "260928.0907";
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);

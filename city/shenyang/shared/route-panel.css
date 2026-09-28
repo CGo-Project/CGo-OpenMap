@@ -372,7 +372,10 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     border-radius: 6px;
     color: #fff;
     background: var(--line-color, var(--primary-color));
-    font-family: Arial, Helvetica, sans-serif;
+    /* 与沈阳车站面板的徽标同一套口径（见 city/shenyang/modules/shenyang_station_board.js）：
+       优先系统 Arial/Helvetica——Arimo 数字字面偏窄小，放在 22px 方底里不够饱满；
+       系统没有这两款时（Linux / Android）再回落到 CGoUI 的 --font-en（Arimo） */
+    font-family: Arial, Helvetica, var(--font-en, Arimo, sans-serif);
     font-size: 18px;
     font-weight: 700;
     line-height: 1;
