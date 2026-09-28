@@ -273,7 +273,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260928.5200";
+        const version = "260930.2200";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -284,6 +284,8 @@
         document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
         document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
+        // 地图小工具（票价图 / 等时圈）：入口在「查找最近车站」按钮下方
+        document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
         // 城市私有数据（须早于依赖它的模块加载）
         document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
         // 共享层（本目录下，须早于各城模块加载）

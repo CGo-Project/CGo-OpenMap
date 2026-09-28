@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260928.5200';
+const CACHE_NAME = 'cgo-openmap-v260930.2200';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -147,6 +147,9 @@ const ASSETS_TO_CACHE = [
     // 固定侧栏「浮岛卡片」改造（三城共用）：几何跟随标题栏浮岛、卡片等距、标题栏线路标
     './city/shenyang/shared/sidebar-refit.js',
     './city/shenyang/shared/sidebar-refit.css',
+    // 地图小工具（东北四市共用）：票价图 / 等时圈，入口在「查找最近车站」按钮下方
+    './city/shenyang/shared/map-tools.js',
+    './city/shenyang/shared/map-tools.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
