@@ -125,8 +125,8 @@
 
     /**
      * 判定两个颜色是否视觉接近（RGB 欧氏距离，0-441 空间）。
-     * 用于题字 header 染色：徽标圆底与 header 底色接近时徽标会「融」进背景，
-     * 需把该徽标的圆底与数字颜色对调。阈值 80 约为人眼明显可辨的下限留余量。
+     * 仅作为题字 header 反色的兜底判定（header 染色来源线路未知时），
+     * 阈值 80 约为人眼明显可辨的下限留余量。
      */
     function colorsClose(colorA, colorB) {
         const a = parseColorChannels(colorA);
@@ -138,6 +138,22 @@
         return distance < 80;
     }
 
+    /**
+     * 判定徽标圆是否需要在题字 header 上反色（圆底与数字颜色对调）。
+     * 反色的语义是「这个圆与 header 底色是同一条线路」——同线路必然同色，
+     * 圆底会「融」进背景而必须对调。
+     *
+     * 不能以颜色距离为主判据：沈阳 1 号线 #CF3517 与 2 号线 #EE782D 的 RGB
+     * 距离仅 77（低于 colorsClose 的 80 阈值），青年大街站 header 取 1 号线色时，
+     * 2 号线徽标会被误判为「接近」而一并反白。颜色距离只在 header 染色来源线路
+     * 未知（城市回退取 station.lineColors[0]）时兜底。
+     */
+    function isBadgeInverted(line, headerTint) {
+        if (!headerTint) return false;
+        if (headerTint.lineId) return line.id === headerTint.lineId;
+        return colorsClose(line.color, headerTint.color);
+    }
+
     // 暴露底色可读文字色等口径，供沈阳其他城市模块复用（如题字标题栏线路色染色），
     // 避免亮度阈值在各模块各抄一份、日后调整时漏改。
     window.ShenyangUi = Object.assign(window.ShenyangUi || {}, {
@@ -147,9 +163,9 @@
 
     /**
      * @param {Array} lines 线路数组
-     * @param {null|{color:string,onColor:string}} headerTint
-     *        徽标所在题字 header 的染色信息（底色 / 可读文字色）；
-     *        某条线路色与 header 底色接近时，该线路圆底与数字颜色对调防融合
+     * @param {null|{color:string,onColor:string,lineId:string}} headerTint
+     *        徽标所在题字 header 的染色信息（底色 / 可读文字色 / 染色来源线路 ID）；
+     *        该线路即 header 染色来源时，其圆底与数字颜色对调防融合
      */
     function createCompactLineBadgeSvg(lines, headerTint = null) {
         const lineNumbers = lines.map(getLineNumber).filter(Boolean);
@@ -182,8 +198,8 @@
             const transform = scaleX === 1
                 ? ""
                 : ` transform="translate(${centerX} 0) scale(${scaleX} 1) translate(${-centerX} 0)"`;
-            // 圆底与题字 header 底色接近 → 圆底/数字颜色对调（onColor 底 + 线路色数字）
-            const inverted = Boolean(headerTint && colorsClose(line.color, headerTint.color));
+            // 该圆即题字 header 的染色来源线路 → 圆底/数字颜色对调（onColor 底 + 线路色数字）
+            const inverted = isBadgeInverted(line, headerTint);
             const circleFill = inverted ? headerTint.onColor : line.color;
             const numberFill = inverted ? line.color : getBadgeNumberTextColor(line);
             return `
@@ -233,7 +249,7 @@
     }
 
     /**
-     * 读取徽标所在 header 的题字染色信息（底色 / 可读文字色）。
+     * 读取徽标所在 header 的题字染色信息（底色 / 可读文字色 / 染色来源线路 ID）。
      * 徽标同步在 rAF 中执行，晚于题字模块 onMounted 给 .panel-header 加类与变量，
      * 故此处可直接读到。非题字 header 返回 null，徽标按常规线路色渲染。
      */
@@ -247,7 +263,9 @@
         if (!color) return null;
         const onColor = window.getComputedStyle(header)
             .getPropertyValue("--sy-cali-on-color").trim() || "#ffffff";
-        return { color, onColor };
+        // 来源线路 ID 由共享层 calligraphy.js 写在 header 上，缺失时反色退回色距判定
+        const lineId = header.dataset?.syCaliLineId || "";
+        return { color, onColor, lineId };
     }
 
     function renderCompactLineBadge(badge, lines) {

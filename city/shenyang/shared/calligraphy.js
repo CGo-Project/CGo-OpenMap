@@ -295,6 +295,11 @@
 
                 const onColor = readableTextColor(picked.color) || "#ffffff";
                 header.classList.add("sy-calligraphy-header");
+                // 记录染色来源线路 ID，供城市侧徽标模块判定「哪个圆与 header 同色而需反白」。
+                // 不能改用颜色距离：同色系的不同线路会被误判（沈阳 1 号线 #CF3517 与
+                // 2 号线 #EE782D 的 RGB 距离仅 77，低于 80 阈值，青年大街站的 2 号线
+                // 徽标会被 1 号线色 header 误反白）。回退取色时 lineId 为空，由城市侧兜底。
+                if (picked.lineId) header.dataset.syCaliLineId = picked.lineId;
                 // 染色变量挂在 body 而非 header：body 是 header 与移动端顶部填充层
                 // (.mobile-top-bar-backdrop，位于 main.html 的 body 级) 的公共祖先，
                 // 一处赋值即可同时驱动两处颜色，避免两处各存一份
