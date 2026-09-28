@@ -7,6 +7,17 @@
  * 官网编号按线路站序递增或递减，2 号线在蒲河路之后切换为市区段编号，单独列出第二段规则。
  */
 const SYMTC_STATION_INFO_BASE = "https://www.symtc.com/wwmhm/stationInfo2";
+
+/**
+ * 车站层级图（剖面图）资源前缀。
+ *
+ * 官网「站点信息」页的车站层级图以官网车站编号直接命名，例如
+ * https://www.symtc.com/wwmhm/icons//czcjt/0215.png
+ * 注意 icons 与 czcjt 之间的双斜杠是官网自身拼装写法（其前端做了 replace("//","/")
+ * 后仍会再拼一次），不可精简为单斜杠以免日后官网调整时路径失配。
+ */
+const SYMTC_STATION_LEVEL_BASE = "https://www.symtc.com/wwmhm/icons//czcjt";
+
 const SYMTC_OFFICIAL_STATION_ID_RULES = {
     "SYM01": [
         { fromIndex: 0, officialStationId: 121, step: 2 }
@@ -30,6 +41,16 @@ const SYMTC_OFFICIAL_STATION_ID_RULES = {
 };
 
 const GLOBAL_SCHEDULE_DATA = {};
+
+/**
+ * 车站层级图地址表（本地车站 ID → 官网剖面图 URL）。
+ *
+ * 换乘站在多条线路下各有官网编号，此处取先遍历到的线路编号（与核心「官网查询」
+ * 按钮取首个可用项的口径一致）；未能匹配官网编号的车站（有轨电车、国铁、未纳入
+ * 官网编号体系的在建站）不进入本表，由消费方按「无图不渲染」处理。
+ */
+const SHENYANG_STATION_LEVEL_MAP = {};
+window.SHENYANG_STATION_LEVEL_MAP = SHENYANG_STATION_LEVEL_MAP;
 
 Object.entries(SYMTC_OFFICIAL_STATION_ID_RULES).forEach(([lineId, rules]) => {
     const line = linesData.find((item) => item.id === lineId);
@@ -56,6 +77,12 @@ Object.entries(SYMTC_OFFICIAL_STATION_ID_RULES).forEach(([lineId, rules]) => {
 
         (GLOBAL_SCHEDULE_DATA[lineId] ||= {})[stationId]
             = `${SYMTC_STATION_INFO_BASE}?${params.toString()}`;
+
+        // 顺带登记该站的官网层级图；先到先得，避免换乘站被后遍历的线路覆盖
+        if (!SHENYANG_STATION_LEVEL_MAP[stationId]) {
+            SHENYANG_STATION_LEVEL_MAP[stationId]
+                = `${SYMTC_STATION_LEVEL_BASE}/${officialStationId}.png`;
+        }
     });
 });
 

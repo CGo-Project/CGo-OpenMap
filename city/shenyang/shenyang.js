@@ -196,7 +196,8 @@
                 "modules/shenyang_station_title.js",
                 "modules/shenyang_calligraphy.js",
                 "modules/shenyang_cultural.js",
-                "modules/shenyang_service_info.js"
+                "modules/shenyang_service_info.js",
+                "modules/shenyang_level_map.js"
             ],
             modules: {
                 "header-controls": { enabled: true, order: 10 },
@@ -207,6 +208,8 @@
                 "header-badges": { enabled: true, order: 30 },
                 "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
                 "shenyang-timetable": { enabled: true, targetTab: "line-tab", order: 15 },
+                // 官网车站层级图（剖面图）纯图片卡片，置顶于「车站信息」页签
+                "shenyang-station-level-map": { enabled: true, targetTab: "station-info", order: 5 },
                 "shenyang-calligrapher-intro": { enabled: true, targetTab: "station-info", order: 12 },
                 "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 15 },
                 "adjacent-stations": { enabled: true, targetTab: "line-tab", order: 20 },
@@ -269,7 +272,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260928.0907";
+        const version = "260928.2000";
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
