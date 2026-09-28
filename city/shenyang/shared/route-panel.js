@@ -1306,17 +1306,22 @@
         let a = projectOnPath(seq, from);
         let b = projectOnPath(seq, to);
         if (!a || !b) return null;
-        if (!(a.seg < b.seg || (a.seg === b.seg && a.t <= b.t))) {
+        // 两站投影落在同一条线段上：截取就是该线段上的一段。线段是直线，两点之间不可能
+        // 再夹着折点，因此与 t 的先后无关。相邻两站——包括环线跨接缝的那一跳——绝大多数
+        // 都落在这一支（本站站点全部精确落线，环线折线又首尾重合于珠江路）。
+        // 早先这里要求 a.t <= b.t，不满足就去反转序列重试；而反转后两点往往仍落在同一条
+        // 线段上、t 的先后依旧反着，于是正反来回递归直到爆栈
+        //（RangeError: Maximum call stack size exceeded）。
+        if (a.seg === b.seg) return [a.point, b.point];
+        if (a.seg > b.seg) {
             // 折线走向与乘车方向相反：改在反向序列上取，切出来天然就是 from → to。
-            // 只试一次——站点恰好落在折线顶点时（本站站点全部精确落线），两端并列最近，
-            // 正反两个序列都可能取到「更靠前」的那一段，两者的先后关系因此可以都不满足；
-            // 无界递归会直接爆栈（RangeError: Maximum call stack size exceeded）。
-            // 对齐不了就返回 null，交给调用方退回两站直连。
+            // 只试一次，仍对齐不上就返回 null，交给调用方退回两站直连。
             seq = points.slice().reverse();
             a = projectOnPath(seq, from);
             b = projectOnPath(seq, to);
             if (!a || !b) return null;
-            if (!(a.seg < b.seg || (a.seg === b.seg && a.t <= b.t))) return null;
+            if (a.seg === b.seg) return [a.point, b.point];
+            if (a.seg > b.seg) return null;
         }
         const out = [a.point, ...seq.slice(a.seg + 1, b.seg + 1), b.point];
         return out.length >= 2 ? out : null;
@@ -1355,20 +1360,28 @@
     /**
      * 截取线路折线在「上车站 → 下车站」之间的那一段（保留原走向与拐点）。
      *
-     * 环线（options.loop）的折线首尾相接，两站之间存在两条弧：不跨接缝的那条与跨过接缝的那条，
-     * 线性截取只能给出前者。这里把两条都算出来，用「弧上覆盖了本次乘车的哪些车站」判定该用哪条
-     * ——覆盖多者优先，同分取更短者。否则环线上跨接缝的近路会被画成绕环一整圈的远路。
+     * 环线（options.loop）的折线首尾相接，两站之间存在两条弧，而线性截取只会给出不跨接缝的
+     * 那条：① 跨接缝的近路会被画成绕环一整圈的远路；② 两端都靠近折线起点时（如珠江路 ⇄ 公滨路），
+     * 跨接缝那条反而正是绕整圈的长弧，短弧只能从反向序列上截出来。所以三条候选都算一遍，
+     * 再按「弧上覆盖了本次乘车的哪些车站」取舍——覆盖多者优先，同分取更短者。
+     * 非环线只有一条弧，逻辑不变。
      */
     function slicePath(points, from, to, options) {
-        const direct = sliceArc(points, from, to);
-        if (!options?.loop) return direct;
-        const wrapped = sliceArcWrapped(points, from, to);
-        if (!direct) return wrapped;
-        if (!wrapped) return direct;
-        const onDirect = stopsOnArc(direct, options.stops);
-        const onWrapped = stopsOnArc(wrapped, options.stops);
-        if (onWrapped !== onDirect) return onWrapped > onDirect ? wrapped : direct;
-        return arcLength(wrapped) < arcLength(direct) ? wrapped : direct;
+        const candidates = [sliceArc(points, from, to)];
+        if (options?.loop) {
+            candidates.push(sliceArc(points.slice().reverse(), from, to));
+            candidates.push(sliceArcWrapped(points, from, to));
+        }
+        const valid = candidates.filter((arc) => Array.isArray(arc) && arc.length >= 2);
+        if (!valid.length) return null;
+        if (valid.length === 1) return valid[0];
+        const scored = valid.map((arc) => ({
+            arc,
+            hit: stopsOnArc(arc, options.stops),
+            length: arcLength(arc)
+        }));
+        scored.sort((x, y) => (y.hit - x.hit) || (x.length - y.length));
+        return scored[0].arc;
     }
 
     /**
