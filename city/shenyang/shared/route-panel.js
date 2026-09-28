@@ -1297,33 +1297,22 @@
     }
 
     /**
-     * 折线在 from → to 之间的一段（线性截取，不跨首尾接缝）。
-     * 站点坐标未必落在折线上（走向由 pathPoints 定义），故两端取投影点。
+     * 折线上从 from 顺向走到 to 的一段（不跨折线末端）。
+     * 起点若落在 to 之后，顺向走不到，返回 null，由调用方改看反向序列那条候选。
      */
     function sliceArc(points, from, to) {
         if (!points || points.length < 2) return null;
-        let seq = points;
-        let a = projectOnPath(seq, from);
-        let b = projectOnPath(seq, to);
+        const a = projectOnPath(points, from);
+        const b = projectOnPath(points, to);
         if (!a || !b) return null;
         // 两站投影落在同一条线段上：截取就是该线段上的一段。线段是直线，两点之间不可能
-        // 再夹着折点，因此与 t 的先后无关。相邻两站——包括环线跨接缝的那一跳——绝大多数
-        // 都落在这一支（本站站点全部精确落线，环线折线又首尾重合于珠江路）。
-        // 早先这里要求 a.t <= b.t，不满足就去反转序列重试；而反转后两点往往仍落在同一条
-        // 线段上、t 的先后依旧反着，于是正反来回递归直到爆栈
+        // 再夹着折点，因此与 t 的先后无关。相邻两站——包括环线跨接缝的那一跳——多数落在这里。
+        // 早先这里要求 a.t <= b.t，不满足就去反转序列重试；而反转后两点仍落在同一条线段、
+        // t 的先后依旧反着，于是正反来回递归直到爆栈
         //（RangeError: Maximum call stack size exceeded）。
         if (a.seg === b.seg) return [a.point, b.point];
-        if (a.seg > b.seg) {
-            // 折线走向与乘车方向相反：改在反向序列上取，切出来天然就是 from → to。
-            // 只试一次，仍对齐不上就返回 null，交给调用方退回两站直连。
-            seq = points.slice().reverse();
-            a = projectOnPath(seq, from);
-            b = projectOnPath(seq, to);
-            if (!a || !b) return null;
-            if (a.seg === b.seg) return [a.point, b.point];
-            if (a.seg > b.seg) return null;
-        }
-        const out = [a.point, ...seq.slice(a.seg + 1, b.seg + 1), b.point];
+        if (a.seg > b.seg) return null;
+        const out = [a.point, ...points.slice(a.seg + 1, b.seg + 1), b.point];
         return out.length >= 2 ? out : null;
     }
 
@@ -1360,24 +1349,30 @@
     /**
      * 截取线路折线在「上车站 → 下车站」之间的那一段（保留原走向与拐点）。
      *
-     * 环线（options.loop）的折线首尾相接，两站之间存在两条弧，而线性截取只会给出不跨接缝的
-     * 那条：① 跨接缝的近路会被画成绕环一整圈的远路；② 两端都靠近折线起点时（如珠江路 ⇄ 公滨路），
-     * 跨接缝那条反而正是绕整圈的长弧，短弧只能从反向序列上截出来。所以三条候选都算一遍，
-     * 再按「弧上覆盖了本次乘车的哪些车站」取舍——覆盖多者优先，同分取更短者。
-     * 非环线只有一条弧，逻辑不变。
+     * 站点坐标未必落在折线上（走向由 pathPoints 定义），故两端取投影点。折线的绘制方向与
+     * 乘车方向未必一致，环线（options.loop）的折线还首尾相接、两站之间存在两条弧，单看一个
+     * 方向总会漏：
+     *   ① 只截「不跨接缝」的那条 → 跨接缝的近路被画成绕环一整圈的远路；
+     *   ② 只补「跨接缝」那条 → 反方向（如湘江路 → 公滨路）时它恰恰是绕整圈的长弧，短弧只能
+     *      从反向序列上跨接缝截出来。
+     * 所以四个候选都算一遍——原序列 / 反向序列 各取「顺向一段」与「跨接缝一段」——再按
+     * 「弧上覆盖了本次乘车的哪些车站」取舍：覆盖多者优先，同分取更短者。
+     * 非环线的折线不闭合，跨接缝那两个候选会自行落空，只剩「顺向一段」的两个方向。
      */
     function slicePath(points, from, to, options) {
-        const candidates = [sliceArc(points, from, to)];
-        if (options?.loop) {
-            candidates.push(sliceArc(points.slice().reverse(), from, to));
-            candidates.push(sliceArcWrapped(points, from, to));
-        }
+        const reversed = points.slice().reverse();
+        const candidates = [
+            sliceArc(points, from, to),
+            sliceArc(reversed, from, to),
+            sliceArcWrapped(points, from, to),
+            sliceArcWrapped(reversed, from, to)
+        ];
         const valid = candidates.filter((arc) => Array.isArray(arc) && arc.length >= 2);
         if (!valid.length) return null;
         if (valid.length === 1) return valid[0];
         const scored = valid.map((arc) => ({
             arc,
-            hit: stopsOnArc(arc, options.stops),
+            hit: options?.loop ? stopsOnArc(arc, options.stops) : 0,
             length: arcLength(arc)
         }));
         scored.sort((x, y) => (y.hit - x.hit) || (x.length - y.length));
