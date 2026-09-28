@@ -72,6 +72,30 @@
         width: calc(var(--cgo-sb-column) - var(--cgo-sb-inset) * 2) !important;
     }
 
+    /* ── 1.5 顶栏层级：必须压在侧栏列之上，否则浮岛上的按钮全部点不动 ─────────── */
+    /* 上一节把侧栏列从核心的 top: 60px 抬到了 top: 0，顶上因此多出一段
+       0 ~ --cgo-sb-top 的内边距区，横向又与浮岛同宽（都是侧栏列的宽度）—— 与浮岛完全重合。
+       侧栏列虽然底色透明（见上一节的 background: transparent），但透明背景照样吃指针事件，
+       于是这一段把浮岛的点击整片截走，浮岛上的按钮全部失效。
+
+       层级必须按实测值来，别照基础规则推：核心 style.css 有一条通配规则
+       「div[class*="overlay"], div[id*="overlay"] { z-index: 99999 !important }」，
+       它命中了 #legend-overlay —— 侧栏列的真实层级是 99999，并不是基础规则里写的 9999；
+       而核心顶栏 .tool-header 只有 100（悬浮顶栏 1000）。所以这里把两侧重排一遍：
+         · 侧栏列降到 9000：仍高于画布与地图浮层（#info-panel 2000、行程规划 2100），
+           也仍低于各类弹窗（99999 / 侧栏之上那个 100010），只是让出顶栏这一层；
+         · 顶栏抬到 10000：必须抬 .tool-header 本身 —— 浮岛是它的子元素，翻不出父级
+           层叠上下文；且经典顶栏模式下 .header-island 是 display: contents，
+           设了 z-index 也不生成盒子，没用。
+       浮岛是玻璃面（72% 不透明 + 14px 背景模糊），卡片滚上去照样被它挡住，观感不变。 */
+    body.legend-pinned #legend-overlay {
+        z-index: 9000 !important;
+    }
+
+    body.legend-pinned .tool-header {
+        z-index: 10000 !important;
+    }
+
     /* 顶端的返回按钮与固定按钮一并撤下：返回按钮只在浮层形态里有意义，
        固定按钮由 sidebar-refit.js 搬到浮动缩放条的检索面板按钮位（见下方第 5 节）；
        承载它们的那条 40px 假标题栏（::before）随之取消。 */

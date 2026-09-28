@@ -586,8 +586,8 @@
 
     /**
      * 固定侧栏形态：标题取「起点站→终点站（当前方案标签）」，
-     * 折叠时在 header-color-squares 里按乘坐顺序铺开每一段线路的标志色，
-     * 与侧栏历史车站区块的折叠态表现一致（两者的填充都在 renderActiveRoute 里完成）。
+     * 折叠时在 header-color-squares 里按乘坐顺序铺开每一段线路的标志色
+     * （填充见 renderActiveRoute → syncResultSectionHeader）。
      */
     function resultSectionHtml() {
         return `
@@ -699,18 +699,43 @@
         && (line.isPointOnly === true || String(line.name || "") === "中国铁路");
 
     /**
-     * 线路编号：面板里那个小徽标承载的短代号。
+     * 线路编号的构成。
      *
-     * 默认从线路名里抽数字（"1号线" → "1"、"201路" → "201"），
-     * 城市可用 CGO_ROUTE_CONFIG.lineCodes 覆盖个别线路——例如沈阳把有轨 5 号线写作 "T5"，
-     * 好与地铁 5 号线区分开。
+     * 默认从线路名里抽数字（"1号线" → "1"、"201路" → "201"）；
+     * 城市可用 CGO_ROUTE_CONFIG.lineCodes 覆盖个别线路——写字符串表示整段同号（"T5"），
+     * 写 { prefix, code, suffix } 则把修饰字单独标出、渲染成小号字，
+     * 例如沈阳有轨 5 号线「T5」的 T、大连 3 号线支线「3支」的支。
+     *
+     * @returns {{ prefix: string, code: string, suffix: string }}
      */
-    function lineCode(lineId) {
+    function parseLineCode(lineId) {
         const id = String(lineId || "").split("#")[0];
-        const override = window.CGO_ROUTE_CONFIG?.lineCodes;
-        if (override?.[id]) return String(override[id]);
+        const override = window.CGO_ROUTE_CONFIG?.lineCodes?.[id];
+        if (override && typeof override === "object") {
+            return {
+                prefix: String(override.prefix ?? ""),
+                code: String(override.code ?? ""),
+                suffix: String(override.suffix ?? "")
+            };
+        }
+        if (override) return { prefix: "", code: String(override), suffix: "" };
+
         const name = String(lineOf(id)?.name || "");
-        return name.match(/\d+/)?.[0] || name.slice(0, 3) || id.slice(0, 3);
+        return {
+            prefix: "",
+            code: name.match(/\d+/)?.[0] || name.slice(0, 3) || id.slice(0, 3),
+            suffix: ""
+        };
+    }
+
+    /**
+     * 编号的 HTML 形态：修饰字单独成段，由 .cgo-rt-affix 排成小号字。
+     * 主编号不加包裹，压缩（fitModeCodes）与测宽都以它为主体。
+     */
+    function lineCodeHtml(lineId) {
+        const { prefix, code, suffix } = parseLineCode(lineId);
+        const affix = (text) => (text ? `<span class="cgo-rt-affix">${text}</span>` : "");
+        return `${affix(prefix)}${code}${affix(suffix)}`;
     }
 
     /** 编号徽标的边长（px），与 route-panel.css 的 .cgo-rt-mode 一致；形状不变，只压文字 */
@@ -718,6 +743,31 @@
     /** 编号可用宽度占徽标边长的比例：方形只留一点边距，圆形还要躲开弧线的内收 */
     const MODE_CODE_ROOM = { square: 0.9, circle: 0.74 };
     let measureCtx = null;
+
+    /**
+     * 量编号的实际渲染宽度。
+     *
+     * 编号可能带小号修饰字（「T5」的 T、「3支」的支），它们与主编号字号不同，
+     * 必须逐段测量——整段按主字号量会把修饰字算宽，压缩比因此偏大、文字被压小。
+     * 修饰段的字体从计算样式取（隐藏元素同样取得到）。
+     */
+    function measureCodeWidth(codeEl, baseStyle) {
+        const measure = (text, style) => {
+            measureCtx.font = `${style.fontWeight || baseStyle.fontWeight} `
+                + `${style.fontSize || baseStyle.fontSize} `
+                + `${style.fontFamily || baseStyle.fontFamily}`;
+            return measureCtx.measureText(text).width;
+        };
+        let total = 0;
+        codeEl.childNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                total += measure(node.nodeValue || "", baseStyle);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                total += measure(node.textContent || "", window.getComputedStyle(node));
+            }
+        });
+        return total;
+    }
 
     /**
      * 把编号文字横向压扁到徽标可用宽度内。徽标本身固定为正方形 / 正圆形（见 .cgo-rt-mode
@@ -732,9 +782,7 @@
         measureCtx = measureCtx || document.createElement("canvas").getContext("2d");
         codes.forEach((code) => {
             const badge = code.parentElement;
-            const style = window.getComputedStyle(badge);
-            measureCtx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-            const width = measureCtx.measureText(code.textContent).width;
+            const width = measureCodeWidth(code, window.getComputedStyle(badge));
             const room = MODE_BADGE_SIZE * (badge.classList.contains("circle")
                 ? MODE_CODE_ROOM.circle
                 : MODE_CODE_ROOM.square);
@@ -802,7 +850,7 @@
                 // svgclr（改在本徽标的局部 --line-color 上，不动整段行程的线网走向色）
                 const modeHtml = isRailwayLine(line)
                     ? `<span class="cgo-rt-mode square" style="--line-color:${line.svgclr || line.color}"><cgo-icon name="railway" size="16"></cgo-icon></span>`
-                    : `<span class="cgo-rt-mode ${codeClass}"><span class="cgo-rt-code">${lineCode(first.line)}</span></span>`;
+                    : `<span class="cgo-rt-mode ${codeClass}"><span class="cgo-rt-code">${lineCodeHtml(first.line)}</span></span>`;
                 // 途经站只列中途停站：上车站与下车站已由上下行文案表达；
                 // 贯通衔接点会被相邻两段各记一次，按相邻去重压成一份
                 const allStops = segments.flatMap((seg) => seg.stops)
@@ -1062,8 +1110,11 @@
 
     /**
      * 固定侧栏形态的结果面板标题：正文为「起点站→终点站（当前方案标签）」，
-     * 折叠时在同一行的 header-color-squares 里按乘坐顺序铺开每一段线路的标志色，
-     * 表现与侧栏历史车站区块一致（乘同一线路折返时只铺一次）。
+     * 折叠时在同一行的 header-color-squares 里按乘坐顺序铺开每一段线路的标志色。
+     *
+     * **不做线路去重**：每个 ride 段铺一个色块，同一条线坐几段就铺几个，
+     * 色块的个数与先后顺序如实对应方案的换乘次数
+     * （如 1 号线 → 2 号线 → 1 号线 铺三块，而不是被折叠成两块）。
      */
     function syncResultSectionHeader(panel, route, head, tail) {
         const title = panel.querySelector(".section-title-text");
@@ -1076,12 +1127,8 @@
         const squares = panel.querySelector(".header-color-squares");
         if (!squares) return;
         squares.innerHTML = "";
-        const seen = new Set();
         route.steps.filter((step) => step.t === "ride").forEach((step) => {
-            const id = String(step.line).split("#")[0];
-            if (seen.has(id)) return;
-            seen.add(id);
-            const line = lineOf(id);
+            const line = lineOf(String(step.line).split("#")[0]);
             if (!line) return;
             const square = document.createElement("span");
             square.className = "header-color-square";

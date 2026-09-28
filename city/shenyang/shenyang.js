@@ -233,8 +233,9 @@
      */
     window.CGO_ROUTE_CONFIG = {
         coords: "./city/shenyang/amap_data.json",
-        // 线路编号徽标的城市覆盖：有轨 5 号线写作 T5，与地铁 5 号线区分开
-        lineCodes: { HNT5: "T5" },
+        // 线路编号徽标的城市覆盖：有轨 5 号线写作 T5，与地铁 5 号线区分开；
+        // T 是小号修饰字（prefix），主编号仍是 5
+        lineCodes: { HNT5: { prefix: "T", code: "5" } },
         lineCodeShape: "circle",   // 本城地铁用圆形编号徽标（有轨与其他城市保持圆角方形）
         cityIcon: "shenyang",   // 官网查询按钮使用城市官方徽标（CGoUI 内置）
         reader(line, sid) {
@@ -272,7 +273,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260928.2000";
+        const version = "260928.4900";
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);

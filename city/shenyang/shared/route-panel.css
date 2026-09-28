@@ -401,6 +401,14 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     transform-origin: center center;
 }
 
+/* 编号里的小号修饰字（沈阳有轨 5 号线「T5」的 T、大连 3 号线支线「3支」的支）：
+   与主编号同基线，字号收到主编号的 2/3，免得修饰字把徽标撑满。
+   用 em 相对父级——编号徽标（.cgo-rt-mode）与侧栏色块（.header-color-square）字号不同，
+   同一条规则两处都适用。 */
+.cgo-rt-affix {
+    font-size: 0.66em;
+}
+
 .cgo-rt-mode.xfer,
 .cgo-rt-mode.walk,
 .cgo-rt-mode.arrive {

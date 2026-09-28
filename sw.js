@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260928.2000';
+const CACHE_NAME = 'cgo-openmap-v260928.4900';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -343,10 +343,8 @@ const ASSETS_TO_CACHE = [
     './city/dalian/data_legend.js',
     './city/dalian/data_timetable.js',
     './city/dalian/amap_data.json',
-    './city/dalian/assets/airport.svg',
     './city/dalian/assets/compass.svg',
     './city/dalian/assets/dalian_sea.svg',
-    './city/dalian/assets/railway.svg',
     './city/dalian/assets/tram-201-interval.svg',
     './city/dalian/assets/tram-201.svg',
     './city/dalian/assets/tram-202.svg',
@@ -424,6 +422,22 @@ const ASSETS_TO_CACHE = [
     './city/lanzhou/amap_data.json',
     './city/lanzhou/assets/lanzhou_river.svg',
     './city/lanzhou/assets/pricetable.jpg',
+
+    // 城市配置与业务数据 (哈尔滨)
+    './city/harbin/harbin.js',
+    './city/harbin/modules/harbin_map.js',
+    './city/harbin/modules/harbin_station_title.js',
+    './city/harbin/stacard/script.js',
+    './city/harbin/data_stations.js',
+    './city/harbin/data_lines.js',
+    './city/harbin/data_virtual_transfers.js',
+    './city/harbin/data_scattered.js',
+    './city/harbin/data_legend.js',
+    './city/harbin/data_timetable.js',
+    './city/harbin/data_notopen.js',
+    './city/harbin/staname.csv',
+    './city/harbin/amap_data.json',
+    './city/harbin/assets/songhuajiang.svg',
 
     // 福州线路徽标
     './assets/svg/icon@fz_BE.svg',

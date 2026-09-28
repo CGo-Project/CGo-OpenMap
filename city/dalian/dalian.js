@@ -175,6 +175,11 @@
         coords: DalianCity.dataFiles.amapDataUrl,
         cityIcon: "dalian",
         /**
+         * 线路编号徽标的城市覆盖：3 号线支线写作「3支」。
+         * 从线路名抽数字只能得到「3」，与 3 号线本体撞号；后缀「支」是小号修饰字（suffix）。
+         */
+        lineCodes: { DLM99: { code: "3", suffix: "支" } },
+        /**
          * 计费系统：地铁线网（DLM*）按制式默认并网，有轨各自独立购票
          * —— 201 路与其区间段同一票制（华乐广场凭换乘票接驳），202 路单算。
          */
@@ -251,7 +256,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260928.2000";
+        const version = "260928.4900";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);

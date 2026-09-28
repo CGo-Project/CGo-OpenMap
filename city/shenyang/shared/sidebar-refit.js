@@ -162,13 +162,30 @@
         return line?.mode === "tram" || String(line?.id || "").toUpperCase().startsWith("HNT");
     }
 
-    /** 线路编号：城市可用 CGO_ROUTE_CONFIG.lineCodes 覆盖个别线路（如沈阳有轨 5 号线写作 "T5"） */
-    function lineCode(line) {
+    /**
+     * 线路编号的构成（与 route-panel.js 的 parseLineCode 同一口径）。
+     * 城市可在 CGO_ROUTE_CONFIG.lineCodes 里覆盖个别线路：写字符串表示整段同号（"T5"），
+     * 写 { prefix, code, suffix } 则把修饰字单独标出、渲染成小号字
+     * （沈阳有轨 5 号线「T5」的 T、大连 3 号线支线「3支」的支）。
+     */
+    function parseLineCode(line) {
         const id = String(line?.id || "");
-        const override = window.CGO_ROUTE_CONFIG?.lineCodes;
-        if (override?.[id]) return String(override[id]);
+        const override = window.CGO_ROUTE_CONFIG?.lineCodes?.[id];
+        if (override && typeof override === "object") {
+            return {
+                prefix: String(override.prefix ?? ""),
+                code: String(override.code ?? ""),
+                suffix: String(override.suffix ?? "")
+            };
+        }
+        if (override) return { prefix: "", code: String(override), suffix: "" };
+
         const name = String(line?.name || "");
-        return name.match(/\d+/)?.[0] || name.slice(0, 3) || id.slice(0, 3);
+        return {
+            prefix: "",
+            code: name.match(/\d+/)?.[0] || name.slice(0, 3) || id.slice(0, 3),
+            suffix: ""
+        };
     }
 
     /** 城市声明 lineCodeShape: "circle" 时地铁用正圆，其余一概圆角方形 */
@@ -233,8 +250,22 @@
         measureCtx = measureCtx || document.createElement("canvas").getContext("2d");
         if (!measureCtx) return;
         const style = window.getComputedStyle(badge);
-        measureCtx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-        const width = measureCtx.measureText(codeEl.textContent).width;
+        // 逐段量：小号修饰字（「T5」的 T、「3支」的支）字号与主编号不同，
+        // 整段按主字号量会把它们算宽，压缩比偏大、文字被压小
+        const measure = (text, segmentStyle) => {
+            measureCtx.font = `${segmentStyle.fontWeight || style.fontWeight} `
+                + `${segmentStyle.fontSize || style.fontSize} `
+                + `${segmentStyle.fontFamily || style.fontFamily}`;
+            return measureCtx.measureText(text).width;
+        };
+        let width = 0;
+        codeEl.childNodes.forEach((node) => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                width += measure(node.nodeValue || "", style);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                width += measure(node.textContent || "", window.getComputedStyle(node));
+            }
+        });
         if (!Number.isFinite(width) || width <= 0) return;
         const size = parseFloat(style.width) || BADGE_SIZE;
         const room = size * (badge.classList.contains("circle") ? BADGE_ROOM.circle : BADGE_ROOM.square);
@@ -259,17 +290,199 @@
                 square.appendChild(icon);
                 return;
             }
-            const code = line ? lineCode(line) : (square.getAttribute("title") || "").match(/\d+/)?.[0];
-            if (!code) return;
+            const parts = line
+                ? parseLineCode(line)
+                : {
+                    prefix: "",
+                    code: (square.getAttribute("title") || "").match(/\d+/)?.[0] || "",
+                    suffix: ""
+                };
+            if (!parts.prefix && !parts.code && !parts.suffix) return;
             square.setAttribute(SKIN_ATTR, "1");
             square.textContent = "";
             if (line && codeShape(line) === "circle") square.classList.add("circle");
             const codeEl = document.createElement("span");
             codeEl.className = "cgo-rt-code";
-            codeEl.textContent = code;
+            // 小号修饰字单独成段，由 .cgo-rt-affix 缩号（见 route-panel.css）
+            const addAffix = (text) => {
+                const affix = document.createElement("span");
+                affix.className = "cgo-rt-affix";
+                affix.textContent = text;
+                codeEl.appendChild(affix);
+            };
+            if (parts.prefix) addAffix(parts.prefix);
+            codeEl.appendChild(document.createTextNode(parts.code));
+            if (parts.suffix) addAffix(parts.suffix);
             square.appendChild(codeEl);
             fitCode(square, codeEl);
         });
+    }
+
+    /* ======================================================================
+     * 展开窗口的高度兜底
+     * ==================================================================== */
+
+    /**
+     * 展开的车站窗口至少应占到的高度（em，按根字号折算）。
+     * 低于这个值说明折叠窗口把侧栏挤满了，内容已经放不下。
+     */
+    const EXPANDED_MIN_HEIGHT_EM = 22;
+    /** 与 .station-history-section 的 flex 0.3s 过渡对齐：量高度要等它走完 */
+    const EXPAND_TRANSITION_MS = 320;
+    /** 与 .history-item-out 的退场动画（0.3s）对齐：动画走完才真正移除节点 */
+    const REMOVE_ANIMATION_MS = 320;
+
+    let sectionRefitTimer = 0;
+    let sectionRefitting = false;
+    let sectionRefitPending = false;
+
+    /**
+     * 收起侧栏里其它占高度的可折叠区块，只留最新展开的那个车站窗口。
+     *
+     * 不只是车站历史窗口——侧栏里还挂着核心的各个 panel-section（搜索、图例树、
+     * 车站区块）与行程规划的起终点卡片（#cgo-route-card）、结果卡片（#cgo-route-result），
+     * 它们同样占着高度，不一并收起来就判不准展开窗口到底能拿到多少空间。
+     *
+     * ⚠️ 必须建立在「确实有展开的车站窗口」之上：页面初始加载时一个车站窗口都没
+     * 展开，若不加这层判定就会把侧栏原本展开的图例树、行程规划卡片顺手全收掉。
+     *
+     * @returns {boolean} 本轮确有区块被收起（调用方需等布局过渡走完再继续）
+     */
+    function collapseOtherExpandedSections() {
+        const content = document.getElementById("legend-content");
+        if (!content) return false;
+        // 保留 DOM 末尾那个展开的车站窗口——核心刚展开的就在末尾，也是用户最新点开的
+        const opened = content.querySelectorAll(".station-history-section:not(.collapsed)");
+        if (!opened.length) return false;
+        const keep = opened[opened.length - 1];
+        const targets = content.querySelectorAll(
+            ".panel-section:not(.collapsed), #cgo-route-card:not(.collapsed), #cgo-route-result:not(.collapsed)"
+        );
+        let collapsed = false;
+        targets.forEach((section) => {
+            if (section === keep) return;
+            section.classList.add("collapsed");
+            collapsed = true;
+        });
+        return collapsed;
+    }
+
+    /**
+     * 展开的车站窗口矮到放不下内容时，从最旧的折叠窗口开始清，给它腾够高度。
+     *
+     * 核心（core/script.js 的 dockStationPanel）只按「固定保留 N 条」裁剪，
+     * 与侧栏实际高度无关：侧栏矮的时候 N 条照样把展开窗口挤扁。这里补一层按真实
+     * 高度的兜底——不足下限就继续清，直到达标或只剩展开的这一个。
+     * 清掉的站同步从 window.STATION_HISTORY 移除，免得核心下次重建又把它放回来。
+     *
+     * 清退沿用核心原先的退场动画（.history-item-out：左移 + 塌陷），故每个都要等
+     * 动画走完再往下判：动画期间窗口靠 max-height 逐步收缩，展开窗口的高度是慢慢
+     * 还回来的，没等完就接着清会按「还没还回来」的高度误判，一次清掉过多。
+     *
+     * 为什么落在共享层：核心没有给 dockStationPanel 留对外钩子，但展开动作必然
+     * 改写 .station-history-section 的 class，用属性观察器捕捉即可，不必动 core。
+     */
+    function refitExpandedSection() {
+        const container = document.getElementById("sidebar-dynamic-content");
+        if (!container) return;
+
+        const expandedList = container.querySelectorAll(".station-history-section:not(.collapsed)");
+        const expanded = expandedList[expandedList.length - 1];
+        if (!expanded) return;
+
+        const rootSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const minHeight = EXPANDED_MIN_HEIGHT_EM * rootSize;
+
+        // 已经够高就到此为止：别人的窗口一个都别收，折叠窗口也一个都别清。
+        if (expanded.getBoundingClientRect().height >= minHeight) return;
+
+        // 不够高，先收起侧栏里其它占高度的区块（其它车站窗口、核心各 panel-section、
+        // 行程规划卡片）——收起后可能就达标了。收起会改动布局，故本轮到此为止，
+        // 等 flex 过渡走完后的下一轮再重判；真仍不够，下一轮才轮到清退折叠窗口。
+        if (collapseOtherExpandedSections()) {
+            scheduleSectionRefit();
+            return;
+        }
+
+        // DOM 顺序即 window.STATION_HISTORY 的顺序，故从头取就是从最旧开始
+        const queue = [...container.querySelectorAll(".station-history-section.collapsed")];
+        let cursor = 0;
+
+        const finish = () => {
+            sectionRefitting = false;
+            if (!sectionRefitPending) return;
+            // 清理期间又来了新的展开/重建，补跑一次，免得那一次被挡掉
+            sectionRefitPending = false;
+            scheduleSectionRefit();
+        };
+
+        const step = () => {
+            // 核心重建（rebuildSidebarHistory 会清空容器）后本次队列即作废
+            if (!expanded.isConnected) { finish(); return; }
+            if (expanded.getBoundingClientRect().height >= minHeight) { finish(); return; }
+
+            const victim = queue[cursor];
+            cursor += 1;
+            if (!victim) { finish(); return; }
+
+            sectionRefitting = true;
+            victim.classList.add("history-item-out");
+            setTimeout(() => {
+                // 期间若已被核心重建掉，就别再动 STATION_HISTORY
+                if (victim.isConnected) {
+                    const sid = victim.dataset.sid;
+                    if (sid && Array.isArray(window.STATION_HISTORY)) {
+                        window.STATION_HISTORY = window.STATION_HISTORY.filter((id) => id !== sid);
+                    }
+                    victim.remove();
+                }
+                step();
+            }, REMOVE_ANIMATION_MS);
+        };
+
+        step();
+    }
+
+    function scheduleSectionRefit() {
+        if (sectionRefitting) {
+            sectionRefitPending = true;
+            return;
+        }
+        clearTimeout(sectionRefitTimer);
+        sectionRefitTimer = setTimeout(() => {
+            sectionRefitTimer = 0;
+            refitExpandedSection();
+        }, EXPAND_TRANSITION_MS);
+    }
+
+    /**
+     * 盯住 #sidebar-dynamic-content 里各区块的 class：折叠 ⇄ 展开都由它体现。
+     * @returns {boolean} 容器已就位并挂上观察器时为 true
+     */
+    function observeHistorySections() {
+        const container = document.getElementById("sidebar-dynamic-content");
+        if (!container || container.dataset.cgoSectionRefit === "on") return Boolean(container);
+        container.dataset.cgoSectionRefit = "on";
+        new MutationObserver((records) => {
+            const toggled = records.some((record) =>
+                record.target.classList?.contains("station-history-section"));
+            if (toggled) scheduleSectionRefit();
+        }).observe(container, { attributes: true, subtree: true, attributeFilter: ["class"] });
+        scheduleSectionRefit();
+        return true;
+    }
+
+    /**
+     * 等 #sidebar-dynamic-content 出现后再挂观察器。
+     * 它由核心渲染图例时创建（core/script.js 的 buildLegendHtml），本脚本启动时通常还没有。
+     */
+    function watchForHistoryContainer() {
+        if (observeHistorySections()) return;
+        const waiter = new MutationObserver(() => {
+            if (!observeHistorySections()) return;
+            waiter.disconnect();
+        });
+        waiter.observe(document.body, { childList: true, subtree: true });
     }
 
     /* ======================================================================
@@ -293,6 +506,7 @@
         syncGeometry();
         syncPinButton();
         observeContent();
+        watchForHistoryContainer();
     }
 
     function start() {
