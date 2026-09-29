@@ -435,12 +435,13 @@
          * 蓝端代表最短的；票价图的粉端代表最高的票价、黄端代表最低的。
          *
          * 早先按几个起点抽样估算，会低估极值（色标就锚不住，换个起点整条色带跟着漂）。
-         * 这里改成：每座可上车车站各跑一次**跑满的** Dijkstra，取该起点最近 / 最远的那两站；
+         * 这里改成：每座可上车车站各跑一次**跑满的** Dijkstra（用时一遍、里程一遍），
          * 全起点取极值 —— 那就落在「任意起终点」的字面口径上。
-         * 票价另按「最省走法」结算（与票价图同一口径），候选再加一个"加权里程最远站"——
-         * 时间最远未必里程最远，缺了它票价上界会低估。
+         * 用时的最近 / 最远直接从用时那遍里取；票价的最高端取「里程最远」那一对
+         * （票价按计费里程分档、随里程单调不减），票价本身走 cheapestFare（与票价图同一口径）；
+         * 最低票价就是起步价，问一次价目表即可，不必寻路。
          *
-         * 代价是每个城市约「5 × 车站数」次寻路（百余座站即近千次，几百毫秒），
+         * 代价是每个城市约「6 × 车站数」次寻路（百余座站即近千次，几百毫秒），
          * 由调用方按城市缓存——同一会话里只算这一回。
          */
         function extremes() {
@@ -449,37 +450,35 @@
             let minFare = Infinity;
             let maxFare = 0;
             boardable.forEach((_, from) => {
+                // 用时：跑满一遍就够（最近 / 最远都在里面）
                 const byTime = plan(from, null, "time", { full: true });
-                if (!byTime) return;
-                let farSid = null, farCost = -1;
-                let nearSid = null, nearCost = Infinity;
-                byTime.forEach((cost, sid) => {
+                if (byTime) {
+                    let farCost = -1;
+                    let nearCost = Infinity;
+                    byTime.forEach((cost, sid) => {
+                        if (sid === from) return;
+                        if (cost > farCost) farCost = cost;
+                        if (cost < nearCost) nearCost = cost;
+                    });
+                    if (Number.isFinite(nearCost)) minMinutes = Math.min(minMinutes, nearCost);
+                    if (farCost > maxMinutes) maxMinutes = farCost;
+                }
+                // 票价的最高端落在「里程最远」的那一对上 —— 票价按计费里程分档、随里程单调不减，
+                // 最长的那趟行程即最高票价。取值走 cheapestFare（各优先级横比取小），与票价图同一口径。
+                const byDistance = plan(from, null, "distance", { full: true });
+                let farSid = null;
+                let farKm = -1;
+                byDistance?.forEach((cost, sid) => {
                     if (sid === from) return;
-                    if (cost > farCost) { farCost = cost; farSid = sid; }
-                    if (cost < nearCost) { nearCost = cost; nearSid = sid; }
+                    if (cost > farKm) { farKm = cost; farSid = sid; }
                 });
-                if (nearSid) minMinutes = Math.min(minMinutes, nearCost);
-                if (farSid && farCost > maxMinutes) maxMinutes = farCost;
-                // 票价的两端不能只在"时间最近 / 最远"这一对里找齐 —— 票价按计费里程分档，
-                // 而**时间最远的站未必是里程最远的站**（快线可以又远又快）。故再按「票价最低」
-                // 目标跑一次跑满的搜索，把加权里程最远的那个站也纳进候选。
-                // 少这一项时票价上界会低估，`buildBands` 里的 high 就会被当前这张图的实测最大值
-                // 顶上去 —— 换个起点色标跟着变，也就是"色标不恒定"。
-                const byFare = plan(from, null, "fare", { full: true });
-                let fareFarSid = null;
-                let fareFarCost = -1;
-                byFare?.forEach((cost, sid) => {
-                    if (sid === from) return;
-                    if (cost > fareFarCost) { fareFarCost = cost; fareFarSid = sid; }
-                });
-                [farSid, nearSid, fareFarSid].forEach((sid) => {
-                    if (!sid) return;
-                    // 票价取值与票价图同一口径（都按「票价最低」寻路）
-                    const result = plan(from, sid, "fare");
-                    if (!result || !Number.isFinite(result.fare)) return;
-                    if (result.fare < minFare) minFare = result.fare;
-                    if (result.fare > maxFare) maxFare = result.fare;
-                });
+                if (farSid) {
+                    const fare = cheapestFare(from, farSid);
+                    if (Number.isFinite(fare) && fare > maxFare) maxFare = fare;
+                }
+                // 最低票价就是该站的起步价（同站进出），不必再跑一次寻路
+                const boarding = boardingFare(from);
+                if (Number.isFinite(boarding)) minFare = Math.min(minFare, boarding);
             });
             return {
                 minutes: { min: Number.isFinite(minMinutes) ? minMinutes : 0, max: maxMinutes },
@@ -598,13 +597,46 @@
                 if (seen) { seen.labels.push(objective.label); return; }
                 found.set(signature, { id: key, labels: [objective.label], ...result });
             });
-            return [...found.values()].sort((a, b) => a.minutes - b.minutes);
+            const list = [...found.values()];
+            // 「票价最低」这一枚标签要按**实际结算票价**重判，而不是看"它是不是那个目标找出来的"：
+            // 那个目标的边权只是边际票价的近似（票价按「计费系统内最短里程」分段结算，不可分解为
+            // 边权和），它找出来的那条未必真最便宜 —— 于是标签会落到一条比别的候选更贵的路线上。
+            const fareWinner = list.reduce((pick, item) => (
+                Number.isFinite(item.fare) && (!pick || item.fare < pick.fare) ? item : pick
+            ), null);
+            if (fareWinner) {
+                const label = OBJECTIVES.fare.label;
+                list.forEach((item) => {
+                    item.labels = item.labels.filter((name) => name !== label);
+                });
+                fareWinner.labels.push(label);
+            }
+            return list.sort((a, b) => a.minutes - b.minutes);
+        }
+
+        /**
+         * 两点之间的**最低票价**。
+         *
+         * 不能只看「票价最低」那个目标找出来的路线 —— 理由同 planAll 里那段注释：它的边权是
+         * 边际票价的近似，未必真最便宜。故把各优先级给出的候选都拿来，按**实际结算票价**横比取小。
+         * 代价是每对起讫点 4 次寻路（每个优先级一次）。
+         *
+         * @returns {number|null} 最低票价；城市未配票价、或起讫点不可达时 null
+         */
+        function cheapestFare(from, to) {
+            let best = null;
+            planAll(from, to).forEach((item) => {
+                if (!Number.isFinite(item.fare)) return;
+                if (best === null || item.fare < best) best = item.fare;
+            });
+            return best;
         }
 
         return {
             plan,
             planAll,
             extremes,
+            cheapestFare,
             boardingFare,
             linesAt: (sid) => (boardable.get(sid) || []).map((item) => item.lineId),
             stationsOfLine: (lineId) => (lineById.get(lineId)?.ways || []).flat()

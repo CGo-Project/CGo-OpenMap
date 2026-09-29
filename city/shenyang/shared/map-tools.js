@@ -609,18 +609,19 @@
                 if (!station || station.type === "no") return;
                 if (sid === from) return;                       // 起点已按上面的口径单独入图
                 if (!planner.linesAt(sid).length) return;       // 国铁散点等不参与规划
-                // 票价图要的是**最低票价**，故按内核的「票价最低」目标寻路；等时圈仍按「时间最快」。
-                // （那个目标的边权是边际票价的近似 —— 真实票价按里程分段结算、不可分解为边权和，
-                //   路径选完再由 computeFare 结算，所以这里取的是"最省走法"下的结算价。）
-                const result = planner.plan(from, sid, tool === "fare" ? "fare" : "time");
-                if (!result) return;
+                // 票价图要的是**最低票价**：走 cheapestFare（内核把各优先级的候选都算出来、
+                // 按实际结算票价横比取小）。只看「票价最低」那个目标是不够的 —— 它的边权是
+                // 边际票价的近似（票价按计费里程分段结算、不可分解为边权和），未必真最便宜。
+                // 等时圈仍按「时间最快」。
                 if (tool === "fare") {
-                    if (!Number.isFinite(result.fare)) return;
+                    const fare = planner.cheapestFare?.(from, sid);
+                    if (!Number.isFinite(fare)) return;
                     fareMissing = false;
-                    values.set(sid, result.fare);
-                } else if (Number.isFinite(result.minutes)) {
-                    values.set(sid, result.minutes);
+                    values.set(sid, fare);
+                    return;
                 }
+                const result = planner.plan(from, sid, "time");
+                if (result && Number.isFinite(result.minutes)) values.set(sid, result.minutes);
             });
             await nextFrame();
         }
