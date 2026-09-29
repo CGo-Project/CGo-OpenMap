@@ -437,7 +437,7 @@
          * 早先按几个起点抽样估算，会低估极值（色标就锚不住，换个起点整条色带跟着漂）。
          * 这里改成：每座可上车车站各跑一次**跑满的** Dijkstra，取该起点最近 / 最远的那两站；
          * 全起点取极值 —— 那就落在「任意起终点」的字面口径上。
-         * 票价按计费里程分档、随里程单调不减，故用同一对最近 / 最远行程结算。
+         * 票价按**最省走法**结算（与票价图的取值同一口径），故同样取这对最近 / 最远行程。
          *
          * 代价是每个城市约「3 × 车站数」次寻路（百余座站即几百次，几百毫秒），
          * 由调用方按城市缓存——同一会话里只算这一回。
@@ -461,7 +461,8 @@
                 if (farSid && farCost > maxMinutes) maxMinutes = farCost;
                 [farSid, nearSid].forEach((sid) => {
                     if (!sid) return;
-                    const result = plan(from, sid, "time");
+                    // 票价极值按「票价最低」目标取，与票价图的取值口径保持一致
+                    const result = plan(from, sid, "fare");
                     if (!result || !Number.isFinite(result.fare)) return;
                     if (result.fare < minFare) minFare = result.fare;
                     if (result.fare > maxFare) maxFare = result.fare;

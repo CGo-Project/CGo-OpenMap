@@ -576,7 +576,8 @@
     }
 
     /**
-     * 逐站取值：以起点为源、按「时间最快」寻路，票价取结算价、用时取总分钟数。
+     * 逐站取值：以起点为源寻路 —— 用时按「时间最快」，票价按「**票价最低**」
+     * （票价图要画的就是最低票价），各自取结算结果。
      * 不可达（返回 null）与未开通车站跳过 —— 它们在图上是空洞，而不是某个错误的档位。
      * @returns {Promise<Map<string, number>|null>} null 表示该城市拿不到这类取值（如未配票价）
      */
@@ -608,7 +609,10 @@
                 if (!station || station.type === "no") return;
                 if (sid === from) return;                       // 起点已按上面的口径单独入图
                 if (!planner.linesAt(sid).length) return;       // 国铁散点等不参与规划
-                const result = planner.plan(from, sid, "time");
+                // 票价图要的是**最低票价**，故按内核的「票价最低」目标寻路；等时圈仍按「时间最快」。
+                // （那个目标的边权是边际票价的近似 —— 真实票价按里程分段结算、不可分解为边权和，
+                //   路径选完再由 computeFare 结算，所以这里取的是"最省走法"下的结算价。）
+                const result = planner.plan(from, sid, tool === "fare" ? "fare" : "time");
                 if (!result) return;
                 if (tool === "fare") {
                     if (!Number.isFinite(result.fare)) return;
