@@ -595,6 +595,20 @@
     pointer-events: auto;
 }
 
+/* 但这两类站**选不了**：未开通（type no）与国铁散点（type rdot）——规划内核不收它们
+   （route-data 建图时把 isPointOnly 的线路整个排除），选中了也只会得到一句"不参与规划"。
+   故在选站态里把它们的指针事件与手型一并撤掉，免得看着像能点。
+   数值图元不用管：有值的站必然参与规划（值就是规划器算出来的） */
+#map-content.cgo-mt-picking .station.no,
+#map-content.cgo-mt-picking .station.rdot,
+#map-content.cgo-mt-picking .label-group.type-no,
+#map-content.cgo-mt-picking .label-group.type-rdot,
+#map-content.cgo-mt-picking .label-group.type-no *,
+#map-content.cgo-mt-picking .label-group.type-rdot * {
+    cursor: default;
+    pointer-events: none;
+}
+
 /* ── 选站提示条：浮在地图上方的胶囊（样式同行程规划的选点提示）─── */
 .cgo-mt-pick-tip {
     position: fixed;

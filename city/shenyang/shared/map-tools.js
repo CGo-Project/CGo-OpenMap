@@ -238,6 +238,15 @@
     };
     /** 未开通 / 规划中的车站：规划器不接受它，小工具也算不出结果，故不给入口 */
     const isPlanned = (sid) => stations()[sid]?.type === "no";
+    /**
+     * 选站时能选的车站：未开通（no）与国铁散点（rdot）都不参与规划，选不了。
+     * 与 map-tools.css 里撤掉指针事件的那两类同一个口径 —— 那边管真实指针，
+     * 这里给事件被直接派发时兜底。
+     */
+    const isPickable = (sid) => {
+        const type = stations()[sid]?.type;
+        return Boolean(type) && type !== "no" && type !== "rdot";
+    };
 
     /* ======================================================================
      * 样式注入：按脚本自身 URL 找同名 css，调用方无需手工引用
@@ -445,6 +454,10 @@
         event.preventDefault();
         event.stopPropagation();
         const sid = node.dataset.sid;
+        // 选不了的站（未开通、国铁散点）当没点到：不撤选站态、也不去报"不参与规划"。
+        // 真实指针路径上 CSS 已经把这两类的 pointer-events 撤了、事件会穿透过去；
+        // 这里兜的是"事件被别处直接派发"或将来类名变动的情形 —— 那种时候不该把选站态弄丢
+        if (!isPickable(sid)) return;
         if (tool === "meet") {
             if (state.picks.includes(sid)) { showPickTip(); return; }   // 两个点必须是不同的站
             state.picks.push(sid);
@@ -1787,8 +1800,14 @@
         });
     }
 
-    /** 面板上的小工具入口按钮：与面板自带的「分享」按钮同款（同一处、同样式） */
-    function shareLikeButton(preset) {
+    /**
+     * 面板上的小工具入口按钮：与面板自带的「分享」按钮同款（同一处、同样式）。
+     *
+     * 参数给的是**宿主面板的 id**，不是当时算好的预设车站 —— 预设必须在点下的那一刻现取：
+     * 面板内容常被核心就地重写（换个车站、重新规划），而按钮是复用的、不会跟着重建，
+     * 注入时捕获进闭包的那份就会一直拿着旧站不放 —— "偶发没跟上当前车站"就是这么来的。
+     */
+    function shareLikeButton(hostId) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = `panel-share-btn ${TOOL_BTN_CLASS}`;
@@ -1798,6 +1817,9 @@
             // 拦下这次点击，别让面板把事件当成"点了别处"而收起
             event.preventDefault();
             event.stopPropagation();
+            const preset = hostId === INFO_PANEL_ID
+                ? activeStationId()
+                : [lastRoute.from, lastRoute.to];
             // 窄屏上本模块浮层与其它浮层互斥，故先把宿主面板收起来让位；
             // 桌面端共存，保持面板开着（用户要求侧边栏模式下也能看到色标与「更改车站」）
             if (window.innerWidth <= MOBILE_MAX) closeHostPanel();
@@ -1866,7 +1888,8 @@
                 return;
             }
             if (exists) return;
-            share.insertAdjacentElement("afterend", shareLikeButton(preset));
+            // 传给按钮的是面板 id 而非算好的站：预设由按钮在点下的那一刻现取（见 shareLikeButton）
+            share.insertAdjacentElement("afterend", shareLikeButton(id));
         });
     }
 
