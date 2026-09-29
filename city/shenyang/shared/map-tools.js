@@ -1058,9 +1058,8 @@
                                     const dy = point.y - y;
                                     const d2 = dx * dx + dy * dy;
                                     if (d2 < nearestD2) { nearestD2 = d2; nearestIdx = idx; }
-                                    const t = 1 - d2 / radius2;
-                                    if (t <= 0) continue;             // 支撑域外：权重 0，也就是"不存在"
-                                    const w = (t * t) / (d2 * d2 + 1e-6);
+                                    const w = idwWeight(d2, radius2);   // 支撑域外为 0，即"不存在"
+                                    if (!w) continue;
                                     num += w * point.v;
                                     den += w;
                                 }
@@ -1251,7 +1250,10 @@
 
         return {
             tool, lowW, lowH, cell: FIELD_CELL, offsetX, offsetY,
-            values: smooth, bands, isolines
+            values: smooth, bands, isolines,
+            // 现场插值（汇合图的悬停读数）要按与建图同一口径的支撑域来，故把两轮半径一并带出去
+            radius: grid.cell,
+            sparseRadius: grid.cell * SPARSE_RING
         };
     }
 
@@ -1524,6 +1526,55 @@
 
     let hoverPending = null;
 
+    /**
+     * 反距离加权在支撑域内的窗口权重：`t = 1 − d²/R²`，权重取 `t² / d⁴`
+     * （Shepard 的 1/d⁴ 再乘一道在半径处归零的窗口）。返回 0 即"支撑域外、不参与"。
+     * 建图的值场与汇合图悬停的现场插值都用这一份 —— 两处口径必须一致，否则读数与色块会对不上。
+     */
+    function idwWeight(d2, radius2) {
+        const t = 1 - d2 / radius2;
+        return t <= 0 ? 0 : (t * t) / (d2 * d2 + 1e-6);
+    }
+
+    /**
+     * 汇合图悬停读数用：在给定画布坐标处现场插一次"到 A / 到 B 各多久"。
+     *
+     * 不只是省事 —— 到 A、到 B 的用时是**站点属性**，插值才有"场内大致数值"；
+     * 而悬停是逐次单点查询，现场算一遍即可，不必为它单独建一整张场。
+     * 支撑域照搬建图的两轮（先一个格子边长，稀疏角落再放宽到两个格子边长），
+     * 两轮都取不到站点时退回最近那一站的值，与建图的处理一致。
+     *
+     * @param {Array<{x:number,y:number,a:number,b:number}>} points
+     * @returns {{a:number,b:number}|null}
+     */
+    function sampleMeetPair(points, x, y, denseRadius, sparseRadius) {
+        for (const radius of [denseRadius, sparseRadius]) {
+            const radius2 = radius * radius;
+            let numA = 0;
+            let numB = 0;
+            let den = 0;
+            points.forEach((point) => {
+                const dx = point.x - x;
+                const dy = point.y - y;
+                const w = idwWeight(dx * dx + dy * dy, radius2);
+                if (!w) return;
+                numA += w * point.a;
+                numB += w * point.b;
+                den += w;
+            });
+            if (den > 0) return { a: numA / den, b: numB / den };
+        }
+        let nearest = null;
+        let nearestD2 = Infinity;
+        points.forEach((point) => {
+            const dx = point.x - x;
+            const dy = point.y - y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < nearestD2) { nearestD2 = d2; nearest = point; }
+        });
+        return nearest ? { a: nearest.a, b: nearest.b } : null;
+    }
+
     function onHoverMove(event) {
         const field = state.field;
         const tip = hoverTip();
@@ -1555,8 +1606,19 @@
             number = String(field.bands.amounts[band]);
             unit = "元";
         } else if (tool === "meet") {
-            number = String(Math.round(Math.abs(value)));
-            unit = `分钟 · ${value < 0 ? "离 A 更近" : "离 B 更近"}`;
+            // 读数给两人的**各自用时** —— 差值本身是插出来的连续场，而"到 A 多久、到 B 多久"
+            // 是站点属性；故在指针处现场插一次（权重与建图同一套），读数随位置连续变化
+            const pair = field.meetPoints
+                ? sampleMeetPair(field.meetPoints, mapX, mapY, field.radius, field.sparseRadius)
+                : null;
+            if (pair) {
+                number = `A ${Math.round(pair.a)} · B ${Math.round(pair.b)}`;
+                unit = "分钟";
+            } else {
+                // 兜底：没拿到那一对的用时（数据缺失等），退回原来的差值读法
+                number = String(Math.round(Math.abs(value)));
+                unit = `分钟 · ${value < 0 ? "离 A 更近" : "离 B 更近"}`;
+            }
         } else {
             number = String(Math.round(value));
             unit = "分钟";
@@ -1750,6 +1812,17 @@
             const field = await drawMap(tool, values, bands, alive);
             if (!field) return;
             if (!alive()) return;
+            // 汇合图的悬停读数要"到 A / 到 B 各多久" —— 那是站点属性，插值才有场内的大致数值。
+            // 这里把站点连同两人的用时铺成数组，悬停时按与建图同一套权重现场插一次即可，
+            // 不必为它单独建一整张场（悬停本来就是逐次单点查询）。
+            if (meet) {
+                field.meetPoints = [];
+                meet.minutes.forEach((pair, sid) => {
+                    const station = stations()[sid];
+                    if (!station || !Number.isFinite(station.x) || !Number.isFinite(station.y)) return;
+                    field.meetPoints.push({ x: station.x, y: station.y, a: pair.a, b: pair.b });
+                });
+            }
             state.field = field;
             const picks = meet ? meetPicks(meet) : [];
             renderOverlay(targets, values, bands, field.isolines, picks);
