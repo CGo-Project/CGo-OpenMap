@@ -71,7 +71,7 @@
         searchCity: "长春",
         center: { x: 1150, y: 950 },
         defaultScale: 0.7,
-        mapSize: { width: 2300, height: 2060 },
+        mapSize: { width: 2300, height: 2100 },
         officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
         LINE_META: {},
         LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM05", "CCM06", "CCM07", "CCM08"],
@@ -251,7 +251,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260930.2200";
+        const version = "260930.3200";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);

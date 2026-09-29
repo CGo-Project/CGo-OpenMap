@@ -50,6 +50,10 @@
     border: 1px solid var(--text-main);
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    /* 叠加层整体不吃指针事件（地图照常拖动缩放），但每一枚图元要能点：
+       点它等同于点它顶掉的那座车站图元 */
+    pointer-events: auto;
+    cursor: pointer;
 }
 
 .cgo-mt-badge span {
@@ -96,7 +100,23 @@
     color: #3a2a00;
 }
 
-/* 等值线上的等级数值：直接标在白线上，不要底色块，靠白字加一圈深描边在任何底色上都读得出；
+/* 汇合图：图元的底色与边框都保持默认（地图底色 + 文本色），只用**文字颜色**说明偏向，
+   与色标两端一一对应 —— 负值（离 A 更近）取左端粉红，正值取右端蓝，汇合带上的取黄。
+   底色留给「推荐汇合站」的黄底标记，两者不再抢同一块观感 */
+.cgo-mt-badge.is-near-a {
+    color: #c2477a;
+}
+
+.cgo-mt-badge.is-near-b {
+    color: #3b5bc0;
+}
+
+.cgo-mt-badge.is-zero {
+    color: #b8860b;
+}
+
+/* 等值线上的等级数值：与它所在的那条线用同一套配色 —— 文本色填充 + 背景色描边，
+   数字因此读起来是"从色块上凿出来的一段"，与线本身连成一体。
    transform（居中 + 沿线倾斜）由脚本按该处等值线走向内联给出 */
 .cgo-mt-isoline {
     position: absolute;
@@ -104,12 +124,10 @@
     font-size: 10px;
     font-weight: 700;
     line-height: 1.4;
-    color: #fff;
+    color: var(--text-main);
     white-space: nowrap;
-    text-shadow:
-        0 0 2px rgba(0, 0, 0, 0.9),
-        0 0 3px rgba(0, 0, 0, 0.75),
-        0 0 5px rgba(0, 0, 0, 0.5);
+    -webkit-text-stroke: 2.5px var(--map-bg);
+    paint-order: stroke fill;
 }
 
 /* 有数值的车站：原图元让位给上面的数值大圆（类由脚本逐站挂上）。
@@ -356,8 +374,21 @@
     position: relative;
 }
 
-/* 等级白线只在图上真正画线的地方出现（由脚本按 edgeEvery 挂类）。
-   汇合图有三种线型：白实线、白虚线，以及差值 0 那条黄实线 —— 与图上一一对应 */
+/* 等级线示意：与图上同一套画法 —— 粗的背景色描边垫在下面、细的文本色线叠在上面。
+   位置取色块的左缘（图上的线是以组界为中心向两侧各铺半宽的，示意到这个粒度足够）。
+   汇合图有三种线型：文本色实线、文本色虚线，以及差值 0 那条黄实线 */
+.cgo-mt-band .cgo-mt-cut::before,
+.cgo-mt-band .cgo-mt-cutdash::before,
+.cgo-mt-band .cgo-mt-cutzero::before {
+    content: "";
+    position: absolute;
+    left: -2px;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: var(--map-bg);
+}
+
 .cgo-mt-band .cgo-mt-cut::after,
 .cgo-mt-band .cgo-mt-cutdash::after,
 .cgo-mt-band .cgo-mt-cutzero::after {
@@ -370,14 +401,15 @@
 }
 
 .cgo-mt-band .cgo-mt-cut::after {
-    background: rgba(255, 255, 255, 0.85);
+    background: var(--text-main);
 }
 
 .cgo-mt-band .cgo-mt-cutdash::after {
     background: repeating-linear-gradient(to bottom,
-        rgba(255, 255, 255, 0.85) 0 3px, transparent 3px 5px);
+        var(--text-main) 0 3px, transparent 3px 5px);
 }
 
+/* 0 那条分界线仍是黄色（图上也是它） */
 .cgo-mt-band .cgo-mt-cutzero::after {
     width: 2px;
     background: #f2d24b;
@@ -411,12 +443,33 @@
     opacity: 0.75;
 }
 
-/* 汇合图：色带两端与中间的说明（A 更近 / 汇合带 / B 更近） */
+/* 汇合图：色带两端与中间的说明（A 更近 / 汇合带 / B 更近）。
+   三块都绝对定位，中间那块钉死在 50% —— 汇合图量程 ±MEET_CAP 对称，0 就在色标正中，
+   正是那条黄线的位置。用 flex 均分的话，中间那块会随两端文字长短漂移，与黄线错开 */
 .cgo-mt-ends {
-    display: flex;
-    justify-content: space-between;
+    position: relative;
+    height: 15px;
     font-size: 11px;
     opacity: 0.75;
+}
+
+.cgo-mt-ends span {
+    position: absolute;
+    top: 0;
+    white-space: nowrap;
+}
+
+.cgo-mt-ends span:first-child {
+    left: 0;
+}
+
+.cgo-mt-ends span:last-child {
+    right: 0;
+}
+
+.cgo-mt-ends .cgo-mt-ends-mid {
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 /* 汇合图的推荐汇合站列表 */
@@ -529,13 +582,15 @@
     background: var(--border-color);
 }
 
-/* ── 地图选站态：指针光标提示可点选车站 ─────────────────────────── */
-/* 站名标签通常不接收指针事件，选点期间一并打开，使标签也进入点击热区 */
-#map-content.cgo-mt-picking,
+/* ── 选站期间的可点热区 ─────────────────────────────────────────────
+   只有真正能点的三样东西：站点图元、站名标签、以及顶掉图元的数值图元。
+   早先把 `#map-content` 自身与整块 `#labels-layer`（两者都 100% 铺满画布）也算进来，
+   cursor: pointer 又会被子元素继承，于是画布空白处一律是手型、看着处处可点；
+   现在把它们剔出去，热区之外保持默认光标 */
 #map-content.cgo-mt-picking .station,
-#map-content.cgo-mt-picking #labels-layer,
 #map-content.cgo-mt-picking .label-group,
-#map-content.cgo-mt-picking .label-group * {
+#map-content.cgo-mt-picking .label-group *,
+#map-content.cgo-mt-picking .cgo-mt-badge {
     cursor: pointer;
     pointer-events: auto;
 }

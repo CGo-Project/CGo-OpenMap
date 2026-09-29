@@ -238,14 +238,23 @@
         };
 
         /**
-         * 规划一条路径
-         * @returns {object|null} 不可达或起讫点未开通时返回 null
+         * 规划一条路径。
+         *
+         * `options.full` 为真时**跑满**：不按终点截断，一直搜到堆空，返回
+         * `Map<车站 ID, 该目标下的最优代价>`。`extremes` 靠它一次拿到"某起点到全网"的代价 ——
+         * 单目标寻路要凑出全网极值得 N² 次（百余座站就是上万次），色标一算就要好几秒。
+         * 状态定义、松弛规则、换乘与步行边的处理仍只有这一份，跑满只是不提前停。
+         *
+         * @returns {object|Map|null} 不可达或起讫点未开通时返回 null
          */
-        function plan(from, to, objectiveKey = "time") {
+        function plan(from, to, objectiveKey = "time", options) {
             const objective = OBJECTIVES[objectiveKey] || OBJECTIVES.time;
-            if (!from || !to) return null;
-            if (!canBoardAt(from) || !canBoardAt(to)) return null;
-            if (from === to) return { minutes: 0, stops: 0, transfers: 0, distance: 0, fare: 0, steps: [] };
+            const full = options?.full === true;
+            if (!from) return null;
+            if (!canBoardAt(from)) return null;
+            if (!full && !to) return null;
+            if (to && !canBoardAt(to)) return null;
+            if (to && from === to) return { minutes: 0, stops: 0, transfers: 0, distance: 0, fare: 0, steps: [] };
 
             const dist = new Map();
             const prev = new Map();
@@ -287,7 +296,7 @@
                 if (cost > (dist.get(key) ?? INF)) continue;
                 const [sid, lineId, wiRaw, dirRaw] = key.split("|");
                 const wi = Number(wiRaw), dir = Number(dirRaw);
-                if (sid === to) { goalKey = key; break; }
+                if (to && sid === to) { goalKey = key; break; }
 
                 const line = lineById.get(lineId);
                 // ① 乘车：前进一站（idx 由站序反查，故状态键无需携带下标）
@@ -327,11 +336,23 @@
                 // ③ 出站步行换乘；步行落地即终点站时属于出站到达，不计换乘
                 (walkMap[sid] || []).forEach((link) => {
                     const minutes = Number(link.minutes) || 0;
-                    const toGoal = String(link.to) === String(to);
+                    const toGoal = Boolean(to) && String(link.to) === String(to);
                     const weight = toGoal ? objective.walk(minutes) : objective.boardingWalk(minutes);
                     board(link.to, cost + weight, key,
                         { t: "walk", a: sid, b: link.to, minutes, free: link.free !== false });
                 });
+            }
+
+            // 跑满模式：把状态代价按车站聚合取最优，交调用方去取极值
+            if (full) {
+                const best = new Map();
+                dist.forEach((cost, key) => {
+                    const sid = key.slice(0, key.indexOf("|"));
+                    if (!canBoardAt(sid)) return;      // 不可上车的站不能当终点
+                    const known = best.get(sid);
+                    if (known === undefined || cost < known) best.set(sid, cost);
+                });
+                return best;
             }
 
             if (!goalKey) return null;
@@ -406,6 +427,49 @@
                 minutes, stops, transfers, distance,
                 fare: computeFare(steps),
                 steps
+            };
+        }
+
+        /**
+         * 全网极值：给色标锚定参照 —— 等时圈的红端代表**任意起终点**里最长的用时、
+         * 蓝端代表最短的；票价图的粉端代表最高的票价、黄端代表最低的。
+         *
+         * 早先按几个起点抽样估算，会低估极值（色标就锚不住，换个起点整条色带跟着漂）。
+         * 这里改成：每座可上车车站各跑一次**跑满的** Dijkstra，取该起点最近 / 最远的那两站；
+         * 全起点取极值 —— 那就落在「任意起终点」的字面口径上。
+         * 票价按计费里程分档、随里程单调不减，故用同一对最近 / 最远行程结算。
+         *
+         * 代价是每个城市约「3 × 车站数」次寻路（百余座站即几百次，几百毫秒），
+         * 由调用方按城市缓存——同一会话里只算这一回。
+         */
+        function extremes() {
+            let minMinutes = Infinity;
+            let maxMinutes = 0;
+            let minFare = Infinity;
+            let maxFare = 0;
+            boardable.forEach((_, from) => {
+                const best = plan(from, null, "time", { full: true });
+                if (!best) return;
+                let farSid = null, farCost = -1;
+                let nearSid = null, nearCost = Infinity;
+                best.forEach((cost, sid) => {
+                    if (sid === from) return;
+                    if (cost > farCost) { farCost = cost; farSid = sid; }
+                    if (cost < nearCost) { nearCost = cost; nearSid = sid; }
+                });
+                if (nearSid) minMinutes = Math.min(minMinutes, nearCost);
+                if (farSid && farCost > maxMinutes) maxMinutes = farCost;
+                [farSid, nearSid].forEach((sid) => {
+                    if (!sid) return;
+                    const result = plan(from, sid, "time");
+                    if (!result || !Number.isFinite(result.fare)) return;
+                    if (result.fare < minFare) minFare = result.fare;
+                    if (result.fare > maxFare) maxFare = result.fare;
+                });
+            });
+            return {
+                minutes: { min: Number.isFinite(minMinutes) ? minMinutes : 0, max: maxMinutes },
+                fare: { min: Number.isFinite(minFare) ? minFare : 0, max: maxFare }
             };
         }
 
@@ -507,6 +571,7 @@
         return {
             plan,
             planAll,
+            extremes,
             linesAt: (sid) => (boardable.get(sid) || []).map((item) => item.lineId),
             stationsOfLine: (lineId) => (lineById.get(lineId)?.ways || []).flat()
         };

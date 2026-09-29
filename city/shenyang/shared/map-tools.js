@@ -25,8 +25,8 @@
  *      站点的距离；
  *   ② 平滑：值场再过几遍 3×3 盒式，压掉站点附近被 IDW 顶起来的平台与台阶；
  *   ③ 输出：1:1 画布上双线性上采样 + 分档上色，并按**距离蒙版**让离车站很远处淡出
- *      （半透明 FILL_ALPHA 让底图透出）；跨等级处描白线（EDGE_ALPHA）、沿线上撒等级
- *      数值标签，标签会避让站点 / 站名 / 线路。
+ *      （半透明 FILL_ALPHA 让底图透出）；跨等级处画「粗背景色描边 + 细文本色内芯」的
+ *      双色线，沿线上撒等级数值标签（文本色填充 + 背景色描边），标签会避让站点 / 站名 / 线路。
  *
  * 覆盖范围比画布大 COVER_SCALE 倍（以画布中心对齐向外扩），缩小时视口不会露出没上色的
  * 空白；画布之外没有站点，靠 IDW 外推的值自然把色带延展出去。
@@ -61,6 +61,7 @@
     /** 画布遮挡声明（由 viewport-inset 读取）：本模块浮层贴右下角，右侧与底部都要留白 */
     const INSET_ATTR = "data-cgo-inset";
     const INFO_PANEL_ID = "info-panel";
+    const PLAN_PANEL_ID = "cgo-route-card";
     const RESULT_PANEL_ID = "cgo-route-result";
     /** 面板按钮的标识类（幂等注入靠它） */
     const TOOL_BTN_CLASS = "cgo-mt-inline-btn";
@@ -74,6 +75,12 @@
      * 线上会挤满数字 —— 故线与标签都按 15 分钟一组来画，与图例刻度同一节拍。
      */
     const EDGE_EVERY = Math.round(15 / ISO_STEP);
+    /**
+     * 等时圈色带「组内明暗」的幅度：两条等级线之间那几格色系相同，靠明暗拉开层次。
+     * 以组中那格为基准，首格向白提亮、末格向黑压暗，各偏这么多 ——
+     * 幅度太小就看不出"每组还有三档"，太大又会让整条色阶的走向被明暗盖掉。
+     */
+    const ISO_SHADE = 0.18;
     /**
      * 值场采样倍率：IDW 在低分辨率上求值（每 FIELD_CELL 像素一个采样点），
      * 之后再双线性上采样到 1:1 的输出画布。
@@ -97,23 +104,26 @@
     const BUILD_TIMEOUT = 15000;
     /** 渲染分片：每算这么多行让出一帧，长耗时也不把界面卡死 */
     const SLICE_ROWS = 64;
-    /** 分层设色的填充与分割线不透明度 */
-    const FILL_ALPHA = 110;
+    /** 分层设色的填充与分割线不透明度：色块要透（底图与线网得看得见），线要实 */
+    const FILL_ALPHA = 55;
     const EDGE_ALPHA = 205;
     /**
-     * 等级分割线的半宽（像素）：距边界不超过这个距离的像素都描白，
-     * 故线宽 ≈ 1 + 2 × EDGE_SPAN。取 2 即约 5px —— 线太细在缩放后看不见。
+     * 等级分割线的两段半宽（像素）：外圈是**粗的背景色描边**（把色块挖开一条缝），
+     * 内芯是**细的文本色线**（缝里勾出来的那一条）——线、线上的数值、色标示意三处
+     * 共用同一套配色。线宽 ≈ 1 + 2 × 半宽：外圈约 7px、内芯约 3px，太细缩放后看不见。
      */
-    const EDGE_SPAN = 2;
+    const EDGE_SPAN_OUTER = 3;
+    const EDGE_SPAN_CORE = 1;
     /** 等值线数值标签的最小间距（画布坐标 px），同一条线上按此间距撒点 */
-    const LABEL_GAP = 400;
+    const LABEL_GAP = 260;
     /**
      * 距离蒙版：离最近车站越远，色块越淡。
-     * 以「平均站距」为单位 —— 刚出一个站距就开始淡，但淡化过程拉得长（一直淡到 3.5 倍），
-     * 边缘因此是柔和收掉的，而线网边缘那些细长的等值线尖角（"触角"）也一并被糊掉。
+     * 以「平均站距」为单位 —— 出站半个站距就开始淡，淡到 1.6 倍即完全收干。
+     * 两道阈值都贴着线网收：色块只在线网周边铺一小圈，郊区稀疏站点那几根细长的
+     * 等值线尖角（"触角"）在显出来之前就已经淡没了。
      */
-    const FADE_START_FACTOR = 0.7;
-    const FADE_END_FACTOR = 3.5;
+    const FADE_START_FACTOR = 0.4;
+    const FADE_END_FACTOR = 1.6;
     /**
      * 两站汇合：差值色标的档宽、量程（分钟）与推荐条数。
      * 量程之内按档上色（0 附近是"汇合带"），超出量程按外带渐隐 —— 上游的汇合图就是这个口径。
@@ -123,9 +133,11 @@
     const MEET_CAP = 30;
     const MEET_FADE = 20;
     const MEET_PICKS = 3;
-    /** 估算固定色标参照范围时抽取的起点个数，以及每个起点最多扫多少座到达站 */
-    const RANGE_SAMPLES = 4;
-    const RANGE_TARGETS = 48;
+    /**
+     * 紧贴汇合带的那两档（±MEET_STEP 分钟）的填充透明度倍数。
+     * 它们就是"两人差不多同时到"的区域，画实一些，一眼能看出汇合点落在哪一带。
+     */
+    const MEET_BAND_BOOST = 1.7;
     /** 标签避让：与站点、站名标签、线路走向的最小间距（画布坐标 px） */
     const CLEAR_STATION = 16;
     const CLEAR_LABEL = 4;
@@ -205,10 +217,27 @@
     const esc = (text) => String(text).replace(/[&<>"']/g, (ch) => (
         { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
     ));
-    /** 核心把当前选中的车站标成 .active，据此知道车站详情面板说的是哪一站 */
-    const activeStationId = () => document.querySelector("#stations-layer .station.active")?.dataset.sid
-        || document.querySelector("#labels-layer .label-group.active")?.dataset.sid
-        || null;
+    /** 最近一次在地图上点击的车站（站点图元、站名标签、数值图元都算） */
+    let lastTappedStationId = null;
+
+    /**
+     * 车站详情面板说的是哪一站。
+     *
+     * 核心把选中的车站标成 `.active`，但**带这个类的不止一站**：虚拟换乘会一次点亮好几座；
+     * 地形图展示期间，工具起点还会被 markOrigin 强制保着 `.active`（选中态不许消失是用户
+     * 明确要求的）。光取"第一个 .active"就会取错 —— 于是点了未开通车站的详情，入口按钮却
+     * 按另一座站判断、照旧挂在那里。故以**最近一次被点击的那一站**为准（它仍带选中态时），
+     * 此路不通再回落到原来的取法。
+     */
+    const activeStationId = () => {
+        const tapped = lastTappedStationId;
+        if (tapped && document.getElementById(`node_${tapped}`)?.classList.contains("active")) return tapped;
+        return document.querySelector("#stations-layer .station.active")?.dataset.sid
+            || document.querySelector("#labels-layer .label-group.active")?.dataset.sid
+            || null;
+    };
+    /** 未开通 / 规划中的车站：规划器不接受它，小工具也算不出结果，故不给入口 */
+    const isPlanned = (sid) => stations()[sid]?.type === "no";
 
     /* ======================================================================
      * 样式注入：按脚本自身 URL 找同名 css，调用方无需手工引用
@@ -230,6 +259,20 @@
      * ==================================================================== */
 
     /**
+     * 面板自身的尺寸也在变：从"正在计算…"换成结果小窗、图例随档位变长，高度都会跳一截。
+     * 这类变化只改内容、不动 class / style，viewport-inset 那边盯的是 class 与 style，
+     * 察觉不到，画布的避让量就会停在按旧高度算出来的值上。故在这里按元素补一个尺寸观察，
+     * 一变就请它重算一次。（用 WeakSet 按元素判重：面板元素被重建时 id 不变，按 id 判会漏）
+     */
+    const sizedPanels = new WeakSet();
+
+    function watchPanelSize(el) {
+        if (!el || sizedPanels.has(el) || typeof ResizeObserver !== "function") return;
+        sizedPanels.add(el);
+        new ResizeObserver(() => window.CGoViewportInset?.refresh?.()).observe(el);
+    }
+
+    /**
      * 面板外壳：工具列表与结果小窗共用同一套外观、位置与标题栏。
      * 关窗动作由调用方给（结果小窗要连画布与叠加层一并清理，不能只藏起面板）。
      */
@@ -242,6 +285,7 @@
             // 本模块的浮层都贴右下角：向引擎声明右下留白，别让地图内容压在它下面
             el.setAttribute(INSET_ATTR, "right bottom");
             document.body.appendChild(el);
+            watchPanelSize(el);
         }
         el.innerHTML = `
             <div class="cgo-mt-head">
@@ -429,40 +473,22 @@
     const rangeCache = new Map();
 
     /**
-     * 估算该城该工具的**全局**取值范围，作为固定色标的锚点：
-     * 等时圈的红色永远代表"全网最长用时"，票价图的粉色永远代表"全网最高票价"，
-     * 与当前选的起点无关。
+     * 该城该工具的**全局取值范围**，作为固定色标的锚点：
+     * 等时圈的红色永远代表"**任意起终点**里最长的用时"、蓝色代表最短的，
+     * 票价图的粉色永远代表"最高的票价"、黄色代表最低的，与当前选的起点无关。
      *
-     * 精确的「线网最长用时」要跑全站对最短路（N² 次，百来座站的规模也得上万次，不划算），
-     * 故均匀抽 RANGE_SAMPLES 个起点、每个起点再均匀抽 RANGE_TARGETS 座到达站来取极值：
-     * 会略微低估，但足以让色标稳定，代价从「每城上万次寻路」降到几百次。
-     * 结果按城市缓存，同一会话里换多少个起点都只算这一回。
+     * 极值由内核的 `planner.extremes()` 给出 —— 它对每座可上车车站各跑一次**跑满的**
+     * Dijkstra，因此是全网的字面口径；早先"抽几个起点"的估算会低估极值，色标就锚不住，
+     * 换个起点整条色带跟着漂。代价是每城几百次寻路，故按城市 + 工具缓存，同一会话只算这一回。
      */
-    async function referenceRange(tool, planner) {
+    function referenceRange(tool, planner) {
         const key = `${activeCityId()}|${tool}`;
         if (rangeCache.has(key)) return rangeCache.get(key);
-        const ids = Object.keys(stations()).filter((sid) => {
-            const station = stations()[sid];
-            return station && station.type !== "no" && planner.linesAt(sid).length;
-        });
-        let min = Infinity;
-        let max = -Infinity;
-        const step = Math.max(1, Math.floor(ids.length / RANGE_SAMPLES));
-        const innerStep = Math.max(1, Math.floor(ids.length / RANGE_TARGETS));
-        for (let s = 0; s < ids.length; s += step) {
-            const from = ids[s];
-            for (let i = 0; i < ids.length; i += innerStep) {
-                if (ids[i] === from) continue;
-                const result = planner.plan(from, ids[i], "time");
-                if (!result) continue;
-                const value = tool === "fare" ? result.fare : result.minutes;
-                if (!Number.isFinite(value)) continue;
-                if (value < min) min = value;
-                if (value > max) max = value;
-            }
-            await nextFrame();
-        }
-        const range = Number.isFinite(min) && Number.isFinite(max) && max > min ? { min, max } : null;
+        const ext = typeof planner.extremes === "function" ? planner.extremes() : null;
+        const span = ext ? (tool === "fare" ? ext.fare : ext.minutes) : null;
+        const range = span && Number.isFinite(span.max) && span.max > span.min
+            ? { min: span.min, max: span.max }
+            : null;
         rangeCache.set(key, range);
         return range;
     }
@@ -568,6 +594,32 @@
     }
 
     /**
+     * 两条路径是否共乘了同一段路（同一条线路的同一区间，方向不计）。
+     * 判据是「相邻站对」集合求交：只要有一段区间两人都坐过，就说明他们本可以在该区间的
+     * 某一端就碰头 —— 把再往后的那一站当汇合点，等于让两人先各自跑到同一段上再并作一路，
+     * 白绕一趟，不该推荐。
+     */
+    function shareRideSegment(planA, planB) {
+        const edges = (plan) => {
+            const set = new Set();
+            (plan.steps || []).forEach((step) => {
+                if (step.t !== "ride" || !Array.isArray(step.stops)) return;
+                for (let i = 1; i < step.stops.length; i++) {
+                    const x = step.stops[i - 1];
+                    const y = step.stops[i];
+                    set.add(`${step.line}|${x < y ? `${x}>${y}` : `${y}>${x}`}`);
+                }
+            });
+            return set;
+        };
+        const first = edges(planA);
+        const second = edges(planB);
+        if (!first.size || !second.size) return false;
+        for (const key of first) if (second.has(key)) return true;
+        return false;
+    }
+
+    /**
      * 两站汇合：对每座车站分别算「到 A 的用时」与「到 B 的用时」，
      * 取**有符号差值** d = tA − tB 作为着色值（负 = 离 A 更近、正 = 离 B 更近），
      * 同时留下两人的用时，供推荐列表按"用时差最小、较慢者更快"排序。
@@ -586,6 +638,7 @@
                 const b = planner.plan(fromB, sid, "time");
                 if (!a || !b) return;
                 if (!Number.isFinite(a.minutes) || !Number.isFinite(b.minutes)) return;
+                if (shareRideSegment(a, b)) return;                     // 需共乘一段的站不进候选
                 values.set(sid, a.minutes - b.minutes);
                 minutes.set(sid, { a: a.minutes, b: b.minutes });
             });
@@ -596,13 +649,15 @@
     }
 
     /**
-     * 汇合推荐：按**总用时**从短到长排 —— 推荐的是"两人都省时间"的那几站；
-     * 总用时相同的，优先用时差更小的（更公平的汇合点）
+     * 汇合推荐：按「较慢一方的用时 + 两人的用时差」由小到大排。
+     * 前者是这趟汇合的**总代价**（两人都得等慢的那个），后者是**公平性**；
+     * 两者相加，正好是"既要快、又要两人差不多同时到"的折中。
      */
     function meetPicks(meet) {
         return [...meet.minutes.entries()]
             .map(([sid, m]) => ({ sid, ...m, diff: Math.abs(m.a - m.b) }))
-            .sort((x, y) => (x.a + x.b) - (y.a + y.b) || x.diff - y.diff)
+            .sort((x, y) => (Math.max(x.a, x.b) + x.diff) - (Math.max(y.a, y.b) + y.diff)
+                || x.diff - y.diff)
             .slice(0, MEET_PICKS);
     }
 
@@ -615,6 +670,44 @@
         parseInt(hex.slice(3, 5), 16),
         parseInt(hex.slice(5, 7), 16)
     ];
+
+    /** 解析 CSS 颜色的常见写法（#rgb / #rrggbb / rgb() / rgba()）成 RGB 三元组 */
+    function parseRgb(text) {
+        const value = String(text || "").trim();
+        const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
+        if (hex) {
+            const body = hex[1].length === 3 ? hex[1].replace(/./g, (ch) => ch + ch) : hex[1];
+            return [0, 2, 4].map((i) => parseInt(body.slice(i, i + 2), 16));
+        }
+        const fn = /^rgba?\(([^)]+)\)$/i.exec(value);
+        if (!fn) return null;
+        const parts = fn[1].split(/[\s,/]+/).filter(Boolean).map(Number).filter(Number.isFinite);
+        return parts.length >= 3 ? parts.slice(0, 3).map((n) => Math.round(n)) : null;
+    }
+
+    /**
+     * 主题里的地图背景色与文本色。
+     * 等级线改成「粗的背景色描边 + 细的文本色内芯」之后，这两色必须拿到实际值才能在
+     * canvas 上落笔（canvas 读不到 CSS 变量）。每次建图都重读一遍，换主题后才跟着变。
+     */
+    function themeInk() {
+        const style = getComputedStyle(document.documentElement);
+        return {
+            bg: parseRgb(style.getPropertyValue("--map-bg")) || [255, 255, 255],
+            fg: parseRgb(style.getPropertyValue("--text-main")) || [0, 38, 59]
+        };
+    }
+
+    /**
+     * 明暗偏移：amount > 0 向白提亮、< 0 向黑压暗（取 0 即原色）。
+     * 用于「同色系内分档」—— 等时圈每两条等级线之间是一组，组内几档只靠明暗拉开，
+     * 色系保持一致，离散的色表因此不必塞进几十个色。
+     */
+    const shadeColor = (rgb, amount) => {
+        const target = amount >= 0 ? 255 : 0;
+        const k = Math.min(1, Math.abs(amount));
+        return rgb.map((c) => Math.round(c + (target - c) * k));
+    };
 
     /** 在色标锚点之间分段线性插值：t ∈ [0,1] */
     function scaleColor(scale, t) {
@@ -651,6 +744,7 @@
         if (!list.length) return null;
         if (tool === "meet") {
             const count = (MEET_CAP / MEET_STEP) * 2;          // 正负各 MEET_CAP / MEET_STEP 档
+            const zeroBand = Math.floor(MEET_CAP / MEET_STEP);  // 差值 0 落在哪一档
             const ticks = [];
             for (let i = 0; i <= count; i += 2) {              // 每 10 分钟标一个
                 const v = -MEET_CAP + i * MEET_STEP;
@@ -661,6 +755,11 @@
                 colors: Array.from({ length: count }, (_, i) => scaleColor(MEET_SCALE, (i + 0.5) / count)),
                 ticks,
                 edgeEvery: 2,                                  // 等级线每 2 档（10 分钟）一条，与刻度同拍
+                /**
+                 * 紧贴汇合带那两档（差值 −5~0 与 0~+5）画实一些 —— 那正是"两人差不多同时到"
+                 * 的区域，其余档位仍按常规透明度
+                 */
+                alphaOf: (band) => (band === zeroBand - 1 || band === zeroBand ? MEET_BAND_BOOST : 1),
                 cutText: (band) => {
                     const v = -MEET_CAP + (band + 1) * MEET_STEP;
                     return v > 0 ? `+${v}` : String(v);
@@ -682,6 +781,8 @@
             return {
                 kind: "fare",
                 colors: amounts.map((_, i) => scaleColor(scale, last > 0 ? i / last : 0.5)),
+                // 末格照旧必标：票价图的标注一律对齐在**格中心**，末格离右缘还有半格，
+                // 不会像等时圈那样与右对齐的末端标注挤在一起
                 ticks: amounts
                     .map((v, i) => (i % step === 0 || i === last
                         ? { text: `${v}元`, at: (i + 0.5) / amounts.length } : null))
@@ -697,12 +798,23 @@
         const steps = Math.ceil(raw / EDGE_EVERY) * EDGE_EVERY;
         const cuts = [];
         for (let i = 0; i <= steps; i++) cuts.push(i * ISO_STEP);
+        // 每 EDGE_EVERY 格（正好是两条等级线之间）算一组：组内色系相同，只用明暗拉开层次 ——
+        // 以组中那格为基准，首格向白提亮、末格向黑压暗。整体色阶仍是「蓝→绿→黄→红」四级大势，
+        // 细看每一级里还有三档深浅，5 分钟一格这个粒度就看出来了，离散色表里也不必塞二十个色
+        const groupCount = Math.max(1, Math.round(steps / EDGE_EVERY));
+        const shadeAt = (i) => (1 - (i % EDGE_EVERY)) * ISO_SHADE;
         return {
             kind: "iso",
-            colors: cuts.slice(0, steps).map((_, i) => scaleColor(scale, steps > 1 ? i / (steps - 1) : 0.5)),
-            // 刻度只标在等级线上（每 EDGE_EVERY 档一个），与白线上的数值标签同一节拍
+            colors: cuts.slice(0, steps).map((_, i) => shadeColor(
+                scaleColor(scale, groupCount > 1 ? Math.floor(i / EDGE_EVERY) / (groupCount - 1) : 0.5),
+                shadeAt(i)
+            )),
+            // 刻度标在等级线上，但**隔一条白线**才标一个（15 分钟一条线太密，数字会挤在一起）；
+            // 距末端不足一条白线的那个不标，是因为末端的标注是**右对齐**的、会与它撞上；
+            // 末端自己反过来要标 —— 它撑着整条色标的右界，少了它右端就没数了
             ticks: cuts
-                .map((v, i) => (i % EDGE_EVERY === 0 ? { text: String(v), at: i / steps } : null))
+                .map((v, i) => ((i === steps || (i % (EDGE_EVERY * 2) === 0 && i < steps - EDGE_EVERY))
+                    ? { text: String(v), at: i / steps } : null))
                 .filter(Boolean),
             cuts,
             edgeEvery: EDGE_EVERY,             // 等级线只画在每 EDGE_EVERY 档的组界上
@@ -848,6 +960,10 @@
             points.push({ x: station.x, y: station.y, v: value });
         });
         if (!points.length) return null;
+        // 等级线用「背景色外圈 + 文本色内芯」，两色得先从主题里取（canvas 读不到 CSS 变量）
+        const theme = themeInk();
+        const inkFg = theme.fg;
+        const inkBg = theme.bg;
 
         // 覆盖区以画布中心对齐向外扩：offset 即覆盖区左上角在画布坐标系里的位置
         const coverW = Math.ceil(width * COVER_SCALE);
@@ -979,6 +1095,8 @@
                     if (over >= MEET_FADE) continue;
                     if (over > 0) alpha = Math.round(alpha * fadeAt(over, 0, MEET_FADE));
                 }
+                // 汇合图：紧贴汇合带的那两档画实一些（见 buildBands 的 alphaOf）
+                if (bands.alphaOf) alpha = Math.min(255, Math.round(alpha * bands.alphaOf(band)));
                 data[offset + 3] = alpha;
             }
             if ((oy & (SLICE_ROWS - 1)) === SLICE_ROWS - 1) {
@@ -1004,12 +1122,13 @@
                 const band = bandIndex[index];
                 if (!band) continue;
                 const group = groupOf(band);
-                // 距组界不超过 EDGE_SPAN 像素即描白（线因此有厚度，缩小时也看得见）。
-                // 四个方向各看一眼即可，不必扫整个邻域：两侧都会被判为边界，
-                // 线自然以真实边界为中心加粗。未着色像素（bandIndex 0）不算边界
-                let onEdge = false;
+                // 距组界不超过外圈半宽就落笔（线因此有厚度，缩小时也看得见）。四个方向各看一眼
+                // 即可，不必扫整个邻域：两侧都会被判为边界，线自然以真实边界为中心加粗。
+                // 未着色像素（bandIndex 0）不算边界 —— 色块的外缘不描线，那圈由距离蒙版自己收边
+                let edgeDist = Infinity;
                 let edgeGroup = group;
-                for (let d = 1; d <= EDGE_SPAN && !onEdge; d++) {
+                for (let d = 1; d <= EDGE_SPAN_OUTER; d++) {
+                    let hit = false;
                     for (let s = 0; s < 4; s++) {
                         const near = s === 0 ? (ox >= d ? bandIndex[index - d] : 0)
                             : s === 1 ? (ox + d < outW ? bandIndex[index + d] : 0)
@@ -1018,11 +1137,13 @@
                         if (!near) continue;
                         const g2 = groupOf(near);
                         if (g2 === group) continue;
-                        onEdge = true;
+                        hit = true;
                         if (g2 > edgeGroup) edgeGroup = g2;
                     }
+                    // 最近的那一圈说了算（与早先逐圈收窄的口径一致），故一命中就停
+                    if (hit) { edgeDist = d; break; }
                 }
-                if (!onEdge) continue;
+                if (edgeDist === Infinity) continue;
                 // 线也要跟着距离蒙版一起淡出
                 const dist = sampleField(distance, lowW, lowH, (ox + 0.5) / ratio - 0.5, (oy + 0.5) / ratio - 0.5);
                 if (dist >= fadeEnd) continue;
@@ -1036,15 +1157,13 @@
                     : "solid";
                 if (cutKind === "dash" && ((ox + oy) & 7) < 5) continue;
                 const offset = index * 4;
-                if (cutKind === "zero") {
-                    data[offset] = MEET_ZERO_EDGE[0];
-                    data[offset + 1] = MEET_ZERO_EDGE[1];
-                    data[offset + 2] = MEET_ZERO_EDGE[2];
-                } else {
-                    data[offset] = 255;
-                    data[offset + 1] = 255;
-                    data[offset + 2] = 255;
-                }
+                // 0 那条分界线照旧是黄色（汇合图专有，既有的线型语义）；
+                // 其余按「外圈背景色、内芯文本色」两段上色，与色标示意用的是同一套
+                const ink = cutKind === "zero" ? MEET_ZERO_EDGE
+                    : edgeDist <= EDGE_SPAN_CORE ? inkFg : inkBg;
+                data[offset] = ink[0];
+                data[offset + 1] = ink[1];
+                data[offset + 2] = ink[2];
                 let edgeAlpha = dist <= fadeStart
                     ? EDGE_ALPHA
                     : Math.round(EDGE_ALPHA * fadeAt(dist, fadeStart, fadeEnd));
@@ -1064,6 +1183,9 @@
                     ? `${edgeGroup * edgeEvery * ISO_STEP}分`
                     : bands.cutText(band - 1);
                 if (!text) continue;
+                // 标签只撒在未淡化的实心区：淡化带上的色块本就快看不见了，
+                // 数字留在那儿会读成一串悬空的字符
+                if (dist > fadeStart) continue;
                 if (!labelFits(x, y, obstacles)) continue;   // 避让站点、站名标签与线路
                 isolines.push({
                     x, y, text,
@@ -1244,11 +1366,19 @@
         if (!layer) return;
         // 这个类只用来给"地形图展示期间"的样式挂钩（站名文字加背景色描边等）
         mapContent()?.classList.add("cgo-mt-terrain");
+        // 先释放上一轮的让位：换起点走的是整块重绘，上一轮被隐藏、这一轮又不在隐藏名单里的
+        // 图元若不在这一步还回来，就会一直停在 opacity: 0，再没人管它
+        hiddenNodes.forEach((el) => el.classList.remove(HIDDEN_CLASS));
+        hiddenNodes = [];
         const frag = document.createDocumentFragment();
         const pickSet = new Set((picks || []).map((pick) => pick.sid));
+        // 单站工具的出发点不参与让位：它要靠原图元呈现核心的选中态（markOrigin 加 .active），
+        // 图元一旦被数值图元顶掉，那个态就永远看不见了 —— 汇合图的出发点另有 A / B 标记顶上
+        const originSet = new Set(bands.kind === "meet" ? [] : targets);
         values.forEach((value, sid) => {
             const station = stations()[sid];
             if (!station || !Number.isFinite(station.x)) return;
+            if (originSet.has(sid)) return;
             const node = document.getElementById(`node_${sid}`);
             if (node) {
                 node.classList.add(HIDDEN_CLASS);
@@ -1256,13 +1386,33 @@
             }
             const badge = document.createElement("span");
             // 推荐汇合站的图元单独着色（黄底深字），不另加徽标 —— 图上直接看得出来
-            badge.className = pickSet.has(sid) ? "cgo-mt-badge is-pick" : "cgo-mt-badge";
+            const classes = ["cgo-mt-badge"];
+            const isPick = pickSet.has(sid);
+            if (isPick) classes.push("is-pick");
+            // 汇合图：颜色直接说明偏向 —— 负值（离 A 更近）取色标左端，正值取右端，
+            // 正好落在汇合带上的取黄底。推荐站已用黄底，不再叠加偏向色
+            if (bands.kind === "meet" && !isPick) {
+                classes.push(value < 0 ? "is-near-a" : value > 0 ? "is-near-b" : "is-zero");
+            }
+            badge.className = classes.join(" ");
+            // 与站点图元同口径的 data-sid：选站期间 onPickClick 在捕获阶段就靠它命中的
+            badge.dataset.sid = sid;
             badge.style.left = `${station.x}px`;
             badge.style.top = `${station.y}px`;
+            // 图元顶掉了原图元，点击的本事也一并接过来 —— 点它等同于点那座车站。
+            // 选站期间这枚监听器不会跑到：onPickClick 在捕获阶段已经拦下并处理了
+            badge.addEventListener("click", (event) => {
+                event.stopPropagation();
+                window.selectStation?.(sid);
+            });
             // 3 位以上（如 135 分钟）在 20px 的正圆里放不下：把数字横向压扁，
             // 而不是把圆撑成椭圆 —— 图元一律保持正圆。
-            // 汇合图的值是有符号差值，圆里只放绝对值（偏向由颜色表达）
-            const text = String(Math.round(Math.abs(value)));
+            // 汇合图的值是有符号差值，符号即偏向（− = 离 A 更近、+ = 离 B 更近），
+            // 与图元的着色是同一件事的两种表达
+            const rounded = Math.round(value);
+            const text = bands.kind === "meet"
+                ? (rounded > 0 ? `+${rounded}` : rounded < 0 ? `−${Math.abs(rounded)}` : "0")
+                : String(Math.abs(rounded));
             const inner = document.createElement("span");
             inner.style.transform = `scaleX(${Math.min(1, 2.6 / text.length)})`;
             inner.textContent = text;
@@ -1420,7 +1570,7 @@
         if (meet) {
             picksHtml = `
                 <div class="cgo-mt-meet">
-                    <div class="cgo-mt-meet-title">推荐汇合站（总用时最短）</div>
+                    <div class="cgo-mt-meet-title">推荐汇合站（按较慢用时 + 时间差）</div>
                     ${(picks || []).map((pick, i) => `
                         <button type="button" class="cgo-mt-meet-item" data-meet-sid="${pick.sid}">
                             <span class="cgo-mt-meet-rank">${i + 1}</span>
@@ -1448,7 +1598,7 @@
                     }).join("")}
                 </div>
                 <div class="cgo-mt-ticks">${ticks}</div>
-                ${meet ? `<div class="cgo-mt-ends"><span>${stationName(targets[0])} 更近</span><span>汇合带</span><span>${stationName(targets[1])} 更近</span></div>` : ""}
+                ${meet ? `<div class="cgo-mt-ends"><span>${stationName(targets[0])} 更近</span><span class="cgo-mt-ends-mid">汇合带</span><span>${stationName(targets[1])} 更近</span></div>` : ""}
             </div>
             ${picksHtml}
             <div class="cgo-mt-actions">
@@ -1638,12 +1788,22 @@
         return btn;
     }
 
-    /** 收起车站详情 / 路线结果面板（复用它们各自的关闭按钮，不改核心与 route-panel 的代码） */
+    /**
+     * 收起移动端在场的宿主浮层：车站详情、路线结果，以及**行程规划面板**。
+     *
+     * 顺序与轮次都有讲究 —— 行程规划面板在结果面板之下时是被 `cgo-rt-stacked-hidden`
+     * 压住的（`display: none`，其关闭按钮 `offsetParent` 为 null，点不着）。若先关它、
+     * 后关结果，关掉结果会把规划从栈下还原出来，于是就成了"点小工具反而弹出规划浮窗"。
+     * 所以：先关栈上可见的那几块，再补一轮把因此还原出来的收干净。
+     * 一律复用它们各自的关闭按钮，不改核心与 route-panel 的代码。
+     */
     function closeHostPanel() {
-        [INFO_PANEL_ID, RESULT_PANEL_ID].forEach((id) => {
-            const close = document.querySelector(`#${id} .panel-close-btn`);
-            if (close instanceof HTMLElement && close.offsetParent !== null) close.click();
-        });
+        for (let pass = 0; pass < 2; pass++) {
+            [INFO_PANEL_ID, RESULT_PANEL_ID, PLAN_PANEL_ID].forEach((id) => {
+                const close = document.querySelector(`#${id} .panel-close-btn`);
+                if (close instanceof HTMLElement && close.offsetParent !== null) close.click();
+            });
+        }
     }
 
     /**
@@ -1675,12 +1835,102 @@
             if (!panel || !panel.offsetWidth) return;         // 只为在场的那块面板注入
             const share = panel.querySelector(".panel-share-btn");
             const host = share?.parentElement;
-            if (!host || host.querySelector(`.${TOOL_BTN_CLASS}`)) return;
+            if (!host) return;
             const preset = id === INFO_PANEL_ID
                 ? activeStationId()
                 : [lastRoute.from, lastRoute.to];
+            const exists = host.querySelector(`.${TOOL_BTN_CLASS}`);
+            // 车站详情说的是未开通 / 规划中的车站时不给入口：规划器不收它，任何工具点下去
+            // 都只会得到一句"不参与规划"，索性别把按钮摆出来（已注入的要收掉，
+            // 免得用户在图上换选了未开通站、面板重渲染后旧按钮还赖在那里）
+            if (id === INFO_PANEL_ID && isPlanned(preset)) {
+                exists?.remove();
+                return;
+            }
+            if (exists) return;
             share.insertAdjacentElement("afterend", shareLikeButton(preset));
         });
+    }
+
+    /* ── 车站右键菜单上的两条入口 ──────────────────────────────────────
+       core 的右键菜单每次右键都整体重写 innerHTML，菜单 DOM 里也不记录车站 ID。
+       故这里自己记下这次右键落在哪座车站（判定口径与 core 的 showMenu 一致），
+       再在菜单内容重建之后补两条入口 —— 不改 core，也不让 core 知道本模块存在。 */
+    const CTX_MENU_ID = "custom-context-menu";
+    const CTX_BTN_CLASS = "cgo-mt-ctx-btn";
+    let ctxObserver = null;
+    let ctxStationId = null;
+
+    function decorateContextMenu() {
+        const menu = document.getElementById(CTX_MENU_ID);
+        // 菜单每次右键都会整块重写，重写后按类名判重即可
+        if (!menu || menu.querySelector(`.${CTX_BTN_CLASS}`)) return;
+        const sid = ctxStationId;
+        if (!sid || !stations()[sid] || isPlanned(sid)) return;
+        menu.insertAdjacentHTML("beforeend", `
+            <div class="ctx-divider">工具</div>
+            <button type="button" class="ctx-menu-btn ${CTX_BTN_CLASS}" data-ctx="to">
+                <cgo-icon name="route" size="16"></cgo-icon> 设为终点
+            </button>
+            <button type="button" class="ctx-menu-btn ${CTX_BTN_CLASS}" data-ctx="tools">
+                <cgo-icon name="plugin" size="16"></cgo-icon> 地图小工具
+            </button>
+        `);
+        // 行程规划是路线模块的能力，这里只调它的公开入口，不碰它的内部状态
+        menu.querySelector('[data-ctx="to"]')?.addEventListener("click", () => {
+            window.CGoRoutePanel?.open?.({ to: sid });
+        });
+        menu.querySelector('[data-ctx="tools"]')?.addEventListener("click", () => openTools(sid));
+    }
+
+    /**
+     * 菜单元素是 core 懒创建的，等它出现再盯它。除了内容重写（每次右键都会整块重写），
+     * 还要盯 style —— 触屏长按那条路是 core 自己起计时器直接调 showMenu，只改 style.display
+     * 而不重写内容，只盯 childList 会漏掉，注入就得等到下一次才生效。
+     */
+    function watchContextMenu() {
+        const menu = document.getElementById(CTX_MENU_ID);
+        if (!menu || ctxObserver) return;
+        ctxObserver = new MutationObserver(decorateContextMenu);
+        ctxObserver.observe(menu, { childList: true, attributes: true, attributeFilter: ["style"] });
+        decorateContextMenu();
+    }
+
+    /**
+     * 记住这次点 / 长按落在哪座车站。
+     *
+     * 不能只听 `contextmenu`：触屏长按在多数浏览器里根本不派发这个事件，core 是自己起
+     * 计时器直接调 showMenu 的 —— 只认它就会一直沿用上一次的车站，于是"这次该出现的
+     * 入口要等下次右键才生效"。`pointerdown` 是鼠标右键与触屏长按共有的起点，故以它为准，
+     * `contextmenu` 留作桌面端的补正。
+     */
+    function trackContextTarget() {
+        const remember = (event) => {
+            ctxStationId = event.target.closest?.(".station, .label-group, [data-sid]")?.dataset.sid || null;
+        };
+        window.addEventListener("pointerdown", remember, true);
+        window.addEventListener("contextmenu", remember, true);
+    }
+
+    /**
+     * 主题（亮/暗）一换，地形图上那些**已经画进 canvas 的东西**就得重来一遍：
+     * 色阶本身与主题无关，但等级线是「背景色描边 + 文本色内芯」，两色都在建图时从
+     * CSS 变量里取出来写进像素了，不跟着变量走 —— 不重画的话，换了主题线还是旧配色。
+     * 色标与站名描边走的是 CSS，自己会跟随，不用管。
+     *
+     * 重画走的是完整的一遍 `run`（会重算值场），故按一帧节流：切主题常常连着改
+     * 好几个属性，没必要每一下都重来一遍。
+     */
+    function watchTheme() {
+        let queued = false;
+        new MutationObserver(() => {
+            if (queued || !state.tool) return;
+            queued = true;
+            requestAnimationFrame(() => {
+                queued = false;
+                if (state.tool && state.stationId) run(state.tool, state.stationId);
+            });
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     }
 
     /**
@@ -1690,6 +1940,7 @@
      */
     function onPanelChange() {
         watchPanels();
+        watchContextMenu();
         syncStacking();
         decoratePanels();
     }
@@ -1719,8 +1970,16 @@
         container?.addEventListener("mouseleave", () => document.getElementById(HOVER_ID)?.classList.remove("show"));
         // 缩放后旧位置已不对应新画面，先收起来，等鼠标再动时按新坐标重算
         container?.addEventListener("wheel", () => document.getElementById(HOVER_ID)?.classList.remove("show"));
-        // 与其它浮层的关系：让位、以及给车站详情 / 路线结果补小工具入口按钮
+        // 记住最近点到的车站：详情面板说的是哪一站、要不要给小工具入口，都以此为准
+        // （.active 可能同时挂在好几站上，见 activeStationId 的注释）
+        container?.addEventListener("click", (event) => {
+            const sid = event.target.closest?.("[data-sid]")?.dataset.sid;
+            if (sid && stations()[sid]) lastTappedStationId = sid;
+        }, true);
+        // 与其它浮层的关系：让位、给车站详情 / 路线结果补入口按钮、给右键菜单补两条
         watchRoute();
+        trackContextTarget();
+        watchTheme();
         onPanelChange();
         bodyObserver.observe(document.body, { childList: true });
         window.addEventListener("resize", scheduleStacking);

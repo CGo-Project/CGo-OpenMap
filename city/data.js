@@ -262,7 +262,9 @@
             mainLogic: "./city/changchun/changchun.js",
             center: { x: 1150, y: 950 },
             defaultScale: 0.7,
-            mapSize: { width: 2300, height: 1900 },
+            // 站点 y 最大 1980（永春南，在建）。此处仅为注册表兜底，运行时以 changchun.js
+            // 的注册值为准，两处需保持一致（站点下边距与沈阳、哈尔滨同口径）
+            mapSize: { width: 2300, height: 2100 },
             searchCity: "长春",
             title: "CGo OpenMap - 长春轨道交通线路图",
             keywords: "CGo OpenMap, 长春地铁, 长春轨道交通, 线路图",

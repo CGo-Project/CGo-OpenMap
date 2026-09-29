@@ -95,13 +95,46 @@
         return { left, right, bottom: declaredBottom };
     }
 
+    /**
+     * 主动避让（仅窄屏）：浮层在窄屏是贴底抽屉，一开就吃掉近半屏。光把平移**区间**放宽
+     * 是看不见的 —— 地图内容仍停在原地被压在浮层底下，用户观感就是"没避让"。
+     * 故在遮挡变化时把地图整体平移「可用区中心移动的那段距离」，让原本落在视线中心的
+     * 内容继续落在新的可用区中心，被浮层占掉的那一块自然让出来。
+     * 桌面端不做：那里的浮层是贴在角落的浮岛，只遮一角，地图跟着跳反而干扰。
+     */
+    function recenter(before, after) {
+        if (window.innerWidth > MOBILE_MAX) return;
+        const getView = window.getMapView;
+        const setView = window.setMapView;
+        const container = document.getElementById("map-container");
+        if (typeof getView !== "function" || typeof setView !== "function" || !container) return;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        if (!width || !height) return;
+        const top = topOffset();
+        // 可用区中心（容器坐标）：内边距一动，它就跟着挪
+        const centerOf = (inset) => ({
+            x: inset.left + Math.max(0, width - inset.left - inset.right) / 2,
+            y: top + Math.max(0, height - top - inset.bottom) / 2
+        });
+        const from = centerOf(before);
+        const to = centerOf(after);
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        if (!dx && !dy) return;
+        const view = getView();
+        setView({ x: view.x + dx, y: view.y + dy });
+    }
+
     /** 写回遮挡尺寸并让引擎重算：遮挡没变就不打扰引擎 */
     function sync() {
         const next = compute();
         const changed = next.left !== state.left || next.right !== state.right || next.bottom !== state.bottom;
         if (!changed) return;
+        const before = { left: state.left, right: state.right, bottom: state.bottom };
         Object.assign(state, next);
         window.CGoViewportInsets = { left: state.left, right: state.right, bottom: state.bottom };
+        recenter(before, next);
         if (typeof window.enforceBoundaries === "function") window.enforceBoundaries();
         if (typeof window.updateMapTransform === "function") window.updateMapTransform();
     }
