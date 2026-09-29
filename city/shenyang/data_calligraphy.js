@@ -306,6 +306,9 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "李晖", intro: "李晖，字厢齐，1963年生于沈阳，中国书法家协会会员，沈阳市书法家协会副主席、沈阳市硬笔书法家协会副主席" }
     },
     "0312": {
+        image: "./city/shenyang/assets/calligraphy/nanyanghujie.png",
+        ratio: 3,
+        alt: "南阳湖街站",
         calligrapher: { name: "欧阳明利", intro: "欧阳明利，1962年生，吉林桦甸人，北部战区陆军政治工作部文艺创作室专职创作员，国家一级美术师，中国书法家协会会员、辽宁省书法家协会理事" }
     },
     "0414": {
@@ -394,6 +397,9 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "高凤江", intro: "高凤江，字竹泉，1963年生，中国书法家协会会员，辽宁省书法家协会理事，沈阳市书法家协会副主席" }
     },
     "0911": {
+        image: "./city/shenyang/assets/calligraphy/datonghujie.png",
+        ratio: 2.857,
+        alt: "大通湖街站",
         calligrapher: { name: "冷旭", intro: "冷旭，满族，1960年生，辽宁辽阳人，西泠印社社员，中国书法家协会篆书专业委员会委员，曾任辽宁美术馆馆长、辽宁画院院长" }
     },
 
@@ -409,6 +415,8 @@ const CALLIGRAPHY_DATA = {
     //     题字计入本组。江东街（陈洪普）、嘉兴街（王丹）、方型广场（李洋）、
     //     文富路（赵立新）、富民街（聂成文）、砂阳（卢林）已据落款辨认 +
     //     公开资料交叉印证补入题写者，移至上方 3 号线分组；
+    //     南李官（0314）、凌空（0315）题字横图已采集（填 image / ratio / alt），
+    //     题写者仍待考，故仍列本组；
     //     中科院金属所题字无落款、疑集所名，仍列本组待考。
     // -------------------------------------------------------------------------
     "0301": { pendingCalligrapher: true },  // 李达
@@ -419,8 +427,18 @@ const CALLIGRAPHY_DATA = {
     "0306": { pendingCalligrapher: true },  // 翟家
     "0308": { pendingCalligrapher: true },  // 宁官
     "0310": { pendingCalligrapher: true },  // 甘官
-    "0314": { pendingCalligrapher: true },  // 南李官
-    "0315": { pendingCalligrapher: true },  // 凌空
+    "0314": {
+        image: "./city/shenyang/assets/calligraphy/nanliguan.png",
+        ratio: 1.822,
+        alt: "南李官站",
+        pendingCalligrapher: true
+    },
+    "0315": {
+        image: "./city/shenyang/assets/calligraphy/lingkong.png",
+        ratio: 1.287,
+        alt: "凌空站",
+        pendingCalligrapher: true
+    },
     "0322": {
         // 该站大字壁题字「中科院金属所站」无落款、无印章（2026-09-26 实拍核实），
         // 字形与金属研究所门口所名石「中国科学院金属研究所」相近，疑自所名集字而成。

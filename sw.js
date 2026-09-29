@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260930.4000';
+const CACHE_NAME = 'cgo-openmap-v260930.4100';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -212,6 +212,10 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/wenfulu.png',
     './city/shenyang/assets/calligraphy/fuminjie.png',
     './city/shenyang/assets/calligraphy/jiangdongjie.png',
+    './city/shenyang/assets/calligraphy/nanyanghujie.png',
+    './city/shenyang/assets/calligraphy/datonghujie.png',
+    './city/shenyang/assets/calligraphy/nanliguan.png',
+    './city/shenyang/assets/calligraphy/lingkong.png',
     './city/shenyang/assets/calligraphy/fangjialan.png',
 
     // 城市配置与业务数据 (合肥)
