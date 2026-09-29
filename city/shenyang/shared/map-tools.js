@@ -803,8 +803,11 @@
             };
         }
         const scale = SCALES[tool] || SCALES.iso;
+        // 有锚点时两端**一律以锚点为准**，不再拿当前这张图的实测极值去顶：
+        // 顶一次色标就随起点变了，而锚点的全部意义就是"整座城市固定不变"。
+        // 个别值若落在锚点之外，分档会被 clamp 到首 / 末档 —— 色标本身仍是对的。
         const low = range ? range.min : Math.min(...list);
-        const high = range ? Math.max(range.max, ...list) : Math.max(...list);
+        const high = range ? range.max : Math.max(...list);
         if (tool === "fare") {
             const from = Math.max(0, Math.floor(low));
             const to = Math.max(from + 1, Math.ceil(high));
