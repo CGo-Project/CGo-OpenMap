@@ -550,6 +550,25 @@
         }
 
         /**
+         * 同站进出的票价：乘客刷卡进站又出站，里程为 0，但地铁不会因此免费 ——
+         * 按该站的起步价收取。`plan(from, from)` 走的是「里程 0 不结算」那条路
+         * （见 computeFare 里的 `if (billed > 0)`），返回的是 0，故这里单独问一次
+         * 价目表在 0 公里处的档位。
+         *
+         * @returns {number|null} 起步价；城市未配票价、或该站不参与规划时返回 null
+         */
+        function boardingFare(sid) {
+            const rules = network?.fare;
+            if (!rules) return null;
+            const entry = (boardable.get(sid) || [])[0];
+            if (!entry) return null;
+            const rule = rules[lineSystem(entry.lineId)];
+            if (typeof rule !== "function") return null;
+            const fare = rule(0, { entry: sid, exit: sid, stops: [] });
+            return Number.isFinite(fare) ? fare : null;
+        }
+
+        /**
          * 按多种优先级分别寻路，再合并完全相同的路线（labels 记录它赢得的优先级）；
          * 结果按时间升序，第一条即最推荐。
          */
@@ -572,6 +591,7 @@
             plan,
             planAll,
             extremes,
+            boardingFare,
             linesAt: (sid) => (boardable.get(sid) || []).map((item) => item.lineId),
             stationsOfLine: (lineId) => (lineById.get(lineId)?.ways || []).flat()
         };

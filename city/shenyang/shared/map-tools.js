@@ -571,11 +571,29 @@
         const list = Object.keys(stations());
         const values = new Map();
         let fareMissing = true;
+        // 起点自身也要入图 —— 它是**最低档的锚点**。不留它的话，图上起点那一片是由邻站
+        // 插值出来的：值被邻站抬高，距离场里它还离"最近站点"有一个站距那么远，正好落进
+        // 淡化带被淡掉 —— 于是"最低档填色区"偏偏不含选定的那一站。
+        // 取值口径：用时就是 0 分钟；票价按**同站进出**算 —— 刷卡进站又出站里程为 0，
+        // 但地铁不会因此免费，收的是起步价（见内核 boardingFare）。
+        // 只是放进值场，**不画数值图元**（renderOverlay 里已把出发点排除在叠加之外）。
+        const startStation = stations()[from];
+        if (startStation && startStation.type !== "no" && planner.linesAt(from).length) {
+            if (tool === "fare") {
+                const boarding = planner.boardingFare?.(from);
+                if (Number.isFinite(boarding)) {
+                    values.set(from, boarding);
+                    fareMissing = false;
+                }
+            } else {
+                values.set(from, 0);
+            }
+        }
         for (let i = 0; i < list.length; i += BATCH) {
             list.slice(i, i + BATCH).forEach((sid) => {
                 const station = stations()[sid];
                 if (!station || station.type === "no") return;
-                if (sid === from) return;                       // 起点自身：既不收票价也不耗时，不入图
+                if (sid === from) return;                       // 起点已按上面的口径单独入图
                 if (!planner.linesAt(sid).length) return;       // 国铁散点等不参与规划
                 const result = planner.plan(from, sid, "time");
                 if (!result) return;
