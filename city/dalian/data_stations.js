@@ -6,7 +6,8 @@
  * 为改善线路图的留白与拐角观感，部分站点在映射坐标上做了局部排版偏移，详见对应线路控制点。
  * 原始数据未提供英文名的车站保留为空，避免使用未经核验的翻译。
  * 地图中英文标签支持在 cn/en 中使用 \n 或 <br> 换行；搜索和导航仍使用自动清理换行后的标准站名。
- * 站名前置图标使用 labelIcon: { src, alt?, title? }，也可使用 label: { cn, icon } 独立配置标签文本。
+ * 站名前置图标使用 labelIcon: { icon }（CGoUI 内置图标名，随主题自动染色）或
+ * { src, alt?, title? }（城市自绘 SVG），也可使用 label: { cn, icon } 独立配置标签文本。
  */
 
 const stationsData = {
@@ -305,7 +306,7 @@ const stationsData = {
         "cn": "大连站",
         "en": "Dalian Railway<br> Station",
         "labelIcon": {
-            "src": "./city/dalian/assets/railway.svg",
+            "icon": "railway",
             "title": "铁路换乘"
         },
         "align": "top-right",
@@ -789,7 +790,7 @@ const stationsData = {
         "cn": "机场",
         "en": "Airport",
         "labelIcon": {
-            "src": "./city/dalian/assets/airport.svg",
+            "icon": "plane",
             "title": "机场"
         },
         "align": "right",
@@ -937,7 +938,7 @@ const stationsData = {
         "cn": "大连北站",
         "en": "Dalian North Railway Station",
         "labelIcon": {
-            "src": "./city/dalian/assets/railway.svg",
+            "icon": "railway",
             "title": "铁路换乘"
         },
         "align": "right",

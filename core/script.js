@@ -1575,6 +1575,15 @@ function setMapView(view) {
 }
 
 /**
+ * 读取当前地图视图（平移与缩放）。与 setMapView 对称：功能模块要基于"当前在哪"
+ * 做相对位移（如浮层打开后把地图让开）时，需要先拿到现状，故留这一个最小的读取口。
+ * @returns {{x:number, y:number, scale:number}}
+ */
+function getMapView() {
+    return { x: currentX, y: currentY, scale: currentScale };
+}
+
+/**
  * 应用 CSS Transform 将平移和缩放属性同步到 mapContent DOM
  */
 function localUpdateMapTransform() {
@@ -1633,7 +1642,14 @@ function localEnforceBoundaries() {
         if (isSplitMode) {
             currentY = (containerH * 0.4 - mapH) / 2;
         } else {
-            currentY = topOffset + (containerH - topOffset - mapH) / 2;
+            // 地图比可视区小：整图居中。底部遮挡同样要扣掉 —— 早先只有上面的 clamp 分支
+            // 用了 bottomOffset（水平侧也一直按 availW 算），唯独这里漏了，于是浮层一开，
+            // 居中的整图下半截就被压在浮层底下，看着像"没避让"。
+            // 可用区被遮挡压得比地图还小时，退化成顶边贴住标题栏，别让地图往标题栏里钻。
+            const availH = containerH - topOffset - bottomOffset;
+            currentY = availH >= mapH
+                ? topOffset + (availH - mapH) / 2
+                : topOffset;
         }
     }
 }
@@ -4114,6 +4130,7 @@ init();
     window.updateMapTransform = updateMapTransform;
     window.getScaleLimits = getScaleLimits;
     window.setMapView = setMapView;
+    window.getMapView = getMapView;
     // 供城市或扩展模块在自定义边界规则中复用引擎自带的边界限制
     window.localEnforceBoundaries = localEnforceBoundaries;
     window.stationsData = typeof stationsData !== 'undefined' ? stationsData : undefined;

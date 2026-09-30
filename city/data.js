@@ -262,7 +262,9 @@
             mainLogic: "./city/changchun/changchun.js",
             center: { x: 1150, y: 950 },
             defaultScale: 0.7,
-            mapSize: { width: 2300, height: 1900 },
+            // 站点 y 最大 1980（永春南，在建）。此处仅为注册表兜底，运行时以 changchun.js
+            // 的注册值为准，两处需保持一致（站点下边距与沈阳、哈尔滨同口径）
+            mapSize: { width: 2300, height: 2100 },
             searchCity: "长春",
             title: "CGo OpenMap - 长春轨道交通线路图",
             keywords: "CGo OpenMap, 长春地铁, 长春轨道交通, 线路图",
@@ -320,6 +322,33 @@
                 { name: "Bingcaowan", role: "城市主理人", github: "https://github.com/icegrassbay" }
             ],
             isDefault: false // 设为默认激活
+        },
+        "harbin": {
+            id: "harbin",
+            name: "哈尔滨",
+            themeColor: "#E60012", // 待定：暂用 1 号线中国红，官方品牌色核实后再替换
+            svglogo: null, // 已接入 CGoUI 内置 harbin 官方矢量图标
+            folder: "./city/harbin",
+            mainLogic: "./city/harbin/harbin.js",
+            center: { x: 700, y: 780 },
+            defaultScale: 0.55,
+            mapSize: { width: 1290, height: 1590 },
+            searchCity: "哈尔滨",
+            title: "CGo OpenMap - 哈尔滨轨道交通线路图",
+            keywords: "CGo OpenMap, 哈尔滨地铁, 哈尔滨轨道交通, 线路图",
+            description: "包含 1、2、3 号线全线（3 号线为环线）与 4 座国铁车站。",
+            officialMapUrl: "http://www.harbin-metro.com/",
+            registerDate: "2026-09-28",
+            status: "active",
+            // 主理人虚位以待：哈尔滨公开运营信息稀少，本图由提交者代为整理，
+            // 不占用主理人身份，面向哈尔滨当地有意长期维护者开放认领。
+            // isRecruiting 会被 core/help.js（「关于与帮助」弹窗）、index.html（首页卡片徽标）
+            // 与共享层 calligraphy.js（站名题字署名）统一识别为「招募中」。
+            maintainers: [
+                { name: "待认领", role: "城市主理人招募中", isRecruiting: true,
+                  github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+            ],
+            isDefault: false
         }
     };
 

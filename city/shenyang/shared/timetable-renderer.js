@@ -198,6 +198,9 @@
      *        "origin" 用于线路端点站的始发时刻（X始发）
      * @property {string} [note]      - 标注文本，note 为「推算」时按推算样式前置
      * @property {boolean} [estimated]- 推算标记，等价于 note === "推算"
+     * @property {string} [ring]      - 环线环别（"内环" / "外环"），渲染成「开往X（内环）」。
+     *        环线没有终点站，destination 该填「该站该方向的下一站」，
+     *        环别取共享层 CGoLoopDirection.of(line, dir)（中国等右侧通行城市默认内环顺时针）
      */
 
     /**
@@ -220,26 +223,48 @@
     function formatTime(row) {
         const first = escapeHtml(normalizeClock(row?.first));
         const last = escapeHtml(normalizeClock(row?.last));
-        if (first && last) return `${first}-${last}`;
+        // 连字符后置一个次级断点（<wbr>）：整段放不下时优先在此折行，
+        // 避免「06:30-22:00」被断成「06:3」「0-22:00」这类难看的位置。
+        if (first && last) return `${first}-<wbr>${last}`;
         if (first) return `首班 ${first}`;
         if (last) return `末班 ${last}`;
         return "";
     }
 
-    /** 渲染单行为「开往X：06:30-22:00」；mode 为 origin 时渲染为「X始发：06:30-22:00」 */
+    /**
+     * 渲染单行为「开往X: 06:30-22:00」；mode 为 origin 时渲染为「X始发: 06:30-22:00」；
+     * 行上带 ring（环线环别）时渲染为「开往X（内环）: 06:30-22:00」。
+     *
+     * 换行优先级分两级：先「冒号之后」，再「连字符之后」。
+     *
+     * 时刻用行内块包住，且显式指定 `width: max-content`——这是关键：
+     * 行内块若只有 display:inline-block（宽度 auto），浏览器会把它收缩到 min-content
+     * 塞进当前行的剩余空间，而连字符本就是「07:01-20:26」里的默认可断点，
+     * 于是先断在连字符处，一级断点失效（即 2026-09-28 截图中的现象）。
+     * 写死 max-content 后，行内块的对外宽度恒为整段时刻宽度，当前行装不下才会
+     * 整段移到下一行，冒号后的断行因此稳定优先；
+     * `max-width: 100%` 是二级兜底：容器窄到连时刻整段都放不下时允许压缩，
+     * 此时才落到 formatTime 在连字符后留下的 <wbr>。
+     */
     function renderRow(row) {
         const time = formatTime(row);
         if (!time) return "";
 
         const destination = escapeHtml(row?.destination);
-        const head = row?.mode === "origin" ? `${destination}始发` : `开往${destination}`;
+        // 环线报「下一站（内环 / 外环）」：环别由数据侧按 CGoLoopDirection.of(line, dir) 填好
+        const ring = String(row?.ring || "").trim();
+        const head = row?.mode === "origin"
+            ? `${destination}始发`
+            : `开往${destination}${ring ? `（${escapeHtml(ring)}）` : ""}`;
 
         // 注释统一以 <small> 降级显示：推算类前置，其余后置
         const note = String(row?.note || "").trim();
         const isEstimate = Boolean(row?.estimated) || note === "推算";
         const leading = isEstimate ? "<small>（推算）</small>" : "";
         const trailing = note && !isEstimate ? `<small>（${escapeHtml(note)}）</small>` : "";
-        return `${leading}${head}：${time}${trailing}`;
+        // 冒号用半角 + 半角空格：全角「：」的 advance 是 1em、字形只占左半，
+        // 右侧那段留白（尤其是落在行尾时）显得过空，改用半角后间距均匀且紧凑。
+        return `${leading}${head}: <span style="display:inline-block;width:max-content;max-width:100%">${time}</span>${trailing}`;
     }
 
     /** 渲染整组行，以 <br> 连接 */

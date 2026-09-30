@@ -18,6 +18,12 @@
 
     /** 计入遮挡的面板：规划行程、路线结果、以及核心的车站详情（后两者可能并不存在） */
     const PANEL_IDS = ["cgo-route-card", "cgo-route-result", "info-panel"];
+    /**
+     * 另有按 `data-cgo-inset` 自行声明的浮层（如小工具面板）。
+     * 面板栈那几块只按"在哪一侧"留白，而这些浮层贴在角上（右下），光留右侧不够高，
+     * 故声明里可以点名 `bottom` —— 本模块据此再留出底部。缺省行为与不加本属性完全一致。
+     */
+    const INSET_SELECTOR = "[data-cgo-inset]";
     const ZOOM_CONTROL_ID = "modern-zoom-control";
     const MOBILE_MAX = 640;
 
@@ -31,21 +37,40 @@
         return rect.width >= 1 && rect.height >= 1 ? rect : null;
     }
 
+    /** 自行声明遮挡的浮层：返回 [元素, 声明] 列表 */
+    function declaredInsets() {
+        return [...document.querySelectorAll(INSET_SELECTOR)].map((el) => ({
+            rect: visibleFloatRect(el),
+            sides: (el.getAttribute("data-cgo-inset") || "").split(/[\s,]+/).filter(Boolean)
+        })).filter((item) => item.rect);
+    }
+
     function compute() {
         const rects = PANEL_IDS
             .map((id) => visibleFloatRect(document.getElementById(id)))
             .filter(Boolean);
-        if (!rects.length) return { left: 0, right: 0, bottom: 0 };
+        const declared = declaredInsets();
+        if (!rects.length && !declared.length) return { left: 0, right: 0, bottom: 0 };
 
         const screenW = window.innerWidth;
+        const screenH = window.innerHeight;
         const zoom = document.getElementById(ZOOM_CONTROL_ID)?.getBoundingClientRect();
         const zoomRight = zoom && zoom.width ? Math.ceil(zoom.right) : 0;
+
+        // 自行声明了 bottom 的浮层（贴底那一类）：按它遮住的高度留出底部
+        const declaredBottom = Math.max(0, ...declared
+            .filter((item) => item.sides.includes("bottom"))
+            .map((item) => Math.ceil(screenH - item.rect.top)));
 
         if (screenW <= MOBILE_MAX) {
             // 移动端的浮层是贴底抽屉：底部留出最高的那一个（直接取高度，抽屉拖动改高度时随内联
             // style 实时刷新），左侧同样给缩放控件让位
-            const bottom = Math.max(...rects.map((rect) => rect.height));
-            return { left: zoomRight, right: 0, bottom: Math.max(0, Math.ceil(bottom)) };
+            const bottom = Math.max(
+                declaredBottom,
+                ...rects.map((rect) => Math.ceil(rect.height)),
+                0
+            );
+            return { left: zoomRight, right: 0, bottom: Math.max(0, bottom) };
         }
 
         // 浮层在左半就留左边（留到它的右边缘），在右半就留右边（留到它的左边缘）
@@ -55,6 +80,10 @@
             if (rect.left + rect.width / 2 < screenW / 2) left = Math.max(left, Math.ceil(rect.right));
             else right = Math.max(right, Math.ceil(screenW - rect.left));
         });
+        declared.forEach((item) => {
+            if (item.sides.includes("right")) right = Math.max(right, Math.ceil(screenW - item.rect.left));
+            else if (item.sides.includes("left")) left = Math.max(left, Math.ceil(item.rect.right));
+        });
         // 窄窗口下两侧预留可能把可用区挤成负数（可用区一负，居中与边界都会失去意义），
         // 故按比例等比收缩，保证至少留下画布三分之一的可用区
         const maxTotal = (screenW * 2) / 3;
@@ -63,7 +92,38 @@
             left = Math.ceil(left * shrink);
             right = Math.ceil(right * shrink);
         }
-        return { left, right, bottom: 0 };
+        return { left, right, bottom: declaredBottom };
+    }
+
+    /**
+     * 主动避让（仅窄屏）：浮层在窄屏是贴底抽屉，一开就吃掉近半屏。光把平移**区间**放宽
+     * 是看不见的 —— 地图内容仍停在原地被压在浮层底下，用户观感就是"没避让"。
+     * 故在遮挡变化时把地图整体平移「可用区中心移动的那段距离」，让原本落在视线中心的
+     * 内容继续落在新的可用区中心，被浮层占掉的那一块自然让出来。
+     * 桌面端不做：那里的浮层是贴在角落的浮岛，只遮一角，地图跟着跳反而干扰。
+     */
+    function recenter(before, after) {
+        if (window.innerWidth > MOBILE_MAX) return;
+        const getView = window.getMapView;
+        const setView = window.setMapView;
+        const container = document.getElementById("map-container");
+        if (typeof getView !== "function" || typeof setView !== "function" || !container) return;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        if (!width || !height) return;
+        const top = topOffset();
+        // 可用区中心（容器坐标）：内边距一动，它就跟着挪
+        const centerOf = (inset) => ({
+            x: inset.left + Math.max(0, width - inset.left - inset.right) / 2,
+            y: top + Math.max(0, height - top - inset.bottom) / 2
+        });
+        const from = centerOf(before);
+        const to = centerOf(after);
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        if (!dx && !dy) return;
+        const view = getView();
+        setView({ x: view.x + dx, y: view.y + dy });
     }
 
     /** 写回遮挡尺寸并让引擎重算：遮挡没变就不打扰引擎 */
@@ -71,8 +131,10 @@
         const next = compute();
         const changed = next.left !== state.left || next.right !== state.right || next.bottom !== state.bottom;
         if (!changed) return;
+        const before = { left: state.left, right: state.right, bottom: state.bottom };
         Object.assign(state, next);
         window.CGoViewportInsets = { left: state.left, right: state.right, bottom: state.bottom };
+        recenter(before, next);
         if (typeof window.enforceBoundaries === "function") window.enforceBoundaries();
         if (typeof window.updateMapTransform === "function") window.updateMapTransform();
     }
@@ -170,6 +232,12 @@
         PANEL_IDS.forEach((id) => {
             const el = document.getElementById(id);
             if (!el || watched.has(el)) return;
+            watched.add(el);
+            attrObserver.observe(el, { attributes: true, attributeFilter: ["class", "style"] });
+        });
+        // 自行声明遮挡的浮层同样要盯：它们的显隐也落在 class 上
+        document.querySelectorAll(INSET_SELECTOR).forEach((el) => {
+            if (watched.has(el)) return;
             watched.add(el);
             attrObserver.observe(el, { attributes: true, attributeFilter: ["class", "style"] });
         });

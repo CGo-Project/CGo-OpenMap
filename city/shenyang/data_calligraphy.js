@@ -306,6 +306,9 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "李晖", intro: "李晖，字厢齐，1963年生于沈阳，中国书法家协会会员，沈阳市书法家协会副主席、沈阳市硬笔书法家协会副主席" }
     },
     "0312": {
+        image: "./city/shenyang/assets/calligraphy/nanyanghujie.png",
+        ratio: 3,
+        alt: "南阳湖街站",
         calligrapher: { name: "欧阳明利", intro: "欧阳明利，1962年生，吉林桦甸人，北部战区陆军政治工作部文艺创作室专职创作员，国家一级美术师，中国书法家协会会员、辽宁省书法家协会理事" }
     },
     "0414": {
@@ -394,6 +397,9 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "高凤江", intro: "高凤江，字竹泉，1963年生，中国书法家协会会员，辽宁省书法家协会理事，沈阳市书法家协会副主席" }
     },
     "0911": {
+        image: "./city/shenyang/assets/calligraphy/datonghujie.png",
+        ratio: 2.857,
+        alt: "大通湖街站",
         calligrapher: { name: "冷旭", intro: "冷旭，满族，1960年生，辽宁辽阳人，西泠印社社员，中国书法家协会篆书专业委员会委员，曾任辽宁美术馆馆长、辽宁画院院长" }
     },
 
@@ -409,6 +415,8 @@ const CALLIGRAPHY_DATA = {
     //     题字计入本组。江东街（陈洪普）、嘉兴街（王丹）、方型广场（李洋）、
     //     文富路（赵立新）、富民街（聂成文）、砂阳（卢林）已据落款辨认 +
     //     公开资料交叉印证补入题写者，移至上方 3 号线分组；
+    //     南李官（0314）、凌空（0315）题字横图已采集（填 image / ratio / alt），
+    //     题写者仍待考，故仍列本组；
     //     中科院金属所题字无落款、疑集所名，仍列本组待考。
     // -------------------------------------------------------------------------
     "0301": { pendingCalligrapher: true },  // 李达
@@ -419,8 +427,23 @@ const CALLIGRAPHY_DATA = {
     "0306": { pendingCalligrapher: true },  // 翟家
     "0308": { pendingCalligrapher: true },  // 宁官
     "0310": { pendingCalligrapher: true },  // 甘官
-    "0314": { pendingCalligrapher: true },  // 南李官
-    "0315": { pendingCalligrapher: true },  // 凌空
+    "0314": {
+        image: "./city/shenyang/assets/calligraphy/nanliguan.png",
+        ratio: 1.822,
+        alt: "南李官站",
+        // 题字横图已实拍采集；落款与印章照片细节不足，题写者姓名无法确认，
+        // 故不留任何判读结论（不臆测），卡片按默认文案呈现「题写者信息待补充」。
+        pendingCalligrapher: true
+    },
+    "0315": {
+        image: "./city/shenyang/assets/calligraphy/lingkong.png",
+        ratio: 1.287,
+        alt: "凌空站",
+        // 落款竖排三字「师索民」，下钤朱文方印，释文「師索民印」，落款与印章互证。
+        // 身份与辽宁省文联官网《辽宁省书法家协会第七届主席团组织机构名单》(2022-08)
+        // 的副主席名单、辽宁日报 2025-06 报道相符。
+        calligrapher: { name: "师索民", intro: "师索民，辽宁省书法家协会第七届副主席" }
+    },
     "0322": {
         // 该站大字壁题字「中科院金属所站」无落款、无印章（2026-09-26 实拍核实），
         // 字形与金属研究所门口所名石「中国科学院金属研究所」相近，疑自所名集字而成。
@@ -524,12 +547,21 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "霍达", intro: "霍达，女，生于1945年，北京人，代表作有《穆斯林的葬礼》《公子扶苏》等" }
     },
     "0202": {
+        image: "./city/shenyang/assets/calligraphy/lingxi.png",
+        ratio: 1.43,
+        alt: "陵西站",
         calligrapher: { name: "陈忠实", intro: "陈忠实，男，生于1942年，陕西西安人，代表作有《白鹿原》《乡村》等" }
     },
     "0201": {
+        image: "./city/shenyang/assets/calligraphy/santaizi.png",
+        ratio: 2.107,
+        alt: "三台子站",
         calligrapher: { name: "杨大群", intro: "杨大群，男，生于1927年，辽宁新民人，代表作有《毛岸英》《关东江河》等" }
     },
     "0251": {
+        image: "./city/shenyang/assets/calligraphy/yixueyuan.png",
+        ratio: 2.357,
+        alt: "医学院站",
         calligrapher: { name: "周明", intro: "周明，男，生于1934年，陕西周至人，代表作有《榜样》《在莽莽的绿色世界》等" }
     },
     "0252": {
@@ -542,6 +574,9 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "阎肃", intro: "阎肃，男，生于1930年，河北保定人，代表作有《江姐》《说唱脸谱》等" }
     },
     "0254": {
+        image: "./city/shenyang/assets/calligraphy/liaoningdaxue.png",
+        ratio: 3.072,
+        alt: "辽宁大学站",
         calligrapher: { name: "邵燕祥", intro: "邵燕祥，男，生于1933年，北京人，代表作有《到远方去》《在远方》等" }
     }
 };

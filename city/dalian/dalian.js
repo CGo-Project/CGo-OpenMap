@@ -175,6 +175,11 @@
         coords: DalianCity.dataFiles.amapDataUrl,
         cityIcon: "dalian",
         /**
+         * 线路编号徽标的城市覆盖：3 号线支线写作「3支」。
+         * 从线路名抽数字只能得到「3」，与 3 号线本体撞号；后缀「支」是小号修饰字（suffix）。
+         */
+        lineCodes: { DLM99: { code: "3", suffix: "支" } },
+        /**
          * 计费系统：地铁线网（DLM*）按制式默认并网，有轨各自独立购票
          * —— 201 路与其区间段同一票制（华乐广场凭换乘票接驳），202 路单算。
          */
@@ -251,8 +256,10 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260928.0907";
+        const version = "260930.4400";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
+        // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
+        document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
@@ -270,6 +277,8 @@
         document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
         document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
+        // 地图小工具（票价图 / 等时圈）：入口在「查找最近车站」按钮下方
+        document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
         (DalianCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/dalian/${scriptPath}?v=${version}"><\/script>`);
         });

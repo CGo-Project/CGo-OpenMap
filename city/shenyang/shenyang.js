@@ -196,7 +196,8 @@
                 "modules/shenyang_station_title.js",
                 "modules/shenyang_calligraphy.js",
                 "modules/shenyang_cultural.js",
-                "modules/shenyang_service_info.js"
+                "modules/shenyang_service_info.js",
+                "modules/shenyang_level_map.js"
             ],
             modules: {
                 "header-controls": { enabled: true, order: 10 },
@@ -207,6 +208,8 @@
                 "header-badges": { enabled: true, order: 30 },
                 "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
                 "shenyang-timetable": { enabled: true, targetTab: "line-tab", order: 15 },
+                // 官网车站层级图（剖面图）纯图片卡片，置顶于「车站信息」页签
+                "shenyang-station-level-map": { enabled: true, targetTab: "station-info", order: 5 },
                 "shenyang-calligrapher-intro": { enabled: true, targetTab: "station-info", order: 12 },
                 "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 15 },
                 "adjacent-stations": { enabled: true, targetTab: "line-tab", order: 20 },
@@ -230,8 +233,9 @@
      */
     window.CGO_ROUTE_CONFIG = {
         coords: "./city/shenyang/amap_data.json",
-        // 线路编号徽标的城市覆盖：有轨 5 号线写作 T5，与地铁 5 号线区分开
-        lineCodes: { HNT5: "T5" },
+        // 线路编号徽标的城市覆盖：有轨 5 号线写作 T5，与地铁 5 号线区分开；
+        // T 是小号修饰字（prefix），主编号仍是 5
+        lineCodes: { HNT5: { prefix: "T", code: "5" } },
         lineCodeShape: "circle",   // 本城地铁用圆形编号徽标（有轨与其他城市保持圆角方形）
         cityIcon: "shenyang",   // 官网查询按钮使用城市官方徽标（CGoUI 内置）
         reader(line, sid) {
@@ -269,7 +273,9 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260928.0907";
+        const version = "260930.4400";
+        // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
+        document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
@@ -278,6 +284,8 @@
         document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
         document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
+        // 地图小工具（票价图 / 等时圈 / 多人汇合）：入口在「查找最近车站」按钮下方
+        document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
         // 城市私有数据（须早于依赖它的模块加载）
         document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
         // 共享层（本目录下，须早于各城模块加载）

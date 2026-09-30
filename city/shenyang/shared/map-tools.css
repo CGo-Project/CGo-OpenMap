@@ -1,0 +1,904 @@
+/**
+ * CGo OpenMap - 地图小工具样式（共享层）
+ *
+ * 由 map-tools.js 按自身 URL 注入（与 calligraphy.css、route-panel.css 的做法一致），
+ * 使用方无需在页面里手工引用本文件。
+ *
+ * 骨架沿用车站详情面板与行程规划面板的主题变量（--card-bg、--panel-header-bg、
+ * --panel-header-text、--text-main、--btn-info-bg、--border-color），
+ * 因此标题栏、图例与按钮的观感随主题与各城配色自动保持一致。
+ */
+
+/* ── 分层设色画布 ─────────────────────────────────────────────────── */
+/* 尺寸与内联 style 一致由脚本写入（低分辨率位图 + 浏览器平滑放大），
+   这里只负责定位与层级：垫在散点装饰与线路之间，不吃指针事件 */
+#cgo-map-tools-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 4;              /* 低于散点装饰（5）与线路层（10）：色块当底图，装饰与线网仍在其上 */
+    pointer-events: none;
+}
+
+/* ── 图上叠加：各站数值图元 + 等值线数值 ──────────────────────────── */
+/* 夹在站点层（20）与站名层（30）之间：数值图元属于站点的一部分，
+   压在站名之下才不会把站名盖掉 */
+.cgo-mt-values {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    pointer-events: none;
+}
+
+/* 各站图元：正圆 + 数值。底色统一为地图背景色、边框取文本色（读起来像图上的一枚标签）。
+   尺寸固定 20×20 的正圆；数字放不下时由脚本横向压扁（scaleX），不把圆撑成椭圆 */
+.cgo-mt-badge {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-main);
+    background: var(--map-bg);
+    border: 1px solid var(--text-main);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    /* 叠加层整体不吃指针事件（地图照常拖动缩放），但每一枚图元要能点：
+       点它等同于点它顶掉的那座车站图元 */
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.cgo-mt-badge span {
+    display: block;
+    white-space: nowrap;
+}
+
+/* 汇合图的角色标记：两个出发点标 A / B。
+   原图元已整个让位，故标记直接落在车站位置上（居中），而不是悬在上方 */
+.cgo-mt-flag {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+}
+
+/* 出发点：取色标两端的颜色，一眼知道哪边是哪边。C 是三点汇合才有的第三人，取绿色 */
+.cgo-mt-flag.is-ab {
+    background: #c2477a;
+}
+
+.cgo-mt-flag.is-ba {
+    background: #3b5bc0;
+}
+
+.cgo-mt-flag.is-ca {
+    background: #22a05b;
+}
+
+/* 出发点的字母徽标（面板标题与推荐列表共用）：与图上 A / B / C 标记同一套语义色。
+   三处必须同色（见 map-tools.js 的 MEET_ORIGINS），否则"哪个数是谁的"就读串了 */
+.cgo-mt-or {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    box-sizing: border-box;
+    margin-right: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    border-radius: 999px;
+    vertical-align: -1px;
+}
+
+.cgo-mt-or.is-ab {
+    background: #c2477a;
+}
+
+.cgo-mt-or.is-ba {
+    background: #3b5bc0;
+}
+
+.cgo-mt-or.is-ca {
+    background: #22a05b;
+}
+
+/* 标题里三个站名之间的分隔符 */
+.cgo-mt-or-sep {
+    margin: 0 4px;
+    opacity: 0.6;
+}
+
+/* 推荐汇合站：图元整体换成汇合带的黄底 + 深字。
+   若只把数字改成黄色，浅色主题下（浅米底）几乎看不清；黄底深字则两种主题都读得清 */
+.cgo-mt-badge.is-pick {
+    background: #f2d24b;
+    border-color: #b8860b;
+    color: #3a2a00;
+}
+
+/* 汇合图：图元的底色与边框都保持默认（地图底色 + 文本色），只用**文字颜色**说明归属 ——
+   A 粉红、B 蓝、C 绿，与图上标记、面板标题同一套。底色留给「推荐汇合站」的黄底标记 */
+.cgo-mt-badge.is-near-a {
+    color: #c2477a;
+}
+
+.cgo-mt-badge.is-near-b {
+    color: #3b5bc0;
+}
+
+.cgo-mt-badge.is-near-c {
+    color: #22a05b;
+}
+
+.cgo-mt-badge.is-zero {
+    color: #b8860b;
+}
+
+/* 等值线上的等级数值：与它所在的那条线用同一套配色 —— 文本色填充 + 背景色描边，
+   数字因此读起来是"从色块上凿出来的一段"，与线本身连成一体。
+   transform（居中 + 沿线倾斜）由脚本按该处等值线走向内联给出 */
+.cgo-mt-isoline {
+    position: absolute;
+    padding: 0 2px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-main);
+    white-space: nowrap;
+    -webkit-text-stroke: 2.5px var(--map-bg);
+    paint-order: stroke fill;
+}
+
+/* 有数值的车站：原图元让位给上面的数值大圆（类由脚本逐站挂上）。
+   没有数值的站点（未开通站、国铁散点、不可达站）不会被挂类，原图元原样保留。
+   汇合图的两个出发点也走这条路 —— 它们的位置改由 A / B 标记顶上 */
+#stations-layer .station.cgo-mt-hidden {
+    opacity: 0;
+}
+
+/* 地形图期间：站名文字加一圈地图背景色描边。
+   色块铺上来之后，站名的对比度会被压掉（尤其深浅交界的等值线附近），
+   描边相当于给每个字垫一层"底色"。这里直接用 -webkit-text-stroke +
+   paint-order（.stacn/.staen 的基础样式已经声明了），与核心给站名加 active
+   选中态时是同一套写法，描边宽度也复用同一对变量，两处观感保持一致 */
+#map-content.cgo-mt-terrain #labels-layer .label-group .stacn {
+    -webkit-text-stroke: var(--sta-stroke-width-cn, 2px) var(--map-bg);
+}
+
+#map-content.cgo-mt-terrain #labels-layer .label-group .staen {
+    -webkit-text-stroke: var(--sta-stroke-width-en, 1.75px) var(--map-bg);
+}
+
+/* ── 悬停读数胶囊（样式对齐上游 /map）────────────────────────────── */
+.cgo-mt-hover {
+    position: fixed;
+    left: 0;
+    top: 0;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 18px;
+    color: #fff;
+    background: rgba(9, 24, 38, 0.94);
+    border-radius: 999px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;      /* 纯读数，不能挡住底下地图的拖拽 */
+    z-index: 2400;
+    transform: translate(-50%, -100%);
+}
+
+.cgo-mt-hover.show {
+    display: flex;
+}
+
+.cgo-mt-hover-dot {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+}
+
+.cgo-mt-hover-text b {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+/* ── 面板外壳：工具列表与结果小窗共用 ───────────────────────────── */
+/* 浮在地图右下角。桌面端固定侧栏在左侧，两者不打架 */
+.cgo-mt-panel {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 2100;           /* 与行程规划面板同级，高于车站信息面板（2000） */
+    width: 320px;
+    max-width: calc(100vw - 24px);
+    /* 高度上限：顶部让开浮动标题栏（约 76px）、底部留自己的 20px，超出则正文内部滚动。
+       矮窗口（如 455px 高）上面板不会再顶出视口外，桌面上也不至于长成一条 */
+    max-height: min(calc(100vh - 96px), 640px);
+    display: none;
+    flex-direction: column;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-main);
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.32);
+    overflow: hidden;
+}
+
+.cgo-mt-panel.show {
+    display: flex;
+}
+
+.cgo-mt-head {
+    flex: none;              /* 高度受限时标题栏不参与压缩，只让正文滚动 */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 8px 10px 14px;
+    color: var(--panel-header-text, #fff);
+    background: var(--panel-header-bg, #00263b);
+}
+
+.cgo-mt-head-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cgo-mt-close {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.cgo-mt-close:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.cgo-mt-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    /* flex 子项默认不收缩，得显式给 0 才会把溢出交给滚动条 */
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* ── 工具列表条目 ───────────────────────────────────────────────── */
+.cgo-mt-lead {
+    margin: 0;
+    line-height: 1.6;
+    opacity: 0.75;
+}
+
+/* 出处说明：一行小字，带外链图标 */
+.cgo-mt-note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0.6;
+}
+
+.cgo-mt-note a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.cgo-mt-note cgo-icon {
+    vertical-align: -2px;
+    margin-left: 2px;
+}
+
+.cgo-mt-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 0;
+    border-top: 1px solid var(--border-color, #dee2e6);
+}
+
+.cgo-mt-item:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.cgo-mt-item-icon {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: var(--primary-color, #006098);
+    background: var(--btn-info-bg, rgba(0, 0, 0, 0.05));
+}
+
+.cgo-mt-item-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cgo-mt-item-text b {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.cgo-mt-item-text span {
+    font-size: 12px;
+    line-height: 1.45;
+    opacity: 0.7;
+}
+
+.cgo-mt-launch {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 7px 13px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--primary-color, #006098);
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: filter 0.15s;
+}
+
+.cgo-mt-launch:hover {
+    filter: brightness(1.1);
+}
+
+/* ── 图例标尺：一条色带 + 一行刻度（与上游等时圈标尺同一形态）───── */
+.cgo-mt-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* 色带与刻度必须**同宽**：刻度是按 tick.at 百分比绝对定位的，右端多出那段斜纹
+   （超范围示意）若算进宽度里，所有刻度都会跟着偏左。故把色带 + 刻度装进主格，
+   斜纹另起一格并排 —— 主格窄一点，刻度仍精确压在等级线上 */
+.cgo-mt-scale {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.cgo-mt-scale-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* 超范围示意：「范围」选中上限之外不再填色（上限本身仍画一条等级线），色带右端用一段斜纹表示 */
+.cgo-mt-over {
+    flex: none;
+    width: 18px;
+    height: 16px;
+    border-radius: 4px;
+    background: repeating-linear-gradient(135deg,
+        var(--border-color) 0 3px, transparent 3px 7px);
+}
+
+.cgo-mt-band {
+    display: flex;
+    height: 16px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* 每档一块色。等时圈的档宽就是 5 分钟，档位色本身即粒度，不再有档内深浅 */
+.cgo-mt-band i {
+    flex: 1 1 0;
+    display: block;
+    position: relative;
+}
+
+/* 等级线示意：与图上同一套画法 —— 粗的背景色描边垫在下面、细的文本色线叠在上面。
+   位置取色块的左缘（图上的线是以组界为中心向两侧各铺半宽的，示意到这个粒度足够）。
+   汇合图有三种线型：文本色实线、文本色虚线，以及差值 0 那条黄实线 */
+.cgo-mt-band .cgo-mt-cut::before,
+.cgo-mt-band .cgo-mt-cutdash::before,
+.cgo-mt-band .cgo-mt-cutzero::before {
+    content: "";
+    position: absolute;
+    left: -2px;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: var(--map-bg);
+}
+
+.cgo-mt-band .cgo-mt-cut::after,
+.cgo-mt-band .cgo-mt-cutdash::after,
+.cgo-mt-band .cgo-mt-cutzero::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+}
+
+.cgo-mt-band .cgo-mt-cut::after {
+    background: var(--text-main);
+}
+
+.cgo-mt-band .cgo-mt-cutdash::after {
+    background: repeating-linear-gradient(to bottom,
+        var(--text-main) 0 3px, transparent 3px 5px);
+}
+
+/* 0 那条分界线仍是黄色（图上也是它） */
+.cgo-mt-band .cgo-mt-cutzero::after {
+    width: 2px;
+    background: #f2d24b;
+}
+
+/* 刻度：绝对定位摆在各等级线的位置上（位置由脚本按 tick.at 给出）。
+   不用 flex 均分 —— 均分只能保证两端贴边，中间那些会与色标里的白线错开 */
+.cgo-mt-ticks {
+    position: relative;
+    height: 15px;
+    font-size: 11px;
+    opacity: 0.75;
+}
+
+.cgo-mt-ticks span {
+    position: absolute;
+    top: 0;
+    white-space: nowrap;
+}
+
+/* 其它浮层（车站详情、行程规划、路线结果）在场时先让位 —— 只作用于窄屏，
+   桌面端由脚本判定后不挂本类（侧栏形态下面板常驻，互斥就再也看不到色标了） */
+.cgo-mt-panel.cgo-mt-yield {
+    display: none !important;
+}
+
+/* 结果小窗标题里的矢量箭头（汇合图：甲站 ⇄ 乙站） */
+.cgo-mt-head-title .cgo-mt-way {
+    vertical-align: -2px;
+    margin: 0 4px;
+    opacity: 0.75;
+}
+
+/* 汇合图：色带两端与中间的说明（A 更近 / 汇合带 / B 更近）。
+   三块都绝对定位，中间那块钉死在 50% —— 汇合图量程 ±MEET_CAP 对称，0 就在色标正中，
+   正是那条黄线的位置。用 flex 均分的话，中间那块会随两端文字长短漂移，与黄线错开 */
+.cgo-mt-ends {
+    position: relative;
+    height: 15px;
+    font-size: 11px;
+    opacity: 0.75;
+}
+
+.cgo-mt-ends span {
+    position: absolute;
+    top: 0;
+    white-space: nowrap;
+}
+
+.cgo-mt-ends span:first-child {
+    left: 0;
+}
+
+.cgo-mt-ends span:last-child {
+    right: 0;
+}
+
+.cgo-mt-ends .cgo-mt-ends-mid {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* 两点汇合的"再点一站加人"提示：升级三点汇合的入口，明写出来别人才知道图上还能再点一下 */
+.cgo-mt-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0.8;
+}
+
+.cgo-mt-hint cgo-icon {
+    flex: none;
+}
+
+/* 三点汇合的图例项：**不画色带**（三个出发点之间没有"哪边更近"，色标是单向的，
+   标数值刻度只会让人误读），只用两枚线型说明那两条等级线的含义 ——
+   线型与图上严格一致：10 分那条是虚线、20 分那条是实线（见 buildBands 的 cutKind） */
+.cgo-mt-keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.cgo-mt-key {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.cgo-mt-key-mark {
+    flex: none;
+    width: 18px;
+    height: 0;
+    border-top-width: 2px;
+    border-top-color: var(--text-main);
+}
+
+.cgo-mt-key-mark.is-dash {
+    border-top-style: dashed;
+}
+
+.cgo-mt-key-mark.is-solid {
+    border-top-style: solid;
+}
+
+/* 等时圈的「范围」分段控件：色带上限 = 选中项。整条是一个圆角底槽，选中那枚是白胶囊 */
+.cgo-mt-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cgo-mt-range-label {
+    flex: none;
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+.cgo-mt-range-opts {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--btn-info-bg);
+    border-radius: 999px;
+}
+
+.cgo-mt-range-opt {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 5px 2px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600 !important;   /* 同 .cgo-mt-quick：覆盖全局表单重置 */
+    white-space: nowrap;
+    color: var(--text-main);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-mt-range-opt.is-on {
+    background: var(--card-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.cgo-mt-range-opt:hover:not(.is-on) {
+    background: var(--border-color);
+}
+
+/* 「最近 10 站」列表：按用时升序，条目多时内部滚动 —— 面板本身也能滚，
+   这里再限一道，免得一展开就把色标与按钮顶到看不见的地方 */
+.cgo-mt-near {
+    display: flex;
+    flex-direction: column;
+    max-height: 190px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.cgo-mt-near-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-main);
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.cgo-mt-near-item:last-child {
+    border-bottom: 0;
+}
+
+.cgo-mt-near-item:hover {
+    background: var(--btn-info-bg);
+}
+
+.cgo-mt-near-name {
+    flex: 1;
+    min-width: 0;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cgo-mt-near-time {
+    flex: none;
+    font-weight: 600 !important;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+}
+
+/* 汇合图的推荐汇合站列表 */
+.cgo-mt-meet {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cgo-mt-meet-title {
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+.cgo-mt-meet-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-main);
+    text-align: left;
+    background: var(--btn-info-bg);
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.cgo-mt-meet-item:hover {
+    background: var(--border-color);
+}
+
+.cgo-mt-meet-rank {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    /* 黄色系：与汇合带、以及图上推荐站的黄底图元同一套配色 */
+    color: #3a2a00;
+    background: #f2d24b;
+    border-radius: 50%;
+}
+
+.cgo-mt-meet-name {
+    flex: none;
+    font-weight: 700;
+}
+
+.cgo-mt-meet-time {
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+    opacity: 0.7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cgo-mt-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.75;
+}
+
+.cgo-mt-loading cgo-icon {
+    animation: cgo-mt-spin 1s linear infinite;
+}
+
+@keyframes cgo-mt-spin {
+    to { transform: rotate(360deg); }
+}
+
+.cgo-mt-notice {
+    margin: 0;
+    line-height: 1.6;
+    opacity: 0.75;
+}
+
+.cgo-mt-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* chip 按钮：与行程规划的 .cgo-rt-quick 同一观感 */
+.cgo-mt-quick {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 5px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600 !important;   /* 同 .cgo-rt-quick：覆盖全局表单重置 */
+    white-space: nowrap;
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-mt-quick:hover {
+    background: var(--border-color);
+}
+
+/* ── 选站期间的可点热区 ─────────────────────────────────────────────
+   只有真正能点的三样东西：站点图元、站名标签、以及顶掉图元的数值图元。
+   早先把 `#map-content` 自身与整块 `#labels-layer`（两者都 100% 铺满画布）也算进来，
+   cursor: pointer 又会被子元素继承，于是画布空白处一律是手型、看着处处可点；
+   现在把它们剔出去，热区之外保持默认光标 */
+#map-content.cgo-mt-picking .station,
+#map-content.cgo-mt-picking .label-group,
+#map-content.cgo-mt-picking .label-group *,
+#map-content.cgo-mt-picking .cgo-mt-badge {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+/* 但这两类站**选不了**：未开通（type no）与国铁散点（type rdot）——规划内核不收它们
+   （route-data 建图时把 isPointOnly 的线路整个排除），选中了也只会得到一句"不参与规划"。
+   故在选站态里把它们的指针事件与手型一并撤掉，免得看着像能点。
+   数值图元不用管：有值的站必然参与规划（值就是规划器算出来的） */
+#map-content.cgo-mt-picking .station.no,
+#map-content.cgo-mt-picking .station.rdot,
+#map-content.cgo-mt-picking .label-group.type-no,
+#map-content.cgo-mt-picking .label-group.type-rdot,
+#map-content.cgo-mt-picking .label-group.type-no *,
+#map-content.cgo-mt-picking .label-group.type-rdot * {
+    cursor: default;
+    pointer-events: none;
+}
+
+/* ── 选站提示条：浮在地图上方的胶囊（样式同行程规划的选点提示）─── */
+.cgo-mt-pick-tip {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 16px);
+    left: 50%;
+    max-width: calc(100vw - 32px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 8px 8px 14px;
+    color: var(--panel-header-text, #fff);
+    background: var(--panel-header-bg, #00263b);
+    border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    z-index: 2101;                  /* 压过浮动控制条与面板，选点期间必须可见 */
+    visibility: hidden;
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+    transition:
+        opacity 180ms ease,
+        transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s linear 180ms;
+}
+
+.cgo-mt-pick-tip.show {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    transition:
+        opacity 180ms ease,
+        transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0s;
+}
+
+.cgo-mt-pick-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary-color, #006098);
+}
+
+.cgo-mt-pick-text {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cgo-mt-pick-cancel {
+    flex: none;
+    padding: 6px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--panel-header-bg, #00263b);
+    background: var(--panel-header-text, #fff);
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+/* ── 移动端：面板贴底全宽，提示条避让刘海 ─────────────────────── */
+@media (max-width: 640px) {
+    .cgo-mt-panel {
+        right: 12px;
+        left: 12px;
+        bottom: 12px;
+        width: auto;
+    }
+
+    .cgo-mt-pick-tip {
+        top: calc(env(safe-area-inset-top, 0px) + 72px);
+    }
+}

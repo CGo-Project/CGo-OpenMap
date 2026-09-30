@@ -165,6 +165,19 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "哈尔滨轨道交通",
+      "short_name": "哈尔滨",
+      "description": "查看哈尔滨地铁 1、2、3 号线线网图（骨架阶段）",
+      "url": "./main.html?city=harbin",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

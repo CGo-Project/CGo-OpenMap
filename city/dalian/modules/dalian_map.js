@@ -112,6 +112,8 @@
                 margin-right: 2px;
                 vertical-align: -0.12em;
                 object-fit: contain;
+                /* <cgo-icon> 分支：内置图标尺寸走 --cgo-icon-size，与 <img> 分支同为 1em */
+                --cgo-icon-size: 1em;
             }
             #labels-layer .dalian-label-cn-text {
                 display: inline-block;
@@ -150,14 +152,24 @@
             if (!hasCnEnhancement && !hasEnEnhancement) return;
 
             const iconConfig = typeof config.icon === "string" ? { src: config.icon } : (config.icon || {});
-            const labelKey = `${cnText}\u0000${iconConfig.src || ""}\u0000${enText}`;
+            // 两种图标写法取其一：icon 为 CGoUI 内置图标名（随主题自动染色），
+            // src 为城市自绘 SVG 路径（保留兼容）。
+            const iconKey = iconConfig.icon ? `cgo:${iconConfig.icon}` : (iconConfig.src || "");
+            const labelKey = `${cnText}\u0000${iconKey}\u0000${enText}`;
             if (label.dataset.dalianLabelKey === labelKey) return;
 
             if (hasCnEnhancement) {
                 cnLabel.replaceChildren();
                 const contentElement = document.createElement("span");
                 contentElement.className = "dalian-label-content";
-                if (iconConfig.src) {
+                if (iconConfig.icon) {
+                    const icon = document.createElement("cgo-icon");
+                    icon.className = "dalian-label-icon";
+                    icon.setAttribute("name", iconConfig.icon);
+                    icon.title = iconConfig.title || "";
+                    icon.setAttribute("aria-hidden", "true");
+                    contentElement.appendChild(icon);
+                } else if (iconConfig.src) {
                     const icon = document.createElement("img");
                     icon.className = "dalian-label-icon";
                     icon.src = iconConfig.src;

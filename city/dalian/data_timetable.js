@@ -1,10 +1,17 @@
 /**
  * CGo OpenMap - 大连官方首末班车数据
  *
- * 来源：大连公共交通建设投资集团官网线网图生产接口。
- * 接口：/bas/smartstation/v1/ipis/station/detail
- * 查询参数：service_id=01，按工作日/周末分组保留官方方向、终点、首班与末班字段。
- * 采集时间：2026-09-08T13:18:07.823Z
+ * 来源：大连公共交通建设投资集团官网「站点查询」详情页的公开接口
+ * （https://www.dltransgrp.com/hb-air-api/site/ShowSite.do，参数 siteId 见 DALIAN_STATION_DETAIL_SITE_ID）。
+ * 每座车站按停靠线路逐条比对其上下行首末班，比对一致或修正后落库；采集时间见 DALIAN_TIMETABLE_SOURCE。
+ *
+ * 日期分组说明：官网详情页每站只给一组时刻（经比对为工作日值），故
+ * · 原先工作日与休息日一致的站（绝大多数），两组同值应用；
+ * · 原先两组不同的站（双D港、金石滩、小窑湾），保留其「休息日首班比工作日晚 15 分钟」的既有差值，
+ *   以新工作日值按同一差值推算休息日值。
+ *
+ * 3 号线支线各站（含开发区）「开往普兰店振兴街」的时刻，官网站点详情页在「大交路」侧直接给出，
+ * 已按官网值记录，不再由 3 号线支线站间差值反推，故全表不含任何推算（isEstimated）记录。
  *
  * destinationStationId 与沈阳统一语义：线路端点写 "line-first" / "line-last" 代号，
  * 非端点的贯通区间车（如 13 号线开往开发区 0308）保留站 ID。
@@ -834,6 +841,51 @@ const DALIAN_TIMETABLE_DATA = {
                     ]
                 }
             ]
+        },
+        "DLM13": {
+            "lineNo": "13",
+            "lineName": "13号线",
+            "stationName": "十九局",
+            "currentWeekday": 3,
+            "schedules": [
+                {
+                    "includeWeekdays": [
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:42",
+                            "last": "20:07"
+                        }
+                    ]
+                },
+                {
+                    "includeWeekdays": [
+                        7,
+                        1
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:42",
+                            "last": "20:07"
+                        }
+                    ]
+                }
+            ]
         }
     },
     "0318": {
@@ -891,6 +943,51 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "九里",
                             "first": "06:13",
                             "last": "20:33"
+                        }
+                    ]
+                }
+            ]
+        },
+        "DLM13": {
+            "lineNo": "13",
+            "lineName": "13号线",
+            "stationName": "和平路",
+            "currentWeekday": 3,
+            "schedules": [
+                {
+                    "includeWeekdays": [
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:38",
+                            "last": "20:03"
+                        }
+                    ]
+                },
+                {
+                    "includeWeekdays": [
+                        7,
+                        1
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:38",
+                            "last": "20:03"
                         }
                     ]
                 }
@@ -956,6 +1053,51 @@ const DALIAN_TIMETABLE_DATA = {
                     ]
                 }
             ]
+        },
+        "DLM13": {
+            "lineNo": "13",
+            "lineName": "13号线",
+            "stationName": "东山路",
+            "currentWeekday": 3,
+            "schedules": [
+                {
+                    "includeWeekdays": [
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:35",
+                            "last": "20:00"
+                        }
+                    ]
+                },
+                {
+                    "includeWeekdays": [
+                        7,
+                        1
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:35",
+                            "last": "20:00"
+                        }
+                    ]
+                }
+            ]
         }
     },
     "0316": {
@@ -1013,6 +1155,51 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "九里",
                             "first": "06:07",
                             "last": "20:27"
+                        }
+                    ]
+                }
+            ]
+        },
+        "DLM13": {
+            "lineNo": "13",
+            "lineName": "13号线",
+            "stationName": "鸿玮澜山",
+            "currentWeekday": 3,
+            "schedules": [
+                {
+                    "includeWeekdays": [
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:32",
+                            "last": "19:57"
+                        }
+                    ]
+                },
+                {
+                    "includeWeekdays": [
+                        7,
+                        1
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:32",
+                            "last": "19:57"
                         }
                     ]
                 }
@@ -1078,6 +1265,51 @@ const DALIAN_TIMETABLE_DATA = {
                     ]
                 }
             ]
+        },
+        "DLM13": {
+            "lineNo": "13",
+            "lineName": "13号线",
+            "stationName": "通世泰",
+            "currentWeekday": 3,
+            "schedules": [
+                {
+                    "includeWeekdays": [
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:28",
+                            "last": "19:53"
+                        }
+                    ]
+                },
+                {
+                    "includeWeekdays": [
+                        7,
+                        1
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:28",
+                            "last": "19:53"
+                        }
+                    ]
+                }
+            ]
         }
     },
     "0308": {
@@ -1111,6 +1343,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:32",
                             "last": "20:02"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:32",
+                            "last": "22:02"
                         }
                     ]
                 },
@@ -1135,6 +1374,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:32",
                             "last": "20:02"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:32",
+                            "last": "22:02"
                         }
                     ]
                 }
@@ -1184,6 +1430,51 @@ const DALIAN_TIMETABLE_DATA = {
                     ]
                 }
             ]
+        },
+        "DLM13": {
+            "lineNo": "13",
+            "lineName": "13号线",
+            "stationName": "开发区",
+            "currentWeekday": 3,
+            "schedules": [
+                {
+                    "includeWeekdays": [
+                        2,
+                        3,
+                        4,
+                        5,
+                        6
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:25",
+                            "last": "19:50"
+                        }
+                    ]
+                },
+                {
+                    "includeWeekdays": [
+                        7,
+                        1
+                    ],
+                    "trainTypeName": "全程车",
+                    "trainTypeCode": "qcc-13-1321-1336",
+                    "directions": [
+                        {
+                            "direction": "up",
+                            "destinationStationId": "line-last",
+                            "destinationName": "普兰店振兴街",
+                            "first": "06:25",
+                            "last": "19:50"
+                        }
+                    ]
+                }
+            ]
         }
     },
     "0301": {
@@ -1208,15 +1499,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:17",
-                            "last": "22:47"
+                            "first": "06:15",
+                            "last": "22:45"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:55",
-                            "last": "22:25"
+                            "first": "05:53",
+                            "last": "22:23"
                         }
                     ]
                 },
@@ -1232,15 +1523,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:17",
-                            "last": "22:47"
+                            "first": "06:15",
+                            "last": "22:45"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:55",
-                            "last": "22:25"
+                            "first": "05:53",
+                            "last": "22:23"
                         }
                     ]
                 }
@@ -1269,6 +1560,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:00",
                             "last": "19:30"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:00",
+                            "last": "21:30"
                         }
                     ]
                 },
@@ -1286,6 +1584,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:00",
                             "last": "19:30"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:00",
+                            "last": "21:30"
                         }
                     ]
                 }
@@ -1323,6 +1628,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:04",
                             "last": "19:34"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:04",
+                            "last": "21:34"
                         }
                     ]
                 },
@@ -1347,6 +1659,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:04",
                             "last": "19:34"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:04",
+                            "last": "21:34"
                         }
                     ]
                 }
@@ -1384,6 +1703,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:09",
                             "last": "19:39"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:09",
+                            "last": "21:39"
                         }
                     ]
                 },
@@ -1408,6 +1734,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:09",
                             "last": "19:39"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:09",
+                            "last": "21:39"
                         }
                     ]
                 }
@@ -1445,6 +1778,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:14",
                             "last": "19:44"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:14",
+                            "last": "21:44"
                         }
                     ]
                 },
@@ -1469,6 +1809,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:14",
                             "last": "19:44"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:14",
+                            "last": "21:44"
                         }
                     ]
                 }
@@ -1497,8 +1844,8 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:39",
-                            "last": "23:09"
+                            "first": "06:35",
+                            "last": "23:05"
                         },
                         {
                             "direction": "down",
@@ -1521,8 +1868,8 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:39",
-                            "last": "23:09"
+                            "first": "06:35",
+                            "last": "23:05"
                         },
                         {
                             "direction": "down",
@@ -1565,6 +1912,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:18",
                             "last": "19:48"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:18",
+                            "last": "21:48"
                         }
                     ]
                 },
@@ -1589,6 +1943,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:18",
                             "last": "19:48"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:18",
+                            "last": "21:48"
                         }
                     ]
                 }
@@ -1626,6 +1987,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:24",
                             "last": "19:54"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:24",
+                            "last": "21:54"
                         }
                     ]
                 },
@@ -1650,6 +2018,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:24",
                             "last": "19:54"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:24",
+                            "last": "21:54"
                         }
                     ]
                 }
@@ -1687,6 +2062,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:28",
                             "last": "19:58"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:28",
+                            "last": "21:58"
                         }
                     ]
                 },
@@ -1711,6 +2093,13 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationName": "金石滩",
                             "first": "06:28",
                             "last": "19:58"
+                        },
+                        {
+                            "direction": "up",
+                            "destinationStationId": "0309",
+                            "destinationName": "保税区",
+                            "first": "06:28",
+                            "last": "21:58"
                         }
                     ]
                 }
@@ -2441,15 +2830,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:15",
-                            "last": "22:45"
+                            "first": "06:13",
+                            "last": "22:43"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:57",
-                            "last": "22:27"
+                            "first": "05:55",
+                            "last": "22:25"
                         }
                     ]
                 },
@@ -2465,15 +2854,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:15",
-                            "last": "22:45"
+                            "first": "06:13",
+                            "last": "22:43"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:57",
-                            "last": "22:27"
+                            "first": "05:55",
+                            "last": "22:25"
                         }
                     ]
                 }
@@ -2625,7 +3014,7 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:53",
-                            "last": "22:53"
+                            "last": "22:52"
                         },
                         {
                             "direction": "down",
@@ -2649,7 +3038,7 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationStationId": "line-last",
                             "destinationName": "大连北站",
                             "first": "05:53",
-                            "last": "22:53"
+                            "last": "22:52"
                         },
                         {
                             "direction": "down",
@@ -4735,7 +5124,7 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:08",
-                            "last": "23:08"
+                            "last": "23:07"
                         }
                     ]
                 },
@@ -4759,7 +5148,7 @@ const DALIAN_TIMETABLE_DATA = {
                             "destinationStationId": "line-last",
                             "destinationName": "河口",
                             "first": "06:08",
-                            "last": "23:08"
+                            "last": "23:07"
                         }
                     ]
                 }
@@ -5591,8 +5980,8 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:12",
-                            "last": "22:42"
+                            "first": "06:07",
+                            "last": "22:37"
                         }
                     ]
                 },
@@ -5615,8 +6004,8 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:12",
-                            "last": "22:42"
+                            "first": "06:07",
+                            "last": "22:37"
                         }
                     ]
                 }
@@ -5652,8 +6041,8 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:09",
-                            "last": "22:39"
+                            "first": "06:04",
+                            "last": "22:34"
                         }
                     ]
                 },
@@ -5676,8 +6065,8 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:09",
-                            "last": "22:39"
+                            "first": "06:04",
+                            "last": "22:34"
                         }
                     ]
                 }
@@ -5706,15 +6095,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:06",
-                            "last": "22:36"
+                            "first": "06:05",
+                            "last": "22:35"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:06",
-                            "last": "22:36"
+                            "first": "06:02",
+                            "last": "22:32"
                         }
                     ]
                 },
@@ -5730,15 +6119,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:06",
-                            "last": "22:36"
+                            "first": "06:05",
+                            "last": "22:35"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:06",
-                            "last": "22:36"
+                            "first": "06:02",
+                            "last": "22:32"
                         }
                     ]
                 }
@@ -5767,15 +6156,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:08",
-                            "last": "22:38"
+                            "first": "06:07",
+                            "last": "22:37"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:04",
-                            "last": "22:34"
+                            "first": "06:00",
+                            "last": "22:30"
                         }
                     ]
                 },
@@ -5791,15 +6180,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:08",
-                            "last": "22:38"
+                            "first": "06:07",
+                            "last": "22:37"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:04",
-                            "last": "22:34"
+                            "first": "06:00",
+                            "last": "22:30"
                         }
                     ]
                 }
@@ -5828,15 +6217,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:10",
-                            "last": "22:40"
+                            "first": "06:09",
+                            "last": "22:39"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:02",
-                            "last": "22:32"
+                            "first": "05:59",
+                            "last": "22:29"
                         }
                     ]
                 },
@@ -5852,15 +6241,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:10",
-                            "last": "22:40"
+                            "first": "06:09",
+                            "last": "22:39"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:02",
-                            "last": "22:32"
+                            "first": "05:59",
+                            "last": "22:29"
                         }
                     ]
                 }
@@ -5889,15 +6278,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:13",
-                            "last": "22:43"
+                            "first": "06:11",
+                            "last": "22:41"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:00",
-                            "last": "22:30"
+                            "first": "05:56",
+                            "last": "22:27"
                         }
                     ]
                 },
@@ -5913,15 +6302,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:13",
-                            "last": "22:43"
+                            "first": "06:11",
+                            "last": "22:41"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "06:00",
-                            "last": "22:30"
+                            "first": "05:56",
+                            "last": "22:27"
                         }
                     ]
                 }
@@ -5950,15 +6339,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:22",
-                            "last": "22:52"
+                            "first": "06:19",
+                            "last": "22:49"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:51",
-                            "last": "22:21"
+                            "first": "05:48",
+                            "last": "22:18"
                         }
                     ]
                 },
@@ -5974,15 +6363,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:22",
-                            "last": "22:52"
+                            "first": "06:19",
+                            "last": "22:49"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:51",
-                            "last": "22:21"
+                            "first": "05:48",
+                            "last": "22:18"
                         }
                     ]
                 }
@@ -6011,15 +6400,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:24",
-                            "last": "22:54"
+                            "first": "06:21",
+                            "last": "22:51"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:48",
-                            "last": "22:18"
+                            "first": "05:46",
+                            "last": "22:16"
                         }
                     ]
                 },
@@ -6035,15 +6424,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:24",
-                            "last": "22:54"
+                            "first": "06:21",
+                            "last": "22:51"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:48",
-                            "last": "22:18"
+                            "first": "05:46",
+                            "last": "22:16"
                         }
                     ]
                 }
@@ -6072,15 +6461,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:27",
-                            "last": "22:57"
+                            "first": "06:23",
+                            "last": "22:53"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:45",
-                            "last": "22:15"
+                            "first": "05:44",
+                            "last": "22:14"
                         }
                     ]
                 },
@@ -6096,15 +6485,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:27",
-                            "last": "22:57"
+                            "first": "06:23",
+                            "last": "22:53"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:45",
-                            "last": "22:15"
+                            "first": "05:44",
+                            "last": "22:14"
                         }
                     ]
                 }
@@ -6133,15 +6522,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:29",
-                            "last": "22:59"
+                            "first": "06:25",
+                            "last": "22:55"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:43",
-                            "last": "22:13"
+                            "first": "05:42",
+                            "last": "22:12"
                         }
                     ]
                 },
@@ -6157,15 +6546,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:29",
-                            "last": "22:59"
+                            "first": "06:25",
+                            "last": "22:55"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
-                            "first": "05:43",
-                            "last": "22:13"
+                            "first": "05:42",
+                            "last": "22:12"
                         }
                     ]
                 }
@@ -6194,15 +6583,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:32",
-                            "last": "23:02"
+                            "first": "06:28",
+                            "last": "22:58"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:40",
-                            "last": "22:10"
+                            "last": "22:09"
                         }
                     ]
                 },
@@ -6218,15 +6607,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:32",
-                            "last": "23:02"
+                            "first": "06:28",
+                            "last": "22:58"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:40",
-                            "last": "22:10"
+                            "last": "22:09"
                         }
                     ]
                 }
@@ -6255,15 +6644,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:34",
-                            "last": "23:04"
+                            "first": "06:30",
+                            "last": "23:00"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:38",
-                            "last": "22:08"
+                            "last": "22:07"
                         }
                     ]
                 },
@@ -6279,15 +6668,15 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:34",
-                            "last": "23:04"
+                            "first": "06:30",
+                            "last": "23:00"
                         },
                         {
                             "direction": "down",
                             "destinationStationId": "line-first",
                             "destinationName": "虎滩新区",
                             "first": "05:38",
-                            "last": "22:08"
+                            "last": "22:07"
                         }
                     ]
                 }
@@ -6316,8 +6705,8 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:37",
-                            "last": "23:07"
+                            "first": "06:32",
+                            "last": "23:02"
                         },
                         {
                             "direction": "down",
@@ -6340,8 +6729,8 @@ const DALIAN_TIMETABLE_DATA = {
                             "direction": "up",
                             "destinationStationId": "line-last",
                             "destinationName": "后关",
-                            "first": "06:37",
-                            "last": "23:07"
+                            "first": "06:32",
+                            "last": "23:02"
                         },
                         {
                             "direction": "down",
@@ -6404,352 +6793,164 @@ const DALIAN_TIMETABLE_DATA = {
     }
 };
 
+
+
 /**
- * 依据官网已经公开的3号线支线首末班车差值，补充贯通至13号线后的推算记录。
+ * 大连地铁官网「站点详情」编号映射（本站车站 ID → 官网 siteId）。
  *
- * 这里不修改官网原始记录，只在缺少DLM13记录的支线车站新增明确标记的估算对象：
- * 例如十九局开往开发区的首班比九里晚3分钟，则反推开往普兰店振兴街的首班比九里早3分钟。
+ * 官网详情页形如 https://www.dltransgrp.com/hb-air-web/html/wxgo/stationDetail.jsp?siteId=24，
+ * 其 siteId 与本站车站 ID 并不同源——既非线路次序，也非数字规律（例如本站 0113 西安路对应 12、
+ * 本站 0311 金石滩对应 42），无法由规则推导，故以本站车站 ID 为键逐一登记。
  *
- * destinationStationId 已与沈阳统一语义：线路端点写 "line-first" / "line-last" 代号，
- * 非端点的贯通区间车保留站 ID，因此本配置也用代号表达（DLM99 与 DLM13 的末站方向）。
+ * 数据来源：官网 site/ShowSite.do 接口，与本站站名逐条核对后落库。
+ * 官网编号分两段：1~110 为 1/2/3/12/13 号线及其换乘站，501~518 为 5 号线；
+ * 换乘站在不同线路侧各有一个编号，此处取同站名下的最小号（两侧内容一致）。
+ * 官网未收录的车站不在此表：201/202 路有轨电车与国铁车站（DLT/DFT）——
+ * 它们与地铁站同名，但没有对应的详情页。
  */
-const DALIAN_TIMETABLE_ESTIMATE_INFO = {};
-const DALIAN_TIMETABLE_ESTIMATE_CONFIG = {
-    sourceLineId: "DLM99",
-    targetLineId: "DLM13",
-    referenceStationId: "0320",
-    sourceDestinationStationId: "line-last",
-    targetDestinationStationId: "line-last",
-    stationIds: ["0319", "0318", "0317", "0316", "0315"]
+const DALIAN_STATION_DETAIL_SITE_ID = {
+    // 1 号线
+    "0101": 1,
+    "0102": 2,
+    "0103": 3,
+    "0104": 65,
+    "0105": 4,
+    "0106": 5,
+    "0107": 6,
+    "0108": 7,
+    "0109": 8,
+    "0110": 9,
+    "0111": 10,
+    "0112": 11,
+    "0113": 12,
+    "0114": 13,
+    "0115": 14,
+    "0116": 32,
+    "0117": 33,
+    "0118": 34,
+    "0119": 35,
+    "0120": 36,
+    "0121": 37,
+    // 2 号线
+    "0201": 41,
+    "0202": 40,
+    "0203": 39,
+    "0204": 31,
+    "0205": 30,
+    "0206": 29,
+    "0207": 28,
+    "0208": 27,
+    "0209": 26,
+    "0210": 25,
+    "0211": 24,
+    "0212": 22,
+    "0213": 21,
+    "0214": 20,
+    "0215": 19,
+    "0216": 18,
+    "0217": 17,
+    "0218": 16,
+    "0219": 15,
+    "0220": 90,
+    "0221": 103,
+    "0222": 104,
+    "0223": 105,
+    "0224": 106,
+    "0225": 107,
+    "0226": 108,
+    "0227": 109,
+    // 3 号线及支线
+    "0301": 55,
+    "0302": 54,
+    "0303": 53,
+    "0304": 52,
+    "0305": 51,
+    "0306": 50,
+    "0307": 49,
+    "0308": 48,
+    "0309": 45,
+    "0310": 44,
+    "0311": 42,
+    "0313": 43,
+    "0315": 75,
+    "0316": 74,
+    "0317": 73,
+    "0318": 72,
+    "0319": 71,
+    "0320": 70,
+    // 5 号线
+    "0501": 501,
+    "0502": 502,
+    "0503": 503,
+    "0504": 504,
+    "0505": 505,
+    "0506": 506,
+    "0507": 507,
+    "0510": 510,
+    "0511": 511,
+    "0512": 512,
+    "0513": 513,
+    "0514": 514,
+    "0515": 515,
+    "0516": 516,
+    "0518": 518,
+    // 12 号线
+    "0801": 38,
+    "0802": 62,
+    "0803": 61,
+    "0804": 60,
+    "0805": 59,
+    "0806": 58,
+    "0807": 57,
+    "0808": 56,
+    // 13 号线
+    "1321": 92,
+    "1322": 93,
+    "1324": 94,
+    "1327": 95,
+    "1328": 96,
+    "1329": 97,
+    "1331": 98,
+    "1332": 99,
+    "1333": 100,
+    "1334": 101,
+    "1336": 102
 };
 
-function getDalianTimetableScheduleKey(schedule) {
-    return Array.isArray(schedule?.includeWeekdays)
-        ? schedule.includeWeekdays.map(Number).sort((a, b) => a - b).join(",")
-        : "";
-}
+const DALIAN_STATION_DETAIL_URL = "https://www.dltransgrp.com/hb-air-web/html/wxgo/stationDetail.jsp?siteId=";
 
-function getDalianTimetableScheduleByKey(info, key) {
-    const schedules = Array.isArray(info?.schedules) ? info.schedules : [];
-    return schedules.find((schedule) => getDalianTimetableScheduleKey(schedule) === key) || null;
-}
-
-function getDalianTimetableDirection(schedule, destinationStationId) {
-    return (Array.isArray(schedule?.directions) ? schedule.directions : [])
-        .find((direction) => String(direction?.destinationStationId) === String(destinationStationId)) || null;
-}
-
-function parseDalianTimetableTime(value) {
-    const match = /^(\d{1,2}):(\d{2})$/.exec(String(value ?? ""));
-    if (!match) return null;
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    if (hours < 0 || minutes < 0 || minutes > 59) return null;
-    return hours * 60 + minutes;
-}
-
-function formatDalianTimetableTime(totalMinutes) {
-    if (!Number.isFinite(totalMinutes) || totalMinutes < 0) return "";
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
-function shiftDalianTimetableTime(value, deltaMinutes) {
-    const minutes = parseDalianTimetableTime(value);
-    if (minutes === null || !Number.isFinite(deltaMinutes)) return "";
-    return formatDalianTimetableTime(minutes + deltaMinutes);
-}
-
-function addDalianEstimatedThroughTimetables(data = DALIAN_TIMETABLE_DATA) {
-    const config = DALIAN_TIMETABLE_ESTIMATE_CONFIG;
-    const referenceInfo = data?.[config.referenceStationId]?.[config.sourceLineId];
-    const targetInfo = data?.[config.referenceStationId]?.[config.targetLineId];
-    if (!referenceInfo || !targetInfo) return;
-
-    config.stationIds.forEach((stationId) => {
-        const stationData = data?.[stationId];
-        const sourceInfo = stationData?.[config.sourceLineId];
-        if (!stationData || !sourceInfo || stationData[config.targetLineId]) return;
-
-        const estimateDetails = [];
-        const schedules = (Array.isArray(sourceInfo.schedules) ? sourceInfo.schedules : [])
-            .map((sourceSchedule) => {
-                const scheduleKey = getDalianTimetableScheduleKey(sourceSchedule);
-                const referenceSchedule = getDalianTimetableScheduleByKey(referenceInfo, scheduleKey);
-                const targetSchedule = getDalianTimetableScheduleByKey(targetInfo, scheduleKey);
-                const sourceDirection = getDalianTimetableDirection(sourceSchedule, config.sourceDestinationStationId);
-                const referenceDirection = getDalianTimetableDirection(referenceSchedule, config.sourceDestinationStationId);
-                const targetDirection = getDalianTimetableDirection(targetSchedule, config.targetDestinationStationId);
-                if (!referenceDirection || !sourceDirection || !targetDirection) return null;
-
-                const sourceFirst = parseDalianTimetableTime(sourceDirection.first);
-                const referenceFirst = parseDalianTimetableTime(referenceDirection.first);
-                const sourceLast = parseDalianTimetableTime(sourceDirection.last);
-                const referenceLast = parseDalianTimetableTime(referenceDirection.last);
-                if (![sourceFirst, referenceFirst, sourceLast, referenceLast].every(Number.isFinite)) return null;
-                const firstOffset = sourceFirst - referenceFirst;
-                const lastOffset = sourceLast - referenceLast;
-                const first = shiftDalianTimetableTime(targetDirection.first, -firstOffset);
-                const last = shiftDalianTimetableTime(targetDirection.last, -lastOffset);
-                if (!first || !last) return null;
-
-                const estimate = {
-                    method: "DLM99站间首末班车差值反推",
-                    confidence: "medium",
-                    referenceStationId: config.referenceStationId,
-                    sourceLineId: config.sourceLineId,
-                    sourceDestinationStationId: config.sourceDestinationStationId,
-                    offsetMinutes: { first: firstOffset, last: lastOffset }
-                };
-                estimateDetails.push({
-                    includeWeekdays: [...(sourceSchedule.includeWeekdays || [])],
-                    offsetMinutes: estimate.offsetMinutes
-                });
-
-                return {
-                    includeWeekdays: [...(sourceSchedule.includeWeekdays || [])],
-                    trainTypeName: targetSchedule.trainTypeName || "全程车",
-                    trainTypeCode: targetSchedule.trainTypeCode || "qcc-13-1321-1336",
-                    directions: [{
-                        direction: "up",
-                        destinationStationId: config.targetDestinationStationId,
-                        destinationName: targetDirection.destinationName || "普兰店振兴街",
-                        first,
-                        last,
-                        isEstimated: true,
-                        estimate
-                    }]
-                };
-            })
-            .filter(Boolean);
-
-        if (!schedules.length) return;
-        const estimateInfo = {
-            isEstimated: true,
-            method: "DLM99站间首末班车差值反推",
-            confidence: "medium",
-            sourceLineId: config.sourceLineId,
-            referenceStationId: config.referenceStationId,
-            targetDestinationStationId: config.targetDestinationStationId,
-            offsets: estimateDetails
-        };
-        stationData[config.targetLineId] = {
-            lineNo: "13",
-            lineName: "13号线",
-            stationName: sourceInfo.stationName,
-            currentWeekday: sourceInfo.currentWeekday,
-            isEstimated: true,
-            estimate: estimateInfo,
-            schedules
-        };
-        DALIAN_TIMETABLE_ESTIMATE_INFO[stationId] = estimateInfo;
+/**
+ * 车站官网查询入口：按 (线路 ID, 车站 ID) 登记官网详情页链接，供车站信息板「官网查询」使用。
+ * 仅收录官网已发布详情页的车站；未收录者留空即不显示入口。
+ */
+const GLOBAL_SCHEDULE_DATA = (function buildDalianScheduleData() {
+    const LINE_STATION_IDS = {
+        "DLM12": ["0801", "0802", "0803", "0804", "0805", "0806", "0807", "0808"],
+        "DLM13": ["1321", "1322", "1324", "1327", "1328", "1329", "1331", "1332", "1333", "1334", "1336", "0320"],
+        "DLM99": ["0320", "0319", "0318", "0317", "0316", "0315", "0308"],
+        "DLM01": ["0113", "0102", "0101", "0103", "0104", "0105", "0106", "0107", "0108", "0109", "0110", "0111", "0112", "0114", "0115", "0116", "0117", "0118", "0119", "0120", "0121", "0801"],
+        "DLM02": ["0201", "0202", "0203", "0204", "0205", "0206", "0207", "0208", "0209", "0210", "0211", "0113", "0212", "0213", "0214", "0215", "0216", "0217", "0218", "0219", "0220", "0221", "0222", "0223", "0224", "0225", "0226", "0227", "0102"],
+        "DLM03": ["0308", "0301", "0302", "0303", "0304", "0305", "0306", "0307", "0309", "0310", "0313", "0311"],
+        "DLM05": ["0301", "0305", "0208", "0501", "0502", "0503", "0504", "0505", "0506", "0507", "0510", "0511", "0512", "0513", "0514", "0515", "0516", "0518"]
+    };
+    const data = {};
+    Object.keys(LINE_STATION_IDS).forEach(function (lineId) {
+        const entries = {};
+        LINE_STATION_IDS[lineId].forEach(function (stationId) {
+            const siteId = DALIAN_STATION_DETAIL_SITE_ID[stationId];
+            if (siteId) entries[stationId] = DALIAN_STATION_DETAIL_URL + siteId;
+        });
+        data[lineId] = entries;
     });
-}
-
-addDalianEstimatedThroughTimetables();
-
-/**
- * 开发区缺少官方“开往普兰店振兴街”记录，按九里端13号线时刻反推终点站时刻。
- * 21分钟是由3号线支线各站首末班差值累计得到的近似运行时间，因此单独标为低置信度。
- */
-function addDalianEstimatedDevelopmentZoneTimetable(data = DALIAN_TIMETABLE_DATA) {
-    const stationId = "0308";
-    const lineId = "DLM13";
-    const referenceStationId = "0320";
-    const referenceInfo = data?.[referenceStationId]?.[lineId];
-    const stationData = data?.[stationId];
-    if (!referenceInfo || !stationData || stationData[lineId]) return;
-
-    const travelMinutes = { first: 21, last: 21 };
-    const schedules = (Array.isArray(referenceInfo.schedules) ? referenceInfo.schedules : [])
-        .map((referenceSchedule) => {
-            const direction = getDalianTimetableDirection(
-                referenceSchedule,
-                DALIAN_TIMETABLE_ESTIMATE_CONFIG.targetDestinationStationId
-            );
-            if (!direction) return null;
-            const first = shiftDalianTimetableTime(direction.first, -travelMinutes.first);
-            const last = shiftDalianTimetableTime(direction.last, -travelMinutes.last);
-            if (!first || !last) return null;
-            const estimate = {
-                method: "DLM99支线首末班车差值累计反推",
-                confidence: "low",
-                referenceStationId,
-                sourceLineId: "DLM99",
-                travelMinutes: { ...travelMinutes }
-            };
-            return {
-                includeWeekdays: [...(referenceSchedule.includeWeekdays || [])],
-                trainTypeName: referenceSchedule.trainTypeName || "全程车",
-                trainTypeCode: referenceSchedule.trainTypeCode || "qcc-13-1321-1336",
-                directions: [{
-                    direction: "up",
-                    destinationStationId: DALIAN_TIMETABLE_ESTIMATE_CONFIG.targetDestinationStationId,
-                    destinationName: direction.destinationName || "普兰店振兴街",
-                    first,
-                    last,
-                    isEstimated: true,
-                    estimate
-                }]
-            };
-        })
-        .filter(Boolean);
-    if (!schedules.length) return;
-
-    const estimateInfo = {
-        isEstimated: true,
-        method: "DLM99支线首末班车差值累计反推",
-        confidence: "low",
-        sourceLineId: "DLM99",
-        referenceStationId,
-        travelMinutes: { ...travelMinutes }
-    };
-    stationData[lineId] = {
-        lineNo: "13",
-        lineName: "13号线",
-        stationName: stationData.DLM99?.stationName || "开发区",
-        currentWeekday: stationData.DLM99?.currentWeekday,
-        isEstimated: true,
-        estimate: estimateInfo,
-        schedules
-    };
-    DALIAN_TIMETABLE_ESTIMATE_INFO[stationId] = estimateInfo;
-}
-
-addDalianEstimatedDevelopmentZoneTimetable();
-
-const GLOBAL_SCHEDULE_DATA = {
-    "DLM12": {
-        "0801": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0801",
-        "0802": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0802",
-        "0803": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0803",
-        "0804": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0804",
-        "0805": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0805",
-        "0806": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0806",
-        "0807": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0807",
-        "0808": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0808"
-    },
-    "DLM13": {
-        "1321": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1321",
-        "1322": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1322",
-        "1324": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1324",
-        "1327": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1327",
-        "1328": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1328",
-        "1329": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1329",
-        "1331": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1331",
-        "1332": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1332",
-        "1333": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1333",
-        "1334": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1334",
-        "1336": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=1336",
-        "0320": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0320"
-    },
-    "DLM99": {
-        "0320": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0320",
-        "0319": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0319",
-        "0318": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0318",
-        "0317": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0317",
-        "0316": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0316",
-        "0315": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0315",
-        "0308": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0308"
-    },
-    "DLM01": {
-        "0113": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0113",
-        "0102": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0102",
-        "0101": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0101",
-        "0103": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0103",
-        "0104": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0104",
-        "0105": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0105",
-        "0106": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0106",
-        "0107": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0107",
-        "0108": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0108",
-        "0109": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0109",
-        "0110": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0110",
-        "0111": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0111",
-        "0112": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0112",
-        "0114": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0114",
-        "0115": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0115",
-        "0116": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0116",
-        "0117": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0117",
-        "0118": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0118",
-        "0119": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0119",
-        "0120": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0120",
-        "0121": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0121",
-        "0801": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0801"
-    },
-    "DLM02": {
-        "0201": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0201",
-        "0202": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0202",
-        "0203": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0203",
-        "0204": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0204",
-        "0205": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0205",
-        "0206": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0206",
-        "0207": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0207",
-        "0208": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0208",
-        "0209": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0209",
-        "0210": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0210",
-        "0211": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0211",
-        "0113": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0113",
-        "0212": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0212",
-        "0213": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0213",
-        "0214": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0214",
-        "0215": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0215",
-        "0216": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0216",
-        "0217": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0217",
-        "0218": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0218",
-        "0219": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0219",
-        "0220": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0220",
-        "0221": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0221",
-        "0222": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0222",
-        "0223": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0223",
-        "0224": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0224",
-        "0225": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0225",
-        "0226": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0226",
-        "0227": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0227",
-        "0102": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0102"
-    },
-    "DLM03": {
-        "0308": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0308",
-        "0301": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0301",
-        "0302": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0302",
-        "0303": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0303",
-        "0304": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0304",
-        "0305": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0305",
-        "0306": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0306",
-        "0307": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0307",
-        "0309": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0309",
-        "0310": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0310",
-        "0313": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0313",
-        "0311": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0311"
-    },
-    "DLM05": {
-        "0301": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0301",
-        "0305": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0305",
-        "0208": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0208",
-        "0501": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0501",
-        "0502": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0502",
-        "0503": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0503",
-        "0504": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0504",
-        "0505": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0505",
-        "0506": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0506",
-        "0507": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0507",
-        "0510": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0510",
-        "0511": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0511",
-        "0512": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0512",
-        "0513": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0513",
-        "0514": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0514",
-        "0515": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0515",
-        "0516": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0516",
-        "0518": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102&station_no=0518"
-    }
-};
+    return data;
+})();
 
 const DALIAN_TIMETABLE_SOURCE = {
     "provider": "大连公共交通建设投资集团",
-    "endpoint": "https://ecx.dlmetro.com/bas/smartstation/v1/ipis/station/detail",
+    "endpoint": "https://www.dltransgrp.com/hb-air-api/site/ShowSite.do",
     "mapUrl": "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102",
     "serviceId": "01",
-    "retrievedAt": "2026-09-08T13:18:07.823Z"
+    "retrievedAt": "2026-09-28"
 };
 
 /**
@@ -6847,8 +7048,8 @@ function getDalianTimetableSchedules(info, date = new Date(), calendar = DALIAN_
  * 贯通运行区段的时刻表分组。
  *
  * 九里至开发区是13号线与3号线支线的贯通区段；开发区同时还承接3号线主线，
- * 所以开发区另设DLM03与DLM99的详情合并组。解析时返回当前站点已有的官方记录，
- * 以及上方明确标记为isEstimated的推算记录，不会把普通缺失数据当作官方时刻补齐。
+ * 所以开发区另设DLM03与DLM99的详情合并组。解析时返回当前站点已有的记录，
+ * 不会把普通缺失数据当作官方时刻补齐。
  */
 const DALIAN_TIMETABLE_THROUGH_GROUPS = [
     {
@@ -6897,6 +7098,5 @@ if (typeof window !== "undefined") {
     window.getDalianTimetableDayType = getDalianTimetableDayType;
     window.getDalianTimetableSchedules = getDalianTimetableSchedules;
     window.DALIAN_TIMETABLE_THROUGH_GROUPS = DALIAN_TIMETABLE_THROUGH_GROUPS;
-    window.DALIAN_TIMETABLE_ESTIMATE_INFO = DALIAN_TIMETABLE_ESTIMATE_INFO;
     window.getDalianTimetableInfoEntries = getDalianTimetableInfoEntries;
 }

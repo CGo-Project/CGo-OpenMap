@@ -160,7 +160,10 @@
             });
         });
 
-        const buckets = ids.slice(0, -1).map(() => ({ first: [], last: [] }));
+        // 环线的站序首尾相接，区间数比站数多一条（末站 → 首站），与非环线统一按「完整一圈」展开
+        const loop = Boolean(line.isLoop);
+        const buckets = Array.from({ length: loop ? ids.length : ids.length - 1 },
+            () => ({ first: [], last: [] }));
         chains.forEach((chain) => {
             const present = [...chain.times.keys()].sort((a, b) => a - b);
             if (present.length < 2) return;
@@ -169,11 +172,15 @@
             const ordered = dir > 0 ? present : present.slice().reverse();
             for (let k = 0; k < ordered.length - 1; k++) {
                 const a = ordered[k], b = ordered[k + 1];
-                if (Math.abs(b - a) !== 1) continue;             // 跨越缺数据站，不强行分摊
+                // 环线首尾相接：末站 → 首站也是相邻的一跳
+                const wraps = loop && a === ids.length - 1 && b === 0;
+                if (!wraps && Math.abs(b - a) !== 1) continue;             // 跨越缺数据站，不强行分摊
                 let delta = chain.times.get(b) - chain.times.get(a);
                 if (delta < 0) delta += 1440;                    // 跨零点
                 if (delta > 0 && delta <= HOP_MAX) {
-                    buckets[Math.min(a, b)][chain.period === "last" ? "last" : "first"].push(delta);
+                    // 跨接缝那一跳记在最后一条区间（末站 → 首站）上
+                    const slot = wraps ? ids.length - 1 : Math.min(a, b);
+                    buckets[slot][chain.period === "last" ? "last" : "first"].push(delta);
                 }
             }
         });
@@ -193,8 +200,11 @@
         });
     }
 
-    /** 区间里程（km）：官方站距优先，缺失时坐标直线 × 弯曲系数 */
-    function intervalKm(group, stationsData, coordOf, bend) {
+    /**
+     * 区间里程（km）：官方站距优先，缺失时坐标直线 × 弯曲系数。
+     * 环线（loop）站距数组比站序多一条（末站 → 首站），按完整一圈展开。
+     */
+    function intervalKm(group, stationsData, coordOf, bend, loop) {
         const meters = (a, b) => {
             if (!a || !b) return 0;
             const [lo1, la1] = a.split(",").map(Number);
@@ -202,12 +212,14 @@
             return 6371000 * Math.hypot((la2 - la1) * Math.PI / 180,
                 (lo2 - lo1) * Math.PI / 180 * Math.cos(la1 * Math.PI / 180));
         };
-        return group.ids.slice(0, -1).map((sid, i) => {
+        const count = loop ? group.ids.length : group.ids.length - 1;
+        return Array.from({ length: count }, (_, i) => {
+            const next = group.ids[(i + 1) % group.ids.length];
             // 官方站距优先；"?" / "??" 这类占位（该段没有可靠里程，前端只显示「约XXX米」）
             // 与完全缺失同等对待，一起走坐标兜底
             const official = Number(group.dist[i]);
             if (Number.isFinite(official) && official > 0) return official / 1000;
-            const a = coordOf(stationsData[sid]?.cn), b = coordOf(stationsData[group.ids[i + 1]]?.cn);
+            const a = coordOf(stationsData[group.ids[i]]?.cn), b = coordOf(stationsData[next]?.cn);
             return a && b ? meters(a, b) / 1000 * bend : 0;
         });
     }
@@ -238,7 +250,8 @@
             stationGroups(line).forEach((group, groupIndex) => {
                 if (group.ids.length < 2) return;
                 const measured = measuredHops(line, group.ids, reader);
-                const km = intervalKm(group, stationsData, coordOf, bend);
+                const loop = Boolean(line.isLoop);
+                const km = intervalKm(group, stationsData, coordOf, bend, loop);
                 // 逐线校准 k：用有实测且有里程的区间反推
                 const sampleIdx = measured.map((v, i) => (v !== null && km[i] > 0 ? i : -1)).filter((i) => i >= 0);
                 const weightSum = sum(sampleIdx.map((i) => 0.5 + km[i] / MODEL_SPEED));
@@ -246,16 +259,23 @@
 
                 const hop = new Map();
                 const hopKmMap = new Map();
-                group.ids.slice(0, -1).forEach((sid, i) => {
+                // 相邻站对；环线首尾相接，末尾再补一条闭合边（末站 → 首站）。
+                // 缺了这条边，规划器算不出「沿环的另一侧走」的去路，只能绕远路：
+                // 环线图例上看不出来的那一跳恰恰是最近的一跳。
+                const pairs = group.ids.slice(0, -1).map((sid, i) => [sid, group.ids[i + 1], i]);
+                if (loop && group.ids.length > 2) {
+                    pairs.push([group.ids[group.ids.length - 1], group.ids[0], group.ids.length - 1]);
+                }
+                pairs.forEach(([from, to, i]) => {
                     const fallback = km[i] > 0 ? Math.round(k * (0.5 + km[i] / MODEL_SPEED) * 10) / 10 : null;
                     const value = measured[i] !== null ? measured[i] : fallback;
                     if (Number.isFinite(km[i]) && km[i] > 0) {
-                        hopKmMap.set(`${sid}|${group.ids[i + 1]}`, km[i]);
-                        hopKmMap.set(`${group.ids[i + 1]}|${sid}`, km[i]);
+                        hopKmMap.set(`${from}|${to}`, km[i]);
+                        hopKmMap.set(`${to}|${from}`, km[i]);
                     }
                     if (value === null) return;
-                    hop.set(`${sid}|${group.ids[i + 1]}`, value);
-                    hop.set(`${group.ids[i + 1]}|${sid}`, value);
+                    hop.set(`${from}|${to}`, value);
+                    hop.set(`${to}|${from}`, value);
                 });
 
                 const id = groupIndex === 0 ? line.id : `${line.id}#${groupIndex + 1}`;
@@ -268,13 +288,13 @@
                     mode,
                     system: fareSystems[line.id] || mode,
                     ways: [group.ids],
-                    loop: Boolean(line.isLoop),
+                    loop,
                     hop: (a, b) => hop.get(`${a}|${b}`) ?? null,
                     hopKm: (a, b) => hopKmMap.get(`${a}|${b}`) ?? null
                 });
                 stats.push({
                     id, name: line.name,
-                    total: group.ids.length - 1,
+                    total: loop ? group.ids.length : group.ids.length - 1,
                     measured: sampleIdx.length,
                     k
                 });

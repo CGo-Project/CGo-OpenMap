@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260929.1635';
+const CACHE_NAME = 'cgo-openmap-v260930.4400';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -113,6 +113,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/modules/shenyang_cultural.js',
     './city/shenyang/modules/shenyang_service_info.js',
     './city/shenyang/modules/shenyang_calligraphy.js',
+    './city/shenyang/modules/shenyang_level_map.js',
     './city/shenyang/stacard/script.js',
     './city/shenyang/stacard/data.js',
     './city/shenyang/data_calligraphy.js',
@@ -124,6 +125,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/data_opening.js',
     './city/shenyang/data_legend.js',
     './city/shenyang/data_timetable.js',
+    './city/shenyang/shared/loop-direction.js',
     './city/shenyang/shared/timetable-renderer.js',
     './city/shenyang/shared/stacard-engine.js',
     './city/shenyang/shared/station-title.js',
@@ -145,6 +147,9 @@ const ASSETS_TO_CACHE = [
     // 固定侧栏「浮岛卡片」改造（三城共用）：几何跟随标题栏浮岛、卡片等距、标题栏线路标
     './city/shenyang/shared/sidebar-refit.js',
     './city/shenyang/shared/sidebar-refit.css',
+    // 地图小工具（东北四市共用）：票价图 / 等时圈，入口在「查找最近车站」按钮下方
+    './city/shenyang/shared/map-tools.js',
+    './city/shenyang/shared/map-tools.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
@@ -187,13 +192,17 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/gongyezhanlanguan.png',
     './city/shenyang/assets/calligraphy/hangkonghangtiandaxue.png',
     './city/shenyang/assets/calligraphy/jinrongzhongxin.png',
+    './city/shenyang/assets/calligraphy/liaoningdaxue.png',
+    './city/shenyang/assets/calligraphy/lingxi.png',
     './city/shenyang/assets/calligraphy/qingniangongyuan.png',
     './city/shenyang/assets/calligraphy/quanyunlu.png',
     './city/shenyang/assets/calligraphy/renminguangchang.png',
+    './city/shenyang/assets/calligraphy/santaizi.png',
     './city/shenyang/assets/calligraphy/shenyangbeizhan.png',
     './city/shenyang/assets/calligraphy/shijidasha.png',
     './city/shenyang/assets/calligraphy/shitushuguan.png',
     './city/shenyang/assets/calligraphy/wulihe.png',
+    './city/shenyang/assets/calligraphy/yixueyuan.png',
     './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
 
     // 3号线站名题字（2026 年全线开通后安装，书法家题写；待考站题写者尚未考证）
@@ -207,6 +216,10 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/wenfulu.png',
     './city/shenyang/assets/calligraphy/fuminjie.png',
     './city/shenyang/assets/calligraphy/jiangdongjie.png',
+    './city/shenyang/assets/calligraphy/nanyanghujie.png',
+    './city/shenyang/assets/calligraphy/datonghujie.png',
+    './city/shenyang/assets/calligraphy/nanliguan.png',
+    './city/shenyang/assets/calligraphy/lingkong.png',
     './city/shenyang/assets/calligraphy/fangjialan.png',
 
     // 城市配置与业务数据 (合肥)
@@ -342,10 +355,8 @@ const ASSETS_TO_CACHE = [
     './city/dalian/data_legend.js',
     './city/dalian/data_timetable.js',
     './city/dalian/amap_data.json',
-    './city/dalian/assets/airport.svg',
     './city/dalian/assets/compass.svg',
     './city/dalian/assets/dalian_sea.svg',
-    './city/dalian/assets/railway.svg',
     './city/dalian/assets/tram-201-interval.svg',
     './city/dalian/assets/tram-201.svg',
     './city/dalian/assets/tram-202.svg',
@@ -423,6 +434,22 @@ const ASSETS_TO_CACHE = [
     './city/lanzhou/amap_data.json',
     './city/lanzhou/assets/lanzhou_river.svg',
     './city/lanzhou/assets/pricetable.jpg',
+
+    // 城市配置与业务数据 (哈尔滨)
+    './city/harbin/harbin.js',
+    './city/harbin/modules/harbin_map.js',
+    './city/harbin/modules/harbin_station_title.js',
+    './city/harbin/stacard/script.js',
+    './city/harbin/data_stations.js',
+    './city/harbin/data_lines.js',
+    './city/harbin/data_virtual_transfers.js',
+    './city/harbin/data_scattered.js',
+    './city/harbin/data_legend.js',
+    './city/harbin/data_timetable.js',
+    './city/harbin/data_notopen.js',
+    './city/harbin/staname.csv',
+    './city/harbin/amap_data.json',
+    './city/harbin/assets/songhuajiang.svg',
 
     // 福州线路徽标
     './assets/svg/icon@fz_BE.svg',
