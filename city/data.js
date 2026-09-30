@@ -379,6 +379,10 @@
         if (descEl && activeCityMeta.description) descEl.setAttribute('content', activeCityMeta.description);
         const kwEl = document.querySelector('meta[name="keywords"]');
         if (kwEl && activeCityMeta.keywords) kwEl.setAttribute('content', activeCityMeta.keywords);
+        const titleFull = document.querySelector('.title-full');
+        if (titleFull && activeCityMeta.name) {
+            titleFull.textContent = `${activeCityMeta.name} 开放地图`;
+        }
     }
 
     /**
@@ -428,6 +432,14 @@
             if (CITY_REGISTRY[cityId]) {
                 currentCityId = cityId;
                 localStorage.setItem('cgo_openmap_city', cityId);
+                const meta = CITY_REGISTRY[cityId];
+                if (meta) {
+                    if (meta.title) document.title = meta.title;
+                    const titleFull = document.querySelector('.title-full');
+                    if (titleFull && meta.name) {
+                        titleFull.textContent = `${meta.name} 开放地图`;
+                    }
+                }
                 // 唤起 CGoUI 主题色同步机制，确保跨城市颜色不互相污染
                 if (window.CGO && typeof window.CGO.syncCityTheme === 'function') {
                     window.CGO.syncCityTheme();

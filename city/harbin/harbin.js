@@ -156,7 +156,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260930.233000";
+        const version = "260930.233001";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -198,8 +198,10 @@
         status: "active",
         // 主理人虚位以待（写法与上海 / 悉尼 / 香港一致，详见 city/data.js 同名字段的说明）
         maintainers: [
-            { name: "待认领", role: "城市主理人招募中", isRecruiting: true,
-              github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+            {
+                name: "待认领", role: "城市主理人招募中", isRecruiting: true,
+                github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md"
+            }
         ],
         isDefault: false,
         ...HarbinCity

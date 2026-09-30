@@ -37,11 +37,11 @@
     <title>CGo OpenMap - 线路图在线编辑器</title>
 
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=260930.233000">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=260930.233000">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=260930.233000">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=260930.233000">
-    <link rel="stylesheet" href="css/editor.css?v=260930.233000">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=260930.233001">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=260930.233001">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=260930.233001">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=260930.233001">
+    <link rel="stylesheet" href="css/editor.css?v=260930.233001">
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -156,7 +156,8 @@
                         <cgo-icon name="check" size="15"></cgo-icon>
                         <span>应用画布尺寸</span>
                     </button>
-                    <p class="side-hint">原点 O 位于画布左上角顶点，X 轴向右为正，Y 轴向下为正（与 CGo OpenMap 数据层一致）。点击「应用画布尺寸」只改变画布边界，已有元素坐标与显示位置均保持不变；如需清空重来，请用「更多 → 新建空白画布」。</p>
+                    <p class="side-hint">原点 O 位于画布左上角顶点，X 轴向右为正，Y 轴向下为正（与 CGo OpenMap
+                        数据层一致）。点击「应用画布尺寸」只改变画布边界，已有元素坐标与显示位置均保持不变；如需清空重来，请用「更多 → 新建空白画布」。</p>
                 </div>
             </section>
 
@@ -184,8 +185,8 @@
                             <button class="tool-btn" data-tool="seg135" title="135° 折角线段">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
-                                        <path d="M3 23 L18 8 L37 8" fill="none" stroke="currentColor"
-                                            stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
+                                        <path d="M3 23 L18 8 L37 8" fill="none" stroke="currentColor" stroke-width="3.4"
+                                            stroke-linecap="round" stroke-linejoin="round" />
                                     </svg>
                                 </span>
                                 <span class="tool-name">135° 折角</span>
@@ -202,8 +203,8 @@
                             <button class="tool-btn" data-tool="seg90d" title="斜 90° 折角线段：两段 45° 斜线相交成 90°">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
-                                        <path d="M4 21 L20 5 L36 21" fill="none" stroke="currentColor" stroke-width="3.4"
-                                            stroke-linecap="round" stroke-linejoin="round" />
+                                        <path d="M4 21 L20 5 L36 21" fill="none" stroke="currentColor"
+                                            stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
                                     </svg>
                                 </span>
                                 <span class="tool-name">斜 90° 折角</span>
@@ -217,7 +218,8 @@
                                 </span>
                                 <span class="tool-name">轴平行直线</span>
                             </button>
-                            <button class="tool-btn" data-tool="segfree" title="自由路径线段：依次点击添加转折点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束">
+                            <button class="tool-btn" data-tool="segfree"
+                                title="自由路径线段：依次点击添加转折点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
                                         <path d="M3 21 C11 21 9 6 19 6 C29 6 28 20 37 20" fill="none"
@@ -241,13 +243,16 @@
                             <cgo-icon name="refresh" size="15"></cgo-icon>
                             <span>刷新线段配置</span>
                         </button>
-                        <p class="side-hint">开启自动选型后，新线段会按两端节点坐标自动判定 135° 折角、90° 折角或轴平行直线；关闭则使用上方手动选择的线段类型（斜 90° 折角需手动选择）。「刷新线段配置」按当前节点布局重算全部自动走线线段（车站与临时节点一视同仁），手动指定过类型的线段会按该类型重算，仅含 3 个以上转折点的手绘自由路径保持不变。</p>
+                        <p class="side-hint">开启自动选型后，新线段会按两端节点坐标自动判定 135° 折角、90° 折角或轴平行直线；关闭则使用上方手动选择的线段类型（斜 90°
+                            折角需手动选择）。「刷新线段配置」按当前节点布局重算全部自动走线线段（车站与临时节点一视同仁），手动指定过类型的线段会按该类型重算，仅含 3 个以上转折点的手绘自由路径保持不变。
+                        </p>
                     </div>
 
                     <div class="tool-group">
                         <div class="tool-group-label">水域</div>
                         <div class="tool-grid">
-                            <button class="tool-btn" data-tool="water" title="水域面：点击依次添加顶点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 闭合为填充多边形">
+                            <button class="tool-btn" data-tool="water"
+                                title="水域面：点击依次添加顶点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 闭合为填充多边形">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
                                         <path d="M4 18 C10 8 16 24 22 14 C27 6 32 12 36 9 L36 23 L4 23 Z"
@@ -258,11 +263,13 @@
                                 </span>
                                 <span class="tool-name">水域面</span>
                             </button>
-                            <button class="tool-btn" data-tool="waterpath" title="水域路径：点击依次添加折点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束；以可调线宽的水域填色线渲染（河道 / 运河）">
+                            <button class="tool-btn" data-tool="waterpath"
+                                title="水域路径：点击依次添加折点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束；以可调线宽的水域填色线渲染（河道 / 运河）">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
                                         <path d="M4 20 C12 20 12 6 20 6 C28 6 28 18 36 18" fill="none"
-                                            stroke="currentColor" stroke-width="8" stroke-linecap="round" opacity="0.35" />
+                                            stroke="currentColor" stroke-width="8" stroke-linecap="round"
+                                            opacity="0.35" />
                                         <path d="M4 20 C12 20 12 6 20 6 C28 6 28 18 36 18" fill="none"
                                             stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
                                     </svg>
@@ -275,7 +282,8 @@
                     <div class="tool-group">
                         <div class="tool-group-label">文本</div>
                         <div class="tool-grid">
-                            <button class="tool-btn" data-tool="text" title="自由文本：在画布上点击放置一段注释文字，随后在右侧属性面板里编辑内容、字号、颜色、对齐与旋转">
+                            <button class="tool-btn" data-tool="text"
+                                title="自由文本：在画布上点击放置一段注释文字，随后在右侧属性面板里编辑内容、字号、颜色、对齐与旋转">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
                                         <text x="20" y="19" text-anchor="middle" font-size="15" font-weight="700"
@@ -331,8 +339,7 @@
                     </div>
                     <div class="field-row">
                         <label for="line-svg">线路徽标</label>
-                        <input type="text" id="line-svg" list="line-svg-list" maxlength="48"
-                            placeholder="自动（按线路名数字）"
+                        <input type="text" id="line-svg" list="line-svg-list" maxlength="48" placeholder="自动（按线路名数字）"
                             title="assets/svg/ 下的徽标模板文件名；留空表示按线路名中的数字自动选择（如 6号线 → icon@06.svg）">
                         <datalist id="line-svg-list"></datalist>
                     </div>
@@ -359,7 +366,8 @@
                         <span>站间距来源</span>
                     </button>
                     <p class="side-hint" id="mileage-hint"></p>
-                    <p class="side-hint">线路色会作为其上车站节点的描边色；同一车站被 ≥2 条线路连接时自动显示为换乘站样式。点「导入车站列表」可从百科表格 HTML 提取站名或手工输入，再按顺序批量生成车站。</p>
+                    <p class="side-hint">线路色会作为其上车站节点的描边色；同一车站被 ≥2 条线路连接时自动显示为换乘站样式。点「导入车站列表」可从百科表格 HTML
+                        提取站名或手工输入，再按顺序批量生成车站。</p>
                 </div>
             </section>
 
@@ -498,7 +506,8 @@
                 </button>
             </div>
             <div class="editor-modal-body">
-                <p class="modal-tip">按 CGo OpenMap 项目城市目录规范自动生成 <b>city/{city_id}/</b> 全套数据文件、集成片段与说明文档，并打包为 zip 压缩包下载。</p>
+                <p class="modal-tip">按 CGo OpenMap 项目城市目录规范自动生成 <b>city/{city_id}/</b> 全套数据文件、集成片段与说明文档，并打包为 zip 压缩包下载。
+                </p>
                 <div class="om-grid">
                     <div class="prop-field">
                         <label for="om-city-id">城市 ID（小写英文）</label>
@@ -575,7 +584,8 @@
                 <p class="rl-hint" id="rl-line-hint"></p>
 
                 <div class="prop-field">
-                    <label for="rl-html">① 百科页面车站表格的 HTML 代码（可选；提取时会去掉站名末尾的「站」，「XX火车站 / XX汽车站 / XX客运站 / XX北站」等写法保留）</label>
+                    <label for="rl-html">① 百科页面车站表格的 HTML 代码（可选；提取时会去掉站名末尾的「站」，「XX火车站 / XX汽车站 / XX客运站 /
+                        XX北站」等写法保留）</label>
                     <textarea id="rl-html" spellcheck="false"
                         placeholder="在百科页面的车站表格上右键 → 检查 / 查看源代码，复制其中的 &lt;table&gt;…&lt;/table&gt; 粘贴到这里"></textarea>
                 </div>
@@ -589,8 +599,7 @@
 
                 <div class="prop-field">
                     <label for="rl-list">② 车站列表（按运营顺序，每行一站，可手工输入或修改）</label>
-                    <textarea id="rl-list" spellcheck="false"
-                        placeholder="莘庄&#10;外环路&#10;莲花路"></textarea>
+                    <textarea id="rl-list" spellcheck="false" placeholder="莘庄&#10;外环路&#10;莲花路"></textarea>
                 </div>
 
                 <div class="om-grid">
@@ -652,9 +661,12 @@
 
                 <div class="sd-modes">
                     <span class="sd-modes-label">本线路站间距来源</span>
-                    <label class="check-row"><input type="radio" name="sd-mode" value="canvas" checked><span>画布几何反算</span></label>
-                    <label class="check-row"><input type="radio" name="sd-mode" value="actual"><span>实际里程（下方录入）</span></label>
-                    <label class="check-row"><input type="radio" name="sd-mode" value="none"><span>不添加站间距（导出 <code>distances: []</code> 占位）</span></label>
+                    <label class="check-row"><input type="radio" name="sd-mode" value="canvas"
+                            checked><span>画布几何反算</span></label>
+                    <label class="check-row"><input type="radio" name="sd-mode"
+                            value="actual"><span>实际里程（下方录入）</span></label>
+                    <label class="check-row"><input type="radio" name="sd-mode" value="none"><span>不添加站间距（导出
+                            <code>distances: []</code> 占位）</span></label>
                 </div>
 
                 <div class="om-grid">
@@ -702,7 +714,8 @@
                         <cgo-icon name="filter" size="14"></cgo-icon>
                         <span>解析并填充</span>
                     </button>
-                    <span class="sd-legend">① 区间表「A → B 1100」　② 逐站站间距「B 1100」　③ 累计里程「B 1.1 km」　④ 纯数字数组「[1340, 1100]」；单位默认米</span>
+                    <span class="sd-legend">① 区间表「A → B 1100」　② 逐站站间距「B 1100」　③ 累计里程「B 1.1 km」　④ 纯数字数组「[1340,
+                        1100]」；单位默认米</span>
                 </div>
             </div>
             <div class="editor-modal-foot">
@@ -726,8 +739,8 @@
     <!-- ========================================================================== -->
     <!-- 4. 脚本加载：CGoUI 图标组件库 + 编辑器主逻辑                                   -->
     <!-- ========================================================================== -->
-    <script type="module" src="../core/cgo-ui.js?v=260930.233000"></script>
-    <script src="js/editor.js?v=260930.233000"></script>
+    <script type="module" src="../core/cgo-ui.js?v=260930.233001"></script>
+    <script src="js/editor.js?v=260930.233001"></script>
 </body>
 
 </html>

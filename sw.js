@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260930.233000';
+const CACHE_NAME = 'cgo-openmap-v260930.233001';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -536,7 +536,7 @@ self.addEventListener('fetch', (event) => {
     // 静态资源（CSS/JS/图片等）：精准匹配优先 -> 网络获取并更新缓存 -> 离线模糊回退
     event.respondWith((async () => {
         const cache = await caches.open(CACHE_NAME);
-        
+
         // 优先精确匹配（如果版本号 query 完全一致且已缓存）
         const exactMatch = await cache.match(event.request);
         if (exactMatch) return exactMatch;

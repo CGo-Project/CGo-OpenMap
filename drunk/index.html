@@ -50,12 +50,12 @@
     <!-- 3. CGoUI 页面标准样式库引入链 (严格仅引用 dev/openmap/css 目录文件，保证项目独立) -->
     <!-- cgo_clr.css -> cgo_element.css -> cgo_ui.css -> cgo_components.css -> tool-style.css -->
     <!-- ========================================================================== -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=260930.233000">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=260930.233000">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=260930.233000">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=260930.233000">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=260930.233000">
-    <link rel="stylesheet" href="../css/tool-style.css?v=260930.233000">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=260930.233001">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=260930.233001">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=260930.233001">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=260930.233001">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=260930.233001">
+    <link rel="stylesheet" href="../css/tool-style.css?v=260930.233001">
 
     <!-- ========================================================================== -->
     <!-- 4. Drunk 工作台专用高质感深色自适应样式系统 (强制统一暗色，Primary: #006098)   -->
@@ -1168,8 +1168,7 @@
         /* 选中态改用外发光，不再靠加粗边框——那会把图元本身撑变形 */
         .station-dot.has-svg-icon.selected {
             transform: translate(-50%, -50%) scale(1.45);
-            filter: drop-shadow(0 0 4px var(--primary-color, #006098))
-                    drop-shadow(0 0 9px var(--primary-color, #006098));
+            filter: drop-shadow(0 0 4px var(--primary-color, #006098)) drop-shadow(0 0 9px var(--primary-color, #006098));
             box-shadow: none !important;
             z-index: 60 !important;
         }
@@ -1305,7 +1304,8 @@
                         <cgo-icon name="upload" size="14"></cgo-icon>
                         <span>上传底图/PDF/AI</span>
                     </label>
-                    <input type="file" id="image-upload-input" accept="image/*,application/pdf,.pdf,.ai,application/postscript,application/illustrator"
+                    <input type="file" id="image-upload-input"
+                        accept="image/*,application/pdf,.pdf,.ai,application/postscript,application/illustrator"
                         style="display: none;">
 
 
@@ -1327,8 +1327,7 @@
 
                 <!-- 分组 2: 编辑模式 (载入 city/ 下已注册的城市直接微调) -->
                 <div class="toolbar-group">
-                    <select id="edit-city-select" class="drunk-select"
-                        title="载入 city/ 目录下已注册的城市，直接拖站、改字、调站名朝向">
+                    <select id="edit-city-select" class="drunk-select" title="载入 city/ 目录下已注册的城市，直接拖站、改字、调站名朝向">
                         <option value="">选择要编辑的城市…</option>
                     </select>
                     <button class="btn btn-info btn-sm" id="btn-load-city"
@@ -1347,8 +1346,8 @@
                         <cgo-icon name="drag" size="14"></cgo-icon>
                         <span>45°/90°吸附</span>
                     </button>
-                    <button class="btn btn-info btn-sm" id="btn-undo-edit"
-                        onclick="window.DrunkPipeline.undo()" title="撤销上一步编辑 (Ctrl / Cmd + Z)">
+                    <button class="btn btn-info btn-sm" id="btn-undo-edit" onclick="window.DrunkPipeline.undo()"
+                        title="撤销上一步编辑 (Ctrl / Cmd + Z)">
                         <cgo-icon name="undo" size="14"></cgo-icon>
                         <span>撤销</span>
                     </button>
@@ -1369,7 +1368,8 @@
             <!-- 3. 右侧：运行健康度指示 (纯暗色模式，Primary: #006098) -->
             <div class="bar-section-right">
                 <span id="drunk-mode-badge" class="badge badge-info" title="当前工作模式">识图模式</span>
-                <span id="dirty-count-badge" class="badge badge-info" title="尚未导出的改动条目数" style="display:none;">未改动</span>
+                <span id="dirty-count-badge" class="badge badge-info" title="尚未导出的改动条目数"
+                    style="display:none;">未改动</span>
                 <span id="health-status-indicator" class="badge badge-info" title="数据完整性自检状态">
                     <span class="status-dot-pulse"></span>
                     <span id="health-status-text">等待上传底图</span>
@@ -1639,8 +1639,7 @@
                     <span>一键复制全部代码</span>
                 </button>
                 <button class="btn btn-info btn-sm" id="btn-download-export"
-                    onclick="window.DrunkPipeline.downloadExportFiles()"
-                    title="把生成的文件逐个另存到本地，可直接覆盖回 city/{city_id}/">
+                    onclick="window.DrunkPipeline.downloadExportFiles()" title="把生成的文件逐个另存到本地，可直接覆盖回 city/{city_id}/">
                     <cgo-icon name="save" size="14"></cgo-icon>
                     <span>下载改动文件</span>
                 </button>
@@ -1761,7 +1760,8 @@
                     清除本地 Key
                 </button>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-info btn-sm" onclick="window.DeepSeekVision.testConnection()" style="display: inline-flex; align-items: center; gap: 4px;">
+                    <button class="btn btn-info btn-sm" onclick="window.DeepSeekVision.testConnection()"
+                        style="display: inline-flex; align-items: center; gap: 4px;">
                         <cgo-icon name="world"></cgo-icon>
                         <span>测试连接</span>
                     </button>
@@ -1791,7 +1791,7 @@
         }
     </script>
 
-    <script type="module" src="../core/cgo-ui.js?v=260930.233000"></script>
+    <script type="module" src="../core/cgo-ui.js?v=260930.233001"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         if (window.pdfjsLib) {
@@ -1800,21 +1800,21 @@
     </script>
     <!-- 城市注册总线：编辑模式据此枚举 city/ 下已注册的城市（与 main.html 同源，零硬编码） -->
     <!-- 折线倒角几何：与 core/script.js 共用同一份实现，保证编辑器预览 = 实际渲染 -->
-    <script src="../core/path-geometry.js?v=260930.233000"></script>
+    <script src="../core/path-geometry.js?v=260930.233001"></script>
     <!-- 车站图元模板与尺寸：同样与引擎共用，保证图元大小与配色所见即所得 -->
-    <script src="../core/station-icons.js?v=260930.233000"></script>
-    <script src="../city/data.js?v=260930.233000"></script>
-    <script src="./js/drunk_logger.js?v=260930.233000"></script>
-    <script src="./js/drunk_sanitizer.js?v=260930.233000"></script>
-    <script src="./js/city_project_io.js?v=260930.233000"></script>
-    <script src="./js/city_knowledge_matcher.js?v=260930.233000"></script>
-    <script src="./js/pdf_vector_extractor.js?v=260930.233000"></script>
-    <script src="./js/deepseek_vision.js?v=260930.233000"></script>
-    <script src="./js/vision_detector.js?v=260930.233000"></script>
-    <script src="./js/ocr_align_solver.js?v=260930.233000"></script>
-    <script src="./js/topology_tracer.js?v=260930.233000"></script>
-    <script src="./js/openmap_codegen.js?v=260930.233000"></script>
-    <script src="./js/drunk_pipeline.js?v=260930.233000"></script>
+    <script src="../core/station-icons.js?v=260930.233001"></script>
+    <script src="../city/data.js?v=260930.233001"></script>
+    <script src="./js/drunk_logger.js?v=260930.233001"></script>
+    <script src="./js/drunk_sanitizer.js?v=260930.233001"></script>
+    <script src="./js/city_project_io.js?v=260930.233001"></script>
+    <script src="./js/city_knowledge_matcher.js?v=260930.233001"></script>
+    <script src="./js/pdf_vector_extractor.js?v=260930.233001"></script>
+    <script src="./js/deepseek_vision.js?v=260930.233001"></script>
+    <script src="./js/vision_detector.js?v=260930.233001"></script>
+    <script src="./js/ocr_align_solver.js?v=260930.233001"></script>
+    <script src="./js/topology_tracer.js?v=260930.233001"></script>
+    <script src="./js/openmap_codegen.js?v=260930.233001"></script>
+    <script src="./js/drunk_pipeline.js?v=260930.233001"></script>
 </body>
 
 </html>
