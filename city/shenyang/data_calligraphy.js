@@ -547,12 +547,21 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "霍达", intro: "霍达，女，生于1945年，北京人，代表作有《穆斯林的葬礼》《公子扶苏》等" }
     },
     "0202": {
+        image: "./city/shenyang/assets/calligraphy/lingxi.png",
+        ratio: 1.43,
+        alt: "陵西站",
         calligrapher: { name: "陈忠实", intro: "陈忠实，男，生于1942年，陕西西安人，代表作有《白鹿原》《乡村》等" }
     },
     "0201": {
+        image: "./city/shenyang/assets/calligraphy/santaizi.png",
+        ratio: 2.107,
+        alt: "三台子站",
         calligrapher: { name: "杨大群", intro: "杨大群，男，生于1927年，辽宁新民人，代表作有《毛岸英》《关东江河》等" }
     },
     "0251": {
+        image: "./city/shenyang/assets/calligraphy/yixueyuan.png",
+        ratio: 2.357,
+        alt: "医学院站",
         calligrapher: { name: "周明", intro: "周明，男，生于1934年，陕西周至人，代表作有《榜样》《在莽莽的绿色世界》等" }
     },
     "0252": {
@@ -565,6 +574,9 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "阎肃", intro: "阎肃，男，生于1930年，河北保定人，代表作有《江姐》《说唱脸谱》等" }
     },
     "0254": {
+        image: "./city/shenyang/assets/calligraphy/liaoningdaxue.png",
+        ratio: 3.072,
+        alt: "辽宁大学站",
         calligrapher: { name: "邵燕祥", intro: "邵燕祥，男，生于1933年，北京人，代表作有《到远方去》《在远方》等" }
     }
 };

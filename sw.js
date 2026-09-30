@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260930.1027';
+const CACHE_NAME = 'cgo-openmap-v260930.4400';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -192,13 +192,17 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/gongyezhanlanguan.png',
     './city/shenyang/assets/calligraphy/hangkonghangtiandaxue.png',
     './city/shenyang/assets/calligraphy/jinrongzhongxin.png',
+    './city/shenyang/assets/calligraphy/liaoningdaxue.png',
+    './city/shenyang/assets/calligraphy/lingxi.png',
     './city/shenyang/assets/calligraphy/qingniangongyuan.png',
     './city/shenyang/assets/calligraphy/quanyunlu.png',
     './city/shenyang/assets/calligraphy/renminguangchang.png',
+    './city/shenyang/assets/calligraphy/santaizi.png',
     './city/shenyang/assets/calligraphy/shenyangbeizhan.png',
     './city/shenyang/assets/calligraphy/shijidasha.png',
     './city/shenyang/assets/calligraphy/shitushuguan.png',
     './city/shenyang/assets/calligraphy/wulihe.png',
+    './city/shenyang/assets/calligraphy/yixueyuan.png',
     './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
 
     // 3号线站名题字（2026 年全线开通后安装，书法家题写；待考站题写者尚未考证）
