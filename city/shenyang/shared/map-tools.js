@@ -5,12 +5,18 @@
  * 计划随共享层整体迁入 core/。
  *
  * 入口是浮动缩放控制条上「查找最近车站」按钮下方的 plugin 按钮：点开是工具列表浮层
- * （与结果小窗同一套外观，不用 cgo-modal），内含两个分析工具：
+ * （与结果小窗同一套外观，不用 cgo-modal），内含三个分析工具：
  *
  *   1. 票价图（payment）：选一个车站，看从该站出发到全网各站的票价；
- *   2. 等时圈（time）：选一个车站，看乘地铁多少分钟能到各站。
+ *   2. 等时圈（time）：选一个车站，看乘地铁多少分钟能到各站。面板里另有
+ *      「范围」分段控件（色带上限 = 选中项，**高于它的地方不填色**，上限处另画一条等级线）
+ *      与「最近 10 站」折叠列表（按用时升序，点条目即选中该站）；
+ *   3. 多人汇合（meet）：选两个车站，找大家用时接近、都方便到的汇合站。
+ *      出图后再点第三座车站即升级为**三点汇合**（C 的语义色为绿，见 MEET_ORIGINS）：
+ *      着色量随之从「有符号差值 a−b」换成「三者用时的极差」（三点下没有"离谁更近"），
+ *      色标改标注「汇合带 差 ≤10 分 / 外带 ≤20 分」，面板里可用「移除 C」退回两点。
  *
- * 两者共用同一条链路：**选站 → 计算 → 分层设色 → 图上叠加 → 图例**。
+ * 三者共用同一条链路：**选站 → 计算 → 分层设色 → 图上叠加 → 图例**。
  *
  * 计算完全复用共享层的行程规划内核（route-data 建图 + route-planner 按「时间最快」寻路），
  * 不对城市新增任何配置字段：票价直接取 plan() 结算出的 fare，用时取 minutes。
@@ -68,8 +74,19 @@
 
     /** 等时圈档宽（分钟）：每 5 分钟一档，色阶才够细 */
     const ISO_STEP = 5;
-    /** 等时圈的档数下限：取值最远只到 40 分钟时仍画满到 90 分钟，标尺才稳定 */
+    /**
+     * 等时圈的档数下限：**没有「范围」控件时**（拿不到全网极值）取值最远只到 40 分钟也画满到
+     * 90 分钟，标尺才稳定；有范围控件时色带上限就是选中项，这条下限不再生效。
+     */
     const ISO_MIN_BANDS = 18;
+    /**
+     * 等时圈「范围」分段控件的候选（分钟）：**色带上限即选中项，高于它的地方不填色、不画等级线**。
+     * 其中高于本城最长时间（`referenceRange` 给出的全网极值）的常量一律不显示 —— 小城里选
+     * 90 分等于整张图都在量程内，那一档没有意义；末位再补上真正的「最长」那一档。
+     */
+    const ISO_RANGES = [30, 45, 60, 90];
+    /** 「范围」默认选中项；本城最长时间比它还小时退到「最长」那一档 */
+    const ISO_RANGE_DEFAULT = 60;
     /**
      * 每几档画一条等级线（也就是几档一组）。色带按 ISO_STEP 分档，但等值线若也每档一条，
      * 线上会挤满数字 —— 故线与标签都按 15 分钟一组来画，与图例刻度同一节拍。
@@ -108,6 +125,11 @@
     const FILL_ALPHA = 55;
     const EDGE_ALPHA = 205;
     /**
+     * bandIndex 的哨兵值（那张表存的是"档位 + 1"，故 0 表示未着色）：该像素的值超出等时圈
+     * 「范围」上限，**不填色** —— 但描线那一步要拿它与色块的交界，把上限那条等级线画出来。
+     */
+    const CLIP_MARK = 255;
+    /**
      * 等级分割线的两段半宽（像素）：外圈是**粗的背景色描边**（把色块挖开一条缝），
      * 内芯是**细的文本色线**（缝里勾出来的那一条）——线、线上的数值、色标示意三处
      * 共用同一套配色。线宽 ≈ 1 + 2 × 半宽：外圈约 7px、内芯约 3px，太细缩放后看不见。
@@ -125,7 +147,7 @@
     const FADE_START_FACTOR = 0.4;
     const FADE_END_FACTOR = 1.6;
     /**
-     * 两站汇合：差值色标的档宽、量程（分钟）与推荐条数。
+     * 汇合图：差值色标的档宽、量程（分钟）与推荐条数。
      * 量程之内按档上色（0 附近是"汇合带"），超出量程按外带渐隐 —— 上游的汇合图就是这个口径。
      * 量程放宽到 ±30 是为了给"黄 → 淡化 → 浓色"这段过渡留出足够的档位。
      */
@@ -133,6 +155,26 @@
     const MEET_CAP = 30;
     const MEET_FADE = 20;
     const MEET_PICKS = 3;
+    /**
+     * 三点汇合的两个分界（分钟）：差值在 MEET3_BAND 以内是**汇合带**（黄、加实），
+     * 到 MEET3_OUTER 是**外带**，再往外渐隐直至不画。
+     * 三点只有"三者用时差多少"这一个量，没有"离谁更近"，故色标是单向的
+     * （0 = 三人同时到）：取汇合色标的右半段，黄 → 浅蓝 → 深蓝。
+     */
+    const MEET3_BAND = 10;
+    const MEET3_OUTER = 20;
+    /**
+     * 出发点的语义色：与 map-tools.css 里 `.cgo-mt-flag.is-ab / is-ba / is-ca` 一一对应 ——
+     * A 粉红、B 蓝、C 绿。图上标记、面板标题、推荐列表与悬停读数共用这一份，
+     * 三处必须同色，否则"哪个数是谁的"就串了。只有前两个能出现在两点汇合里。
+     */
+    const MEET_ORIGINS = [
+        { cls: "is-ab", letter: "A", color: "#c2477a" },
+        { cls: "is-ba", letter: "B", color: "#3b5bc0" },
+        { cls: "is-ca", letter: "C", color: "#22a05b" }
+    ];
+    /** 「最近 10 站」列表的条数 */
+    const NEAR_COUNT = 10;
     /**
      * 紧贴汇合带的那两档（±MEET_STEP 分钟）的填充透明度倍数。
      * 它们就是"两人差不多同时到"的区域，画实一些，一眼能看出汇合点落在哪一带。
@@ -171,14 +213,14 @@
         meet: {
             id: "meet",
             icon: "user",
-            name: "两站汇合",
-            desc: "选两个车站，找两人用时接近、都方便到的汇合站",
+            name: "多人汇合",
+            desc: "选两个车站，找大家用时接近、都方便到的汇合站；出图后再点一座车站可加入第三人",
             title: (name) => `${name} 汇合图`
         }
     };
 
     /**
-     * 两站汇合的色标：以差值 0 为中心的双向色标。
+     * 汇合色标（**两点**口径：以差值 0 为中心的双向色标；三点汇合取它的右半段，见 buildBands）。
      * 中间的黄是"汇合带"（两人用时相等），往两侧先**淡化**（浅粉 / 浅蓝）再**变浓**
      * （深红 / 深蓝）—— 直接从黄插到红会经过一片很脏的橙，先提亮再压深才有过渡感。
      */
@@ -199,14 +241,19 @@
 
     const state = {
         tool: null,          // 当前小窗展示的工具
-        stationId: null,     // 当前小窗的起点车站（汇合图时是 [A, B]）
+        stationId: null,     // 当前小窗的起点车站（汇合图时是 [A, B]，加入第三人后是 [A, B, C]）
         targetKey: null,     // 当前渲染目标的令牌，用来丢弃迟到的结果
         picking: null,       // 正在选站的工具 id
-        picks: [],           // 多步选站（两站汇合）已经选好的车站
+        picks: [],           // 多步选站（多人汇合）已经选好的车站
         planner: null,       // 行程规划内核（懒建，构建一次即复用）
         building: null,      // 建图中的 Promise，避免并发重复建图
         busy: false,         // 正在计算，期间不重复触发
-        field: null          // 本次绘制的值场与档位，供悬停查值
+        field: null,         // 本次绘制的值场与档位，供悬停查值
+        isoRange: null,      // 等时圈「范围」的选中项（分钟），null = 还没选、按默认档
+        nearOpen: false,     // 「最近 10 站」列表是否展开（纯界面状态，重绘时沿用）
+        last: null,          // 上一次绘制的输入（换「范围」时只重分档重绘，不再算一遍值）
+        view: null,          // 上一次绘制的成品（图例重画直接用它与 picks/bands，见 renderLegend）
+        rangeQueued: false   // 重分档期间又点了别的档位：等这一轮画完再补一轮
     };
 
     const emit = (name, detail) => document.dispatchEvent(new CustomEvent(name, { detail }));
@@ -365,7 +412,7 @@
      * 开启某个工具。
      *
      * 预设车站的用法：单站工具（票价图 / 等时圈）取**第一个** —— 从路线结果进来时它就是**起点站**；
-     * 两站汇合取**前两个** —— 路线结果进来时正好是"起点当 A、终点当 B"，于是直接出图；
+     * 多人汇合取**前两个** —— 路线结果进来时正好是"起点当 A、终点当 B"，于是直接出图；
      * 只预设了一个（如从车站详情进来）时，把它当 A，只需用户再点一个 B。
      */
     function launchTool(tool, preset) {
@@ -421,7 +468,7 @@
         emit("cgo:map-tools-picking", { tool });
     }
 
-    /** 选站提示文案：两站汇合要连着选两次，得说清现在是第几个 */
+    /** 选站提示文案：多人汇合要连着选两次，得说清现在是第几个 */
     function showPickTip() {
         const tool = state.picking;
         if (!tool) return;
@@ -429,7 +476,7 @@
         let text = `请在地图上点选一个车站（${TOOLS[tool].name}）`;
         if (tool === "meet") {
             text = state.picks.length === 0
-                ? "请点选第一个车站（两站汇合）"
+                ? "请点选第一个车站（多人汇合）"
                 : `已选 ${stationName(state.picks[0])}，请再点选一个车站`;
         }
         tip.querySelector(".cgo-mt-pick-text").textContent = text;
@@ -471,6 +518,40 @@
         stopPick();
         emit("cgo:map-tools-picked", { tool, stationId: sid, stationName: stationName(sid) });
         run(tool, sid);
+    }
+
+    /**
+     * 两点汇合出图期间，点地图上的第三座车站即升级成三点汇合（用户口径）。
+     *
+     * 这枚监听**只在"两点汇合结果正在展示"时装上**，而且只拦"加第三个人"这一种点击：
+     *   - 已经三点（或换成别的工具）时不装 —— 那时点车站要恢复成核心原本的行为（打开详情）；
+     *   - 点在自己身上（A / B）也不拦，那是想看看这站，不是在加人；
+     *   - 选站态（state.picking）由 onPickClick 管，这里让开。
+     * 拦住的那一下要 stopPropagation：否则车站详情会跟着弹出来，把汇合图顶到一边。
+     */
+    function onMeetAddClick(event) {
+        if (state.tool !== "meet" || state.picking) return;
+        const targets = state.stationId;
+        if (!Array.isArray(targets) || targets.length !== 2) return;
+        const node = event.target.closest?.("[data-sid]");
+        if (!node) return;
+        const sid = node.dataset.sid;
+        if (targets.includes(sid) || !isPickable(sid)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        emit("cgo:map-tools-picked", { tool: "meet", stationId: sid, stationName: stationName(sid) });
+        run("meet", [targets[0], targets[1], sid]);
+    }
+
+    /** 两点汇合期间才装着那枚"点第三座车站"的监听（幂等，重复开关只动一次） */
+    let meetAddBound = false;
+
+    function syncMeetAdd(on) {
+        const host = mapContent();
+        if (!host || on === meetAddBound) return;
+        meetAddBound = on;
+        if (on) host.addEventListener("click", onMeetAddClick, true);
+        else host.removeEventListener("click", onMeetAddClick, true);
     }
 
     /* ======================================================================
@@ -656,44 +737,65 @@
     }
 
     /**
-     * 两站汇合：对每座车站分别算「到 A 的用时」与「到 B 的用时」，
-     * 取**有符号差值** d = tA − tB 作为着色值（负 = 离 A 更近、正 = 离 B 更近），
-     * 同时留下两人的用时，供推荐列表按"用时差最小、较慢者更快"排序。
+     * 汇合图：对每座车站分别算「到各出发点的用时」，再压成一个用于着色的标量。
+     *
+     * 两点与三点的口径不同，这是语义上的必然：
+     *   - 两点：取**有符号差值** d = tA − tB（负 = 离 A 更近、正 = 离 B 更近），
+     *     色标因此是双向的，图上顺带读得出"这片区域归谁"；
+     *   - 三点：三个出发点之间没有"哪边更近"可言，改取**极差** max t − min t
+     *     （0 = 三人同时到），色标随之变单向（见 buildBands 的 meet3 分支）。
+     *
+     * 共乘过滤只对两点生效：它本意是"两人本可以在更早那一站碰头，再往后走是白绕"，
+     * 这层推理只对同行的两个人成立；三个人的汇合点哪怕其中两人早已同行，对第三个人
+     * 仍是实打实的碰头点，一并滤掉只会把大片城区挖空。
+     *
+     * @returns {Promise<{origins: string[], values: Map<string, number>,
+     *   minutes: Map<string, number[]>}|null>} minutes 存各出发点用时数组，顺序同 origins
      */
-    async function computeMeetValues(fromA, fromB, planner) {
+    async function computeMeetValues(origins, planner) {
         const list = Object.keys(stations());
         const values = new Map();
         const minutes = new Map();
+        const originSet = new Set(origins);
         for (let i = 0; i < list.length; i += BATCH) {
             list.slice(i, i + BATCH).forEach((sid) => {
-                if (sid === fromA || sid === fromB) return;             // 两个出发点本身没有"汇合"含义
+                if (originSet.has(sid)) return;                         // 出发点本身没有"汇合"含义
                 const station = stations()[sid];
                 if (!station || station.type === "no") return;
                 if (!planner.linesAt(sid).length) return;
-                const a = planner.plan(fromA, sid, "time");
-                const b = planner.plan(fromB, sid, "time");
-                if (!a || !b) return;
-                if (!Number.isFinite(a.minutes) || !Number.isFinite(b.minutes)) return;
-                if (shareRideSegment(a, b)) return;                     // 需共乘一段的站不进候选
-                values.set(sid, a.minutes - b.minutes);
-                minutes.set(sid, { a: a.minutes, b: b.minutes });
+                const plans = origins.map((from) => planner.plan(from, sid, "time"));
+                if (plans.some((plan) => !plan || !Number.isFinite(plan.minutes))) return;
+                if (origins.length === 2 && shareRideSegment(plans[0], plans[1])) return;
+                const times = plans.map((plan) => plan.minutes);
+                values.set(sid, origins.length === 2
+                    ? times[0] - times[1]
+                    : Math.max(...times) - Math.min(...times));
+                minutes.set(sid, times);
             });
             await nextFrame();
         }
         if (!values.size) return null;
-        return { values, minutes };
+        return { origins: origins.slice(), values, minutes };
     }
 
     /**
-     * 汇合推荐：按「较慢一方的用时 + 两人的用时差」由小到大排。
-     * 前者是这趟汇合的**总代价**（两人都得等慢的那个），后者是**公平性**；
-     * 两者相加，正好是"既要快、又要两人差不多同时到"的折中。
+     * 汇合推荐：按「最慢一方的用时 + 大家的用时差」由小到大排。
+     * 前者是这趟汇合的**总代价**（所有人都得等最慢的那个），后者是**公平性**；
+     * 两者相加，正好是"既要快、又要差不多同时到"的折中。
      */
     function meetPicks(meet) {
         return [...meet.minutes.entries()]
-            .map(([sid, m]) => ({ sid, ...m, diff: Math.abs(m.a - m.b) }))
-            .sort((x, y) => (Math.max(x.a, x.b) + x.diff) - (Math.max(y.a, y.b) + y.diff)
-                || x.diff - y.diff)
+            .map(([sid, times]) => {
+                const max = Math.max(...times);
+                const min = Math.min(...times);
+                return {
+                    sid, times, max, min,
+                    spread: max - min,
+                    slowest: times.indexOf(max),    // 最慢的是第几个出发点（0=A / 1=B / 2=C）
+                    fastest: times.indexOf(min)     // 最快的那个：三点模式下数值图元按它上色
+                };
+            })
+            .sort((x, y) => (x.max + x.spread) - (y.max + y.spread) || x.spread - y.spread)
             .slice(0, MEET_PICKS);
     }
 
@@ -766,18 +868,48 @@
      * 于是等时圈的红色永远对应"全网最长用时"、票价图的粉色永远对应"全网最高票价"，
      * 换个起点颜色含义不变；只有首帧还没估出参照时才退回本次数据的极值。
      *
-     * 三种工具的口径：
+     * 四种口径：
      *   - 票价：1 元一档铺满参照范围（金额 → 颜色恒定），每档之间都是等级线；
      *   - 等时圈：ISO_STEP 分钟一档，等级线每 EDGE_EVERY 档一条（15 分钟一组的节拍）；
-     *   - 两站汇合：以差值 0 为中心的双向色标（偏 A 粉红 / 汇合带金 / 偏 B 蓝紫），
-     *     量程 ±MEET_CAP，超出量程的"外带"由 drawMap 渐隐。
+     *     带「范围」控件时 `range.clip` 就是选中的上限 —— 标尺到此为止，超出部分由
+     *     drawMap 直接不画（色带上限与选中项必须**字面对得上**，故这里不再走档数下限）；
+     *   - 两点汇合：以差值 0 为中心的双向色标（偏 A 粉红 / 汇合带金 / 偏 B 蓝紫），
+     *     量程 ±MEET_CAP，超出量程的"外带"由 drawMap 渐隐；
+     *   - 三点汇合：单向色标（0 = 三人同时到 → MEET_CAP），见下面的 meet3 分支。
      *
      * 刻度一律返回 `ticks: [{ text, at }]`（at 是 0~1 的横向位置），由 renderLegend
      * 绝对定位摆放 —— 这样刻度中心能精确压在等级线上，不会各行其是。
+     *
+     * @param {object|null} range 参照范围 { min, max }，可另带 `clip`（等时圈选中上限）
+     * @param {number} [originCount] 汇合图的出发点个数（2 = 两点，3 = 三点）
      */
-    function buildBands(tool, values, range) {
+    function buildBands(tool, values, range, originCount) {
         const list = [...values.values()];
         if (!list.length) return null;
+        if (tool === "meet" && originCount >= 3) {
+            const count = MEET_CAP / MEET_STEP;                  // 0~30 分钟，每 5 分钟一档
+            const band = Math.round(MEET3_BAND / MEET_STEP);     // 汇合带（差 ≤10 分）占前两档
+            return {
+                kind: "meet3",
+                // 色标取汇合色标的右半段（黄 → 浅蓝 → 深蓝），但**前两档钉在纯黄上**：
+                // 按档位均分的话第一档就掺进了蓝，汇合带看着不再"黄"，与面板里那枚
+                // 黄色图例项也对不上
+                colors: Array.from({ length: count }, (_, i) => scaleColor(
+                    MEET_SCALE, 0.5 + 0.5 * Math.max(0, (i + 1 - band) / Math.max(1, count - band))
+                )),
+                ticks: [],                            // 三点不标数值刻度，改在图例里说明两条线的含义
+                edgeEvery: 2,                         // 等级线每 2 档（10 分钟）一条
+                /** 汇合带那两档画实一些，其余按常规透明度 */
+                alphaOf: (b) => (b < band ? MEET_BAND_BOOST : 1),
+                /** 第 b 档与第 b+1 档之间的分界值（等值线标签用）：10 分、20 分… */
+                cutText: (b) => `${(b + 1) * MEET_STEP}分`,
+                bandOf: (v) => Math.max(0, Math.min(count - 1, Math.floor(v / MEET_STEP))),
+                /** 线型：10 分那条是虚线、20 分那条是实线（与两点汇合同一套交替规则） */
+                cutKind: (group) => meetCutKind(group * 2 * MEET_STEP, 2 * MEET_STEP),
+                fadeStart: MEET3_OUTER,               // 外带（≤20 分）之内实画
+                fadeSpan: MEET_CAP - MEET3_OUTER      // 20 → 30 渐隐，再远不画
+            };
+        }
         if (tool === "meet") {
             const count = (MEET_CAP / MEET_STEP) * 2;          // 正负各 MEET_CAP / MEET_STEP 档
             const zeroBand = Math.floor(MEET_CAP / MEET_STEP);  // 差值 0 落在哪一档
@@ -800,7 +932,11 @@
                     const v = -MEET_CAP + (band + 1) * MEET_STEP;
                     return v > 0 ? `+${v}` : String(v);
                 },
-                bandOf: (v) => Math.max(0, Math.min(count - 1, Math.floor((v + MEET_CAP) / MEET_STEP)))
+                bandOf: (v) => Math.max(0, Math.min(count - 1, Math.floor((v + MEET_CAP) / MEET_STEP))),
+                /** 线型：0 那条黄实线、±10 白虚线、±20 白实线（线上与色标示意共用这一份） */
+                cutKind: (group) => meetCutKind(-MEET_CAP + group * 2 * MEET_STEP, 2 * MEET_STEP),
+                fadeStart: MEET_CAP,                           // 量程之内实画
+                fadeSpan: MEET_FADE                            // 量程 → 量程 + MEET_FADE 渐隐
             };
         }
         const scale = SCALES[tool] || SCALES.iso;
@@ -833,34 +969,70 @@
                 bandOf: (v) => Math.max(0, Math.min(last, Math.round(v) - from))
             };
         }
-        const raw = Math.max(ISO_MIN_BANDS, Math.ceil(high / ISO_STEP));
-        const steps = Math.ceil(raw / EDGE_EVERY) * EDGE_EVERY;
+        // 「范围」选中项就是色带的上限；没选过（拿不到全网极值时）才走 ISO_MIN_BANDS 那条下限 ——
+        // 下限是为"量程不确定"准备的，抬上去反倒会让色带右端与选中项对不上
+        const clipMax = range && Number.isFinite(range.clip) ? range.clip : null;
+        const raw = clipMax != null
+            ? Math.max(1, Math.ceil(clipMax / ISO_STEP))
+            : Math.max(ISO_MIN_BANDS, Math.ceil(high / ISO_STEP));
+        const steps = clipMax != null ? raw : Math.ceil(raw / EDGE_EVERY) * EDGE_EVERY;
+        // 色系与等级线的**组宽**：默认 15 分钟一组；量程很短的（≤30 分，只有 6 档）改用 10 分钟一组 ——
+        // 6 档按 15 分钟分只剩蓝、红两段色系，看着像没分档；10 分钟一组正好三段（蓝 / 绿 / 红）。
+        // 组内照样按 5 分钟一档做明暗（见 shadeAt），5 分钟这个粒度没有丢
+        const edgeEvery = steps <= 30 / ISO_STEP ? 2 : EDGE_EVERY;
         const cuts = [];
         for (let i = 0; i <= steps; i++) cuts.push(i * ISO_STEP);
-        // 每 EDGE_EVERY 格（正好是两条等级线之间）算一组：组内色系相同，只用明暗拉开层次 ——
+        // 每 edgeEvery 格（正好是两条等级线之间）算一组：组内色系相同，只用明暗拉开层次 ——
         // 以组中那格为基准，首格向白提亮、末格向黑压暗。整体色阶仍是「蓝→绿→黄→红」四级大势，
-        // 细看每一级里还有三档深浅，5 分钟一格这个粒度就看出来了，离散色表里也不必塞二十个色
-        const groupCount = Math.max(1, Math.round(steps / EDGE_EVERY));
-        const shadeAt = (i) => (1 - (i % EDGE_EVERY)) * ISO_SHADE;
+        // 细看每一级里还有几档深浅，5 分钟一格这个粒度就看出来了，离散色表里也不必塞二十个色
+        const groupCount = Math.max(1, Math.round(steps / edgeEvery));
+        const shadeAt = (i) => (1 - (i % edgeEvery)) * ISO_SHADE;
+        /**
+         * 刻度间隔：段数少时与等级线同拍（每 10 / 15 分钟标一个），多了才隔一条标 ——
+         * 量程被「范围」控件压到 45 / 60 分钟之后标尺只有三四段，
+         * 再按"隔一条"跳着标就只剩首末两个数了。
+         */
+        const tickEvery = groupCount <= 5 ? edgeEvery : edgeEvery * 2;
         return {
             kind: "iso",
             colors: cuts.slice(0, steps).map((_, i) => shadeColor(
-                scaleColor(scale, groupCount > 1 ? Math.floor(i / EDGE_EVERY) / (groupCount - 1) : 0.5),
+                scaleColor(scale, groupCount > 1 ? Math.floor(i / edgeEvery) / (groupCount - 1) : 0.5),
                 shadeAt(i)
             )),
             // 刻度标在等级线上，但**隔一条白线**才标一个（15 分钟一条线太密，数字会挤在一起）；
-            // 距末端不足一条白线的那个不标，是因为末端的标注是**右对齐**的、会与它撞上；
+            // 距末端不足一个标注间隔的那个不标，是因为末端的标注是**右对齐**的、会与它撞上；
             // 末端自己反过来要标 —— 它撑着整条色标的右界，少了它右端就没数了
             ticks: cuts
-                .map((v, i) => ((i === steps || (i % (EDGE_EVERY * 2) === 0 && i < steps - EDGE_EVERY))
+                .map((v, i) => ((i === steps || (i % tickEvery === 0 && i <= steps - tickEvery))
                     ? { text: String(v), at: i / steps } : null))
                 .filter(Boolean),
             cuts,
-            edgeEvery: EDGE_EVERY,             // 等级线只画在每 EDGE_EVERY 档的组界上
+            edgeEvery,                         // 等级线只画在每 edgeEvery 档的组界上
             cutText: (band) => (band + 1 <= steps ? `${cuts[band + 1]}分` : ""),
-            bandOf: (v) => Math.min(steps - 1, Math.max(0, Math.floor(v / ISO_STEP)))
+            bandOf: (v) => Math.min(steps - 1, Math.max(0, Math.floor(v / ISO_STEP))),
+            /**
+             * 超出选中上限的地方**不填色**（用户明确要求），但上限本身要**画一条等级线**：
+             * drawMap 见到高于它的值就打上 CLIP_MARK 哨兵，描线那一步拿哨兵与色块的交界
+             * 当一条等级线来落笔（见那里的 edgeClip）
+             */
+            clipMax
         };
     }
+
+    /**
+     * 汇合图的"外带"渐隐系数：1 = 照常画、0 = 不画，中间是渐隐。
+     * 两点与三点的分界不同（±30 之外 / 差 >20），但都是"量程之外继续淡出"这一件事，
+     * 阈值随档位对象一起给出（见 buildBands 的 fadeStart / fadeSpan）。
+     */
+    function outerFade(bands, value) {
+        if (!Number.isFinite(bands.fadeStart)) return 1;
+        const over = Math.abs(value) - bands.fadeStart;
+        if (over <= 0) return 1;
+        return over >= bands.fadeSpan ? 0 : fadeAt(over, 0, bands.fadeSpan);
+    }
+
+    /** 是否汇合图（两点 / 三点共用一套叠加与图例外壳，口径差异都在档位对象里） */
+    const meetBands = (bands) => Boolean(bands) && bands.kind.startsWith("meet");
 
     /* ======================================================================
      * 分层设色
@@ -1098,7 +1270,8 @@
         const ctxOff = off.getContext("2d");
         const image = ctxOff.createImageData(outW, outH);
         const data = image.data;
-        const bandIndex = new Uint8Array(outW * outH);   // 0 = 未着色，否则档位 + 1
+        // 0 = 未着色、否则档位 + 1、CLIP_MARK = 超出「范围」上限（描线时要当边界用）
+        const bandIndex = new Uint8Array(outW * outH);
         // 距离蒙版的两道阈值：以「平均站距」（一个站点平均占多大地方）为单位
         const avgDist = Math.sqrt((coverW * coverH) / Math.max(1, points.length));
         const fadeStart = avgDist * FADE_START_FACTOR;
@@ -1116,6 +1289,12 @@
                 const dist = sampleField(distance, lowW, lowH, fx, fy);
                 if (dist >= fadeEnd) continue;
                 const value = sampleField(smooth, lowW, lowH, fx, fy);
+                // 等时圈的「范围」上限：高于它的地方整片不填色。这里不直接跳过，而是打一个
+                // 哨兵 —— 描线的下一步要把"色块 ⇄ 裁剪区"那条交界画成等级线（量程的右界）
+                if (bands.clipMax != null && value > bands.clipMax) {
+                    bandIndex[oy * outW + ox] = CLIP_MARK;
+                    continue;
+                }
                 const band = bands.bandOf(value);
                 const index = oy * outW + ox;
                 bandIndex[index] = band + 1;
@@ -1128,11 +1307,9 @@
                     ? FILL_ALPHA
                     : Math.round(FILL_ALPHA * fadeAt(dist, fadeStart, fadeEnd));
                 // 汇合图：超出量程的"外带"继续渐隐（上游口径）—— 边缘那些杂乱色块也就跟着糊掉了
-                if (bands.kind === "meet") {
-                    const over = Math.abs(value) - MEET_CAP;
-                    if (over >= MEET_FADE) continue;
-                    if (over > 0) alpha = Math.round(alpha * fadeAt(over, 0, MEET_FADE));
-                }
+                const outer = outerFade(bands, value);
+                if (!outer) continue;
+                if (outer < 1) alpha = Math.round(alpha * outer);
                 // 汇合图：紧贴汇合带的那两档画实一些（见 buildBands 的 alphaOf）
                 if (bands.alphaOf) alpha = Math.min(255, Math.round(alpha * bands.alphaOf(band)));
                 data[offset + 3] = alpha;
@@ -1159,12 +1336,18 @@
                 const index = oy * outW + ox;
                 const band = bandIndex[index];
                 if (!band) continue;
-                const group = groupOf(band);
+                // 裁剪区（CLIP_MARK）**也要落笔**：等级线以边界为中心、两侧各铺半宽，
+                // 只画内侧就只剩半条（早先这里直接跳过裁剪像素，用户实测反馈"线被裁掉一半"）。
+                // 它没有档位可言，只消看邻域里有没有色块
+                const clippedSide = band === CLIP_MARK;
+                const group = clippedSide ? -1 : groupOf(band);
                 // 距组界不超过外圈半宽就落笔（线因此有厚度，缩小时也看得见）。四个方向各看一眼
                 // 即可，不必扫整个邻域：两侧都会被判为边界，线自然以真实边界为中心加粗。
-                // 未着色像素（bandIndex 0）不算边界 —— 色块的外缘不描线，那圈由距离蒙版自己收边
+                // 未着色像素（bandIndex 0）不算边界 —— 色块的外缘不描线，那圈由距离蒙版自己收边；
+                // 但**裁剪区算边界**：那是「范围」上限所在，用户要求这里也画一条线
                 let edgeDist = Infinity;
                 let edgeGroup = group;
+                let edgeGroupHit = false;             // 这条边界是"跨组界"还是"到量程上限"
                 for (let d = 1; d <= EDGE_SPAN_OUTER; d++) {
                     let hit = false;
                     for (let s = 0; s < 4; s++) {
@@ -1173,9 +1356,16 @@
                                 : s === 2 ? (oy >= d ? bandIndex[index - d * outW] : 0)
                                     : (oy + d < outH ? bandIndex[index + d * outW] : 0);
                         if (!near) continue;
+                        if (near === CLIP_MARK) {
+                            // 裁剪区内部彼此不算边界，否则整片裁剪区都会被描一遍
+                            if (!clippedSide) hit = true;
+                            continue;
+                        }
+                        if (clippedSide) { hit = true; continue; }
                         const g2 = groupOf(near);
                         if (g2 === group) continue;
                         hit = true;
+                        edgeGroupHit = true;
                         if (g2 > edgeGroup) edgeGroup = g2;
                     }
                     // 最近的那一圈说了算（与早先逐圈收窄的口径一致），故一命中就停
@@ -1185,14 +1375,12 @@
                 // 线也要跟着距离蒙版一起淡出
                 const dist = sampleField(distance, lowW, lowH, (ox + 0.5) / ratio - 0.5, (oy + 0.5) / ratio - 0.5);
                 if (dist >= fadeEnd) continue;
-                // 等级线的线型：汇合图是「黄实线 → 白虚线 → 白实线 …」，
-                // 其余工具一律白实线。虚线用一个 (ox + oy) 的周期取舍来打散，
-                // 水平、垂直与斜线上都会呈现断续效果。
+                // 等级线的线型：汇合图是「黄实线 → 白虚线 → 白实线 …」（两点从 0 往外数、
+                // 三点从 0 往右数，各自的口径都在档位对象的 cutKind 里），其余工具一律白实线。
+                // 虚线用一个 (ox + oy) 的周期取舍来打散，水平、垂直与斜线上都会呈现断续效果。
                 // ⚠️ edgeGroup 是**较大侧**的组号，分界值就是该组的起点，
                 // 别再多加一格 —— 加了会把黄线画到 −10 上去（量程一变就错位）
-                const cutKind = bands.kind === "meet"
-                    ? meetCutKind(-MEET_CAP + edgeGroup * edgeEvery * MEET_STEP, edgeEvery * MEET_STEP)
-                    : "solid";
+                const cutKind = bands.cutKind ? bands.cutKind(edgeGroup) : "solid";
                 if (cutKind === "dash" && ((ox + oy) & 7) < 5) continue;
                 const offset = index * 4;
                 // 0 那条分界线照旧是黄色（汇合图专有，既有的线型语义）；
@@ -1205,20 +1393,23 @@
                 let edgeAlpha = dist <= fadeStart
                     ? EDGE_ALPHA
                     : Math.round(EDGE_ALPHA * fadeAt(dist, fadeStart, fadeEnd));
-                if (bands.kind === "meet") {
+                // 等级线跟着"外带"一起淡出（阈值与填色同一套；非汇合图不取这个值，省一次采样）
+                if (Number.isFinite(bands.fadeStart)) {
                     const edgeValue = sampleField(smooth, lowW, lowH, (ox + 0.5) / ratio - 0.5, (oy + 0.5) / ratio - 0.5);
-                    const over = Math.abs(edgeValue) - MEET_CAP;
-                    if (over >= MEET_FADE) continue;
-                    if (over > 0) edgeAlpha = Math.round(edgeAlpha * fadeAt(over, 0, MEET_FADE));
+                    const outer = outerFade(bands, edgeValue);
+                    if (!outer) continue;
+                    if (outer < 1) edgeAlpha = Math.round(edgeAlpha * outer);
                 }
                 data[offset + 3] = edgeAlpha;
                 const x = offsetX + ox + 0.5;
                 const key = `${Math.floor(x / LABEL_GAP)},${Math.floor(y / LABEL_GAP)}`;
                 if (labelCells.has(key)) continue;
                 labelCells.add(key);
-                // 分界值取「较大的那一组」的起点分钟数（即 15 / 30 / 45 …）
+                // 分界值：等时圈的组界取「较大的那一组」的起点分钟数（即 10 / 20 / 30 …）；
+                // 若这条线是「范围」上限那条（裁剪边界），值就是**上限本身** —— 它不落在
+                // 组界上时（如 105 分档里的 105）也照样要标出来
                 const text = bands.kind === "iso"
-                    ? `${edgeGroup * edgeEvery * ISO_STEP}分`
+                    ? `${edgeGroupHit ? edgeGroup * edgeEvery * ISO_STEP : bands.clipMax}分`
                     : bands.cutText(band - 1);
                 if (!text) continue;
                 // 标签只撒在未淡化的实心区：淡化带上的色块本就快看不见了，
@@ -1401,8 +1592,13 @@
      * 不是插值结果 —— 标注要对得上单站，而不是对得上色块。
      * **只让有数值的站点让位**：未开通站、国铁散点这些没被标注的车站，原图元原样留着。
      * 另在等值线上撒等级数值，标签顺等值线走向倾斜、并避让站点 / 站名 / 线路。
+     *
+     * 汇合图的数值图元标的是**最慢一方的用时**（用户口径）：色块讲的是"差多少"，
+     * 而逐站看，决定"这趟汇合要花多久"的正是最慢的那个人 —— 数字与色块各说各的，
+     * 互不重复。颜色取**最快一方**的语义色（A 粉 / B 蓝 / C 绿），于是"谁到得最早、
+     * 最慢的人要花多久"一眼读全；两人用时相同（差值 0）时仍用汇合带的黄。
      */
-    function renderOverlay(targets, values, bands, isolines, picks) {
+    function renderOverlay(targets, values, bands, isolines, picks, meet) {
         const layer = valuesLayer();
         if (!layer) return;
         // 这个类只用来给"地形图展示期间"的样式挂钩（站名文字加背景色描边等）
@@ -1411,11 +1607,15 @@
         // 图元若不在这一步还回来，就会一直停在 opacity: 0，再没人管它
         hiddenNodes.forEach((el) => el.classList.remove(HIDDEN_CLASS));
         hiddenNodes = [];
+        // 悬停读数先收起来：它是"上一次绘制"的读数（比如三点汇合时那串 A/B/C），
+        // 画面已经换了、鼠标还没动，留在那儿就是一句过期的话
+        document.getElementById(HOVER_ID)?.classList.remove("show");
         const frag = document.createDocumentFragment();
+        const meetish = meetBands(bands);
         const pickSet = new Set((picks || []).map((pick) => pick.sid));
         // 单站工具的出发点不参与让位：它要靠原图元呈现核心的选中态（markOrigin 加 .active），
-        // 图元一旦被数值图元顶掉，那个态就永远看不见了 —— 汇合图的出发点另有 A / B 标记顶上
-        const originSet = new Set(bands.kind === "meet" ? [] : targets);
+        // 图元一旦被数值图元顶掉，那个态就永远看不见了 —— 汇合图的出发点另有 A / B / C 标记顶上
+        const originSet = new Set(meetish ? [] : targets);
         values.forEach((value, sid) => {
             const station = stations()[sid];
             if (!station || !Number.isFinite(station.x)) return;
@@ -1430,10 +1630,12 @@
             const classes = ["cgo-mt-badge"];
             const isPick = pickSet.has(sid);
             if (isPick) classes.push("is-pick");
-            // 汇合图：颜色直接说明偏向 —— 负值（离 A 更近）取色标左端，正值取右端，
-            // 正好落在汇合带上的取黄底。推荐站已用黄底，不再叠加偏向色
-            if (bands.kind === "meet" && !isPick) {
-                classes.push(value < 0 ? "is-near-a" : value > 0 ? "is-near-b" : "is-zero");
+            const times = meetish ? meet?.minutes.get(sid) : null;
+            if (times && !isPick) {
+                const fastest = times.indexOf(Math.min(...times));
+                const slowest = times.indexOf(Math.max(...times));
+                classes.push(fastest === slowest ? "is-zero"
+                    : fastest === 0 ? "is-near-a" : fastest === 1 ? "is-near-b" : "is-near-c");
             }
             badge.className = classes.join(" ");
             // 与站点图元同口径的 data-sid：选站期间 onPickClick 在捕获阶段就靠它命中的
@@ -1448,11 +1650,10 @@
             });
             // 3 位以上（如 135 分钟）在 20px 的正圆里放不下：把数字横向压扁，
             // 而不是把圆撑成椭圆 —— 图元一律保持正圆。
-            // 汇合图的值是有符号差值，符号即偏向（− = 离 A 更近、+ = 离 B 更近），
-            // 与图元的着色是同一件事的两种表达
+            // 汇合图标的是最慢一方的用时；其余工具标自身取值（差值、票价、分钟）
             const rounded = Math.round(value);
-            const text = bands.kind === "meet"
-                ? (rounded > 0 ? `+${rounded}` : rounded < 0 ? `−${Math.abs(rounded)}` : "0")
+            const text = times
+                ? String(Math.round(Math.max(...times)))
                 : String(Math.abs(rounded));
             const inner = document.createElement("span");
             inner.style.transform = `scaleX(${Math.min(1, 2.6 / text.length)})`;
@@ -1460,9 +1661,9 @@
             badge.appendChild(inner);
             frag.appendChild(badge);
         });
-        // 汇合图：两个出发点的原图元整个让位，位置由 A / B 标记顶上；
-        // 标记颜色与色标两端一一对应（A 侧粉红、B 侧蓝），一眼知道哪边是哪边
-        if (bands.kind === "meet") {
+        // 汇合图：各出发点的原图元整个让位，位置由 A / B / C 标记顶上；
+        // 标记颜色与色标两端的语义色一一对应（A 粉红、B 蓝、C 绿），一眼知道哪边是哪边
+        if (meetish) {
             const addFlag = (sid, text, cls) => {
                 const station = stations()[sid];
                 if (!station || !Number.isFinite(station.x)) return;
@@ -1479,7 +1680,8 @@
                     node.classList.add(HIDDEN_CLASS);
                     hiddenNodes.push(node);
                 }
-                addFlag(sid, i === 0 ? "A" : "B", i === 0 ? "is-ab" : "is-ba");
+                const origin = MEET_ORIGINS[i] || MEET_ORIGINS[MEET_ORIGINS.length - 1];
+                addFlag(sid, origin.letter, origin.cls);
             });
         }
         (isolines || []).forEach((line) => {
@@ -1537,32 +1739,30 @@
     }
 
     /**
-     * 汇合图悬停读数用：在给定画布坐标处现场插一次"到 A / 到 B 各多久"。
+     * 汇合图悬停读数用：在给定画布坐标处现场插一次"到各出发点各多久"。
      *
-     * 不只是省事 —— 到 A、到 B 的用时是**站点属性**，插值才有"场内大致数值"；
+     * 不只是省事 —— 各出发点的用时是**站点属性**，插值才有"场内大致数值"；
      * 而悬停是逐次单点查询，现场算一遍即可，不必为它单独建一整张场。
      * 支撑域照搬建图的两轮（先一个格子边长，稀疏角落再放宽到两个格子边长），
      * 两轮都取不到站点时退回最近那一站的值，与建图的处理一致。
      *
-     * @param {Array<{x:number,y:number,a:number,b:number}>} points
-     * @returns {{a:number,b:number}|null}
+     * @param {Array<{x:number,y:number,t:number[]}>} points
+     * @returns {number[]|null} 各出发点用时的数组，顺序同 points[].t
      */
-    function sampleMeetPair(points, x, y, denseRadius, sparseRadius) {
+    function sampleMeetTimes(points, x, y, denseRadius, sparseRadius) {
         for (const radius of [denseRadius, sparseRadius]) {
             const radius2 = radius * radius;
-            let numA = 0;
-            let numB = 0;
+            const sums = new Array(points[0]?.t.length || 0).fill(0);
             let den = 0;
             points.forEach((point) => {
                 const dx = point.x - x;
                 const dy = point.y - y;
                 const w = idwWeight(dx * dx + dy * dy, radius2);
                 if (!w) return;
-                numA += w * point.a;
-                numB += w * point.b;
+                point.t.forEach((time, i) => { sums[i] += w * time; });
                 den += w;
             });
-            if (den > 0) return { a: numA / den, b: numB / den };
+            if (den > 0) return sums.map((sum) => sum / den);
         }
         let nearest = null;
         let nearestD2 = Infinity;
@@ -1572,7 +1772,7 @@
             const d2 = dx * dx + dy * dy;
             if (d2 < nearestD2) { nearestD2 = d2; nearest = point; }
         });
-        return nearest ? { a: nearest.a, b: nearest.b } : null;
+        return nearest ? nearest.t.slice() : null;
     }
 
     function onHoverMove(event) {
@@ -1598,34 +1798,39 @@
         const value = sampleField(field.values, field.lowW, field.lowH, fx, fy);
         const band = field.bands.bandOf(value);
         const rgb = field.bands.colors[band] || [255, 255, 255];
-        // 汇合图的值是有符号差值：文案说清"哪边更近、差几分钟"
+        // 读数文案：`main` 自带颜色（各工具的口径不同），`unit` 跟在后面
         const tool = field.tool;
-        let number;
+        let main;
         let unit;
         if (tool === "fare") {
-            number = String(field.bands.amounts[band]);
+            main = `<b style="color:${brighten(rgb)}">${field.bands.amounts[band]}</b>`;
             unit = "元";
         } else if (tool === "meet") {
-            // 读数给两人的**各自用时** —— 差值本身是插出来的连续场，而"到 A 多久、到 B 多久"
-            // 是站点属性；故在指针处现场插一次（权重与建图同一套），读数随位置连续变化
-            const pair = field.meetPoints
-                ? sampleMeetPair(field.meetPoints, mapX, mapY, field.radius, field.sparseRadius)
+            // 读数给各出发点的**各自用时** —— 色块那个差值是插出来的连续场，而"到 A / B / C
+            // 各多久"是站点属性；故在指针处现场插一次（权重与建图同一套），读数随位置连续变化。
+            // 字母按出发点的语义色上色（深色胶囊上要提亮），与图上标记、色标对得上
+            const times = field.meetPoints
+                ? sampleMeetTimes(field.meetPoints, mapX, mapY, field.radius, field.sparseRadius)
                 : null;
-            if (pair) {
-                number = `A ${Math.round(pair.a)} · B ${Math.round(pair.b)}`;
+            if (times) {
+                main = times.map((time, i) => {
+                    const origin = MEET_ORIGINS[i] || MEET_ORIGINS[MEET_ORIGINS.length - 1];
+                    return `<b style="color:${brighten(hexToRgb(origin.color))}">${origin.letter} ${Math.round(time)}</b>`;
+                }).join(" · ");
                 unit = "分钟";
             } else {
-                // 兜底：没拿到那一对的用时（数据缺失等），退回原来的差值读法
-                number = String(Math.round(Math.abs(value)));
-                unit = `分钟 · ${value < 0 ? "离 A 更近" : "离 B 更近"}`;
+                // 兜底：没拿到各人的用时（数据缺失等），退回差值读法
+                main = `<b style="color:${brighten(rgb)}">${Math.round(Math.abs(value))}</b>`;
+                unit = `分钟 · ${field.bands.kind === "meet3" ? "三人用时差"
+                    : value < 0 ? "离 A 更近" : "离 B 更近"}`;
             }
         } else {
-            number = String(Math.round(value));
+            main = `<b style="color:${brighten(rgb)}">${Math.round(value)}</b>`;
             unit = "分钟";
         }
         tip.querySelector(".cgo-mt-hover-dot").style.background = `rgb(${rgb.join(",")})`;
         tip.querySelector(".cgo-mt-hover-text").innerHTML =
-            `${tool === "fare" ? "预计 " : ""}<b style="color:${brighten(rgb)}">${number}</b> ${unit}`;
+            `${tool === "fare" ? "预计 " : ""}${main} ${unit}`;
         tip.style.left = `${event.clientX}px`;
         tip.style.top = `${event.clientY - 12}px`;
         tip.classList.add("show");
@@ -1640,7 +1845,7 @@
     }
 
     /* ======================================================================
-     * 结果小窗（标题栏 + 图例 + 更改车站）
+     * 结果小窗（标题栏 + 图例 + 重新选站）
      * ==================================================================== */
 
     function openPanel(tool, name, titleHtml) {
@@ -1652,12 +1857,69 @@
     }
 
     /**
-     * 图例：色带 + 刻度（+ 汇合图的推荐列表）。
+     * 推荐条目右侧的用时说明：两点列 A / B 与差值；三点只列三人的用时 ——
+     * 三点排序靠的正是差值，但面板就这么宽，再挤一个"差 N 分"会把站名压没。
+     * 字母一律按出发点的语义色上色，与图上标记、色标对得上。
+     */
+    function pickTimesText(pick) {
+        const parts = pick.times.map((time, i) => {
+            const origin = MEET_ORIGINS[i] || MEET_ORIGINS[MEET_ORIGINS.length - 1];
+            return `<b class="cgo-mt-or ${origin.cls}">${origin.letter}</b> ${Math.round(time)}`;
+        });
+        if (pick.times.length <= 2) {
+            parts.push(`差 ${Math.round(pick.spread)} 分`);
+            return parts.join(" · ");
+        }
+        return `${parts.join(" · ")} 分`;
+    }
+
+    /**
+     * 汇合图的标题：两点沿用「甲 ⇄ 乙」；三点改成 A / B / C 三个语义色字母打头 ——
+     * 字母与图上标记、悬停读数一一对应，站名太长时由标题栏自己省略。
+     */
+    function meetTitle(targets) {
+        if (targets.length <= 2) {
+            return `${esc(stationName(targets[0]))}<cgo-icon name="vi-way" size="15" class="cgo-mt-way"></cgo-icon>`
+                + `${esc(stationName(targets[1]))} 汇合图`;
+        }
+        const names = targets.map((sid, i) => {
+            const origin = MEET_ORIGINS[i] || MEET_ORIGINS[MEET_ORIGINS.length - 1];
+            return `<b class="cgo-mt-or ${origin.cls}">${origin.letter}</b>${esc(stationName(sid))}`;
+        });
+        return `${names.join('<span class="cgo-mt-or-sep">·</span>')} 汇合图`;
+    }
+
+    /**
+     * 「最近 10 站」：按**用时**升序取前 NEAR_COUNT 座（起点自身那个 0 分钟不算）。
+     * 取用时而不是直线距离 —— 用户问的是"多久能到"，直线距离只在两站相邻时才等于用时。
+     */
+    function nearestStations(values) {
+        return [...values.entries()]
+            .filter(([, value]) => value > 0)
+            .sort((x, y) => x[1] - y[1])
+            .slice(0, NEAR_COUNT)
+            .map(([sid, value]) => ({ sid, value }));
+    }
+
+    /**
+     * 图例：色带 + 刻度，外加各工具自己的补充块（等时圈的「范围」与「最近 10 站」、
+     * 汇合图的推荐列表与「移除 C」）。
      * 刻度用绝对定位摆在各等级线的位置上（`tick.at` 是 0~1 的位置），
      * 而不是靠 flex 均分 —— 均分只能让两端的标签贴边，中间那些会与白线错开。
+     *
+     * 三点汇合**不画色带**：三个出发点之间没有"哪边更近"，色标是单向的，标数值刻度只会
+     * 让人误读；改成用两枚图例项说清 10 分（虚线）与 20 分（实线）两条线的含义 ——
+     * 线型与图上完全一致（见 buildBands 的 cutKind）。
+     *
+     * @param {object} [view] 本次绘制的一整套输入（paint 存进 state.view）；
+     *   缺省即"重画一遍当前的" —— 折叠最近车站、换范围档位都靠它，不必重算数据。
      */
-    function renderLegend(panel, bands, meet, targets, picks) {
+    function renderLegend(view = state.view) {
+        if (!view) return;
+        const { panel, bands, meet, targets, picks } = view;
         const body = panel.querySelector(".cgo-mt-body");
+        const meetish = meetBands(bands);
+        const three = bands.kind === "meet3";
         const edgeEvery = bands.edgeEvery || 1;
         const ticks = (bands.ticks || []).map((tick) => {
             const pos = Math.max(0, Math.min(1, tick.at)) * 100;
@@ -1676,43 +1938,133 @@
                         <button type="button" class="cgo-mt-meet-item" data-meet-sid="${pick.sid}">
                             <span class="cgo-mt-meet-rank">${i + 1}</span>
                             <span class="cgo-mt-meet-name">${stationName(pick.sid)}</span>
-                            <span class="cgo-mt-meet-time">A ${Math.round(pick.a)} · B ${Math.round(pick.b)} · 差 ${Math.round(pick.diff)} 分</span>
+                            <span class="cgo-mt-meet-time">${pickTimesText(pick)}</span>
                         </button>
                     `).join("")}
                 </div>
             `;
         }
 
-        body.innerHTML = `
-            <div class="cgo-mt-legend">
-                <div class="cgo-mt-band">
-                    ${bands.colors.map((rgb, i) => {
-                        let cls = "";
-                        if (i > 0 && i % edgeEvery === 0) {
-                            const kind = bands.kind === "meet"
-                                ? meetCutKind(-MEET_CAP + (i / edgeEvery) * edgeEvery * MEET_STEP, edgeEvery * MEET_STEP)
-                                : "solid";
-                            cls = kind === "zero" ? "cgo-mt-cutzero"
-                                : kind === "dash" ? "cgo-mt-cutdash" : "cgo-mt-cut";
-                        }
-                        return `<i${cls ? ` class="${cls}"` : ""} style="background:rgb(${rgb.join(",")})"></i>`;
+        // 两点汇合：明写"再点一个车站即可加入第三人" —— 那是升级三点汇合的入口，
+        // 不说出来没人会知道图上还能再点一下（点了就会加载 A/B/C 三点汇合图）
+        const hintHtml = meet && targets.length === 2 ? `
+            <p class="cgo-mt-hint">
+                <cgo-icon name="location" size="14"></cgo-icon>在地图上再点一个车站，加入第三人一起算
+            </p>
+        ` : "";
+
+        // 等时圈：范围分段控件（色带上限 = 选中项）。末档是「最长」—— 它是个变量而非常量，
+        // 直接标"最长"二字，具体多少分钟放在 title 里，免得一串数字把它混进常量档里
+        const iso = view.iso;
+        const rangeHtml = iso ? `
+            <div class="cgo-mt-range">
+                <span class="cgo-mt-range-label">范围</span>
+                <div class="cgo-mt-range-opts">
+                    ${iso.options.map((v) => {
+                        const longest = v === iso.longest;
+                        return `
+                        <button type="button" class="cgo-mt-range-opt${v === iso.selected ? " is-on" : ""}"
+                            data-range="${v}" title="${longest ? `本城最长时间约 ${v} 分` : `范围到 ${v} 分`}"
+                            >${longest ? "最长" : `${v} 分`}</button>
+                    `;
                     }).join("")}
                 </div>
-                <div class="cgo-mt-ticks">${ticks}</div>
-                ${meet ? `<div class="cgo-mt-ends"><span>${stationName(targets[0])} 更近</span><span class="cgo-mt-ends-mid">汇合带</span><span>${stationName(targets[1])} 更近</span></div>` : ""}
             </div>
+        ` : "";
+
+        // 等时圈：最近 10 站（按钮 + 展开后的列表）
+        const near = view.tool === "iso" ? view.nearest : null;
+        const nearListHtml = near && view.nearestOpen ? `
+            <div class="cgo-mt-near">
+                ${near.map((item) => `
+                    <button type="button" class="cgo-mt-near-item" data-sid="${item.sid}">
+                        <span class="cgo-mt-near-name">${esc(stationName(item.sid))}</span>
+                        <span class="cgo-mt-near-time">${Math.round(item.value)} 分</span>
+                    </button>
+                `).join("")}
+            </div>
+        ` : "";
+
+        // 超范围示意：色带右端那段斜纹说明"高于选中上限的地方不填色"（上限本身仍画等级线）。
+        // 选中的就是「最长」那一档时不必画：全网再没有更远的站，斜纹没有可指的东西
+        const clipped = Number.isFinite(bands.clipMax) && !(iso && iso.selected >= iso.longest);
+        const overHtml = clipped
+            ? `<span class="cgo-mt-over" title="高于 ${bands.clipMax} 分：不填色，上限处画一条等级线"></span>`
+            : "";
+        const legendHtml = three ? `
+            <div class="cgo-mt-keys">
+                <span class="cgo-mt-key"><i class="cgo-mt-key-mark is-dash"></i>汇合带：差 ≤${MEET3_BAND} 分</span>
+                <span class="cgo-mt-key"><i class="cgo-mt-key-mark is-solid"></i>外带：差 ≤${MEET3_OUTER} 分</span>
+            </div>
+        ` : `
+            <div class="cgo-mt-legend">
+                <div class="cgo-mt-scale">
+                    <div class="cgo-mt-scale-main">
+                        <div class="cgo-mt-band">
+                            ${bands.colors.map((rgb, i) => {
+                                let cls = "";
+                                if (i > 0 && i % edgeEvery === 0) {
+                                    const kind = bands.cutKind
+                                        ? bands.cutKind(i / edgeEvery)
+                                        : "solid";
+                                    cls = kind === "zero" ? "cgo-mt-cutzero"
+                                        : kind === "dash" ? "cgo-mt-cutdash" : "cgo-mt-cut";
+                                }
+                                return `<i${cls ? ` class="${cls}"` : ""} style="background:rgb(${rgb.join(",")})"></i>`;
+                            }).join("")}
+                        </div>
+                        <div class="cgo-mt-ticks">${ticks}</div>
+                    </div>
+                    ${overHtml}
+                </div>
+                ${meetish ? `<div class="cgo-mt-ends"><span>${stationName(targets[0])} 更近</span><span class="cgo-mt-ends-mid">汇合带</span><span>${stationName(targets[1])} 更近</span></div>` : ""}
+            </div>
+        `;
+
+        body.innerHTML = `
+            ${legendHtml}
+            ${rangeHtml}
             ${picksHtml}
+            ${hintHtml}
             <div class="cgo-mt-actions">
                 <button type="button" class="cgo-mt-quick" data-act="repick">
-                    <cgo-icon name="map" size="14"></cgo-icon>${meet ? "重新选站" : "更改车站"}
+                    <cgo-icon name="location" size="14"></cgo-icon>重新选站
                 </button>
+                ${near ? `
+                    <button type="button" class="cgo-mt-quick" data-act="nearest">
+                        <cgo-icon name="${view.nearestOpen ? "chevron-up" : "chevron-down"}" size="14"></cgo-icon>最近 10 站
+                    </button>
+                ` : ""}
+                ${three ? `
+                    <button type="button" class="cgo-mt-quick" data-act="drop-c">
+                        <cgo-icon name="arrow-left" size="13"></cgo-icon>移除 C
+                    </button>
+                ` : ""}
             </div>
+            ${nearListHtml}
         `;
         body.querySelector('[data-act="repick"]').addEventListener("click", () => {
             if (state.tool) startPick(state.tool);
         });
+        body.querySelector('[data-act="nearest"]')?.addEventListener("click", () => {
+            // 纯界面折叠，数据没变 —— 重画图例即可，不必再算一遍值场
+            view.nearestOpen = !view.nearestOpen;
+            state.nearOpen = view.nearestOpen;
+            renderLegend(view);
+        });
+        body.querySelector('[data-act="drop-c"]')?.addEventListener("click", () => {
+            // 退回两点：A、B 不动，只把 C 摘掉（与"点第三座车站"进来的路对称）
+            const origins = state.last?.targets;
+            if (origins && origins.length >= 3) run("meet", origins.slice(0, 2));
+        });
+        body.querySelectorAll("[data-range]").forEach((btn) => {
+            btn.addEventListener("click", () => applyIsoRange(Number(btn.dataset.range)));
+        });
         body.querySelectorAll("[data-meet-sid]").forEach((btn) => {
             btn.addEventListener("click", () => window.selectStation?.(btn.dataset.meetSid));
+        });
+        body.querySelectorAll(".cgo-mt-near-item").forEach((btn) => {
+            btn.addEventListener("click", () => window.selectStation?.(btn.dataset.sid));
         });
     }
 
@@ -1723,6 +2075,7 @@
     function closePanel() {
         const tool = state.tool;
         stopPick();
+        syncMeetAdd(false);
         hidePanel(PANEL_ID);
         clearCanvas();
         clearOverlay();
@@ -1731,6 +2084,9 @@
         state.targetKey = null;
         state.picks = [];
         state.field = null;
+        state.last = null;
+        state.view = null;
+        state.rangeQueued = false;
         // 本来就没开着（如点工具按钮时顺手收一遍）就不必报一次空事件
         if (tool) emit("cgo:map-tools-closed", { tool });
     }
@@ -1743,20 +2099,116 @@
      * 一次完整流程
      * ==================================================================== */
 
+    /**
+     * 等时圈的「范围」：候选档位与当前选中值。
+     * 候选 = 常量档（ISO_RANGES）里**不超过本城最长时间**的那些，末位补上"最长"那一档；
+     * 高于最长时间的常量档一律不显示（小城里选 90 分等于整张图都在量程内，那一档没有意义）。
+     * 拿不到全网极值时返回 null —— 没有控件，标尺退回旧口径，不凭空造一个档位出来。
+     */
+    function isoRangeState(span) {
+        if (!span || !Number.isFinite(span.max) || span.max <= 0) return null;
+        // 「最长」向上取到 5 分钟的整数倍：色带上限 = 末档的上界，两者必须字面对得上
+        const longest = Math.max(ISO_STEP, Math.ceil(span.max / ISO_STEP) * ISO_STEP);
+        const options = ISO_RANGES.filter((v) => v < longest);
+        options.push(longest);
+        const selected = options.includes(state.isoRange) ? state.isoRange
+            : options.includes(ISO_RANGE_DEFAULT) ? ISO_RANGE_DEFAULT : longest;
+        state.isoRange = selected;
+        return { options, selected, longest };
+    }
+
+    /**
+     * 把一整套输入画出来：分档 → 值场 → 图上叠加 → 图例。
+     * 换「范围」档位走的是同一条路（值本身没变，只是色带上限变了），
+     * 故这里不接受"半成品"输入，画什么全部从 view 里取。
+     */
+    async function paint(view) {
+        const guard = () => state.tool === view.tool && state.targetKey === view.key;
+        // 等时圈：范围控件决定色带上限；没有控件（拿不到极值）时退回旧口径
+        const iso = view.tool === "iso" ? isoRangeState(view.span) : null;
+        const range = view.tool === "iso"
+            ? (iso ? { min: 0, max: iso.selected, clip: iso.selected } : view.span)
+            : view.span;
+        const bands = buildBands(view.tool, view.values, range, view.targets.length);
+        if (!bands) { renderNotice(view.panel, "没有可用的分档数据。"); return false; }
+        const field = await drawMap(view.tool, view.values, bands, guard);
+        if (!field || !guard()) return false;
+        // 汇合图的悬停读数要"到 A / B / C 各多久" —— 那是站点属性，插值才有场内的大致数值。
+        // 这里把站点连同各人的用时铺成数组，悬停时按与建图同一套权重现场插一次即可，
+        // 不必为它单独建一整张场（悬停本来就是逐次单点查询）。
+        if (view.meet) {
+            field.meetPoints = [];
+            view.meet.minutes.forEach((times, sid) => {
+                const station = stations()[sid];
+                if (!station || !Number.isFinite(station.x) || !Number.isFinite(station.y)) return;
+                field.meetPoints.push({ x: station.x, y: station.y, t: times });
+            });
+        }
+        state.field = field;
+        const picks = view.meet ? meetPicks(view.meet) : [];
+        state.view = {
+            ...view,
+            bands,
+            picks,
+            iso,
+            nearest: view.tool === "iso" ? nearestStations(view.values) : null,
+            nearestOpen: state.nearOpen
+        };
+        // 两点汇合出图期间才挂"点第三座车站"的监听（见 onMeetAddClick）
+        syncMeetAdd(view.tool === "meet" && view.targets.length === 2);
+        renderOverlay(view.targets, view.values, bands, field.isolines, picks, view.meet);
+        renderLegend();
+        return true;
+    }
+
+    /**
+     * 换「范围」档位：值没变，故只重分档重绘，不再算一遍全网寻路。
+     * 正在画的时候又点了一下，就记在 rangeQueued 上等这一轮画完补一轮 ——
+     * 直接并发两轮的话，两幅画面会互相盖，先落笔的那幅反而可能把后点的那档顶掉。
+     */
+    function applyIsoRange(value) {
+        if (state.tool !== "iso" || !state.last) return;
+        state.isoRange = value;
+        if (state.view?.iso) state.view.iso.selected = value;
+        renderLegend();                      // 先让选中态跟手，地图随后重绘
+        if (state.busy) { state.rangeQueued = true; return; }
+        repaint();
+    }
+
+    /** 用上一次的输入重绘一遍（换范围档位用） */
+    async function repaint() {
+        const last = state.last;
+        const panel = document.getElementById(PANEL_ID);
+        if (!last || !panel) return;
+        state.busy = true;
+        try {
+            await paint({ ...last, panel });
+        } catch (err) {
+            renderNotice(panel, (err && err.message) || "重绘失败，请稍后重试。");
+        } finally {
+            state.busy = false;
+            drainRangeQueue();
+        }
+    }
+
+    /** 重绘期间又被点了一下：这里补上那一轮，否则最后那一下会落空 */
+    function drainRangeQueue() {
+        if (!state.rangeQueued) return;
+        state.rangeQueued = false;
+        repaint();
+    }
+
     async function run(tool, target) {
         if (state.busy) return;
         state.busy = true;
         state.tool = tool;
-        // 单站工具传一段 id，汇合图传 [A, B]
+        // 单站工具传一段 id，汇合图传 [A, B]（点第三座车站后是 [A, B, C]）
         const targets = Array.isArray(target) ? target.slice() : [target];
         state.stationId = Array.isArray(target) ? targets : target;
         const targetKey = targets.join("|");
         state.targetKey = targetKey;
         const name = targets.map(stationName).join(" ⇄ ");
-        // 汇合图的标题：甲站 ⇄ 乙站 汇合图 —— 箭头用 CGoUI 矢量图标，不用字符
-        const titleHtml = tool === "meet"
-            ? `${esc(stationName(targets[0]))}<cgo-icon name="vi-way" size="15" class="cgo-mt-way"></cgo-icon>${esc(stationName(targets[1]))} 汇合图`
-            : null;
+        const titleHtml = tool === "meet" ? meetTitle(targets) : null;
         // 建图、计算、绘制三段都是异步的，期间用户可能已关窗或换了工具：
         // 每段结束都据这枚令牌丢弃迟到的结果，否则它会把已经关掉的小窗与画布重新画回来
         const alive = () => state.tool === tool && state.targetKey === targetKey;
@@ -1791,7 +2243,7 @@
             let values;
             let meet = null;
             if (tool === "meet") {
-                meet = await computeMeetValues(targets[0], targets[1], planner);
+                meet = await computeMeetValues(targets, planner);
                 values = meet ? meet.values : null;
             } else {
                 values = await computeValues(tool, targets[0], planner);
@@ -1805,28 +2257,12 @@
             }
             if (!values.size) { renderNotice(panel, "没有可比较的车站数据（可能不可达或尚未开通）。"); return; }
             // 固定色标的参照范围（按城市 + 工具缓存，只算一次）；汇合图的量程本身就是固定的
-            const range = tool === "meet" ? null : await referenceRange(tool, planner);
+            const span = tool === "meet" ? null : await referenceRange(tool, planner);
             if (!alive()) return;
-            const bands = buildBands(tool, values, range);
-            if (!bands) { renderNotice(panel, "没有可用的分档数据。"); return; }
-            const field = await drawMap(tool, values, bands, alive);
-            if (!field) return;
-            if (!alive()) return;
-            // 汇合图的悬停读数要"到 A / 到 B 各多久" —— 那是站点属性，插值才有场内的大致数值。
-            // 这里把站点连同两人的用时铺成数组，悬停时按与建图同一套权重现场插一次即可，
-            // 不必为它单独建一整张场（悬停本来就是逐次单点查询）。
-            if (meet) {
-                field.meetPoints = [];
-                meet.minutes.forEach((pair, sid) => {
-                    const station = stations()[sid];
-                    if (!station || !Number.isFinite(station.x) || !Number.isFinite(station.y)) return;
-                    field.meetPoints.push({ x: station.x, y: station.y, a: pair.a, b: pair.b });
-                });
-            }
-            state.field = field;
-            const picks = meet ? meetPicks(meet) : [];
-            renderOverlay(targets, values, bands, field.isolines, picks);
-            renderLegend(panel, bands, meet, targets, picks);
+            // 记下这一轮的输入：换「范围」档位、折叠最近车站都按它重绘，不必再算一遍值
+            state.last = { tool, key: targetKey, targets, values, meet, span };
+            const painted = await paint({ ...state.last, panel });
+            if (!painted || !alive()) return;
             const list = [...values.values()];
             emit("cgo:map-tools-rendered", {
                 tool, stationId: state.stationId, stationName: name, stations: values.size,
@@ -1837,6 +2273,7 @@
             renderNotice(panel, (err && err.message) || "计算失败，请稍后重试。");
         } finally {
             state.busy = false;
+            drainRangeQueue();
         }
     }
 
@@ -1861,7 +2298,7 @@
     /**
      * 让位：窄屏上其它浮层一出现，本模块的面板先收起来，而不是硬压在车站详情 / 路线结果
      * 上面（它们收起后自动恢复）。桌面端不互斥 —— 侧边栏形态下车站详情是常驻的，
-     * 若一并让位就再也看不到色标与「更改车站」了；两者位置不同，共存完全放得下。
+     * 若一并让位就再也看不到色标与「重新选站」了；两者位置不同，共存完全放得下。
      */
     function syncStacking() {
         const yieldToOthers = window.innerWidth <= MOBILE_MAX && overlayOpen();
@@ -1902,7 +2339,7 @@
                 ? activeStationId()
                 : [lastRoute.from, lastRoute.to];
             // 窄屏上本模块浮层与其它浮层互斥，故先把宿主面板收起来让位；
-            // 桌面端共存，保持面板开着（用户要求侧边栏模式下也能看到色标与「更改车站」）
+            // 桌面端共存，保持面板开着（用户要求侧边栏模式下也能看到色标与「重新选站」）
             if (window.innerWidth <= MOBILE_MAX) closeHostPanel();
             openTools(preset);
         });
@@ -1929,7 +2366,7 @@
 
     /**
      * 最近一次行程规划的起讫站。route-panel 在打开面板与规划完成时都会广播，
-     * 从路线结果面板开小工具时用它们当预设 —— 单站工具用起点站，两站汇合用起点当 A、终点当 B。
+     * 从路线结果面板开小工具时用它们当预设 —— 单站工具用起点站，多人汇合用起点当 A、终点当 B。
      */
     let lastRoute = { from: null, to: null };
 

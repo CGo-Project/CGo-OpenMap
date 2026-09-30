@@ -83,13 +83,54 @@
     pointer-events: none;
 }
 
-/* 出发点：取色标两端的颜色，一眼知道哪边是哪边 */
+/* 出发点：取色标两端的颜色，一眼知道哪边是哪边。C 是三点汇合才有的第三人，取绿色 */
 .cgo-mt-flag.is-ab {
     background: #c2477a;
 }
 
 .cgo-mt-flag.is-ba {
     background: #3b5bc0;
+}
+
+.cgo-mt-flag.is-ca {
+    background: #22a05b;
+}
+
+/* 出发点的字母徽标（面板标题与推荐列表共用）：与图上 A / B / C 标记同一套语义色。
+   三处必须同色（见 map-tools.js 的 MEET_ORIGINS），否则"哪个数是谁的"就读串了 */
+.cgo-mt-or {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    box-sizing: border-box;
+    margin-right: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    border-radius: 999px;
+    vertical-align: -1px;
+}
+
+.cgo-mt-or.is-ab {
+    background: #c2477a;
+}
+
+.cgo-mt-or.is-ba {
+    background: #3b5bc0;
+}
+
+.cgo-mt-or.is-ca {
+    background: #22a05b;
+}
+
+/* 标题里三个站名之间的分隔符 */
+.cgo-mt-or-sep {
+    margin: 0 4px;
+    opacity: 0.6;
 }
 
 /* 推荐汇合站：图元整体换成汇合带的黄底 + 深字。
@@ -100,15 +141,18 @@
     color: #3a2a00;
 }
 
-/* 汇合图：图元的底色与边框都保持默认（地图底色 + 文本色），只用**文字颜色**说明偏向，
-   与色标两端一一对应 —— 负值（离 A 更近）取左端粉红，正值取右端蓝，汇合带上的取黄。
-   底色留给「推荐汇合站」的黄底标记，两者不再抢同一块观感 */
+/* 汇合图：图元的底色与边框都保持默认（地图底色 + 文本色），只用**文字颜色**说明归属 ——
+   A 粉红、B 蓝、C 绿，与图上标记、面板标题同一套。底色留给「推荐汇合站」的黄底标记 */
 .cgo-mt-badge.is-near-a {
     color: #c2477a;
 }
 
 .cgo-mt-badge.is-near-b {
     color: #3b5bc0;
+}
+
+.cgo-mt-badge.is-near-c {
+    color: #22a05b;
 }
 
 .cgo-mt-badge.is-zero {
@@ -360,6 +404,33 @@
     gap: 5px;
 }
 
+/* 色带与刻度必须**同宽**：刻度是按 tick.at 百分比绝对定位的，右端多出那段斜纹
+   （超范围示意）若算进宽度里，所有刻度都会跟着偏左。故把色带 + 刻度装进主格，
+   斜纹另起一格并排 —— 主格窄一点，刻度仍精确压在等级线上 */
+.cgo-mt-scale {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.cgo-mt-scale-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* 超范围示意：「范围」选中上限之外不再填色（上限本身仍画一条等级线），色带右端用一段斜纹表示 */
+.cgo-mt-over {
+    flex: none;
+    width: 18px;
+    height: 16px;
+    border-radius: 4px;
+    background: repeating-linear-gradient(135deg,
+        var(--border-color) 0 3px, transparent 3px 7px);
+}
+
 .cgo-mt-band {
     display: flex;
     height: 16px;
@@ -472,6 +543,152 @@
     transform: translateX(-50%);
 }
 
+/* 两点汇合的"再点一站加人"提示：升级三点汇合的入口，明写出来别人才知道图上还能再点一下 */
+.cgo-mt-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0.8;
+}
+
+.cgo-mt-hint cgo-icon {
+    flex: none;
+}
+
+/* 三点汇合的图例项：**不画色带**（三个出发点之间没有"哪边更近"，色标是单向的，
+   标数值刻度只会让人误读），只用两枚线型说明那两条等级线的含义 ——
+   线型与图上严格一致：10 分那条是虚线、20 分那条是实线（见 buildBands 的 cutKind） */
+.cgo-mt-keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.cgo-mt-key {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.cgo-mt-key-mark {
+    flex: none;
+    width: 18px;
+    height: 0;
+    border-top-width: 2px;
+    border-top-color: var(--text-main);
+}
+
+.cgo-mt-key-mark.is-dash {
+    border-top-style: dashed;
+}
+
+.cgo-mt-key-mark.is-solid {
+    border-top-style: solid;
+}
+
+/* 等时圈的「范围」分段控件：色带上限 = 选中项。整条是一个圆角底槽，选中那枚是白胶囊 */
+.cgo-mt-range {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cgo-mt-range-label {
+    flex: none;
+    font-size: 12px;
+    opacity: 0.75;
+}
+
+.cgo-mt-range-opts {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--btn-info-bg);
+    border-radius: 999px;
+}
+
+.cgo-mt-range-opt {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 5px 2px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600 !important;   /* 同 .cgo-mt-quick：覆盖全局表单重置 */
+    white-space: nowrap;
+    color: var(--text-main);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-mt-range-opt.is-on {
+    background: var(--card-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.cgo-mt-range-opt:hover:not(.is-on) {
+    background: var(--border-color);
+}
+
+/* 「最近 10 站」列表：按用时升序，条目多时内部滚动 —— 面板本身也能滚，
+   这里再限一道，免得一展开就把色标与按钮顶到看不见的地方 */
+.cgo-mt-near {
+    display: flex;
+    flex-direction: column;
+    max-height: 190px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.cgo-mt-near-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-main);
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.cgo-mt-near-item:last-child {
+    border-bottom: 0;
+}
+
+.cgo-mt-near-item:hover {
+    background: var(--btn-info-bg);
+}
+
+.cgo-mt-near-name {
+    flex: 1;
+    min-width: 0;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cgo-mt-near-time {
+    flex: none;
+    font-weight: 600 !important;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+}
+
 /* 汇合图的推荐汇合站列表 */
 .cgo-mt-meet {
     display: flex;
@@ -556,6 +773,7 @@
 
 .cgo-mt-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
 }
 
