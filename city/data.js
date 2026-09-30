@@ -111,7 +111,7 @@
             searchCity: "青岛",
             title: "CGo OpenMap - 青岛轨道交通线路图",
             keywords: "CGo OpenMap, 青岛地铁, 青岛轨道交通, 线路图",
-            description: "包含在运营 8 条线路和在建 8 段线路。",
+            description: "包含当前运营的 1、2、3、4、6、8 号线及蓝谷快线、西海岸快线，并包含三期规划在建线路。",
             officialMapUrl: "https://www.qd-metro.com/",
             registerDate: "2026-09-09",
             status: "active",
