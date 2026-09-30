@@ -300,12 +300,12 @@
     //       但模块同样在渲染时才读取该表，故此处顺序仅作可读性保证。
     // ==========================================================================
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        document.write('<scr' + 'ipt src="./city/lanzhou/data_station_names.js?v=260927.140000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_station_names.js?v=260927.140000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_timetable.js?v=260917.145004"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_travel_guide.js?v=260925.143000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_operation_status.js?v=260927.180000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_fare_table.js?v=260927.180000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/lanzhou/data_station_names.js?v=260930.233000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_station_names.js?v=260930.233000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_timetable.js?v=260930.233000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_travel_guide.js?v=260930.233000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_operation_status.js?v=260930.233000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/lanzhou/modules/lanzhou_fare_table.js?v=260930.233000"><\/scr' + 'ipt>');
     }
 
     // ==========================================================================

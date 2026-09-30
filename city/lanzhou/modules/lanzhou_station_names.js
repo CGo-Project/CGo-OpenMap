@@ -52,7 +52,7 @@
     /** 模块 ID（与 lanzhou.js 中 stationBoard.modules 的键名一致） */
     const MODULE_ID = "lanzhou-station-names";
     /** 版本号（与 lanzhou.js 中 document.write 的 ?v= 保持一致） */
-    const VERSION = "260927.140000";
+    const VERSION = "260930.233000";
 
     /**
      * 两个字段定义（顺序即卡片中的行顺序）
