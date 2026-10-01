@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v260930.233001';
+const CACHE_NAME = 'cgo-openmap-v261001.1719';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -174,6 +174,16 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/dongzhongjie.png',
     './city/shenyang/assets/calligraphy/pangjiangjie.png',
     './city/shenyang/assets/calligraphy/limingguangchang.png',
+    './city/shenyang/assets/calligraphy/shisanhaojie.png',
+    './city/shenyang/assets/calligraphy/zhongyangdajie.png',
+    './city/shenyang/assets/calligraphy/zhangshi.png',
+    './city/shenyang/assets/calligraphy/kaifadadao.png',
+    './city/shenyang/assets/calligraphy/yuhongguangchang.png',
+    './city/shenyang/assets/calligraphy/yingbinlu.png',
+    './city/shenyang/assets/calligraphy/zhonggongjie.png',
+    './city/shenyang/assets/calligraphy/qigongjie.png',
+    './city/shenyang/assets/calligraphy/baogongjie.png',
+    './city/shenyang/assets/calligraphy/tiexiguangchang.png',
 
     // 1号线东延段站名题字（辽宁 / 沈阳书法界名家题写）
     './city/shenyang/assets/calligraphy/xinhuijie.png',
@@ -204,6 +214,10 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/calligraphy/wulihe.png',
     './city/shenyang/assets/calligraphy/yixueyuan.png',
     './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
+    './city/shenyang/assets/calligraphy/xinleyizhi.png',
+    './city/shenyang/assets/calligraphy/beilinggongyuan.png',
+    './city/shenyang/assets/calligraphy/qishanlu.png',
+    './city/shenyang/assets/calligraphy/shifandaxue.png',
 
     // 3号线站名题字（2026 年全线开通后安装，书法家题写；待考站题写者尚未考证）
     './city/shenyang/assets/calligraphy/shayang.png',

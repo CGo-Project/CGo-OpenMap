@@ -136,7 +136,8 @@
         maintainers: [
             { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" },
             { name: "从恒隆到细河", role: "运营数据支持" },
-            { name: "普兰店大鹅", role: "有轨数据支持" }
+            { name: "普兰店大鹅", role: "有轨数据支持" },
+            { name: "工业大学站", role: "站名题字资源支持" }
         ],
         dataFiles: {
             stanameCsvUrl: "./city/shenyang/staname.csv",
@@ -273,7 +274,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "260930.233001";
+        const version = "261001.1719";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
