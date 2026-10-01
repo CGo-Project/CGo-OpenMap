@@ -554,11 +554,44 @@
         return lineOf(id)?.name || base;
     };
 
-    /** 该乘车段的行驶方向终点站：往该方向列车的终到站，而非上/下车站 */
+    /**
+     * 该段所在的站序。分支线（hasbranch）的站序写在 stationIds-way1 / -way2，规划内核给的
+     * wi 正是这两个 way 的**有效**下标（空 way 在建图时已滤掉，见 route-data.js 的 stationGroups），
+     * 故这里按同一规则取，不能写死 stationIds——那会把分支段报成主线的端点。
+     */
+    function wayStationIds(line, wi) {
+        if (!line?.hasbranch) return line?.stationIds || [];
+        const ways = ["way1", "way2"]
+            .map((way) => line[`stationIds-${way}`])
+            .filter((ids) => Array.isArray(ids) && ids.length);
+        return ways[wi] || ways[0] || line.stationIds || [];
+    }
+
+    /**
+     * 车站是否处于可运营状态（未开通车站 type "no" 不算）。
+     * 与首末班车渲染共用同一份判定：优先取共享层的 CGoTimetable.isOperableStation
+     * （timetable-renderer.js 在本模块之后加载，故运行时取；取不到时按同一规则就地判定）。
+     */
+    function isOperableStation(sid) {
+        const station = allStations()[sid];
+        const shared = window.CGoTimetable?.isOperableStation;
+        return typeof shared === "function"
+            ? shared(station)
+            : !station || String(station.type || "") !== "no";
+    }
+
+    /**
+     * 该乘车段的行驶方向终点站：往该方向列车的终到站，而非上/下车站。
+     *
+     * 与首末班车同一口径：未开通车站（type "no"）一律跳过——线路端点还在建时
+     * （如长春 5 号线末端的省妇儿中心、有轨 G54/G55 首站的工农大路），
+     * 方向该报该方向最后一个实际运营的车站，而不是那个尚未对外运营的站。
+     */
     function rideTerminus(step) {
-        const line = allLines().find((item) => item.id === String(step.line).split("#")[0]);
-        const ids = line?.stationIds || [];
-        return ids.length ? (step.dir > 0 ? ids[ids.length - 1] : ids[0]) : "";
+        const ids = wayStationIds(lineOf(step.line), Number(step.wi) || 0);
+        const operable = ids.filter(isOperableStation);
+        if (!operable.length) return "";
+        return step.dir > 0 ? operable[operable.length - 1] : operable[0];
     }
 
     /** 结果面板的内容区：页签栏 + 正文（两种形态共用） */
@@ -860,7 +893,9 @@
                 boarded++;
                 // 环线没有终点站：方向报「下一站 + 内环 / 外环」（中国等右侧通行城市默认内环顺时针）。
                 // 环别按站序判定，取的 dir 正是内核沿站序给出的 ±1，两者同一口径。
-                const nextStop = allStops[1];
+                // 下一站同样跳过未开通车站：环线报的是"下一站"，列车只是经过但不办客的
+                // 暂缓开通站不该被报成方向（与终点站、首末班车同一口径）
+                const nextStop = allStops.slice(1).find(isOperableStation) || allStops[1];
                 const ring = line?.isLoop && nextStop
                     ? (window.CGoLoopDirection?.of(line, first.dir) || "") : "";
                 const directionHtml = ring
