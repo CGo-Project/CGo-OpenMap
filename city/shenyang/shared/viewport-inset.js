@@ -96,6 +96,13 @@
     }
 
     /**
+     * 移动端分屏抽屉的高度档位：`body.mobile-split-active` 期间引擎把底部遮挡按容器高的
+     * 0.6 托底（见 core/script.js 的 getViewportCenter / centerMap / localEnforceBoundaries）。
+     * 与引擎同源，改引擎时这里要一起改。
+     */
+    const SPLIT_DRAWER_RATIO = 0.6;
+
+    /**
      * 主动避让（仅窄屏）：浮层在窄屏是贴底抽屉，一开就吃掉近半屏。光把平移**区间**放宽
      * 是看不见的 —— 地图内容仍停在原地被压在浮层底下，用户观感就是"没避让"。
      * 故在遮挡变化时把地图整体平移「可用区中心移动的那段距离」，让原本落在视线中心的
@@ -112,11 +119,19 @@
         const height = container.clientHeight;
         if (!width || !height) return;
         const top = topOffset();
-        // 可用区中心（容器坐标）：内边距一动，它就跟着挪
-        const centerOf = (inset) => ({
-            x: inset.left + Math.max(0, width - inset.left - inset.right) / 2,
-            y: top + Math.max(0, height - top - inset.bottom) / 2
-        });
+        // 可用区中心（容器坐标）：内边距一动，它就跟着挪。
+        // 底部必须与引擎的 getViewportCenter() 同口径——多算了分屏抽屉那一档，
+        // 点选车站时就会「引擎先按 0.6 档把车站居中、本模块再按抽屉实际高度平移一次」，
+        // 两次叠加把车站顶到屏幕外（半屏抽屉正好从 40dvh 起、高 0.6 屏，两者本应恰好抵消）。
+        const centerOf = (inset) => {
+            const splitBottom = document.body.classList.contains("mobile-split-active")
+                ? height * SPLIT_DRAWER_RATIO : 0;
+            const bottom = Math.max(splitBottom, inset.bottom);
+            return {
+                x: inset.left + Math.max(0, width - inset.left - inset.right) / 2,
+                y: top + Math.max(0, height - top - bottom) / 2
+            };
+        };
         const from = centerOf(before);
         const to = centerOf(after);
         const dx = to.x - from.x;
