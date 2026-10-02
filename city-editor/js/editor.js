@@ -9,7 +9,7 @@
  *
  * 功能清单：
  *   - 画布与直角坐标系：新建任意尺寸画布，原点 O 位于画布左上角顶点，X 向右为正、Y 向下为正；
- *   - 添加元素控件组：车站节点 / 临时节点 / 135°折角线段 / 90°折角线段 / 轴平行直线 / 自由路径 / 水域；
+ *   - 添加元素控件组：车站节点 / 临时节点 / 135°折角线段 / 90°折角线段 / 自由直线 / 连续绘制 / 水域；
  *   - 网格对齐：对齐网格开关 + 网格大小（5~100px），网格与坐标刻度可独立显隐；
  *   - 属性编辑：左键点击车站节点编辑中英文站名、站名字号、站编号，以及线路色与对齐方式；
  *   - 换乘站自动样式：车站节点被 ≥2 条线路连接时自动切换为换乘站样式，临时节点不受影响；
@@ -159,9 +159,20 @@
         seg135: { label: '135° 折角' },
         seg90: { label: '90° 折角' },
         seg90d: { label: '斜 90° 折角' },
-        segaxis: { label: '轴平行直线' },
-        segfree: { label: '自由路径' }
+        segaxis: { label: '自由直线' },
+        segfree: { label: '连续绘制' }
     };
+
+    /**
+     * 是否为「手动类型」——不参与自动选型改写，只跟随两端节点：
+     *   · segaxis（自由直线）——两端直连，方向不限；与坐标轴平行只是它的特例
+     *     （平行线段的折角在几何上退化，用 seg135 / seg90 画出来同样是直线）；
+     *   · segfree（连续绘制）——保留人工绘制的多个转折点。
+     * 其余折角 / 直线类型都是「自动走线」，拖动节点或「刷新线段配置」时按各自类型重新生成走线。
+     */
+    function isManualSegmentType(type) {
+        return !SEG_META[type] || type === 'segfree' || type === 'segaxis';
+    }
 
     /** 节点样式尺寸（世界坐标像素） */
     var NODE = {
@@ -960,7 +971,7 @@
         // 记录当前方向与默认方向的差异，保证重算时不被重置回默认侧
         var pts = seg.points;
         var a = pts[0], b = pts[pts.length - 1];
-        var manualType = !SEG_META[seg.type] || seg.type === 'segfree';
+        var manualType = isManualSegmentType(seg.type);
         var routedDefault = (seg.routed === true && autoRoute && !manualType)
             ? autoRouteBetween(a, b, false)
             : { type: seg.type, points: routeBetweenByType(a, b, seg.type, false) };
@@ -976,7 +987,7 @@
 
     /**
      * 根据两端节点（或任意两点）自动选择线段走线类型（路径编辑模式）：
-     *   1. 两端与坐标轴平行        → XY 轴平行直线；
+     *   1. 两端与坐标轴平行        → 自由直线（两端直连；平行只是直线的一种特例）；
      *   2. 两端位于对角带内        → 135° 折角（45° 斜边 + 轴平行段，夹角严格 135°）；
      *   3. 其余情况                → 90° 折角（取较短的一种 L 形走线）。
      * @param {boolean} flip 是否使用与默认相反的另一侧折角方向
@@ -986,7 +997,7 @@
         var dx = Math.abs(a.x - b.x), dy = Math.abs(a.y - b.y);
         var major = Math.max(dx, dy), minor = Math.min(dx, dy);
 
-        // 1. 与坐标轴平行（含完全重合的退化情形）→ 轴平行直线
+        // 1. 与坐标轴平行（含完全重合的退化情形）→ 自由直线（两端直连，没有折角可折）
         if (minor <= AUTO.axisTol) {
             return { type: 'segaxis', points: [{ x: round2(a.x), y: round2(a.y) }, { x: round2(b.x), y: round2(b.y) }] };
         }
@@ -1002,7 +1013,11 @@
         return { type: 'seg90', points: buildRectPath(a, b, picked.firstAxis === 'horizontal' ? 'vertical' : 'horizontal') };
     }
 
-    /** 按指定类型生成走线（手动模式类型固定，仅自动计算折角位置） */
+    /**
+     * 按指定类型生成走线。
+     * 折角类型（135° / 90° / 斜 90°）按几何重建折角走线；
+     * 其余（自由直线 segaxis、连续绘制 segfree、未知类型）一律两端直连。
+     */
     function routeBetweenByType(a, b, type, flip) {
         if (type === 'seg135') return buildDiagPath(a, b, flip ? 'axis' : 'diagonal');
         if (type === 'seg90d') return buildDiag90Path(a, b, flip);
@@ -1042,7 +1057,7 @@
      * 依据线段自身的「走线意图」（seg.routed）判定，而不是依据当前几何形态：
      *   · routed === true  → 自动走线线段（由自动选型或手动选择折角类型创建），
      *                        节点移动/一键刷新时按折角类型重算，因此 135° 始终严格保持；
-     *   · routed === false → 手绘自由路径，保留人工形状，仅端点跟随节点；
+     *   · routed === false → 连续绘制（手绘路径），保留人工形状，仅端点跟随节点；
      *   · 字段缺省（早期工程/外部导入）→ 回退到几何形态判定：
      *     2 个点视为直线跟随，3 个点且两段为纯轴平行段或严格 45° 斜段且折角为 90°/135° 时跟随，
      *     其余（多转折点或任意角度）视为手绘路径。
@@ -1081,7 +1096,7 @@
     /**
      * 按两端节点坐标重算单条线段的走线，保留端点绑定。
      * 折角类型的选取规则：
-     *   · 自由路径、或用户手动指定过类型（routed 缺省）→ 沿用 seg.type（手动类型不会被改写）；
+     *   · 手动类型（连续绘制 segfree、自由直线 segaxis）与未知类型 → 沿用 seg.type，不被自动选型改写；
      *   · 自动走线线段（routed === true）→ 依据「线段自动选型」开关：
      *       开启时按几何自动判定，关闭时沿用当前类型。
      * 无论走哪种方式，135° 折角都会按两端坐标重新生成严格的 45° 斜边 + 轴平行段。
@@ -1091,7 +1106,7 @@
         var pts = seg.points || [];
         if (pts.length < 2) return false;
         var a = pts[0], b = pts[pts.length - 1];
-        var manualType = !SEG_META[seg.type] || seg.type === 'segfree';
+        var manualType = isManualSegmentType(seg.type);
         var flip = seg.cornerFlip === true;
         var routed = (seg.routed === true && autoRoute && !manualType)
             ? autoRouteBetween(a, b, flip)
@@ -1208,7 +1223,7 @@
     /**
      * 提交线段草稿
      * @param {Array} ends 端点节点（至少 2 个）
-     * @param {Array} waypoints 自由路径的中间途径点（世界坐标）
+     * @param {Array} waypoints 连续绘制的中间途径点（世界坐标，均带节点绑定 nid）
      */
     function commitSegment(ends, waypoints) {
         if (!ends || ends.length < 2) { draft = null; renderAll(); return; }
@@ -1216,8 +1231,13 @@
         var line = ensureActiveLine();
         var points, segType;
         if (waypoints && waypoints.length) {
-            // 自由路径：保留用户逐个点击产生的转折点（去掉连续重复点，避免零长度边）
-            points = dedupePointsKeepNid(waypoints.map(function (p) { return { x: round2(p.x), y: round2(p.y) }; }));
+            // 连续绘制：保留用户逐个点击产生的转折点及其节点绑定
+            // （中间落点在连续绘制模式下是真实节点——临时节点或车站，绑定保留后拖动这些节点即可带动走线）
+            points = dedupePointsKeepNid(waypoints.map(function (p) {
+                var q = { x: round2(p.x), y: round2(p.y) };
+                if (p.nid) q.nid = p.nid;
+                return q;
+            }));
             points[0] = { x: ends[0].x, y: ends[0].y, nid: ends[0].id };
             points[points.length - 1] = { x: ends[1].x, y: ends[1].y, nid: ends[1].id };
             points = dedupePointsKeepNid(points);
@@ -1292,7 +1312,7 @@
      * 线段是「两个节点之间的连接」：
      *   · 被删节点位于线段**端点** → 整条线段一并删除（否则会残留半截折线，
      *     例如 A-B-C 三站删掉 B 后，原来 A→B 的折线会只剩靠近 A 的那一折）；
-     *   · 被删节点只是线段中间的**途经点**（如自由路径经过的临时节点）→ 只摘掉该转折点，
+     *   · 被删节点只是线段中间的**途经点**（如连续绘制经过的临时节点）→ 只摘掉该转折点，
      *     线段本身保留。
      */
     function removeNodeAndSegments(nid) {
@@ -1792,6 +1812,147 @@
      * @param {number|Array} radii 单个半径值应用到所有折角；数组则逐折角指定
      *                 （索引 0 对应 points[1]，即第一个折角）
      */
+    /**
+     * 折线路径：优先使用核心引擎的倒角算法（core/path-geometry.js，唯一真源），
+     * 这样编辑器画布上的走向/圆角与实际线路图完全一致；核心未加载时退回内置实现。
+     * @param {Array} points 折线点（可含 r 半径覆盖）
+     * @param {Array|number} radii 编辑器形式的分角半径（radii[0] 对应 points[1]）
+     * @param {boolean} strict 是否启用 useStrictRounding
+     */
+    function coreRoundedPath(points, radii, strict) {
+        // 与旧实现保持同样的守卫：点集为空/不足两点时返回空串，绝不能抛异常——
+        // renderSegments 一旦中断，renderNodes 就不会执行，整层车站都会消失。
+        if (!points || points.length < 2) return '';
+        var geo = window.CGoPathGeometry;
+        if (geo && typeof geo.generateRoundedPath === 'function') {
+            try {
+                var pts = points.map(function (p, i) {
+                    var r = Array.isArray(radii) ? radii[i - 1] : radii;
+                    var out = { x: p.x, y: p.y };
+                    if (r != null && isFinite(r)) out.r = r;
+                    return out;
+                });
+                var d = geo.generateRoundedPath(pts, strict === true);
+                if (d) return d;
+            } catch (err) {
+                if (!window.__cgoPathError) window.__cgoPathError = String((err && err.message) || err);
+            }
+        }
+        try {
+            return pathWithRoundedCorners(points, radii);
+        } catch (err2) {
+            if (!window.__cgoPathError) window.__cgoPathError = String((err2 && err2.message) || err2);
+            return '';
+        }
+    }
+
+    /** 车站图元尺寸/样式常量（与 css/style.css、core/station-icons.js 对齐） */
+    var LINE_W_OUTER = 7;      // 线路外描边（底色）宽度，核心 core/script.js 同值
+    var LINE_W_INNER = 5.4;    // 线路实体色宽度
+    var NOT_OPEN_W = 3.4;      // 未开通虚线宽度（与核心 renderNotOpenLines 默认值一致）
+
+    /** 车站显示类型：temp（编辑器临时节点）/ no（未开通）/ tsf（换乘站）/ dot（普通站） */
+    function nodeDisplayType(id) {
+        var node = project.nodes[id];
+        if (!node) return 'dot';
+        if (node.type === 'temp') return 'temp';
+        if (node.notOpen) return 'no';
+        return isTransferNode(id) ? 'tsf' : 'dot';
+    }
+
+    /**
+     * 车站图元：直接取 core/station-icons.js 的模板（与实际线路图同一份），
+     * 以嵌套 <svg> 放入画布，尺寸取 STATION_SIZE（dot 10px / tsf 17.5px）。
+     */
+    /** 车站图元尺寸（与 core/station-icons.js 的 STATION_SIZE 对齐） */
+    function stationIconSize(type) {
+        var icons = window.CGoStationIcons;
+        if (icons && typeof icons.sizeFor === 'function') return icons.sizeFor(type);
+        return type === 'tsf' ? 17.5 : 10;
+    }
+
+    /**
+     * 车站图元：直接取 core/station-icons.js 的模板（与实际线路图同一份），
+     * 以嵌套 <svg> 放入画布，尺寸取 STATION_SIZE（dot 10px / tsf 17.5px）。
+     *
+     * ⚠️ 定位必须用 x/y 属性，不能用 transform：
+     * `transform` 在 SVG 1.1 中不是 <svg> 元素的合法属性（SVG 2 才允许），
+     * 浏览器会直接忽略，导致所有图元都堆在 (-size/2, -size/2)，画布上只剩线条。
+     */
+    var STATION_ICON_CACHE = {};
+    function stationIconNode(type, color) {
+        var icons = window.CGoStationIcons;
+        if (!icons || !icons.SVGTemplates) return null;
+        var size = stationIconSize(type);
+        var html = (type === 'dot' || type === 'tsfo')
+            ? icons.SVGTemplates.dot.replace('{{COLOR}}', color)
+            : (icons.SVGTemplates[type] || icons.SVGTemplates.dot.replace('{{COLOR}}', color));
+        var key = type + '|' + color + '|' + size;
+        if (!STATION_ICON_CACHE[key]) {
+            try {
+                // ⚠️ 必须用 HTML 容器解析，不能用 DOMParser('image/svg+xml')：
+                // core/station-icons.js 的模板字符串没有写 xmlns，走 XML 解析出来的根元素
+                // 不在 SVG 命名空间里，插进 SVG 树就成了"未知元素"，浏览器完全不渲染
+                // （表现为画布上只剩线条、没有车站图元）。
+                // HTML 解析器对 <svg> 会赋予正确的命名空间——core/script.js 的 innerHTML 同理。
+                var host = document.createElement('div');
+                host.innerHTML = html;
+                var svg = host.firstElementChild;
+                if (!svg) return null;
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('class', 'ed-node-icon');
+                svg.setAttribute('data-size', size);
+                STATION_ICON_CACHE[key] = svg;
+            } catch (err) {
+                if (!window.__cgoIconError) window.__cgoIconError = String((err && err.message) || err);
+                return null;
+            }
+        }
+        return STATION_ICON_CACHE[key].cloneNode(true);
+    }
+
+    /** 把图元摆到车站位置（用 x/y，见 stationIconNode 的说明） */
+    function placeStationIcon(icon, type, x, y) {
+        var half = stationIconSize(type) / 2;
+        icon.setAttribute('x', round2(x - half));
+        icon.setAttribute('y', round2(y - half));
+        return icon;
+    }
+
+    /** 核心图元不可用时只提示一次，避免刷屏 */
+    var stationIconWarned = false;
+    function warnStationIconsMissing() {
+        if (stationIconWarned) return;
+        stationIconWarned = true;
+        console.warn('[编辑器] 未加载 core/station-icons.js（车站图元退化为普通圆圈）。' +
+            '通常是浏览器缓存了旧版 index.html——请强制刷新（Ctrl+F5）；' +
+            '若仍如此，确认 ../core/path-geometry.js 与 ../core/station-icons.js 可访问。');
+        try {
+            toast('未加载核心车站图元（core/station-icons.js），已退化为圆圈显示；请强制刷新页面（Ctrl+F5）');
+        } catch (e) { /* toast 不可用时忽略 */ }
+    }
+
+    /** 兜底车站图元：核心模板不可用时至少把节点画出来（形状近似，尺寸同 STATION_SIZE） */
+    function fallbackStationNode(node, type) {
+        var size = (type === 'tsf') ? 17.5 : 10;
+        var g = document.createElementNS(NS, 'g');
+        var r = size / 2;
+        var outer = document.createElementNS(NS, 'circle');
+        outer.setAttribute('cx', node.x); outer.setAttribute('cy', node.y);
+        outer.setAttribute('r', r);
+        outer.setAttribute('fill', 'var(--map-bg, #fff)');
+        outer.setAttribute('stroke', type === 'no' ? 'var(--not-open-color, #bdcbd2)' : (type === 'tsf' ? 'var(--station-stroke, #00263b)' : nodeColor(node.id)));
+        outer.setAttribute('stroke-width', type === 'tsf' ? 2.5 : 1.8);
+        g.appendChild(outer);
+        var inner = document.createElementNS(NS, 'circle');
+        inner.setAttribute('cx', node.x); inner.setAttribute('cy', node.y);
+        inner.setAttribute('r', Math.max(1, r - (type === 'tsf' ? 4 : 1.8)));
+        inner.setAttribute('fill', 'var(--map-bg, #fff)');
+        g.appendChild(inner);
+        return g;
+    }
+
     function pathWithRoundedCorners(points, radii) {
         if (!points || points.length < 2) return '';
         if (points.length === 2) {
@@ -1967,7 +2128,7 @@
     }
 
     /**
-     * 手绘路径（自由路径）的绘制几何：保留人工形状，整条按主位移平移，
+     * 手绘路径（连续绘制）的绘制几何：保留人工形状，整条按主位移平移，
      * 差值在另一端用一段折线收放（折点由两端位移量实时算出）。
      */
     function handDrawnDrawGeometry(seg, pts, off, origRadii) {
@@ -2028,7 +2189,7 @@
      *   2. 取两端各自的位移向量（画布绝对 XY，缺省 0）；
      *   3. 把位移加到对应端点上，得到线段实际渲染的起终点；
      *   4. 按线段线型在这两个实际端点之间生成走线——自动走线线段重新按线型排布
-     *      （135°/90°/斜 90°/轴平行），手绘自由路径则保留人工形状。
+     *      （135°/90°/斜 90°/自由直线），连续绘制路径则保留人工形状。
      * 因此位移只改端点位置，线型规则始终作用在真实端点上，主段不会被拉斜。
      *
      * @returns {{points:Array, radii:Array}} radii 与 points 的折点一一对应（索引 0 ↔ points[1]）
@@ -2289,32 +2450,54 @@
     function renderSegments() {
         var layer = $('line-layer');
         clearChildren(layer);
-        var u = unitScale();
+        var outers = [];
+        var inners = [];
         project.segments.forEach(function (seg) {
+            try {
             var line = findLine(seg.lineId);
             var color = (line && line.color) ? line.color : '#006098';
             var geo = segmentDrawGeometry(seg);
-            var d = pathWithRoundedCorners(geo.points, geo.radii);
+            if (!geo || !geo.points) return;
+            var d = coreRoundedPath(geo.points, geo.radii, !!(line && line.useStrictRounding));
             if (!d) return;
-            var path = document.createElementNS(NS, 'path');
-            path.setAttribute('d', d);
+            var cls = 'ed-seg' + (seg.notOpen === true ? ' ed-seg-notopen' : '') +
+                (isSelected('segment', seg.id) ? ' ed-selected' : '');
+            var make = function () {
+                var path = document.createElementNS(NS, 'path');
+                path.setAttribute('d', d);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('class', cls);
+                path.setAttribute('data-kind', 'segment');
+                path.setAttribute('data-id', seg.id);
+                return path;
+            };
             // 未开通线段：与核心 not-open 层一致——灰色虚线，导出到 data_notopen.js
             if (seg.notOpen === true) {
-                path.setAttribute('stroke', 'var(--not-open-color, #bdcbd2)');
-                path.setAttribute('stroke-width', round2(6 * u));
-                path.setAttribute('stroke-dasharray', round2(NOT_OPEN_DASH[0] * u) + ',' + round2(NOT_OPEN_DASH[1] * u));
-                path.setAttribute('stroke-linecap', 'butt');
-            } else {
-                path.setAttribute('stroke', color);
-                path.setAttribute('stroke-width', round2(6 * u));
+                var np = make();
+                np.setAttribute('stroke', 'var(--not-open-color, #bdcbd2)');
+                np.setAttribute('stroke-width', round2(NOT_OPEN_W));
+                np.setAttribute('stroke-dasharray', NOT_OPEN_DASH[0] + ',' + NOT_OPEN_DASH[1]);
+                np.setAttribute('stroke-linecap', 'round');
+                layer.appendChild(np);
+                return;
             }
-            path.setAttribute('fill', 'none');
-            path.setAttribute('class', 'ed-seg' + (seg.notOpen === true ? ' ed-seg-notopen' : '') +
-                (isSelected('segment', seg.id) ? ' ed-selected' : ''));
-            path.setAttribute('data-kind', 'segment');
-            path.setAttribute('data-id', seg.id);
-            layer.appendChild(path);
+            // 已开通线段：与核心渲染同款——先铺 7px 底图色外描边，再压 5.4px 线路色实体线。
+            // 两者分两趟追加，避免相邻线段的描边盖住彼此的实体色（核心引擎同样处理）。
+            var outer = make();
+            outer.setAttribute('stroke', 'var(--map-bg, #ffffff)');
+            outer.setAttribute('stroke-width', round2(LINE_W_OUTER));
+            var inner = make();
+            inner.setAttribute('stroke', color);
+            inner.setAttribute('stroke-width', round2(LINE_W_INNER));
+            outers.push(outer);
+            inners.push(inner);
+            } catch (err) {
+                // 单条线段出错不影响其它线段，更不能让后面的 renderNodes 不执行
+                if (!window.__cgoSegError) window.__cgoSegError = String((err && err.message) || err);
+            }
         });
+        outers.forEach(function (p) { layer.appendChild(p); });
+        inners.forEach(function (p) { layer.appendChild(p); });
     }
 
     // ---------------------------- 节点与站名 ----------------------------
@@ -2324,6 +2507,7 @@
         clearChildren(layer);
         // 节点视觉尺寸随缩放变化，保证屏幕上始终是固定像素大小
         var scale = view.k || 1;
+        var stats = { stations: 0, icons: 0, fallback: 0, failed: 0 };
         Object.keys(project.nodes).forEach(function (id) {
             var node = project.nodes[id];
             if (!isInView(node.x, node.y, 30)) return;
@@ -2331,7 +2515,7 @@
             g.setAttribute('data-kind', 'node');
             g.setAttribute('data-id', id);
             g.style.cursor = 'pointer';
-
+            try {
             if (node.type === 'temp') {
                 // 临时节点：黑色 ×
                 g.setAttribute('class', 'ed-node-temp' + (isSelected('node', id) ? ' ed-node-selected' : ''));
@@ -2350,83 +2534,76 @@
                 }
                 g.appendChild(l1);
                 g.appendChild(l2);
-            } else if (isTransferNode(id)) {
-                // 换乘站：双环样式（外圈为站体描边色，内圈为线路色）
-                g.setAttribute('class', 'ed-node-tsf' + (isSelected('node', id) ? ' ed-node-selected' : ''));
-                var dark = isLightTheme() ? '#00263b' : '#bdcbd2';
-                var ring = document.createElementNS(NS, 'circle');
-                ring.setAttribute('class', 'ed-node-ring');
-                ring.setAttribute('cx', node.x); ring.setAttribute('cy', node.y);
-                ring.setAttribute('r', NODE.tsfMid);
-                ring.setAttribute('stroke', dark);
-                ring.setAttribute('stroke-width', round2(NODE.tsfOuterW));
-                g.appendChild(ring);
-
-                var outer = document.createElementNS(NS, 'circle');
-                outer.setAttribute('fill', 'none');
-                outer.setAttribute('cx', node.x); outer.setAttribute('cy', node.y);
-                outer.setAttribute('r', NODE.tsfOuter);
-                outer.setAttribute('stroke', dark);
-                outer.setAttribute('stroke-width', round2(NODE.tsfOuterW));
-                g.appendChild(outer);
-
-                var accent = document.createElementNS(NS, 'circle');
-                accent.setAttribute('fill', 'none');
-                accent.setAttribute('cx', node.x); accent.setAttribute('cy', node.y);
-                accent.setAttribute('r', NODE.tsfMid - NODE.tsfMidW * 0.5 - 1.9);
-                accent.setAttribute('stroke', nodeSecondaryColor(id));
-                accent.setAttribute('stroke-width', round2(NODE.tsfMidW * 0.7));
-                accent.setAttribute('opacity', '0.9');
-                g.appendChild(accent);
-
-                var core = document.createElementNS(NS, 'circle');
-                core.setAttribute('class', 'ed-node-core');
-                core.setAttribute('cx', node.x); core.setAttribute('cy', node.y);
-                core.setAttribute('r', NODE.tsfMid - NODE.tsfMidW);
-                g.appendChild(core);
-            } else if (node.notOpen) {
-                // 未开通（暂缓开通）车站：与核心引擎 type:"no" 一致——灰色圆环 + ⊘ 斜杠，站名取未开通色
-                g.setAttribute('class', 'ed-node-no' + (isSelected('node', id) ? ' ed-node-selected' : ''));
-                var noColor = isSelected('node', id) ? 'var(--info-color)' : 'var(--not-open-color, #78848b)';
-                var noRing = document.createElementNS(NS, 'circle');
-                noRing.setAttribute('cx', node.x); noRing.setAttribute('cy', node.y);
-                noRing.setAttribute('r', NODE.rOuter);
-                noRing.setAttribute('stroke', noColor);
-                noRing.setAttribute('stroke-width', round2(NODE.rOuter - NODE.rInner));
-                g.appendChild(noRing);
-
-                var noInner = document.createElementNS(NS, 'circle');
-                noInner.setAttribute('cx', node.x); noInner.setAttribute('cy', node.y);
-                noInner.setAttribute('r', NODE.rInner);
-                noInner.setAttribute('fill', 'var(--map-bg)');
-                g.appendChild(noInner);
-
-                var slash = NODE.rInner * Math.SQRT1_2;
-                var noBar = document.createElementNS(NS, 'line');
-                noBar.setAttribute('x1', node.x - slash); noBar.setAttribute('y1', node.y + slash);
-                noBar.setAttribute('x2', node.x + slash); noBar.setAttribute('y2', node.y - slash);
-                noBar.setAttribute('stroke', noColor);
-                noBar.setAttribute('stroke-width', round2(2.2));
-                noBar.setAttribute('stroke-linecap', 'round');
-                g.appendChild(noBar);
             } else {
-                // 普通车站：圆形，描边使用线路色
-                g.setAttribute('class', 'ed-node-station' + (isSelected('node', id) ? ' ed-node-selected' : ''));
-                var circle = document.createElementNS(NS, 'circle');
-                circle.setAttribute('cx', node.x); circle.setAttribute('cy', node.y);
-                circle.setAttribute('r', NODE.rOuter);
-                circle.setAttribute('stroke', isSelected('node', id) ? 'var(--info-color)' : nodeColor(id));
-                circle.setAttribute('stroke-width', round2(NODE.rOuter - NODE.rInner));
-                g.appendChild(circle);
-
-                var inner = document.createElementNS(NS, 'circle');
-                inner.setAttribute('cx', node.x); inner.setAttribute('cy', node.y);
-                inner.setAttribute('r', NODE.rInner);
-                inner.setAttribute('fill', 'var(--map-bg)');
-                g.appendChild(inner);
+                // 车站图元统一走 core/station-icons.js（与实际线路图同一份模板）：
+                // dot 普通站 10px、tsf 换乘站 17.5px、no 未开通施工图元；尺寸即线路图上的真实尺寸。
+                var stType = nodeDisplayType(id);
+                g.setAttribute('class', 'ed-node ed-node-' + stType + (isSelected('node', id) ? ' ed-node-selected' : ''));
+                var icon = stationIconNode(stType, nodeColor(id));
+                if (icon) {
+                    g.appendChild(placeStationIcon(icon, stType, node.x, node.y));
+                } else {
+                    // 核心图元不可用（例如页面缓存了旧版 index.html、没加载 core/station-icons.js）
+                    // 时的兜底画法：绝不能让车站节点整个消失，同时给出一次性提示便于排查。
+                    warnStationIconsMissing();
+                    g.appendChild(fallbackStationNode(node, stType));
+                }
+                if (isSelected('node', id)) {
+                    var selected = document.createElementNS(NS, 'circle');
+                    selected.setAttribute('cx', node.x); selected.setAttribute('cy', node.y);
+                    selected.setAttribute('r', round2((stType === 'tsf' ? 17.5 : 10) / 2 + 3));
+                    selected.setAttribute('fill', 'none');
+                    selected.setAttribute('stroke', 'var(--info-color, #006098)');
+                    selected.setAttribute('stroke-width', '1.5');
+                    g.appendChild(selected);
+                }
+            }
+            if (node.type !== 'temp') {
+                // 临时节点不是车站，不计入图元统计（否则会误报「核心图元未加载」）
+                stats.stations++;
+                if (g.querySelector('.ed-node-icon')) stats.icons++;
+                else stats.fallback++;
+            }
+            } catch (err) {
+                // 单个车站出错也要画出来，并记录原因（诊断横幅会显示）
+                if (node.type !== 'temp') { stats.failed++; stats.fallback++; }
+                if (!window.__cgoNodeError) window.__cgoNodeError = String((err && err.message) || err);
+                try {
+                    g.setAttribute('class', 'ed-node ed-node-dot');
+                    g.appendChild(fallbackStationNode(node, 'dot'));
+                } catch (err2) { /* 兜底也失败就只留空组 */ }
             }
             layer.appendChild(g);
         });
+        nodeLayerStats = stats;
+        updateNodeLayerWarnings(stats);
+    }
+
+    /** 最近一次 renderNodes 的统计（供诊断用） */
+    var nodeLayerStats = null;
+
+    /**
+     * 车站层渲染异常时，在画布上方给一条**看得见**的提示（不必开控制台）。
+     * 正常时隐藏。
+     */
+    function updateNodeLayerWarnings(stats) {
+        var host = $('stage-stat') ? $('stage-stat').parentNode : null;
+        if (!host) return;
+        var el = document.getElementById('ed-node-warn');
+        var msg = '';
+        if (stats.failed > 0) msg = '车站渲染出错 ' + stats.failed + ' 个：' + (window.__cgoNodeError || '未知原因');
+        else if (stats.fallback > 0) msg = '未加载核心车站图元（core/station-icons.js），已退化为圆圈；请强制刷新（Ctrl+F5）';
+        else if (stats.icons === 0 && stats.stations > 0) msg = '车站图元未绘制：请检查 core/station-icons.js 是否可访问，并强制刷新（Ctrl+F5）';
+        if (!msg) { if (el) el.style.display = 'none'; return; }
+        if (!el) {
+            el = document.createElement('span');
+            el.id = 'ed-node-warn';
+            el.style.cssText = 'margin-left:10px;padding:2px 8px;border-radius:4px;font-size:11px;' +
+                'background:var(--info-bg,#e8f2f8);color:var(--info-color,#006098);border:1px solid var(--info-border,#bcd9e8);';
+            host.appendChild(el);
+        }
+        el.textContent = msg;
+        el.style.display = '';
     }
 
     // ---------------------------- 站名文本块几何（与核心引擎保持一致） ----------------------------
@@ -2437,6 +2614,38 @@
         'top': '上方居中', 'bottom': '下方居中', 'left': '左侧', 'right': '右侧',
         'top-left': '左上方', 'top-right': '右上方', 'bottom-left': '左下方', 'bottom-right': '右下方'
     };
+    /** 八向箭头轮盘用的方向符号（与 Drunk 工作台同款；均为排版符号，非 Emoji） */
+    var ALIGN_ARROWS = {
+        'top-left': '↖', 'top': '↑', 'top-right': '↗',
+        'left': '←', 'right': '→',
+        'bottom-left': '↙', 'bottom': '↓', 'bottom-right': '↘'
+    };
+
+    /**
+     * 八向箭头对齐轮盘（与 Drunk 工作台的 .align-wheel-box 同款）。
+     * 三行三列：八个方向 + 中心装饰点；当前方向高亮，点击扇区即切换。
+     * @param {string} current 当前对齐方向
+     * @param {string} label 标题（「站名对齐方式」或指定坐标模式下的「文本块基准」）
+     * @param {string} [hint] 标题下的补充说明（例如批量模式下的作用范围）
+     * @returns {string} HTML 片段
+     */
+    function alignWheelHtml(current, label, hint) {
+        var cur = ALIGN_VALUES.indexOf(current) >= 0 ? current : 'top';
+        var cells = ['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'];
+        var body = cells.map(function (k) {
+            if (k === 'center') return '<span class="align-wheel-center" aria-hidden="true">●</span>';
+            return '<button type="button" class="align-wheel-sector' + (k === cur ? ' is-active' : '') + '"' +
+                ' data-align="' + k + '" title="' + escapeHtml(ALIGN_LABELS[k]) + '"' +
+                ' aria-label="' + escapeHtml(ALIGN_LABELS[k]) + '"' +
+                (k === cur ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' +
+                ALIGN_ARROWS[k] + '</button>';
+        }).join('');
+        return '<div class="prop-field"><label>' + escapeHtml(label) + '</label>' +
+            '<p class="align-wheel-current">当前：<b>' + escapeHtml(ALIGN_LABELS[cur]) + '</b>' +
+            (hint ? '　' + escapeHtml(hint) : '') + '</p>' +
+            '<div class="align-wheel" id="node-align-wheel" role="group" aria-label="' + escapeHtml(label) + '">' +
+            body + '</div></div>';
+    }
 
     /**
      * 站名与站点图元之间的间距。
@@ -2453,10 +2662,32 @@
     var EDITOR_LABEL_EXTRA = 2;         // 编辑器预览的额外呼吸间距
     var CORE_GLYPH_RADIUS = 5;          // 核心引擎站点图元半径（core/script.js SVGTemplates.dot）
 
-    /** 站点图元半径（换乘站外圈更大，间距随之放大） */
+    /** 站点图元半径（换乘站更大，间距随之放大；与 core/station-icons.js 的 STATION_SIZE 对齐） */
     function labelGlyphRadius(node) {
-        if (node && node.id && isTransferNode(node.id)) return NODE.tsfOuter;
-        return NODE.rOuter;
+        var icons = window.CGoStationIcons;
+        var type = (node && node.id && isTransferNode(node.id)) ? 'tsf' : 'dot';
+        if (icons && typeof icons.sizeFor === 'function') return icons.sizeFor(type) / 2;
+        return type === 'tsf' ? 17.5 / 2 : 10 / 2;
+    }
+
+    /** 未开通色（导出 SVG 用，取不到变量值时的兜底） */
+    function notOpenColor() {
+        var v = getComputedStyle(document.documentElement).getPropertyValue('--not-open-color');
+        return (v && v.trim()) || '#bdcbd2';
+    }
+
+    /** 导出用车站图元：取核心模板并把 CSS 变量替换成实际颜色（导出的 SVG 里没有主题变量） */
+    function stationIconForExport(type, color, bg, stroke, notOpen) {
+        var icons = window.CGoStationIcons;
+        if (!icons || !icons.SVGTemplates) return null;
+        var tpl = (type === 'dot' || type === 'tsfo')
+            ? icons.SVGTemplates.dot.replace('{{COLOR}}', color)
+            : (icons.SVGTemplates[type] || icons.SVGTemplates.dot.replace('{{COLOR}}', color));
+        if (!tpl) return null;
+        return tpl
+            .replace(/var\(--map-bg[^)]*\)/g, bg)
+            .replace(/var\(--station-stroke[^)]*\)/g, stroke)
+            .replace(/var\(--not-open-color[^)]*\)/g, notOpen || '#bdcbd2');
     }
 
     /** 对齐方式 → 文本块相对站点的间距方向（与核心引擎的 8 方向锚点算法一致） */
@@ -2579,7 +2810,8 @@
             text.setAttribute('data-id', id);
             text.setAttribute('text-anchor', L.anchor);
             text.setAttribute('dominant-baseline', 'central');
-            text.setAttribute('style', 'stroke-width:' + round2(3 * u) + 'px');
+            // 描边宽度交给 CSS（.ed-label / .ed-label-en 用核心的 --sta-stroke-width-cn/en），
+            // 这里不再写内联 stroke-width，否则会盖掉 CSS、与线路图不一致
 
             // 中英两行按文本块几何逐行定位（行高与核心引擎 CSS 同比例），
             // 避免用 dy 相对偏移时英文行溢出到锚点另一侧
@@ -2846,8 +3078,8 @@
             case 'seg135': return '添加 135° 折角线段';
             case 'seg90': return '添加 90° 折角线段';
             case 'seg90d': return '添加斜 90° 折角线段';
-            case 'segaxis': return '添加轴平行直线';
-            case 'segfree': return '添加自由路径';
+            case 'segaxis': return '添加自由直线';
+            case 'segfree': return '连续绘制（手绘线段）';
             case 'water': return '添加水域面';
             case 'waterpath': return '添加水域路径';
             case 'text': return '添加自由文本';
@@ -2891,7 +3123,9 @@
             if (tool === 'water') toast('水域面：依次点击添加顶点，按住 Shift 对齐 0°/45°/90°，双击或按 Enter 闭合');
             if (tool === 'waterpath') toast('水域路径：依次点击添加折点，按住 Shift 对齐 0°/45°/90°，双击或按 Enter 结束（线宽可在属性面板调整）');
             if (tool === 'text') toast('自由文本：在画布上点击放置文字，随后在右侧属性面板编辑内容与样式');
-            if (tool.indexOf('seg') === 0) toast('依次点击两个节点绘制线段，Esc 取消');
+            if (tool === 'segfree') toast('连续绘制：左键放临时节点、右键放新车站（点中已有车站 / 节点直接连上），' +
+                '按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束');
+            else if (tool.indexOf('seg') === 0) toast('依次点击两个节点绘制线段，Esc 取消');
         }
         updateStageInfo();
         renderDraft();
@@ -3040,8 +3274,12 @@
             return;
         }
 
-        // 右键拖拽：框选节点（不选中线段与水域）
+        // 右键：连续绘制模式下放置新车站并继续连线；其余模式右键拖拽框选节点
         if (ev.button === 2 && ev.pointerType !== 'touch') {
+            if (activeTool === 'segfree') {
+                handleSegmentClick(screenToWorld(ev.clientX, ev.clientY), ev.shiftKey, true);
+                return;
+            }
             startMarquee(ev);
             return;
         }
@@ -3221,28 +3459,33 @@
         return snapPoint(world.x, world.y);
     }
 
-    function handleSegmentClick(world, shiftKey) {
+    function handleSegmentClick(world, shiftKey, rightButton) {
         var hitNode = nodeNear(world, 18);
 
-        // 自由路径：连续点击添加途径点，双击 / Enter 结束
+        // 连续绘制：连续点击落点，双击 / Enter 结束
+        //   · 左键：空白处放下**临时节点**；点中已有车站 / 临时节点则直接连上；
+        //   · 右键：空白处放下**新车站**；点中已有节点同样直接连上。
+        // 每个落点都会成为一个真实节点（临时节点或车站），因此转折锚点会保留在工程里。
         if (activeTool === 'segfree') {
             if (!draft || draft.tool !== 'segfree') {
-                var startNode = hitNode || createNodeAt(world.x, world.y, 'station');
-                if (!hitNode) pushHistory();
-                draft = {
-                    tool: 'segfree', startId: startNode.id,
-                    points: [{ x: startNode.x, y: startNode.y, nid: startNode.id }]
-                };
+                // 先建草稿，再由 draftPlaceNode 统一处理「复用已有节点 / 新建节点 + 记一次快照」
+                draft = { tool: 'segfree', startId: null, historyPushed: false, points: [] };
+                var startNode = draftPlaceNode(world.x, world.y, rightButton);
+                draft.startId = startNode.id;
+                draft.points = [{ x: startNode.x, y: startNode.y, nid: startNode.id }];
                 renderDraft();
                 updateStageInfo();
-                toast('自由路径：继续点击添加转折点，按住 Shift 对齐 0°/45°/90°，双击结束');
+                toast('连续绘制：左键放临时节点、右键放新车站（点中已有车站 / 节点直接连上），' +
+                    '按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束');
                 return;
             }
             var snapped = shiftKey && draft.points.length
                 ? snapPointToRays(draft.points[draft.points.length - 1], world)
                 : snapPoint(world.x, world.y);
-            draft.points.push({ x: snapped.x, y: snapped.y });
+            var placed = draftPlaceNode(snapped.x, snapped.y, rightButton);
+            draft.points.push({ x: placed.x, y: placed.y, nid: placed.id });
             renderDraft();
+            updateStageInfo();
             return;
         }
 
@@ -3262,6 +3505,44 @@
         updateStageInfo();
     }
 
+    /**
+     * 「连续绘制」落一个点：点中已有节点（车站 / 临时节点）直接复用并连上；
+     * 空白处则按本次按键类型新建节点 —— 左键临时节点、右键车站。
+     * 本次绘制第一次真正新建节点前记一次快照，使撤销 / 取消能把这些节点一并回退。
+     */
+    function draftPlaceNode(x, y, rightButton) {
+        var near = nodeNear({ x: x, y: y }, 18);
+        if (near) return near;
+        if (draft && !draft.historyPushed) {
+            pushHistory();
+            draft.historyPushed = true;
+        }
+        return createNodeAt(x, y, rightButton ? 'station' : 'temp');
+    }
+
+    /**
+     * 取消当前草稿。
+     * 「连续绘制」过程中会即时落下临时节点 / 车站，若本次绘制创建过节点，
+     * 用草稿开始前的快照整体回退，避免在画布上留下孤立节点（其它工具无副作用，直接丢弃草稿）。
+     */
+    function cancelDraft() {
+        var rolledBack = false;
+        if (draft && draft.tool === 'segfree' && draft.historyPushed && undoStack.length) {
+            undo();
+            rolledBack = true;
+        }
+        draft = null;
+        renderAll();
+        renderInspector();
+        updateStageInfo();
+        toast(rolledBack ? '已取消当前绘制（本次落下的节点一并撤回）' : '已取消当前绘制');
+    }
+
+    /**
+     * 结束「连续绘制」：把草稿里逐个落下的节点串成一条手绘线段（routed: false）。
+     * 草稿里的每个落点都带 nid（点中已有节点复用，空白处按左键临时节点 / 右键车站新建），
+     * 因此这里始终以「全部落点」作为途径点提交，保证画出来的形状被完整保留。
+     */
     function handleFreePathFinish() {
         if (!draft || draft.tool !== 'segfree' || draft.points.length < 2) {
             draft = null;
@@ -3270,14 +3551,14 @@
         }
         var startNode = project.nodes[draft.startId];
         var lastPoint = draft.points[draft.points.length - 1];
-        if (lastPoint.nid) {
-            commitSegment([startNode, project.nodes[lastPoint.nid]], null);
-            return;
-        }
-        // 终点不在已有节点上时新建车站节点承载
-        var endNode = newStationNode(lastPoint.x, lastPoint.y);
-        draft.points[draft.points.length - 1] = { x: endNode.x, y: endNode.y, nid: endNode.id };
-        commitSegment([startNode, endNode], draft.points);
+        if (!startNode) { draft = null; renderDraft(); return; }
+        // 终点节点：优先用落点自带的节点；兜底（无绑定）时新建车站承载
+        var endNode = (lastPoint.nid && project.nodes[lastPoint.nid])
+            ? project.nodes[lastPoint.nid]
+            : newStationNode(lastPoint.x, lastPoint.y);
+        var waypoints = draft.points.slice();
+        waypoints[waypoints.length - 1] = { x: endNode.x, y: endNode.y, nid: endNode.id };
+        commitSegment([startNode, endNode], waypoints);
         updateStageInfo();
     }
 
@@ -3458,7 +3739,9 @@
         // 绘制中的实时预览
         if (draft) {
             if (draft.tool === 'segfree') {
-                var sp = draftPointFor(draft, world, ev.shiftKey);
+                // 预览与落点规则保持一致：悬停到已有车站 / 节点上时，橡皮筋直接吸到该节点
+                var hoverNode = nodeNear(world, 18);
+                var sp = hoverNode ? { x: hoverNode.x, y: hoverNode.y } : draftPointFor(draft, world, ev.shiftKey);
                 draft.preview = draft.points.concat([{ x: sp.x, y: sp.y }]);
             } else if (draft.tool === 'water' || draft.tool === 'waterpath') {
                 draft.preview = draft.points.concat([draftPointFor(draft, world, ev.shiftKey)]);
@@ -3589,7 +3872,7 @@
      * 线段的跟随规则：
      *   · 线段两端都在本次移动集合里且实际位移一致 → 整条折线按该位移整体平移，折点一同前移；
      *   · 只有一端移动 → 端点跟随节点；可自动走线的线段按自身类型重算走线，
-     *     手绘自由路径保持原形状。
+     *     连续绘制路径保持原形状。
      * @param {Array<string>} ids 要平移的节点 ID 集合
      * @param {number} dx 本帧世界坐标横向位移
      * @param {number} dy 本帧世界坐标纵向位移
@@ -3634,7 +3917,7 @@
                     p.y = project.nodes[p.nid].y;
                 }
             });
-            // 可自动走线的线段按类型重算折角；手绘自由路径保持原形状
+            // 可自动走线的线段按类型重算折角；连续绘制路径保持原形状
             if (isAutoRoutable(seg)) recomputeSegmentRoute(seg);
         });
         return moved;
@@ -3649,7 +3932,7 @@
      *   · 线段**两端都在选中集里** → 整条折线按相同位移整体平移，
      *     中间折点跟着一起走，线形与折角完全保持；
      *   · 只有**一端移动** → 端点跟随节点；可自动走线的线段按自身类型重算走线
-     *     （折角随之更新，135° 仍严格 135°），手绘自由路径保持原形状。
+     *     （折角随之更新，135° 仍严格 135°），连续绘制路径保持原形状。
      * @returns {boolean} 是否有节点被平移
      */
     function nudgeSelectedNodes(dirX, dirY, coarse) {
@@ -3710,7 +3993,7 @@
         }
 
         if (ev.key === 'Escape') {
-            draft = null;
+            if (draft) { cancelDraft(); }
             clearSelection();
             setTool('select');
             renderAll();
@@ -3743,7 +4026,7 @@
             var segTool = (activeTool.indexOf('seg') === 0) ? activeTool : (autoRoute ? 'segaxis' : 'seg135');
             setTool(segTool);
             toast(autoRoute
-                ? '线段工具：按两端节点坐标自动选择 135°/90°/轴平行直线（Esc 退出）'
+                ? '线段工具：按两端节点坐标自动选择 135°/90°/自由直线（Esc 退出）'
                 : '线段工具：' + (SEG_META[segTool] ? SEG_META[segTool].label : '线段') + '（Esc 退出）');
             return;
         }
@@ -3991,6 +4274,18 @@
             project.lines.map(function (l) {
                 return '<option value="' + l.id + '">' + escapeHtml(l.name) + '（' + escapeHtml(l.color) + '）</option>';
             }).join('') + '</select></div>';
+        // 线段类型：把所选线段统一改成同一走线类型（各线段保留自己的折角方向）
+        var typeCount = {};
+        segs.forEach(function (s) { typeCount[s.type] = (typeCount[s.type] || 0) + 1; });
+        var typeNow = Object.keys(typeCount).map(function (t) {
+            return escapeHtml((SEG_META[t] || SEG_META.segfree).label) + ' ' + typeCount[t] + ' 条';
+        }).join(' / ');
+        html += '<div class="prop-field"><label for="multi-seg-type">线段类型（当前：' + typeNow + '）</label>' +
+            '<select id="multi-seg-type"><option value="">— 保持不变 —</option>' +
+            segmentTypeOptions().map(function (k) {
+                return '<option value="' + k + '">' + escapeHtml(SEG_META[k].label) +
+                    (k === 'segfree' ? '（保留当前形状，转为手绘）' : '') + '</option>';
+            }).join('') + '</select></div>';
         html += '<div class="btn-row" style="margin-bottom:10px">' +
             '<button class="side-btn side-btn-primary" id="btn-multi-seg-apply">' +
             '<cgo-icon name="check" size="14"></cgo-icon><span>应用到所选线段</span></button></div>';
@@ -3998,7 +4293,7 @@
         // ---- 批量动作 ----
         html += '<div class="list-group-title">批量操作</div>';
         html += '<p class="side-hint">重算走线会按两端节点当前坐标与各自的线段类型重新生成折角走线' +
-            '（与「刷新线段配置」同一套算法）；手绘自由路径（3 个以上转折点）保持不变。' +
+            '（与「刷新线段配置」同一套算法）；连续绘制路径（3 个以上转折点）保持不变。' +
             '当前所选中有 <b>' + autoCount + '</b> 条可自动重算。</p>';
         html += '<div class="btn-row" style="margin-bottom:8px">' +
             '<button class="side-btn" id="btn-multi-seg-refresh"' + (autoCount ? '' : ' disabled') +
@@ -4012,7 +4307,8 @@
         if (applyBtn) applyBtn.addEventListener('click', function () {
             var notOpenMode = $('multi-seg-not-open').value;
             var lineId = $('multi-seg-line').value;
-            if (!notOpenMode && !lineId) { toast('请先选择要批量修改的项'); return; }
+            var typeMode = $('multi-seg-type').value;
+            if (!notOpenMode && !lineId && !typeMode) { toast('请先选择要批量修改的项'); return; }
             var changed = 0;
             withHistory(function () {
                 segs.forEach(function (seg) {
@@ -4027,19 +4323,23 @@
                         syncSegmentEndNodeLines(seg, oldLineId);
                         changed++;
                     }
+                    if (typeMode && setSegmentType(seg, typeMode)) changed++;
                 });
             });
             renderAll();
             renderInspector();
             renderList();
-            toast(changed ? '已更新 ' + changed + ' 项线段属性' : '所选线段的属性无需变更');
+            toast(changed
+                ? '已更新 ' + changed + ' 项线段属性' +
+                    (typeMode ? '（线段类型 → ' + SEG_META[typeMode].label + '）' : '')
+                : '所选线段的属性无需变更');
         });
 
         var refreshBtn = $('btn-multi-seg-refresh');
         if (refreshBtn) refreshBtn.addEventListener('click', function () {
             var picked = selectedSegmentIds.slice();
             if (!picked.length) return;
-            if (!autoCount) { toast('所选线段都是手绘自由路径，无需重算走线'); return; }
+            if (!autoCount) { toast('所选线段都是连续绘制路径，无需重算走线'); return; }
             pushHistory();
             var stat = refreshAutoSegments(function (seg) { return picked.indexOf(seg.id) >= 0; });
             renderAll();
@@ -4130,11 +4430,9 @@
                 '<option value="free">指定坐标（精确控制，不随站点移动）</option>' +
                 '</select></div>';
 
-            html += '<div class="prop-field"><label for="multi-align">站名对齐方式（指定坐标模式下即文本块基准）</label>' +
-                '<select id="multi-align"><option value="">— 保持不变 —</option>' +
-                ALIGN_VALUES.map(function (v) {
-                    return '<option value="' + v + '">' + ALIGN_LABELS[v] + '</option>';
-                }).join('') + '</select></div>';
+            html += alignWheelHtml(stationIds.length === 1 ? (project.nodes[stationIds[0]].align || 'top') : 'top',
+                '站名对齐方式（指定坐标模式下即文本块基准）',
+                '点击方向即应用到所选 ' + stations + ' 座车站');
 
             // 是否开通（未开通车站：灰色 ⊘ 图元，导出 type: "no"）
             var noCount = stationIds.filter(function (id) { return project.nodes[id].notOpen === true; }).length;
@@ -4248,9 +4546,8 @@
         var applyBtn = $('btn-multi-apply');
         if (applyBtn) applyBtn.addEventListener('click', function () {
             var posMode = $('multi-label-pos').value;
-            var alignValue = $('multi-align').value;
             var notOpenMode = $('multi-not-open').value;
-            if (!posMode && !alignValue && !notOpenMode) { toast('请先选择要批量修改的项'); return; }
+            if (!posMode && !notOpenMode) { toast('请先选择要批量修改的项'); return; }
             var changed = 0;
             withHistory(function () {
                 stationIds.forEach(function (id) {
@@ -4265,10 +4562,6 @@
                         node.labelPos = posMode;
                         changed++;
                     }
-                    if (alignValue && node.align !== alignValue) {
-                        node.align = alignValue;
-                        changed++;
-                    }
                     if (notOpenMode) {
                         var want = notOpenMode === 'no';
                         if (node.notOpen !== want) { node.notOpen = want; changed++; }
@@ -4280,11 +4573,34 @@
             renderList();
             var what = [];
             if (posMode) what.push('站名定位方式');
-            if (alignValue) what.push('站名对齐方式');
             if (notOpenMode) what.push(notOpenMode === 'no' ? '未开通车站' : '恢复开通');
             toast(changed ? '已批量更新 ' + stationIds.length + ' 座车站（' + what.join('、') + '）'
                 : '所选车站的相关属性无需变更');
         });
+
+        // 站名对齐方式轮盘：点方向即应用到所选全部车站（无需再点「应用」）
+        var multiWheel = $('node-align-wheel');
+        if (multiWheel) {
+            multiWheel.addEventListener('click', function (ev) {
+                var btn = ev.target && ev.target.closest ? ev.target.closest('.align-wheel-sector') : null;
+                if (!btn) return;
+                var next = btn.getAttribute('data-align');
+                if (ALIGN_VALUES.indexOf(next) < 0) return;
+                var changed = 0;
+                withHistory(function () {
+                    stationIds.forEach(function (id) {
+                        var node = project.nodes[id];
+                        if (node.align !== next) { node.align = next; changed++; }
+                    });
+                });
+                renderAll();
+                renderInspector();
+                renderList();
+                toast(changed
+                    ? '已把 ' + changed + ' 座车站的站名对齐方式改为「' + ALIGN_LABELS[next] + '」'
+                    : '所选车站已是「' + ALIGN_LABELS[next] + '」');
+            });
+        }
 
         // ---- 虚拟换乘：建立 / 解除 ----
         var virtualAddBtn = $('btn-multi-virtual-add');
@@ -4370,7 +4686,7 @@
             '</div>';
 
         if (!isStation) {
-            html += '<p class="side-hint">临时节点以黑色 × 表示，不参与站名与换乘站样式判定，可作为自由路径的转折锚点。</p>';
+            html += '<p class="side-hint">临时节点以黑色 × 表示，不参与站名与换乘站样式判定，可作为连续绘制的转折锚点。</p>';
             host.innerHTML = html;
             bindNodeProps(node, false);
             return;
@@ -4443,11 +4759,7 @@
 
         if (!freeMode) {
             // 对齐方式模式：站名位置由对齐方向自动决定（间距由核心引擎按图元半径计算），只提供对齐控件
-            html += '<div class="prop-field"><label for="node-align">站名对齐方式</label><select id="node-align">' +
-                ALIGN_VALUES.map(function (v) {
-                    return '<option value="' + v + '"' + ((node.align || 'top') === v ? ' selected' : '') + '>' +
-                        ALIGN_LABELS[v] + '</option>';
-                }).join('') + '</select></div>';
+            html += alignWheelHtml(node.align || 'top', '站名对齐方式');
 
             html += '<p class="side-hint">站名按所选方向自动排布在站点四周，间距随站点位置自动保持，' +
                 '无需手工填写偏移；需要精确摆放时把上面的定位方式改为「指定坐标」。</p>';
@@ -4473,11 +4785,7 @@
                 '</div>';
             html += '<p class="side-hint">站名位置由上面填入的坐标直接控制，不再随站点移动而偏移。' +
                 '该坐标是站名文本块的锚点：配合下面的「文本块基准」决定文本块的哪一处对齐到坐标。</p>';
-            html += '<div class="prop-field"><label for="node-align">文本块基准</label><select id="node-align">' +
-                ALIGN_VALUES.map(function (v) {
-                    return '<option value="' + v + '"' + ((node.align || 'top') === v ? ' selected' : '') + '>' +
-                        ALIGN_LABELS[v] + '</option>';
-                }).join('') + '</select></div>';
+            html += alignWheelHtml(node.align || 'top', '文本块基准');
             html += '<p class="side-hint">基准的含义：选「上方居中」表示坐标在文本块下边缘的中点；' +
                 '选「左上方」表示坐标在文本块右下角；选「右侧」表示坐标在文本块左边缘的中点。</p>';
             html += '<div class="btn-row" style="margin-bottom:10px">' +
@@ -4539,6 +4847,23 @@
             });
         }
 
+        // 八向箭头轮盘：点击方向扇区即切换对齐（与 Drunk 工作台一致），切换后重建面板刷新高亮
+        var alignWheel = $('node-align-wheel');
+        if (alignWheel) {
+            alignWheel.addEventListener('click', function (ev) {
+                var btn = ev.target && ev.target.closest ? ev.target.closest('.align-wheel-sector') : null;
+                if (!btn) return;
+                var next = btn.getAttribute('data-align');
+                if (ALIGN_VALUES.indexOf(next) < 0 || node.align === next) return;
+                withHistory(function () { node.align = next; });
+                renderAll();
+                renderList();
+                renderInspector();
+                updateStageInfo();
+                toast('站名对齐方式：' + ALIGN_LABELS[next]);
+            });
+        }
+
         onChange('node-x', function (v) { node.x = round2(parseFloat(v) || 0); syncNodeSegments(node); });
         onChange('node-y', function (v) { node.y = round2(parseFloat(v) || 0); syncNodeSegments(node); });
 
@@ -4549,7 +4874,6 @@
         onChange('node-en', function (v) { node.en = v; });
         onChange('node-cn-size', function (v) { node.cnSize = clamp(parseFloat(v) || 13, 6, 48); });
         onChange('node-en-size', function (v) { node.enSize = clamp(parseFloat(v) || 10, 6, 40); });
-        onChange('node-align', function (v) { node.align = v; });
 
         // 自动排布模式：清除导入数据里自带的文本偏移
         var clearOffsetBtn = $('btn-clear-label-offset');
@@ -5019,22 +5343,97 @@
         });
     }
 
-    /** 按当前类型重算线段走线（保留两端节点绑定） */
-    function applySegmentType(seg) {
-        var pts = seg.points || [];
-        if (pts.length < 2) return;
+    /**
+     * 把一条线段改成指定类型，并按两端节点当前坐标重建走线。
+     *
+     * 单选属性面板、批量改类型对话框、多选面板都走这一个入口，保证三处语义一致：
+     *   · 自动选型（auto）  → 按两端坐标重新判定（135° / 90° / 自由直线），沿用该线段原有的折角方向；
+     *   · 折角 / 直线类型    → 按该类型重建走线，并标记为自动走线（routed: true），
+     *                        此后拖动节点、「刷新线段配置」都会按该类型继续重算；
+     *   · 自由直线（segaxis）→ 两端直连，方向不限；属**手动类型**，不会被自动选型改写成折角（拖动时只跟随两端）；
+     *   · 连续绘制（segfree，手绘路径）→ **保留当前形状**，只为它打上手绘标记（routed: false），
+     *                        此后不再参与任何自动重算。
+     * 端点节点绑定（nid）在重建后原样保留。
+     * @returns {boolean} 类型 / 走线 / 走线意图任一项发生实质变化时为 true
+     */
+    function setSegmentType(seg, type) {
+        var pts = (seg && seg.points) || [];
+        if (pts.length < 2) return false;
         var a = pts[0], b = pts[pts.length - 1];
-        var type = (!SEG_META[seg.type] || seg.type === 'segfree') ? 'segaxis' : seg.type;
-        seg.type = type;
-        // 手动指定折角类型即视为自动走线线段，后续节点移动会持续按该类型重算
-        seg.routed = true;
-        var routed = routeBetweenByType(a, b, type);
-        var newPts = routed.map(function (p) { return { x: p.x, y: p.y }; });
+
+        if (type === 'segfree') {
+            if (seg.type === 'segfree' && seg.routed === false) return false;
+            seg.type = 'segfree';
+            seg.routed = false;
+            return true;
+        }
+
+        var flip = seg.cornerFlip === true;
+        var routed = (type === 'auto')
+            ? autoRouteBetween(a, b, flip)
+            : { type: type, points: routeBetweenByType(a, b, type, flip) };
+        var newPts = routed.points.map(function (p) { return { x: p.x, y: p.y }; });
         newPts[0] = { x: a.x, y: a.y };
         newPts[newPts.length - 1] = { x: b.x, y: b.y };
         if (a.nid) newPts[0].nid = a.nid;
         if (b.nid) newPts[newPts.length - 1].nid = b.nid;
+
+        var changed = seg.type !== routed.type || seg.routed !== true ||
+            JSON.stringify(seg.points) !== JSON.stringify(newPts);
+        seg.type = routed.type;
         seg.points = newPts;
+        seg.routed = true;
+        return changed;
+    }
+
+    /** 按当前类型重算线段走线（保留两端节点绑定；单选属性面板入口） */
+    function applySegmentType(seg) {
+        if (!seg) return;
+        setSegmentType(seg, SEG_META[seg.type] ? seg.type : 'segaxis');
+    }
+
+    /** 批量改类型的可选目标：自动选型 + 五种具体类型 */
+    function segmentTypeOptions() {
+        return Object.keys(SEG_META);
+    }
+
+    /**
+     * 批量改类型的候选线段集合。
+     * @param {'selection'|'line'|'all'} scope 当前所选 / 指定线路的全部 / 画布全部
+     * @param {string} [lineId] scope 为 line 时的线路 ID
+     */
+    function segmentTypeScopeList(scope, lineId) {
+        if (!project) return [];
+        if (scope === 'line') {
+            if (!lineId) return [];
+            return project.segments.filter(function (s) { return s.lineId === lineId; });
+        }
+        if (scope === 'all') return project.segments.slice();
+        return selectedSegmentIds.map(findSegment).filter(Boolean);
+    }
+
+    /**
+     * 批量把范围内的线段改成同一类型（可撤销）。
+     * @returns {{total:number, changed:number, hand:number}} 范围内总数、实际改动条数、原为手绘路径的条数
+     */
+    function applySegmentTypeToScope(scope, lineId, type) {
+        var list = segmentTypeScopeList(scope, lineId);
+        var stat = { total: list.length, changed: 0, hand: 0 };
+        if (!list.length) return stat;
+        list.forEach(function (s) { if (s.routed === false) stat.hand++; });
+        pushHistory();
+        list.forEach(function (seg) { if (setSegmentType(seg, type)) stat.changed++; });
+        if (!stat.changed) {
+            // 一条都没变：把刚记的快照撤掉，免得撤销栈里多出一条「按了没反应」的记录
+            undoStack.pop();
+            redoStack.length = 0;
+            syncTopButtons();
+            return stat;
+        }
+        renderAll();
+        renderInspector();
+        renderList();
+        return stat;
     }
 
     /** 拖动折角控制柄过程中同步属性面板中的半径输入框（避免重建面板打断拖动） */
@@ -5870,7 +6269,7 @@
             if (!s.id) s.id = 'G' + (base.idSeq++);
             if (!Array.isArray(s.points)) s.points = [];
             if (!s.type) s.type = 'segfree';
-            // 缺省 routed 字段时按类型推断：自由路径视为手绘，其余视为自动走线
+            // 缺省 routed 字段时按类型推断：连续绘制视为手绘，其余视为自动走线
             if (typeof s.routed !== 'boolean') s.routed = s.type !== 'segfree' && s.points.length <= 3;
             // 折角方向与逐折角圆角半径：非法数据一律回落到默认值
             if (s.cornerFlip !== true) s.cornerFlip = false;
@@ -6141,8 +6540,18 @@
         project.segments.forEach(function (seg) {
             var line = findLine(seg.lineId);
             var geo = segmentDrawGeometry(seg);
-            parts.push('<path d="' + pathWithRoundedCorners(geo.points, geo.radii) + '" fill="none" stroke="' +
-                ((line && line.color) || '#006098') + '" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>');
+            var d = coreRoundedPath(geo.points, geo.radii, !!(line && line.useStrictRounding));
+            if (!d) return;
+            // 与画布/线路图一致：未开通走灰色虚线，已开通走「底图色外描边 + 线路色实体线」
+            if (seg.notOpen === true) {
+                parts.push('<path d="' + d + '" fill="none" stroke="' + notOpenColor() + '" stroke-width="' + NOT_OPEN_W +
+                    '" stroke-dasharray="' + NOT_OPEN_DASH[0] + ',' + NOT_OPEN_DASH[1] + '" stroke-linecap="round" stroke-linejoin="round"/>');
+                return;
+            }
+            parts.push('<path d="' + d + '" fill="none" stroke="' + bg + '" stroke-width="' + LINE_W_OUTER +
+                '" stroke-linecap="round" stroke-linejoin="round"/>');
+            parts.push('<path d="' + d + '" fill="none" stroke="' + ((line && line.color) || '#006098') +
+                '" stroke-width="' + LINE_W_INNER + '" stroke-linecap="round" stroke-linejoin="round"/>');
         });
 
         Object.keys(project.nodes).forEach(function (id) {
@@ -6153,16 +6562,14 @@
                     '<line x1="0" y1="-7" x2="0" y2="7" stroke="' + stroke + '" stroke-width="4"/></g>');
                 return;
             }
-            if (isTransferNode(id)) {
-                parts.push('<circle cx="' + node.x + '" cy="' + node.y + '" r="' + NODE.tsfMid + '" fill="none" stroke="' + stroke +
-                    '" stroke-width="' + NODE.tsfOuterW + '"/>' +
-                    '<circle cx="' + node.x + '" cy="' + node.y + '" r="' + NODE.tsfOuter + '" fill="none" stroke="' + stroke +
-                    '" stroke-width="' + NODE.tsfOuterW + '"/>' +
-                    '<circle cx="' + node.x + '" cy="' + node.y + '" r="' + (NODE.tsfMid - NODE.tsfMidW) + '" fill="' + bg + '"/>');
+            var stType = (node.notOpen ? 'no' : (isTransferNode(id) ? 'tsf' : 'dot'));
+            var stIcon = stationIconForExport(stType, nodeColor(id), bg, stroke, notOpenColor());
+            if (stIcon) {
+                var stSize = (window.CGoStationIcons && window.CGoStationIcons.sizeFor) ? window.CGoStationIcons.sizeFor(stType) : (stType === 'tsf' ? 17.5 : 10);
+                parts.push(stIcon.replace('<svg', '<svg x="' + round2(node.x - stSize / 2) + '" y="' + round2(node.y - stSize / 2) +
+                    '" width="' + stSize + '" height="' + stSize + '"'));
             } else {
-                parts.push('<circle cx="' + node.x + '" cy="' + node.y + '" r="' + NODE.rOuter + '" fill="' + bg +
-                    '" stroke="' + nodeColor(id) + '" stroke-width="' + (NODE.rOuter - NODE.rInner) + '"/>' +
-                    '<circle cx="' + node.x + '" cy="' + node.y + '" r="' + NODE.rInner + '" fill="' + bg + '"/>');
+                parts.push('<circle cx="' + node.x + '" cy="' + node.y + '" r="5" fill="' + bg + '" stroke="' + nodeColor(id) + '" stroke-width="2"/>');
             }
         });
         parts.push('</g>');
@@ -7799,6 +8206,94 @@
 
     function closeMileageDialog() { $('sd-modal').classList.remove('open'); }
 
+    // ---------------------------- 批量更改线段类型 ----------------------------
+
+    /** 对话框里当前选中的作用范围 */
+    function segmentTypeScope() {
+        var radio = document.querySelector('input[name="st-scope"]:checked');
+        return radio ? radio.value : 'selection';
+    }
+
+    function setSegmentTypeScope(scope) {
+        Array.prototype.forEach.call(document.querySelectorAll('input[name="st-scope"]'), function (radio) {
+            radio.checked = (radio.value === scope);
+        });
+    }
+
+    /**
+     * 刷新对话框的可控状态：目标线路是否可用、将要处理多少条线段、有多少条是手绘路径会被覆盖。
+     * 手绘路径（routed === false）在改成折角/直线类型时形状会被重建，所以在应用前明确提示。
+     */
+    function syncSegmentTypeDialog() {
+        var scope = segmentTypeScope();
+        var lineSel = $('st-line');
+        var typeSel = $('st-type');
+        if (lineSel) lineSel.disabled = (scope !== 'line');
+        var list = segmentTypeScopeList(scope, lineSel ? lineSel.value : '');
+        var type = typeSel ? typeSel.value : 'auto';
+        var hand = list.filter(function (s) { return s.routed === false; }).length;
+        var btn = $('st-apply');
+        if (btn) {
+            btn.disabled = !list.length;
+            var label = btn.querySelector('span');
+            if (label) label.textContent = list.length ? ('应用到 ' + list.length + ' 条线段') : '应用到线段';
+        }
+        var status = $('st-status');
+        if (!status) return;
+        if (!list.length) {
+            status.textContent = scope === 'selection'
+                ? '当前没有选中线段：按住 Ctrl（macOS 为 Cmd）点击线段可多选。'
+                : (scope === 'line' ? '该线路还没有线段。' : '当前画布还没有线段。');
+            status.className = 'rl-status is-error';
+            return;
+        }
+        status.className = 'rl-status';
+        status.textContent = '将处理 ' + list.length + ' 条线段' + (type === 'segfree'
+            ? '：保留各自当前形状，转为连续绘制（手绘路径，此后不再自动重算）。'
+            : (type === 'auto'
+                ? '：按两端节点坐标重新自动选型' + (hand ? '；其中 ' + hand + ' 条是手绘路径，形状会被重建。' : '。')
+                : '：按「' + SEG_META[type].label + '」重建走线' + (hand ? '；其中 ' + hand + ' 条是手绘路径，形状会被重建。' : '。')));
+    }
+
+    /** 打开「批量更改线段类型」对话框（presetScope 可指定初始作用范围） */
+    function openSegmentTypeDialog(presetScope) {
+        if (!project) { toast('请先创建画布'); return; }
+        if (!project.segments.length) { toast('当前画布还没有线段'); return; }
+        var lineSel = $('st-line');
+        lineSel.innerHTML = project.lines.length
+            ? project.lines.map(function (l) {
+                return '<option value="' + l.id + '">' + escapeHtml(l.name || l.id) + '</option>';
+            }).join('')
+            : '<option value="">（还没有线路）</option>';
+        var active = (activeLineId && findLine(activeLineId)) ? activeLineId : (project.lines[0] || {}).id;
+        if (active) lineSel.value = active;
+        $('st-type').innerHTML = segmentTypeOptions().map(function (k) {
+            return '<option value="' + k + '">' + escapeHtml(SEG_META[k].label) +
+                (k === 'segfree' ? '（保留当前形状，转为手绘）' : '') + '</option>';
+        }).join('');
+        setSegmentTypeScope(presetScope || (selectedSegmentIds.length ? 'selection' : (project.lines.length ? 'line' : 'all')));
+        syncSegmentTypeDialog();
+        $('st-modal').classList.add('open');
+    }
+
+    function closeSegmentTypeDialog() { $('st-modal').classList.remove('open'); }
+
+    /** 「应用」：把范围内线段统一改成目标类型（对话框保持打开，便于连续换几种类型试） */
+    function applySegmentTypeFromDialog() {
+        var scope = segmentTypeScope();
+        var lineId = $('st-line') ? $('st-line').value : '';
+        var type = $('st-type') ? $('st-type').value : 'auto';
+        var stat = applySegmentTypeToScope(scope, lineId, type);
+        if (!stat.total) { toast('该范围内没有线段'); syncSegmentTypeDialog(); return; }
+        toast(stat.changed
+            ? (type === 'segfree'
+                ? '已把 ' + stat.changed + ' 条线段转为连续绘制（保留当前形状）'
+                : '已把 ' + stat.changed + ' 条线段改为「' + SEG_META[type].label + '」' +
+                    (stat.hand ? '（含 ' + stat.hand + ' 条原手绘路径，形状已重建）' : ''))
+            : '这些线段的类型无需变更');
+        syncSegmentTypeDialog();
+    }
+
     /** 按当前选中的线路重建区间表 */
     function syncMileageDialog() {
         var line = findLine($('sd-line').value);
@@ -8317,7 +8812,7 @@
     /** 表格/正文里的噪声行：表头、信息栏字段、章节名、界面文字等 */
     var STATION_STOP_WORDS = new RegExp('^(' + [
         '目录', '编辑', '播报', '订阅更新', '手机版', '举报', '反馈', '分享', '收藏', '点赞', '展开', '收起', '图集', '全部', '更多',
-        '车站列表', '站点列表', '沿线站点', '线路站点', '线路走向', '历史沿革', '建设运营', '前期规划', '建设历程', '管理运营',
+        '车站列表', '站点列表', '沿线站点', '沿线车站', '线路站点', '线路走向', '历史沿革', '建设运营', '前期规划', '建设历程', '管理运营',
         '运营时刻', '运营情况', '运营时间', '首末班车', '时刻表', '设备设施', '车辆设施', '运行系统', '建设成果', '施工工艺',
         '科研成果', '主要工程', '荣誉表彰', '价值意义', '故障事件', '参考资料', '参考来源', '相关报道', '相关事件', '词条统计',
         '词条图册', '内容简介', '作品目录', '票价信息',
@@ -8348,7 +8843,11 @@
      *   1. 重复后缀折叠：百科把「站名 + 站」连写，站名本身以「站」结尾时会出现
      *      「沈阳站站」「XX客运站站」→ 折叠成一个「站」后即最终站名；
      *   2. 受保护写法（「站」字属于站名本体，保留）：
-     *      XX火车站、XX汽车站、XX客运站，以及 XX东/南/西/北站（如「北京南站」「沈阳北站」）；
+     *      XX火车站、XX汽车站、XX客运站、XX枢纽站，以及国铁口径的 XX东/南/西/北站
+     *      （北京南站、沈阳北站、上海南站 —— 这些是国铁站名，站名本体带「站」）；
+     *      方位字前只有一个字的按「地名 + 站」处理（厦门「思北站」→「思北」）；
+     *      局限：「六里桥东站」这类「多字地名 + 方位字」的地铁站名与国铁站名同形，
+     *      无法只按字形区分，本函数按国铁口径保留，落库前请在站名列表里人工改回「六里桥东」。
      *   3. 其余情况只去掉**最后一个**「站」：百科普遍写作「半洲站」，线网图上显示「半洲」；
      *      首字为「站」的地名不受影响（「站塘站」→「站塘」，「站塘」保持原样）。
      */
@@ -8360,7 +8859,10 @@
             while (/站站$/.test(s)) s = s.slice(0, -1);
             return s;
         }
-        if (/(火车站|汽车站|客运站|[东南西北]站)$/.test(s)) return s;   // 保留站名本体里的「站」
+        if (/(火车站|汽车站|客运站|枢纽站)$/.test(s)) return s;   // 保留站名本体里的「站」
+        // XX东/南/西/北站：方位字多属站名本体（北京南站、沈阳北站），保留；
+        // 但方位字前只有一个字的是「地名 + 站」（厦门「思北站」= 思北 + 站），仍要去掉末尾的「站」。
+        if (/^..+?[东南西北]站$/.test(s)) return s;
         if (/站$/.test(s)) {
             var trimmed = s.slice(0, -1);
             if (trimmed.length >= 2) return trimmed;                      // 过短（如「A站」）则保留原样
@@ -8412,8 +8914,12 @@
         if (STATION_STOP_WORDS.test(s)) return '';
         if (isLineNameText(s)) return '';                 // 换乘线路：福州地铁5号线
         if (isStationFormText(s)) return '';              // 车站形式：地下二层岛式
-        if (s.length < 2 || s.length > 10) return '';
-        if (!/^[\u4e00-\u9fa5·0-9A-Za-z]+$/.test(s)) return '';
+        // 表头 / 字段名（「可换乘BRT线路」「站台类型」「所在行政区」…）不是站名。
+        // 文本兜底路径会把表格表头也当成候选行，这里按语义剔除。
+        if (/换乘|线路|对应|站名|站台|出入口|敷设|里程|间距|行政区|序号|备注/.test(s)) return '';
+        if (s.length < 2 || s.length > 12) return '';     // 上限 12：「滨海新城(西柯)枢纽站」共 11 字
+        // 允许中英文、间隔号与括号：站名常带括注（「滨海新城(西柯)枢纽站」「三叉街（滨海快线）」）
+        if (!/^[\u4e00-\u9fa5·0-9A-Za-z()（）]+$/.test(s)) return '';
         if ((s.match(/[\u4e00-\u9fa5]/g) || []).length < 2) return '';
         if (/^(第?[一二三四五六七八九十百千]+|[0-9]+)$/.test(s)) return '';
         if (/^(号线|地铁|车站|线路|换乘|位于|全长|共设|起于|止于|途经|截至|其中|以及|由于|因此|同时|此外)/.test(s)) return '';
@@ -8430,9 +8936,17 @@
     function stationHeaderScore(text) {
         var t = String(text || '').replace(/\s+/g, '');
         if (!t) return 0;
-        if (/车站名称|站名|站点名称|车站名|中文站名/.test(t)) return 3;
-        if (/形式|类型|结构|行政区|地区|换乘|线路|里程|间距|备注|序号|敷设|站台|出入口/.test(t)) return -5;
-        if (/^名称$|^车站$|^站点$/.test(t)) return 1;
+        // 1. 车站形式 / 站台类型 / 行政区 / 序号 之类的字段名，明确不是站名列
+        if (/形式|类型|结构|行政区|地区|里程|间距|备注|序号|敷设|站台|出入口/.test(t)) return -5;
+        // 2. 站名列：以「车站 / 站名 / 站点」开头（含「车站及换乘线路」这类合并表头）
+        if (/^(车站名称|车站名|车站|站名|站点名称|站点|中文站名|名称)/.test(t)) {
+            return /(车站名称|车站名|站名|站点名称|中文站名)/.test(t) ? 3 : 1;
+        }
+        // 3. 换乘 / 线路类列：写的是换乘信息而不是本站站名。
+        //    这一步必须在「含『站名』二字」的判断之前 —— 百科的换乘列表头常写作
+        //    「可换乘地铁线路及对应站名」，若按「站名」给高分，它会抢走真正的「车站」列，
+        //    导致整个表格取不到站名、退化成文本启发式（厦门 BRT 快1线表格即为此例）。
+        if (/换乘|对应|地铁|BRT|公交|线路/.test(t)) return -5;
         return 0;
     }
 
@@ -8852,13 +9366,16 @@
             '',
             '【二、添加元素】',
             '1. 车站节点：圆形，描边使用所在线路的颜色；',
-            '2. 临时节点：黑色 × 表示，用于自由路径的转折锚点，不参与换乘站判定；',
-            '3. 线段：135° 折角 / 90° 折角 / 斜 90° 折角 / XY 轴平行直线 / 自由路径；',
+            '2. 临时节点：黑色 × 表示，用于连续绘制的转折锚点，不参与换乘站判定；',
+            '3. 线段：135° 折角 / 90° 折角 / 斜 90° 折角 / 自由直线 / 连续绘制；',
             '   · 90° 折角：两段轴平行线相交成 90°（L 形）；',
             '   · 斜 90° 折角：两段 45° 斜线相交成 90°（V 形），折角点由过两端的两条 45° 线相交得到，',
             '     可在属性面板或 Shift+左键点击在线段两侧间翻转；',
+            '   · 自由直线：两端节点直连，方向不限（与坐标轴平行只是它的一种特例），拖动节点时始终直连，',
+            '     不会被「线段自动选型」改写成折角走线；',
+            '   · 连续绘制：保留人工绘制的多个转折点，同样不参与自动选型；绘制时左键放临时节点（点中已有车站 / 节点则直接连上）、右键放新车站；',
             '4. 路径编辑模式下开启「线段自动选型」，绘制时按两端节点坐标自动选择走线类型：',
-            '   · 两端与坐标轴平行        → XY 轴平行直线',
+            '   · 两端与坐标轴平行        → 自由直线（两端直连）',
             '   · 两端位于对角带内        → 135° 折角（45° 斜边 + 轴平行段）',
             '   · 其余情况                → 90° 折角（取较短的一种 L 形走线）',
             '   · 斜 90° 折角需手动选择（自动选型不会自动采用）；',
@@ -8873,13 +9390,20 @@
             '   · 导出时全部文本合并为一份素材 assets/{city}_texts.svg，并在 data_scattered.js 里登记为一个装饰物',
             '     （与水域底图同一套做法，x/y 取画布中心、宽高取画布尺寸）；该层在线路与站点**下方**，',
             '     若希望文字压在线路之上，按包内 snippets/foreground-texts.js 的三行代码把它注入 #labels-layer。',
-            '7. 方向吸附（自由路径、水域面、水域路径的绘制与水域顶点拖动都支持）：',
+            '7. 方向吸附（连续绘制、水域面、水域路径的绘制与水域顶点拖动都支持）：',
             '   按住 Shift 时，新折点会相对上一个折点自动对齐到 0° / 45° / 90°（8 个方向），',
             '   并且同时落在网格上（45° 方向对齐轴向分量，因此坐标仍是整齐的整数），',
             '   状态栏会实时显示当前对齐角度；松开 Shift 即恢复普通网格吸附。',
             '8. 「刷新线段配置」按钮：一键按当前节点布局重算全部自动走线线段；',
             '   车站节点与临时节点一视同仁，含临时节点的连接同样会重算并保持夹角；',
-            '   仅含 3 个以上转折点的手绘自由路径保持不变。',
+            '   仅含 3 个以上转折点的连续绘制路径保持不变。',
+            '   「批量改线段类型」按钮：按「当前所选线段 / 当前线路的全部线段 / 画布全部线段」三种范围，',
+            '   把成批线段统一改成 135° 折角、90° 折角、斜 90° 折角、自由直线、连续绘制，',
+            '   或按两端节点坐标重新自动选型（自动选型 =「刷新线段配置」用的同一套判定）；',
+            '   每条线段原有的折角方向会被保留，整批操作一次记入撤销栈，可一次撤回。',
+            '   多选线段时（Ctrl + 点击线段），属性面板「批量修改共同属性」里也有同样的「线段类型」下拉框，',
+            '   可以和「是否开通 / 所属线路」一起一次应用；类型选「连续绘制」时保留当前形状、转为手绘，',
+            '   此后拖动节点与「刷新线段配置」都不会再改动它。',
             '9. 拖动车站节点或临时节点时，与之相连的线段会实时重新计算走线与折角类型，',
             '   135° 折角的夹角始终严格为 135°。',
             '10. 多选车站后可整组拖动：按住 Shift 或 Ctrl 左键点选，或按住鼠标右键拖动框选，',
@@ -8900,6 +9424,8 @@
             '     站点移动、缩放时站名始终贴着站点，不会重叠。',
             '     8 个方向与核心引擎一致：上方居中 / 下方居中 / 左侧 / 右侧 / 左上方 / 右上方 / 左下方 / 右下方，',
             '     含义是「站名位于站点的哪一侧」；左侧与右侧的站名分别按右对齐、左对齐排布。',
+            '     方向用八向箭头轮盘（与 Drunk 工作台同款）选择：点哪一侧的箭头，站名就摆到哪一侧，',
+            '     当前方向高亮显示在轮盘上方；键盘操作仍可在该轮盘上 Tab + Enter 切换。',
             '     导入数据若自带 offset，会照常叠加，可在面板中点「清除文本偏移」去掉。',
             '   · 指定坐标（精确控制）：只显示站名坐标 X/Y，由填入的坐标直接决定站名位置；',
             '     该坐标是站名文本块的锚点，配合「文本块基准」决定文本块的哪一处对齐到坐标',
@@ -8924,7 +9450,7 @@
             '     ③ 把位移加到对应节点上，得到线段实际渲染的起终点 → ④ 按线段线型在这两个实际端点之间生成走线；',
             '     因此折角位置随位移自动重算（135° 仍严格 135°、90° 仍是 L 形），主段不会被拉斜；',
             '   · 两端位移相同时，实际起终点等于整体平移，形状与各折角夹角完全不变；',
-            '   · 手绘自由路径不受线型规则约束，此时位移作为整体平移应用（两端不同时差值在端点用折线收放），',
+            '   · 连续绘制路径不受线型规则约束，此时位移作为整体平移应用（两端不同时差值在端点用折线收放），',
             '     人工画的形状始终保留；',
             '   · 面板会自动提示「本线段与哪条线路的走线完全重合」，并给出「错开重合走线」一键设置',
             '     （按 ' + SEG_OFFSET_STEP + 'px 沿垂直走向方向换算成等价 XY 位移）；',
@@ -8970,9 +9496,12 @@
             '   右键 → 检查 / 查看源代码，复制其中的 <table>…</table> 代码粘贴进来，点「提取车站列表」。',
             '   提取会自动跳过表头（序号 / 车站名称 / 换乘线路 / 所在区）、换乘线路、行政区名与信息栏字段，',
             '   并把按运营顺序排列的站名写入下方列表；粘贴整段正文同样可以提取。',
-            '   站名会去掉百科的「站」后缀（半洲站 → 半洲），但「XX火车站 / XX汽车站 / XX客运站 / XX东·南·西·北站',
-            '   （如北京南站）」这类「站」属于站名本体的写法会保留；首字为「站」的地名只去掉最后一个「站」',
+            '   站名会去掉百科的「站」后缀（半洲站 → 半洲），但「XX火车站 / XX汽车站 / XX客运站 / XX枢纽站 /',
+            '   XX东·南·西·北站（如北京南站）」这类「站」属于站名本体的写法会保留；「单字地名 + 方位字」按去尾处理',
+            '   （思北站 → 思北）；首字为「站」的地名只去掉最后一个「站」',
             '   （站塘站 → 站塘）；「沈阳站站」「XX客运站站」这类重复后缀只保留一个「站」。',
+            '   表格定位站名列时会跳过「可换乘地铁线路及对应站名」「站台类型」这类字段（它们的文字里也可能带「站名」），',
+            '   站名允许带括注与中英文混排，如「滨海新城(西柯)枢纽站」「T4候机楼站」。',
             '2. 「② 车站列表」：也可以直接手工输入或修改，每行一站；形如「人民广场 People\'s Square」时',
             '   会自动拆分中英文站名。',
             '3. 「③ 应用到线路」：选择目标线路、设置起始坐标 / 站距 / 排列方向（勾选「站距自动适配画布」时',
@@ -9017,7 +9546,7 @@
             '【七、快捷键】',
             '工具切换：L 线段（按当前样式） / S 车站节点 / N 临时节点 / 0 选择模式',
             '         1 车站节点 / 2 临时节点 / 3 135°折角 / 4 90°折角 /',
-            '         5 轴平行直线 / 6 自由路径 / 7 水域 / 8 斜 90°折角',
+            '         5 自由直线 / 6 连续绘制 / 7 水域 / 8 斜 90°折角',
             '编辑操作：Ctrl+A 选择所有节点 / Ctrl+C 复制选中节点 /',
             '         Ctrl+V 粘贴到鼠标指针位置（多节点保持相对布局）/',
             '         Ctrl+D 原位复制一份选中节点（落在原位置附近）/ Delete 删除选中 /',
@@ -9028,7 +9557,8 @@
             '         线段两端一起平移时整条折线（含折点）整体移动；只移动一端时折点按线段类型重算',
             '框选节点：按住鼠标右键拖动即可框选矩形内的节点（只框选节点，不会选中线段与水域）；',
             '         Shift+右键拖动可在已有选择上追加框选；右键单击不改变选择',
-            '批量修改：多选车站后，右侧属性面板可一键批量「加入/移除所属线路」与「站名定位方式（对齐方式 / 指定坐标）」',
+            '批量修改：多选车站后，右侧属性面板可一键批量「加入/移除所属线路」与「站名定位方式（对齐方式 / 指定坐标）」；',
+            '         站名对齐方式同样用八向箭头轮盘，点方向即应用到所选的全部车站',
             '折角快捷调整：Shift+左键点击线段 = 翻转折角方向（选中线段后拖动折角圆点 = 改圆角半径）',
             '视图：滚轮缩放 / 中键或空格拖拽平移 / 触控端双指捏合缩放',
             '',
@@ -9087,7 +9617,7 @@
         var b3 = newStationNode(1320, 320);
         b3.code = 'M203'; b3.cn = '北苑'; b3.en = 'North Garden'; b3.align = 'left';
 
-        // 临时节点（黑色 ×）：自由路径的转折锚点
+        // 临时节点（黑色 ×）：连续绘制的转折锚点
         var t1 = newTempNode(1100, 950);
 
         // 1 号线线段
@@ -9098,7 +9628,7 @@
         addDemoSegment(l2.id, b1, a2);
         addDemoSegment(l2.id, a2, b2);
         addDemoSegment(l2.id, b2, b3);
-        // 自由路径：经过临时节点
+        // 连续绘制：经过临时节点
         addDemoFreeSegment(l2.id, b1, t1, 420, 1120);
 
         // 水域：贯穿画布底部的示例河道（样式由项目级 waterStyle 统一控制）
@@ -9234,6 +9764,8 @@
 
         // 一键刷新：按当前车站布局重算全部自动线段
         $('btn-refresh-segments').addEventListener('click', refreshSegmentsFromLayout);
+        // 批量更改线段类型：按「当前所选 / 当前线路 / 画布全部」范围统一改类型
+        $('btn-seg-type-batch').addEventListener('click', function () { openSegmentTypeDialog(); });
 
         // 视图
         $('btn-zoom-in').addEventListener('click', function () {
@@ -9349,6 +9881,17 @@
         $('sd-cancel').addEventListener('click', closeMileageDialog);
         $('sd-modal').addEventListener('click', function (ev) { if (ev.target === $('sd-modal')) closeMileageDialog(); });
         $('sd-line').addEventListener('change', syncMileageDialog);
+
+        // 批量更改线段类型对话框
+        $('st-close').addEventListener('click', closeSegmentTypeDialog);
+        $('st-cancel').addEventListener('click', closeSegmentTypeDialog);
+        $('st-modal').addEventListener('click', function (ev) { if (ev.target === $('st-modal')) closeSegmentTypeDialog(); });
+        $('st-apply').addEventListener('click', applySegmentTypeFromDialog);
+        $('st-line').addEventListener('change', syncSegmentTypeDialog);
+        $('st-type').addEventListener('change', syncSegmentTypeDialog);
+        Array.prototype.forEach.call(document.querySelectorAll('input[name="st-scope"]'), function (radio) {
+            radio.addEventListener('change', syncSegmentTypeDialog);
+        });
         Array.prototype.forEach.call(document.querySelectorAll('input[name="sd-mode"]'), function (radio) {
             radio.addEventListener('change', function () {
                 updateMileageControls();
@@ -9406,7 +9949,9 @@
         canvas.addEventListener('touchend', onTouchEnd);
         canvas.addEventListener('contextmenu', function (ev) {
             ev.preventDefault();
-            if (draft) { draft = null; renderDraft(); toast('已取消当前绘制'); }
+            // 「连续绘制」模式下右键是「放置新车站」，草稿继续，不在这里取消
+            if (activeTool === 'segfree') return;
+            if (draft) cancelDraft();
         });
 
         document.addEventListener('keydown', onKeyDown);
@@ -9462,6 +10007,20 @@
         // 调试与自动化测试探针
         window.__cgoEditor = {
             getProject: function () { return project ? deepClone(project) : null; },
+            exportSvg: function () { return project ? buildSvgExport() : ''; },
+            /** 渲染自检：出问题时把这段结果发出来即可定位 */
+            diag: function () {
+                var nodes = project ? Object.keys(project.nodes).length : 0;
+                var groups = document.querySelectorAll('#node-layer > g').length;
+                return {
+                    core: { stationIcons: !!window.CGoStationIcons, pathGeometry: !!window.CGoPathGeometry },
+                    project: { nodes: nodes, segments: project ? project.segments.length : 0, lines: project ? project.lines.length : 0 },
+                    rendered: { nodeGroups: groups, icons: document.querySelectorAll('#node-layer .ed-node-icon').length, segments: document.querySelectorAll('#line-layer .ed-seg').length },
+                    stats: nodeLayerStats,
+                    errors: { segment: window.__cgoSegError || null, path: window.__cgoPathError || null, node: window.__cgoNodeError || null },
+                    stamps: { editorJs: (document.querySelector('script[src*="editor.js"]') || {}).src, editorCss: (document.querySelector('link[href*="editor.css"]') || {}).href }
+                };
+            },
             getView: function () { return { k: view.k, cx: view.cx, cy: view.cy }; },
             bounds: function () { return project ? visibleWorldBounds() : null; },
             size: function () { return stageSize(); },
@@ -9545,6 +10104,40 @@
                 return project.segments[0] ? project.segments[0].points : null;
             },
             refreshStats: function () { return refreshAutoSegments(null); },
+            /** 调试探针：线段类型一览（类型 / 走线意图 / 折点数） */
+            segmentTypes: function () {
+                return project ? project.segments.map(function (s) {
+                    return { id: s.id, type: s.type, routed: s.routed === true, points: (s.points || []).length };
+                }) : [];
+            },
+            /** 调试探针：直接设置多选线段集合（等价于按住 Ctrl 点击线段） */
+            selectSegments: function (ids) {
+                selectedNodeIds = [];
+                selectedSegmentIds = (ids || []).filter(function (id) { return !!findSegment(id); });
+                selection = selectedSegmentIds.length
+                    ? { type: 'segment', id: selectedSegmentIds[selectedSegmentIds.length - 1] }
+                    : null;
+                renderAll();
+                renderList();
+                renderInspector();
+                return selectedSegmentIds.slice();
+            },
+            /** 调试探针：直接设置多选节点集合（等价于按住 Shift / Ctrl 点击节点） */
+            selectNodes: function (ids) {
+                selectedSegmentIds = [];
+                selectedNodeIds = (ids || []).filter(function (id) { return !!project.nodes[id]; });
+                selection = selectedNodeIds.length
+                    ? { type: 'node', id: selectedNodeIds[selectedNodeIds.length - 1] }
+                    : null;
+                renderAll();
+                renderList();
+                renderInspector();
+                return selectedNodeIds.slice();
+            },
+            /** 调试探针：批量改线段类型（与「批量改线段类型」对话框同一入口） */
+            batchSegmentType: function (scope, lineId, type) { return applySegmentTypeToScope(scope, lineId, type); },
+            undo: undo,
+            redo: redo,
             segDiag: function (nodeId) {
                 var n = project.nodes[nodeId];
                 var s = project.segments[0];
