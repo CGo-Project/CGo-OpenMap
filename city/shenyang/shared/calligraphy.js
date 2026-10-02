@@ -19,11 +19,14 @@
  *      接管内置 header-title：**有题字横图**的车站以题字图替换中文站名，英文站名保留；
  *      其余车站（仅收录题写者简介、题写者待考、尚无题字图的站）回退标准中英文标题。
  *      城市配置中需将内置 "header-title" 置为 enabled: false。
- *   2. {idPrefix}-calligrapher-intro（targetTab: station-info, order: 12）
- *      题字人简介卡片；仅登记「有题字」事实的占位条目（pendingCalligrapher）
+ *   2. {idPrefix}-calligrapher-intro（targetTab: station-info, order: 7）
+ *      题写者模块；仅登记「有题字」事实的占位条目（pendingCalligrapher）
  *      显示题写者待考说明，占位条目可用 pendingNote 覆盖城市默认待考文案
  *      （用于「题字实物无落款、疑为集字」等与通用表述不符的情形）。
- *      卡片 DOM 走共享层 CGoTipCard。
+ *      排版与同屏的「车站类型 / 运营单位 / 首末班车」等信息行同构（复用核心那套
+ *      .info-row / .info-label / .info-value）：折叠态一行「站名题写者 | 姓名 详情」，
+ *      点行尾的「详情 / 收起」展开正文——生平简介、题字写旧名时的说明、以及素材缺失
+ *      时的投稿引导都放在这里，不再铺成一张卡片、也不再套 hover 气泡。
  *
  * 兼容性注意：题字标题必须保留 .panel-cn-name 类名与可读站名文本
  * （.sy-calligraphy-text 为裁剪但可读取的文本），core/script.js 在面板吸附
@@ -37,29 +40,27 @@
 (function () {
     "use strict";
 
-    /** 与 calligraphy.js 同目录的样式表文件名 */
-    const STYLE_FILE = "calligraphy.css";
-
     /** 样式表注入标记，避免重复引入 */
     const STYLE_FLAG_ATTR = "data-sy-calligraphy-style";
 
     const DEFAULT_PENDING_TEXT = "本站有书法家题写站名，题写者信息待补充。";
 
     /**
-     * 「内容缺失 → 欢迎投稿」引导（短标签 + 悬停 / 聚焦展开的气泡）。
+     * 「内容缺失 → 欢迎投稿」引导（展开区里的一段普通文字）。
      *
      * 题字功能的素材完全依赖实地采集：题字横图要有人到站拍摄，题写者信息要靠落款辨认，
      * 两者都可能长期缺位。与其只留一句「待补充」，不如把补齐路径告诉访客——
-     * 常有人正好身处那座城市、那个车站。但完整引导连同联系方式常驻卡片会占去近三分之一
-     * 高度，故收进气泡，卡片上只留一行短标签（样式见同目录 calligraphy.css 的 .sy-cali-hint）。
+     * 常有人正好身处那座城市、那个车站。
+     *
+     * 早先这段引导是一枚 hover / focus 气泡，折叠面板上线后并入展开区：面板本身就是
+     * 「展开看更多」，再套一层气泡既多余，在触屏上又基本触发不了。
      *
      * 主理人取自城市注册表（与「关于与帮助」弹窗同一数据源，不在此重复硬编码姓名），
      * 主理人虚位以待时退化为贡献指南入口。
      *
-     * @param {string} label  - 短标签文案，直接说明缺什么
-     * @param {string} detail - 气泡内的一句话说明
+     * @param {string} reason 一句话说明当前缺的是什么（纯文本，函数内转义）
      */
-    function contributionHintHtml(label, detail) {
+    function contributionNoteHtml(reason) {
         const city = (typeof window.CityDataManager?.getCurrentCity === "function")
             ? window.CityDataManager.getCurrentCity()
             : null;
@@ -71,11 +72,59 @@
                 ? `城市主理人 <a href="${owner.github}" target="_blank">${escapeHtml(owner.name)}</a>`
                 : `城市主理人 ${escapeHtml(owner.name)}`)
             : `<a href="./CONTRIBUTING.md" target="_blank">项目贡献指南</a>`;
-        return `<div class="sy-cali-hint">`
-            + `<span class="sy-cali-hint-label" tabindex="0">${escapeHtml(label)}</span>`
-            + `<span class="sy-cali-hint-panel" role="tooltip">${escapeHtml(detail)}<br>`
+        return `<div class="sy-cali-note">${escapeHtml(reason)}`
             + `若你有条件实地拍摄，欢迎将照片投稿给${contact}，或加入官方 QQ 交流群 619357751 一并提供，我们会据此补全。`
-            + `</span></div>`;
+            + `</div>`;
+    }
+
+    /**
+     * 题写者一行（折叠态）+ 可展开的详情。
+     *
+     * 排版刻意与同屏的其余信息行（车站类型 / 运营单位 / 首末班车…）同构：直接复用核心那套
+     * .info-row / .info-label / .info-value，字号、颜色、行距、右对齐全交给核心样式，
+     * 亮暗主题自动跟随——本模块不再自带一套卡片外观。
+     * 开合入口是行尾的「详情 / 收起」文字（非粗体，与加粗的题写者姓名拉开层级），
+     * 默认折叠；监听与文案切换由 bindCalligrapherToggle 接管（切站重建 DOM 后自然回到折叠态）。
+     *
+     * @param {string} name   折叠态右侧文本（题写者姓名，调用方已转义；待考时为「待考」）
+     * @param {string} detail 展开区 HTML（可信内容，调用方负责转义其中的数据部分）
+     */
+    function renderCalligrapherRow(name, detail) {
+        return `
+            <div class="info-row sy-cali-row">
+                <span class="info-label">站名题写者</span>
+                <span class="info-value">
+                    <button type="button" class="sy-cali-toggle" aria-expanded="false">
+                        <span>${name}</span>
+                        <span class="sy-cali-more">详情</span>
+                    </button>
+                </span>
+            </div>
+            <div class="sy-cali-detail" hidden>${detail}</div>
+        `;
+    }
+
+    /**
+     * 折叠开合：按钮是原生 button，天然可聚焦、回车与空格可触发；再同步 aria-expanded
+     * 与「详情 / 收起」文案，读屏与键盘操作都能跟上。
+     *
+     * 监听器只挂在本次渲染出来的节点上：车站信息板每次换站都会重建整块 DOM，
+     * 旧节点连同监听器一起丢弃，不会累积、也不需要显式解绑。
+     */
+    function bindCalligrapherToggle(infoPanel) {
+        const rows = infoPanel ? infoPanel.querySelectorAll(".sy-cali-row") : [];
+        rows.forEach((row) => {
+            const toggle = row.querySelector(".sy-cali-toggle");
+            const detail = row.nextElementSibling;
+            if (!toggle || !detail?.classList.contains("sy-cali-detail")) return;
+            const more = toggle.querySelector(".sy-cali-more");
+            toggle.addEventListener("click", () => {
+                const expanded = toggle.getAttribute("aria-expanded") === "true";
+                toggle.setAttribute("aria-expanded", String(!expanded));
+                detail.hidden = expanded;
+                if (more) more.textContent = expanded ? "详情" : "收起";
+            });
+        });
     }
 
     /** 题字站激活时挂在 body 上的类名：供 header 之外的元素（如移动端顶部填充层）联动染色 */
@@ -93,8 +142,12 @@
 
     /**
      * 按自身脚本 URL 推导并注入题字样式表（幂等）。
-     * 用 SELF_URL 而非写死路径：共享层将来迁入 core/ 时，
-     * 只要 calligraphy.css 仍与 calligraphy.js 同目录即无需改动此处。
+     *
+     * ⚠️ 必须用字符串替换把脚本 URL 上的 `?v=` 版本串**原样搬到 CSS 上**，不能走
+     * `new URL("calligraphy.css", SELF_URL)`——那条路径会把 query 丢掉，于是 CSS 的 URL
+     * 恒定不变，改了样式也会被浏览器 / Service Worker 一直命中旧缓存（表现就是
+     * 「代码改了、页面没变」）。与 sidebar-refit / route-panel / map-tools 同一做法。
+     * 用 SELF_URL 而非写死路径：共享层将来迁入 core/ 时，只要两者仍同目录即无需改动此处。
      */
     function injectStyle() {
         if (!SELF_URL) return;
@@ -102,7 +155,7 @@
 
         const link = document.createElement("link");
         link.rel = "stylesheet";
-        link.href = new URL(STYLE_FILE, SELF_URL).href;
+        link.href = SELF_URL.replace(/calligraphy\.js(\?|$)/, "calligraphy.css$1");
         link.setAttribute(STYLE_FLAG_ATTR, "");
         (document.head || document.documentElement).appendChild(link);
     }
@@ -145,9 +198,12 @@
         // style.css 所在目录解析，导致路径前缀重复。
         const maskStyle = `-webkit-mask-image:url('${imageUrl}');mask-image:url('${imageUrl}');`;
 
+        // is-pending：遮罩图是异步加载的，取到之前元素会按 background-color 整块填色
+        // （标题栏上一坨实心色块），故先隐藏、由 onMounted 的探测在加载完成后摘掉；
+        // 加载失败则整块回退成标准中英文标题（见 fallbackToStandardTitle）。
         return `
             <div class="header-name-group">
-                <div class="panel-cn-name sy-calligraphy-title" role="img" aria-label="${altText}"
+                <div class="panel-cn-name sy-calligraphy-title is-pending" role="img" aria-label="${altText}"
                      style="--sy-cali-ratio:${ratio}">
                     <span class="sy-calligraphy-glyph" style="${maskStyle}" aria-hidden="true"></span>
                     <span class="sy-calligraphy-text">${altText}</span>
@@ -155,6 +211,32 @@
                 <div class="panel-en-name">${formatEnName(station)}</div>
             </div>
         `;
+    }
+
+    /**
+     * 题字横图取不到时的兜底：把标题栏还原成标准中英文标题，并撤掉题字染色。
+     *
+     * 为什么需要：数据层的 hasGlyphImage() 只判得出「有没有登记路径」，判不出
+     * 「这个路径此刻取不取得到」。而题字是 CSS luminance mask，遮罩图取不到时
+     * 元素会按 background-color 整块填色——标题栏上会出现一坨实心色块，
+     * 比普通图片挂掉更难看。
+     *
+     * 「下次再试」不需要额外机制：失败的响应不会被写进 Service Worker 缓存
+     * （sw.js 只在 status 200 时回填），所以这是一次性降级，不会把「暂时取不到」
+     * 记成永久结论，下次打开该站会重新探测。
+     */
+    function fallbackToStandardTitle({ infoPanel, header, station, info, onFallback }) {
+        const group = infoPanel.querySelector(".header-name-group");
+        if (group) group.outerHTML = renderStandardTitle(station);
+        header.classList.remove("sy-calligraphy-header");
+        delete header.dataset.syCaliLineId;
+        document.body.classList.remove(ACTIVE_CLASS);
+        document.body.style.removeProperty("--sy-cali-line-color");
+        document.body.style.removeProperty("--sy-cali-on-color");
+        // 城市侧在 onHeaderMounted 里对 header 做过的改动（地标换单色版、线路徽标按
+        // 题字配色反色等）不会因为 header 未重建而自动还原，必须由城市侧自己收尾。
+        // 钩子经参数传入而非直接引用：本函数在模块级，拿不到 register() 内的局部配置。
+        onFallback?.(header, { station, info });
     }
 
     /**
@@ -201,12 +283,15 @@
      *        染色 header 挂载后的城市专属修饰钩子；仅在该站有题字横图时调用，
      *        context 提供 { station, info, lineColor, onColor, relatedLinesInfo }。
      *        header 每次重渲染均为全新 DOM，无需手工还原
+     * @param {(header: HTMLElement, context: object) => void} [config.onHeaderFallback]
+     *        题字横图取不到、整块标题回退成标准中英文标题时的收尾钩子，
+     *        context 提供 { station, info }。此时 header 并未重渲染，城市须自行撤销
+     *        onHeaderMounted 里做过的改动（换过的地标单色版、按题字配色重画过的徽标等）
      * @returns {void}
      */
     function register(config = {}) {
         if (!window.StationBoard?.registerModule) return;
 
-        const tipCard = window.CGoTipCard;
         const idPrefix = config.idPrefix || "cgo";
         const cityName = config.cityName || idPrefix;
         const dataGlobals = Array.isArray(config.dataGlobals) && config.dataGlobals.length
@@ -221,6 +306,9 @@
             : defaultReadableTextColor;
         const onHeaderMounted = typeof config.onHeaderMounted === "function"
             ? config.onHeaderMounted
+            : null;
+        const onHeaderFallback = typeof config.onHeaderFallback === "function"
+            ? config.onHeaderFallback
             : null;
 
         injectStyle();
@@ -314,62 +402,80 @@
                     onColor,
                     relatedLinesInfo: context.relatedLinesInfo
                 });
-            }
-        });
 
-        if (!tipCard) {
-            console.warn(`[${idPrefix}_calligraphy] 共享层 CGoTipCard 未加载，题字人简介卡片未注册`);
-            return;
-        }
-
-        window.StationBoard.registerModule({
-            id: `${idPrefix}-calligrapher-intro`,
-            name: `${cityName}站名题字人简介`,
-            targetTab: "station-info",
-            order: 12,
-            shouldRender({ station }) {
-                return Boolean(getCalligraphy(station));
-            },
-            render({ station }) {
-                const info = getCalligraphy(station);
-                if (!info) return "";
-                const person = info.calligrapher || {};
-
-                // 占位条目（pendingCalligrapher）：题字实物已确证、题写者尚未考证出来。
-                // 这与「题写者已知、题字横图未采集」是两种不同状态，故走单独的待考文案，
-                // 只陈述「本站有题字」这一事实，不臆测题写渊源。
-                // 条目可用 pendingNote 覆盖城市默认待考文案（如题字无落款、疑为集字的站）
-                if (!person.name) {
-                    return tipCard.render({
-                        title: "站名题字",
-                        icon: "edit",
-                        iconSize: 14,
-                        body: (info.pendingNote || pendingText)
-                            + contributionHintHtml("题写者待考，欢迎投稿", "本站题写者的落款、印章或站内说明牌尚待考证。")
+                // 探测题字图能否取到：成功则摘掉 is-pending 让题字显形，
+                // 失败则整块回退标准中英文标题（否则遮罩缺失会让元素按 background-color
+                // 填成一坨实心色块）。用一次 Image 预加载即可——与 mask 同源同 URL，
+                // 命中同一份缓存，不会多下一张图。
+                // 快速切站时旧站的探测可能晚到，故用 header 上记的站 ID 校验，
+                // 免得把新站的标题改掉。
+                header.dataset.syCaliStation = String(station.id);
+                const titleEl = infoPanel.querySelector(".sy-calligraphy-title");
+                const glyphProbe = new Image();
+                glyphProbe.onload = () => titleEl?.classList.remove("is-pending");
+                glyphProbe.onerror = () => {
+                    if (!header.isConnected || header.dataset.syCaliStation !== String(station.id)) return;
+                    fallbackToStandardTitle({
+                        infoPanel,
+                        header,
+                        station,
+                        info,
+                        onFallback: onHeaderFallback
                     });
-                }
-
-                // 生平简介以数据文件收录的官方口径为准；intro 需自带姓名主语
-                // （如「阎肃，男，生于……」），否则第二句会以「男，」开头成为残句。
-                // 若题字写的是车站旧名（如人民广场站的题字为「市府广场」），
-                // 引导句改用旧名表述，避免卡片与当前站名对不上
-                const lead = info.inscribedOldName
-                    ? `本站旧名“${escapeHtml(info.inscribedOldName)}”由<strong>${escapeHtml(person.name)}</strong>题写。`
-                    : `本站站名由<strong>${escapeHtml(person.name)}</strong>题写。`;
-                // 题写者已知但横图未采集时，一并向访客征求实拍照片
-                const hint = info.image
-                    ? ""
-                    : contributionHintHtml("缺题字横图，欢迎投稿", "本站题字横图尚未收录，标题栏暂以普通文字显示站名。");
-                const body = `${lead}<br>${escapeHtml(person.intro)}。${hint}`;
-
-                return tipCard.render({
-                    title: "站名题字",
-                    icon: "edit",
-                    iconSize: 14,
-                    body
-                });
+                };
+                glyphProbe.src = info.image;
             }
         });
+
+        if (window.StationBoard?.registerModule) {
+            window.StationBoard.registerModule({
+                id: `${idPrefix}-calligrapher-intro`,
+                name: `${cityName}站名题字人简介`,
+                targetTab: "station-info",
+                // 7 = 插在「车站层级图」(5) 与「车站类型」(10) 之间；实际顺序以城市配置
+                // shenyang.js 的 stationBoard.modules 为准（配置里的 order 优先于这里的值）
+                order: 7,
+                shouldRender({ station }) {
+                    return Boolean(getCalligraphy(station));
+                },
+                render({ station }) {
+                    const info = getCalligraphy(station);
+                    if (!info) return "";
+                    const person = info.calligrapher || {};
+
+                    // 占位条目（pendingCalligrapher）：题字实物已确证、题写者尚未考证出来。
+                    // 这与「题写者已知、题字横图未采集」是两种不同状态，故走单独的待考文案，
+                    // 只陈述「本站有题字」这一事实，不臆测题写渊源。
+                    // 条目可用 pendingNote 覆盖城市默认待考文案（如题字无落款、疑为集字的站）
+                    if (!person.name) {
+                        return renderCalligrapherRow(
+                            "待考",
+                            (info.pendingNote || pendingText)
+                                + contributionNoteHtml("本站题写者的落款、印章或站内说明牌尚待考证。")
+                        );
+                    }
+
+                    // 正文不再重复「本站站名由 X 题写」——折叠态那行已经写着「站名题写者 | X」，
+                    // 重复一遍纯属占地方。只有题字写的是车站旧名时才需要点明（如人民广场站的
+                    // 题字为「市府广场」），否则访客会以为题字写错了站名。
+                    const lead = info.inscribedOldName
+                        ? `本站旧名“${escapeHtml(info.inscribedOldName)}”由<strong>${escapeHtml(person.name)}</strong>题写。<br>`
+                        : "";
+                    // 生平简介以数据文件收录的官方口径为准；intro 需自带姓名主语
+                    // （如「阎肃，男，生于……」），否则正文会以「男，」开头成为残句。
+                    // 题写者已知但横图未采集时，一并向访客征求实拍照片
+                    const note = info.image
+                        ? ""
+                        : contributionNoteHtml("本站题字横图尚未收录，标题栏暂以普通文字显示站名。");
+                    const detail = `${lead}${escapeHtml(person.intro)}。${note}`;
+
+                    return renderCalligrapherRow(escapeHtml(person.name), detail);
+                },
+                onMounted(infoPanel) {
+                    bindCalligrapherToggle(infoPanel);
+                }
+            });
+        }
     }
 
     window.CGoCalligraphy = { register };

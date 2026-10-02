@@ -1183,6 +1183,11 @@
 
     /**
      * 路线涉及的所有站点（含出站换乘的落点）的坐标包围盒；取不到坐标时返回 null。
+     *
+     * 站名标签也算进取景范围：标签是画布坐标系里的 HTML 元素，屏幕上量到的矩形除以当前缩放
+     * 就是它的画布坐标占地（`#map-content` 是 `transform-origin: 0 0` 的 translate + scale，
+     * 故 `mapX = (clientX − 画布左缘 − currentX) / currentScale`）。这样换算出的盒子与取景后的
+     * 缩放无关——标签字号在画布坐标里是恒定值，一次换算即可，不必按目标缩放迭代求解。
      */
     function routeBounds(route) {
         const stations = allStations();
@@ -1190,6 +1195,20 @@
         let minY = Infinity;
         let maxX = -Infinity;
         let maxY = -Infinity;
+        const view = window.getMapView?.();
+        const containerRect = document.getElementById("map-container")?.getBoundingClientRect();
+        /** 把站名标签的实际占地并入包围盒（隐藏 / 尚未渲染的标签不参与） */
+        const includeLabel = (sid) => {
+            if (!view || !(view.scale > 0) || !containerRect) return;
+            const label = document.getElementById(`label_${sid}`);
+            if (!label) return;
+            const rect = label.getBoundingClientRect();
+            if (rect.width < 1 || rect.height < 1) return;
+            minX = Math.min(minX, (rect.left - containerRect.left - view.x) / view.scale);
+            minY = Math.min(minY, (rect.top - containerRect.top - view.y) / view.scale);
+            maxX = Math.max(maxX, (rect.right - containerRect.left - view.x) / view.scale);
+            maxY = Math.max(maxY, (rect.bottom - containerRect.top - view.y) / view.scale);
+        };
         const push = (sid) => {
             const station = stations[sid];
             if (!station || !Number.isFinite(station.x) || !Number.isFinite(station.y)) return;
@@ -1197,6 +1216,7 @@
             maxX = Math.max(maxX, station.x);
             minY = Math.min(minY, station.y);
             maxY = Math.max(maxY, station.y);
+            includeLabel(sid);
         };
         route.steps.forEach((step) => {
             if (step.t === "ride") step.stops.forEach(push);
@@ -1294,6 +1314,81 @@
 
     const SVG_NS = "http://www.w3.org/2000/svg";
     const ROUTE_LAYER_ID = "cgo-route-layer";
+
+    /**
+     * 起终点 active 的归属标记。核心的车站选中态与本层给起终点加的选中态都是同一个 `.active` 类，
+     * 光看类名分不出归属——故本层加的那一份一律另打一个 `data-cgo-route-endpoint` 属性：
+     * 保活只补带标记的元素，拆除也只摘带标记的元素，核心与其它模块给别的车站加的 active 一律不碰。
+     * 标记用属性而不是类，还因为核心的 `clearHighlights()` 是 `querySelectorAll('.active')` 一把清空，
+     * 属性不会被它抹掉，保活才有依据。
+     */
+    const ENDPOINT_FLAG = "cgo-route-endpoint";
+    /** 本轮高亮的起终点车站 ID；保活与拆除都按它重新查节点（图层重建后节点可能换新） */
+    let endpointIds = [];
+    let endpointObserver = null;
+
+    /**
+     * 清掉地图上残留的车站选中态：进入路线高亮时，焦点整体让给规划路线。
+     * 只清 #stations-layer / #labels-layer 两处的 .active，不走核心的 clearHighlights()——
+     * 后者会连核心自己的界面态一起摘（如侧栏固定按钮 #legend-pin-btn 的 active），那不该本层来动。
+     */
+    function clearStationActives() {
+        document.querySelectorAll("#stations-layer .station.active, #labels-layer .label-group.active")
+            .forEach((el) => el.classList.remove("active"));
+    }
+
+    /** 一站对应的图元与站名标签（城市可用 renderStationIcon 接管图元画法，但 id 由核心给） */
+    function endpointNodes(sid) {
+        return ["node_", "label_"]
+            .map((prefix) => document.getElementById(prefix + sid))
+            .filter(Boolean);
+    }
+
+    /**
+     * 保活：起终点的 active 随时可能被核心清掉（每次 selectStation 都会先 clearHighlights()，
+     * 点空白处的 resetMapState() 同理），而此时结果窗口还开着、路线高亮也还在，起终点不该跟着熄灭。
+     * 这里只做「带标记却丢了 active 就补回来」，只补不删，因此不会影响核心与其它模块给别的车站加 active。
+     * 节点可能被图层重建换掉，故每次按车站 ID 重新查找，不缓存元素引用。
+     */
+    function restoreEndpoints() {
+        endpointIds.forEach((sid) => {
+            endpointNodes(sid).forEach((el) => {
+                el.setAttribute(`data-${ENDPOINT_FLAG}`, "");
+                if (!el.classList.contains("active")) el.classList.add("active");
+            });
+        });
+    }
+
+    function watchEndpoints() {
+        if (endpointObserver || !endpointIds.length) return;
+        const layers = ["stations-layer", "labels-layer"]
+            .map((id) => document.getElementById(id)).filter(Boolean);
+        if (!layers.length) return;
+        endpointObserver = new MutationObserver(restoreEndpoints);
+        layers.forEach((layer) => endpointObserver.observe(layer, {
+            attributes: true, childList: true, subtree: true, attributeFilter: ["class"]
+        }));
+        restoreEndpoints();
+    }
+
+    /** 点亮起终点：先清掉图上其它选中态，再给两站的图元与标签加 active（并打归属标记） */
+    function markRouteEndpoints(sids) {
+        clearStationActives();
+        endpointIds = [...new Set(sids.filter(Boolean))];
+        restoreEndpoints();
+        watchEndpoints();
+    }
+
+    /** 退出路线高亮：只摘带标记的那一份 active，别的车站的选中态原样保留 */
+    function clearRouteEndpoints() {
+        endpointObserver?.disconnect();
+        endpointObserver = null;
+        endpointIds = [];
+        document.querySelectorAll(`[data-${ENDPOINT_FLAG}]`).forEach((el) => {
+            el.removeAttribute(`data-${ENDPOINT_FLAG}`);
+            el.classList.remove("active");
+        });
+    }
 
     /** 规划路径层：独立于引擎线网层，因此不会被「淡化其余线网」的规则命中 */
     function ensureRouteLayer() {
@@ -1483,6 +1578,7 @@
     function clearHighlight() {
         document.getElementById("map-content")?.classList.remove("cgo-routing");
         document.querySelectorAll(".cgo-on-route").forEach((el) => el.classList.remove("cgo-on-route"));
+        clearRouteEndpoints();
         const layer = document.getElementById(ROUTE_LAYER_ID);
         if (layer) layer.innerHTML = "";
         // 高亮与页面标题同属「规划路线焦点」，一并退出
@@ -1509,6 +1605,9 @@
         drawRoutePath(result);
         // 页面标题随规划路线一起切换（收起时由 clearHighlight 还原）
         const { head, tail } = routeEndpoints(result);
+        // 焦点交给规划路线：先清掉图上原有的车站选中态，只点亮起终点两站（退出高亮时由
+        // clearHighlight 摘除；期间被核心清掉会自动补回，见 watchEndpoints）
+        markRouteEndpoints([head, tail]);
         beginRouteTitle(`「${stationName(head)}→${stationName(tail)}」导航路线`);
     }
 
@@ -1821,6 +1920,17 @@
      */
     function syncPanels() {
         const pinned = inPinnedSidebar();
+        // 栈里可能留着已经不在文档里的面板：形态迁移时它被拆掉（见 syncRoutePanels 里
+        // 「已无结果 / 形状不符」那几条 current.remove() 分支），核心重建外壳时也会被摘出文档。
+        // 它若占着栈顶，真正打开的车站面板就会被永久判成「非栈顶」而隐藏（内联 display 一直是 flex，
+        // observeInfoPanel 看不到变化、也就不会把它重新提到栈顶），只有核心把内联 display 关掉
+        // （点空白处 resetMapState 才会）才出栈——表现出来正是「取消固定后点车站打不开详情，
+        // 得先点一下空白才行」。故此处按「文档里真实存在」清理栈，栈顶永远落在可见的面板上。
+        if (!pinned) {
+            for (let i = openStack.length - 1; i >= 0; i--) {
+                if (!document.getElementById(openStack[i])) openStack.splice(i, 1);
+            }
+        }
         const top = openStack[openStack.length - 1] || null;
         [PLAN_ID, RESULT_ID, INFO_PANEL_ID].forEach((id) => {
             const panel = document.getElementById(id);

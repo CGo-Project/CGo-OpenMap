@@ -29,6 +29,7 @@
 | `stacard-engine.js` | 具名导出 `createStaCard` | ES module，各城 `stacard/script.js` 相对 import | 高德瓦片地图卡片：坐标索引、占位 HTML、瓦片网格、缩放交互、ResizeObserver 生命周期 |
 | `station-title.js` | `window.CGoStationTitle.createStationTitleNormalizer` | classic script | 侧栏站名标题归一化（站类判定、标题拼装、MutationObserver 安装与防自触发） |
 | `tip-card.js` | `window.CGoTipCard.render` | classic script | 车站信息板提示卡片 DOM（与上游官方模板结构一致） |
+| `label-active.js` | `window.CGoLabelActive`（`sync`） | classic script，城市 `{city}.js` 引入 | 呼出线随站名标签进入 active、也随它淡化：城市给引线元素打 `data-cgo-callout="<车站 ID>"`（引线重建时也要带上）、给装引线的图层打 `data-cgo-callout-layer`，本模块据此把「标签 `label_<ID>` 带 `.active`」同步成引线的 `cgo-callout-active`，并把标签的计算淡化抄给引线（`opacity` 与 `filter` 都抄：路线高亮的淡化走 `filter`、核心让位支线走内联 `opacity`）。引线整层重画后由本模块补回。只管类名与引线自己的 opacity/filter，线宽/颜色等观感由城市样式表定义（沈阳见第三节） |
 | `calligraphy.js` + `calligraphy.css` | `window.CGoCalligraphy.register` | classic script | 站名题字渲染机制（沈阳特色，其他城市可选用）；样式表由脚本按自身 URL 注入 |
 | `opening-schedule.js` | `window.CGoOpening` | classic script | 未开通区段与车站的**开通时刻**：状态转换、待开通登记、到点自动刷新，以及未开通车站 footer 的开通文案与倒计时（详见第四节） |
 | `opening-schedule.css` | — | 由 `opening-schedule.js` 按自身 URL 注入 | 上述倒计时框的样式（同 `calligraphy.css` 的做法） |
@@ -50,6 +51,7 @@
    loop-direction.js       环别判定（按站序做鞋带公式）
    line-link.js            线路接续声明（仅大连、长春引入）
    tip-card.js             提示卡片 DOM
+   label-active.js         呼出线随标签进入 active（按 data-cgo-callout 同步）
    station-title.js        侧栏站名标题归一化
    timetable-renderer.js   首末班车渲染 / 日期类型 / 季节判定
 
@@ -110,6 +112,7 @@
 | 侧栏站名标题归一化 | 三城统一为薄配置 | `shared/station-title.js`、各城 `modules/*_station_title.js` |
 | 车站提示卡片 | 共享层出 DOM，城市只写命中判定与文案 | `shared/tip-card.js`、`city/shenyang/modules/shenyang_cultural.js` |
 | 站名题字 | 沈阳专属，其他城市可选用 | `shared/calligraphy.js`、`city/shenyang/modules/shenyang_calligraphy.js` |
+| **呼出线随标签进入 active** | 沈阳已接入（换乘站的呼出框 + 引线，标签被选中 / 成为路线起终点时引线一同转红，标签被淡化时引线一同淡出）；其他城市给引线元素打 `data-cgo-callout="<车站 ID>"`、给引线层打 `data-cgo-callout-layer`，并在样式表里写 `cgo-callout-active` 的观感即可接入 | `shared/label-active.js`、`city/shenyang/modules/shenyang_map.js`、`city/shenyang/style.css` |
 | **开通时刻** | 长春已接入（5 号线一期），沈阳、大连为空表待用 | `shared/opening-schedule.js`、各城 `data_opening.js` |
 | **行程规划** | 三城已接入：共享层出算法、面板与坐标索引，城市只写 `reader` 取数 + `fareSystems` / `fare` 票价（沈阳、大连、长春均可显示票价） | `shared/route-data.js`、`shared/route-planner.js`、`shared/route-panel.js`、各城 `{city}.js` 的 `CGO_ROUTE_CONFIG` |
 | **贯通运行（线路接续）** | 大连已接入（3 号线支线 ⇄ 13 号线在九里接续跑同一趟车）；其他城市按同一份 `lineLinks` 声明即可接入 | `shared/line-link.js`、`city/dalian/dalian.js` 的 `lineLinks` |

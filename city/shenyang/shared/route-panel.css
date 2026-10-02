@@ -745,25 +745,54 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     z-index: 14;
 }
 
-/* 只淡化引擎的线网层与散点层；规划路径绘制在独立的 #cgo-route-layer 内，不参与淡化 */
-#map-content.cgo-routing #lines-layer {
-    opacity: 0.16;
+/* ── 路线高亮时的底图淡化 ───────────────────────────────────────────────
+   刻意不用 opacity：半透明会把图元、站名与底下的线路叠在一起（圆点透出线路、字底透出线网），
+   观感发脏。改用 filter 在「完全不透明」的前提下把颜色推向背景：
+     · contrast 先把各线路的明度差压平——不压平的话，亮色线一提亮就过曝成背景色直接消失，
+       暗色线又压不到背景附近，整片线网的淡化程度会很不均匀；
+     · brightness 再整体推向背景：浅色主题提亮、深色主题压暗，方向相反，故必须分主题两套；
+     · saturate 保留大部分色相，让底图仍是「那张图」而不是灰白一片。
+   两套参数按「四城（沈阳 / 大连 / 长春 / 哈尔滨）全部线路色淡化后与背景的对比度尽量均匀」扫描、
+   再逐个值比对得到：浅色 brightness 1.7 时四城 mean≈1.55~1.67（等效灰阶 #C8C8C8~#D0D0D0），
+   深色 brightness 0.45 时 mean≈1.30~1.39（≈#313131，背景 #1a1a1a，几乎贴住背景）。
+   ⚠️ 浅色下 brightness 是「提亮」：越大越接近白背景＝越退场，越小反而越显眼（方向别记反）；
+   上限受「亮色线路过曝」约束——brightness 1.9 起，沈阳 10 号线、长春 6 号线等先后被压得
+   与背景同色而彻底消失（大连 13 号线本身极浅，各档都贴在 1.05~1.08）。
+   ⚠️ saturate 几乎不改变退场程度（0.5 与 0.8 的 mean 只差 0.03~0.06），它决定的是
+   「底图还留多少颜色」——想让它淡就该动 brightness，想让它是彩色的还是灰调才动 saturate。
+   城市想换口味只需覆盖 --cgo-dim-filter 这一个变量。 */
+:root {
+    --cgo-dim-filter: contrast(0.3) brightness(1.7) saturate(0.7);
+}
+
+[data-theme='dark'] {
+    --cgo-dim-filter: contrast(0.5) brightness(0.4) saturate(0.9);
+}
+
+/* 线网：逐个图元施加，不能加在 .line-visual-group 上——父级 filter 会连子元素一起处理，
+   .line-visual-outer 是「背景色描边」（stroke: var(--map-bg)），负责把相交线路隔开，
+   一旦被滤镜处理就会显形（浅色下灰边、深色下亮边），故必须原样保留、不参与淡化。
+   虚换乘连线（.virtual-connectors）没有外描边这层顾虑，整组淡化即可。
+   站名呼出线层也住在 #lines-layer 里，它是「站名标签的一部分」，淡化跟着标签走
+   （见 shared/label-active.js）；被这层规则连坐就会露出「路线上的站名亮着、引线却暗着」。 */
+#map-content.cgo-routing #lines-layer .line-visual-inner,
+#map-content.cgo-routing #lines-layer .line-visual-overlay,
+#map-content.cgo-routing #lines-layer > .virtual-connectors {
+    filter: var(--cgo-dim-filter);
 }
 
 /* 规划路线与核心那套「线路聚焦高亮」不同时出现：后者最扎眼的一笔是把选中线路克隆进
    #highlight-layer，而该层不参与上面的淡化，于是规划路径旁边会平白多出一条亮线。
-   主网层里的 .active 图元已经被 #lines-layer 的 opacity 一并压到 0.16，无需另行处理。 */
+   主网层里的 .active 图元已经被上面的规则一并淡化，无需另行处理。 */
 #map-content.cgo-routing #highlight-layer {
     display: none;
 }
 
-#map-content.cgo-routing #scattered-layer {
-    opacity: 0.16;
-}
-
+/* 散点层（城市底图装饰，如海域轮廓）、站点图元与站名：同样整体褪色而不透明 */
+#map-content.cgo-routing #scattered-layer,
 #map-content.cgo-routing .station:not(.cgo-on-route),
 #map-content.cgo-routing .label-group:not(.cgo-on-route) {
-    opacity: 0.16;
+    filter: var(--cgo-dim-filter);
 }
 
 /* ── 抽屉把手（仅移动端显示，与车站详情面板的 .sheet-grabber 同一观感）── */

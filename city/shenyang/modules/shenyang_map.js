@@ -80,11 +80,13 @@
         };
     }
 
-    function createCalloutPath(className, endpoints) {
+    function createCalloutPath(className, endpoints, stationId) {
         const path = document.createElementNS(SVG_NS, "path");
         path.setAttribute("class", className);
         path.setAttribute("d", `M ${endpoints.start.x} ${endpoints.start.y} L ${endpoints.end.x} ${endpoints.end.y}`);
         path.setAttribute("vector-effect", "non-scaling-stroke");
+        // 归属标记：共享层 label-active.js 据此把站名标签的 active 态同步到引线上（引线整层重画后由它补回）
+        path.setAttribute("data-cgo-callout", stationId);
         return path;
     }
 
@@ -113,15 +115,19 @@
             calloutLayer.id = CALLOUT_LINES_ID;
             calloutLayer.setAttribute("aria-hidden", "true");
             calloutLayer.setAttribute("pointer-events", "none");
+            // 本层是「站名标签的一部分」，不是线网：共享层的路线高亮淡化规则据此放过它，
+            // 它自己则跟随标签的淡化（见 shared/label-active.js）
+            calloutLayer.setAttribute("data-cgo-callout-layer", "");
             linesLayer.appendChild(calloutLayer);
         }
 
         calloutLayer.replaceChildren();
         calloutLabels.forEach((label) => {
-            const endpoints = getCalloutEndpoints(label, label.dataset.sid);
+            const sid = label.dataset.sid;
+            const endpoints = getCalloutEndpoints(label, sid);
             if (!endpoints) return;
-            calloutLayer.appendChild(createCalloutPath("shenyang-label-callout-line-halo", endpoints));
-            calloutLayer.appendChild(createCalloutPath("shenyang-label-callout-line", endpoints));
+            calloutLayer.appendChild(createCalloutPath("shenyang-label-callout-line-halo", endpoints, sid));
+            calloutLayer.appendChild(createCalloutPath("shenyang-label-callout-line", endpoints, sid));
         });
     }
 

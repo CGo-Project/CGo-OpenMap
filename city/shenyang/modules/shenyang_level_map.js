@@ -1,7 +1,8 @@
 /**
  * CGo OpenMap - 沈阳车站层级图（剖面图）模块
  *
- * 以沈阳地铁官网刊载的「车站层级图」作为纯图片卡片，挂载于「车站信息」页签置顶。
+ * 以沈阳地铁官网刊载的「车站层级图」作为纯图片卡片，挂载于「车站信息」页签
+ * （排在最前的报站提示之后）。
  * 图片不落本地仓库，直接热链官网：
  *   https://www.symtc.com/wwmhm/icons//czcjt/{官网编号}.png
  * 官网编号由 data_timetable.js 按 SYMTC_OFFICIAL_STATION_ID_RULES 推导，与信息板的

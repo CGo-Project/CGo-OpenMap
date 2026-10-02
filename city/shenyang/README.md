@@ -16,7 +16,9 @@
 
 ## 报站目的地指引
 
-`modules/shenyang_cultural.js` 将已整理的沈阳地铁报站目的地关系注册为 `shenyang-cultural-destinations` 模块，挂载在“车站信息”选项卡，并排在“车站类型”之前。模块只显示车站与目的地名称的对应关系，不扩写出口、距离或步行时间。
+`modules/shenyang_cultural.js` 将已整理的沈阳地铁报站目的地关系注册为 `shenyang-cultural-destinations` 模块，挂载在“车站信息”选项卡**最前**（紧挨标签栏：order 1；后面的车站层级图 / 车站类型 / 题写者 / 运营单位分别占 5 / 10 / 12 / 20）。注意**顺序以 `shenyang.js` 的 `stationBoard.modules` 为准**——配置里的 `order` 会覆盖模块注册时的值。模块只显示车站与目的地名称的对应关系，不扩写出口、距离或步行时间。
+
+外观为模块自带的 `.sy-report-card`（均匀细线框 + 填色，`speaker` 图标 + 正文），样式在本目录 `style.css`，不再走共享层的 `tip-card.js`。
 
 这些重点目的地同时写入对应车站对象的 `aliases` 数组，参与全局车站搜索；已存在历史别名记录的车站会在 `staname.csv` 中同步保留这些搜索词，避免异步加载历史别名时覆盖本地目的地别名。
 

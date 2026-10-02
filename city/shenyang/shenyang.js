@@ -209,10 +209,13 @@
                 "header-badges": { enabled: true, order: 30 },
                 "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
                 "shenyang-timetable": { enabled: true, targetTab: "line-tab", order: 15 },
-                // 官网车站层级图（剖面图）纯图片卡片，置顶于「车站信息」页签
+                // 报站目的地指引排在「车站信息」页签最前，紧挨标签栏（配置里的 order
+                // 会覆盖模块注册时的 order，改顺序以这里为准）
+                "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 1 },
+                // 官网车站层级图（剖面图）纯图片卡片，紧随报站提示之后
                 "shenyang-station-level-map": { enabled: true, targetTab: "station-info", order: 5 },
-                "shenyang-calligrapher-intro": { enabled: true, targetTab: "station-info", order: 12 },
-                "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 15 },
+                // 站名题写者插在「车站层级图」(5) 与「车站类型」(10) 之间
+                "shenyang-calligrapher-intro": { enabled: true, targetTab: "station-info", order: 7 },
                 "adjacent-stations": { enabled: true, targetTab: "line-tab", order: 20 },
                 "transfers": { enabled: true, targetTab: "line-tab", order: 30 },
                 "station-type": { enabled: true, targetTab: "station-info", order: 10 },
@@ -274,7 +277,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261001.1719";
+        const version = "261002.2353";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -295,6 +298,8 @@
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/tip-card.js?v=${version}"><\/script>`);
+        // 呼出线随标签进入 active：按 data-cgo-callout 把站名标签的选中态同步到引线
+        document.write(`<script src="./city/shenyang/shared/label-active.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/calligraphy.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);

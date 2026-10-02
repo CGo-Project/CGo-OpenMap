@@ -40,7 +40,8 @@
         /**
          * 方城地标在染色 header 上：深底（白字）切换为白色单色版；
          * 浅底（深字，如 10 号线浅绿）保留彩色原图——目前仅有白色 mono，
-         * 待补充深色 mono 后在此扩展。header 每次重建，无需手工还原。
+         * 待补充深色 mono 后在此扩展。切站时 header 会整体重建，无需手工还原；
+         * 但「题字图取不到而整块回退」不重建 header，须由 onHeaderFallback 收尾。
          */
         onHeaderMounted(header, { onColor }) {
             const decoration = header.querySelector(".shenyang-station-header-decoration");
@@ -49,6 +50,21 @@
             decoration.dataset.syOriginalSrc = decoration.dataset.syOriginalSrc
                 || decoration.getAttribute("src");
             decoration.setAttribute("src", FANGCHENG_MONO_SRC);
+        },
+        /**
+         * 题字图取不到、header 整块退回常规标题时，把上面那两处改动一并撤销。
+         * 不能指望「header 重建自动还原」：回退发生在挂载之后，只换了标题块，header
+         * 本身不重建，于是会留下「标题已是常规样式、地标与线路徽标还是题字配色」的半截状态。
+         * 徽标同样需要重画——它是渲染后固化的 SVG，且按题字配色反过色。
+         */
+        onHeaderFallback(header) {
+            const decoration = header.querySelector(".shenyang-station-header-decoration");
+            const originalSrc = decoration?.dataset?.syOriginalSrc;
+            if (originalSrc) {
+                decoration.setAttribute("src", originalSrc);
+                delete decoration.dataset.syOriginalSrc;
+            }
+            window.ShenyangUi?.refreshHeaderBadges?.();
         }
     });
 

@@ -44,6 +44,45 @@
     stroke-width: 1.2px;
 }
 
+/* 呼出线属于标签的一部分：标签进入 active（核心选中、路线起终点）时，呼出框底边与引线
+   随标签文字一起转红，颜色同核心 .label-group.active 的文字色。
+   引线与标签没有 DOM 关系，active 类由共享层 label-active.js 按 data-cgo-callout 同步过来。 */
+.label-group.label-callout.active {
+    border-bottom-color: #D0021B;
+}
+
+#lines-layer .shenyang-label-callout-line.cgo-callout-active {
+    stroke: #D0021B;
+    stroke-width: 1.6px;
+}
+
+/* 报站目的地指引：均匀细线框 + 填色的小信息块（不再是「左侧强调条 + 无底色」的卡片），
+   结构为「speaker 图标 + 正文」，正文折行后仍与首行左对齐。
+   线与底色都取主题变量，亮暗两套自动跟随。 */
+.sy-report-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 14px 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+    border-radius: 8px;
+    background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.03));
+}
+
+.sy-report-card cgo-icon {
+    flex: none;
+    /* 与正文首行视觉居中，而不是整块居中（正文折行时图标会浮到中间） */
+    margin-top: 2px;
+    color: var(--primary-color);
+}
+
+.sy-report-text {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-light);
+}
+
 /* 详情弹窗标题中的沈阳城市专属站点图标。 */
 .shenyang-station-header-decoration {
     flex: 0 0 32px;

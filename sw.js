@@ -6,6 +6,8 @@
  * ==============================================================================
  * 1. 静态资源预缓存 (Cache-First):
  *    - 安装时预拉取 HTML、CSS、核心 JS 引擎及当前城市基础数据包并缓存至 `CACHE_NAME`；
+ *    - 体积大又按需可见的城市素材不进预缓存（如沈阳的站名题字图，67 张约 5.7 MB）：
+ *      静态资源未命中缓存时会自动网络拉取并回填，等于「看过才下载、之后离线可用」；
  *    - 更新版本时修改 `CACHE_NAME` 版本号，激活时自动清理旧版本缓存。
  * 
  * 2. 高德切片网络缓存 (Stale-While-Revalidate / Cache-First for Tiles):
@@ -18,7 +20,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261001.1719';
+const CACHE_NAME = 'cgo-openmap-v261002.2353';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -131,6 +133,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/station-title.js',
     './city/shenyang/shared/viewport-inset.js',
     './city/shenyang/shared/tip-card.js',
+    './city/shenyang/shared/label-active.js',
     './city/shenyang/shared/calligraphy.js',
     './city/shenyang/shared/calligraphy.css',
     './city/shenyang/shared/opening-schedule.js',
@@ -161,81 +164,13 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/transfer-badge.svg',
     './city/shenyang/assets/tram-5.svg',
 
-    // 1号线站名题字（书法家题写）
-    './city/shenyang/assets/calligraphy/qihaojie.png',
-    './city/shenyang/assets/calligraphy/sihaojie.png',
-    './city/shenyang/assets/calligraphy/shenyangzhan.png',
-    './city/shenyang/assets/calligraphy/taiyuanjie.png',
-    './city/shenyang/assets/calligraphy/nanshichang.png',
-    './city/shenyang/assets/calligraphy/qingniandajie.png',
-    './city/shenyang/assets/calligraphy/huaiyuanmen.png',
-    './city/shenyang/assets/calligraphy/yunfengbeijie.png',
-    './city/shenyang/assets/calligraphy/zhongjie.png',
-    './city/shenyang/assets/calligraphy/dongzhongjie.png',
-    './city/shenyang/assets/calligraphy/pangjiangjie.png',
-    './city/shenyang/assets/calligraphy/limingguangchang.png',
-    './city/shenyang/assets/calligraphy/shisanhaojie.png',
-    './city/shenyang/assets/calligraphy/zhongyangdajie.png',
-    './city/shenyang/assets/calligraphy/zhangshi.png',
-    './city/shenyang/assets/calligraphy/kaifadadao.png',
-    './city/shenyang/assets/calligraphy/yuhongguangchang.png',
-    './city/shenyang/assets/calligraphy/yingbinlu.png',
-    './city/shenyang/assets/calligraphy/zhonggongjie.png',
-    './city/shenyang/assets/calligraphy/qigongjie.png',
-    './city/shenyang/assets/calligraphy/baogongjie.png',
-    './city/shenyang/assets/calligraphy/tiexiguangchang.png',
-
-    // 1号线东延段站名题字（辽宁 / 沈阳书法界名家题写）
-    './city/shenyang/assets/calligraphy/xinhuijie.png',
-    './city/shenyang/assets/calligraphy/xinningjie.png',
-    './city/shenyang/assets/calligraphy/dongdayingjie.png',
-    './city/shenyang/assets/calligraphy/nongyedaxue.png',
-    './city/shenyang/assets/calligraphy/qianling.png',
-    './city/shenyang/assets/calligraphy/donglinggongyuan.png',
-    './city/shenyang/assets/calligraphy/shuiquan.png',
-    './city/shenyang/assets/calligraphy/boguanbeidajie.png',
-    './city/shenyang/assets/calligraphy/zhiwuyuan.png',
-    './city/shenyang/assets/calligraphy/shuangma.png',
-
-    // 2号线站名题字（作家 / 诗人题写，逐站实拍采集中）
-    './city/shenyang/assets/calligraphy/aotizhongxin.png',
-    './city/shenyang/assets/calligraphy/gongyezhanlanguan.png',
-    './city/shenyang/assets/calligraphy/hangkonghangtiandaxue.png',
-    './city/shenyang/assets/calligraphy/jinrongzhongxin.png',
-    './city/shenyang/assets/calligraphy/liaoningdaxue.png',
-    './city/shenyang/assets/calligraphy/lingxi.png',
-    './city/shenyang/assets/calligraphy/qingniangongyuan.png',
-    './city/shenyang/assets/calligraphy/quanyunlu.png',
-    './city/shenyang/assets/calligraphy/renminguangchang.png',
-    './city/shenyang/assets/calligraphy/santaizi.png',
-    './city/shenyang/assets/calligraphy/shenyangbeizhan.png',
-    './city/shenyang/assets/calligraphy/shijidasha.png',
-    './city/shenyang/assets/calligraphy/shitushuguan.png',
-    './city/shenyang/assets/calligraphy/wulihe.png',
-    './city/shenyang/assets/calligraphy/yixueyuan.png',
-    './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
-    './city/shenyang/assets/calligraphy/xinleyizhi.png',
-    './city/shenyang/assets/calligraphy/beilinggongyuan.png',
-    './city/shenyang/assets/calligraphy/qishanlu.png',
-    './city/shenyang/assets/calligraphy/shifandaxue.png',
-
-    // 3号线站名题字（2026 年全线开通后安装，书法家题写；待考站题写者尚未考证）
-    './city/shenyang/assets/calligraphy/shayang.png',
-    './city/shenyang/assets/calligraphy/nanbamalu.png',
-    './city/shenyang/assets/calligraphy/jiaxingjie.png',
-    './city/shenyang/assets/calligraphy/fangxingguangchang.png',
-    './city/shenyang/assets/calligraphy/sanhaojie.png',
-    './city/shenyang/assets/calligraphy/zhongkeyuanjinshusuo.png',
-    './city/shenyang/assets/calligraphy/nanta.png',
-    './city/shenyang/assets/calligraphy/wenfulu.png',
-    './city/shenyang/assets/calligraphy/fuminjie.png',
-    './city/shenyang/assets/calligraphy/jiangdongjie.png',
-    './city/shenyang/assets/calligraphy/nanyanghujie.png',
-    './city/shenyang/assets/calligraphy/datonghujie.png',
-    './city/shenyang/assets/calligraphy/nanliguan.png',
-    './city/shenyang/assets/calligraphy/lingkong.png',
-    './city/shenyang/assets/calligraphy/fangjialan.png',
-
+    // ── 站名题字图（沈阳，67 张 / 合计约 5.7 MB）刻意「不」预缓存 ─────────────
+    // 一次访问通常只会看到 1~2 个题字站，全量预拉等于让首访白白下载几 MB。
+    // 静态资源的 fetch 策略本就是「精确命中缓存 → 未命中则网络拉取并回填」，
+    // 故把它们从本清单移出即自动变成按需缓存：看过才下载，之后离线可用；
+    // 某站没有题字图时模块会回退标准中英文标题，不影响可用性。
+    // ⚠️ 替换题字图后仍须递增 CACHE_NAME：旧缓存靠版本号整体作废，
+    //    而题字图的 URL 上没有 ?v= 可以穿透缓存。
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',
     './city/hefei/modules/hefei_timetable.js',
