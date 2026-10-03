@@ -272,6 +272,23 @@
     const registered = new Map();
 
     /**
+     * 该车站是否属于「有出入口概念的线路」。
+     * 出入口只属于地铁 / 城市轨道车站：国铁散站（`rdot`）、轻铁、在建线都声明
+     * `isPointOnly`（只落站点图元、不画走向），它们的站点即便在数据里被误收了条目，
+     * 也不该出入口页签 —— 哈尔滨「哈尔滨站 / 哈尔滨北站 / 哈尔滨东站」就是国铁站点
+     * 与同名地铁站坐标重合、被抓取脚本按站名把地铁侧出口一并写到国铁 ID 上。
+     * 判定只用车站在引擎里已有的 `relatedLines` 与线路的 `isPointOnly`，不引入城市私有规则；
+     * 线路数据取不到（引擎未挂 `window.linesData`）时按「有」处理，退回旧行为。
+     */
+    function onRidableLine(station) {
+        const related = station?.relatedLines;
+        const lines = window.linesData;
+        if (!Array.isArray(related) || !related.length || !Array.isArray(lines)) return true;
+        const pointOnlyIds = new Set(lines.filter((line) => line?.isPointOnly).map((line) => line.id));
+        return related.some((id) => !pointOnlyIds.has(id));
+    }
+
+    /**
      * 该城某站名下的全部出口。
      * 出口数据以**本地车站 ID** 为键，这里用 data_stations 的 cn 反查（同站多 ID 取并集）。
      * 供「查找最近车站」顺带推荐最近出入口用（nearest-station.js）。
@@ -398,7 +415,9 @@
             targetTab: `${idPrefix}-exits`,
             order: typeof config.order === "number" ? config.order : 10,
             shouldRender({ station }) {
-                return getExits(station?.id).length > 0;
+                // 只被点线（国铁 / 轻铁 / 在建线）引用的车站没有出入口概念，
+                // 同名地铁站的出口被误写到国铁站点 ID 上时由这道守卫拦住
+                return onRidableLine(station) && getExits(station?.id).length > 0;
             },
             render({ station }) {
                 const exits = getExits(station?.id);
