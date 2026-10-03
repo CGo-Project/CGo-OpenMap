@@ -6,6 +6,8 @@
  * ==============================================================================
  * 1. 静态资源预缓存 (Cache-First):
  *    - 安装时预拉取 HTML、CSS、核心 JS 引擎及当前城市基础数据包并缓存至 `CACHE_NAME`；
+ *    - 体积大又按需可见的城市素材不进预缓存（如沈阳的站名题字图，67 张约 5.7 MB）：
+ *      静态资源未命中缓存时会自动网络拉取并回填，等于「看过才下载、之后离线可用」；
  *    - 更新版本时修改 `CACHE_NAME` 版本号，激活时自动清理旧版本缓存。
  * 
  * 2. 高德切片网络缓存 (Stale-While-Revalidate / Cache-First for Tiles):
@@ -18,7 +20,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261001.1719';
+const CACHE_NAME = 'cgo-openmap-v261004.0054';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -113,10 +115,13 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/modules/shenyang_cultural.js',
     './city/shenyang/modules/shenyang_service_info.js',
     './city/shenyang/modules/shenyang_calligraphy.js',
-    './city/shenyang/modules/shenyang_level_map.js',
+    './city/shenyang/modules/shenyang_facilities.js',
+    './city/shenyang/modules/shenyang_exits.js',
     './city/shenyang/stacard/script.js',
     './city/shenyang/stacard/data.js',
     './city/shenyang/data_calligraphy.js',
+    './city/shenyang/data_facilities.js',
+    './city/shenyang/data_exits.js',
     './city/shenyang/data_stations.js',
     './city/shenyang/data_lines.js',
     './city/shenyang/data_virtual_transfers.js',
@@ -131,8 +136,14 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/station-title.js',
     './city/shenyang/shared/viewport-inset.js',
     './city/shenyang/shared/tip-card.js',
+    './city/shenyang/shared/label-active.js',
     './city/shenyang/shared/calligraphy.js',
     './city/shenyang/shared/calligraphy.css',
+    './city/shenyang/shared/facilities.js',
+    './city/shenyang/shared/facilities.css',
+    './city/shenyang/shared/exit-vertical.js',
+    './city/shenyang/shared/exits.js',
+    './city/shenyang/shared/exits.css',
     './city/shenyang/shared/opening-schedule.js',
     './city/shenyang/shared/opening-schedule.css',
     // 行程规划（三城共用）：线路接续声明解析 / 数据构建器 / 规划内核 / 面板
@@ -161,81 +172,13 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/assets/transfer-badge.svg',
     './city/shenyang/assets/tram-5.svg',
 
-    // 1号线站名题字（书法家题写）
-    './city/shenyang/assets/calligraphy/qihaojie.png',
-    './city/shenyang/assets/calligraphy/sihaojie.png',
-    './city/shenyang/assets/calligraphy/shenyangzhan.png',
-    './city/shenyang/assets/calligraphy/taiyuanjie.png',
-    './city/shenyang/assets/calligraphy/nanshichang.png',
-    './city/shenyang/assets/calligraphy/qingniandajie.png',
-    './city/shenyang/assets/calligraphy/huaiyuanmen.png',
-    './city/shenyang/assets/calligraphy/yunfengbeijie.png',
-    './city/shenyang/assets/calligraphy/zhongjie.png',
-    './city/shenyang/assets/calligraphy/dongzhongjie.png',
-    './city/shenyang/assets/calligraphy/pangjiangjie.png',
-    './city/shenyang/assets/calligraphy/limingguangchang.png',
-    './city/shenyang/assets/calligraphy/shisanhaojie.png',
-    './city/shenyang/assets/calligraphy/zhongyangdajie.png',
-    './city/shenyang/assets/calligraphy/zhangshi.png',
-    './city/shenyang/assets/calligraphy/kaifadadao.png',
-    './city/shenyang/assets/calligraphy/yuhongguangchang.png',
-    './city/shenyang/assets/calligraphy/yingbinlu.png',
-    './city/shenyang/assets/calligraphy/zhonggongjie.png',
-    './city/shenyang/assets/calligraphy/qigongjie.png',
-    './city/shenyang/assets/calligraphy/baogongjie.png',
-    './city/shenyang/assets/calligraphy/tiexiguangchang.png',
-
-    // 1号线东延段站名题字（辽宁 / 沈阳书法界名家题写）
-    './city/shenyang/assets/calligraphy/xinhuijie.png',
-    './city/shenyang/assets/calligraphy/xinningjie.png',
-    './city/shenyang/assets/calligraphy/dongdayingjie.png',
-    './city/shenyang/assets/calligraphy/nongyedaxue.png',
-    './city/shenyang/assets/calligraphy/qianling.png',
-    './city/shenyang/assets/calligraphy/donglinggongyuan.png',
-    './city/shenyang/assets/calligraphy/shuiquan.png',
-    './city/shenyang/assets/calligraphy/boguanbeidajie.png',
-    './city/shenyang/assets/calligraphy/zhiwuyuan.png',
-    './city/shenyang/assets/calligraphy/shuangma.png',
-
-    // 2号线站名题字（作家 / 诗人题写，逐站实拍采集中）
-    './city/shenyang/assets/calligraphy/aotizhongxin.png',
-    './city/shenyang/assets/calligraphy/gongyezhanlanguan.png',
-    './city/shenyang/assets/calligraphy/hangkonghangtiandaxue.png',
-    './city/shenyang/assets/calligraphy/jinrongzhongxin.png',
-    './city/shenyang/assets/calligraphy/liaoningdaxue.png',
-    './city/shenyang/assets/calligraphy/lingxi.png',
-    './city/shenyang/assets/calligraphy/qingniangongyuan.png',
-    './city/shenyang/assets/calligraphy/quanyunlu.png',
-    './city/shenyang/assets/calligraphy/renminguangchang.png',
-    './city/shenyang/assets/calligraphy/santaizi.png',
-    './city/shenyang/assets/calligraphy/shenyangbeizhan.png',
-    './city/shenyang/assets/calligraphy/shijidasha.png',
-    './city/shenyang/assets/calligraphy/shitushuguan.png',
-    './city/shenyang/assets/calligraphy/wulihe.png',
-    './city/shenyang/assets/calligraphy/yixueyuan.png',
-    './city/shenyang/assets/calligraphy/zhongyiyaodaxue.png',
-    './city/shenyang/assets/calligraphy/xinleyizhi.png',
-    './city/shenyang/assets/calligraphy/beilinggongyuan.png',
-    './city/shenyang/assets/calligraphy/qishanlu.png',
-    './city/shenyang/assets/calligraphy/shifandaxue.png',
-
-    // 3号线站名题字（2026 年全线开通后安装，书法家题写；待考站题写者尚未考证）
-    './city/shenyang/assets/calligraphy/shayang.png',
-    './city/shenyang/assets/calligraphy/nanbamalu.png',
-    './city/shenyang/assets/calligraphy/jiaxingjie.png',
-    './city/shenyang/assets/calligraphy/fangxingguangchang.png',
-    './city/shenyang/assets/calligraphy/sanhaojie.png',
-    './city/shenyang/assets/calligraphy/zhongkeyuanjinshusuo.png',
-    './city/shenyang/assets/calligraphy/nanta.png',
-    './city/shenyang/assets/calligraphy/wenfulu.png',
-    './city/shenyang/assets/calligraphy/fuminjie.png',
-    './city/shenyang/assets/calligraphy/jiangdongjie.png',
-    './city/shenyang/assets/calligraphy/nanyanghujie.png',
-    './city/shenyang/assets/calligraphy/datonghujie.png',
-    './city/shenyang/assets/calligraphy/nanliguan.png',
-    './city/shenyang/assets/calligraphy/lingkong.png',
-    './city/shenyang/assets/calligraphy/fangjialan.png',
-
+    // ── 站名题字图（沈阳，67 张 / 合计约 5.7 MB）刻意「不」预缓存 ─────────────
+    // 一次访问通常只会看到 1~2 个题字站，全量预拉等于让首访白白下载几 MB。
+    // 静态资源的 fetch 策略本就是「精确命中缓存 → 未命中则网络拉取并回填」，
+    // 故把它们从本清单移出即自动变成按需缓存：看过才下载，之后离线可用；
+    // 某站没有题字图时模块会回退标准中英文标题，不影响可用性。
+    // ⚠️ 替换题字图后仍须递增 CACHE_NAME：旧缓存靠版本号整体作废，
+    //    而题字图的 URL 上没有 ?v= 可以穿透缓存。
     // 城市配置与业务数据 (合肥)
     './city/hefei/hefei.js',
     './city/hefei/modules/hefei_timetable.js',
@@ -359,6 +302,8 @@ const ASSETS_TO_CACHE = [
     './city/dalian/modules/dalian_timetable.js',
     './city/dalian/modules/dalian_transfers.js',
     './city/dalian/modules/dalian_station_title.js',
+    './city/dalian/modules/dalian_facilities.js',
+    './city/dalian/modules/dalian_exits.js',
     './city/dalian/stacard/script.js',
     './city/dalian/data_stations.js',
     './city/dalian/data_lines.js',
@@ -368,6 +313,8 @@ const ASSETS_TO_CACHE = [
     './city/dalian/data_opening.js',
     './city/dalian/data_legend.js',
     './city/dalian/data_timetable.js',
+    './city/dalian/data_facilities.js',
+    './city/dalian/data_exits.js',
     './city/dalian/amap_data.json',
     './city/dalian/assets/compass.svg',
     './city/dalian/assets/dalian_sea.svg',
@@ -379,6 +326,8 @@ const ASSETS_TO_CACHE = [
     './city/changchun/changchun.js',
     './city/changchun/modules/changchun_service_info.js',
     './city/changchun/modules/changchun_station_title.js',
+    './city/changchun/modules/changchun_facilities.js',
+    './city/changchun/modules/changchun_exits.js',
     './city/changchun/stacard/script.js',
     './city/changchun/data_stations.js',
     './city/changchun/data_lines.js',
@@ -388,6 +337,9 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_opening.js',
     './city/changchun/data_legend.js',
     './city/changchun/data_timetable.js',
+    './city/changchun/data_facilities.js',
+    './city/changchun/data_exits.js',
+    './city/changchun/staname.csv',
     './city/changchun/amap_data.json',
     './city/changchun/assets/ccgj.svg',
     './city/changchun/assets/railway.svg',
@@ -453,6 +405,7 @@ const ASSETS_TO_CACHE = [
     './city/harbin/harbin.js',
     './city/harbin/modules/harbin_map.js',
     './city/harbin/modules/harbin_station_title.js',
+    './city/harbin/modules/harbin_exits.js',
     './city/harbin/stacard/script.js',
     './city/harbin/data_stations.js',
     './city/harbin/data_lines.js',
@@ -460,6 +413,7 @@ const ASSETS_TO_CACHE = [
     './city/harbin/data_scattered.js',
     './city/harbin/data_legend.js',
     './city/harbin/data_timetable.js',
+    './city/harbin/data_exits.js',
     './city/harbin/data_notopen.js',
     './city/harbin/staname.csv',
     './city/harbin/amap_data.json',
@@ -480,21 +434,33 @@ const ASSETS_TO_CACHE = [
     './manifest.json',
 ];
 
-// 1. Service Worker 安装：预缓存核心资产（容错机制：单个非核心文件失败不阻断 SW 激活）
+/**
+ * 预缓存并发上限。
+ * 清单有 300+ 条（13 座城市的全部资源），一次全甩出去会让静态服务器（本地 `npx serve` 尤其明显）
+ * 瞬时堆积几百个文件流，部分请求被浏览器取消后句柄回收不及，直接 EMFILE 打穿服务。
+ * 故按批推进：批内并行、批间串行，整体耗时几乎不变，瞬时压力从 300+ 降到 8。
+ */
+const PRECACHE_BATCH_SIZE = 8;
+
+async function precacheAll(cache) {
+    for (let i = 0; i < ASSETS_TO_CACHE.length; i += PRECACHE_BATCH_SIZE) {
+        const batch = ASSETS_TO_CACHE.slice(i, i + PRECACHE_BATCH_SIZE);
+        // 容错口径不变：单个非核心文件失败只告警、不阻断 SW 激活
+        await Promise.allSettled(batch.map(async (url) => {
+            try {
+                await cache.add(url);
+            } catch (err) {
+                console.warn('[SW] 预缓存单项跳过:', url, err);
+            }
+        }));
+    }
+}
+
+// 1. Service Worker 安装：预缓存核心资产（分批推进，单个非核心文件失败不阻断 SW 激活）
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(async (cache) => {
-                await Promise.allSettled(
-                    ASSETS_TO_CACHE.map(async (url) => {
-                        try {
-                            await cache.add(url);
-                        } catch (err) {
-                            console.warn('[SW] 预缓存单项跳过:', url, err);
-                        }
-                    })
-                );
-            })
+            .then((cache) => precacheAll(cache))
             .then(() => self.skipWaiting())
             .catch(err => console.error('[SW] 缓存安装异常:', err))
     );

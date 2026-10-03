@@ -16,6 +16,35 @@
     margin: 0;
 }
 
+/* 「查找最近车站」的轻提示：底部浮起一条、几秒后自动淡出。
+   浮在地图之上，故用固定深色底 + 白字，不随亮暗主题翻转（同地图标记的口径）。 */
+.cgo-near-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 30px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: min(86vw, 420px);
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: rgba(24, 24, 27, 0.9);
+    color: #ffffff;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.cgo-near-toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
 /* 连全局最近的城市都还在覆盖半径之外：当前位置本就没有收录的线路图 */
 .cgo-near-alert {
     display: flex;

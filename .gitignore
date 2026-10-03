@@ -6,3 +6,8 @@ docs/preview/
 
 # PR 文案草稿：仅用于复制到 GitHub PR 页面，不纳入版本库（保留在本地）
 PR_DESCRIPTION.md
+
+# 车站设施 / 出入口的抓取与生成脚本：开发期离线工具（Node、零依赖），不进运行时、也不在 sw.js 缓存里，
+# 故不纳入版本库（保留在本地）。各城 data_facilities.js / data_exits.js 由它们生成后入库，
+# 取数口径、人工维护区与重跑说明见 docs/STATION_FACILITIES_RESEARCH.md。
+drunk/tools/facilities/

@@ -115,9 +115,15 @@
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
         },
         stationBoard: {
-            scripts: ["modules/harbin_map.js", "modules/harbin_station_title.js"],
+            scripts: ["modules/harbin_map.js", "modules/harbin_station_title.js", "modules/harbin_exits.js"],
+            // 出入口独立页签（自定义 tab），渲染在「车站信息」之前
+            tabs: [
+                { id: "harbin-exits", title: "出入口", icon: "gate" }
+            ],
             modules: {
-                "stacard": { enabled: true, order: 10, targetTab: "line-tab" }
+                "stacard": { enabled: true, order: 10, targetTab: "line-tab" },
+                // 出入口页签（自定义 tab，见上方 tabs）
+                "harbin-exits": { enabled: true, targetTab: "harbin-exits", order: 10 }
             }
         }
     };
@@ -156,7 +162,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261001.1719";
+        const version = "261004.0054";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -173,6 +179,9 @@
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
+        // 城市私有数据与车站出入口（须早于依赖它的模块加载）
+        document.write(`<script src="./city/harbin/data_exits.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
         (HarbinCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/harbin/${scriptPath}?v=${version}"><\/script>`);
         });
