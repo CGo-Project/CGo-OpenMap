@@ -266,7 +266,27 @@
         if (!points) throw new Error("站点坐标数据加载失败");
         const local = nearestOfActiveCity(points, fix.lat, fix.lng);
         if (!local) throw new Error("无法定位最近车站（数据匹配失败）");
+        // 顺带算该站离你最近的出入口（出口坐标由高德补齐，见各城 data_exits.js 的 pos）
+        local.exit = nearestExitOf(city.id, local.name, fix.lat, fix.lng);
         return local;
+    }
+
+    /**
+     * 该站离定位点最近的出入口；该城没有出入口坐标数据时返回 null。
+     * 出口数据由出入口共享层持有（`CGoExits.exitsByStation`），这里只负责算距离——
+     * 定位点是 WGS-84，出口坐标是 GCJ-02，比较前先换算。
+     */
+    function nearestExitOf(cityId, stationName, lat, lng) {
+        const exits = window.CGoExits?.exitsByStation?.(cityId, stationName) || [];
+        const [glng, glat] = wgs2gcj(lng, lat);
+        let best = null;
+        for (const exit of exits) {
+            const [elon, elat] = String(exit.pos || "").split(",").map(Number);
+            if (!elon) continue;
+            const meters = Math.round(distance(glat, glng, elat, elon));
+            if (!best || meters < best.distance) best = { name: exit.name, distance: meters };
+        }
+        return best;
     }
 
     /* ======================================================================
@@ -279,6 +299,25 @@
 
     function formatDistance(m) {
         return m < 1000 ? `${m} 米` : `${(m / 1000).toFixed(1)} 公里`;
+    }
+
+    /**
+     * 轻提示：底部浮起一条、几秒后自动淡出。
+     * 用在「最近车站就在身边」这条路径上——那里会直接跳站，没有弹窗可放信息，
+     * 但用户恰恰最需要知道「从哪个口进」。
+     */
+    function toast(html, ms = 6000) {
+        let el = document.getElementById("cgo-near-toast");
+        if (!el) {
+            el = document.createElement("div");
+            el.id = "cgo-near-toast";
+            el.className = "cgo-near-toast";
+            document.body.appendChild(el);
+        }
+        el.innerHTML = html;
+        el.classList.add("show");
+        clearTimeout(el._hideTimer);
+        el._hideTimer = setTimeout(() => el.classList.remove("show"), ms);
     }
 
     function modalEl() {
@@ -315,6 +354,10 @@
         } else {
             blocks.push(`<p class="cgo-near-lead">${cityName}最近的车站是<b>${local.name}</b>，约
                    <b>${formatDistance(local.distance)}</b>，离您较远。</p>`);
+        }
+        // 有出入口坐标时，顺手告诉用户该从哪个口进
+        if (local.exit) {
+            blocks.push(`<p class="cgo-near-sub">建议走 <b>${local.exit.name} 口</b>，距您约 ${formatDistance(local.exit.distance)}。</p>`);
         }
 
         modal.title = "查找最近车站";
@@ -422,6 +465,7 @@
             if (!points) { alert("站点坐标数据加载失败，无法查找最近车站。"); return; }
             const local = nearestOfActiveCity(points, fix.lat, fix.lng);
             if (!local) { alert("无法定位最近车站（数据匹配失败）"); return; }
+            local.exit = nearestExitOf(city.id, local.name, fix.lat, fix.lng);
 
             const overall = local.distance > FAR_THRESHOLD
                 ? await nearestCityOverall(city, fix.lat, fix.lng, local)
@@ -429,13 +473,17 @@
             const better = overall && overall.city.id !== city.id ? overall : null;
             emit("cgo:nearest-resolved", {
                 lat: fix.lat, lng: fix.lng, cityId: city.id,
-                station: { sid: local.sid, name: local.name, distance: local.distance },
+                station: { sid: local.sid, name: local.name, distance: local.distance, exit: local.exit },
                 better: better ? { cityId: better.city.id, station: better.station } : null,
                 uncovered: Boolean(overall && overall.station.distance > COVERAGE_THRESHOLD)
             });
 
             if (local.distance <= FAR_THRESHOLD) {
                 window.selectStation?.(local.sid);   // 在本市范围内，行为与核心完全一致
+                // 车站就在身边时，用户最需要的是「从哪个口进」——用轻提示补上，不打断跳站
+                if (local.exit) {
+                    toast(`<cgo-icon name="location" size="13"></cgo-icon> ${local.name} 最近的是 <b>${local.exit.name} 口</b>，约 ${formatDistance(local.exit.distance)}`);
+                }
                 return;
             }
             openChooser({ city, local, overall });

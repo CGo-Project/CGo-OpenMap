@@ -145,7 +145,13 @@
                 "modules/dalian_sea.js",
                 "modules/dalian_timetable.js",
                 "modules/dalian_transfers.js",
-                "modules/dalian_station_title.js"
+                "modules/dalian_station_title.js",
+                "modules/dalian_facilities.js",
+                "modules/dalian_exits.js"
+            ],
+            // 自定义页签：渲染在「车站信息」之前，紧挨着它
+            tabs: [
+                { id: "dalian-exits", title: "出入口", icon: "gate" }
             ],
             modules: {
                 "header-controls": { enabled: true, order: 10 },
@@ -156,11 +162,40 @@
                 "adjacent-stations": { enabled: true, targetTab: "line-tab", order: 20 },
                 "transfers": { enabled: true, targetTab: "line-tab", order: 30 },
                 "station-type": { enabled: true, targetTab: "station-info", order: 10 },
+                // 官网设施位置（卫生间 / 充值机 / 无障碍电梯）：配置驱动，与沈阳同用共享层
+                "dalian-facilities": { enabled: true, targetTab: "station-info", order: 6 },
+                // 出入口页签（自定义 tab，见上方 tabs）
+                "dalian-exits": { enabled: true, targetTab: "dalian-exits", order: 10 },
                 "operators": { enabled: true, targetTab: "station-info", order: 20 },
                 "footer-actions": { enabled: true, order: 10 }
             }
         }
     };
+
+    /**
+     * 「位置在出入口的扶梯 / 电梯」搬迁规则（共享层 exit-vertical.js 读取）
+     *
+     * 大连官网的电梯位置里，「站外:A1口」「站外电梯：A口旁1台，站厅与站台中间位置1台」这类
+     * 以「站外」开头的条目已从车站设施板块搬到出入口页签的对应出口下；
+     * 「站内:付费区-站厅与站台中间位置」「站内:非付费区-靠近A口进站闸机位置」
+     * 这类站内条目留在设施板块（后者虽然提到出口编号，但指的是闸机、不是出口本身）。
+     * 混合描述（同一条里既有站外又有站内）整条搬走并保留原文，信息不丢。
+     * types 的展示名与图标须与 modules/dalian_facilities.js 的 types 保持一致。
+     */
+    window.CGO_EXIT_VERTICAL = {
+        types: {
+            elevator: { name: "无障碍电梯", icon: "elevator" }
+        },
+        patterns: [/^站外/]
+    };
+
+    /**
+     * 出入口清单的筛选模式（共享层 exits.js 读取）
+     * 官网大连只提供无障碍电梯，没有扶梯数据，故只有「无障碍」一种模式。
+     */
+    window.CGO_EXIT_FILTERS = [
+        { id: "accessible", name: "无障碍", icon: "vi-stn", types: ["elevator"] }
+    ];
 
     /**
      * 行程规划的城市侧配置
@@ -256,7 +291,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261003.0929";
+        const version = "261004.0028";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
@@ -279,6 +314,14 @@
         document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
         // 地图小工具（票价图 / 等时圈）：入口在「查找最近车站」按钮下方
         document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
+        // 城市私有数据（须早于依赖它的模块加载）
+        document.write(`<script src="./city/dalian/data_facilities.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/dalian/data_exits.js?v=${version}"><\/script>`);
+        // 车站设施 / 出入口（配置驱动，共享层位于沈阳目录下）
+        // 出入口垂直交通：把「站外 X口」这类电梯从设施板块搬到出口页签（须早于下面两者）
+        document.write(`<script src="./city/shenyang/shared/exit-vertical.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
         (DalianCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/dalian/${scriptPath}?v=${version}"><\/script>`);
         });

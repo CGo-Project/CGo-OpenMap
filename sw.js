@@ -20,7 +20,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261003.0929';
+const CACHE_NAME = 'cgo-openmap-v261004.0028';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -115,10 +115,13 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/modules/shenyang_cultural.js',
     './city/shenyang/modules/shenyang_service_info.js',
     './city/shenyang/modules/shenyang_calligraphy.js',
-    './city/shenyang/modules/shenyang_level_map.js',
+    './city/shenyang/modules/shenyang_facilities.js',
+    './city/shenyang/modules/shenyang_exits.js',
     './city/shenyang/stacard/script.js',
     './city/shenyang/stacard/data.js',
     './city/shenyang/data_calligraphy.js',
+    './city/shenyang/data_facilities.js',
+    './city/shenyang/data_exits.js',
     './city/shenyang/data_stations.js',
     './city/shenyang/data_lines.js',
     './city/shenyang/data_virtual_transfers.js',
@@ -136,6 +139,11 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/label-active.js',
     './city/shenyang/shared/calligraphy.js',
     './city/shenyang/shared/calligraphy.css',
+    './city/shenyang/shared/facilities.js',
+    './city/shenyang/shared/facilities.css',
+    './city/shenyang/shared/exit-vertical.js',
+    './city/shenyang/shared/exits.js',
+    './city/shenyang/shared/exits.css',
     './city/shenyang/shared/opening-schedule.js',
     './city/shenyang/shared/opening-schedule.css',
     // 行程规划（三城共用）：线路接续声明解析 / 数据构建器 / 规划内核 / 面板
@@ -294,6 +302,8 @@ const ASSETS_TO_CACHE = [
     './city/dalian/modules/dalian_timetable.js',
     './city/dalian/modules/dalian_transfers.js',
     './city/dalian/modules/dalian_station_title.js',
+    './city/dalian/modules/dalian_facilities.js',
+    './city/dalian/modules/dalian_exits.js',
     './city/dalian/stacard/script.js',
     './city/dalian/data_stations.js',
     './city/dalian/data_lines.js',
@@ -303,6 +313,8 @@ const ASSETS_TO_CACHE = [
     './city/dalian/data_opening.js',
     './city/dalian/data_legend.js',
     './city/dalian/data_timetable.js',
+    './city/dalian/data_facilities.js',
+    './city/dalian/data_exits.js',
     './city/dalian/amap_data.json',
     './city/dalian/assets/compass.svg',
     './city/dalian/assets/dalian_sea.svg',
@@ -314,6 +326,8 @@ const ASSETS_TO_CACHE = [
     './city/changchun/changchun.js',
     './city/changchun/modules/changchun_service_info.js',
     './city/changchun/modules/changchun_station_title.js',
+    './city/changchun/modules/changchun_facilities.js',
+    './city/changchun/modules/changchun_exits.js',
     './city/changchun/stacard/script.js',
     './city/changchun/data_stations.js',
     './city/changchun/data_lines.js',
@@ -323,6 +337,9 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_opening.js',
     './city/changchun/data_legend.js',
     './city/changchun/data_timetable.js',
+    './city/changchun/data_facilities.js',
+    './city/changchun/data_exits.js',
+    './city/changchun/staname.csv',
     './city/changchun/amap_data.json',
     './city/changchun/assets/ccgj.svg',
     './city/changchun/assets/railway.svg',
@@ -388,6 +405,7 @@ const ASSETS_TO_CACHE = [
     './city/harbin/harbin.js',
     './city/harbin/modules/harbin_map.js',
     './city/harbin/modules/harbin_station_title.js',
+    './city/harbin/modules/harbin_exits.js',
     './city/harbin/stacard/script.js',
     './city/harbin/data_stations.js',
     './city/harbin/data_lines.js',
@@ -395,6 +413,7 @@ const ASSETS_TO_CACHE = [
     './city/harbin/data_scattered.js',
     './city/harbin/data_legend.js',
     './city/harbin/data_timetable.js',
+    './city/harbin/data_exits.js',
     './city/harbin/data_notopen.js',
     './city/harbin/staname.csv',
     './city/harbin/amap_data.json',
@@ -415,21 +434,33 @@ const ASSETS_TO_CACHE = [
     './manifest.json',
 ];
 
-// 1. Service Worker 安装：预缓存核心资产（容错机制：单个非核心文件失败不阻断 SW 激活）
+/**
+ * 预缓存并发上限。
+ * 清单有 300+ 条（13 座城市的全部资源），一次全甩出去会让静态服务器（本地 `npx serve` 尤其明显）
+ * 瞬时堆积几百个文件流，部分请求被浏览器取消后句柄回收不及，直接 EMFILE 打穿服务。
+ * 故按批推进：批内并行、批间串行，整体耗时几乎不变，瞬时压力从 300+ 降到 8。
+ */
+const PRECACHE_BATCH_SIZE = 8;
+
+async function precacheAll(cache) {
+    for (let i = 0; i < ASSETS_TO_CACHE.length; i += PRECACHE_BATCH_SIZE) {
+        const batch = ASSETS_TO_CACHE.slice(i, i + PRECACHE_BATCH_SIZE);
+        // 容错口径不变：单个非核心文件失败只告警、不阻断 SW 激活
+        await Promise.allSettled(batch.map(async (url) => {
+            try {
+                await cache.add(url);
+            } catch (err) {
+                console.warn('[SW] 预缓存单项跳过:', url, err);
+            }
+        }));
+    }
+}
+
+// 1. Service Worker 安装：预缓存核心资产（分批推进，单个非核心文件失败不阻断 SW 激活）
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(async (cache) => {
-                await Promise.allSettled(
-                    ASSETS_TO_CACHE.map(async (url) => {
-                        try {
-                            await cache.add(url);
-                        } catch (err) {
-                            console.warn('[SW] 预缓存单项跳过:', url, err);
-                        }
-                    })
-                );
-            })
+            .then((cache) => precacheAll(cache))
             .then(() => self.skipWaiting())
             .catch(err => console.error('[SW] 缓存安装异常:', err))
     );

@@ -94,7 +94,8 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {
-            amapDataUrl: "./city/changchun/amap_data.json"
+            amapDataUrl: "./city/changchun/amap_data.json",
+            stanameCsvUrl: "./city/changchun/staname.csv"
         },
         /**
          * 城市级站点图元接管（core/ 保持城市无关，长春专属画法只放本目录）：
@@ -177,13 +178,36 @@
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
         },
         stationBoard: {
-            scripts: ["modules/changchun_service_info.js", "modules/changchun_station_title.js"],
+            scripts: [
+                "modules/changchun_service_info.js",
+                "modules/changchun_station_title.js",
+                "modules/changchun_facilities.js",
+                "modules/changchun_exits.js"
+            ],
+            // 出入口独立页签（自定义 tab），渲染在「车站信息」之前
+            tabs: [
+                { id: "changchun-exits", title: "出入口", icon: "gate" }
+            ],
             modules: {
                 "stacard": { enabled: true, order: 10, targetTab: "line-tab" },
-                "changchun-timetable": { enabled: true, order: 15, targetTab: "line-tab" }
+                "changchun-timetable": { enabled: true, order: 15, targetTab: "line-tab" },
+                // 官方公众号表格里的设施位置（卫生间 / 母婴室 / 无障碍电梯 / 升降平台 /
+                // 售卖机 / 充电宝 / AED / 自助照相机）：配置驱动，与沈阳、大连同用共享层
+                "changchun-facilities": { enabled: true, targetTab: "station-info", order: 6 },
+                // 出入口页签（自定义 tab，见上方 tabs）
+                "changchun-exits": { enabled: true, targetTab: "changchun-exits", order: 10 }
             }
         }
     };
+
+    /**
+     * 出入口清单的筛选模式（共享层 exits.js 读取）
+     * 长春官方表格里的无障碍设施有「无障碍电梯」与「升降平台」两类，故无障碍模式取两者。
+     * 官方未提供扶梯数据，故没有「携带行李」模式。
+     */
+    window.CGO_EXIT_FILTERS = [
+        { id: "accessible", name: "无障碍", icon: "vi-stn", types: ["elevator", "a11yplatform"] }
+    ];
 
     /**
      * 行程规划的城市侧配置
@@ -251,7 +275,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261003.0929";
+        const version = "261004.0028";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
@@ -272,6 +296,13 @@
         document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
         // 地图小工具（票价图 / 等时圈）：入口在「查找最近车站」按钮下方
         document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
+        // 城市私有数据与车站设施（须早于依赖它的模块加载）
+        document.write(`<script src="./city/changchun/data_facilities.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/changchun/data_exits.js?v=${version}"><\/script>`);
+        // 车站设施（配置驱动，共享层位于沈阳目录下）
+        document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
+        // 车站出入口独立页签：配置驱动，与沈阳、大连同用共享层
+        document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
         (ChangchunCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/changchun/${scriptPath}?v=${version}"><\/script>`);
         });

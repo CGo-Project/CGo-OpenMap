@@ -37,6 +37,18 @@ function getTileUrl(x, y, z) {
     return `https://webrd0${server}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x=${x}&y=${y}&z=${z}`;
 }
 
+/**
+ * 把瓦片地址与投影函数挂到全局，供 **classic script** 复用同一份实现。
+ *
+ * 为什么需要它：本引擎是 ES module，而出入口页签（`exits.js`）是 classic script，两边
+ * 无法互相 import。出入口页签要在车站详情里画一张「各线站厅 + 全部出入口」的小地图，
+ * 与其让那边复刻一份投影与瓦片模板（本文件开头刚收敛过三份重复实现），不如在这里显式导出。
+ * 使用方须在**渲染时**读取（本模块是 defer 加载，早于它的执行时机取不到）。
+ */
+if (typeof window !== "undefined") {
+    window.CGoMapTiles = { TILE_SIZE, getTileUrl, lngLatToPoint };
+}
+
 /** Web Mercator 经纬度 → 像素坐标 */
 function lngLatToPoint(lng, lat, zoom) {
     const scale = TILE_SIZE * Math.pow(2, zoom);
