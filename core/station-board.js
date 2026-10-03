@@ -322,13 +322,6 @@
             tabsConfig.forEach(cTab => {
                 const tabId = cTab.id;
                 const tabTitle = cTab.title || tabId;
-                const isActive = currentTabIdx === initialTabIndex ? 'active' : '';
-
-                tabsNavInnerHtml += `
-                    <div class="tab-item ${isActive}" data-tab-index="${currentTabIdx}" data-custom-tab="${tabId}">
-                        ${tabTitle}
-                    </div>
-                `;
 
                 const customTabModules = this.getActiveModulesForSlot(cityConfig, tabId);
                 let customPaneHtml = '';
@@ -339,19 +332,35 @@
                     tabIndex: currentTabIdx
                 };
 
+                const pendingMounts = [];
                 customTabModules.forEach(mod => {
                     if (mod.shouldRender(customContext)) {
                         const html = mod.render(customContext);
                         if (html) customPaneHtml += html;
-                        if (mod.onMounted) mountedTasks.push({ mod, context: customContext, paneIndex: currentTabIdx });
+                        if (mod.onMounted) pendingMounts.push({ mod, context: customContext, paneIndex: currentTabIdx });
                     }
                 });
+
+                // 该页签下没有任何模块产出内容时，页签按钮与面板都不输出 —— 免得点开是一张
+                // 空白页（某站没有出入口数据时的「出入口」页签即此情形）。跳过时 currentTabIdx
+                // 不递增，故后续页签的索引与其面板依旧一一对应
+                if (!customPaneHtml) return;
+
+                const isActive = currentTabIdx === initialTabIndex ? 'active' : '';
+
+                tabsNavInnerHtml += `
+                    <div class="tab-item ${isActive}" data-tab-index="${currentTabIdx}" data-custom-tab="${tabId}">
+                        ${tabTitle}
+                    </div>
+                `;
 
                 tabsPanesInnerHtml += `
                     <div class="tab-pane ${isActive}" data-tab-index="${currentTabIdx}" data-custom-tab="${tabId}">
                         ${customPaneHtml}
                     </div>
                 `;
+
+                pendingMounts.forEach(task => mountedTasks.push(task));
                 currentTabIdx++;
             });
 
