@@ -409,16 +409,47 @@
             return collect(facilities);
         };
 
+        /**
+         * 该车站是否有出入口：页签调度与内容模块共用同一条判据。
+         * 只被点线（国铁 / 轻铁 / 在建线）引用的车站没有出入口概念 —— 同名地铁站的
+         * 出口被误写到国铁站点 ID 上时，这道守卫会拦住它。
+         */
+        const hasExitsFor = (station) => onRidableLine(station) && getExits(station?.id).length > 0;
+
+        /**
+         * 出入口页签按需注入 —— 页签的「有没有」由共享层说了算，core 无需改动。
+         *
+         * 页签本身由 core 依据城市 `stationBoard.tabs` 的**静态**声明渲染，于是没有
+         * 出入口数据的车站（国铁散站、本城未收录出口的站）也会留下一张点开即空白的
+         * 页签。core 的渲染顺序恰好给了共享层一个介入点：它先渲染 `header` 槽的模块、
+         * 再遍历自定义页签，而 `resolveCityConfig` 取到的正是 `city.stationBoard.tabs`
+         * 这个**数组本身**（不是拷贝）—— 故在 header 阶段原地增删那一项，就能决定该
+         * 页签出不出现，紧随其后的页签遍历会立刻读到新状态。
+         */
+        window.StationBoard.registerModule({
+            id: `${moduleId}-tab`,
+            name: `${config.name || idPrefix}出入口页签`,
+            targetTab: "header",
+            order: 1,
+            render({ station, city }) {
+                const tabs = city?.stationBoard?.tabs;
+                if (!Array.isArray(tabs)) return "";
+                const index = tabs.findIndex((tab) => tab && tab.id === moduleId);
+                if (hasExitsFor(station)) {
+                    if (index === -1) tabs.push({ id: moduleId, title: config.tabTitle || "出入口", icon: config.tabIcon || "gate" });
+                } else if (index !== -1) {
+                    tabs.splice(index, 1);
+                }
+                return "";
+            }
+        });
+
         window.StationBoard.registerModule({
             id: moduleId,
             name: config.name || `${idPrefix}出入口`,
             targetTab: `${idPrefix}-exits`,
             order: typeof config.order === "number" ? config.order : 10,
-            shouldRender({ station }) {
-                // 只被点线（国铁 / 轻铁 / 在建线）引用的车站没有出入口概念，
-                // 同名地铁站的出口被误写到国铁站点 ID 上时由这道守卫拦住
-                return onRidableLine(station) && getExits(station?.id).length > 0;
-            },
+            shouldRender: ({ station }) => hasExitsFor(station),
             render({ station }) {
                 const exits = getExits(station?.id);
                 if (!exits.length) return "";
