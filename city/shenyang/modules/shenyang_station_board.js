@@ -473,6 +473,22 @@
             },
             render() {
                 return `<img class="shenyang-station-header-decoration" src="${escapeAttribute(FANGCHENG_DECORATION.src)}" title="${escapeAttribute(FANGCHENG_DECORATION.title)}" alt="" aria-hidden="true" draggable="false">`;
+            },
+            /**
+             * 方城标识是纯装饰图，加载失败即整块移除，避免在站名左侧留下 32×32 的破图占位
+             * （与「车站层级图」失败即移除同口径）。面板每次按站重建，下次打开会重新请求，
+             * SW 未命中时亦会回源并回填缓存，故失败只是当次不显示。
+             */
+            onMounted(container) {
+                container.querySelectorAll(".shenyang-station-header-decoration").forEach((img) => {
+                    const drop = () => img.remove();
+                    // 命中缓存时 complete 已为真，error 不会再触发，须当场判定
+                    if (img.complete) {
+                        if (img.naturalWidth === 0) drop();
+                        return;
+                    }
+                    img.addEventListener("error", drop, { once: true });
+                });
             }
         });
     }
