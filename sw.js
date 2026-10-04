@@ -20,7 +20,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261004.0054';
+const CACHE_NAME = 'cgo-openmap-v261004.1750';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -419,6 +419,28 @@ const ASSETS_TO_CACHE = [
     './city/harbin/amap_data.json',
     './city/harbin/assets/songhuajiang.svg',
 
+    // 城市配置与业务数据 (呼和浩特)
+    './city/hohhot/hohhot.js',
+    './city/hohhot/style.css',
+    './city/hohhot/modules/hohhot_mongolian.js',
+    './city/hohhot/modules/hohhot_station_board.js',
+    './city/hohhot/modules/hohhot_timetable.js',
+    './city/hohhot/modules/hohhot_facilities.js',
+    './city/hohhot/stacard/script.js',
+    './city/hohhot/data_stations.js',
+    './city/hohhot/data_lines.js',
+    './city/hohhot/data_virtual_transfers.js',
+    './city/hohhot/data_scattered.js',
+    './city/hohhot/data_legend.js',
+    './city/hohhot/data_timetable.js',
+    './city/hohhot/data_notopen.js',
+    './city/hohhot/data_facilities.js',
+    './city/hohhot/staname.csv',
+    './city/hohhot/amap_data.json',
+    // 呼和浩特线路徽标（微圆角方标 + 中文/蒙文/英文三行）
+    './city/hohhot/assets/line-1.svg',
+    './city/hohhot/assets/line-2.svg',
+
     // 福州线路徽标
     './assets/svg/icon@fz_BE.svg',
 
@@ -436,11 +458,21 @@ const ASSETS_TO_CACHE = [
 
 /**
  * 预缓存并发上限。
- * 清单有 300+ 条（13 座城市的全部资源），一次全甩出去会让静态服务器（本地 `npx serve` 尤其明显）
- * 瞬时堆积几百个文件流，部分请求被浏览器取消后句柄回收不及，直接 EMFILE 打穿服务。
- * 故按批推进：批内并行、批间串行，整体耗时几乎不变，瞬时压力从 300+ 降到 8。
+ * 清单有 400+ 条（13 座城市的全部资源），一次全甩出去会让静态服务器（本地 `npx serve` 尤其明显）
+ * 瞬时堆积几百个文件流，部分请求被浏览器取消后句柄回收不及，直接 EMFILE 打穿服务
+ * （2026-10-04 实测：服务端 `Error: EMFILE ... open 'city/hohhot/data_stations.js'` 崩退出，
+ *  预缓存随之中断，已 bump 的新资源整批取不到，控制台只留 net::ERR_FAILED）。
+ * 故按批推进：批内并行、批间串行并留间隔，瞬时压力从 400+ 降到 4。
  */
-const PRECACHE_BATCH_SIZE = 8;
+const PRECACHE_BATCH_SIZE = 4;
+/**
+ * 批间隔（ms）：让静态服务来得及回收上一批的文件句柄。
+ * 400+ 条清单按 4 条一批推进约需 100 批，即使每批等 60ms 也只多花 6 秒左右，
+ * 而预缓存在后台进行、不阻塞页面，这点代价换的是本地服务不再被打崩。
+ */
+const PRECACHE_BATCH_GAP_MS = 60;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function precacheAll(cache) {
     for (let i = 0; i < ASSETS_TO_CACHE.length; i += PRECACHE_BATCH_SIZE) {
@@ -453,6 +485,7 @@ async function precacheAll(cache) {
                 console.warn('[SW] 预缓存单项跳过:', url, err);
             }
         }));
+        await sleep(PRECACHE_BATCH_GAP_MS);
     }
 }
 
@@ -532,6 +565,12 @@ self.addEventListener('fetch', (event) => {
             // 离线环境：模糊匹配回退
             const fuzzyMatch = await cache.match(event.request, { ignoreSearch: true });
             if (fuzzyMatch) return fuzzyMatch;
+            // 缓存与网络都没有：把错误抛出去（等价于不拦截），**不要**落到隐式 `return undefined`
+            // —— 那样 respondWith 会收到 undefined，浏览器统一报 net::ERR_FAILED，
+            // 控制台只留一条「取不到文件」的错，看不出是 SW 兜底兜空了。
+            // 2026-10-04 本地实测：静态服务被 EMFILE 打崩时 line-1.svg 与 amap_data.json
+            // 正是走的这条路径，徽标与坐标索引因此双双失效。
+            throw err;
         }
     })());
 });

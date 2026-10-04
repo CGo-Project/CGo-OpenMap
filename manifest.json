@@ -178,6 +178,19 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "呼和浩特轨道交通",
+      "short_name": "呼和浩特",
+      "description": "查看呼和浩特地铁 1、2 号线线网图",
+      "url": "./main.html?city=hohhot",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
