@@ -640,7 +640,6 @@
                 walkMinutes: config.walkMinutes,
                 xferMinutes: config.xferMinutes,
                 transferAt: config.transferAt,
-                disabledObjectives: config.disabledObjectives,
                 fare: config.fare
             }),
             timeout

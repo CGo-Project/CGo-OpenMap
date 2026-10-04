@@ -593,31 +593,65 @@ section("⑧ 文旅景点与水域层枢纽徽标");
             + unclaimed.map((a) => `${a.name}→${boundStations(a).map((s) => stationsData[s.id].cn).join("/")}`).join("；") + "\n");
     }
 
-    // 水域层的枢纽徽标
+    // 水域层：底图 + 枢纽徽标（国铁车站 / 机场）
     const scattered = sandbox.SCATTERED_DATA || [];
     const sea = scattered.filter((i) => i.id.includes("sea"));
     const badges = scattered.filter((i) => i.id.startsWith("fuzhou-railway") || i.id === "fuzhou-airport");
     check("水域底图已配置", sea.length === 1, `实际 ${sea.length} 条`);
     check("火车站与机场徽标已配置", badges.length === 3, `实际 ${badges.length} 条`);
-    const badBadge = badges.filter((i) => !fs.existsSync(path.join(ROOT, i.file.replace(/^\.\//, ""))));
-    check("徽标素材文件都存在", badBadge.length === 0,
-        badBadge.map((i) => i.file).join("、"));
+    // 水域层里每个条目都应有素材文件
+    const noFile = scattered.filter((i) => !fs.existsSync(path.join(ROOT, String(i.file || "").replace(/^\.\//, ""))));
+    check("水域层条目的素材文件都存在", noFile.length === 0,
+        noFile.map((i) => `${i.id}=${i.file}`).join("、"));
+    // 徽标必须是正方形且尺寸一致（素材为官方圆角方块图标）
+    const notSquare = badges.filter((i) => i.width !== i.height);
+    check("枢纽徽标为正方形", notSquare.length === 0,
+        notSquare.map((i) => `${i.id} ${i.width}×${i.height}`).join("、"));
+    const sizes = [...new Set(badges.map((i) => i.width))];
+    check("枢纽徽标尺寸一致", sizes.length === 1, `出现 ${sizes.join("、")} 三种尺寸`);
     // 徽标必须在水域底图之上，否则会被底图盖住
     const seaZ = sea[0]?.zIndex ?? 0;
     const below = badges.filter((i) => !(i.zIndex > seaZ));
     check("徽标层级高于水域底图", below.length === 0,
         below.map((i) => `${i.id} z=${i.zIndex} ≤ ${seaZ}`).join("、"));
-    // 徽标应贴着自己标注的那座枢纽站（不应飘到别的站上）
-    const HUB = { "fuzhou-railway-main": "M104", "fuzhou-railway-south": "M121", "fuzhou-airport": "M614" };
-    const strayed = badges.filter((i) => {
+    /**
+     * 徽标应贴着自己标注的枢纽站，且**落在站名的反侧**（不压站名与站点图元）。
+     * 站位来自 data_scattered.js 的坐标推导约定：偏移 = 边长/2 + 17 = 32px。
+     */
+    const HUB = {
+        "fuzhou-railway-main": "M104",
+        "fuzhou-railway-south": "M121",
+        "fuzhou-airport": "M614"
+    };
+    const OPPOSITE = {
+        left: "right", right: "left", top: "bottom", bottom: "top",
+        "top-left": "bottom-right", "top-right": "bottom-left",
+        "bottom-left": "top-right", "bottom-right": "top-left"
+    };
+    const DIR = {
+        right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1],
+        "top-right": [1, -1], "top-left": [-1, -1], "bottom-right": [1, 1], "bottom-left": [-1, 1]
+    };
+    const strayed = [];
+    const wrongSide = [];
+    badges.forEach((i) => {
         const hub = stationsData[HUB[i.id]];
-        if (!hub) return true;
-        return Math.hypot(i.x - hub.x, i.y - hub.y) > 80;
+        if (!hub) { strayed.push(`${i.id}（无对应车站）`); return; }
+        const dx = i.x - hub.x, dy = i.y - hub.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 80) strayed.push(`${i.id} 距 ${hub.cn} ${Math.round(dist)}px`);
+        // 方向须与该站 align 的反侧一致
+        const side = OPPOSITE[hub.align] || "right";
+        const dir = DIR[side];
+        const dot = dx * dir[0] + dy * dir[1];
+        if (dot <= 0) wrongSide.push(`${i.id} 应在 ${hub.cn} 的${side}（align=${hub.align}）`);
     });
-    check("徽标位置贴近所标注的枢纽站（≤80px）", strayed.length === 0,
-        strayed.map((i) => i.id).join("、"));
+    check("徽标位置贴近所标注的枢纽站（≤80px）", strayed.length === 0, strayed.join("、"));
+    check("徽标落在站名反侧（不压站名）", wrongSide.length === 0, wrongSide.join("、"));
     process.stdout.write("  水域层："
         + scattered.map((i) => `${i.id}(z=${i.zIndex})`).join("、") + "\n");
+    process.stdout.write("  枢纽徽标："
+        + badges.map((i) => `${stationsData[HUB[i.id]].cn} ${i.width}px`).join("、") + "\n");
 }
 
 /* ── 9. 徽标与配色 ─────────────────────────────────────────────────── */

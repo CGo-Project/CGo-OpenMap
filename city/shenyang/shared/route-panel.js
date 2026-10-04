@@ -480,7 +480,6 @@
             walkMinutes: config.walkMinutes,
             xferMinutes: config.xferMinutes,
             transferAt: config.transferAt,              // 站内换乘方式与用时（同台/节点/站厅/通道）
-            disabledObjectives: config.disabledObjectives, // 城市撤下的优先级（不摆给乘客看）
             fare: config.fare
         });
         state.planner = window.CGoRoutePlanner.create(network);
@@ -989,6 +988,18 @@
     }
 
     /**
+     * 页签文字：取该候选的第一枚标签。
+     *
+     * 兜底不可省 —— 内核已保证每条候选至少有一枚标签（会把无标签的候选滤掉），
+     * 但这条链路上曾出过「标签被摘空 → 页签显示 undefined」的真实缺陷，
+     * 故这里再挡一道：过滤掉空值，没有标签时退化显示「备选路线 N」。
+     */
+    function routeTabLabel(route, index) {
+        const labels = (route?.labels || []).filter((x) => typeof x === "string" && x.trim());
+        return labels[0] || `备选路线 ${index + 1}`;
+    }
+
+    /**
      * 候选路线的页签栏，0/1 条时不显示。
      * 既有的 <cgo-tabs> 面板内边距（36px 40px）写在 Shadow DOM 内，在 360px 宽的面板里
      * 会把内容挤到只剩 280px 且外部无法覆盖，故沿用它的视觉规范（底部 3px 主色高亮条、
@@ -1010,7 +1021,7 @@
             <div class="panel-tabs-nav">
                 ${routes.map((route, index) => `
                     <div class="tab-item${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}">
-                        ${route.labels[0]}
+                        ${routeTabLabel(route, index)}
                     </div>
                 `).join("")}
             </div>
@@ -1148,7 +1159,8 @@
                 <span>${route.distance} 公里 · ${route.stops} 站 · 换乘 ${route.transfers} 次${
                     route.fare === null ? "" : ` · ${route.fare} 元`}</span>
             </div>
-            ${route.labels.length > 1 ? `<div class="cgo-rt-labels">${route.labels.join(" · ")}</div>` : ""}
+            ${(route.labels || []).length > 1
+                ? `<div class="cgo-rt-labels">${route.labels.join(" · ")}</div>` : ""}
             <ol class="cgo-rt-steps">${renderLegs(route, tail)}</ol>
         `;
         injectSvgs(body);   // 面板其余部分仍可能有需注入的 SVG 占位（结果区本身已改用文字线路名）
@@ -1178,7 +1190,7 @@
     function syncResultSectionHeader(panel, route, head, tail) {
         const title = panel.querySelector(".section-title-text");
         if (title) {
-            // 括号里用当前选中页签的标签（时间最快 / 距离最短 / 票价最低），与页签栏文案保持一致；
+            // 括号里用当前选中页签的标签（时间最快 / 最少换乘 / 票价最低），与页签栏文案保持一致；
             // 只有一条路线时页签栏不显示，但标签本身依然有值
             const tag = route.labels?.[0] || "";
             title.textContent = `${stationName(head)}→${stationName(tail)}${tag ? `（${tag}）` : ""}`;

@@ -525,9 +525,6 @@
                 walk,
                 through,
                 xferMinutes: Number(config.xferMinutes) || DEFAULTS.xferMinutes,
-                // 城市撤下不摆给乘客看的优先级（如福州去掉「距离最短」）；
-                // 内核仍可用 plan(key) 取用，只是不进多优先级候选列表
-                disabledObjectives: config.disabledObjectives || [],
                 fare: config.fare || null
             },
             stats

@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261002.4000';
+const CACHE_NAME = 'cgo-openmap-v261002.4500';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -417,7 +417,7 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/staname.csv',
     './city/fuzhou/amap_data.json',
     './city/fuzhou/assets/fuzhou_sea.svg',
-    // 水域层的枢纽徽标（国铁车站 / 机场），见 data_scattered.js
+    // 水域层的枢纽徽标（国铁车站 / 机场）：官方线路图图例的图标
     './city/fuzhou/assets/fuzhou_railway.svg',
     './city/fuzhou/assets/fuzhou_airport.svg',
 

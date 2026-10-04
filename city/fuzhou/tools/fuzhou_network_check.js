@@ -82,7 +82,6 @@ const fail = (msg) => { problems += 1; process.stdout.write(`  ✗ ${msg}\n`); }
         walkMinutes: cfg.walkMinutes,
         xferMinutes: cfg.xferMinutes,
         transferAt: cfg.transferAt,
-        disabledObjectives: cfg.disabledObjectives,
         fare: cfg.fare
     });
 
@@ -191,33 +190,98 @@ const fail = (msg) => { problems += 1; process.stdout.write(`  ✗ ${msg}\n`); }
         + `  ${noteOk ? "ok" : "✗"} 说明文案就位\n`
         + `  ${noteClassOk ? "ok" : "✗"} 说明行样式类就位\n`);
 
-    /* ⑥ 规划优先级（撤下「距离最短」） ────────────────────────────── */
+    /* ⑥ 规划优先级（全城统一：没有「距离最短」） ────────────────────── */
     process.stdout.write("\n⑥ 规划优先级\n");
-    const objCfg = cfg.disabledObjectives || [];
-    const objOk = objCfg.includes("distance");
-    if (!objOk) fail(`disabledObjectives 应含 "distance"，实际 ${JSON.stringify(objCfg)}`);
+    // 需求：所有城市都不再计算「距离最短」方案。该目标已从内核 OBJECTIVES 移除，
+    // 故候选里不可能出现该标签；这条断言防止它被重新加回来。
     const labelSeen = new Set();
     [["M101", "M516"], ["M403", "M221"], ["M104", "M615"], ["M101", "M125"]].forEach(([a, b]) => {
         (planner.planAll(a, b) || []).forEach((r) => (r.labels || []).forEach((l) => labelSeen.add(l)));
     });
     const distanceLeaked = [...labelSeen].some((l) => l.includes("距离最短"));
-    if (distanceLeaked) fail(`候选列表里仍出现「距离最短」：${[...labelSeen].join("、")}`);
-    // 内核本身仍要能按 distance 寻路 —— 票价图的票价上限依赖它（extremes()）
-    const stillPlans = Boolean(planner.plan("M101", "M125", "distance"));
-    if (!stillPlans) fail("内核的 distance 寻路被误删（extremes() 会取不到票价上限）");
+    if (distanceLeaked) fail(`候选列表里出现「距离最短」：${[...labelSeen].join("、")}`);
+    // 该目标必须真的从内核移除 —— 不能靠 `plan(A,B,"distance")` 判断：
+    // plan 对未知 key 会**回落到 OBJECTIVES.time**，照样返回结果。故直接查 OBJECTIVES。
+    const stillPlans = Object.keys(planner.OBJECTIVES || {}).includes("distance");
+    if (stillPlans) fail("内核 OBJECTIVES 仍含 distance 目标（应已整体移除）");
     const ex = planner.extremes();
     const exOk = ex && Number.isFinite(ex.minutes.max) && Number.isFinite(ex.fare.max);
     if (!exOk) fail("extremes() 取不到极值（票价图色标会锚不住）");
-    process.stdout.write(`  ${objOk ? "ok" : "✗"} 福州已撤下「距离最短」优先级\n`
-        + `  ${!distanceLeaked ? "ok" : "✗"} 候选列表不再出现该标签（出现过的标签：${[...labelSeen].join("、")}）\n`
-        + `  ${stillPlans ? "ok" : "✗"} 内核仍可按 distance 寻路（票价图上限依赖）\n`
+    process.stdout.write(`  ${!distanceLeaked ? "ok" : "✗"} 候选列表无「距离最短」标签`
+        + `（出现过的标签：${[...labelSeen].join("、")}）\n`
+        + `  ${!stillPlans ? "ok" : "✗"} 内核 OBJECTIVES 已移除 distance`
+        + `（现有：${Object.keys(planner.OBJECTIVES || {}).join("、")}）\n`
         + `  ${exOk ? "ok" : "✗"} extremes() 正常：用时 ${ex.minutes.min}~${ex.minutes.max} 分，`
         + `票价 ${ex.fare.min}~${ex.fare.max} 元\n`);
+
+    /* ⑦⑧ 候选标签：非空 + 「票价最低」归属（合并为**一轮**遍历全网站对） ──── */
+    // 合并的理由：两轮各遍历一次 10302 个站对要跑 6 万次寻路（约 50 秒），
+    // 而两者用的是同一份 planAll 结果，跑一轮核对两件事即可省一半。
+    //
+    // 守的是两个**真实出现过**的缺陷：
+    //   · 候选标签被摘空 → 页签渲染 labels[0] 显示 "undefined"；
+    //   · 「票价最低」标签挂到更贵的那条上 → 页签写着最低价、票价却不是最低。
+    // 两处都曾只抽查几个站对而漏掉（抽查的那几对恰好没触发），故必须**穷举**。
+    process.stdout.write("\n⑦⑧ 候选标签：非空 +「票价最低」归属（遍历全网站对）\n");
+    const boardableIds = Object.keys(sandbox.stationsData)
+        .filter((sid) => String(sandbox.stationsData[sid].type) !== "no");
+    let pairs = 0, routes = 0, multiGroups = 0;
+    const emptyLabel = [];
+    const weirdLabel = [];
+    const wrongFareLabel = [];
+    for (let i = 0; i < boardableIds.length; i += 1) {
+        for (let j = 0; j < boardableIds.length; j += 1) {
+            if (i === j) continue;
+            const list = planner.planAll(boardableIds[i], boardableIds[j]);
+            if (!list || !list.length) continue;
+            pairs += 1;
+            const tag = `${nameOf(boardableIds[i])}→${nameOf(boardableIds[j])}`;
+
+            // ① 每条候选至少有一枚非空字符串标签
+            list.forEach((r) => {
+                routes += 1;
+                const labels = r.labels || [];
+                if (!labels.length) emptyLabel.push(tag);
+                else if (labels.some((x) => typeof x !== "string" || !x.trim())) {
+                    weirdLabel.push(`${tag} ${JSON.stringify(labels)}`);
+                }
+            });
+
+            // ②「票价最低」只能挂在真正最便宜的那条上（单条候选无需横比）
+            if (list.length < 2) continue;
+            const fares = list.map((r) => r.fare).filter((f) => Number.isFinite(f));
+            if (!fares.length) continue;
+            multiGroups += 1;
+            const cheapest = Math.min(...fares);
+            list.forEach((r) => {
+                if (!(r.labels || []).includes("票价最低")) return;
+                if (!Number.isFinite(r.fare) || r.fare > cheapest) {
+                    wrongFareLabel.push(`${tag} 标签在 ${r.fare} 元、最便宜 ${cheapest} 元`);
+                }
+            });
+        }
+    }
+    if (emptyLabel.length) {
+        fail(`${emptyLabel.length} 条候选无标签（页签会显示 undefined），如 ${emptyLabel.slice(0, 3).join("、")}`);
+    }
+    if (weirdLabel.length) {
+        fail(`${weirdLabel.length} 条候选含空/非字符串标签：${weirdLabel.slice(0, 3).join("、")}`);
+    }
+    if (wrongFareLabel.length) {
+        fail(`${wrongFareLabel.length} 处「票价最低」标签挂错：${wrongFareLabel.slice(0, 3).join("；")}`);
+    }
+    process.stdout.write(
+        `  ${emptyLabel.length === 0 && weirdLabel.length === 0 ? "ok" : "✗"} ${pairs} 个站对、${routes} 条候选，`
+        + `全部至少有一枚非空标签\n`
+        + `  ${wrongFareLabel.length === 0 ? "ok" : "✗"} ${multiGroups} 个多候选站对，`
+        + `「票价最低」均落在最便宜的那条上\n`);
+
 
     process.stdout.write(`\n${"─".repeat(60)}\n`);
     if (problems === 0) {
         process.stdout.write("端到端核对通过：城市配置里的换乘与步行时间均已生效\n");
         process.exit(0);
-    }    process.stdout.write(`发现 ${problems} 个问题\n`);
+    }
+    process.stdout.write(`发现 ${problems} 个问题\n`);
     process.exit(1);
 })();

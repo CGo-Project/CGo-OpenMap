@@ -229,19 +229,6 @@
          * 这些规则已由官方票价表逐对体现，故代码里不再重复实现一份。
          */
         fareSystems: {},
-        /**
-         * 撤下「距离最短」这一优先级（**仅福州**，其它城市保留）。
-         *
-         * 乘客实际更关心「少换乘」与「时间短」；最短距离在轨道交通里与观感关系不大，
-         * 而且刻意追求最短距离常常反而更耗时（直线走廊未必有直达车，多一次换乘就多几分钟）。
-         * 撤下后行程规划只给「时间最快 / 最少换乘 / 票价最低」三种候选，
-         * 面板上不再出现「距离最短」标签。
-         *
-         * 注意：这只影响**候选列表**，不影响内核本身 —— 票价图的票价上限仍要借
-         * 「距离最短」寻路（见 shared/route-planner.js 的 extremes()），故 OBJECTIVES
-         * 里那个目标保留，只是不摆给乘客。
-         */
-        disabledObjectives: ["distance"],
         fare: {
             [FUZHOU_FARE_SYSTEM](km, context = {}) {
                 const entry = String(context.entry ?? "");
@@ -343,7 +330,7 @@
      */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261002.4000";
+        const version = "261002.4500";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 

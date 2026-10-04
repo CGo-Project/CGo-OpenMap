@@ -99,17 +99,6 @@
         const lines = (network?.lines || []).filter((line) => !line.exclude && Array.isArray(line.ways));
         const lineById = new Map(lines.map((line) => [line.id, line]));
 
-        /**
-         * 城市可选择不把某些优先级摆给乘客看（network.disabledObjectives）。
-         *
-         * 只影响「多优先级候选列表」，不影响 plan(key) 本身 —— 内部仍会用得到被关掉的
-         * 那一个（如 extremes() 借「距离最短」找票价上限、票价图横比候选）。
-         * 乘客真正关心的是少换乘与时间短，刻意追求最短距离反而常常更耗时，
-         * 故城市可据此把「距离最短」从候选里撤下。
-         */
-        const disabledObjectives = new Set(network?.disabledObjectives || []);
-        const isObjectiveEnabled = (key) => !disabledObjectives.has(String(key));
-
         /** 站 → 可乘状态（线路 / 支 / 该支内下标） */
         const boardable = new Map();
         lines.forEach((line) => {
@@ -228,13 +217,17 @@
                 walk: (minutes) => minutes,
                 boardingWalk: (minutes) => minutes
             },
-            distance: {
-                label: "距离最短",
-                hop: (line, a, b) => hopKm(line, a, b),
-                xfer: () => 0.08,
-                walk: (minutes) => minutes,
-                boardingWalk: (minutes) => minutes
-            },
+            /**
+             * 注：**没有「距离最短」目标**。
+             * 乘客更关心少换乘与时间短；而且在轨道交通里最短距离与观感关系不大，
+             * 刻意追求最短距离常反而更耗时（直线走廊未必有直达车，多一次换乘就多几分钟）。
+             * 各城市的候选项统一为「时间最快 / 最少换乘 / 票价最低」三种，
+             * 不设按城市开关 —— 曾经用 disabledObjectives 让福州单独撤下，
+             * 现改为全部城市一致（需求：所有城市都不再计算距离最短方案）。
+             *
+             * 里程本身仍然保留：结果里的 distance 字段、等时圈的用时口径、
+             * 按段计价线路的结算等都要用它，只是不再作为一种**寻路目标**。
+             */
             /**
              * 「最少换乘」：换乘次数是主目标（每次换乘计 1，出站换乘同样计 1），
              * 区间用时缩到远小于 1 作为次目标，使换乘次数相同时仍倾向耗时更短的走法，
@@ -467,13 +460,18 @@
          * 蓝端代表最短的；票价图的粉端代表最高的票价、黄端代表最低的。
          *
          * 早先按几个起点抽样估算，会低估极值（色标就锚不住，换个起点整条色带跟着漂）。
-         * 这里改成：每座可上车车站各跑一次**跑满的** Dijkstra（用时一遍、里程一遍），
+         * 这里改成：每座可上车车站各跑一次**跑满的** Dijkstra（用时一遍），
          * 全起点取极值 —— 那就落在「任意起终点」的字面口径上。
-         * 用时的最近 / 最远直接从用时那遍里取；票价的最高端取「里程最远」那一对
-         * （票价按计费里程分档、随里程单调不减），票价本身走 cheapestFare（与票价图同一口径）；
+         * 用时的最近 / 最远直接从这一遍里取；票价的最高端取「**耗时最远**」那一对的
+         * 结算票价（票价按计费里程分档、随里程单调不减，最长的那趟行程即最高票价），
+         * 取值走 cheapestFare（各优先级横比取小），与票价图同一口径。
          * 最低票价就是起步价，问一次价目表即可，不必寻路。
          *
-         * 代价是每个城市约「6 × 车站数」次寻路（百余座站即近千次，几百毫秒），
+         * 曾经试过「逐站穷举真实最高票价」（横比该站到所有其它站的 cheapestFare），
+         * 实测与上述近似口径**结果完全相同**（本城均为 21 元），而耗时从数秒涨到近 30 秒，
+         * 故不值得，仍用近似。
+         *
+         * 代价是每个城市约「6 × 车站数」次寻路（百余座站即近千次，几秒），
          * 由调用方按城市缓存——同一会话里只算这一回。
          */
         function extremes() {
@@ -482,28 +480,21 @@
             let minFare = Infinity;
             let maxFare = 0;
             boardable.forEach((_, from) => {
-                // 用时：跑满一遍就够（最近 / 最远都在里面）
+                // 用时：跑满一遍就够（最近 / 最远都在里面，票价上限也借它的「最远」那一对）
                 const byTime = plan(from, null, "time", { full: true });
+                let farSid = null;
+                let farCost = -1;
                 if (byTime) {
-                    let farCost = -1;
                     let nearCost = Infinity;
                     byTime.forEach((cost, sid) => {
                         if (sid === from) return;
-                        if (cost > farCost) farCost = cost;
+                        if (cost > farCost) { farCost = cost; farSid = sid; }
                         if (cost < nearCost) nearCost = cost;
                     });
                     if (Number.isFinite(nearCost)) minMinutes = Math.min(minMinutes, nearCost);
                     if (farCost > maxMinutes) maxMinutes = farCost;
                 }
-                // 票价的最高端落在「里程最远」的那一对上 —— 票价按计费里程分档、随里程单调不减，
-                // 最长的那趟行程即最高票价。取值走 cheapestFare（各优先级横比取小），与票价图同一口径。
-                const byDistance = plan(from, null, "distance", { full: true });
-                let farSid = null;
-                let farKm = -1;
-                byDistance?.forEach((cost, sid) => {
-                    if (sid === from) return;
-                    if (cost > farKm) { farKm = cost; farSid = sid; }
-                });
+                // 票价最高端：耗时最远的那一对（同上，实测与穷举口径一致）
                 if (farSid) {
                     const fare = cheapestFare(from, farSid);
                     if (Number.isFinite(fare) && fare > maxFare) maxFare = fare;
@@ -619,32 +610,36 @@
          */
         function planAll(from, to) {
             const found = new Map();
+            const fareLabel = OBJECTIVES.fare.label;
+            const hasFareObjective = Object.keys(OBJECTIVES).includes("fare");
             Object.entries(OBJECTIVES).forEach(([key, objective]) => {
-                if (!isObjectiveEnabled(key)) return;      // 城市撤下的优先级不参与候选
                 const result = plan(from, to, key);
                 if (!result) return;
                 const signature = result.steps.map((s) => (s.t === "ride"
                     ? `R:${String(s.line).split("#")[0]}:${s.dir}`
                     : s.t === "xfer" ? `X:${s.at}` : `W:${s.a}-${s.b}`)).join(">");
                 const seen = found.get(signature);
-                if (seen) { seen.labels.push(objective.label); return; }
-                found.set(signature, { id: key, labels: [objective.label], ...result });
+                // 「票价最低」**不在这一轮挂标签**（见下方 fareWinner 段）：
+                // 它的评判标准是实际结算票价，而该目标的边权只是边际票价的近似，
+                // 找到的未必真最便宜。若在此挂上、后面再摘，就会出现
+                // 「只剩这一枚标签的候选被摘空 → 页签渲染 labels[0] 显示 undefined」。
+                const mine = key === "fare" ? [] : [objective.label];
+                if (seen) { seen.labels.push(...mine); return; }
+                found.set(signature, { id: key, labels: [...mine], ...result });
             });
             const list = [...found.values()];
-            // 「票价最低」这一枚标签要按**实际结算票价**重判，而不是看"它是不是那个目标找出来的"：
-            // 那个目标的边权只是边际票价的近似（票价按「计费系统内最短里程」分段结算，不可分解为
-            // 边权和），它找出来的那条未必真最便宜 —— 于是标签会落到一条比别的候选更贵的路线上。
-            const fareWinner = list.reduce((pick, item) => (
+            const fareWinner = hasFareObjective ? list.reduce((pick, item) => (
                 Number.isFinite(item.fare) && (!pick || item.fare < pick.fare) ? item : pick
-            ), null);
+            ), null) : null;
             if (fareWinner) {
-                const label = OBJECTIVES.fare.label;
-                list.forEach((item) => {
-                    item.labels = item.labels.filter((name) => name !== label);
-                });
-                fareWinner.labels.push(label);
+                // 只挂在**实际结算票价最低**的那条上（横比全部候选，而非看它是否由票价目标找到）
+                if (!fareWinner.labels.includes(fareLabel)) fareWinner.labels.push(fareLabel);
             }
-            return list.sort((a, b) => a.minutes - b.minutes);
+            // 丢掉遍历结束后仍无标签的候选：找到它的优先级已被移除（如「距离最短」已不再
+            // 作为寻路目标），本就不该出现在候选列表里。留着会让页签渲染 labels[0] 得到 undefined。
+            return list
+                .filter((item) => item.labels.length > 0)
+                .sort((a, b) => a.minutes - b.minutes);
         }
 
         /**
@@ -671,6 +666,9 @@
             extremes,
             cheapestFare,
             boardingFare,
+            // 供自检核对「内核到底提供哪几种优先级」—— 例如断言「距离最短」已整体移除。
+            // 注意不能用 plan(key) 判断：plan 对未知 key 会回落到 time，照样返回结果。
+            OBJECTIVES,
             linesAt: (sid) => (boardable.get(sid) || []).map((item) => item.lineId),
             stationsOfLine: (lineId) => (lineById.get(lineId)?.ways || []).flat()
         };
