@@ -479,6 +479,8 @@
             bend: config.bend,
             walkMinutes: config.walkMinutes,
             xferMinutes: config.xferMinutes,
+            transferAt: config.transferAt,              // 站内换乘方式与用时（同台/节点/站厅/通道）
+            disabledObjectives: config.disabledObjectives, // 城市撤下的优先级（不摆给乘客看）
             fare: config.fare
         });
         state.planner = window.CGoRoutePlanner.create(network);
@@ -927,6 +929,8 @@
             }
             const step = group.raw;   // 非乘车段：顺着归并前的原始步渲染
             if (step.t === "xfer") {
+                // 换乘方式由城市数据给出（同台 / 节点 / 站厅 / 通道换乘…），未配置时回落为「站内换乘」
+                const xferLabel = step.mode ? `${step.mode}` : "站内换乘";
                 legs.push(`
                     <li class="cgo-rt-leg xfer">
                         <div class="cgo-rt-leg-head">
@@ -935,7 +939,7 @@
                                 <b data-jump="${step.at}">${stationName(step.at)}</b><em>换乘</em>
                             </span>
                         </div>
-                        <div class="cgo-rt-leg-line muted"><span>站内换乘 · 约 ${Math.round(step.minutes)} 分钟</span></div>
+                        <div class="cgo-rt-leg-line muted"><span>${xferLabel} · 约 ${Math.round(step.minutes)} 分钟</span></div>
                     </li>
                 `);
                 return;
@@ -969,6 +973,18 @@
                 </div>
             </li>
         `);
+        // 换乘用时是「站台形式 + 通道长度」的静态估算，实际还受步行速度与站内人流量影响，
+        // 故有换乘时在末尾附一条说明。只出现一次 —— 挂到每一段换乘上会挤占列表。
+        if (route.steps.some((s) => s.t === "xfer" && !s.through)) {
+            legs.push(`
+                <li class="cgo-rt-leg note">
+                    <div class="cgo-rt-leg-line muted">
+                        <cgo-icon name="info" size="13"></cgo-icon>
+                        <span>换乘时间因步行速度和车站人流量不同，仅供参考</span>
+                    </div>
+                </li>
+            `);
+        }
         return legs.join("");
     }
 

@@ -99,6 +99,17 @@
         const lines = (network?.lines || []).filter((line) => !line.exclude && Array.isArray(line.ways));
         const lineById = new Map(lines.map((line) => [line.id, line]));
 
+        /**
+         * 城市可选择不把某些优先级摆给乘客看（network.disabledObjectives）。
+         *
+         * 只影响「多优先级候选列表」，不影响 plan(key) 本身 —— 内部仍会用得到被关掉的
+         * 那一个（如 extremes() 借「距离最短」找票价上限、票价图横比候选）。
+         * 乘客真正关心的是少换乘与时间短，刻意追求最短距离反而常常更耗时，
+         * 故城市可据此把「距离最短」从候选里撤下。
+         */
+        const disabledObjectives = new Set(network?.disabledObjectives || []);
+        const isObjectiveEnabled = (key) => !disabledObjectives.has(String(key));
+
         /** 站 → 可乘状态（线路 / 支 / 该支内下标） */
         const boardable = new Map();
         lines.forEach((line) => {
@@ -167,10 +178,24 @@
             return Number.isFinite(value) ? value : null;
         }
 
-        function xferMinutes(sid, fromLine, toLine) {
+        /**
+         * 站内换乘用时（分钟）。城市的线路对象可用 `xfer(sid, fromLine, toLine, fromDir, toDir)`
+         * 按「换乘站 + 线路对 + 方向」给出精确值（见 route-data.js 的 transferAt）；
+         * 返回非有限值时用全城默认值。
+         */
+        function xferMinutes(sid, fromLine, toLine, fromDir, toDir) {
             const line = lineById.get(toLine);
-            const value = typeof line?.xfer === "function" ? line.xfer(sid, fromLine, toLine) : null;
+            const value = typeof line?.xfer === "function"
+                ? line.xfer(sid, fromLine, toLine, fromDir, toDir) : null;
             return Number.isFinite(value) ? value : defaultXfer;
+        }
+
+        /** 该换乘的换乘方式文案（同台/节点/站厅/通道换乘），城市未配置时为空串 */
+        function xferModeName(sid, fromLine, toLine, fromDir, toDir) {
+            const line = lineById.get(toLine);
+            const value = typeof line?.xferMode === "function"
+                ? line.xferMode(sid, fromLine, toLine, fromDir, toDir) : null;
+            return value ? String(value) : "";
         }
 
         function hopKm(line, a, b) {
@@ -199,7 +224,7 @@
             time: {
                 label: "时间最快",
                 hop: (line, a, b) => hopMinutes(line, a, b),
-                xfer: (sid, from, to) => xferMinutes(sid, from, to),
+                xfer: (sid, from, to, fromDir, toDir) => xferMinutes(sid, from, to, fromDir, toDir),
                 walk: (minutes) => minutes,
                 boardingWalk: (minutes) => minutes
             },
@@ -321,15 +346,19 @@
                     if (toLineId === lineId && toWi === wi) return;
                     if (!lineById.has(toLineId)) return;
                     const direct = throughMap.get(`${sid}|${lineId}|${toLineId}`) || null;
-                    const minutes = direct ? 0 : xferMinutes(sid, lineId, toLineId);
-                    const weight = direct ? 0 : objective.xfer(sid, lineId, toLineId);
                     const toLine = lineById.get(toLineId);
                     [1, -1].forEach((toDir) => {
                         if (!hasService(toLine, toWi, toIdx, toDir)) return;
-                        relax(stateKey(sid, toLineId, toWi, toDir), cost + weight, key,
+                        // 换乘方式（同台/节点/站厅/通道换乘）与用时都可能与方向有关
+                        // （「同向同台」：同向恰好同台、反向要绕对面站台），
+                        // 故对每个 toDir 单独问一次。
+                        const dirMinutes = direct ? 0 : xferMinutes(sid, lineId, toLineId, dir, toDir);
+                        const dirWeight = direct ? 0 : objective.xfer(sid, lineId, toLineId, dir, toDir);
+                        const dirMode = direct ? "" : xferModeName(sid, lineId, toLineId, dir, toDir);
+                        relax(stateKey(sid, toLineId, toWi, toDir), cost + dirWeight, key,
                             direct
-                                ? { t: "xfer", at: sid, fromLine: lineId, toLine: toLineId, minutes, through: true, name: direct.name }
-                                : { t: "xfer", at: sid, fromLine: lineId, toLine: toLineId, minutes });
+                                ? { t: "xfer", at: sid, fromLine: lineId, toLine: toLineId, minutes: 0, through: true, name: direct.name, mode: dirMode }
+                                : { t: "xfer", at: sid, fromLine: lineId, toLine: toLineId, minutes: dirMinutes, mode: dirMode });
                     });
                 });
 
@@ -373,9 +402,12 @@
             chain.forEach(({ key, info }) => {
                 if (!info) return;                      // 起点状态本身
                 if (info.t === "xfer") {
+                    // 记录「上一段乘车」的方向，作为换乘的来向 —— 换乘方式与用时
+                    // 可能随方向不同（「同向同台」），下游要按它复算。
+                    const fromDir = ride ? ride.dir : null;
                     flush();
                     // 整条透传：贯通衔接会多带 through / name 两个字段给下游按「同一列车」展示
-                    steps.push({ ...info });
+                    steps.push({ ...info, fromDir });
                     cursor = info.at;
                     return;
                 }
@@ -588,6 +620,7 @@
         function planAll(from, to) {
             const found = new Map();
             Object.entries(OBJECTIVES).forEach(([key, objective]) => {
+                if (!isObjectiveEnabled(key)) return;      // 城市撤下的优先级不参与候选
                 const result = plan(from, to, key);
                 if (!result) return;
                 const signature = result.steps.map((s) => (s.t === "ride"
