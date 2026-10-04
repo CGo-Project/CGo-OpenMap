@@ -5,7 +5,8 @@
  * 取数留在本模块（读 data_timetable.js 的 GLOBAL_SCHEDULE_DATA），
  * 「归一化行 → HTML」交由共享渲染层处理
  * （city/shenyang/shared/timetable-renderer.js，window.CGoTimetable）。
- * 挂载于「线路」选项卡（line-tab），order 22。
+ * 挂载于「线路」选项卡（line-tab），order 15 —— 夹在「地图卡片」(stacard, order 10)
+ * 与「上一站 / 下一站」(adjacent-stations, order 20) 之间，与沈阳 / 大连同一排法。
  *
  * 数据源：呼和浩特地铁官网「列车时刻表」，见 data_timetable.js 的文件头。
  *
@@ -36,7 +37,7 @@
         id: "hohhot-line-timetable",
         name: "呼和浩特首末班车",
         targetTab: "line-tab",
-        order: 22,
+        order: 15,
         shouldRender({ station, lineInfo }) {
             const entry = getEntry(station && station.id, lineInfo && lineInfo.id);
             return Boolean(entry && Object.keys(entry.directions || {}).length);

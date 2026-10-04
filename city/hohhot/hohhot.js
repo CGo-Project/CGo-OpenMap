@@ -64,7 +64,8 @@
         LINE_META: {},
         LINE_SORT_ORDER: ["M1", "M2"],
         LINE_SYNC_GROUPS: [],
-        SUBURBAN_LINES: [],
+        // 国铁点状条目（只落站徽标、不绘制走向）；引擎据此把同名站区分为「火车站 / 地铁站」
+        SUBURBAN_LINES: ["Rwy"],
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         /**
@@ -124,7 +125,7 @@
                 "modules/hohhot_facilities.js"
             ],
             modules: {
-                "hohhot-line-timetable": { enabled: true, order: 22, targetTab: "line-tab" },
+                "hohhot-line-timetable": { enabled: true, order: 15, targetTab: "line-tab" },
                 // 车站层级图（官网剖面图，折叠行默认展开、缩略图懒加载）挂在「车站信息」选项卡；
                 // order 与沈阳设施板块一致（车站类型之后、运营单位之前）
                 "hohhot-facilities": { enabled: true, order: 6, targetTab: "station-info" }
@@ -219,7 +220,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261004.1750";
+        const version = "261004.1830";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -258,7 +259,7 @@
         searchCity: HohhotCity.searchCity,
         title: "CGo OpenMap - 呼和浩特轨道交通线路图",
         keywords: "CGo OpenMap, 呼和浩特地铁, 呼和浩特轨道交通, 线路图",
-        description: "包含运营中的 1、2 号线，共 43 座车站（新华广场为换乘站），站序与首末班车取自官方。",
+        description: "包含运营中的 1、2 号线（共 43 座车站，新华广场为换乘站）与 2 座国铁车站，站序与首末班车取自官方。",
         officialMapUrl: HohhotCity.officialMapUrl,
         registerDate: "2026-10-04",
         status: "active",

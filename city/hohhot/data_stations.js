@@ -26,11 +26,17 @@
  *      标签自西向东正下 / 正上交替。
  *
  * 车站字段约定：
- * - type: "dot" 普通站，"tsf" 换乘站
+ * - type: "dot" 普通站，"tsf" 换乘站，"rdot" 国铁车站
  * - x / y: 画布坐标（左上角为原点 0,0）
  * - cn / en: 中文站名与英文站名（英文名以官方线网图的英文标注为准，见下方校对说明）
  * - mn: 传统蒙古文站名（胡都木文，竖排）
  * - align: "top" | "bottom" | "left" | "top-right" | "bottom-right" 等
+ *
+ * 国铁车站（type "rdot"，与同名地铁站同址）：
+ *   呼和浩特站 NHC ↔ 地铁 2 号线 M213；呼和浩特东站 NDC ↔ 地铁 1 号线 M116。
+ *   两者坐标完全重合，国铁站仅落铁路徽标（hideLabel），站名与标签由同名地铁站承担；
+ *   两者分属国铁与地铁两套票务系统，出站换乘需重新购票，见 data_virtual_transfers.js。
+ *   归属线路为 data_lines.js 中的「中国铁路」点状条目（isPointOnly）。
  *
  * 【已按官方线网图截图校对（主理人提供，2026-10-04）】
  * 中文站名 43/43 与官方一致（并再次确认三处现行名：呼钢南路、北山公园、丝绸之路大道）。
@@ -473,5 +479,31 @@ const stationsData = {
         en: "A'ERSHANLU",
         mn: "ᠷᠠᠰᠢᠶᠠᠨ ᠵᠠᠮ",
         align: "bottom"
+    },
+
+    // ===== 国铁车站（rdot，与同名地铁站同址）=====
+    // 数据格式参照哈尔滨：仅落铁路徽标、hideLabel，站名与标签由同名地铁站承担；
+    // 归属线路为 data_lines.js 中的「中国铁路」点状条目（isPointOnly）。
+    "NHC": {
+        type: "rdot",
+        x: 500,
+        y: 260,
+        cn: "呼和浩特站",
+        en: "Hohhot Railway Station",
+        align: "top",
+        hideLabel: true,
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.9, en: 1 }
+    },
+    "NDC": {
+        type: "rdot",
+        x: 980,
+        y: 360,
+        cn: "呼和浩特东站",
+        en: "Hohhot East Railway Station",
+        align: "top",
+        hideLabel: true,
+        offset: { x: 0, y: 0 },
+        textScale: { cn: 0.9, en: 1 }
     }
 };

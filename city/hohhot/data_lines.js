@@ -10,7 +10,8 @@
  *     → 南北段西端直角弯(500, 880) → 帅家营 → 阿尔山路(680, 880)；
  *   两处转折段长度均为 60px，与相邻站距（60）一致；拐角圆角由
  *   core/path-geometry.js 自动倒角（90° 取 18px，可用点位 `r` 字段覆盖）；
- * - 全部中间站点均精确落在相邻折点构成的线段上。
+ * - 全部中间站点均精确落在相邻折点构成的线段上；
+ * - 中国铁路：点状条目（isPointOnly），只落 2 座国铁车站徽标，不绘制走向。
  *
  * 线路标志色取自官方交互线路图内联样式：
  *   1 号线 #bc3738、2 号线 #0367a5（已核验，非近似取色）。
@@ -44,6 +45,21 @@
  */
 
 const linesData = [
+    {
+        id: "Rwy", // 记录地图上单独的铁路车站站点（不绘制走向）
+        name: "中国铁路",
+        svg: "icon@56.svg",
+        svgclr: "#00263b",
+        svgtext: "#ffffff",
+        company: "中国铁路呼和浩特局集团有限公司",
+        color: "#bdcbd2",
+        overlayStyle: { color: "#00263b", width: 3.4, opacity: 0.5, dashArray: "12, 12" },
+        isPointOnly: true,
+        // 呼和浩特站 NHC / 呼和浩特东站 NDC：与同名地铁站（M213 / M116）同址，仅落国铁徽标
+        stationIds: ["NHC", "NDC"],
+        distances: [],
+        pathPoints: []
+    },
     {
         id: "M1",
         name: "1号线",

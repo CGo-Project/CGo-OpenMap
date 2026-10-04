@@ -212,6 +212,15 @@
     height: calc(24 * var(--hht-badge-u));
 }
 
+/* 换乘链接（「可接驳或付费换乘至」那一行）：核心同样给徽标写了行内
+   display:inline-block（连同 margin-top:6px / vertical-align:middle，都是为旧的
+   「单行横长」徽标设计的）。行内样式压过上面的 display:inline-flex，内部于是退化为
+   按基线对齐 —— 方标与右侧三行文字上下错位。与 selector-item / search-line-icon /
+   #line-tooltip 三处同一口径，改回 inline-flex 竖直居中。 */
+.transfer-link.hohhot-line-badge {
+    display: inline-flex !important;
+}
+
 /* 无自定义 SVG 时的纯文字徽标（核心 .text-badge / .selector-text-badge）：同样取
    文本色、不写死颜色。本城 1、2 号线均有自定义 SVG，此条为兜底。 */
 .panel-badges .text-badge,

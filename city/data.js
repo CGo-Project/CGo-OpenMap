@@ -364,7 +364,7 @@
             searchCity: "呼和浩特",
             title: "CGo OpenMap - 呼和浩特轨道交通线路图",
             keywords: "CGo OpenMap, 呼和浩特地铁, 呼和浩特轨道交通, 线路图",
-            description: "包含运营中的 1、2 号线，共 43 座车站（新华广场为换乘站），站序与首末班车取自官方。",
+            description: "包含运营中的 1、2 号线（共 43 座车站，新华广场为换乘站）与 2 座国铁车站，站序与首末班车取自官方。",
             officialMapUrl: "https://hhhtmetro.com/hsdt/toXlzs",
             registerDate: "2026-10-04",
             status: "active",
