@@ -349,7 +349,7 @@
                   github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
             ],
             isDefault: false
-        }
+        },
             "shijiazhuang": {
             id: "shijiazhuang",
             name: "石家庄",
