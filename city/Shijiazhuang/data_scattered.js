@@ -1,1 +1,0 @@
-const SCATTERED_DATA = [];
