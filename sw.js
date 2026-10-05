@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261001.1719';
+const CACHE_NAME = 'cgo-openmap-v261005.0100';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -468,6 +468,19 @@ const ASSETS_TO_CACHE = [
     // 福州线路徽标
     './assets/svg/icon@fz_BE.svg',
 
+    // 城市配置与业务数据 (石家庄)
+    './city/shijiazhuang/shijiazhuang.js',
+    './city/shijiazhuang/data_stations.js',
+    './city/shijiazhuang/data_lines.js',
+    './city/shijiazhuang/data_legend.js',
+    './city/shijiazhuang/data_notopen.js',
+    './city/shijiazhuang/data_timetable.js',
+    './city/shijiazhuang/data_virtual_transfers.js',
+    './city/shijiazhuang/data_scattered.js',
+    './city/shijiazhuang/staname.csv',
+    './city/shijiazhuang/modules/shijiazhuang_cultural.js',
+    './city/shijiazhuang/style.css',
+    
     // 图标与清单素材
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',
