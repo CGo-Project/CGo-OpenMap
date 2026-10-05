@@ -350,6 +350,28 @@
             ],
             isDefault: false
         }
+            "shijiazhuang": {
+            id: "shijiazhuang",
+            name: "石家庄",
+            themeColor: "#79D064",
+            svglogo: null, // 已接入 CGoUI 内置 shijiazhuang 官方矢量图标
+            folder: "./city/shijiazhuang",
+            mainLogic: "./city/shijiazhuang/shijiazhuang.js",
+            center: { x: 1200, y: 1000 },
+            defaultScale: 0.6,
+            mapSize: { width: 2600, height: 2400 },
+            searchCity: "石家庄",
+            title: "CGo OpenMap - 石家庄轨道交通线路图",
+            keywords: "CGo OpenMap, 石家庄地铁, 线路图, 轨道交通",
+            description: "包括1-3号线已开通部分和部分景点（公园）。",
+            officialMapUrl: "http://www.sjzmetro.cn/Uploads/Picture/2026/05/08/s69fd5d81962ac.jpg",
+            registerDate: "2026-09-26",
+            status: "active",
+            maintainers: [
+                { name: "已码凉", role: "城市主理人", github: "https://github.com/Yimaliang" }
+            ],
+            isDefault: false
+        }
     };
 
     // ==========================================================================
