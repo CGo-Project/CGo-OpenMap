@@ -479,6 +479,7 @@ const ASSETS_TO_CACHE = [
     './city/shijiazhuang/data_scattered.js',
     './city/shijiazhuang/staname.csv',
     './city/shijiazhuang/modules/shijiazhuang_cultural.js',
+    './city/shijiazhuang/stacard/script.js',
     './city/shijiazhuang/style.css',
     
     // 图标与清单素材
