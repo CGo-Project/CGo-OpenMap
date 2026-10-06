@@ -16,6 +16,17 @@
     --list-hover: #f0f2f5;
     --sta-stroke-width-cn: 2px;
     --sta-stroke-width-en: 1.75px;
+
+    /* 无障碍令牌（对比度为 WCAG 相对亮度公式自算值，冒号后为所对的底色） */
+    --focus-ring: #1a73e8;        /* 焦点环：#fff 4.51 / #f8f9fa 4.27 / #e9ecef 3.80 / 面板头 #00263b 3.48 */
+    --not-open-text: #5d7b89;     /* 未开通站名与「暂未开通」文字：#fff 4.51（同色相下满足 4.5:1 的最浅值） */
+    --placeholder-text: #5b7785;  /* 输入框占位文字：#f8f9fa 4.50 / #fff 4.75 */
+    --input-border: #7895a3;      /* 输入框边框：#f8f9fa 3.01 / #fff 3.17 */
+    --slider-track: #7895a3;      /* 缩放滑块轨道：#fff 3.17 */
+    --info-text: #006098;         /* 信息色作文字：#fff 6.72 / --info-bg #e8f0fe 5.86 */
+    --success-text: #298341;      /* 成功色作文字：#fff 4.75 / --success-bg #e6ffed 4.50 */
+    --warning-text: #9f6607;      /* 警告色作文字：#fff 4.80 / --warning-bg≈#fff9e6 4.56 */
+    --danger-text: #d92617;       /* 危险色作文字：#fff 4.95 / --danger-bg #fff1f1 4.51 */
 }
 
 [data-theme="dark"] {
@@ -34,6 +45,16 @@
     --ctrl-hover: #4f4f4f;
     --divider: #333333;
     --list-hover: #373838;
+
+    --focus-ring: #8ab4f8;        /* #1a1a1a 8.26 / #1f2020 7.75 / #373838 5.58 */
+    --not-open-text: #878787;     /* #1a1a1a 4.84 / #1f2020 4.55（满足 4.5:1 的最深灰） */
+    --placeholder-text: #bdcbd2;  /* 沿用原值：#1a1a1a 10.5 */
+    --input-border: #6a6a6a;      /* #1a1a1a 3.22 / #1f2020 3.02 */
+    --slider-track: #6a6a6a;      /* --control-bg #1f2020 3.02 */
+    --info-text: #0095ec;         /* #1f2020 5.06 / --info-bg #1a2a3a 4.53 */
+    --success-text: #38b559;      /* #1f2020 6.16 / --success-bg #1b3e20 4.51 */
+    --warning-text: #f59e0b;      /* 沿用原值：#1f2020 7.61 / --warning-bg≈#2d291a 6.77 */
+    --danger-text: #ec5043;       /* #1f2020 4.51 / --danger-bg #3b0f0f 4.59 */
 }
 
 /* 
@@ -325,7 +346,7 @@ html.nb-fadein #map-content {
 
 .label-group.type-no .stacn,
 .label-group.type-no .staen {
-    color: var(--not-open-color) !important;
+    color: var(--not-open-text) !important;
 }
 
 .label-group.active {
@@ -428,12 +449,12 @@ html.nb-fadein #map-content {
 #mz-slider::-webkit-slider-runnable-track {
     width: 100%;
     height: 4px;
-    background: #eee;
+    background: var(--slider-track);
     border-radius: 2px;
 }
 
 [data-theme="dark"] #mz-slider::-webkit-slider-runnable-track {
-    background: #373838 !important;
+    background: var(--slider-track) !important;
 }
 
 #mz-slider::-webkit-slider-thumb {
@@ -1070,22 +1091,23 @@ html.nb-fadein #map-content {
     width: 100%;
     padding: 10px 32px 10px 12px;
     font-size: 14px;
-    border: 1px solid var(--divider) !important;
+    border: 1px solid var(--input-border) !important;
     border-radius: 6px;
-    outline: none;
     color: var(--text-main) !important;
     background-color: var(--bg-color) !important;
     transition: border-color 0.2s;
     font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
+/* 基础规则的 border / background 带 !important，聚焦态必须同样带上才不会被压掉 */
 #station-search-input:focus {
-    border-color: #00263b;
-    background-color: #fff;
+    border-color: var(--primary-color) !important;
+    background-color: var(--card-bg) !important;
 }
 
 #station-search-input::placeholder {
-    color: #bdcbd2;
+    color: var(--placeholder-text);
+    opacity: 1;
 }
 
 #search-clear-btn {
@@ -1095,7 +1117,7 @@ html.nb-fadein #map-content {
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: #bdcbd2;
+    color: var(--text-light);
     cursor: pointer;
     display: none;
     transition: color 0.2s;
@@ -1105,7 +1127,7 @@ html.nb-fadein #map-content {
 }
 
 #search-clear-btn:hover {
-    color: #00263b;
+    color: var(--text-main);
 }
 
 #search-results-list {
@@ -1140,7 +1162,14 @@ html.nb-fadein #map-content {
 }
 
 .search-item.pending {
-    color: var(--not-open-color) !important;
+    color: var(--not-open-text) !important;
+}
+
+/* 键盘上下键高亮的候选项（焦点仍在输入框，由 aria-activedescendant 指向） */
+.search-item.kbd-active {
+    background-color: var(--list-hover) !important;
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
 }
 
 .search-line-icon {
@@ -1259,14 +1288,14 @@ html.nb-fadein #map-content {
 }
 
 .ctx-btn-danger {
-    color: var(--danger-color, #d93025) !important;
+    color: var(--danger-text, #d92617) !important;
     font-weight: 600;
 }
 
 .ctx-btn-danger svg,
 .ctx-btn-danger cgo-icon {
-    color: var(--danger-color, #d93025) !important;
-    fill: var(--danger-color, #d93025) !important;
+    color: var(--danger-text, #d92617) !important;
+    fill: var(--danger-text, #d92617) !important;
 }
 
 .ctx-divider {
@@ -1848,10 +1877,9 @@ div[id*="overlay"] {
     padding: 6px 10px;
     font-size: 13px;
     border-radius: 6px;
-    border: 1px solid var(--divider);
+    border: 1px solid var(--input-border);
     background-color: var(--bg-color);
     color: var(--text-main);
-    outline: none;
     min-width: 120px;
     text-align: right;
     cursor: pointer;
@@ -2595,7 +2623,7 @@ textarea {
     }
 
     .tree-station-item.pending {
-        color: var(--not-open-color);
+        color: var(--not-open-text);
     }
 }
 
@@ -2826,4 +2854,160 @@ cgo-icon:not(:defined) {
     display: none !important;
     transform: translate(-50%, -50%) scale(0.5);
     pointer-events: none !important;
+}
+
+/* 
+   =========================================
+   20. 无障碍 (Accessibility)
+   焦点指示、视觉隐藏、跳转链接、原生按钮外观复位、动效偏好、移动端输入框字号
+   ========================================= 
+*/
+
+/* 仅对读屏可见 */
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* 跳转链接：平时移出视口，键盘聚焦时出现在左上角 */
+.skip-links {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100000;
+}
+
+.skip-link {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text-main);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    transform: translateY(-200%);
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+/* 全局键盘焦点环：零特异度，组件自带的 focus-visible 样式仍可覆盖 */
+:where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="tab"], [role="option"]):focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+/* 位于滚动 / 裁切容器内的条目，焦点环向内收，避免被容器边缘裁掉 */
+#map-container:focus-visible,
+#info-panel .tab-item:focus-visible,
+#info-panel .panel-cn-name:focus-visible,
+.section-header:focus-visible,
+.tree-line-header:focus-visible,
+.tree-station-item:focus-visible,
+.station-history-detail-trigger:focus-visible,
+#station-search-input:focus-visible {
+    outline-offset: -2px;
+}
+
+/*
+   由 div 改为原生 button 的条目：复位浏览器默认外观，尺寸、配色仍由各自的类名规则决定。
+   :where() 特异度为 0，不会压过任何既有规则。
+*/
+:where(button.tree-line-header, button.tree-station-item, button.legend-item, button.selector-item) {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    text-align: inherit;
+    text-transform: none;
+}
+
+/* div 是块级撑满、content-box；button 默认按内容收缩、border-box，逐类还原 */
+:where(button.tree-line-header, button.tree-station-item, button.legend-item) {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+:where(button.selector-item) {
+    box-sizing: content-box;
+}
+
+/* 上方「input, button, select, textarea」规则对 button 强制 font-weight / user-select，这里按原 div 的表现还原 */
+button.tree-line-header,
+button.tree-station-item.active {
+    font-weight: bold !important;
+}
+
+button.legend-item {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+
+/*
+   状态色 / 信息色作文字时改用加深（深色模式为提亮）的文字专用变量。
+   css/cgo_*.css 是 CGoUI 同步来的副本，不在原文件里改，统一在应用层覆盖。
+*/
+.badge-info {
+    color: var(--info-text);
+}
+
+.text-danger,
+.form-hint {
+    color: var(--danger-text) !important;
+}
+
+.text-success,
+.form-hint.success {
+    color: var(--success-text) !important;
+}
+
+.text-warning,
+.disclaimer {
+    color: var(--warning-text) !important;
+}
+
+/* 移动端：文本输入框不小于 16px，避免 iOS 聚焦时自动放大页面（页面缩放已不再禁用） */
+@media (max-width: 640px) {
+
+    input[type="text"],
+    input[type="search"],
+    input:not([type]),
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* 系统开启「减少动态效果」时压掉过渡与动画（地图飞跃、面板滑入、加载动效等一步到位） */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
+    }
 }

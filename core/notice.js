@@ -106,7 +106,18 @@
             }
             .nal-notice-card.show { transform: translateX(0); opacity: 1; }
             .nal-notice-card.hide { transform: translateX(120%); opacity: 0; }
-            .nal-notice-content { width: 100%; min-width: 0; }
+            .nal-notice-content {
+                width: 100%; min-width: 0;
+                /* 内容区是 button（键盘可达），以下为外观复位，视觉与原先的 div 一致 */
+                display: block; margin: 0; padding: 0; border: 0; background: none;
+                font: inherit; color: inherit; text-align: left; cursor: pointer;
+                -webkit-appearance: none; appearance: none;
+            }
+            .nal-notice-content:focus-visible,
+            .nal-notice-close:focus-visible {
+                outline: 2px solid var(--focus-ring, #1a73e8);
+                outline-offset: 2px;
+            }
             .nal-notice-header {
                 font-size: 12px;
                 font-weight: bold;
@@ -199,18 +210,20 @@
         const container = initContainer();
         const card = document.createElement('div');
         card.className = 'nal-notice-card';
+        // 状态消息：出现时由读屏自动播报
+        card.setAttribute('role', 'status');
         const cat = CAT_CONFIG[item.category] || { title: '通知', color: '#666' };
         // 强调色：条目自带时优先（如新开通线路用那条线的标志色），否则用分类色
         const accent = item.accentColor || cat.color;
         card.style.borderLeftColor = accent;
         card.innerHTML = `
-            <div class="nal-notice-content">
-                <div class="nal-notice-header" style="color:${accent}">
-                    ${cat.icon ? `<cgo-icon name="${cat.icon}" size="14" style="margin-right:4px; vertical-align:-2px; display:inline-flex;"></cgo-icon>` : ''} ${cat.title}
-                </div>
-                <div class="nal-notice-desc">${item.summary}</div>
-            </div>
-            <button class="nal-notice-close" title="关闭"><cgo-icon name="close" size="12"></cgo-icon></button>
+            <button type="button" class="nal-notice-content" title="查看公告详情">
+                <span class="nal-notice-header">
+                    ${cat.icon ? `<cgo-icon name="${cat.icon}" size="14" style="margin-right:4px; vertical-align:-2px; display:inline-flex; color:${accent};"></cgo-icon>` : ''} ${cat.title}
+                </span>
+                <span class="nal-notice-desc">${item.summary}</span>
+            </button>
+            <button type="button" class="nal-notice-close" title="关闭" aria-label="关闭公告"><cgo-icon name="close" size="12"></cgo-icon></button>
         `;
         card.addEventListener('click', (e) => {
             if (e.target.closest('.nal-notice-close')) return;
@@ -223,7 +236,22 @@
         });
         container.appendChild(card);
         setTimeout(() => card.classList.add('show'), 50);
-        setTimeout(() => dismiss(card), window.NAL_NOTICE.autoDismissDuration);
+        // 自动消失计时：鼠标悬停或键盘焦点在卡片内时暂停，离开后重新计满时长
+        let dismissTimer = null;
+        const startTimer = () => {
+            clearTimeout(dismissTimer);
+            dismissTimer = setTimeout(() => dismiss(card), window.NAL_NOTICE.autoDismissDuration);
+        };
+        const pauseTimer = () => clearTimeout(dismissTimer);
+        const resumeTimer = () => {
+            if (card.matches(':hover') || card.contains(document.activeElement)) return;
+            startTimer();
+        };
+        card.addEventListener('mouseenter', pauseTimer);
+        card.addEventListener('mouseleave', resumeTimer);
+        card.addEventListener('focusin', pauseTimer);
+        card.addEventListener('focusout', () => setTimeout(resumeTimer, 0));
+        startTimer();
     }
 
     function dismissAll() {

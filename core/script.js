@@ -65,13 +65,13 @@ function rebuildSidebarHistory() {
             sectionTitle = isRail ? sectionTitle.replace('站站', '站 (火车站)') : sectionTitle.replace('站站', '站 (地铁站)');
         }
         div.innerHTML = `
-            <div class="section-header">
+            <div class="section-header" role="button" tabindex="0" aria-expanded="false">
                 <span class="section-title-text"></span>
                 <span class="header-color-squares"></span>
                 <cgo-icon name="expand-more" class="section-arrow"></cgo-icon>
             </div>
             <div class="section-body">
-                <div class="station-history-detail-trigger" style="padding:20px;text-align:center;color:var(--text-light);font-size:12px;cursor:pointer;border:1px dashed var(--divider);margin:10px;border-radius:6px;">点击此处查看详情</div>
+                <div class="station-history-detail-trigger" role="button" tabindex="0" style="padding:20px;text-align:center;color:var(--text-light);font-size:12px;cursor:pointer;border:1px dashed var(--divider);margin:10px;border-radius:6px;">点击此处查看详情</div>
             </div>
         `;
         div.querySelector('.section-title-text').textContent = sectionTitle;
@@ -203,6 +203,9 @@ const { SVGTemplates } = window.CGoStationIcons;
 // 折线倒角算法与半径常量的唯一真源在 core/path-geometry.js，
 // Drunk 编辑模式共用同一份实现以保证「所见即所得」。此处仅取引用。
 const { RADIUS_90, RADIUS_45 } = window.CGoPathGeometry;
+
+// 转义、读屏播报、动效偏好与焦点工具的唯一真源在 core/a11y.js（须早于本文件加载）
+const { escapeHtml, safeNameHtml, plainName, announce, prefersReducedMotion, focusElement } = window.CGoA11y;
 
 /**
  * 规范化 SVG 徽标文件路径
@@ -439,16 +442,37 @@ function bindSearchAndLegendEvents() {
             }
             return searchIdx === search.length ? 50 : 0;
         };
+        // combobox 状态：当前键盘高亮的候选项，以及结果列表的展开 / 收起
+        const setActiveOption = (option) => {
+            searchResults.querySelectorAll('.search-item.kbd-active').forEach(el => {
+                el.classList.remove('kbd-active');
+                el.setAttribute('aria-selected', 'false');
+            });
+            if (option) {
+                option.classList.add('kbd-active');
+                option.setAttribute('aria-selected', 'true');
+                searchInput.setAttribute('aria-activedescendant', option.id);
+                option.scrollIntoView({ block: 'nearest' });
+            } else {
+                searchInput.removeAttribute('aria-activedescendant');
+            }
+        };
+        const setListOpen = (open) => {
+            searchResults.style.display = open ? 'block' : 'none';
+            searchInput.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (!open) setActiveOption(null);
+        };
         searchInput.oninput = (e) => {
             const rawVal = e.target.value;
             const cleanVal = normalizeSearchText(rawVal);
             searchResults.innerHTML = '';
+            setActiveOption(null);
             if (rawVal.trim().length > 0) {
                 clearBtn.style.display = 'block';
-                searchResults.style.display = 'block';
+                setListOpen(true);
             } else {
                 clearBtn.style.display = 'none';
-                searchResults.style.display = 'none';
+                setListOpen(false);
                 return;
             }
             const matchResults = [];
@@ -472,7 +496,8 @@ function bindSearchAndLegendEvents() {
                 }
             }
             if (matchResults.length === 0) {
-                searchResults.innerHTML = '<div style="padding:10px;color:var(--text-light);font-size:12px;text-align:center">未找到相关车站</div>';
+                searchResults.innerHTML = '<div role="presentation" style="padding:10px;color:var(--text-light);font-size:12px;text-align:center">未找到相关车站</div>';
+                announce('未找到相关车站');
                 return;
             }
             matchResults.sort((a, b) => {
@@ -480,7 +505,7 @@ function bindSearchAndLegendEvents() {
                 return a.station.cn.length - b.station.cn.length;
             });
             let listHtml = '';
-            matchResults.forEach(item => {
+            matchResults.forEach((item, optionIndex) => {
                 const s = item.station;
                 let svgsHtml = '';
                 if (s.relatedLines) {
@@ -497,15 +522,15 @@ function bindSearchAndLegendEvents() {
                         }
                     });
                 }
-                let nameHtml = s.cn;
-                if (s.en) nameHtml += ` <span style="font-size:12px;color:var(--text-light);">${s.en.replace(/<br>/gi, ' ')}</span>`;
+                let nameHtml = safeNameHtml(s.cn);
+                if (s.en) nameHtml += ` <span lang="en" style="font-size:12px;color:var(--text-light);">${safeNameHtml(s.en.replace(/<br>/gi, ' '))}</span>`;
                 let itemClass = 'search-item';
                 if (s.type === 'no') {
-                    nameHtml += ' <span style="font-size:12px;color:var(--not-open-color);">(暂未开通)</span>';
+                    nameHtml += ' <span style="font-size:12px;color:var(--not-open-text);">(暂未开通)</span>';
                     itemClass += ' pending';
                 }
                 listHtml += `
-                    <div class="${itemClass}" data-sid="${s.id}">
+                    <div class="${itemClass}" data-sid="${escapeHtml(s.id)}" role="option" id="search-option-${optionIndex}" aria-selected="false">
                         ${svgsHtml}
                         <span class="search-item-text">${nameHtml}</span>
                     </div>
@@ -513,11 +538,39 @@ function bindSearchAndLegendEvents() {
             });
             searchResults.innerHTML = listHtml;
             injectInlineSvgs(searchResults);
+            announce(`找到 ${matchResults.length} 个车站`);
+        };
+        // 键盘：上下键在候选项间移动，回车选中（无高亮项时取第一项），Esc 先收起列表
+        searchInput.onkeydown = (e) => {
+            // 输入法组词期间的回车 / 方向键属于候选窗，不接管
+            if (e.isComposing || e.keyCode === 229) return;
+            const options = Array.from(searchResults.querySelectorAll('.search-item'));
+            const isOpen = searchResults.style.display === 'block';
+            const current = searchResults.querySelector('.search-item.kbd-active');
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                if (!isOpen || !options.length) return;
+                e.preventDefault();
+                const idx = options.indexOf(current);
+                const next = e.key === 'ArrowDown'
+                    ? (idx + 1) % options.length
+                    : (idx <= 0 ? options.length - 1 : idx - 1);
+                setActiveOption(options[next]);
+            } else if (e.key === 'Enter') {
+                if (!isOpen || !options.length) return;
+                e.preventDefault();
+                (current || options[0]).click();
+            } else if (e.key === 'Escape') {
+                // 列表未展开时不拦截，交给外层关闭图例面板
+                if (!isOpen) return;
+                e.preventDefault();
+                e.stopPropagation();
+                setListOpen(false);
+            }
         };
         clearBtn.onclick = () => {
             searchInput.value = '';
             searchResults.innerHTML = '';
-            searchResults.style.display = 'none';
+            setListOpen(false);
             clearBtn.style.display = 'none';
             searchInput.focus();
         };
@@ -528,16 +581,19 @@ function bindSearchAndLegendEvents() {
                 selectStation(sid);
                 if (document.body.classList.contains('legend-pinned')) {
                     searchInput.value = '';
-                    searchResults.style.display = 'none';
+                    setListOpen(false);
                     clearBtn.style.display = 'none';
                 } else {
                     document.getElementById('legend-overlay').style.display = 'none';
-                    if (document.activeElement) document.activeElement.blur();
+                    // selectStation 可能已把焦点移到信息板标题，只在焦点仍留在搜索框时才收起键盘
+                    if (document.activeElement === searchInput) searchInput.blur();
                 }
             }
         };
     }
     if (legendContent) {
+        // 折叠头 / 线路头的 aria-expanded 随容器 class 自动同步（幂等，只挂一次观察器）
+        window.CGoA11y.observeDisclosures(legendContent);
         const gridItems = legendContent.querySelectorAll('.legend-item');
         gridItems.forEach(item => {
             item.onclick = (e) => {
@@ -555,7 +611,7 @@ function bindSearchAndLegendEvents() {
                             if (index === 0) {
                                 const lineData = linesData.find(l => l.id === lineId);
                                 if (lineData) {
-                                    let firstStationId = lineData.hasbranch ? lineData['stationIds-way1'][0] : lineData.stationIds[0];
+                                    let firstStationId = lineData.hasbranch ? lineData['stationIds-way1']?.[0] : lineData.stationIds?.[0];
                                     if (firstStationId) {
                                         const s = processedStations[firstStationId];
                                         if (s) {
@@ -581,7 +637,10 @@ function bindSearchAndLegendEvents() {
                     console.error("Legend interaction error", err);
                 } finally {
                     if (!document.body.classList.contains('legend-pinned')) {
+                        const hadFocus = item.contains(document.activeElement);
                         document.getElementById('legend-overlay').style.display = 'none';
+                        // 浮层收起后焦点所在的条目已不可见，交给地图本身（方向键可直接平移）
+                        if (hadFocus) focusElement(mapContainer);
                     }
                 }
             };
@@ -614,13 +673,14 @@ function bindSearchAndLegendEvents() {
 const SEARCH_BAR_HTML = `
     <div class="search-container">
         <div class="search-input-wrapper">
-            <input type="text" id="station-search-input" placeholder="请输入需要查找的站名" autocomplete="off">
-            <button id="search-clear-btn" title="清空" style="display:none;">
+            <input type="text" id="station-search-input" placeholder="请输入需要查找的站名" autocomplete="off"
+                role="combobox" aria-label="搜索车站" aria-autocomplete="list" aria-expanded="false" aria-controls="search-results-list">
+            <button type="button" id="search-clear-btn" title="清空" aria-label="清空搜索" style="display:none;">
                 <cgo-icon name="close" size="16"></cgo-icon>
             </button>
         </div>
     </div>
-    <div id="search-results-list"></div>
+    <div id="search-results-list" role="listbox" aria-label="搜索结果"></div>
 `;
 function renderPinModeTree() {
     const container = document.getElementById('legend-content');
@@ -651,20 +711,20 @@ function renderPinModeTree() {
                 const pendingClass = s.type === 'no' ? 'pending' : '';
                 const extraText = s.type === 'no' ? ' <span style="font-size:10px;opacity:0.7">(未开通)</span>' : '';
                 stationsHtml += `
-                    <div class="tree-station-item ${pendingClass}" data-sid="${sid}">
-                        <div class="tree-station-dot" style="background-color:${s.type === 'no' ? 'var(--not-open-color)' : ''}"></div>
-                        <span>${s.cn}${extraText}</span>
-                    </div>
+                    <button type="button" class="tree-station-item ${pendingClass}" data-sid="${escapeHtml(sid)}" data-ctx-longpress>
+                        <span class="tree-station-dot" style="background-color:${s.type === 'no' ? 'var(--not-open-color)' : ''}"></span>
+                        <span>${safeNameHtml(s.cn)}${extraText}</span>
+                    </button>
                 `;
             }
         });
         treeInnerHtml += `
-            <div class="tree-line-group" data-line-id="${line.id}">
-                <div class="tree-line-header">
-                    <div class="tree-line-color" style="background-color: ${line.color}"></div>
-                    <span class="tree-line-name">${line.name}</span>
+            <div class="tree-line-group" data-line-id="${escapeHtml(line.id)}">
+                <button type="button" class="tree-line-header" aria-expanded="false" data-ctx-longpress>
+                    <span class="tree-line-color" style="background-color: ${escapeHtml(line.color)}"></span>
+                    <span class="tree-line-name">${escapeHtml(line.name)}</span>
                     <cgo-icon name="expand-more" class="tree-arrow"></cgo-icon>
-                </div>
+                </button>
                 <div class="tree-station-list">${stationsHtml}</div>
             </div>
         `;
@@ -697,7 +757,8 @@ function renderPinModeTree() {
                     if (highlightLine(lineId)) {
                         const lineData = linesData.find(l => l.id === lineId);
                         if (lineData) {
-                            let firstStationId = lineData.hasbranch ? lineData['stationIds-way1'][0] : lineData.stationIds[0];
+                            // 分支线缺 way1（或普通线缺 stationIds）时不定位，避免点击线路头直接抛错
+                            let firstStationId = lineData.hasbranch ? lineData['stationIds-way1']?.[0] : lineData.stationIds?.[0];
                             if (firstStationId && processedStations[firstStationId]) {
                                 const s = processedStations[firstStationId];
                                 currentX = (mapContainer.clientWidth / 2) - (s.x * currentScale);
@@ -790,18 +851,18 @@ function renderDefaultLegend() {
                 
                 let colorBlocksHtml = '';
                 if (colors.length > 0) {
-                    colorBlocksHtml = `<div class="legend-color-blocks">${colors.map(c => `<span class="legend-color-block" style="background-color:${c};"></span>`).join('')}</div>`;
+                    colorBlocksHtml = `<span class="legend-color-blocks">${colors.map(c => `<span class="legend-color-block" style="background-color:${c};"></span>`).join('')}</span>`;
                 } else if (item.color) {
-                    colorBlocksHtml = `<div class="legend-color-blocks"><span class="legend-color-block" style="background-color:${item.color};"></span></div>`;
+                    colorBlocksHtml = `<span class="legend-color-blocks"><span class="legend-color-block" style="background-color:${item.color};"></span></span>`;
                 }
                 
                 const displayName = item.name || names.join(' / ') || (targets[0] || '');
                 
                 legendInnerHtml += `
-                    <div class="legend-item" data-targets="${targetStr}">
+                    <button type="button" class="legend-item" data-targets="${targetStr}" data-ctx-longpress>
                         ${colorBlocksHtml}
                         <span class="legend-item-name">${displayName}</span>
-                    </div>
+                    </button>
                 `;
             });
             legendInnerHtml += `</div>`;
@@ -821,7 +882,7 @@ function createPanelSection(title, content, isExpanded = true) {
     const collapsedClass = isExpanded ? '' : 'collapsed';
     return `
         <div class="panel-section ${collapsedClass}" ${idStr} ${sectionId}>
-            <div class="section-header">
+            <div class="section-header" role="button" tabindex="0" aria-expanded="${isExpanded ? 'true' : 'false'}">
                 <span>${title}</span>
                 <cgo-icon name="expand-more" class="section-arrow"></cgo-icon>
             </div>
@@ -1060,6 +1121,11 @@ function renderStations() {
         stationDiv.style.left = s.x + 'px';
         stationDiv.style.top = s.y + 'px';
         stationDiv.dataset.sid = id;
+        // 地图上的车站节点不进 Tab 序列（数百个停靠点），键盘入口由搜索与图例的线路 → 车站树承担
+        const stationLabel = plainName(s.cn) + (s.type === 'no' ? '（未开通）' : '');
+        stationDiv.setAttribute('role', 'button');
+        stationDiv.setAttribute('tabindex', '-1');
+        stationDiv.setAttribute('aria-label', stationLabel);
         // 城市可自定义站点图元画法（如上海式短横与换乘胶囊）；未实现时回落到通用模板
         const city = getActiveCity();
         const customIcon = typeof city.renderStationIcon === 'function' ? city.renderStationIcon(s, id) : null;
@@ -1084,6 +1150,9 @@ function renderStations() {
         labelDiv.className = `label-group type-${s.type}`;
         labelDiv.id = getDomId('label', id);
         labelDiv.dataset.sid = id;
+        labelDiv.setAttribute('role', 'button');
+        labelDiv.setAttribute('tabindex', '-1');
+        labelDiv.setAttribute('aria-label', stationLabel);
         const distV = 5.2, distH = 6, distD = 6;
         let left = s.x, top = s.y, transform = "", textAlign = "center", transformOriginX = "50%";
         switch (s.align) {
@@ -1108,8 +1177,8 @@ function renderStations() {
         let scaleCn = s.textScale?.cn || 1;
         let scaleEn = s.textScale?.en || 1;
         labelDiv.innerHTML = `
-            <span class="stacn" style="transform:scaleX(${scaleCn});transform-origin:${transformOriginX} center;">${s.cn}</span>
-            <span class="staen" style="transform:scaleX(${scaleEn});transform-origin:${transformOriginX} center;">${s.en}</span>
+            <span class="stacn" style="transform:scaleX(${scaleCn});transform-origin:${transformOriginX} center;">${safeNameHtml(s.cn)}</span>
+            <span class="staen" lang="en" style="transform:scaleX(${scaleEn});transform-origin:${transformOriginX} center;">${safeNameHtml(s.en)}</span>
         `;
         labelsLayer.appendChild(labelDiv);
     }
@@ -1138,12 +1207,36 @@ function renderScatteredObjects() {
         if (item.file) {
             const img = document.createElement('img');
             img.src = getSvgPath(item.file);
+            img.alt = ''; // 纯装饰图
             img.style.cssText = "width:100%; height:100%; display:block;";
             img.draggable = false;
             div.appendChild(img);
         }
         layer.appendChild(div);
     });
+}
+
+// 焦点管理：信息板打开时把焦点移到标题，关闭时归还到触发元素
+let panelFocusReturnEl = null;   // 打开信息板前持有焦点的元素
+let pendingPanelFocus = false;   // 固定侧栏形态下，信息板要等吸附完成后才可聚焦
+
+function focusPanelTitle() {
+    pendingPanelFocus = false;
+    const panel = document.getElementById('info-panel');
+    if (!panel) return;
+    const title = panel.querySelector('.panel-cn-name') || panel.querySelector('.panel-header');
+    if (!title) return;
+    if (!title.hasAttribute('tabindex')) title.setAttribute('tabindex', '-1');
+    focusElement(title);
+}
+
+function restorePanelFocus() {
+    const target = panelFocusReturnEl;
+    panelFocusReturnEl = null;
+    // 触发元素已被重建或随面板收起而不可见时，退回检索面板入口，再退回地图本身
+    if (focusElement(target)) return;
+    if (focusElement(document.getElementById('mz-menu'))) return;
+    focusElement(mapContainer);
 }
 
 /**
@@ -1162,6 +1255,14 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
     hideLineTooltipNow();
     const s = processedStations[sid];
     if (!s) return;
+    // 触发点在地图内（指针点选车站）或页面本身（URL 直达）时不挪焦点，地图快捷键照常可用，只做读屏播报；
+    // 从搜索、图例树、换乘跳转等控件触发时才把焦点带到信息板标题。
+    const focusTrigger = document.activeElement;
+    const triggerInPanel = Boolean(focusTrigger && infoPanel && infoPanel.contains(focusTrigger));
+    const shouldMoveFocus = Boolean(focusTrigger && focusTrigger !== document.body
+        && focusTrigger !== document.documentElement && !mapContainer.contains(focusTrigger));
+    // 在信息板内部跳转（如换乘跳转）时沿用最初的触发元素
+    if (shouldMoveFocus && !triggerInPanel) panelFocusReturnEl = focusTrigger;
     lastSelectedStationId = sid;
     clearHighlights();
     const activate = (targetSid) => {
@@ -1181,6 +1282,9 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
         VIRTUAL_FREE_TRANSFER_MAP[sid].forEach(partnerSid => activate(partnerSid));
     }
     renderUserModePanel(s, initialTabIndex);
+    const stationPlainName = plainName(s.cn);
+    if (infoPanel) infoPanel.setAttribute('aria-label', `${stationPlainName} 车站信息`);
+    announce(`已打开 ${stationPlainName} 的车站信息`);
     const isPinned = document.body.classList.contains('legend-pinned');
     const panel = document.getElementById('info-panel');
     const dynamicContainer = document.getElementById('sidebar-dynamic-content');
@@ -1190,6 +1294,8 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
         document.body.classList.remove('pinned-hidden');
         const overlay = document.getElementById('legend-overlay');
         if (overlay) overlay.style.display = 'block';
+        // 吸附是异步的（面板节点会被挪进历史分区），聚焦推迟到 dockStationPanel 完成时
+        pendingPanelFocus = shouldMoveFocus;
         dockStationPanel(s);
         panel.style.display = 'block';
         panel.style.opacity = '1';
@@ -1236,6 +1342,7 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
         if (zoomVal) zoomVal.innerText = Math.round(currentScale * 100) + '%';
         enforceBoundaries();
         updateMapTransform();
+        if (shouldMoveFocus) focusPanelTitle();
     }
 }
 function bindEvents() {
@@ -1283,7 +1390,10 @@ function bindEvents() {
         });
     }
     const closeLegend = () => {
+        // 焦点在图例面板内时，关闭后归还给检索面板入口按钮
+        const focusWasInLegend = Boolean(legendModal && legendModal.contains(document.activeElement));
         resetMapState();
+        if (focusWasInLegend && menuBtn) focusElement(menuBtn);
         if (document.body.classList.contains('legend-pinned')) {
             document.body.classList.add('pinned-hidden');
         } else {
@@ -1295,6 +1405,34 @@ function bindEvents() {
     };
     if (legendClose) legendClose.addEventListener('click', (e) => { e.stopPropagation(); closeLegend(); });
     if (legendOverlay) legendOverlay.addEventListener('click', (e) => { if (e.target === legendOverlay) closeLegend(); });
+    // Esc 关闭：监听挂在面板自身，只有焦点位于其内时才会触发，不影响地图快捷键
+    if (legendModal) {
+        legendModal.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || e.defaultPrevented) return;
+            e.stopPropagation();
+            closeLegend();
+        });
+    }
+    // 跳转链接（跳到搜索 / 跳到线路列表）：两者都在图例面板内，先展开面板再落焦
+    document.querySelectorAll('.skip-link[data-skip-target]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const wantLines = link.dataset.skipTarget === 'lines';
+            const legendVisible = legendOverlay && legendOverlay.style.display === 'block'
+                && !document.body.classList.contains('pinned-hidden');
+            if (!legendVisible && menuBtn) menuBtn.click();
+            // 打开面板的流程会在 100ms 后聚焦搜索框，这里排在其后
+            setTimeout(() => {
+                const sectionId = wantLines ? 'section-legend-tree' : 'section-search';
+                document.getElementById(sectionId)?.classList.remove('collapsed');
+                if (wantLines) {
+                    const firstLine = document.querySelector('#legend-content .tree-line-header, #legend-content .legend-item');
+                    if (focusElement(firstLine)) return;
+                }
+                focusElement(document.getElementById('station-search-input'));
+            }, 160);
+        });
+    });
     if (document.getElementById('station-search-input')) {
         bindSearchAndLegendEvents();
     }
@@ -1375,6 +1513,11 @@ function bindEvents() {
     const stopPropagation = (e) => { e.stopPropagation(); };
     const infoPanel = document.getElementById('info-panel');
     if (infoPanel) {
+        infoPanel.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape' || e.defaultPrevented) return;
+            e.stopPropagation();
+            resetMapState();
+        });
         infoPanel.addEventListener('touchstart', stopPropagation, { passive: true });
         infoPanel.addEventListener('touchmove', stopPropagation, { passive: true });
         infoPanel.addEventListener('touchend', stopPropagation, { passive: true });
@@ -1458,6 +1601,9 @@ function initLegendPin() {
             pinBtn.innerHTML = `<cgo-icon name="pin-angle" size="18"></cgo-icon>`;
             pinBtn.title = "固定面板";
         }
+        // 切换按钮：名称固定为「固定面板」，状态由 aria-pressed 表达
+        pinBtn.setAttribute('aria-label', '固定面板');
+        pinBtn.setAttribute('aria-pressed', pinned ? 'true' : 'false');
     };
 
     // Initial state setup
@@ -1601,7 +1747,9 @@ function markMapMoving() {
     if (!mapContent.classList.contains('is-moving')) mapContent.classList.add('is-moving');
     clearTimeout(mapMovingTimer);
     // 带 CSS 过渡的移动（按钮缩放、飞跃定位、切城滑动）要等过渡结束再撤销
-    const settle = mapContent.classList.contains('nb-glide') || document.documentElement.classList.contains('nb-fadein') ? 950
+    // 「减少动态效果」下飞跃 / 缩放的 CSS 过渡已被全局样式压掉，画面一步到位，无需等过渡结束
+    const settle = prefersReducedMotion() ? 220
+        : mapContent.classList.contains('nb-glide') || document.documentElement.classList.contains('nb-fadein') ? 950
         : mapContent.classList.contains('animate-zoom') ? 450 : 220;
     mapMovingTimer = setTimeout(() => mapContent.classList.remove('is-moving'), settle);
 }
@@ -1829,7 +1977,7 @@ function generateTransferHtml(stationId) {
         return sortedList.map(item => {
             const styleStr = item.svgclr ? `--svgclr:${item.svgclr}; --svgtext:${item.svgtext};` : '';
             return item.svg ?
-                `<span class="svg-icon-placeholder line-badge transfer-link" data-jump-sid="${item.targetSid}" data-src="${item.svg}" style="display:inline-block; margin-left:2px; margin-top:6px; vertical-align:middle; cursor:pointer; ${styleStr}"></span>` :
+                `<span class="svg-icon-placeholder line-badge transfer-link" role="button" tabindex="0" aria-label="前往 ${escapeHtml(item.name)} 换乘车站" data-jump-sid="${escapeHtml(item.targetSid)}" data-src="${item.svg}" style="display:inline-block; margin-left:2px; margin-top:6px; vertical-align:middle; cursor:pointer; ${styleStr}"></span>` :
                 `<span class="text-badge" style="display:inline-block; margin-left:2px; margin-top:6px;">${item.name}</span>`;
         }).join('');
     };
@@ -2075,18 +2223,18 @@ function renderUserModePanel(station, initialTabIndex = 0) {
     }
 
     // 兜底：若 StationBoard 引擎未就绪，使用内联基础渲染流程
-    let enNameDisplay = station.en.replace(/<br>/gi, ' ');
-    if (station.cn === '首经贸') enNameDisplay = station.en.replace(/<br>/gi, '<span class="special-br"></span>');
-    const headerLeftHtml = `<div class="header-name-group"><div class="panel-cn-name">${station.cn}</div><div class="panel-en-name">${enNameDisplay}</div></div>`;
+    let enNameDisplay = (station.en || '').replace(/<br>/gi, ' ');
+    if (station.cn === '首经贸') enNameDisplay = (station.en || '').replace(/<br>/gi, '<span class="special-br"></span>');
+    const headerLeftHtml = `<div class="header-name-group"><div class="panel-cn-name" role="heading" aria-level="2" tabindex="-1">${station.cn}</div><div class="panel-en-name" lang="en">${enNameDisplay}</div></div>`;
     infoPanel.style.height = '';
     const expandBtnHtml = (window.innerWidth <= 640)
-        ? `<button class="panel-expand-btn" title="展开/收起">
+        ? `<button class="panel-expand-btn" title="展开/收起" aria-label="展开或收起面板">
                  <cgo-icon name="expand-less" size="18"></cgo-icon>
                </button>`
         : '';
     infoPanel.innerHTML = `
         <div class="panel-header">
-            <button class="panel-close-btn" title="关闭面板">
+            <button class="panel-close-btn" title="关闭面板" aria-label="关闭面板">
                 <cgo-icon name="close" size="24"></cgo-icon>
             </button>
             ${expandBtnHtml}
@@ -2096,7 +2244,7 @@ function renderUserModePanel(station, initialTabIndex = 0) {
         
         <div class="panel-tabs-container">
             ${tabsNavHtml}
-            <button class="panel-share-btn" title="分享车站信息">
+            <button class="panel-share-btn" title="分享车站信息" aria-label="分享车站信息">
                 <cgo-icon name="external" size="20"></cgo-icon>
             </button>
         </div>
@@ -2147,6 +2295,8 @@ function renderUserModePanel(station, initialTabIndex = 0) {
             }
         });
     });
+    // 选项卡语义与方向键（须在上面的 click 监听之后绑定）
+    window.CGoA11y.enhanceTabs(infoPanel);
     const shareBtn = infoPanel.querySelector('.panel-share-btn');
     if (shareBtn) {
         shareBtn.addEventListener('click', (e) => {
@@ -2275,6 +2425,9 @@ function resetMapState() {
     hideLineTooltipNow();
     const infoPanel = document.getElementById('info-panel');
     const dynamicContainer = document.getElementById('sidebar-dynamic-content');
+    // 焦点仍在信息板内时，关闭后归还给当初的触发元素；焦点已在别处（如点了地图）则不打扰
+    const focusWasInPanel = Boolean(infoPanel && document.activeElement && infoPanel.contains(document.activeElement));
+    pendingPanelFocus = false;
     if (infoPanel && (window.innerWidth <= 640 || !document.body.classList.contains('legend-pinned'))) {
         infoPanel.style.display = 'none';
     }
@@ -2296,6 +2449,8 @@ function resetMapState() {
     updateMapTransform();
     updateShareMeta(null); // Restore original title/meta
     setTimeout(() => mapContent.classList.remove('animate-zoom'), 300);
+    if (focusWasInPanel) restorePanelFocus();
+    else panelFocusReturnEl = null;
 }
 
 
@@ -2374,6 +2529,12 @@ function initMobileSheetDrag() {
     let settleRaf = null;
     function animateSettle(startTop, targetTop, releaseVelocity, onDone) {
         if (settleRaf) { cancelAnimationFrame(settleRaf); settleRaf = null; }
+        // 系统开启「减少动态效果」时不做弹簧落位，直接交回 CSS 档位
+        if (prefersReducedMotion()) {
+            panel.style.top = '';
+            if (onDone) onDone();
+            return;
+        }
         const distance = targetTop - startTop;
         let t = 0;
         let lastTs = null;
@@ -2638,6 +2799,7 @@ function showToast(message, type = 'success') {
         document.body.appendChild(toast);
     }
     toast.innerText = message;
+    announce(message);
     toast.style.opacity = '1';
 
     if (window.toastTimer) clearTimeout(window.toastTimer);
@@ -3024,6 +3186,7 @@ function initTheme() {
     let tooltipTimer = null;
     const showTooltip = (text) => {
         tooltip.innerText = text;
+        announce(text);
         tooltip.classList.add('show');
         if (tooltipTimer) clearTimeout(tooltipTimer);
         tooltipTimer = setTimeout(() => {
@@ -3334,7 +3497,8 @@ function initContextMenu() {
         isDrag = false;
         longPressTimer = setTimeout(() => {
             if (!isDrag) {
-                if (e.target.closest('#theme-btn, .theme-btn, button, input, select')) return;
+                // 图例里由 div 改成 button 的条目带 data-ctx-longpress，长按菜单行为与改造前保持一致
+                if (e.target.closest('#theme-btn, .theme-btn, button:not([data-ctx-longpress]), input, select')) return;
                 if (navigator.vibrate) {
                     try { navigator.vibrate(50); } catch (_) {}
                 }
@@ -3549,6 +3713,8 @@ function showStationSelector(targetElement, candidates) {
     if (oldSelector) oldSelector.remove();
     const selector = document.createElement('div');
     selector.id = 'station-selector';
+    selector.setAttribute('role', 'group');
+    selector.setAttribute('aria-label', '选择同名车站');
     const labelLeft = parseFloat(targetElement.style.left);
     const labelTop = parseFloat(targetElement.style.top);
     selector.style.left = labelLeft + 'px';
@@ -3563,6 +3729,7 @@ function showStationSelector(targetElement, candidates) {
     });
     candidates.forEach(s => {
         let iconHtml = '';
+        let lineNames = [];
         if (s.relatedLines && s.relatedLines.length > 0) {
             let validLines = s.relatedLines
                 .map(lid => linesData.find(l => l.id === lid))
@@ -3575,6 +3742,7 @@ function showStationSelector(targetElement, candidates) {
             if (hasChinaRail && hasOthers) {
                 validLines = validLines.filter(l => l.name !== '中国铁路');
             }
+            lineNames = validLines.map(l => l.name);
             validLines.forEach(line => {
                 const svgFile = line.svg || (LINE_META[line.name] && LINE_META[line.name].svg);
                 const meta = getLineSvgMeta(svgFile || line.id || line.name);
@@ -3583,9 +3751,11 @@ function showStationSelector(targetElement, candidates) {
             });
         }
         if (!iconHtml) {
-            iconHtml = `<span class="selector-text-badge">${s.id}</span>`;
+            iconHtml = `<span class="selector-text-badge">${escapeHtml(s.id)}</span>`;
         }
-        html += `<div class="selector-item" data-sid="${s.id}" title="${s.cn} (${s.id})">${iconHtml}</div>`;
+        const itemName = plainName(s.cn);
+        const itemLabel = lineNames.length ? `${itemName}（${lineNames.join('、')}）` : `${itemName}（${s.id}）`;
+        html += `<button type="button" class="selector-item" data-sid="${escapeHtml(s.id)}" title="${escapeHtml(itemName)} (${escapeHtml(s.id)})" aria-label="${escapeHtml(itemLabel)}" data-ctx-longpress>${iconHtml}</button>`;
     });
     selector.innerHTML = html;
     selector.addEventListener('pointerdown', (e) => {
@@ -3615,13 +3785,19 @@ function showStationSelector(targetElement, candidates) {
  */
 function initPanelDrag() {
     const panel = document.getElementById('info-panel');
+    if (!panel) return;
+    // 信息板每次渲染都会重新调用本函数：先清掉上一轮挂在 document 上的监听，避免越积越多
+    if (panel._panelDragCleanup) {
+        panel._panelDragCleanup();
+        panel._panelDragCleanup = null;
+    }
     const header = panel.querySelector('.panel-header');
     const ghost = document.getElementById('drag-ghost');
-    if (!panel || !header) return;
+    if (!header) return;
     let isDragging = false;
     let startX, startY, initialLeft, initialTop;
     const canDrag = () => window.innerWidth > 640 && !document.body.classList.contains('legend-pinned');
-    header.addEventListener('mousedown', (e) => {
+    const onMouseDown = (e) => {
         if (!canDrag()) return;
         if (e.target.closest('button') || e.target.closest('a')) return;
         isDragging = true;
@@ -3633,8 +3809,8 @@ function initPanelDrag() {
         panel.classList.remove('panel-adjust-anim');
         document.body.style.cursor = 'move';
         e.preventDefault();
-    });
-    document.addEventListener('mousemove', (e) => {
+    };
+    const onMouseMove = (e) => {
         if (!isDragging) return;
         const deltaX = e.clientX - startX;
         const deltaY = e.clientY - startY;
@@ -3650,17 +3826,18 @@ function initPanelDrag() {
         if (newTop + panelH > viewportH) newTop = viewportH - panelH;
         panel.style.left = newLeft + 'px';
         panel.style.top = newTop + 'px';
+        if (!ghost) return;
         if (e.clientX < 100) {
             ghost.classList.add('active');
         } else {
             ghost.classList.remove('active');
         }
-    });
+    };
     const stopDrag = (e) => {
         if (isDragging) {
             isDragging = false;
             document.body.style.cursor = '';
-            if (ghost.classList.contains('active')) {
+            if (ghost && ghost.classList.contains('active')) {
                 ghost.classList.remove('active');
                 if (typeof lastSelectedStationId !== 'undefined' && processedStations[lastSelectedStationId]) {
                     dockStationPanel(processedStations[lastSelectedStationId], true);
@@ -3670,7 +3847,19 @@ function initPanelDrag() {
             }
         }
     };
+    header.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', stopDrag);
+    // 注册清理函数（做法同 initMobileSheetDrag）
+    panel._panelDragCleanup = () => {
+        header.removeEventListener('mousedown', onMouseDown);
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', stopDrag);
+        if (isDragging) {
+            isDragging = false;
+            document.body.style.cursor = '';
+        }
+    };
 }
 
 /**
@@ -3693,6 +3882,7 @@ function dockStationPanel(station, forcePin = false) {
             pinBtn.classList.add('active');
             pinBtn.innerHTML = `<cgo-icon name="unpin-angle" size="18"></cgo-icon>`;
             pinBtn.title = "取消固定";
+            pinBtn.setAttribute('aria-pressed', 'true');
         }
         const overlay = document.getElementById('legend-overlay');
         if (overlay) overlay.style.display = 'block';
@@ -3753,6 +3943,8 @@ function dockStationPanel(station, forcePin = false) {
                 newSectionDom.classList.add('collapsed');
             }
         }
+        // 面板已挪进历史分区并显示，此时才能把焦点交给标题
+        if (pendingPanelFocus) focusPanelTitle();
     }, delayTime);
 }
 
@@ -3962,7 +4154,16 @@ function initInputControls() {
         }
     });
     document.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.defaultPrevented) return;
+        // 带修饰键的组合属于浏览器 / 系统快捷键（如 Ctrl+S、Cmd+[、Alt+D），不接管
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        // 仅当焦点在页面本身或地图容器内时生效，避免与面板、表单控件、滑块自身的键盘操作冲突
+        const target = e.target;
+        if (!target || typeof target.closest !== 'function') return;
+        const focusOnPage = target === document.body || target === document.documentElement;
+        if (!focusOnPage && !slider.contains(target)) return;
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable
+            || target.closest('[role="slider"], [contenteditable="true"]')) return;
         const panStep = 50;
         const zoomStep = 0.2;
         switch (e.key) {

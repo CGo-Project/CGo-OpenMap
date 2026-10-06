@@ -14,19 +14,19 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <title>隐私政策 - CGo OpenMap 线路图开放平台</title>
     <link rel="shortcut icon" href="./assets/icons/favicon.ico">
     <link rel="apple-touch-icon" href="./assets/icons/mapicon2.png">
 
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261006.100000">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261006.100000">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261006.100000">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261006.100000">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261006.100000">
-    <script type="module" src="core/cgo-ui.js?v=261006.100000"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261006.120000">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261006.120000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261006.120000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261006.120000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261006.120000">
+    <script type="module" src="core/cgo-ui.js?v=261006.120000"></script>
 
     <style>
         body {
@@ -73,6 +73,34 @@
 
         .article-content a:hover {
             text-decoration: underline;
+        }
+
+        /* ---- 无障碍：本页不加载 css/style.css，以下与其「20. 无障碍」一节保持一致 ---- */
+        :root {
+            --focus-ring: #1a73e8; /* 对 #fff 4.51 / #f8f9fa 4.27 */
+        }
+
+        [data-theme="dark"] {
+            --focus-ring: #8ab4f8; /* 对 #1a1a1a 8.26 / #1f2020 7.75 */
+        }
+
+        :where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="tab"], [role="option"]):focus-visible {
+            outline: 2px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-delay: 0s !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                transition-delay: 0s !important;
+                scroll-behavior: auto !important;
+            }
         }
     </style>
 </head>

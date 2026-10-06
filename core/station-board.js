@@ -538,6 +538,10 @@
                     }
                 });
             });
+            // 选项卡语义 (tablist / tab / tabpanel) 与方向键切换；须在上面的 click 监听之后绑定
+            if (window.CGoA11y && typeof window.CGoA11y.enhanceTabs === 'function') {
+                window.CGoA11y.enhanceTabs(infoPanel);
+            }
 
             // 3. 分享按钮
             const shareBtn = infoPanel.querySelector('.panel-share-btn');
@@ -617,7 +621,7 @@
             // 把手在移动端展示，由 CSS 控制：桌面端隐藏
             const grabberHtml = `<div class="sheet-grabber"><span class="sheet-grabber-bar"></span></div>`;
             return `
-                <button class="panel-close-btn" title="关闭面板">
+                <button class="panel-close-btn" title="关闭面板" aria-label="关闭面板">
                     <cgo-icon name="close" size="24"></cgo-icon>
                 </button>
                 ${grabberHtml}
@@ -641,8 +645,8 @@
             }
             return `
                 <div class="header-name-group">
-                    <div class="panel-cn-name">${station.cn || ''}</div>
-                    <div class="panel-en-name">${enNameDisplay}</div>
+                    <div class="panel-cn-name" role="heading" aria-level="2" tabindex="-1">${station.cn || ''}</div>
+                    <div class="panel-en-name" lang="en">${enNameDisplay}</div>
                 </div>
             `;
         }
@@ -678,7 +682,7 @@
         order: 99,
         render(context) {
             return `
-                <button class="panel-share-btn" title="分享车站信息">
+                <button class="panel-share-btn" title="分享车站信息" aria-label="分享车站信息">
                     <cgo-icon name="external" size="20"></cgo-icon>
                 </button>
             `;

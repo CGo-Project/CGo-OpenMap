@@ -26,6 +26,8 @@
     /**
      * 城市注册表字典 (City Registry Map)
      * 键名为城市唯一标识符 (cityId,如 "beijing", "shanghai")
+     * 可选字段 lang：线路图页面的语言标签 (BCP 47，如 "en"、"zh-HK")，由 main.html 写入 <html lang>，
+     * 读屏据此选择发音；缺省为 "zh-CN"。
      */
     const CITY_REGISTRY = {
         "beijing": {
@@ -149,6 +151,7 @@
         "sydney": {
             id: "sydney",
             name: "悉尼",
+            lang: "en", // 站名全为英文
             themeColor: "#f7931e", // Transport for NSW 官方橙
             // Transport for NSW "T" 列车模式标识（去色，按 currentColor 着色）
             svglogo: '<svg xmlns="http://www.w3.org/2000/svg"><path d="M50,0C22.39,0,0,22.39,0,50s22.39,50,50,50,50-22.39,50-50S77.61,0,50,0ZM50,89.5c-21.82,0-39.5-17.68-39.5-39.5S28.18,10.5,50,10.5s39.5,17.68,39.5,39.5-17.68,39.5-39.5,39.5ZM72.5,25.5H27.5v12h16v37h13v-37h16v-12Z"/></svg>',
@@ -172,6 +175,7 @@
         "hongkong": {
             id: "hongkong",
             name: "香港",
+            lang: "zh-HK", // 站名为繁体中文
             themeColor: "#001F50", // 綫路圖站名深藍
             svglogo: null, // 已接入 CGoUI 内置 hongkong 矢量图标
             folder: "./city/hongkong",
