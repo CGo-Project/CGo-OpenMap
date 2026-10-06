@@ -15,3 +15,10 @@ _mn_test.html
 # 故不纳入版本库（保留在本地）。各城 data_facilities.js / data_exits.js 由它们生成后入库，
 # 取数口径、人工维护区与重跑说明见 docs/STATION_FACILITIES_RESEARCH.md。
 drunk/tools/facilities/
+# 福州官方票价矩阵抓取中间产物（2 MB，可由 city/fuzhou/tools/fuzhou_check.js 文件头记录的接口重新抓取）
+# 在版本库中保留无意义；重新抓取用 "node drunk/tools/_tmp_fare_scrape.js" 风格的脚本或按文档手写
+drunk/tools/_tmp_fare_matrix.json
+# 一次性抓取/审计脚本（下划线前缀即临时件）：用得到的结论已固化进
+# city/fuzhou/data_official_fare.js 与 city/fuzhou/tools/fuzhou_check.js，不需要入库
+drunk/tools/_tmp_*.js
+city/fuzhou/tools/_tmp_*.js

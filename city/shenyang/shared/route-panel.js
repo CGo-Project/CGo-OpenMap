@@ -479,6 +479,7 @@
             bend: config.bend,
             walkMinutes: config.walkMinutes,
             xferMinutes: config.xferMinutes,
+            transferAt: config.transferAt,              // 站内换乘方式与用时（同台/节点/站厅/通道）
             fare: config.fare
         });
         state.planner = window.CGoRoutePlanner.create(network);
@@ -927,6 +928,8 @@
             }
             const step = group.raw;   // 非乘车段：顺着归并前的原始步渲染
             if (step.t === "xfer") {
+                // 换乘方式由城市数据给出（同台 / 节点 / 站厅 / 通道换乘…），未配置时回落为「站内换乘」
+                const xferLabel = step.mode ? `${step.mode}` : "站内换乘";
                 legs.push(`
                     <li class="cgo-rt-leg xfer">
                         <div class="cgo-rt-leg-head">
@@ -935,7 +938,7 @@
                                 <b data-jump="${step.at}">${stationName(step.at)}</b><em>换乘</em>
                             </span>
                         </div>
-                        <div class="cgo-rt-leg-line muted"><span>站内换乘 · 约 ${Math.round(step.minutes)} 分钟</span></div>
+                        <div class="cgo-rt-leg-line muted"><span>${xferLabel} · 约 ${Math.round(step.minutes)} 分钟</span></div>
                     </li>
                 `);
                 return;
@@ -969,7 +972,31 @@
                 </div>
             </li>
         `);
+        // 换乘用时是「站台形式 + 通道长度」的静态估算，实际还受步行速度与站内人流量影响，
+        // 故有换乘时在末尾附一条说明。只出现一次 —— 挂到每一段换乘上会挤占列表。
+        if (route.steps.some((s) => s.t === "xfer" && !s.through)) {
+            legs.push(`
+                <li class="cgo-rt-leg note">
+                    <div class="cgo-rt-leg-line muted">
+                        <cgo-icon name="info" size="13"></cgo-icon>
+                        <span>换乘时间因步行速度和车站人流量不同，仅供参考</span>
+                    </div>
+                </li>
+            `);
+        }
         return legs.join("");
+    }
+
+    /**
+     * 页签文字：取该候选的第一枚标签。
+     *
+     * 兜底不可省 —— 内核已保证每条候选至少有一枚标签（会把无标签的候选滤掉），
+     * 但这条链路上曾出过「标签被摘空 → 页签显示 undefined」的真实缺陷，
+     * 故这里再挡一道：过滤掉空值，没有标签时退化显示「备选路线 N」。
+     */
+    function routeTabLabel(route, index) {
+        const labels = (route?.labels || []).filter((x) => typeof x === "string" && x.trim());
+        return labels[0] || `备选路线 ${index + 1}`;
     }
 
     /**
@@ -994,7 +1021,7 @@
             <div class="panel-tabs-nav">
                 ${routes.map((route, index) => `
                     <div class="tab-item${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}">
-                        ${route.labels[0]}
+                        ${routeTabLabel(route, index)}
                     </div>
                 `).join("")}
             </div>
@@ -1132,7 +1159,8 @@
                 <span>${route.distance} 公里 · ${route.stops} 站 · 换乘 ${route.transfers} 次${
                     route.fare === null ? "" : ` · ${route.fare} 元`}</span>
             </div>
-            ${route.labels.length > 1 ? `<div class="cgo-rt-labels">${route.labels.join(" · ")}</div>` : ""}
+            ${(route.labels || []).length > 1
+                ? `<div class="cgo-rt-labels">${route.labels.join(" · ")}</div>` : ""}
             <ol class="cgo-rt-steps">${renderLegs(route, tail)}</ol>
         `;
         injectSvgs(body);   // 面板其余部分仍可能有需注入的 SVG 占位（结果区本身已改用文字线路名）
@@ -1162,7 +1190,7 @@
     function syncResultSectionHeader(panel, route, head, tail) {
         const title = panel.querySelector(".section-title-text");
         if (title) {
-            // 括号里用当前选中页签的标签（时间最快 / 距离最短 / 票价最低），与页签栏文案保持一致；
+            // 括号里用当前选中页签的标签（时间最快 / 最少换乘 / 票价最低），与页签栏文案保持一致；
             // 只有一条路线时页签栏不显示，但标签本身依然有值
             const tag = route.labels?.[0] || "";
             title.textContent = `${stationName(head)}→${stationName(tail)}${tag ? `（${tag}）` : ""}`;

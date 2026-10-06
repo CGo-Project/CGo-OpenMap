@@ -1,0 +1,1 @@
+const NOT_OPEN_LINES = [];

@@ -639,6 +639,7 @@
                 bend: config.bend,
                 walkMinutes: config.walkMinutes,
                 xferMinutes: config.xferMinutes,
+                transferAt: config.transferAt,
                 fare: config.fare
             }),
             timeout

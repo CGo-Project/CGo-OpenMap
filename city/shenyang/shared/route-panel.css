@@ -460,6 +460,22 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     opacity: 0.65;
 }
 
+/* 换乘时间说明：只带一条文字行、没有图标列，故不要左侧那条粗边 */
+.cgo-rt-leg.note .cgo-rt-leg-line {
+    padding-left: 0;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.cgo-rt-leg.note .cgo-rt-leg-line::before {
+    display: none;
+}
+
+.cgo-rt-leg.note cgo-icon {
+    flex: none;
+    margin-top: 2px;
+}
+
 .cgo-rt-leg-line b {
     font-weight: 700;
 }

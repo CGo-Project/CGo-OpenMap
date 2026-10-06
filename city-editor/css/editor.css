@@ -620,19 +620,10 @@ body.editor-body {
 }
 
 /* SVG 画布内元素（颜色统一由 CSS 变量驱动，自适应主题） */
-.ed-node-station circle {
-    fill: var(--map-bg, #fff);
-    stroke-width: 7;
-}
-
-.ed-node-tsf .ed-node-ring {
-    fill: none;
-    stroke-width: 7;
-}
-
-.ed-node-tsf .ed-node-core {
-    fill: var(--map-bg, #fff);
-    stroke-width: 5;
+/* 车站图元直接使用 core/station-icons.js 的模板（与实际线路图同一份），
+   尺寸与配色写死在模板与 STATION_SIZE 里，这里不再覆盖描边宽度，避免画布与线路图不一致。 */
+.ed-node-icon {
+    overflow: visible;
 }
 
 .ed-node-temp line {
@@ -651,12 +642,14 @@ body.editor-body {
     font-weight: 700;
     paint-order: stroke;
     stroke: var(--map-bg, #fff);
-    stroke-width: 3px;
+    /* 与线路图同宽（核心 --sta-stroke-width-cn/en），保证所见即所得 */
+    stroke-width: var(--sta-stroke-width-cn, 2px);
     stroke-linejoin: round;
 }
 
 .ed-label-en {
     font-weight: 500;
+    stroke-width: var(--sta-stroke-width-en, 1.75px);
 }
 
 .ed-label-code {
@@ -1722,6 +1715,72 @@ body.editor-body {
     color: var(--text-light, #636f75);
     font-size: 11.5px;
     text-align: right;
+}
+
+/* ----------------------------------------------------------------------------
+ * 站名对齐方向：八向箭头轮盘
+ * 与 Drunk 工作台（drunk/index.html）的 .align-wheel-box 同款三行三列布局，
+ * 配色改用编辑器主题变量，亮 / 暗主题下都跟随面板配色。
+ * -------------------------------------------------------------------------- */
+.align-wheel-current {
+    margin: 0 0 6px;
+    color: var(--text-light, #636f75);
+    font-size: 11.5px;
+    text-align: center;
+}
+
+.align-wheel-current b {
+    color: var(--info-color, #006098);
+}
+
+.align-wheel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 34px);
+    gap: 6px;
+    /* 属性面板是 column flex 容器，这里必须显式给宽度，否则会被收缩成箭头的内容宽度 */
+    width: 100%;
+    max-width: 174px;
+    margin: 0 auto 8px;
+}
+
+.align-wheel-sector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: var(--text-main, #00263b);
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-xs, 6px);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition-base, all 0.15s ease);
+}
+
+.align-wheel-sector:hover {
+    color: var(--btn-text, #ffffff);
+    background: var(--info-color, #006098);
+    border-color: var(--info-border, #0070b0);
+    transform: scale(1.04);
+}
+
+.align-wheel-sector.is-active {
+    color: var(--btn-text, #ffffff);
+    background: var(--info-color, #006098);
+    border-color: var(--info-border, #0070b0);
+    box-shadow: 0 0 0 2px var(--info-bg, rgba(0, 96, 152, 0.18));
+}
+
+.align-wheel-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light, #9aa7b0);
+    font-size: 11px;
+    user-select: none;
 }
 
 .sd-chip.is-real {
