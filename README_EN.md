@@ -52,7 +52,13 @@ It is built with native Web technologies and is designed to be **ready to use, l
 >
 > The only exception is a narrow class of background monitoring tasks, such as monitoring station operating status or external Web pages, where Node.js/PM2 may be used for lightweight background services. The map engine and all major interactive map features must remain native front-end code.
 
-The repository currently includes complete or reference implementations for **Beijing, Shenyang, Dalian, Changchun, Qingdao, Hefei, Fuzhou, Shanghai, Sydney, and Hong Kong**. The common rendering engine is separated from city-specific business data, so new cities can be ported by following the standardized data model without rewriting the core renderer.
+The repository currently includes complete or reference implementations for **Beijing, Shenyang, Dalian, Changchun, Qingdao, Fuzhou, Shanghai, Sydney, and Hong Kong**. The common rendering engine is separated from city-specific business data, so new cities can be ported by following the standardized data model without rewriting the core renderer.
+
+> [!NOTE]
+> **City Network Maintenance & Maintainer Policy Note (Hefei)**:
+> - **Delisting for Maintenance**: The Hefei transit network (`city/hefei/`) is temporarily delisted from the portal cards due to prolonged absence of updates meeting production release standards. All underlying code and data are fully preserved.
+> - **Maintainer Tenure & Renewal**: The current maintainer [Evin](https://github.com/walternie) is temporarily retained. If the current maintainer submits qualified, release-standard updates in the future, the network will be reinstated and their maintainer tenure renewed.
+> - **Role Handover Rule**: If another community contributor submits verified, release-standard updates first during this maintenance period, the maintainer role will be transferred to the new active contributor per community governance guidelines, with prior contributions acknowledged.
 
 The project also includes **Drunk**, an intelligent transit-map conversion workbench. It can take a high-resolution image, vector PDF, or Adobe Illustrator project and help convert it into CGo OpenMap city data through vector parsing, AI-assisted topology recognition, knowledge-base matching, visual editing, and code export.
 
@@ -249,7 +255,7 @@ CGo OpenMap follows an **open collaboration + city stewardship** model. Contribu
 - **Beijing:** [NaL](https://github.com/NokiaimuL/) — City Maintainer; SierraQin — operations-data support; Freedom Space — suburban railway review
 - **Shenyang:** [jrzhang](https://github.com/beepingflijo) — City Maintainer; 从恒隆到细河 — operations-data support
 - **Qingdao:** [YoTra青通](https://github.com/YoTraYoungTraffic) — City Maintainer
-- **Hefei:** [Evin](https://github.com/walternie) — City Maintainer
+- **Hefei:** [Evin](https://github.com/walternie) — City Maintainer (*Maintenance Note: Temporarily delisted from portal cards due to prolonged absence of release-standard updates. Current maintainer tenure is retained and will be renewed upon submitting qualified updates; if another contributor submits standard updates during this period, maintainership will be transferred to the new maintainer*)
 - **Shanghai:** [Ryan Si](https://github.com/ryan-si) — City Maintainer
 - **Dalian:** [jrzhang](https://github.com/beepingflijo) — City Maintainer; duckinglim — operations-data support
 - **Changchun:** [jrzhang](https://github.com/beepingflijo) — City Maintainer

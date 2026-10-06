@@ -138,7 +138,9 @@
             description: "覆盖 1–8 号线及 S1 线示意。",
             officialMapUrl: "https://www.hfgdjt.com/",
             registerDate: "2026-09-07",
-            status: "active",
+            status: "delisted",
+            hidden: true,
+            statusNote: "因长期未提供达到生产上线标准的有效更新，暂从门户展示中下架归档维护（保留全部程序代码与底层数据）。现任主理人席位暂时保留，提交有效达标更新将续期保全；若下架期间由其他贡献者先行提交达标更新，主理人席位将依规交接给新维护者。",
             maintainers: [
                 { name: "Evin", role: "城市主理人", github: "https://github.com/walternie" }
             ],
@@ -372,7 +374,10 @@
             maintainers: [
                 { name: "待认领", role: "城市主理人招募中", isRecruiting: true,
                   github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
-            "shijiazhuang": {
+            ],
+            isDefault: false
+        },
+        "shijiazhuang": {
             id: "shijiazhuang",
             name: "石家庄",
             themeColor: "#79D064",

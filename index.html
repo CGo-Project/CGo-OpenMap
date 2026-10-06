@@ -29,14 +29,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=260930.233001">
-    <script type="module" src="core/cgo-ui.js?v=260930.233001"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261006.100000">
+    <script type="module" src="core/cgo-ui.js?v=261006.100000"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=260930.233001">
-    <link rel="stylesheet" href="css/cgo_element.css?v=260930.233001">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=260930.233001">
-    <link rel="stylesheet" href="css/cgo_components.css?v=260930.233001">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261006.100000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261006.100000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261006.100000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261006.100000">
 
     <style>
         html {
@@ -612,8 +612,8 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=260930.233001"></script>
-    <script src="core/tool-theme.js?v=260930.233001"></script>
+    <script src="city/data.js?v=261006.100000"></script>
+    <script src="core/tool-theme.js?v=261006.100000"></script>
 
     <!-- 动态城市渲染与数据绑定 -->
     <script>
@@ -693,7 +693,8 @@
                 if (!grid) return;
 
                 const registry = window.CITY_REGISTRY || {};
-                const cities = Object.values(registry);
+                // 仅展示有效上线城市；暂未达标下架或标记隐藏的城市（如合肥）不在门户展示，但保留全部底层程序代码与路由
+                const cities = Object.values(registry).filter(city => !city.hidden && city.status !== 'delisted' && city.id !== 'hefei');
 
                 const countBadge = document.getElementById('city-count-badge');
                 if (countBadge) {
