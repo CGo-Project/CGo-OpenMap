@@ -56,7 +56,7 @@ The repository currently includes complete or reference implementations for **Be
 
 > [!NOTE]
 > **City Network Maintenance & Maintainer Policy Note (Hefei)**:
-> - **Delisting for Maintenance**: The Hefei transit network (`city/hefei/`) is temporarily delisted from the portal cards due to layout and topological defects (such as station labels directly placed across track lines, curve corners stitched with fragmented straight segments instead of proper fillets, and inconsistent diagonal angles failing official transit map design standards). All underlying code and data are fully preserved in the repository.
+> - **Delisting for Maintenance**: The Hefei transit network (`city/hefei/`) is temporarily delisted from the portal cards due to layout and topological defects (such as station labels directly placed across track lines, curve corners stitched with fragmented straight segments instead of proper fillets, and custom rail lines diverging from established standards without meeting aesthetic and visual criteria). All underlying code and data are fully preserved in the repository.
 > - **Maintainer Tenure & Renewal**: The current maintainer [Evin](https://github.com/walternie) is temporarily retained. If the current maintainer submits qualified, release-standard updates in the future, the network will be reinstated and their maintainer tenure renewed.
 > - **Role Handover Rule**: If another community contributor submits verified, release-standard updates first during this maintenance period, the maintainer role will be transferred to the new active contributor per community governance guidelines, with prior contributions acknowledged.
 
@@ -255,7 +255,7 @@ CGo OpenMap follows an **open collaboration + city stewardship** model. Contribu
 - **Beijing:** [NaL](https://github.com/NokiaimuL/) — City Maintainer; SierraQin — operations-data support; Freedom Space — suburban railway review
 - **Shenyang:** [jrzhang](https://github.com/beepingflijo) — City Maintainer; 从恒隆到细河 — operations-data support
 - **Qingdao:** [YoTra青通](https://github.com/YoTraYoungTraffic) — City Maintainer
-- **Hefei:** [Evin](https://github.com/walternie) — City Maintainer (*Maintenance Note: Temporarily delisted from portal cards due to layout and topological defects such as station label overlap, straight segment curve stitching, and inconsistent angles failing official standards. Current maintainer tenure is retained and will be renewed upon submitting qualified updates; if another contributor submits standard updates during this period, maintainership will be transferred to the new maintainer*)
+- **Hefei:** [Evin](https://github.com/walternie) — City Maintainer (*Maintenance Note: Temporarily delisted from portal cards due to layout and topological defects such as station label overlap, straight segment curve stitching, and custom rail lines failing aesthetic standards. Current maintainer tenure is retained and will be renewed upon submitting qualified updates; if another contributor submits standard updates during this period, maintainership will be transferred to the new maintainer*)
 - **Shanghai:** [Ryan Si](https://github.com/ryan-si) — City Maintainer
 - **Dalian:** [jrzhang](https://github.com/beepingflijo) — City Maintainer; duckinglim — operations-data support
 - **Changchun:** [jrzhang](https://github.com/beepingflijo) — City Maintainer
