@@ -220,6 +220,17 @@
         return true;
     }
 
+    /**
+     * 待兑现的「滚到最近出口并高亮一次」：由「查找最近车站」在跳站后登记，
+     * 等这一站的**出入口页签第一次露面**时兑现（见 onMounted），用的就是 focusExit ——
+     * 与用户点小地图徽标完全同一套行为。只兑现一次即清空，免得很久以后再开这一站又被滚一次。
+     */
+    let pendingExitFocus = null;
+
+    function requestExitFocus(stationId, exitCode) {
+        pendingExitFocus = { stationId: String(stationId || ""), exitCode: String(exitCode || "") };
+    }
+
     /** 点小地图上的徽标 → 滚到清单里对应的那条出口，并高亮一下当反馈 */
     function focusExit(box, code) {
         const item = [...(box.parentElement?.querySelectorAll(".cgo-exit-item") || [])]
@@ -500,6 +511,23 @@
                     mountMap(mapBox, mapBox.dataset.stationName || "", getExits(mapBox.dataset.stationId));
                 }
 
+                // 「查找最近车站」跳过来的那一站：等出口清单**真正露面**（页签刚切过来时容器还没尺寸），
+                // 再把最近那个口滚到眼前并高亮一次 —— 与点小地图徽标同一套行为，不弹任何提示。
+                if (pendingExitFocus && mapBox && pendingExitFocus.stationId === mapBox.dataset.stationId) {
+                    const { exitCode } = pendingExitFocus;
+                    pendingExitFocus = null;   // 只兑现一次
+                    const list = container.querySelector(".cgo-exit-list");
+                    const reveal = () => {
+                        if (!list || !list.clientHeight) return false;
+                        focusExit(mapBox, exitCode);
+                        return true;
+                    };
+                    if (!reveal()) {
+                        const observer = new ResizeObserver(() => { if (reveal()) observer.disconnect(); });
+                        observer.observe(list || container);
+                    }
+                }
+
                 // 筛选模式：单选，再点一次取消（互斥，避免叠加出空清单）
                 const buttons = [...container.querySelectorAll(".cgo-exit-filter")];
                 for (const button of buttons) {
@@ -519,5 +547,5 @@
         }));
     }
 
-    window.CGoExits = { register, registered, exitsByStation };
+    window.CGoExits = { register, registered, exitsByStation, requestExitFocus };
 })();
