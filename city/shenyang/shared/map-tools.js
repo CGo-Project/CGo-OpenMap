@@ -1664,6 +1664,13 @@
             inner.style.transform = `scaleX(${Math.min(1, 2.6 / text.length)})`;
             inner.textContent = text;
             badge.appendChild(inner);
+            // 这枚图元把原站点图元顶掉了（上面给它加了 HIDDEN_CLASS），原图元上的可访问名随之离线，
+            // 故在同处补回。tabindex 取 -1 而非 0：与核心的车站图元同一口径 —— 等时圈 / 票价图会一次
+            // 铺满上百枚图元，让它们全进 Tab 序列等于在图上造一个上百步的 Tab 陷阱；键盘用户改走
+            // 车站检索与上一站 / 下一站，这里只保证读屏能念出「哪一站、读数多少」。
+            badge.setAttribute("role", "button");
+            badge.setAttribute("tabindex", "-1");
+            badge.setAttribute("aria-label", `${station.cn || ""} ${text}`);
             frag.appendChild(badge);
         });
         // 汇合图：各出发点的原图元整个让位，位置由 A / B / C 标记顶上；

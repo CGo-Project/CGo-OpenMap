@@ -1020,7 +1020,8 @@
         bar.innerHTML = `
             <div class="panel-tabs-nav">
                 ${routes.map((route, index) => `
-                    <div class="tab-item${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}">
+                    <div class="tab-item${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}"
+                         role="button" tabindex="0" aria-pressed="${index === state.routeIndex ? "true" : "false"}">
                         ${routeTabLabel(route, index)}
                     </div>
                 `).join("")}
@@ -1141,7 +1142,10 @@
         if (!route) return;
         const panel = ensureResultPanel();
         panel.querySelectorAll(".cgo-rt-routebar .tab-item").forEach((tab) => {
-            tab.classList.toggle("cgo-rt-tab-active", Number(tab.dataset.route) === state.routeIndex);
+            const active = Number(tab.dataset.route) === state.routeIndex;
+            tab.classList.toggle("cgo-rt-tab-active", active);
+            // 页签是非原生控件，选中态只体现在 class 上；一并同步给读屏
+            tab.setAttribute("aria-pressed", active ? "true" : "false");
         });
 
         // 标题栏显示起讫站（浮层形态的起讫行与侧栏区块标题共用同一份口径）

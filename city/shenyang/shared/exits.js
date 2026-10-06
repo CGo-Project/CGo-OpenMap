@@ -205,6 +205,11 @@
             if (marker.kind === "exit") {
                 pin.textContent = marker.label;
                 pin.addEventListener("click", () => focusExit(box, marker.label));
+                // 地图上的辅助标记：点它滚到下方清单里对应的那一条。同核心的车站图元取 tabindex="-1"
+                // （不进 Tab 序列）—— 键盘用户直接读下方清单即可，那里每条出口都是完整的文字描述。
+                pin.setAttribute("role", "button");
+                pin.setAttribute("tabindex", "-1");
+                pin.setAttribute("aria-label", `出口 ${marker.label}，定位到出口清单`);
             }
             if (marker.color) pin.style.setProperty("--pin-color", marker.color);
             pin.style.left = `${item.x}px`;
