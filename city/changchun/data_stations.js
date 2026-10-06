@@ -80,20 +80,7 @@ const stationsData = {
         }
     },
     "0127": {
-        "type": "dot",
-        "x": 1080,
-        "y": 752,
-        "cn": "人民广场",
-        "en": "Renmin Guangchang",
-        "align": "bottom-right",
-        "offset": {
-            "x": 6,
-            "y": 4
-        }
-    },
-    "0127-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 1080,
         "y": 752,
         "cn": "人民广场",
@@ -417,20 +404,7 @@ const stationsData = {
         }
     },
     "0233": {
-        "type": "dot",
-        "x": 982,
-        "y": 864,
-        "cn": "文化广场",
-        "en": "Wenhua Guangchang",
-        "align": "bottom-left",
-        "offset": {
-            "x": -6,
-            "y": 4
-        }
-    },
-    "0233-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 982,
         "y": 864,
         "cn": "文化广场",
@@ -730,20 +704,7 @@ const stationsData = {
         }
     },
     "0335": {
-        "type": "dot",
-        "x": 798,
-        "y": 1204,
-        "cn": "电台街",
-        "en": "Diantai Jie",
-        "align": "right",
-        "offset": {
-            "x": 10,
-            "y": 0
-        }
-    },
-    "0335-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 798,
         "y": 1204,
         "cn": "电台街",
@@ -1271,20 +1232,7 @@ const stationsData = {
         }
     },
     "0628": {
-        "type": "dot",
-        "x": 716,
-        "y": 1286,
-        "cn": "硅谷广场(吉大中心校区)",
-        "en": "Guigu Guangchang(Jida Zhongxin Xiaoqu)",
-        "align": "left",
-        "offset": {
-            "x": -10,
-            "y": 0
-        }
-    },
-    "0628-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 716,
         "y": 1286,
         "cn": "硅谷广场(吉大中心校区)",
@@ -1488,20 +1436,7 @@ const stationsData = {
         }
     },
     "0729": {
-        "type": "dot",
-        "x": 915,
-        "y": 1088,
-        "cn": "南湖广场(吉大南湖校区)",
-        "en": "Nanhu Guangchang(Jida Nanhu Xiaoqu)",
-        "align": "bottom-right",
-        "offset": {
-            "x": 6,
-            "y": 4
-        }
-    },
-    "0729-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 915,
         "y": 1088,
         "cn": "南湖广场(吉大南湖校区)",
@@ -1729,7 +1664,7 @@ const stationsData = {
         }
     },
     "0501": {
-        "type": "no",
+        "type": "dot",
         "hideLabel": true,
         "x": 1288,
         "y": 624,
@@ -1742,7 +1677,7 @@ const stationsData = {
         }
     },
     "0502": {
-        type: "no",
+        type: "dot",
         "x": 1238,
         "y": 674,
         "cn": "省妇儿中心",
@@ -1754,7 +1689,7 @@ const stationsData = {
         }
     },
     "0503": {
-        type: "no",
+        type: "dot",
         "x": 1178,
         "y": 734,
         "cn": "大经路",
@@ -1766,7 +1701,7 @@ const stationsData = {
         }
     },
     "0505": {
-        type: "no",
+        type: "dot",
         "x": 982,
         "y": 780,
         "cn": "同志街",
@@ -1778,7 +1713,7 @@ const stationsData = {
         }
     },
     "0507": {
-        type: "no",
+        type: "dot",
         "x": 982,
         "y": 930,
         "cn": "红旗街",
@@ -1802,7 +1737,7 @@ const stationsData = {
         }
     },
     "0510": {
-        type: "no",
+        type: "dot",
         "x": 862,
         "y": 1141,
         "cn": "省委党校",
@@ -1814,7 +1749,7 @@ const stationsData = {
         }
     },
     "0513": {
-        type: "no",
+        type: "dot",
         "x": 672,
         "y": 1332,
         "cn": "蔚山路",
@@ -1826,7 +1761,7 @@ const stationsData = {
         }
     },
     "0514": {
-        type: "no",
+        type: "dot",
         "x": 622,
         "y": 1382,
         "cn": "安新路",
@@ -1838,7 +1773,7 @@ const stationsData = {
         }
     },
     "0515": {
-        type: "no",
+        type: "dot",
         "x": 572,
         "y": 1432,
         "cn": "越达路",
@@ -1850,7 +1785,7 @@ const stationsData = {
         }
     },
     "0516": {
-        type: "no",
+        type: "dot",
         "x": 522,
         "y": 1482,
         "cn": "顺达路",
@@ -1862,7 +1797,7 @@ const stationsData = {
         }
     },
     "0517": {
-        type: "no",
+        type: "dot",
         "x": 472,
         "y": 1532,
         "cn": "市委党校",
@@ -1874,7 +1809,7 @@ const stationsData = {
         }
     },
     "0518": {
-        type: "no",
+        type: "dot",
         "x": 422,
         "y": 1582,
         "cn": "卓越大街",
