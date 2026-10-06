@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261006.120000';
+const CACHE_NAME = 'cgo-openmap-v261006.120007';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -83,6 +83,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (示例：北京)
     './city/data.js',
     './city/beijing/beijing.js',
+    './city/beijing/style.css',
     './city/beijing/modules/beijing_cultural.js',
     './city/beijing/stacard/script.js',
     './city/beijing/data_stations.js',
