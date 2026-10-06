@@ -55,6 +55,16 @@
     text-align: center;
 }
 
+/* 地形图（地图小工具的着色叠加层）期间：蒙文行也要与中英文同口径加一圈地图底色描边 ——
+   色块铺上来后站名对比度会被压掉，只给中英文垫底、让蒙文裸露在色块上会很突兀。
+   .cgo-mt-terrain 是共享层公开的样式挂钩（见 shared/map-tools.css 里给 .stacn / .staen
+   的同名规则与 shared/map-tools.js 的说明），描边宽度沿用中文那一档（蒙文 10px 介于
+   中文 11.5px 与英文 6.65px 之间）；paint-order 已在 .hohhot-mn 基础样式里声明，
+   与核心给站名加 active 选中态时是同一套写法。 */
+#map-content.cgo-mt-terrain #labels-layer .label-group .hohhot-mn {
+    -webkit-text-stroke: var(--sta-stroke-width-cn, 2px) var(--map-bg);
+}
+
 /* 蒙文行：夹在中文行与英文行之间（与官方标识「中文 → 蒙文 → 英文」的次序一致）。
    用行内块承载：.stacn / .staen 都是 display:block，夹在它们之间的行内块会自成一行，
    且左右位置跟随容器（.label-group）的 text-align —— 即跟随中文 / 英文的对齐方式；
