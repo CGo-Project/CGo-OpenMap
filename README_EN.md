@@ -54,11 +54,13 @@ It is built with native Web technologies and is designed to be **ready to use, l
 
 The repository currently includes complete or reference implementations for **Beijing, Shenyang, Dalian, Changchun, Qingdao, Fuzhou, Shanghai, Sydney, and Hong Kong**. The common rendering engine is separated from city-specific business data, so new cities can be ported by following the standardized data model without rewriting the core renderer.
 
+> 🏅 **Transit Map Quality Standards & PR Acceptance Criteria**:  
+> To guarantee professional visual aesthetics and rigorous topological integrity across all cities, the project adopts a quantified evaluation model and PR gatekeeper mechanism (contributors should self-evaluate to Tier C / ≥60 pts before submitting a PR, and collaborate with reviewers to reach Tier B / ≥70 pts before formal merge). For detailed scoring metrics and S-tier benchmarks (Beijing, Shanghai, Shenyang), see **[Transit Map Quality Standards & Governance Specification (docs/QUALITY_STANDARDS.md)](./docs/QUALITY_STANDARDS.md)**.
+
 > [!NOTE]
-> **City Network Maintenance & Maintainer Policy Note (Hefei)**:
-> - **Delisting for Maintenance**: The Hefei transit network (`city/hefei/`) is temporarily delisted from the portal cards due to layout and topological defects (such as station labels directly placed across track lines, curve corners stitched with fragmented straight segments instead of proper fillets, and custom rail lines diverging from established standards without meeting aesthetic and visual criteria). All underlying code and data are fully preserved in the repository.
-> - **Maintainer Tenure & Renewal**: The current maintainer [Evin](https://github.com/walternie) is temporarily retained. If the current maintainer submits qualified, release-standard updates in the future, the network will be reinstated and their maintainer tenure renewed.
-> - **Role Handover Rule**: If another community contributor submits verified, release-standard updates first during this maintenance period, the maintainer role will be transferred to the new active contributor per community governance guidelines, with prior contributions acknowledged.
+> **City Network Maintenance Note (Hefei)**:
+> - **Maintenance Status**: The Hefei transit network (`city/hefei/`) is currently undergoing layout orthogonality alignment and distance data verification, and is temporarily not featured on the portal cards. All underlying code and data are fully preserved and accessible directly via `main.html?city=hefei`.
+> - **Community Collaboration**: The maintainer tenure for [Evin](https://github.com/walternie) is maintained. Community contributors and transit enthusiasts are welcome to collaborate and refine the network per quality guidelines!
 
 The project also includes **Drunk**, an intelligent transit-map conversion workbench. It can take a high-resolution image, vector PDF, or Adobe Illustrator project and help convert it into CGo OpenMap city data through vector parsing, AI-assisted topology recognition, knowledge-base matching, visual editing, and code export.
 
@@ -255,7 +257,7 @@ CGo OpenMap follows an **open collaboration + city stewardship** model. Contribu
 - **Beijing:** [NaL](https://github.com/NokiaimuL/) — City Maintainer; SierraQin — operations-data support; Freedom Space — suburban railway review
 - **Shenyang:** [jrzhang](https://github.com/beepingflijo) — City Maintainer; 从恒隆到细河 — operations-data support
 - **Qingdao:** [YoTra青通](https://github.com/YoTraYoungTraffic) — City Maintainer
-- **Hefei:** [Evin](https://github.com/walternie) — City Maintainer (*Maintenance Note: Temporarily delisted from portal cards due to layout and topological defects such as station label overlap, straight segment curve stitching, and custom rail lines failing aesthetic standards. Current maintainer tenure is retained and will be renewed upon submitting qualified updates; if another contributor submits standard updates during this period, maintainership will be transferred to the new maintainer*)
+- **Hefei:** [Evin](https://github.com/walternie) — City Maintainer (*Maintenance Note: Currently undergoing layout refinement and data verification, temporarily not displayed on portal cards; community contributions welcome*)
 - **Shanghai:** [Ryan Si](https://github.com/ryan-si) — City Maintainer
 - **Dalian:** [jrzhang](https://github.com/beepingflijo) — City Maintainer; duckinglim — operations-data support
 - **Changchun:** [jrzhang](https://github.com/beepingflijo) — City Maintainer
