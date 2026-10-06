@@ -28,6 +28,29 @@
     inset: 0;
     z-index: 25;
     pointer-events: none;
+    /* 换范围档位 / 换起点时新旧两层交叉淡入（见 map-tools.js 的 renderOverlay）：
+       新层建好时带 .is-enter（opacity 0），下一帧摘掉即过渡到 1；旧层加 .is-out 淡出后
+       由脚本移除。180ms 与脚本里的过渡时长注释对齐。 */
+    transition: opacity 180ms ease;
+}
+
+.cgo-mt-values.is-enter,
+.cgo-mt-values.is-out {
+    opacity: 0;
+}
+
+/* 淡出期间不接触指针：选站态下 .cgo-mt-badge 是 pointer-events: auto，
+   不挡住的话这 180ms 内会点到已经过期的那一层图元 */
+.cgo-mt-values.is-out * {
+    pointer-events: none;
+}
+
+/* 切深浅色时图元平滑跟随主题变量（底色 / 文字色 / 边框都是 CSS 变量，过渡即可跟随；
+   canvas 上的色块读不到变量、由脚本重绘，见 map-tools.js 的 drawMap） */
+.cgo-mt-badge,
+.cgo-mt-flag,
+.cgo-mt-isoline {
+    transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
 }
 
 /* 各站图元：正圆 + 数值。底色统一为地图背景色、边框取文本色（读起来像图上的一枚标签）。
