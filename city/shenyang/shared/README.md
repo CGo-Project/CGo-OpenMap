@@ -111,10 +111,14 @@
 | 车站提示卡片 | 共享层出 DOM，城市只写命中判定与文案 | `shared/tip-card.js`、`city/shenyang/modules/shenyang_cultural.js` |
 | 站名题字 | 沈阳专属，其他城市可选用 | `shared/calligraphy.js`、`city/shenyang/modules/shenyang_calligraphy.js` |
 | **开通时刻** | 长春已接入（5 号线一期），沈阳、大连为空表待用 | `shared/opening-schedule.js`、各城 `data_opening.js` |
-| **行程规划** | 三城已接入：共享层出算法、面板与坐标索引，城市只写 `reader` 取数 + `fareSystems` / `fare` 票价（沈阳、大连、长春均可显示票价） | `shared/route-data.js`、`shared/route-planner.js`、`shared/route-panel.js`、各城 `{city}.js` 的 `CGO_ROUTE_CONFIG` |
+| **行程规划** | 沈阳、大连、长春、哈尔滨、福州已接入：共享层出算法、面板与坐标索引，城市只写 `reader` 取数 + `fareSystems` / `fare` 票价 | `shared/route-data.js`、`shared/route-planner.js`、`shared/route-panel.js`、各城 `{city}.js` 的 `CGO_ROUTE_CONFIG` |
 | **贯通运行（线路接续）** | 大连已接入（3 号线支线 ⇄ 13 号线在九里接续跑同一趟车）；其他城市按同一份 `lineLinks` 声明即可接入 | `shared/line-link.js`、`city/dalian/dalian.js` 的 `lineLinks` |
-| **固定侧栏形态（浮岛卡片）** | 三城已接入；上游开发团队认可后再决定是否整体迁入 `core/` | `shared/sidebar-refit.js`、各城 `{city}.js` 里的引入行 |
-| **地图小工具（票价图 / 等时圈 / 多人汇合）** | 东北四市已接入：共享层出选站、计算与分层设色（含悬停读数、起点选中光环与各站数值标注；等时圈带「范围」分段控件、范围上限那条等级线与「最近 10 站」列表，汇合图可点第三座车站升级为三点汇合），城市无需新增任何配置（有 `CGO_ROUTE_CONFIG.fare` 即可出票价图） | `shared/map-tools.js`、各城 `{city}.js` 里的引入行 |
+| **固定侧栏形态（浮岛卡片）** | 沈阳、大连、长春、哈尔滨、福州已接入；上游开发团队认可后再决定是否整体迁入 `core/` | `shared/sidebar-refit.js`、各城 `{city}.js` 里的引入行 |
+| **地图小工具（票价图 / 等时圈 / 多人汇合）** | 东北四市与福州已接入：共享层出选站、计算与分层设色（含悬停读数、起点选中光环与各站数值标注；等时圈带「范围」分段控件、范围上限那条等级线与「最近 10 站」列表，汇合图可点第三座车站升级为三点汇合），城市无需新增任何配置（有 `CGO_ROUTE_CONFIG.fare` 即可出票价图） | `shared/map-tools.js`、各城 `{city}.js` 里的引入行 |
+| **站外换乘步行时间（逐对）** | 福州已接入：`CGO_ROUTE_CONFIG.walkMinutes` 可传数字（全城统一，默认 6 分钟）或 `{ "起点ID\|终点ID": 分钟 }` 逐对覆盖（水部→闽都 10 分、三叉街（滨海快线）→三叉街 6 分） | `shared/route-data.js` 的 `walkOverride`、`city/fuzhou/fuzhou.js` 的 `walkMinutes` |
+| **规划优先级只有三种** | 内核 `OBJECTIVES` 为 **时间最快 / 最少换乘 / 票价最低**，**没有「距离最短」**（该目标已整体移除，所有城市一致；原先的按城市开关 `disabledObjectives` 机制已一并删除）。理由：乘客更关心少换乘与时间短，且最短距离常反而更耗时。里程仍保留在结果字段、等时圈口径与按段计价结算里，只是不再作为寻路目标 | `shared/route-planner.js` 的 `OBJECTIVES`、`extremes()` |
+| **官方票价表优先** | 福州已接入：票价**只取自官网抓取的站间票价表**（`city/fuzhou/data_official_fare.js`，10302 组），计算式已删除，查不到的组合返回 `null`（内核按「票价未知」处理）。理由：计价站距与土建站距不同源，用站距套费率必然在档位分界附近错档 | `city/fuzhou/fuzhou.js` 的 `CGO_ROUTE_CONFIG.fare`、`city/fuzhou/tools/fuzhou_check.js`（抓取步骤写在文件头） |
+| **站内换乘方式与用时** | 福州已接入：城市用 `CGO_ROUTE_CONFIG.transferAt` 逐站声明换乘方式（同台 / 节点 / 站厅 / 通道换乘）与用时；`pairs` 可按线路对进一步区分（帝封江：4/5 号线同台、换滨海快线通道 4 分）；同台方向对用 `sameDir`（如 `"M1+M5-"`）**显式点明**，几何判定（`sameDirMinutes`）仅作兜底 —— 实测中帝封江的几何同向对与现场站台并不一致。换乘方式会随结果步骤显示在行程规划面板上，行程含换乘时末尾附一条「换乘时间因步行速度和车站人流量不同，仅供参考」；未配置的城市行为与不加完全一致 | `shared/route-data.js` 的 `makeTransferLookup` / `resolveSameDir`、`city/fuzhou/fuzhou.js` 的 `transferAt` |
 
 ---
 

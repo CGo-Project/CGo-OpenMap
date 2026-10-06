@@ -37,11 +37,11 @@
     <title>CGo OpenMap - 线路图在线编辑器</title>
 
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=260930.233001">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=260930.233001">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=260930.233001">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=260930.233001">
-    <link rel="stylesheet" href="css/editor.css?v=260930.233001">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261002.0900">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261002.0900">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261002.0900">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261002.0900">
+    <link rel="stylesheet" href="css/editor.css?v=261002.0900">
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -209,28 +209,27 @@
                                 </span>
                                 <span class="tool-name">斜 90° 折角</span>
                             </button>
-                            <button class="tool-btn" data-tool="segaxis" title="XY 轴平行直线线段">
+                            <button class="tool-btn" data-tool="segaxis" title="自由直线线段：直接连接两端节点，方向不限（与坐标轴平行只是它的一种特例）；拖动节点时始终直连，不会被「线段自动选型」改写成折角">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
-                                        <path d="M3 13 L37 13" fill="none" stroke="currentColor" stroke-width="3.4"
+                                        <path d="M4 21 L36 5" fill="none" stroke="currentColor" stroke-width="3.4"
                                             stroke-linecap="round" />
                                     </svg>
                                 </span>
-                                <span class="tool-name">轴平行直线</span>
+                                <span class="tool-name">自由直线</span>
                             </button>
-                            <button class="tool-btn" data-tool="segfree"
-                                title="自由路径线段：依次点击添加转折点，按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束">
+                            <button class="tool-btn" data-tool="segfree" title="连续绘制：左键放下临时节点（点中已有车站 / 节点则直接连上），右键放置新车站；按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
                                         <path d="M3 21 C11 21 9 6 19 6 C29 6 28 20 37 20" fill="none"
                                             stroke="currentColor" stroke-width="3.4" stroke-linecap="round" />
                                     </svg>
                                 </span>
-                                <span class="tool-name">自由路径</span>
+                                <span class="tool-name">连续绘制</span>
                             </button>
                         </div>
                         <button class="side-btn side-btn-auto" id="btn-auto-route"
-                            title="路径编辑模式：新建线段时根据所连接的两个节点自动选择 135° 折角 / 90° 折角 / XY 轴平行直线">
+                            title="路径编辑模式：新建线段时根据所连接的两个节点自动选择 135° 折角 / 90° 折角 / 自由直线（两端与坐标轴平行时直连）">
                             <cgo-icon name="route" size="15"></cgo-icon>
                             <span>自动选型（路径编辑模式）</span>
                         </button>
@@ -239,13 +238,16 @@
                             <span>线段自动选型</span>
                         </label>
                         <button class="side-btn side-btn-refresh" id="btn-refresh-segments"
-                            title="一键按当前车站布局重新计算全部自动线段的走线（135° 折角 / 90° 折角 / 轴平行直线）">
+                            title="一键按当前车站布局重新计算全部自动线段的走线（135° 折角 / 90° 折角 / 自由直线）">
                             <cgo-icon name="refresh" size="15"></cgo-icon>
                             <span>刷新线段配置</span>
                         </button>
-                        <p class="side-hint">开启自动选型后，新线段会按两端节点坐标自动判定 135° 折角、90° 折角或轴平行直线；关闭则使用上方手动选择的线段类型（斜 90°
-                            折角需手动选择）。「刷新线段配置」按当前节点布局重算全部自动走线线段（车站与临时节点一视同仁），手动指定过类型的线段会按该类型重算，仅含 3 个以上转折点的手绘自由路径保持不变。
-                        </p>
+                        <button class="side-btn side-btn-refresh" id="btn-seg-type-batch"
+                            title="批量更改线段类型：按「当前所选 / 当前线路的全部 / 画布全部」范围，统一改为 135° 折角、90° 折角、斜 90° 折角、自由直线、连续绘制，或按两端节点坐标重新自动选型">
+                            <cgo-icon name="edit" size="15"></cgo-icon>
+                            <span>批量改线段类型</span>
+                        </button>
+                        <p class="side-hint">开启自动选型后，新线段会按两端节点坐标自动判定 135° 折角、90° 折角或自由直线（两端与坐标轴平行时直连）；关闭则使用上方手动选择的线段类型（斜 90° 折角需手动选择）。「自由直线」与「连续绘制」属手动类型：拖动节点时只跟随两端，不会被自动选型改写成折角。「刷新线段配置」按当前节点布局重算全部自动走线线段（车站与临时节点一视同仁），手动指定过类型的线段会按该类型重算，仅含 3 个以上转折点的连续绘制路径保持不变。「批量改线段类型」可按范围把成批线段统一改成同一种类型（改为「连续绘制」即保留当前形状、之后不再自动重算）。</p>
                     </div>
 
                     <div class="tool-group">
@@ -584,8 +586,7 @@
                 <p class="rl-hint" id="rl-line-hint"></p>
 
                 <div class="prop-field">
-                    <label for="rl-html">① 百科页面车站表格的 HTML 代码（可选；提取时会去掉站名末尾的「站」，「XX火车站 / XX汽车站 / XX客运站 /
-                        XX北站」等写法保留）</label>
+                    <label for="rl-html">① 百科页面车站表格的 HTML 代码（可选；提取时会去掉站名末尾的「站」，「XX火车站 / XX汽车站 / XX客运站 / XX枢纽站 / XX北站」等写法保留）</label>
                     <textarea id="rl-html" spellcheck="false"
                         placeholder="在百科页面的车站表格上右键 → 检查 / 查看源代码，复制其中的 &lt;table&gt;…&lt;/table&gt; 粘贴到这里"></textarea>
                 </div>
@@ -731,6 +732,60 @@
         </div>
     </div>
 
+    <!-- 3e. 批量更改线段类型对话框：按范围统一改成同一走线类型                       -->
+    <!-- ========================================================================== -->
+    <div class="editor-modal" id="st-modal">
+        <div class="editor-modal-box sd-box">
+            <div class="editor-modal-head">
+                <span>批量更改线段类型</span>
+                <button class="mini-btn" id="st-close" title="关闭">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                </button>
+            </div>
+            <div class="editor-modal-body">
+                <p class="modal-tip">把一批线段统一改成同一种走线类型：<b>自动选型</b>按两端节点坐标重新判定；
+                    各折角 / 直线类型按两端节点重建走线，并标记为自动走线（此后拖动节点、「刷新线段配置」都会按该类型重算）；
+                    <b>连续绘制</b>保留各自当前形状，只转为手绘（此后不再自动重算）。每条线段原有的折角方向会被保留。</p>
+
+                <div class="sd-modes">
+                    <span class="sd-modes-label">作用范围</span>
+                    <label class="check-row"><input type="radio" name="st-scope" value="selection" checked><span>当前所选线段</span></label>
+                    <label class="check-row"><input type="radio" name="st-scope" value="line"><span>当前线路的全部线段</span></label>
+                    <label class="check-row"><input type="radio" name="st-scope" value="all"><span>画布全部线段</span></label>
+                </div>
+
+                <div class="om-grid">
+                    <div class="prop-field">
+                        <label for="st-line">目标线路（范围为「当前线路」时生效）</label>
+                        <select id="st-line"></select>
+                    </div>
+                    <div class="prop-field">
+                        <label for="st-type">目标线段类型</label>
+                        <select id="st-type"></select>
+                    </div>
+                </div>
+
+                <p class="rl-status" id="st-status"></p>
+                <p class="side-hint">整批操作一次记入撤销栈（Ctrl+Z 可整体撤回）；改成折角 / 直线类型会重建走线，
+                    原来手绘的路径形状会被覆盖，应用前请先确认提示里的条数。<br>
+                    注意：两端与坐标轴平行的线段无法生成折角，会按直线走线（类型仍记为所选折角类型）；
+                    想把线段固定成「两端直连」请选<b>自由直线</b>（属手动类型，不会被自动选型改写）；
+                    折角类型则在开启左侧「线段自动选型」时，拖动节点与「刷新线段配置」会按几何重新判定，
+                    若要整批固定，请先关闭「线段自动选型」。</p>
+            </div>
+            <div class="editor-modal-foot">
+                <button class="side-btn" id="st-cancel">
+                    <cgo-icon name="close" size="14"></cgo-icon>
+                    <span>取消</span>
+                </button>
+                <button class="side-btn side-btn-primary" id="st-apply">
+                    <cgo-icon name="check" size="14"></cgo-icon>
+                    <span>应用到线段</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 隐藏文件选择器：打开 / 导入工程文件 -->
     <input type="file" id="file-input" accept=".json,application/json" style="display:none">
     <!-- 轻量提示条 -->
@@ -739,8 +794,11 @@
     <!-- ========================================================================== -->
     <!-- 4. 脚本加载：CGoUI 图标组件库 + 编辑器主逻辑                                   -->
     <!-- ========================================================================== -->
-    <script type="module" src="../core/cgo-ui.js?v=260930.233001"></script>
-    <script src="js/editor.js?v=260930.233001"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261002.0900"></script>
+    <!-- 车站图元模板与折线倒角算法：与实际线路图共用同一份「唯一真源」，保证画布所见即所得 -->
+    <script src="../core/path-geometry.js?v=261002.0900"></script>
+    <script src="../core/station-icons.js?v=261002.0900"></script>
+    <script src="js/editor.js?v=261002.0900"></script>
 </body>
 
 </html>

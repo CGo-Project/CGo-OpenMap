@@ -32,6 +32,8 @@
  *   fareSystems: { "线路ID": "计费系统名" },     // 可选，把各自购票的线路拆成独立计费系统
  *   fare: { 计费系统名(km, { entry, exit, stops }) -> 元 },   // 可选，不配则该城不显示票价
  *   walkMinutes, xferMinutes, bend              // 可选，覆盖 DEFAULTS
+ *       其中 walkMinutes 可以是数字（全城统一，默认 6），也可以是
+ *       { "起点ID|终点ID": 分钟 } 逐对覆盖站外换乘的步行时间
  * }
  *
  * 贯通运行不带在 config 里：它由城市侧的 lineLinks 声明，经 CGoLineLink 解析后
@@ -58,6 +60,135 @@
     };
     const mean = (list) => list.reduce((s, v) => s + v, 0) / list.length;
     const sum = (list) => list.reduce((s, v) => s + v, 0);
+
+    /* ======================================================================
+     * 站内换乘方式与换乘时间（transferAt）
+     *
+     * 城市可用 config.transferAt 描述「每个换乘站怎么换、要多久」：
+     *   transferAt: {
+     *     "M104": { mode: "通道换乘", minutes: 5 },
+     *     "M108": { mode: "十字节点换乘", minutes: 1 },
+     *     "M423": { mode: "同台换乘", minutes: 1,           // 默认（不分线路对）
+     *               pairs: { "M3|M6": { mode: "通道换乘", minutes: 4 } } }
+     *   }
+     * 规格：
+     *   · 键为换乘站 ID；pairs 的键是「线路A|线路B」，两条线的顺序无关，内部会归一化；
+     *   · pairs 命中时覆盖本站的默认 mode / minutes，故「同站不同线路对换乘方式不同」
+     *     （如帝封江：4/5 号线同台 1 分钟、换滨海快线通道 4 分钟）可以直接表达；
+     *   · `sameDirMinutes` 可选：只给**两列车同向**的那一对方向用这个时长，
+     *     反向仍用 minutes —— 用于「同向同台」这类方向不对称的换乘
+     *     （同向恰好同台、反向要绕对面站台）。
+     *   · `sameDir` 可选：**显式指定哪一对方向是同台**，形如
+     *     `{ "M1+M5-": 1, "M1-M5+": 1 }`（键为「线A+dir」+「线B+dir」，dir 取 + / -），
+     *     值为该组合的分钟数。给了 sameDir 就以它为准，**不再用几何判定** ——
+     *     站台实际布置以现场为准，几何推算只能当兜底（曾与实测不一致）。
+     *     没有 sameDir 时，才退回按站序几何判方向：
+     *     取该站沿站序前后各 span 站算单位位移向量（span 由大到小回退），
+     *     两线向量夹角 < 90° 即视为同向。
+     *   · 未配置的车站 → 内核用 DEFAULTS.xferMinutes（同站换乘默认 2 分钟）。
+     * 城市未配置 transferAt 时本机制完全不生效，与不加完全一致。
+     * ====================================================================== */
+
+    /** 判定「同向」时优先尝试的前后跨度（站数）；越靠近线路端头越取不到，故逐级回退 */
+    const SAME_DIR_SPANS = [3, 2, 1];
+    const SAME_DIR_MAX_ANGLE = 90;
+
+    /**
+     * 某线在某站沿某方向的单位位移向量。
+     *
+     * 跨度必须逐级回退：靠近线路端头的站（如梁厝在 1 号线上距终点只剩 2 站）
+     * 按 3 站去取会越界，若直接返回 null，同向判定就永远不成立、
+     * 「同向同台」会静默退化成一律用较长的那档时间。
+     */
+    function headingVector(line, sid, dir, stations) {
+        const ids = line?.stationIds || line?.ways?.[0] || [];
+        const i = ids.indexOf(sid);
+        if (i < 0) return null;
+        for (const span of SAME_DIR_SPANS) {
+            const j = i + dir * span;
+            if (j < 0 || j >= ids.length) continue;
+            const a = stations?.[ids[i]];
+            const b = stations?.[ids[j]];
+            if (!a || !b) continue;
+            const dx = Number(b.x) - Number(a.x);
+            const dy = Number(b.y) - Number(a.y);
+            const len = Math.hypot(dx, dy);
+            if (!len) continue;
+            return { x: dx / len, y: dy / len };
+        }
+        return null;
+    }
+
+    /** 两个方向向量是否同向（夹角 < 阈值即视为同向） */
+    function isSameDirection(v1, v2) {
+        if (!v1 || !v2) return false;
+        const dot = Math.max(-1, Math.min(1, v1.x * v2.x + v1.y * v2.y));
+        // 画布 Y 轴向下，但这里只比较两向量的夹角，与坐标系朝向无关
+        const angle = Math.acos(dot) * 180 / Math.PI;
+        return angle < SAME_DIR_MAX_ANGLE;
+    }
+
+    /** 归一化线路对键（两条线顺序无关） */
+    const pairKey = (a, b) => {
+        const x = String(a).split("#")[0];
+        const y = String(b).split("#")[0];
+        return x <= y ? `${x}|${y}` : `${y}|${x}`;
+    };
+
+    /**
+     * 生成一个「按站 + 按线路对 + 按方向」查换乘时间的函数。
+     * 返回 null 表示该站未配置，交由内核用默认换乘时间。
+     */
+    function makeTransferLookup(config) {
+        const table = config?.transferAt;
+        if (!table || typeof table !== "object") return () => null;
+        const linesById = new Map();
+        (config.linesData || []).forEach((l) => linesById.set(l.id, l));
+        const stations = config.stationsData || {};
+
+        const lookup = (sid, fromLine, toLine, fromDir, toDir) => {
+            const entry = table[String(sid)];
+            if (!entry) return null;
+            const fromBase = String(fromLine).split("#")[0];
+            const toBase = String(toLine).split("#")[0];
+            const perPair = entry.pairs?.[pairKey(fromBase, toBase)];
+            const spec = perPair || entry;
+            let minutes = Number(spec.minutes);
+            // 两种表达同台对的方式都算触发：显式 sameDir 优先，其次 sameDirMinutes 走几何
+            if (spec.sameDirMinutes !== undefined || spec.sameDir !== undefined) {
+                minutes = resolveSameDir(spec, sid, fromBase, toBase, fromDir, toDir, stations, linesById, minutes);
+            }
+            if (!Number.isFinite(minutes)) return null;
+            return { minutes, mode: perPair?.mode || entry.mode || "" };
+        };
+        return lookup;
+    }
+
+    /**
+     * 「同向同台」那一档的时长。
+     *
+     * 两种来源，**显式优先**：
+     *   1. spec.sameDir —— 城市直接点明哪一对方向是同台，形如 { "M1+M5-": 1 }；
+     *      线对顺序无关，两种写法都认；命中即用其值。
+     *   2. spec.sameDirMinutes —— 没点明时按站序几何判定同向（见 headingVector）。
+     *
+     * 之所以要有第 1 种：站台实际布置以现场为准，几何推算只能当兜底
+     * ——实测中出现过几何判定的同台对与城市给的实际同台对不一致的情形。
+     */
+    function resolveSameDir(spec, sid, fromBase, toBase, fromDir, toDir, stations, linesById, baseMinutes) {
+        const dirTag = (id, d) => `${id}${Number(d) > 0 ? "+" : "-"}`;
+        const explicit = spec.sameDir;
+        if (explicit && typeof explicit === "object") {
+            const a = dirTag(fromBase, fromDir);
+            const b = dirTag(toBase, toDir);
+            const hit = explicit[`${a}${b}`] ?? explicit[`${b}${a}`];
+            // 点明了同台对却不在其中 → 用基础时长（反向）
+            return hit !== undefined && Number.isFinite(Number(hit)) ? Number(hit) : baseMinutes;
+        }
+        const v1 = headingVector(linesById.get(fromBase), sid, Number(fromDir), stations);
+        const v2 = headingVector(linesById.get(toBase), sid, Number(toDir), stations);
+        return isSameDirection(v1, v2) ? Number(spec.sameDirMinutes) : baseMinutes;
+    }
 
     /**
      * 站外换乘表收集器：把各城 data_virtual_transfers.js 的两张表整理成
@@ -241,6 +372,8 @@
         const bend = Number(config.bend) || DEFAULTS.bend;
         const walkMinutes = Number(config.walkMinutes) || DEFAULTS.walkMinutes;
         const fareSystems = config.fareSystems || {};
+        /** 站内换乘方式与时间查表（城市未配置 transferAt 时恒返回 null，行为与不加一致） */
+        const transferLookup = makeTransferLookup(config);
 
         const lines = [];
         const stats = [];
@@ -283,6 +416,9 @@
                 // 默认两者一致（地铁网内换乘免费），城市可用 fareSystems 把同一制式下
                 // 各自购票的线路拆开——大连 201 与 202、长春 G54 与 G55 都属此列。
                 const mode = isTramLine(line) ? "tram" : "metro";
+                /** 该站的换乘方式与基础换乘时间（城市未配置该站时返回 null，内核用默认值） */
+                const xferInfoAt = (sid, fromLine, toLine, fromDir, toDir) =>
+                    transferLookup(sid, fromLine, toLine, fromDir, toDir);
                 lines.push({
                     id,
                     mode,
@@ -290,7 +426,16 @@
                     ways: [group.ids],
                     loop,
                     hop: (a, b) => hop.get(`${a}|${b}`) ?? null,
-                    hopKm: (a, b) => hopKmMap.get(`${a}|${b}`) ?? null
+                    hopKm: (a, b) => hopKmMap.get(`${a}|${b}`) ?? null,
+                    // 内核在换乘时调用；带方向参数以支持「同向同台」（见下方 transferLookup）
+                    xfer: (sid, fromLine, toLine, fromDir, toDir) => {
+                        const info = xferInfoAt(sid, fromLine, toLine, fromDir, toDir);
+                        return info ? info.minutes : null;
+                    },
+                    xferMode: (sid, fromLine, toLine, fromDir, toDir) => {
+                        const info = xferInfoAt(sid, fromLine, toLine, fromDir, toDir);
+                        return info ? info.mode : null;
+                    }
                 });
                 stats.push({
                     id, name: line.name,
@@ -306,11 +451,22 @@
         // 三城数据同构，默认直接取全局表；城市如需另行提供，传 { paid, free } 即可。
         const transfers = (config.virtualTransfers === undefined || config.virtualTransfers === true)
             ? collectVirtualTransfers() : config.virtualTransfers;
+        // 步行时间：默认全城同一个 walkMinutes；城市要按站对区分时，传
+        // walkMinutes: { "起点ID|终点ID": 分钟 } 逐对覆盖（福州水部→闽都 10 分、
+        // 三叉街（滨海快线）→三叉街 6 分即走这条路）。逐对表优先于统一值。
+        const walkOverride = (config.walkMinutes && typeof config.walkMinutes === "object")
+            ? config.walkMinutes : null;
         const walk = {};
         [[transfers?.paid, false], [transfers?.free, true]].forEach(([source, free]) => {
             Object.entries(source || {}).forEach(([from, partners]) => {
                 (partners || []).forEach((to) => {
-                    (walk[from] ||= []).push({ to: String(to), minutes: walkMinutes, free });
+                    const key = `${from}|${to}`;
+                    const minutes = Number(walkOverride?.[key]);
+                    (walk[from] ||= []).push({
+                        to: String(to),
+                        minutes: Number.isFinite(minutes) ? minutes : walkMinutes,
+                        free
+                    });
                 });
             });
         });

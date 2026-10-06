@@ -18,7 +18,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261005.0100';
+const CACHE_NAME = 'cgo-openmap-v261002.4500';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -35,7 +35,8 @@ const ASSETS_TO_CACHE = [
     './assets/svg/icon@bh.svg',
 
     // Drunk 转换工作台与城市编辑模式 (drunk)
-    // 注：drunk/tools/selfcheck.js 是 Node 端自检脚本，浏览器不会请求，故不预缓存
+    // 注：drunk/tools/selfcheck.js 与 city/fuzhou/tools/fuzhou_check.js 是 Node 端自检脚本，
+    //     浏览器不会请求，故不预缓存
     './drunk/index.html',
     './drunk/css/drunk.css',
     './drunk/js/drunk_logger.js',
@@ -409,9 +410,16 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/data_legend.js',
     './city/fuzhou/data_timetable.js',
     './city/fuzhou/data_site_space.js',
+    // 官方站间票价表（官网「票价线路查询」接口抓取，10302 组）
+    './city/fuzhou/data_official_fare.js',
+    // 文旅景点名录（含建库时算好的最近车站与直线距离）
+    './city/fuzhou/data_attractions.js',
     './city/fuzhou/staname.csv',
     './city/fuzhou/amap_data.json',
     './city/fuzhou/assets/fuzhou_sea.svg',
+    // 水域层的枢纽徽标（国铁车站 / 机场）：官方线路图图例的图标
+    './city/fuzhou/assets/fuzhou_railway.svg',
+    './city/fuzhou/assets/fuzhou_airport.svg',
 
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
     './assets/svg/icon@01.svg',
