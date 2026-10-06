@@ -5793,7 +5793,7 @@
             activeLineId = created.id;
         }
         sel.innerHTML = project.lines.map(function (l) {
-            return '<option value="' + l.id + '">' + escapeHtml(l.name) + '</option>';
+            return '<option value="' + escapeHtml(l.id) + '">' + escapeHtml(l.name) + '</option>';
         }).join('');
         if (!activeLineId || !findLine(activeLineId)) activeLineId = project.lines[0].id;
         sel.value = activeLineId;
@@ -8195,7 +8195,7 @@
         if (!project.lines.length) { toast('请先在「线路」中新建一条线路'); return; }
         var sel = $('sd-line');
         sel.innerHTML = project.lines.map(function (l) {
-            return '<option value="' + l.id + '">' + escapeHtml(l.name || l.id) + '</option>';
+            return '<option value="' + escapeHtml(l.id) + '">' + escapeHtml(l.name || l.id) + '</option>';
         }).join('');
         var active = (activeLineId && findLine(activeLineId)) ? activeLineId : project.lines[0].id;
         sel.value = active;

@@ -11,7 +11,11 @@
  *    - 更新版本时修改 `CACHE_NAME` 版本号，激活时自动清理旧版本缓存。
  * 
  * 2. 高德切片网络缓存 (Stale-While-Revalidate / Cache-First for Tiles):
- *    - 拦截所有发往 `autonavi.com` 的地图瓦片请求，保存至 `map-tiles-cache`，加速二次浏览。
+ *    - 拦截所有发往 `autonavi.com` 的地图瓦片请求，保存至 `map-tiles-cache`，加速二次浏览；
+ *    - 该缓存与版本无关，更新 `CACHE_NAME` 时保留，不随发版清空。
+ *
+ * 3. 缓存范围：只处理 GET 请求；除地图瓦片外只缓存同源资源。
+ *    POST（如 Drunk 直连大模型接口）与其他跨域请求（字体、第三方接口）一律不拦截，交给浏览器自行处理。
  * 
  * 移植与开发维护指南 (Developer & Porting Guide):
  * 1. 当制作了新城市（如 `shanghai`）或新增静态资源时，请在下方 `ASSETS_TO_CACHE` 中补充对应资源路径；
@@ -20,7 +24,9 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261006.113000';
+const CACHE_NAME = 'cgo-openmap-v261006.120000';
+// 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
+const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
     // 页面与入口
     './',
@@ -70,6 +76,7 @@ const ASSETS_TO_CACHE = [
     './core/help.js',
     './core/path-geometry.js',
     './core/station-icons.js',
+    './core/a11y.js',
     './core/settings.js',
     './core/notice.js',
 
@@ -525,7 +532,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
-            .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+            .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME && k !== TILE_CACHE_NAME).map(k => caches.delete(k))))
             .then(() => self.clients.claim())
     );
 });
@@ -534,19 +541,27 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const { url } = event.request;
     if (!url.startsWith('http')) return;
+    // 只缓存 GET：Cache API 不接受其他方法，POST 等请求直接放行
+    if (event.request.method !== 'GET') return;
 
     // 地图切片瓦片拦截与专用缓存
     if (url.includes('autonavi.com') || url.includes('cartocdn.com')) {
         event.respondWith((async () => {
-            const cache = await caches.open('map-tiles-cache');
+            const cache = await caches.open(TILE_CACHE_NAME);
             const cached = await cache.match(event.request);
             if (cached) return cached;
             const res = await fetch(event.request);
-            cache.put(event.request, res.clone());
+            // 只缓存成功的响应；<img> 跨域加载得到的不透明响应读不到状态码，按原有行为照常缓存
+            if (res && (res.ok || res.type === 'opaque')) {
+                cache.put(event.request, res.clone()).catch(() => { });
+            }
             return res;
         })());
         return;
     }
+
+    // 其余跨域请求（字体样式表、第三方接口等）不拦截、不缓存，避免被永久缓存优先
+    if (new URL(url).origin !== self.location.origin) return;
 
     // 页面导航请求（HTML 页面）：网络优先策略 (Network-First)
     // 确保代码更新后刷新浏览器永远呈现最新页面与样式；离线时优雅降级回退至缓存
