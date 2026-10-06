@@ -967,7 +967,7 @@
         legs.push(`
             <li class="cgo-rt-leg arrive">
                 <div class="cgo-rt-leg-head">
-                    <span class="cgo-rt-mode arrive"><cgo-icon name="gate" size="16"></cgo-icon></span>
+                    <span class="cgo-rt-mode arrive"><cgo-icon name="arrive" size="16"></cgo-icon></span>
                     <span class="cgo-rt-leg-name"><em>到达</em><b data-jump="${tailId}">${stationName(tailId)}</b></span>
                 </div>
             </li>
@@ -2711,10 +2711,10 @@
                 return `
                     <div class="cgo-rt-entry-btn">
                         <button class="cgo-rt-fbtn" data-route-act="from" title="设为起点">
-                            <cgo-icon name="location" size="18"></cgo-icon><span>设为起点</span>
+                            <cgo-icon name="depart" size="18"></cgo-icon><span>设为起点</span>
                         </button>
                         <button class="cgo-rt-fbtn emphasis" data-route-act="to" title="设为终点">
-                            <cgo-icon name="route" size="18"></cgo-icon><span>设为终点</span>
+                            <cgo-icon name="arrive" size="18"></cgo-icon><span>设为终点</span>
                         </button>
                         ${scheduleUrl
                             ? `<a class="cgo-rt-fbtn icon-only" href="${scheduleUrl}" target="_blank" rel="noreferrer" title="官网查询">${officialIconHtml}</a>`

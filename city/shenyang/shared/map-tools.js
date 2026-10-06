@@ -2441,7 +2441,7 @@
         menu.insertAdjacentHTML("beforeend", `
             <div class="ctx-divider">工具</div>
             <button type="button" class="ctx-menu-btn ${CTX_BTN_CLASS}" data-ctx="to">
-                <cgo-icon name="route" size="16"></cgo-icon> 设为终点
+                <cgo-icon name="arrive" size="16"></cgo-icon> 设为终点
             </button>
             <button type="button" class="ctx-menu-btn ${CTX_BTN_CLASS}" data-ctx="tools">
                 <cgo-icon name="plugin" size="16"></cgo-icon> 地图小工具
