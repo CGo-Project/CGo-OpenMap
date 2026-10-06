@@ -347,14 +347,14 @@
     };
 
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        document.write('<scr' + 'ipt src="./city/qingdao/data_station_names.js?v=261006.100000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_station_name_history.js?v=261006.100000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_travel_guide.js?v=261006.100000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/data_construction.js?v=261006.100000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_engineering_name_notice.js?v=261006.100000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_timetable.js?v=261006.100000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_construction.js?v=261006.100000"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_line_badges.js?v=261006.100000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/data_station_names.js?v=261006.120000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_station_name_history.js?v=261006.120000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_travel_guide.js?v=261006.120000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/data_construction.js?v=261006.120000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_engineering_name_notice.js?v=261006.120000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_timetable.js?v=261006.120000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_construction.js?v=261006.120000"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_line_badges.js?v=261006.120000"><\/scr' + 'ipt>');
     }
 
     window.QINGDAO_CITY = QingdaoCity;
