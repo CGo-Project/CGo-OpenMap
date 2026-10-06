@@ -198,7 +198,12 @@
                 "modules/shenyang_calligraphy.js",
                 "modules/shenyang_cultural.js",
                 "modules/shenyang_service_info.js",
-                "modules/shenyang_level_map.js"
+                "modules/shenyang_facilities.js",
+                "modules/shenyang_exits.js"
+            ],
+            // 出入口独立页签（自定义 tab），渲染在「车站信息」之前
+            tabs: [
+                { id: "shenyang-exits", title: "出入口", icon: "gate" }
             ],
             modules: {
                 "header-controls": { enabled: true, order: 10 },
@@ -209,18 +214,76 @@
                 "header-badges": { enabled: true, order: 30 },
                 "stacard": { enabled: true, targetTab: "line-tab", order: 10 },
                 "shenyang-timetable": { enabled: true, targetTab: "line-tab", order: 15 },
-                // 官网车站层级图（剖面图）纯图片卡片，置顶于「车站信息」页签
-                "shenyang-station-level-map": { enabled: true, targetTab: "station-info", order: 5 },
-                "shenyang-calligrapher-intro": { enabled: true, targetTab: "station-info", order: 12 },
-                "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 15 },
+                // 报站目的地指引排在「车站信息」页签最前，紧挨标签栏（配置里的 order
+                // 会覆盖模块注册时的 order，改顺序以这里为准）
+                "shenyang-cultural-destinations": { enabled: true, targetTab: "station-info", order: 1 },
+                // 车站层级图（官网剖面图，默认折叠、展开才加载）与官网设施位置合并为一个板块，
+                // 避免两个语义相近的板块在信息板里并列
+                "shenyang-facilities": { enabled: true, targetTab: "station-info", order: 6 },
+                // 站名题写者插在「车站设施」(6) 与「车站类型」(10) 之间
+                "shenyang-calligrapher-intro": { enabled: true, targetTab: "station-info", order: 7 },
                 "adjacent-stations": { enabled: true, targetTab: "line-tab", order: 20 },
                 "transfers": { enabled: true, targetTab: "line-tab", order: 30 },
                 "station-type": { enabled: true, targetTab: "station-info", order: 10 },
+                // 出入口页签（自定义 tab，见上方 tabs）
+                "shenyang-exits": { enabled: true, targetTab: "shenyang-exits", order: 10 },
                 "operators": { enabled: true, targetTab: "station-info", order: 20 },
                 "footer-actions": { enabled: true, order: 10 }
             }
         }
     };
+
+    /**
+     * 「位置在出入口的扶梯 / 电梯」搬迁规则（共享层 exit-vertical.js 读取）
+     *
+     * 官网设施数据里，一部分无障碍电梯与自动扶梯的位置是「以某个出入口为起终点」，
+     * 这部分已从车站设施板块搬到出入口页签的对应出口下；其余（站厅-站台、站台层、设备层等
+     * 站内垂直交通）留在设施板块。
+     *
+     * 判据必须是「前缀」而不是「是否提到出口编号」：「站厅-站台 A出入口附近」同样提到出口，
+     * 但它是站内电梯，只有前缀能区分二者。
+     *
+     * 前缀还必须**按类型分开配**：「站厅层 …出入口」对上行与下行的含义正好相反 ——
+     * 上行扶梯在站厅层，是「站厅 → 地面出口」的起点（属于出口）；
+     * 下行扶梯在站厅层，是「站厅 → 站台层」的向下交通（与出口无关），
+     * 真正属于出口的下行扶梯位置写的是「地面层」（地面 → 站厅）。
+     * 三类共用一组前缀会把站厅层的下行扶梯一并误搬进出口。
+     *
+     * types 的展示名与图标须与 modules/shenyang_facilities.js 的 types 保持一致。
+     */
+    window.CGO_EXIT_VERTICAL = {
+        types: {
+            // 无障碍电梯：只有「地面 ↔ 站厅」这一段属于出入口
+            elevator: {
+                name: "无障碍电梯",
+                icon: "elevator",
+                patterns: [/^(地面-站厅|地面-过街通道-站厅|站厅-地面)/]
+            },
+            // 上行扶梯：起点在站厅（站厅层 / 地下一层），终点是地面出口
+            escalator_up: {
+                name: "自动扶梯（上行）",
+                icon: "escup",
+                patterns: [/^(站厅层|地下一层)/]
+            },
+            // 下行扶梯：起点在地面出口，故只有「地面层」开头的属于出入口
+            escalator_down: {
+                name: "自动扶梯（下行）",
+                icon: "escdown",
+                patterns: [/^地面层/]
+            }
+        }
+    };
+
+    /**
+     * 出入口清单的筛选模式（共享层 exits.js 读取）
+     *
+     * 每个模式声明「命中其中之一即算符合」的设施类型（与设施表的 type 同名）；
+     * 只有本站确有出口命中时才显示该按钮，故不必担心某城缺某类设施。
+     */
+    window.CGO_EXIT_FILTERS = [
+        { id: "luggage", name: "携带行李", icon: "luggage", types: ["elevator", "escalator_up", "escalator_down"] },
+        { id: "accessible", name: "无障碍", icon: "vi-stn", types: ["elevator"] }
+    ];
 
     /**
      * 行程规划的城市侧配置
@@ -274,7 +337,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261001.1719";
+        const version = "261004.1900";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -289,13 +352,24 @@
         document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
         // 城市私有数据（须早于依赖它的模块加载）
         document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/data_facilities.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/data_exits.js?v=${version}"><\/script>`);
         // 共享层（本目录下，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/tip-card.js?v=${version}"><\/script>`);
+        // 呼出线随标签进入 active：按 data-cgo-callout 把站名标签的选中态同步到引线
+        document.write(`<script src="./city/shenyang/shared/label-active.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/calligraphy.js?v=${version}"><\/script>`);
+        // 出入口垂直交通：把「地面-站厅 X出入口」这类电梯/扶梯从设施板块搬到出口页签
+        // （须早于 facilities.js 与 exits.js，两者都调用它）
+        document.write(`<script src="./city/shenyang/shared/exit-vertical.js?v=${version}"><\/script>`);
+        // 车站设施（含可选的车站层级图）：配置驱动，大连等城同用
+        document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
+        // 车站出入口独立页签：配置驱动，大连等城同用
+        document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/data_opening.js?v=${version}"><\/script>`);

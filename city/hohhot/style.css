@@ -1,0 +1,234 @@
+/**
+ * CGo OpenMap - 呼和浩特城市专属样式 (city/hohhot/style.css)
+ *
+ * 蒙文站名（胡都木文）竖排的实现口径：
+ * - 蒙文是垂直连写文字：字自上而下连写，**行（列）自左向右**排列。
+ *   用 `writing-mode: vertical-lr` 承载正好对位：块方向即「列自左向右」，
+ *   行内方向即「字自上而下」；高度受限时按词自动换到下一列（**一个词一列**即可）。
+ * - 高度上限 = **1.5 个汉字高**（.stacn 的 11.5px × 1.5 = 17.25px）。
+ * - 单个词长于上限时无法再换列，由 modules/hohhot_mongolian.js 按实测比例
+ *   `scaleY` 上下压缩（transform 不触发重排，只作视觉收敛）。
+ * - 字体优先用**系统蒙文字体**；系统没有时由 modules/hohhot_mongolian.js 按需从
+ *   CDN 加载 Noto Sans Mongolian（fonts.loli.net）；两段都拿不到则整体不注入蒙文 ——
+ *   回落成不连写的假蒙文比没有蒙文更糟，具体见该模块头部说明。
+ *
+ * 布局：蒙文作为**独立一行**插在中文行与英文行之间（官方标识的次序即
+ * 「中文 → 蒙文 → 英文」，与官方线网图一致）；左右位置跟随 .label-group 的
+ * text-align，列首由 vertical-align: top 贴住行顶。
+ * ⚠️ 注意竖排下 text-align 的两轴是转置的，详见 .hohhot-mn 内的注释。
+ *
+ * 注意：这里的 `white-space: normal` 是必需的 —— 标签容器 .label-group 默认
+ * `nowrap`，若继承下来，蒙文会整串挤成一列而不换列。
+ */
+
+/* ===== 蒙文竖排站名 ===== */
+.hohhot-mn {
+    writing-mode: vertical-lr;
+    /**
+     * 高度固定 = 1.5 个汉字高（.stacn 字号 11.5px × 1.5 = 17.25px）。
+     * 用固定 height 而**不是** max-height：三行的行距预算统一、观感整齐；竖排里
+     * height 就是行内轴（列长），故它同时充当「换列的高度上限」。列比它短的站，
+     * 多出来的空档由 modules/hohhot_mongolian.js 用负外边距收回，不会留在蒙文与英文之间。
+     */
+    height: 17.25px;
+    font-family: "Mongolian Baiti", "Noto Sans Mongolian", "Menksoft Qagan", "Daicing Xiaokai", sans-serif;
+    font-size: 10px;
+    line-height: 1;
+    color: var(--text-main);
+    /* 必须允许换列（容器 .label-group 是 nowrap）；按词换列，一个词一列即可 */
+    white-space: normal;
+    letter-spacing: 0;
+    pointer-events: none;
+    user-select: none;
+    /* 与 .stacn / .staen 同口径：高亮时加的地图底色描边要压在字身之下 */
+    paint-order: stroke fill;
+    /* 压缩以顶边为基准；未压缩时无 transform，故此基准只影响压缩站 */
+    transform-origin: 50% 0;
+    /**
+     * ⚠️ 竖排下 text-align 的两轴是**转置**的：这里的 text-align 作用于行内轴
+     * （竖直方向，即「列内文字在高度上限里怎么摆」），而不是左右；左右位置由外层
+     * .label-group 的 text-align 决定（见下方说明）。
+     * 取 center：列比固定高度短时把列**在盒内竖直居中**，空档左右各分一半（≤3px），
+     * 观感与正常行距一致；各站行距预算因此完全一致，整排站名整齐。
+     * （若改回 start 顶对齐，空档会整段落在蒙文与英文之间，最宽约 6.9px。）
+     */
+    text-align: center;
+}
+
+/* 蒙文行：夹在中文行与英文行之间（与官方标识「中文 → 蒙文 → 英文」的次序一致）。
+   用行内块承载：.stacn / .staen 都是 display:block，夹在它们之间的行内块会自成一行，
+   且左右位置跟随容器（.label-group）的 text-align —— 即跟随中文 / 英文的对齐方式；
+   vertical-align: top 让列首与行顶对齐（默认的 baseline 会把竖排块往下顶）。
+
+   line-height: 0 是用来消掉**行盒 strut** 的：蒙文行自成匿名块，它的行盒高度取
+   「strut 与蒙文盒」的较大者，strut 会把行盒撑到比蒙文盒更高，多出来的部分同样
+   表现为「蒙文与英文之间的留白」。.stacn / .staen 各自带 line-height，不受影响。 */
+.label-group.has-mn {
+    line-height: 0;
+}
+
+.label-group.has-mn .hohhot-mn {
+    display: inline-block;
+    vertical-align: top;
+}
+
+/* 未开通 / 中国铁路等特殊站型的蒙文同样跟随其文字色 */
+.label-group.type-no .hohhot-mn {
+    color: var(--not-open-color);
+}
+
+/* 高亮：选中车站时中文 / 英文转红并加地图底色描边（core 的 .label-group.active 规则），
+   蒙文一并参与同一机制。这里只跟「颜色 + 描边」，**不跟** .stacn 的 scale(1.1) ——
+   蒙文的溢出压缩用的是内联 transform（scaleY），加 CSS transform 会把它覆盖掉。
+   本条必须排在 .type-no 之后：两者特异性相同，靠顺序取「高亮优先」。 */
+.label-group.active .hohhot-mn {
+    color: #D0021B;
+    -webkit-text-stroke: var(--sta-stroke-width-cn) var(--map-bg);
+}
+
+/**
+ * 线路悬停提示（#line-tooltip）：给徽标加一层主题卡片底。
+ * 核心只给了位置与 34px 展示高度，不加底时徽标会与线网的线条糊在一起；
+ * 口径与沈阳一致（见 city/shenyang/style.css 的同名规则）。
+ */
+#line-tooltip {
+    box-sizing: border-box;
+    background: var(--header-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 3px 5px;
+}
+
+/* ==================================================================
+ * 车站信息板紧凑线路徽标（modules/hohhot_station_board.js）
+ *
+ * 徽标 = 编号方标（内联 SVG，与本城 assets/line-1.svg 同一观感：微圆角 + 白描边）
+ *      + 右侧三行文字：中文「号线」/ 蒙文（线路 mn）/ 英文「Line」，
+ *        三行等高、与方标一起竖直居中。
+ * 尺寸以设计单位描述：面板中 1 单位 ≈ 1px；更小的槽位由 --hht-badge-u 整体等比缩小，
+ * 故徽标内部一律写成 calc(N * var(--hht-badge-u))。
+ * ================================================================== */
+.hohhot-line-badge {
+    --hht-badge-u: 1px;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(4 * var(--hht-badge-u));          /* = 模块 CONFIG.labelGap */
+    /* 文字描述取主题文本色，不写死颜色 */
+    color: var(--text-color);
+}
+
+/* 面板头部是深底白字：浅色主题下 var(--text-color) 等于品牌深蓝 #00263b，
+   会与头部底色 #00263b 同色而不可见，故头部内改为继承头部自身的文字色。 */
+.panel-header .hohhot-line-badge {
+    color: inherit;
+}
+
+.hohhot-line-badge-squares {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(2 * var(--hht-badge-u));          /* = CONFIG.squareGap */
+}
+
+/* 用 .hohhot-line-badge 前缀提升优先级，压过核心的 .svg-icon-inlined svg{height:100%}
+   与 .selector-item svg{height:22px}，否则方标会被拉成非正方。 */
+.hohhot-line-badge .hohhot-line-badge-square {
+    display: block;
+    flex: 0 0 auto;
+    width: calc(24 * var(--hht-badge-u));       /* = CONFIG.squareSize */
+    height: calc(24 * var(--hht-badge-u));
+}
+
+.hohhot-line-badge-labels {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* 三行等高（CONFIG.rowHeight）；蒙文行的高度与中文「号线」那行严格相等 */
+.hohhot-line-badge-cn,
+.hohhot-line-badge-en,
+.hohhot-line-badge-mn {
+    display: block;
+    height: calc(10 * var(--hht-badge-u));
+}
+
+.hohhot-line-badge-cn {
+    font-family: var(--font-sans, 'Noto Sans SC', sans-serif);
+    font-size: calc(10 * var(--hht-badge-u));   /* = CONFIG.cnFontSize */
+    line-height: calc(10 * var(--hht-badge-u));
+    white-space: nowrap;
+}
+
+.hohhot-line-badge-en {
+    font-family: Arial, Helvetica, var(--font-en, Arimo, sans-serif);
+    font-size: calc(7.5 * var(--hht-badge-u));  /* = CONFIG.enFontSize */
+    line-height: calc(10 * var(--hht-badge-u));
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* 蒙文行：与站名蒙文（.hohhot-mn）完全同一套规则 —— 胡都木文竖排 + 同一字体栈 +
+   固定行高；超长的词由模块按 fitMongolian 同口径 scaleY 压缩进行高。 */
+.hohhot-line-badge-mn {
+    writing-mode: vertical-lr;
+    font-family: "Mongolian Baiti", "Noto Sans Mongolian", "Menksoft Qagan", "Daicing Xiaokai", sans-serif;
+    font-size: calc(10 * var(--hht-badge-u));   /* = CONFIG.mnFontSize，同 .hohhot-mn */
+    line-height: 1;
+    white-space: normal;                        /* 必须允许换列（按词换列） */
+    letter-spacing: 0;
+    text-align: center;                         /* 竖排下作用于行内轴（列在行高内居中） */
+    transform-origin: 50% 0;                    /* 压缩以顶边为基准 */
+    pointer-events: none;
+    user-select: none;
+}
+
+/* 面板头部：徽标不参与 flex 压缩 */
+.panel-badges .hohhot-line-badge {
+    flex: 0 0 auto;
+}
+
+/* 站名气泡选择器（槽位 22px）与搜索结果 / 规划候选项（槽位 25px）：槽位比面板小，
+   徽标整体等比缩到槽位高度，避免被槽位自带的 height 裁切。 */
+.selector-item .hohhot-line-badge {
+    --hht-badge-u: calc(22 / 30 * 1px);
+    display: inline-flex;
+}
+
+.search-line-icon.hohhot-line-badge {
+    --hht-badge-u: calc(25 / 30 * 1px);
+    display: inline-flex;
+}
+
+/* 线路悬停提示：核心给徽标写了行内 display:block，并给其内的 svg 定了 34px 高，
+   这里改回 flex 以竖直居中，并复位方标尺寸（#line-tooltip svg 的优先级更高）。 */
+#line-tooltip .hohhot-line-badge {
+    display: flex !important;
+    align-items: center;
+}
+
+#line-tooltip .hohhot-line-badge .hohhot-line-badge-square {
+    width: calc(24 * var(--hht-badge-u));
+    height: calc(24 * var(--hht-badge-u));
+}
+
+/* 换乘链接（「可接驳或付费换乘至」那一行）：核心同样给徽标写了行内
+   display:inline-block（连同 margin-top:6px / vertical-align:middle，都是为旧的
+   「单行横长」徽标设计的）。行内样式压过上面的 display:inline-flex，内部于是退化为
+   按基线对齐 —— 方标与右侧三行文字上下错位。与 selector-item / search-line-icon /
+   #line-tooltip 三处同一口径，改回 inline-flex 竖直居中。 */
+.transfer-link.hohhot-line-badge {
+    display: inline-flex !important;
+}
+
+/* 无自定义 SVG 时的纯文字徽标（核心 .text-badge / .selector-text-badge）：同样取
+   文本色、不写死颜色。本城 1、2 号线均有自定义 SVG，此条为兜底。 */
+.panel-badges .text-badge,
+#station-selector .selector-text-badge,
+.search-item .text-badge {
+    color: var(--text-color);
+}
+
+.panel-header .panel-badges .text-badge {
+    color: inherit;
+}

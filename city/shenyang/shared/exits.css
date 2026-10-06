@@ -1,0 +1,262 @@
+/* CGo OpenMap - 车站出入口共享层样式（各城共用，由 exits.js 按自身 URL 注入） */
+
+.cgo-exit-section {
+    font-size: 13px;
+}
+
+/* 出入口分布小地图：出口清单之前，标出各线路的站厅位置与全部出入口。
+   高度与 .stacard-minimap-viewport 一致（156px），两块地图在信息板里比例统一。 */
+.cgo-exit-map {
+    position: relative;
+    height: 156px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.04));
+}
+
+.cgo-exit-map-tile {
+    position: absolute;
+    width: 256px;
+    height: 256px;
+    user-select: none;
+}
+
+/* 标记配色**全部硬编码、不跟随亮暗主题**（底图是浅色栅格图，跟随主题会在暗色下变成白底浅字）。
+   线路站厅直接沿用 .stacard-pin-dot 的观感：12px 圆点 + 白描边 + 投影，只靠颜色区分线路、不带文字；
+   出入口则是白底小胶囊 + 编号，与圆点一眼分得开。 */
+.cgo-exit-map-pin {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    padding: 1px 5px;
+    border: 1px solid #ffffff;
+    border-radius: 9px;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1.5;
+    white-space: nowrap;
+    color: #ffffff;
+    background: var(--pin-color, #007aff);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.cgo-exit-map-pin--hall {
+    box-sizing: border-box;
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.cgo-exit-map-pin--exit {
+    color: #333333;
+    background: #ffffff;
+    border-color: #7a7a7a;
+    cursor: pointer;
+}
+
+/* 筛选时地图上的呼应：命中的徽标加一圈主题色跳出来，未命中的淡下去 */
+.cgo-exit-map-pin--exit.is-dim {
+    opacity: 0.25;
+    filter: grayscale(0.7);
+}
+
+.cgo-exit-map-pin--exit.is-hit {
+    z-index: 2;
+    border-color: var(--primary-color, #007aff);
+    box-shadow: 0 0 0 2px var(--primary-color, #007aff), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* 重叠标记的引线与原位点（SVG 层）。
+   配色一律写死、不跟随亮暗主题——它们压在高德浅色栅格瓦片上，跟主题走会两头不讨好。
+   引线不用纯白：白线在浅色瓦片上几乎看不见；原位点沿用徽标「白底深边」的口径。 */
+.cgo-exit-map-links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.cgo-exit-map-links line {
+    stroke: rgba(50, 50, 50, 0.55);
+    stroke-width: 1.5;
+    stroke-dasharray: 2 2;
+}
+
+.cgo-exit-map-anchor {
+    fill: #ffffff;
+    stroke: #333333;
+    stroke-width: 1;
+}
+
+/* 点地图徽标跳转过来时的高亮（focusExit 加的瞬时类） */
+.cgo-exit-item.is-focused {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.cgo-exit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* 筛选模式（携带行李 / 无障碍）：点了只留下配有相应设施的出口 */
+.cgo-exit-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.cgo-exit-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+    border-radius: 999px;
+    background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.03));
+    font-size: 12px;
+    color: var(--text-light);
+    cursor: pointer;
+}
+
+.cgo-exit-filter[aria-pressed="true"] {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+}
+
+/* 一条出口：不再是独立小卡片，改用虚线底线分隔，视觉上更像一张清单 */
+.cgo-exit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border-color, rgba(0, 0, 0, 0.12));
+}
+
+.cgo-exit-item:last-child {
+    border-bottom: none;
+}
+
+/* 「有没有虚线底线」由 :last-child 决定，筛选隐藏掉几条后，可见的最后一条多半不是 :last-child，
+   底线会多出来一截——故由脚本在筛选后补 is-tail 类（无筛选时不加，:last-child 照常生效） */
+.cgo-exit-item.is-tail {
+    border-bottom: none;
+}
+
+/* ⚠️ 必须显式声明：hidden 属性对应的规则在浏览器默认样式表里优先级最低，
+   会被上面 .cgo-exit-item 的 display: flex 覆盖，那样筛选只改得动属性、改不动画面 */
+.cgo-exit-item[hidden] {
+    display: none;
+}
+
+/* 出口字母：方形描边徽标，与线路编号徽标区分开（不填充、不用主题色）。
+   外形恒为正方形——多段编号（C1 / A2）把第二段转下标，仍放不下的由脚本横向压扁。
+   尺寸略收（20px、3px 圆角），在清单里不喧宾夺主。 */
+.cgo-exit-badge {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--text-light);
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 1;
+    color: var(--text-main);
+    overflow: hidden;
+}
+
+/* 编号的「主字 + 下标」容器：宽度由内容决定，供脚本实测后整体横向压扁 */
+.cgo-exit-code {
+    flex: none;
+    white-space: nowrap;
+    transform-origin: center;
+}
+
+/* 第一段连续字母 / 数字之后的部分（C1 的 1、A2 的 2）转为下标 */
+.cgo-exit-badge sub {
+    font-size: 0.68em;
+}
+
+.cgo-exit-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.cgo-exit-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;              /* 方位描述可能较长，允许换行 */
+    gap: 6px;
+    margin-bottom: 4px;
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+/* 方位描述（最近道路的侧向，如「北站路 南侧/迎宾街 东侧」）：跟在编号之后，弱化字重与颜色 */
+.cgo-exit-pos {
+    font-size: 11px;
+    font-weight: normal;
+    color: var(--text-light);
+}
+
+.cgo-exit-closed {
+    padding: 1px 6px;
+    border-radius: 9px;
+    background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.06));
+    font-size: 11px;
+    font-weight: normal;
+    color: var(--text-light);
+}
+
+.cgo-exit-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-light);
+}
+
+.cgo-exit-row cgo-icon {
+    flex: none;
+    margin-top: 3px;
+    color: var(--primary-color);
+}
+
+/* 由车站设施板块搬来的扶梯 / 电梯（exit-vertical.js）：名称后跟位置原文，原文含运行时段 */
+.cgo-exit-vertical small {
+    opacity: 0.8;
+}
+
+/* 暂停使用的出口整体压暗，但仍可读 */
+.cgo-exit-item.is-closed {
+    opacity: 0.6;
+}
+
+.cgo-exit-source {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    margin-top: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-light);
+}
+
+.cgo-exit-source cgo-icon {
+    flex: none;
+    margin-top: 2px;
+}

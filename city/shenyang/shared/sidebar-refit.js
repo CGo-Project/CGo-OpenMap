@@ -457,12 +457,22 @@
 
     /**
      * 盯住 #sidebar-dynamic-content 里各区块的 class：折叠 ⇄ 展开都由它体现。
+     *
+     * ⚠️ 按**元素身份**判断是否已挂：核心每次 renderLegend() 都会重写 #legend-content 的
+     * innerHTML，`#sidebar-dynamic-content` 随之被换成新节点。若只认一个「已挂」标记，
+     * 换节点后会被当成已挂、观察器却早已随旧节点一起失效——固定侧栏形态下把浮层拖进侧栏
+     * 正是走这条路（dockStationPanel 先 renderLegend 再落位），表现为
+     * 「拖进去的车站窗口不遵守最小高度规则」。旧观察器随旧节点回收，无需显式解绑。
+     *
      * @returns {boolean} 容器已就位并挂上观察器时为 true
      */
+    let historyContainer = null;
+
     function observeHistorySections() {
         const container = document.getElementById("sidebar-dynamic-content");
-        if (!container || container.dataset.cgoSectionRefit === "on") return Boolean(container);
-        container.dataset.cgoSectionRefit = "on";
+        if (!container) return false;
+        if (container === historyContainer) return true;
+        historyContainer = container;
         new MutationObserver((records) => {
             const toggled = records.some((record) =>
                 record.target.classList?.contains("station-history-section"));
@@ -474,15 +484,25 @@
 
     /**
      * 等 #sidebar-dynamic-content 出现后再挂观察器。
-     * 它由核心渲染图例时创建（core/script.js 的 buildLegendHtml），本脚本启动时通常还没有。
+     * 它由核心渲染图例时创建（core/script.js 的 renderPinModeTree），脚本启动时通常还没有；
+     * 之后每次侧栏重建都要重挂，故由 observeContent 的观察器在侧栏变动时反复调用。
+     * 等待器按需创建、只留一个，避免反复调用堆积。
      */
+    let historyWaiter = null;
+
     function watchForHistoryContainer() {
-        if (observeHistorySections()) return;
-        const waiter = new MutationObserver(() => {
+        if (observeHistorySections()) {
+            historyWaiter?.disconnect();
+            historyWaiter = null;
+            return;
+        }
+        if (historyWaiter) return;
+        historyWaiter = new MutationObserver(() => {
             if (!observeHistorySections()) return;
-            waiter.disconnect();
+            historyWaiter.disconnect();
+            historyWaiter = null;
         });
-        waiter.observe(document.body, { childList: true, subtree: true });
+        historyWaiter.observe(document.body, { childList: true, subtree: true });
     }
 
     /* ======================================================================
@@ -497,7 +517,12 @@
         if (!content) return;
         contentObserver?.disconnect();
         // 只盯子节点：压扁编号会写内联样式，若连属性一起盯就会自触发
-        contentObserver = new MutationObserver(() => decorateSquares(content));
+        contentObserver = new MutationObserver(() => {
+            decorateSquares(content);
+            // 侧栏重建（renderLegend → container.innerHTML = …）会连 #sidebar-dynamic-content
+            // 一并换掉，顺带把高度兜底的观察器重挂到新节点上
+            watchForHistoryContainer();
+        });
         contentObserver.observe(content, { childList: true, subtree: true });
         decorateSquares(content);
     }

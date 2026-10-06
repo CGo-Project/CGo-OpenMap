@@ -57,6 +57,13 @@
     mask-mode: luminance;
 }
 
+/* 遮罩图是异步取到的：取到之前元素会按 background-color 整块填色（标题栏上会出现
+   一坨实心色块），故先隐藏，加载完成后由模块摘掉 is-pending；加载失败则模块会把整块
+   标题回退成标准中英文标题。用 visibility 而非 display：保留占位，标题栏高度不跳动。 */
+.sy-calligraphy-title.is-pending {
+    visibility: hidden;
+}
+
 /* 真实站名文本仅供屏幕阅读器朗读与 core/script.js 读取以同步侧栏标题，视觉上完全隐藏 */
 .sy-calligraphy-text {
     position: absolute;
@@ -117,65 +124,58 @@ body.sy-calligraphy-active .mobile-top-bar-backdrop {
 }
 
 /* ==========================================================================
-   题字信息缺失时的投稿引导（短标签 + 悬停 / 聚焦展开的气泡）
+   题字信息缺失时的投稿引导（展开区里的一段普通文字）
 
-   文案分两层：卡片上只留一行短标签（说明缺什么），完整引导连同联系方式
-   收进气泡，避免常驻占用卡片高度。
-   气泡用真实元素承载而非 ::after + attr(data-tooltip)——正文含可点击的
-   主理人链接，attr() 只能显示纯文本。
-   展开条件用父容器 :hover 与 :focus-within（标签带 tabindex）：
-   触屏上点按标签即展开、点按别处收起，桌面端悬停即见，均无需 JS。
-   气泡向下弹出：题字卡片位于「车站信息」页签中上部，上方空间有限。
+   早先它是一枚 hover / focus 气泡（短标签 + 悬浮面板）：卡片上只留一行短标签，
+   完整引导连同联系方式收进气泡以免常驻占高。折叠面板上线后并入展开区——
+   面板本身就是「展开看更多」，再套一层气泡既多余，触屏上又基本触发不了。
+   引导里含可点击的主理人链接，故用真实元素承载而非 ::after + attr(data-tooltip)。
    ========================================================================== */
-.sy-cali-hint {
-    position: relative;
+.sy-cali-note {
+    margin-top: 6px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-light);
+}
+
+.sy-cali-note a {
+    color: var(--primary-color, #1a73e8);
+}
+
+/* ── 题写者一行 + 可展开详情（车站信息板模块）──────────────────────────────
+   排版与同屏的「车站类型 / 运营单位 / 首末班车」等信息行同构：一律复用核心那套
+   .info-row / .info-label / .info-value，字号、颜色、行距与右对齐都由核心样式给出，
+   故这里只补「折叠按钮」与「详情段」两处，不再自带一套卡片外观。 */
+.sy-cali-toggle {
     display: inline-flex;
     align-items: center;
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--primary-color);
-    cursor: help;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
 }
 
-/* 虚线底边暗示可查看详情；键盘聚焦时不另加轮廓，避免与虚线叠成两层指示 */
-.sy-cali-hint-label {
-    border-bottom: 1px dashed currentColor;
-    line-height: 1.4;
+/* 悬停与键盘聚焦给同一份反馈（城市主题色），提示这一行可以点开。
+   焦点环不抑制：这是普通按钮，保留浏览器默认的焦点指示对键盘用户更友好
+   （被撤下的 .sy-cali-hint-label 抑制它，是因为那里的虚线下划线会与轮廓叠成两层） */
+.sy-cali-toggle:hover,
+.sy-cali-toggle:focus-visible {
+    color: var(--primary-color, #1a73e8);
 }
 
-.sy-cali-hint-label:focus-visible {
-    outline: none;
-}
-
-.sy-cali-hint-panel {
-    position: absolute;
-    left: 0;
-    top: calc(100% + 8px);
-    width: min(300px, 68dvw);
-    padding: 8px 10px;
-    border-radius: 6px;
-    background: rgba(16, 32, 51, 0.94);
-    color: #ffffff;
-    font-size: 11px;
+/* 「详情 / 收起」用常规字重：它继承 .info-value 的加粗，需显式压回去，
+   与加粗的题写者姓名形成层级（同一个块里，粗的是人名、细的是操作） */
+.sy-cali-more {
     font-weight: 400;
+}
+
+/* 展开区：小一号的浅色正文，与折叠态的题写者姓名拉开层次 */
+.sy-cali-detail {
+    margin: -4px 0 10px;
+    font-size: 12px;
     line-height: 1.6;
-    text-align: left;
-    box-shadow: 0 14px 32px rgba(16, 32, 51, 0.22);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 140ms ease;
-    z-index: 160;
-    white-space: normal;
-}
-
-.sy-cali-hint:hover .sy-cali-hint-panel,
-.sy-cali-hint:focus-within .sy-cali-hint-panel {
-    opacity: 1;
-    /* 展开后恢复指针事件，气泡内的链接才可点击 */
-    pointer-events: auto;
-}
-
-.sy-cali-hint-panel a {
-    color: #7cc4ff;
-    text-decoration: underline;
+    color: var(--text-light);
 }

@@ -1,0 +1,30 @@
+<!--
+  呼和浩特地铁 1 号线线路徽标（城市自定义，替换引擎通用模板 assets/svg/icon@01.svg）
+
+  与通用模板的差别（主理人指定）：
+  - 编号徽标由横长圆角标改为**微圆角方标 + 白色描边**（rx=4、白描边 1.5px、编号不加粗）；
+  - 方标右侧由「号线」一行改为**三行**：中文「号线」/ 蒙文「第一线」/ 英文「Line」，
+    三行行距相等，并与方标一起以 75 为竖直中心。
+
+  蒙文：ᠨᠢᠭᠡᠳᠦᠭᠡᠷ ᠮᠥᠷ（nigedüger mör，第一线）。ᠮᠥᠷ = 线/路线；ᠨᠢᠭᠡᠳᠦᠭᠡᠷ = 第一。
+  蒙文行带序数词是因为蒙文里数字不能借用方标里的阿拉伯数字，必须写成序数词才成立。
+  ⚠️ 蒙文写法待母语者复核后再定稿，详见 data_stations.js 的蒙文说明。
+
+  配色沿用引擎约定：底色取 --svgclr、文字与描边取 --svgtext。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 150" role="img" aria-label="1号线徽标">
+  <rect x="1" y="26" width="98" height="98" rx="4" ry="4" fill="var(--svgclr, #BC3738)"/>
+  <rect x="1" y="26" width="98" height="98" rx="4" ry="4" fill="none"
+        stroke="var(--svgtext, #ffffff)" stroke-width="1.5"/>
+  <text x="50" y="75" text-anchor="middle" dominant-baseline="central"
+        fill="var(--svgtext, #ffffff)" font-family="Arial, Helvetica, sans-serif"
+        font-size="56">1</text>
+  <text x="112" y="52" fill="var(--svgtext, #ffffff)"
+        font-family="'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+        font-size="30">号线</text>
+  <text x="112" y="85" fill="var(--svgtext, #ffffff)"
+        font-family="'Mongolian Baiti', 'Noto Sans Mongolian', 'Menksoft Qagan', sans-serif"
+        font-size="30">ᠨᠢᠭᠡᠳᠦᠭᠡᠷ ᠮᠥᠷ</text>
+  <text x="112" y="118" fill="var(--svgtext, #ffffff)"
+        font-family="Arial, Helvetica, sans-serif" font-size="30">Line</text>
+</svg>

@@ -957,10 +957,14 @@
             return {
                 kind: "fare",
                 colors: amounts.map((_, i) => scaleColor(scale, last > 0 ? i / last : 0.5)),
-                // 末格照旧必标：票价图的标注一律对齐在**格中心**，末格离右缘还有半格，
-                // 不会像等时圈那样与右对齐的末端标注挤在一起
+                // 末格必标（它撑着色标右界），但**距末端不足一个 step 的中间标注要跳过**：
+                // 票价图的标注对齐在格中心（renderLegend 用 translateX(-50%)），末格与它前面那个
+                // 标注的中心距 = 相隔格数 / 总格数，档位一多就可能小于一个标签宽 —— 例如 0~23 元
+                // 共 24 格、step=4，「20元」与末格「23元」只隔 3 格（≈26px）而标签宽约 28px，
+                // 于是叠在一起。等时圈早有一条同样作用的保护（见下方 iso 的 `i <= steps - tickEvery`），
+                // 票价图漏了，此处补上，两边口径对齐。
                 ticks: amounts
-                    .map((v, i) => (i % step === 0 || i === last
+                    .map((v, i) => (i === last || (i % step === 0 && i <= last - step)
                         ? { text: `${v}元`, at: (i + 0.5) / amounts.length } : null))
                     .filter(Boolean),
                 amounts,

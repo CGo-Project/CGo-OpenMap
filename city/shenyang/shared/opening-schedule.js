@@ -27,9 +27,6 @@
 (function () {
     "use strict";
 
-    /** 与 opening-schedule.js 同目录的样式表文件名 */
-    const STYLE_FILE = "opening-schedule.css";
-
     /** 样式表注入标记，避免重复引入 */
     const STYLE_FLAG_ATTR = "data-cgo-opening-style";
 
@@ -42,14 +39,20 @@
      */
     const SELF_URL = (typeof document !== "undefined" && document.currentScript?.src) || "";
 
-    /** 按自身脚本 URL 推导并注入倒计时样式表（幂等） */
+    /**
+     * 按自身脚本 URL 推导并注入倒计时样式表（幂等）。
+     *
+     * ⚠️ 必须用字符串替换把脚本 URL 上的 `?v=` 版本串**原样搬到 CSS 上**，不能走
+     * `new URL("opening-schedule.css", SELF_URL)`——那条路径会把 query 丢掉，于是 CSS 的 URL
+     * 恒定不变，改了样式也会被浏览器 / Service Worker 一直命中旧缓存。
+     */
     function injectStyle() {
         if (!SELF_URL || typeof document === "undefined") return;
         if (document.head?.querySelector(`link[${STYLE_FLAG_ATTR}]`)) return;
 
         const link = document.createElement("link");
         link.rel = "stylesheet";
-        link.href = new URL(STYLE_FILE, SELF_URL).href;
+        link.href = SELF_URL.replace(/opening-schedule\.js(\?|$)/, "opening-schedule.css$1");
         link.setAttribute(STYLE_FLAG_ATTR, "");
         (document.head || document.documentElement).appendChild(link);
     }

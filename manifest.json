@@ -180,6 +180,10 @@
       ]
     },
     {
+      "name": "呼和浩特轨道交通",
+      "short_name": "呼和浩特",
+      "description": "查看呼和浩特地铁 1、2 号线线网图",
+      "url": "./main.html?city=hohhot",
       "name": "石家庄地铁",
       "short_name": "石家庄",
       "description": "查看石家庄地铁线网图和附近景点（公园）",

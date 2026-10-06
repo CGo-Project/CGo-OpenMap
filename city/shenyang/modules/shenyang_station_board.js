@@ -154,11 +154,29 @@
         return colorsClose(line.color, headerTint.color);
     }
 
+    /**
+     * 按当前 header 状态把车站信息板的线路徽标重画一遍。
+     *
+     * 徽标是「渲染一次就固化的 SVG」：题字 header 会按染色反色画一版，若 header 之后
+     * 退回常规样式（例如题字图取不到而整块回退），已画好的徽标不会自己变——必须显式重画。
+     * 合并信息存在徽标自己的 data-shenyang-badge 上，getBadgeLines 会优先读它，
+     * 故重画不会把合并徽标打回单线。
+     */
+    function refreshHeaderBadges() {
+        document.querySelectorAll(".panel-badges").forEach((container) => {
+            [...container.querySelectorAll(":scope > .line-badge")].forEach((badge) => {
+                const lines = getBadgeLines(badge);
+                if (lines?.length) renderCompactLineBadge(badge, lines);
+            });
+        });
+    }
+
     // 暴露底色可读文字色等口径，供沈阳其他城市模块复用（如题字标题栏线路色染色），
     // 避免亮度阈值在各模块各抄一份、日后调整时漏改。
     window.ShenyangUi = Object.assign(window.ShenyangUi || {}, {
         getReadableTextColor: getReadableCircleTextColor,
-        colorsClose
+        colorsClose,
+        refreshHeaderBadges
     });
 
     /**
@@ -455,6 +473,22 @@
             },
             render() {
                 return `<img class="shenyang-station-header-decoration" src="${escapeAttribute(FANGCHENG_DECORATION.src)}" title="${escapeAttribute(FANGCHENG_DECORATION.title)}" alt="" aria-hidden="true" draggable="false">`;
+            },
+            /**
+             * 方城标识是纯装饰图，加载失败即整块移除，避免在站名左侧留下 32×32 的破图占位
+             * （与「车站层级图」失败即移除同口径）。面板每次按站重建，下次打开会重新请求，
+             * SW 未命中时亦会回源并回填缓存，故失败只是当次不显示。
+             */
+            onMounted(container) {
+                container.querySelectorAll(".shenyang-station-header-decoration").forEach((img) => {
+                    const drop = () => img.remove();
+                    // 命中缓存时 complete 已为真，error 不会再触发，须当场判定
+                    if (img.complete) {
+                        if (img.naturalWidth === 0) drop();
+                        return;
+                    }
+                    img.addEventListener("error", drop, { once: true });
+                });
             }
         });
     }
