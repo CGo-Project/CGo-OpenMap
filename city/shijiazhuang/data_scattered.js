@@ -1,0 +1,1 @@
+const SCATTERED_DATA = [];

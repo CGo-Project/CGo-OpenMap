@@ -178,6 +178,20 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "石家庄地铁",
+      "short_name": "石家庄",
+      "description": "查看石家庄地铁线网图和附近景点（公园）",
+      "url": "./main.html?city=shijiazhuang",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
+
