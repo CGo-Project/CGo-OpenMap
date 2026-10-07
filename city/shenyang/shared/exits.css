@@ -288,3 +288,11 @@
     color: var(--primary-color);
     outline: none;
 }
+
+/* 出入口页签的激活色。页签本身由 core 渲染（自定义页签带 data-custom-tab="<city>-exits"），
+   core 的 active 底线回落成主题色，与线路页签（线路色）、车站信息（文字色）混在一条栏里；
+   出入口是「走出去看」的实体信息，改用成功色把它区分出来。
+   选择器按页签 id 的 **后缀** 匹配，各城一律是 {city}-exits，故本层不含城市私有信息。 */
+.tab-item[data-custom-tab$="-exits"].active {
+    border-bottom-color: var(--success-color);
+}
