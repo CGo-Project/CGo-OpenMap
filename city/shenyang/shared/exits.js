@@ -97,35 +97,62 @@
         return el;
     }
 
-    /** 反馈正文：定位信息越全，维护者越省一轮来回 */
-    function feedbackText({ cityId, stationId, stationCn, exitCode }) {
-        const cityName = cityNameOf(cityId);
-        return [
-            `【出口数据反馈】${cityName} ${stationCn} ${exitCode} 口`,
-            "",
-            `- 城市：${cityName}（${cityId}）`,
-            `- 车站：${stationCn}（${stationId}）`,
-            `- 出口：${exitCode}`,
-            `- 数据文件：city/${cityId}/data_exits.js`,
-            "- 该出口还没有「出口指示」说明，界面目前只按方位显示（标题旁的「待补充」标即指此）。",
-            "",
-            "补充说明（选填）："
-        ].join("\n");
-    }
+    /* 反馈的两种场景：出口数据（出入口页签的「待补充」标）与站名题字（calligraphy.js 的投稿入口）。
+       正文模板不同，但定位信息、按钮与降级行为完全一致，故共用同一套面板：
+       FEEDBACK_KINDS 只描述「标题 / 首行 / 正文行 / 备注提示」，其余逻辑在 openFeedback 里。 */
+    const FEEDBACK_KINDS = {
+        exit: {
+            modalTitle: "反馈出口数据",
+            heading: ({ cityName, stationCn, exitCode }) => `${cityName} ${stationCn} · ${exitCode} 口`,
+            subject: ({ cityName, stationCn, exitCode }) => `【出口数据】${cityName} ${stationCn} ${exitCode} 口 说明待补充`,
+            notePlaceholder: "补充说明（选填，比如你看到的实际出口指示）",
+            context: ({ cityId, cityName, stationId, stationCn, exitCode, reason }) => [
+                `【出口数据反馈】${cityName} ${stationCn} ${exitCode} 口`,
+                "",
+                `- 城市：${cityName}（${cityId}）`,
+                `- 车站：${stationCn}（${stationId}）`,
+                `- 出口：${exitCode}`,
+                `- 数据文件：city/${cityId}/data_exits.js`,
+                `- 缺失内容：${reason || "该出口还没有「出口指示」说明，界面目前只按方位显示。"}`
+            ]
+        },
+        calligraphy: {
+            modalTitle: "投稿站名题字",
+            heading: ({ cityName, stationCn }) => `${cityName} ${stationCn} · 站名题字`,
+            subject: ({ cityName, stationCn }) => `【站名题字】${cityName} ${stationCn} 素材待补充`,
+            notePlaceholder: "补充说明（选填，如题写者姓名、落款、拍摄位置）",
+            context: ({ cityId, cityName, stationId, stationCn, reason }) => [
+                `【站名题字投稿】${cityName} ${stationCn}`,
+                "",
+                `- 城市：${cityName}（${cityId}）`,
+                `- 车站：${stationCn}（${stationId}）`,
+                `- 数据文件：city/${cityId}/data_calligraphy.js`,
+                `- 缺失内容：${reason || "本站的题字横图 / 题写者信息尚未收录。"}`,
+                "- 如有照片，请说明拍摄位置（站厅哪一侧、靠近哪个出入口）。"
+            ]
+        }
+    };
 
-    /** 打开反馈面板：正文预览 + 选填备注 + 复制 / 新建 Issue / 关闭 */
-    function openFeedback(ctx) {
+    /** 官方 QQ 交流群：项目级常量，可用 window.CGO_FEEDBACK_QQ 覆盖；置空字符串则面板不显示该入口 */
+    const QQ_GROUP = "619357751";
+    const qqGroup = () => (window.CGO_FEEDBACK_QQ === undefined ? QQ_GROUP : window.CGO_FEEDBACK_QQ);
+
+    /** 打开反馈面板：正文预览 + 选填备注 + 复制 / 新建 Issue / QQ 群 / 关闭 */
+    function openFeedback(ctx = {}) {
+        const kind = FEEDBACK_KINDS[ctx.kind] || FEEDBACK_KINDS.exit;
+        const info = { ...ctx, cityName: cityNameOf(ctx.cityId) };
+        const base = `${kind.context(info).join("\n")}\n\n补充说明（选填）：`;
         const modal = feedbackModal();
-        const base = feedbackText(ctx || {});
-        modal.title = "反馈出口数据";
+        modal.title = kind.modalTitle;
         modal.innerHTML = `
             <div class="cgo-exit-fb">
-                <p class="cgo-exit-fb-lead">${escapeHtml(cityNameOf(ctx?.cityId))} ${escapeHtml(ctx?.stationCn || "")} · ${escapeHtml(ctx?.exitCode || "")} 口</p>
+                <p class="cgo-exit-fb-lead">${escapeHtml(kind.heading(info))}</p>
                 <div class="cgo-exit-fb-context" data-context></div>
-                <textarea class="cgo-exit-fb-note" data-note rows="3" placeholder="补充说明（选填，比如你看到的实际出口指示）"></textarea>
+                <textarea class="cgo-exit-fb-note" data-note rows="3" placeholder="${escapeHtml(kind.notePlaceholder)}"></textarea>
                 <div class="cgo-exit-fb-actions">
                     <button type="button" class="cgo-exit-fb-btn" data-act="copy"><cgo-icon name="copy" size="13"></cgo-icon><span data-copy-label>复制</span></button>
-                    <button type="button" class="cgo-exit-fb-btn primary" data-act="issue"><cgo-icon name="external" size="13"></cgo-icon>在 GitHub 新建 Issue</button>
+                    <button type="button" class="cgo-exit-fb-btn primary" data-act="issue"><cgo-icon name="external" size="13"></cgo-icon>新建 GitHub Issue</button>
+                    ${qqGroup() ? `<button type="button" class="cgo-exit-fb-btn" data-act="qq"><cgo-icon name="chat" size="13"></cgo-icon><span data-qq-label>QQ 群 ${escapeHtml(String(qqGroup()))}</span></button>` : ""}
                     <button type="button" class="cgo-exit-fb-btn ghost" data-act="close"><cgo-icon name="close" size="13"></cgo-icon>关闭</button>
                 </div>
             </div>
@@ -133,6 +160,7 @@
         const contextEl = modal.querySelector("[data-context]");
         const noteEl = modal.querySelector("[data-note]");
         const copyLabel = modal.querySelector("[data-copy-label]");
+        const qqLabel = modal.querySelector("[data-qq-label]");
         // 正文用 textContent 落地（不拼 HTML），备注由用户自己填
         contextEl.textContent = base;
 
@@ -154,10 +182,21 @@
                 if (act === "close") { modal.open = false; return; }
                 if (act === "issue") {
                     const query = new URLSearchParams();
-                    query.set("title", `【出口数据】${cityNameOf(ctx?.cityId)} ${ctx?.stationCn || ""} ${ctx?.exitCode || ""} 口 说明待补充`);
+                    query.set("title", kind.subject(info));
                     query.set("body", compose());
                     window.open(`${feedbackRepo()}/issues/new?${query.toString()}`, "_blank", "noopener");
                     modal.open = false;
+                    return;
+                }
+                if (act === "qq") {
+                    // QQ 群没有稳定的深链，群号直接写在按钮上，点击即复制供用户去 QQ 搜索
+                    try {
+                        await navigator.clipboard.writeText(String(qqGroup()));
+                        qqLabel.textContent = "已复制群号";
+                    } catch {
+                        qqLabel.textContent = "复制失败，请手抄群号";
+                    }
+                    setTimeout(() => { qqLabel.textContent = `QQ 群 ${qqGroup()}`; }, 1800);
                     return;
                 }
                 // 复制：剪贴板 API 需要安全上下文（https / localhost），失败就退回手动选中

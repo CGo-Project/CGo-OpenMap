@@ -46,35 +46,57 @@
     const DEFAULT_PENDING_TEXT = "本站有书法家题写站名，题写者信息待补充。";
 
     /**
-     * 「内容缺失 → 欢迎投稿」引导（展开区里的一段普通文字）。
+     * 「内容缺失 → 欢迎投稿」入口：一句说明 + 一个按钮。
      *
      * 题字功能的素材完全依赖实地采集：题字横图要有人到站拍摄，题写者信息要靠落款辨认，
-     * 两者都可能长期缺位。与其只留一句「待补充」，不如把补齐路径告诉访客——
+     * 两者都可能长期缺位。与其只留一句「待补充」，不如把补齐路径直接给到访客——
      * 常有人正好身处那座城市、那个车站。
      *
-     * 早先这段引导是一枚 hover / focus 气泡，折叠面板上线后并入展开区：面板本身就是
-     * 「展开看更多」，再套一层气泡既多余，在触屏上又基本触发不了。
-     *
-     * 主理人取自城市注册表（与「关于与帮助」弹窗同一数据源，不在此重复硬编码姓名），
-     * 主理人虚位以待时退化为贡献指南入口。
+     * 早先这里是一段纯文字（「投稿给城市主理人 xxx，或加入官方 QQ 交流群 …」），
+     * 联系方式与正文都在本模块里硬编码、也没法一键带走反馈；现在改为按钮，直接打开
+     * **共享层的反馈面板**（`shared/exits.js` 的 `CGoExits.openFeedback`，与出入口页签的
+     * 「待补充」标同一套）：正文自带定位信息（城市 / 车站 ID / `data_calligraphy.js` 路径），
+     * 可复制、可直接新建 GitHub Issue、也可一键复制官方 QQ 群号 —— 联系方式与模板
+     * 都收敛在共享层，本模块不再重复硬编码。
      *
      * @param {string} reason 一句话说明当前缺的是什么（纯文本，函数内转义）
+     * @param {object} station 当前车站，取其 id 与站名作为反馈正文的定位信息
      */
-    function contributionNoteHtml(reason) {
-        const city = (typeof window.CityDataManager?.getCurrentCity === "function")
-            ? window.CityDataManager.getCurrentCity()
-            : null;
-        const people = (Array.isArray(city?.maintainers) ? city.maintainers : [])
-            .filter((person) => person && !person.isRecruiting && person.name && person.name !== "待认领");
-        const owner = people.find((person) => String(person.role || "").includes("主理人")) || people[0] || null;
-        const contact = owner
-            ? (owner.github
-                ? `城市主理人 <a href="${owner.github}" target="_blank">${escapeHtml(owner.name)}</a>`
-                : `城市主理人 ${escapeHtml(owner.name)}`)
-            : `<a href="./CONTRIBUTING.md" target="_blank">项目贡献指南</a>`;
+    function contributionNoteHtml(reason, station) {
         return `<div class="sy-cali-note">${escapeHtml(reason)}`
-            + `若你有条件实地拍摄，欢迎将照片投稿给${contact}，或加入官方 QQ 交流群 619357751 一并提供，我们会据此补全。`
+            + `<button type="button" class="cgo-feedback-link" data-cali-feedback`
+            + ` data-station-id="${escapeHtml(station?.id || "")}"`
+            + ` data-station-cn="${escapeHtml(station?.cn || "")}"`
+            + ` data-reason="${escapeHtml(reason)}"`
+            + `><cgo-icon name="edit" size="12"></cgo-icon>投稿 / 反馈</button>`
             + `</div>`;
+    }
+
+    /**
+     * 投稿按钮 → 共享层反馈面板。
+     * 未接入出入口模块的城市（`window.CGoExits` 不存在）只提示一句，不抛错——
+     * 按钮仍在原地，缺失的是面板本身。
+     */
+    function bindContributionButtons(infoPanel) {
+        infoPanel?.querySelectorAll("[data-cali-feedback]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const open = window.CGoExits?.openFeedback;
+                if (typeof open !== "function") {
+                    console.warn("[calligraphy] 共享层 CGoExits 未加载，投稿按钮暂不可用");
+                    return;
+                }
+                const city = (typeof window.CityDataManager?.getCurrentCity === "function")
+                    ? window.CityDataManager.getCurrentCity()
+                    : null;
+                open({
+                    kind: "calligraphy",
+                    cityId: city?.id || "",
+                    stationId: btn.dataset.stationId,
+                    stationCn: btn.dataset.stationCn,
+                    reason: btn.dataset.reason
+                });
+            });
+        });
     }
 
     /**
@@ -451,7 +473,7 @@
                         return renderCalligrapherRow(
                             "待考",
                             (info.pendingNote || pendingText)
-                                + contributionNoteHtml("本站题写者的落款、印章或站内说明牌尚待考证。")
+                                + contributionNoteHtml("本站题写者的落款、印章或站内说明牌尚待考证。", station)
                         );
                     }
 
@@ -466,13 +488,14 @@
                     // 题写者已知但横图未采集时，一并向访客征求实拍照片
                     const note = info.image
                         ? ""
-                        : contributionNoteHtml("本站题字横图尚未收录，标题栏暂以普通文字显示站名。");
+                        : contributionNoteHtml("本站题字横图尚未收录，标题栏暂以普通文字显示站名。", station);
                     const detail = `${lead}${escapeHtml(person.intro)}。${note}`;
 
                     return renderCalligrapherRow(escapeHtml(person.name), detail);
                 },
                 onMounted(infoPanel) {
                     bindCalligrapherToggle(infoPanel);
+                    bindContributionButtons(infoPanel);
                 }
             });
         }

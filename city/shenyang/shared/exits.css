@@ -289,6 +289,26 @@
     outline: none;
 }
 
+/* 反馈入口的通用按钮：出入口页签的「待补充」标与题字投稿（calligraphy.js）都用它打开
+   同一套反馈面板；做成文字链接的样子，跟在说明句后面不抢戏。 */
+.cgo-feedback-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: var(--primary-color, #007aff);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.cgo-feedback-link:hover {
+    opacity: 0.8;
+}
+
 /* 反馈面板（挂在 cgo-modal 内部） */
 .cgo-exit-fb {
     font-size: 12px;
