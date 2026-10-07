@@ -337,4 +337,13 @@
         backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
         -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
     }
+
+    /* ── 8. 车站窗口里的页签栏：页签内边距收细 ──────────────────────────────────
+       内核给 .tab-item 的 9 / 13 / 7 / 13px 在侧栏里明显偏胖：侧栏列本身不宽，
+       车站窗口的页签（车站信息 / 出入口 / 线路 …）一多就横向滚动，滚出去的页签看不见。
+       收成原值约 1/3（3 / 4 / 2 / 4px），一栏能多露出一个页签；字号与行高不动，
+       只压内边距，所以视觉重量不变、只是更紧凑。 */
+    body.legend-pinned #info-panel .tab-item {
+        padding: 3px 4px 2px;
+    }
 }
