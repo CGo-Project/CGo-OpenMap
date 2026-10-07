@@ -204,6 +204,21 @@
     opacity: 0;
 }
 
+/* 地图小工具的结果区块收起时：图上的等级图整体隐去 ——
+   填色画布（#cgo-map-tools-canvas，色阶与等值线都画在它上面）与数值图元层一起藏起来，
+   被它顶掉的原站点图元同时还原，于是收起后看到的就是一张干净的底图。**数据不销毁**，
+   展开回来原样呈现；真正清掉走关窗那条路（closePanel → clearOverlay）。
+   ⚠️ 类名不能含 "overlay"：核心有条 `div[class*="overlay"]{z-index:99999}` 的通配规则，
+   #map-content 一旦命中就会被抬到最上层、把缩放控件与标题栏浮岛整块盖住。 */
+#map-content.cgo-mt-levels-off .cgo-mt-values,
+#map-content.cgo-mt-levels-off #cgo-map-tools-canvas {
+    display: none;
+}
+
+#map-content.cgo-mt-levels-off #stations-layer .station.cgo-mt-hidden {
+    opacity: 1;
+}
+
 /* 地形图期间：站名文字加一圈地图背景色描边。
    色块铺上来之后，站名的对比度会被压掉（尤其深浅交界的等值线附近），
    描边相当于给每个字垫一层"底色"。这里直接用 -webkit-text-stroke +
@@ -279,6 +294,98 @@
 
 .cgo-mt-panel.show {
     display: flex;
+}
+
+/* ── 固定侧栏形态：两块面板搬进侧栏列常驻（工具列表排在「图例」区块之前，结果小窗压进
+      动态内容区末尾），与行程规划面板同处。
+      ⚠️ 观感必须与共享层 sidebar-refit.css 的「浮岛卡片」形态一模一样：侧栏里每张区块
+      都是圆角 12px + 1px 描边 + 卡片底色 + 极浅投影，标题行底色透明、展开时下方一条细分隔。
+      那边这些规则挂在 .panel-section / .section-header 上，而这里刻意**不给**面板加
+      .panel-section 类 —— 核心打开侧栏时会把所有 .panel-section 的 collapsed 一律摘掉
+      （见 core/script.js 的 menuBtn 处理器），加了类我们的折叠就会被强制展开。
+      故把观感照搬一份，标题行仍用自家的 .cgo-mt-head。 */
+body.legend-pinned .cgo-mt-panel {
+    /* 侧栏列里是文档流中的常驻区块，不再是贴右下角的浮层 */
+    position: static;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    max-width: none;
+    /* 高度上限与浮层同一口径：矮窗口不顶出视口，桌面上也不至于长成一条。
+       侧栏里再让开顶部那一层（--cgo-sb-top = 浮岛底边 + 12px）与卡片自身的上下留白，
+       超出部分交给 .cgo-mt-body 内部滚动（浮层形态也是同一套）。 */
+    max-height: min(calc(100vh - var(--cgo-sb-top, 84px) - 24px), 640px);
+    display: flex;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    overflow: clip;
+}
+
+body.legend-pinned .cgo-mt-panel .cgo-mt-head {
+    padding: 3px 12px;
+    background-color: transparent;
+    color: var(--text-main);
+    font-weight: bold;       /* 与 .section-header 逐项对齐（标题 span 本来就是 bold） */
+    border-radius: 11px 11px 0 0;
+    user-select: none;
+    cursor: pointer;
+}
+
+body.legend-pinned .cgo-mt-panel .cgo-mt-head:hover {
+    background-color: var(--ctrl-hover);
+}
+
+/* 展开态：标题行与正文之间补一条细分隔（标题行底色透明后，没有它两者会粘在一起） */
+body.legend-pinned .cgo-mt-panel:not(.collapsed) .cgo-mt-head {
+    border-bottom: 1px solid var(--divider);
+}
+
+/* 折叠态：整张卡片就是这一行，圆角要四面都收 */
+body.legend-pinned .cgo-mt-panel.collapsed .cgo-mt-head {
+    border-radius: 11px;
+}
+
+body.legend-pinned .cgo-mt-panel .cgo-mt-head-title {
+    font-size: 13px;
+    font-weight: bold;
+}
+
+body.legend-pinned .cgo-mt-panel .cgo-mt-body {
+    /* 核心把 .section-body 的左右内边距强制成 0，各区块靠自带内缩对齐 ——
+       搜索区块内部是 12px（实测内容左缘 21px），这里取同一档，两个区块的左缘才对得上 */
+    padding: 12px;
+}
+
+/* 侧栏区块一律不带关闭按钮（搜索 / 规划行程 / 图例都没有），收起＝折叠，
+   结果留在图上；浮层形态仍靠标题栏右侧那枚叉关窗 */
+body.legend-pinned .cgo-mt-panel .cgo-mt-close {
+    display: none;
+}
+
+body.legend-pinned .cgo-mt-panel.collapsed .cgo-mt-body {
+    display: none;
+}
+
+/* 折叠箭头只在侧栏形态里露面；方向口径与核心 .section-arrow 完全一致 ——
+   展开＝默认朝下，收起＝逆时针 90°（朝右）。别自定义成 180°，那样展开时是朝上的，
+   跟旁边几个区块正好相反 */
+.cgo-mt-arrow {
+    display: none;
+    flex: none;
+    width: 20px;             /* 与核心 .section-arrow 同尺寸 */
+    height: 20px;
+    fill: var(--text-light);
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+body.legend-pinned .cgo-mt-panel .cgo-mt-arrow {
+    display: block;
+}
+
+body.legend-pinned .cgo-mt-panel.collapsed .cgo-mt-arrow {
+    transform: rotate(-90deg);
 }
 
 .cgo-mt-head {
@@ -864,7 +971,7 @@
     background: var(--panel-header-bg, #00263b);
     border-radius: 999px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    z-index: 2101;                  /* 压过浮动控制条与面板，选点期间必须可见 */
+    z-index: 100000;                /* 选点期间必须可见：要压过固定侧栏列(99999)与标题栏浮岛(50002) */
     visibility: hidden;
     opacity: 0;
     transform: translateX(-50%) translateY(-8px);
@@ -882,6 +989,12 @@
         opacity 180ms ease,
         transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
         visibility 0s;
+}
+
+/* 固定侧栏形态：提示条按视口中缝居中，左半截会伸到侧栏列底下被压掉，故整体让开
+   半个侧栏列宽，改到画布正中（画布区 = [侧栏列, 100%]，其中点即 50% + 列宽/2） */
+body.legend-pinned:not(.pinned-hidden) .cgo-mt-pick-tip {
+    left: calc(50% + var(--cgo-sb-column, 0px) / 2);
 }
 
 .cgo-mt-pick-dot {

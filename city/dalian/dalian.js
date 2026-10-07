@@ -429,7 +429,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261006.310000";
+        const version = "261007.220000";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
@@ -443,6 +443,8 @@
         // 线路接续（贯通运行）声明解析：规划内核、车站详情、时刻表共用
         document.write(`<script src="./city/shenyang/shared/line-link.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
+        // 侧栏区块协调器：折叠状态与互斥的唯一真相（须早于 route-panel / sidebar-refit / map-tools）
+        document.write(`<script src="./city/shenyang/shared/sidebar-sections.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);

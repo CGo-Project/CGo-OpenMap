@@ -342,6 +342,8 @@
         write(`${shared}/loop-direction.js`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         write(`${shared}/viewport-inset.js`);
+        // 侧栏区块协调器：折叠状态与互斥的唯一真相（须早于 route-panel / sidebar-refit / map-tools）
+        write(`${shared}/sidebar-sections.js`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         write(`${shared}/route-data.js`);
         write(`${shared}/route-planner.js`);
