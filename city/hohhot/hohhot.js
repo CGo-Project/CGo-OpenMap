@@ -275,12 +275,10 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261007.220000";
+        const version = "261006.310000";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
-        // 侧栏区块协调器：折叠状态与互斥的唯一真相（须早于 route-panel / sidebar-refit / map-tools）
-        document.write(`<script src="./city/shenyang/shared/sidebar-sections.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);

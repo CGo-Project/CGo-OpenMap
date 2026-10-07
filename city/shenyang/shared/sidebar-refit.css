@@ -243,12 +243,6 @@
 
     body.legend-pinned:not(.pinned-hidden) #modern-zoom-control {
         left: calc(var(--cgo-sb-left) + var(--cgo-sb-width) + var(--cgo-sb-zoom-gap)) !important;
-        /* 上边缘与标题栏浮岛齐平：浮岛的 top 是「安全区 + 20px」，而浮动顶栏那条规则
-           把控件默认压到了 96px（避让双岛）。固定侧栏时控件已经让到双岛之间那片空白，
-           同一条避让就不需要了，必须收回来与浮岛同高，否则会矮一截。
-           收起（pinned-hidden）时本条不命中，控件回落到 96px 的避让位置。 */
-        top: calc(env(safe-area-inset-top, 0px) + 20px) !important;
-        transition: left 0.3s, top 0.3s;
     }
 
     /* 收起态：容器左缘已经是 0，核心自己的 translateX(-100%) 就足以整块移出屏幕，

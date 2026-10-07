@@ -66,16 +66,6 @@
     const OVERLAY_IDS = ["info-panel", "cgo-route-card", "cgo-route-result"];
     /** 画布遮挡声明（由 viewport-inset 读取）：本模块浮层贴右下角，右侧与底部都要留白 */
     const INSET_ATTR = "data-cgo-inset";
-    /**
-     * 结果区块收起时挂在 #map-content 上：把等级图（填色画布 + 数值图元）整体隐去。
-     *
-     * ⚠️ 类名里**绝对不能出现 "overlay"**：核心 css/style.css 有一条全局通配规则
-     * `div[class*="overlay"], div[id*="overlay"] { z-index: 99999 !important }`。
-     * #map-content 正是 div，一旦命中就被抬到 99999 —— 它那层不透明白底会整块盖住
-     * 缩放控件（800）与标题栏浮岛（1000），实测表现为「收起小工具图例后，缩放条与右上
-     * 『更多』岛一起消失、还点不到」。原名 cgo-mt-overlay-hidden 就踩了这个坑。
-     */
-    const LEVELS_OFF_CLASS = "cgo-mt-levels-off";
     const INFO_PANEL_ID = "info-panel";
     const PLAN_PANEL_ID = "cgo-route-card";
     const RESULT_PANEL_ID = "cgo-route-result";
@@ -348,22 +338,11 @@
     }
 
     /**
-     * 面板节点的兜底引用。
-     *
-     * ⚠️ 两块面板都可能住在核心会**整块重建**的容器里（结果小窗在 #sidebar-dynamic-content，
-     * 停靠车站时核心会把该容器清空重建），节点会被一并摘出文档。此时 getElementById 取不到，
-     * 但节点本身还活着 —— 只认 id 就再也挂不回来（实测：点一下车站，小工具图例就从侧栏消失、
-     * 且不再恢复）。故留一份引用，与 route-panel 的 livePanel 是同一套思路。
-     */
-    const nodeCache = new Map();
-    const nodeRef = (id) => document.getElementById(id) || nodeCache.get(id) || null;
-
-    /**
      * 面板外壳：工具列表与结果小窗共用同一套外观、位置与标题栏。
      * 关窗动作由调用方给（结果小窗要连画布与叠加层一并清理，不能只藏起面板）。
      */
     function shell(id, title, onClose, asHtml) {
-        let el = nodeRef(id);
+        let el = document.getElementById(id);
         if (!el) {
             el = document.createElement("div");
             el.id = id;
@@ -373,14 +352,12 @@
             document.body.appendChild(el);
             watchPanelSize(el);
         }
-        nodeCache.set(id, el);
         el.innerHTML = `
             <div class="cgo-mt-head">
                 <span class="cgo-mt-head-title"></span>
                 <button type="button" class="cgo-mt-close" title="关闭">
                     <cgo-icon name="close" size="14"></cgo-icon>
                 </button>
-                <cgo-icon name="expand-more" class="cgo-mt-arrow"></cgo-icon>
             </div>
             <div class="cgo-mt-body"></div>
         `;
@@ -388,178 +365,34 @@
         // 汇合图的标题里带一个矢量箭头图标，故标题允许给 HTML（其余仍走文本）
         if (asHtml) headTitle.innerHTML = title;
         else headTitle.textContent = title;
-        el.querySelector(".cgo-mt-close").addEventListener("click", (event) => {
-            // 固定侧栏形态下标题行整体就是折叠开关，关闭按钮别连带把自己也折起来
-            event.stopPropagation();
-            onClose();
-        });
-        // 固定侧栏形态：点标题行即折叠（浮层形态没有折叠这一说，点了不做事）
-        el.querySelector(".cgo-mt-head").addEventListener("click", (event) => {
-            if (el.dataset.cgoHost !== "section") return;
-            if (event.target.closest(".cgo-mt-close")) return;
-            el.classList.toggle("collapsed");
-            syncOverlayVisibility();
-            scheduleFit();
-        });
+        el.querySelector(".cgo-mt-close").addEventListener("click", onClose);
         return el;
     }
 
     function showPanel(id) {
-        const el = nodeRef(id);
-        if (!el) return;
-        syncHost();
-        // 固定侧栏形态下这两块面板本来就常驻在侧栏里，「打开」＝展开
-        if (el.dataset.cgoHost === "section") el.classList.remove("collapsed");
-        else el.classList.add("show");
-        syncOverlayVisibility();
+        document.getElementById(id)?.classList.add("show");
     }
 
     function hidePanel(id) {
-        const el = nodeRef(id);
-        if (!el) return;
-        if (el.dataset.cgoHost === "section") el.classList.add("collapsed");
-        else el.classList.remove("show");
-        syncOverlayVisibility();
+        document.getElementById(id)?.classList.remove("show");
     }
 
-    const menuEl = () => nodeRef(MENU_ID);
-
-    /* ======================================================================
-     * 入驻固定侧栏：与行程规划面板同处
-     * ==================================================================== */
-
-    /** 固定侧栏形态的判据（与 route-panel 同口径）：桌面端 + body.legend-pinned */
-    const inPinnedSidebar = () =>
-        window.innerWidth > MOBILE_MAX && document.body.classList.contains("legend-pinned");
-
-    /**
-     * 两块面板的宿主：固定侧栏时搬进侧栏列里常驻 —— 工具列表排在「图例」区块之前、
-     * 结果小窗压进动态内容区末尾（与路线结果面板同一处）；未固定与移动端仍留在 body 上
-     * 贴右下角。形态写在 dataset.cgoHost 上，开合与样式都按它分叉。
-     *
-     * 只搬节点、不重建内容：正开着等时圈时把侧栏固定住，图不会被抹掉。
-     * 两处宿主都会被核心整块重建（renderLegend / rebuildSidebarHistory），故本函数会被
-     * 反复调用，必须幂等 —— 已在位就不动 DOM，否则会与自己的观察器来回触发。
-     */
-    function syncHost() {
-        const pinned = inPinnedSidebar();
-        if (pinned) ensureMenuSection();
-        [nodeRef(MENU_ID), nodeRef(PANEL_ID)].forEach((el) => {
-            if (!el) return;
-            const host = pinned
-                ? (el.id === MENU_ID
-                    ? document.getElementById("legend-content")
-                    : document.getElementById("sidebar-dynamic-content") || document.getElementById("legend-content"))
-                : document.body;
-            if (!host) return;
-            el.dataset.cgoHost = pinned ? "section" : "float";
-            if (pinned) {
-                // 工具列表固定排在「图例」区块之前；结果小窗始终压在最末
-                const ref = el.id === MENU_ID ? document.getElementById("section-legend-tree") : null;
-                if (ref && ref.parentElement === host) {
-                    if (el.nextElementSibling !== ref) host.insertBefore(el, ref);
-                } else if (el.parentElement !== host || host.lastElementChild !== el) {
-                    host.appendChild(el);
-                }
-                // 已经贴在侧栏文档流里，不必再向引擎声明右下留白，否则画布会白白缩一圈
-                el.removeAttribute(INSET_ATTR);
-            } else if (el.parentElement !== host) {
-                host.appendChild(el);
-                el.setAttribute(INSET_ATTR, "right bottom");
-            }
-        });
-        // 形态切换后 collapsed 的语义变了（侧栏里是折叠、浮层里无意义），等级图的显隐跟着重算
-        syncOverlayVisibility();
-        registerWithSidebar();
-        scheduleFit();
-        window.CGoViewportInset?.refresh?.();
-    }
-
-    /** pin 状态、断点、宿主重建都汇到这一处重排（一帧节流，resize 会连着来） */
-    let hostQueued = false;
-    function scheduleHost() {
-        if (hostQueued) return;
-        hostQueued = true;
-        requestAnimationFrame(() => {
-            hostQueued = false;
-            syncHost();
-        });
-    }
-
-    /**
-     * 盯住两块宿主：核心 renderLegend() 会重写 #legend-content、rebuildSidebarHistory()
-     * 会清空 #sidebar-dynamic-content，入驻的节点会连同文章流一起被摘出去。
-     * 只盯直接子节点 —— 搜索联想那种深层逐条更新与入驻无关。
-     */
-    function watchSidebarHosts() {
-        ["legend-content", "sidebar-dynamic-content"].forEach((id) => {
-            const host = document.getElementById(id);
-            if (!host || host.dataset.cgoMtHost === "true") return;
-            host.dataset.cgoMtHost = "true";
-            new MutationObserver(scheduleHost).observe(host, { childList: true });
-        });
-    }
-
-    /**
-     * 把两块面板登记进侧栏协调器（sidebar-sections.js）。
-     *
-     * 展开态的互斥不再由本模块自己观察 class：协调器是唯一真相，它会把「同组只允许一个展开」
-     * 落到所有登记区块上，并在状态变化时回调这里做本模块自己的收尾
-     * （收起结果区块要连带隐藏图上的等级图、两块卡片的高度上限都要重算）。
-     */
-    function registerWithSidebar() {
-        const cs = window.CGoSidebarSections;
-        if (!cs) return;
-        const menu = menuEl();
-        if (menu) {
-            cs.register({
-                // 优先级最高（地图小工具 > 规划行程 > 图例），并在展开时连同搜索一起收
-                id: MENU_ID, el: menu, group: "main", priority: 30,
-                collidesWith: ["section-search"],
-                onExpand: scheduleFit, onCollapse: scheduleFit
-            });
-        }
-        const panel = nodeRef(PANEL_ID);
-        if (panel) {
-            cs.register({
-                // 「小工具图例」是次级窗口：展开时折叠除搜索外的其它窗口，并按规格受 20em 最小高约束
-                id: PANEL_ID, el: panel, group: "main", secondary: true, minHeightEm: 20,
-                onExpand: () => { syncOverlayVisibility(); scheduleFit(); },
-                onCollapse: () => { syncOverlayVisibility(); scheduleFit(); }
-            });
-        }
-    }
-
-    /**
-     * 侧栏形态下的高度上限：**已收敛到协调器**（sidebar-sections.js 的 refit），
-     * 它统一按「宿主的可用高度 − 其它兄弟卡片占掉的高度」现算并写到展开区块上，
-     * 规划行程 / 路线结果 / 两块小工具卡用同一套口径。这里保留薄封装只为不改上面的调用点。
-     */
-    function fitPanelHeight() {
-        window.CGoSidebarSections?.refit?.();
-    }
-
-    let fitQueued = false;
-    /** 一帧节流：onPanelChange 会被 route-panel 的频繁重排带动，别每次都去读布局 */
-    function scheduleFit() {
-        if (fitQueued) return;
-        fitQueued = true;
-        requestAnimationFrame(() => {
-            fitQueued = false;
-            fitPanelHeight();
-        });
-    }
+    const menuEl = () => document.getElementById(MENU_ID);
 
     /* ======================================================================
      * 工具列表浮层
      * ==================================================================== */
+
     /**
-     * 工具列表的正文：常驻区块与浮层共用同一份内容（每次重渲染都按当前预设重绑事件）。
+     * 开工具列表面板。
      * @param {string|string[]} [preset] 预设车站：从车站详情 / 路线结果面板的按钮进来时带上。
      *   车站详情给的是一个 id，路线结果给的是 `[起点, 终点]`；选定工具后按下面的规则直接用它们，
      *   省掉再点一次地图。
      */
-    function renderMenuList(el, preset) {
+    function openTools(preset) {
+        // 工具列表与结果小窗同一位置，故同时只留一个
+        closePanel();
+        const el = shell(MENU_ID, "地图小工具", () => hidePanel(MENU_ID));
         el.querySelector(".cgo-mt-body").innerHTML = `
             <p class="cgo-mt-lead">可选的地图分析小工具。点「开启」后在地图上点选一个车站即可。</p>
             <p class="cgo-mt-note">受 <a href="https://centralgo.site/map" target="_blank" rel="noreferrer">Central Go 地图本体</a><cgo-icon name="external" size="12"></cgo-icon> 启发</p>
@@ -581,24 +414,6 @@
         el.querySelectorAll("[data-launch]").forEach((btn) => {
             btn.addEventListener("click", () => launchTool(btn.dataset.launch, preset));
         });
-    }
-
-    /**
-     * 预置工具列表区块：固定侧栏形态下它要像「行程规划」那样一直占着一行（默认收起），
-     * 不能等用户从别处开过一次才冒出来 —— 否则「常驻侧栏」就名不副实。
-     */
-    function ensureMenuSection() {
-        if (document.getElementById(MENU_ID)) return;
-        const el = shell(MENU_ID, "地图小工具", () => hidePanel(MENU_ID));
-        renderMenuList(el, undefined);
-        el.classList.add("collapsed");
-    }
-
-    function openTools(preset) {
-        // 工具列表与结果小窗同一位置，故同时只留一个
-        closePanel();
-        const el = shell(MENU_ID, "地图小工具", () => hidePanel(MENU_ID));
-        renderMenuList(el, preset);
         showPanel(MENU_ID);
     }
 
@@ -1963,7 +1778,6 @@
     function clearOverlay() {
         clearOrigin();
         mapContent()?.classList.remove("cgo-mt-terrain");
-        mapContent()?.classList.remove(LEVELS_OFF_CLASS);
         hiddenNodes.forEach((el) => el.classList.remove(HIDDEN_CLASS));
         hiddenNodes = [];
         // 值场缓存（几个 Float32Array 合起来十几 MB）随覆盖层一起释放，
@@ -1972,22 +1786,6 @@
         // 连正在淡出的旧层一起清（交叉淡入期间可能同时存在两层）
         mapContent()?.querySelectorAll(".cgo-mt-values").forEach((el) => el.remove());
         document.getElementById(HOVER_ID)?.classList.remove("show");
-    }
-
-    /**
-     * 结果区块收起时，把图上的等级图整体隐去：值场层（填色 + 等级线 + 数值图元）藏起来，
-     * 被它顶掉的原站点图元同时还原，收起后看到的就是一张干净底图；展开再放回来。
-     *
-     * 走的是「挂一个类让 CSS 先藏起来」，**不销毁数据** —— 收起一次就把值场扔掉的话，
-     * 再展开得把整张等时圈重算一遍（实测约 1s），不值当。真正清掉是关窗那条路
-     * （closePanel → clearOverlay）。
-     */
-    function syncOverlayVisibility() {
-        const panel = nodeRef(PANEL_ID);
-        const hidden = Boolean(panel
-            && panel.dataset.cgoHost === "section"
-            && panel.classList.contains("collapsed"));
-        mapContent()?.classList.toggle(LEVELS_OFF_CLASS, hidden);
     }
 
     /* ======================================================================
@@ -2069,16 +1867,11 @@
         const rect = host.getBoundingClientRect();
         const layoutWidth = host.offsetWidth || rect.width;
         const scale = rect.width / layoutWidth;
-        // 屏幕坐标 → 画布坐标 → 值场数组坐标（覆盖区从 offset 起算）
+        // 屏幕坐标 → 画布坐标 → 值场坐标（覆盖区从 offset 起算）
         const mapX = (event.clientX - rect.left) / scale;
         const mapY = (event.clientY - rect.top) / scale;
-        /* ⚠️ 除数必须是 FIELD_CELL（值场数组每个元素对应的画布像素数），**不是 field.cell**。
-           field.cell 是「站点空间分桶」的格子边长（≥60），与值场分辨率无关；早先误用它，
-           相当于把坐标压缩了 30 倍以上，任何位置都落回数组左上角那片"城外"区域，读数恒为 0
-           （实测：徽标明明是 2/5/6/11/19，悬停却一律 0 分钟）。上色时用的正是 FIELD_CELL，
-           两处必须同口径。 */
-        const fx = (mapX - field.offsetX) / FIELD_CELL - 0.5;
-        const fy = (mapY - field.offsetY) / FIELD_CELL - 0.5;
+        const fx = (mapX - field.offsetX) / field.cell - 0.5;
+        const fy = (mapY - field.offsetY) / field.cell - 0.5;
         if (fx < 0 || fy < 0 || fx > field.lowW - 1 || fy > field.lowH - 1) {
             tip.classList.remove("show");
             return;
@@ -2699,30 +2492,6 @@
         });
     }
 
-    /**
-     * 顶栏「更多」下拉里补一条「地图小工具」。
-     *
-     * 固定侧栏时本模块的区块就常驻在侧栏里，那份是第一入口；这条补的是**侧栏没开时的
-     * 快速直达**，位置与上游 centralgo.site/map 把通用工具收在右上角菜单里的习惯一致。
-     * 菜单内容是 main.html 里写死的静态 DOM，故按类名幂等补一次即可，不必动 core。
-     */
-    function injectOptionsEntry() {
-        const content = document.querySelector(".options-dropdown .dropdown-content");
-        if (!content || content.querySelector(".cgo-mt-option")) return;
-        const item = document.createElement("a");
-        item.href = "javascript:void(0)";
-        item.className = "cgo-mt-option";
-        item.innerHTML = '<cgo-icon name="plugin" size="14"></cgo-icon><span>地图小工具</span>';
-        item.addEventListener("click", (event) => {
-            event.preventDefault();
-            // 先收起下拉：否则菜单会一直悬在刚打开的工具面板上面
-            content.classList.remove("show");
-            content.closest(".dropdown")?.classList.remove("is-open");
-            openTools();
-        });
-        content.appendChild(item);
-    }
-
     /* ── 车站右键菜单上的两条入口 ──────────────────────────────────────
        core 的右键菜单每次右键都整体重写 innerHTML，菜单 DOM 里也不记录车站 ID。
        故这里自己记下这次右键落在哪座车站（判定口径与 core 的 showMenu 一致），
@@ -2812,21 +2581,12 @@
     function onPanelChange() {
         watchPanels();
         watchContextMenu();
-        decoratePanels();
-        watchSidebarHosts();
-        registerWithSidebar();
-        injectOptionsEntry();
-        syncHost();
-        scheduleFit();
         syncStacking();
+        decoratePanels();
     }
 
     const panelObserver = new MutationObserver(onPanelChange);
-    // body 的 class 也要盯：legend-pinned / pinned-hidden 一变，入驻形态就得跟着迁移
-    const bodyObserver = new MutationObserver((records) => {
-        onPanelChange();
-        if (records.some((record) => record.type === "attributes")) scheduleHost();
-    });
+    const bodyObserver = new MutationObserver(onPanelChange);
     const watchedPanels = new WeakSet();
 
     function watchPanels() {
@@ -2861,9 +2621,8 @@
         trackContextTarget();
         watchTheme();
         onPanelChange();
-        bodyObserver.observe(document.body, { childList: true, attributes: true, attributeFilter: ["class"] });
-        // 跨过 640px 断点会换一套形态（侧栏 ↔ 抽屉），故 resize 两种收敛都要跑
-        window.addEventListener("resize", () => { scheduleStacking(); scheduleHost(); });
+        bodyObserver.observe(document.body, { childList: true });
+        window.addEventListener("resize", scheduleStacking);
     }
 
     /** 对外接口：供城市侧或后续接入方直接开启某个工具 */

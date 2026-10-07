@@ -532,12 +532,10 @@
         const panel = document.getElementById(RESULT_ID);
         if (panel) {
             panel.classList.remove("show");
-            // 固定侧栏：结果区块是**常驻槽位**，随结果失效只收起、不摘节点 ——
-            // 摘掉的话连折叠行一起消失，用户想再看一眼还得重跑一次规划；
-            // 折叠只是收正文，标题行留在侧栏里（浮层形态仍只清内容，下次查询就地复用）。
-            if (panel.dataset.cgoMode === "section") {
-                sections()?.collapse(RESULT_ID, "result-refresh");
-            } else {
+            // 固定侧栏：结果面板本身即「有结果」的代表，随结果一起撤出侧栏；
+            // 浮层形态保留窗口只清内容，下次查询就地复用
+            if (panel.dataset.cgoMode === "section") panel.remove();
+            else {
                 panel.querySelector(".cgo-rt-steps")?.remove();
                 const sum = panel.querySelector(".cgo-rt-sum");
                 if (sum) sum.remove();
@@ -2116,7 +2114,6 @@
             content.insertBefore(panel, search ? search.nextSibling : content.firstChild);
         }
         takeOverHeader(panel);
-        registerSidebarSections();
     }
 
     /** 结果面板落在动态内容区，与历史车站区块同级 */
@@ -2127,7 +2124,6 @@
         // STATION_HISTORY.push 到末尾实现同款效果），故这里始终把结果面板压在最后一位
         if (dynamic.lastElementChild !== panel) dynamic.appendChild(panel);
         takeOverHeader(panel);
-        registerSidebarSections();
     }
 
     /**
@@ -2152,8 +2148,8 @@
      * 把纵向空间整块让给路线结果。三者都能在结果收起后手动展开回来。
      */
     function makeRoomForResult() {
-        // 规划行程与图例由协调器按同组规则收起（见 registerSidebarSections 里结果区块的回调），
-        // 这里只补它管不到的车站详情
+        setPlanExpanded(false);
+        document.getElementById("section-legend-tree")?.classList.add("collapsed");
         collapseStationSections();
     }
 
@@ -2195,9 +2191,10 @@
 
     /** 侧栏里让位给规划行程：搜索、图例、历史车站区块与路线结果一并收起 */
     function yieldSidebarToPlan() {
-        // 搜索 / 图例 / 结果都由协调器按「同组 + 冲突列表」在展开规划行程时收好了，
-        // 这里只补它管不到的车站详情区块
+        document.getElementById("section-search")?.classList.add("collapsed");
+        document.getElementById("section-legend-tree")?.classList.add("collapsed");
         collapseStationSections();
+        collapseResultSection();
     }
 
     /**
@@ -2221,33 +2218,20 @@
      */
     function settleSidebarSections() {
         if (isResultVisible()) { makeRoomForResult(); return; }
-        if (planExpanded) { yieldSidebarToPlan(); return; }
-        // 默认态：搜索 + 图例展开本来就是侧栏的合法默认。图例属 main 组，
-        // 展开它会顺手收起同组其它区块（规划行程 / 结果 / 地图小工具），正是这里要的收敛。
-        sections()?.expand("section-legend-tree", "settle");
+        if (planExpanded) yieldSidebarToPlan();
     }
 
     /**
-     * 设置侧栏常驻规划行程区块的展开态。
-     *
-     * 折叠状态的真源已移交共享层协调器（sidebar-sections.js），本函数只是它的门面：
-     * 侧栏形态下转发给协调器，由它收起同组（图例 / 结果 / 地图小工具）与冲突区块（搜索），
-     * 再回调把这里这份 planExpanded 镜像同步过去；浮层形态仍按老办法直接改类。
+     * 设置侧栏常驻规划行程区块的展开态。planExpanded 是唯一真源：所有入口（入口按钮、
+     * section-header 点击、被动让位、结果面板独占）都改它，再由此处落到 class 上，
+     * 免得「状态说展开、DOM 却是折叠」这类两套真相打架。
      * 展开时顺带让位，把它需要的纵向空间腾出来。
      */
     function setPlanExpanded(expanded) {
-        // 侧栏里首次呼出时这个常驻区块还不存在，补建一个（补建时会登记进协调器）
-        if (panelMode() === "section" && !livePanel(PLAN_ID)) ensurePlanSection();
-        const panel = livePanel(PLAN_ID);
-        if (!panel) { planExpanded = expanded; return; }
-        const cs = sections();
-        if (cs && panel.dataset.cgoMode === "section") {
-            // 状态与互斥都交给协调器：它收起同组与冲突区块，并回调把 planExpanded 同步过来
-            cs[expanded ? "expand" : "collapse"](PLAN_ID, "route-panel");
-            return;
-        }
         planExpanded = expanded;
-        panel.classList.toggle("collapsed", !expanded);
+        // 侧栏里首次呼出时这个常驻区块还不存在，补建一个再落到 class 上
+        if (panelMode() === "section" && !livePanel(PLAN_ID)) ensurePlanSection();
+        livePanel(PLAN_ID)?.classList.toggle("collapsed", !expanded);
         if (expanded) yieldSidebarToPlan();
     }
 
@@ -2272,8 +2256,16 @@
         return panel;
     }
 
-    /** 侧栏区块协调器（sidebar-sections.js）：折叠状态与互斥的唯一真相 */
-    const sections = () => window.CGoSidebarSections;
+    /**
+     * 侧栏里同一时刻只让一个区块展开，唯一的例外是「搜索」——它矮且独立，与其余区块都能共存
+     * （唯独不与规划行程并存，那是入口按钮所在的主任务区块）。
+     * 用观察器而非点击监听，是因为「展开」还有好几条程序式通道：顶栏菜单按钮、核心固定面板时的
+     * `fixedSections.forEach(sec => sec.classList.remove('collapsed'))`、以及停靠车站详情时的
+     * `dockStationPanel` —— 它们都绕过点击直接把 collapsed 摘掉。
+     * 裁定依据是「本轮刚由折叠变为展开的那一个」：正常交互只会有它一条记录，
+     * 批量展开时按 DOM 顺序保留前者（搜索），与核心的默认预期一致。
+     */
+    let exclusiveObserver = null;
 
     /**
      * 侧栏此刻是否「除刚展开的搜索外全都折叠」。
@@ -2291,109 +2283,78 @@
             && !dynamic?.querySelector(".station-history-section:not(.collapsed)");
     }
 
-    /**
-     * 侧栏固定区块的展开互斥：交给共享层的协调器（sidebar-sections.js）统一裁定。
-     *
-     * 本模块只做两件事：把区块登记进去（声明分组与冲突），以及声明「状态变化时该做什么」。
-     * 协调器持有唯一的折叠状态、负责「同组只允许一个展开」、并负责侧栏收起/重开时的快照还原；
-     * 因此这里不再自己观察 class（原先那份 MutationObserver 已被它取代）。
-     *
-     * 分组口径：
-     *   · 搜索：compact 组 —— 矮且独立，与 main 组共存；唯独与规划行程互斥（入口按钮所在的主任务区块）
-     *   · 图例 / 规划行程 / 路线结果 /（地图小工具的卡片）：main 组 —— 同一时刻只允许一个展开
-     * 车站详情区块（核心动态生成的历史区块）**不登记**，见下面的 bindStationSectionExclusivity。
-     */
-    function registerSidebarSections() {
-        const cs = sections();
-        if (!cs) return;
+    function bindExclusiveSections() {
         const search = document.getElementById("section-search");
         const legend = document.getElementById("section-legend-tree");
-        const plan = livePanel(PLAN_ID);
-        const result = livePanel(RESULT_ID);
-        if (search) {
-            cs.register({
-                id: "section-search", el: search, group: "compact", collidesWith: [PLAN_ID],
-                // 侧栏此刻已空无一物（连图例都折着）时，把图例一并带出来——
-                // 否则展开搜索后侧栏只剩孤零零一行，用户还得再点一次
-                onExpand: () => {
-                    if (sidebarOtherwiseEmpty()) cs.expand("section-legend-tree", "search");
-                }
-            });
-        }
-        if (legend) {
-            cs.register({
-                id: "section-legend-tree", el: legend, group: "main", priority: 10,
-                onExpand: () => {
-                    setPlanExpanded(false);      // 同组已由协调器收起，这里只同步模块自己的镜像状态
-                    collapseStationSections();
-                    collapseResultSection();
-                    // 图例展开时把搜索一并带出来：图例是"浏览向"的窗口，配上搜索框才是一屏可用的默认态
-                    // （反向的「展开规划行程 / 地图小工具时收起搜索」由它们的 collidesWith 声明）
-                    cs.expand("section-search", "legend");
-                }
-            });
-        }
-        if (plan) {
-            cs.register({
-                id: PLAN_ID, el: plan, group: "main", collidesWith: ["section-search"], priority: 20,
-                // 展开时的让位（收搜索 / 图例 / 结果）由协调器按分组与冲突列表完成，
-                // 这里只补它管不到的车站详情；planExpanded 这份镜像跟着回调走，不再各处手写
-                onExpand: () => { planExpanded = true; collapseStationSections(); },
-                onCollapse: () => { planExpanded = false; }
-            });
-        }
-        if (result) {
-            cs.register({
-                // 路线结果是「次级窗口」：展开时折叠除搜索外的其它窗口，并按规格受 20em 最小高约束
-                id: RESULT_ID, el: result, group: "main", secondary: true, minHeightEm: 20,
-                onExpand: () => { collapseStationSections(); },
-                onCollapse: () => { clearHighlight(); }
-            });
-        }
-        cs.refresh();
-    }
-
-    /**
-     * 车站详情区块（核心动态生成的历史区块）的互斥：它们不登记进协调器（元素换得勤、绑不住具体节点），
-     * 故直接盯住动态内容区的 class 变化（subtree 覆盖其中所有 station-section）。
-     *
-     * 某一条展开有两种来路：
-     *   1) 用户点开某个折叠的历史区块 —— 捕获阶段的 bindStationSectionExpand 已先把规划行程
-     *      与结果面板都收掉了，所以走到这里时两者都不可见；
-     *   2) 核心把面板固定进侧栏时自动停靠上次选中的车站（initLegendPin 里那句 dockStationPanel，
-     *      走 setTimeout，绕过上面那条捕获监听）—— 此时用户拖过来的那个面板还亮着。
-     * 第 2 种是「用户拖路线面板过来、却被一个自动冒出的车站详情抢走展开位」，故反过来收起它。
-     */
-    let stationExclusiveObserver = null;
-
-    function bindStationSectionExclusivity() {
         const dynamic = document.getElementById("sidebar-dynamic-content");
-        if (stationExclusiveObserver) stationExclusiveObserver.disconnect();
-        stationExclusiveObserver = null;
-        if (!dynamic) return;
-        stationExclusiveObserver = new MutationObserver((records) => {
+        const plan = livePanel(PLAN_ID);
+        if (exclusiveObserver) exclusiveObserver.disconnect();
+        exclusiveObserver = null;
+        if (!plan) return;
+        exclusiveObserver = new MutationObserver((records) => {
             let expanded = null;
             for (const record of records) {
-                // ⚠️ 只认真正的车站详情区块：动态内容区里还住着地图小工具的结果面板
-                // （#cgo-map-tools-panel），它展开时也会冒出一条 class 记录 —— 不筛掉就会被
-                // 当成「车站详情展开」而立刻被收回去，表现就是「小工具图例再也展不开」。
-                if (!record.target.classList?.contains("station-history-section")) continue;
                 const wasCollapsed = (record.oldValue || "").includes("collapsed");
-                if (wasCollapsed && !record.target.classList.contains("collapsed")) { expanded = record.target; break; }
+                if (wasCollapsed && !record.target.classList.contains("collapsed")) {
+                    expanded = record.target;
+                    break;
+                }
             }
-            if (!expanded) return;
-            if (isResultVisible() || planExpanded) { collapseStationSections(); return; }
-            // 车站详情也是「次级窗口」：展开时折叠除搜索外的其它窗口（规划行程 / 图例 / 结果 / 小工具）
-            sections()?.collapseAllExcept(["section-search"], "station");
+            if (!expanded || expanded === plan) {
+                // 规划行程被外部（核心的批量展开）摊开：同步状态并按展开处理
+                if (expanded === plan) { planExpanded = true; yieldSidebarToPlan(); }
+                return;
+            }
+            const id = expanded.id;
+            if (id === RESULT_ID) {
+                // 路线结果自己展开：与 makeRoomForResult 同一套语义，但别把结果自己收掉
+                makeRoomForResult();
+                return;
+            }
+            if (id === "section-search") {
+                setPlanExpanded(false);   // 搜索只与规划行程互斥，不与图例 / 车站详情 / 结果互斥
+                // 侧栏此刻已空无一物（连图例都折着）时，把图例一并带出来——
+                // 否则展开搜索后侧栏只剩孤零零一行，用户还得再点一次
+                if (legend && sidebarOtherwiseEmpty()) legend.classList.remove("collapsed");
+                return;
+            }
+            if (id === "section-legend-tree") {
+                setPlanExpanded(false);
+                collapseStationSections();
+                collapseResultSection();
+                return;
+            }
+            // 剩下就是车站详情区块。它此刻展开有两种来路：
+            //   1) 用户点开某个折叠的历史区块 —— 捕获阶段的 bindStationSectionExpand 已先把规划行程
+            //      与结果面板都收掉了，所以走到这里时两者都不可见；
+            //   2) 核心把面板固定进侧栏时自动停靠上次选中的车站（initLegendPin 里那句 dockStationPanel，
+            //      走 setTimeout，绕过上面那条捕获监听）—— 此时用户拖过来的那个面板还亮着。
+            // 第 2 种是「用户拖路线面板过来、却被一个自动冒出的车站详情抢走展开位」，故反过来收起它。
+            if (isResultVisible() || planExpanded) {
+                collapseStationSections();
+                return;
+            }
+            setPlanExpanded(false);
+            collapseResultSection();
+            document.getElementById("section-legend-tree")?.classList.add("collapsed");
         });
-        stationExclusiveObserver.observe(dynamic, {
-            attributes: true, attributeFilter: ["class"], attributeOldValue: true, subtree: true
+        [search, legend, plan].forEach((section) => {
+            if (section) exclusiveObserver.observe(section, {
+                attributes: true, attributeFilter: ["class"], attributeOldValue: true
+            });
         });
+        // 历史车站区块每次停靠车站都会重建，元素换得勤、绑不住具体节点，
+        // 故直接盯住动态内容区的 class 变化（subtree 覆盖其中所有 station-section 与结果面板）
+        if (dynamic) {
+            exclusiveObserver.observe(dynamic, {
+                attributes: true, attributeFilter: ["class"], attributeOldValue: true, subtree: true
+            });
+        }
     }
 
     /**
      * 用户点开某个折叠的历史车站区块时，先把图例与路线结果收掉。
-     * 互斥裁定本身交给 bindStationSectionExclusivity 的观察器，这里的作用是**标注意图**：
+     * 互斥裁定本身交给 bindExclusiveSections 的观察器，这里的作用是**标注意图**：
      * 核心固定面板时会自动停靠上次选中的车站（走 setTimeout，不经过点击），
      * 观察器只看 class 变化分不清两者 —— 有了这条捕获监听，轮到观察器处理时
      * 「结果面板已不可见」就说明这次展开是用户点的，反之则是核心自动冒出来的。
@@ -2434,14 +2395,67 @@
         }, true);
     }
 
-    /* ── 侧栏收起 / 重新展开：区块状态的快照与还原 ─────────────────────────────
-       已移交 sidebar-sections.js 统一维护 —— 它覆盖全部登记区块（含地图小工具那两张卡，
-       比原先「只管 #legend-content 里的 .panel-section」更完整），快照时机同样取在
-       pinned-hidden 之前。这里只补一件模块自己的收尾： */
-    document.addEventListener("cgo:sidebar-sections-restored", () => {
-        // 结果区块若随还原重新可见，把路线高亮一并补回来（不可见即明确退出高亮）
+    /** 退出固定侧栏（或面板撤出）时停掉互斥观察，避免盯着已脱离文档的节点 */
+    function disconnectExclusiveSections() {
+        if (exclusiveObserver) exclusiveObserver.disconnect();
+        exclusiveObserver = null;
+    }
+
+    /* ── 侧栏收起 / 重新展开：记住各区块的展开状态，重开时按原样还原 ──────────
+       核心的顶栏菜单按钮在重新展开侧栏时，会把所有「非历史区块」一律 remove('collapsed')
+       （script.js 的 menuBtn 处理器），于是收起再打开一次，搜索、图例与路线面板会被
+       强制摊开，跟关闭前的布局对不上。这里在侧栏可见期间持续留一份最新快照，
+       pinned-hidden 消失时按快照还原。 */
+    let sidebarSnapshot = null;
+
+    function snapshotSidebarSections() {
+        const snapshot = {};
+        document.querySelectorAll("#legend-content .panel-section").forEach((section) => {
+            if (section.id) snapshot[section.id] = section.classList.contains("collapsed");
+        });
+        return snapshot;
+    }
+
+    function restoreSidebarSections(snapshot) {
+        if (!snapshot) return;
+        // 还原本身会产生一批 class 变化，先停掉互斥观察器（连带丢弃核心那批「强制展开」的记录），
+        // 否则它会把刚还原好的搜索 / 查询面板又按自己的规则改回去
+        disconnectExclusiveSections();
+        Object.entries(snapshot).forEach(([id, collapsed]) => {
+            document.getElementById(id)?.classList.toggle("collapsed", collapsed);
+            // 规划行程的展开态另有一份权威状态，跟着快照一起回写，免得两套说法打架
+            if (id === PLAN_ID) planExpanded = !collapsed;
+        });
+        if (panelMode() === "section") bindExclusiveSections();
+        // 结果面板若由「隐藏 / 折叠」还原为可见，把路线高亮一并补回来（不可见即明确退出高亮）
         if (isResultVisible() && currentRoute()) applyHighlight(currentRoute());
-    });
+    }
+
+    function watchSidebarVisibility() {
+        // 快照只在侧栏可见时刷新。核心收起侧栏时会先 resetMapState() 把历史区块折叠掉、
+        // 再挂上 pinned-hidden，而观察器回调要到两者都执行完才跑；若等看到 pinned-hidden
+        // 再抓快照，抓到的已经是「被折叠过的」状态，关不关的差别就丢了。
+        const refresh = () => {
+            if (!document.body.classList.contains("pinned-hidden")) sidebarSnapshot = snapshotSidebarSections();
+        };
+        let lastHidden = document.body.classList.contains("pinned-hidden");
+        new MutationObserver(() => {
+            const hidden = document.body.classList.contains("pinned-hidden");
+            if (hidden !== lastHidden) {
+                lastHidden = hidden;
+                if (!hidden) { restoreSidebarSections(sidebarSnapshot); return; }
+            }
+            if (!hidden) refresh();
+        }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+
+        const content = document.getElementById("legend-content");
+        if (content) {
+            new MutationObserver(refresh).observe(content, {
+                attributes: true, attributeFilter: ["class"], subtree: true
+            });
+        }
+        refresh();
+    }
 
     /** 形态切换后重建浮层面的面板栈（固定侧栏下不使用该机制，风格上直接排定即可） */
     function rebuildOpenStack() {
@@ -2532,9 +2546,10 @@
         }
 
         if (mode === "section") {
-            registerSidebarSections();
-            bindStationSectionExclusivity();
+            bindExclusiveSections();
             bindStationSectionExpand();
+        } else {
+            disconnectExclusiveSections();
         }
         // 跨形态迁进侧栏时先收敛一次：核心固定面板时会顺手摊开搜索 / 图例 / 规划行程，
         // 不收敛就会出现「图例 + 搜索 + 路线结果」三块并排展开
@@ -2746,8 +2761,7 @@
         registerFooterModule();
         observeInfoPanel();
         watchLegendForRoutePanels();
-        registerSidebarSections();
-        bindStationSectionExclusivity();
+        watchSidebarVisibility();
         bindStationOpenSources();
         // 视口跨过 640px 断点会切换浮层 / 侧栏两套形态，核心的 resize 收口不一定重渲图例，故自行补一刀
         window.addEventListener("resize", scheduleRouteSync);

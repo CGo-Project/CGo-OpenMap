@@ -358,15 +358,9 @@
         const targets = content.querySelectorAll(
             ".panel-section:not(.collapsed), #cgo-route-card:not(.collapsed), #cgo-route-result:not(.collapsed)"
         );
-        /* 「至少留一个」护栏：路线结果与小工具图例不能被一起清光（口径见 sidebar-sections.js
-           的 KEEP_ONE_GROUP）。本文件是独立模块、这里又是直接改 class，故单独判一次：
-           小工具图例没开着时，路线结果就是那组的最后一个，放过它。
-           —— 规格明确宁可让展开的车站窗口自己内部滚动，也不把这两个窗口清光。 */
-        const toolLegendOpen = window.CGoSidebarSections?.isExpanded?.("cgo-map-tools-panel") === true;
         let collapsed = false;
         targets.forEach((section) => {
             if (section === keep) return;
-            if (section.id === "cgo-route-result" && !toolLegendOpen) return;
             section.classList.add("collapsed");
             collapsed = true;
         });

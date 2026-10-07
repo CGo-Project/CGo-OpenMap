@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261007.220000';
+const CACHE_NAME = 'cgo-openmap-v261007.110000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -156,8 +156,6 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/opening-schedule.css',
     // 行程规划（三城共用）：线路接续声明解析 / 数据构建器 / 规划内核 / 面板
     './city/shenyang/shared/line-link.js',
-    // 侧栏区块协调器：折叠状态与互斥的唯一真相（route-panel / sidebar-refit / map-tools 都取用它）
-    './city/shenyang/shared/sidebar-sections.js',
     './city/shenyang/shared/route-data.js',
     './city/shenyang/shared/route-planner.js',
     './city/shenyang/shared/route-panel.js',
