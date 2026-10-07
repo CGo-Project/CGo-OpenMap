@@ -381,17 +381,20 @@
         const verticalHtml = verticals.length && window.CGoExitVertical?.rowHtml
             ? verticals.map((item) => window.CGoExitVertical.rowHtml(item)).join("")
             : "";
-        // 方位描述并到标题行：优先 `desc`（维基「出口指示」原文，如「解放路（西侧）」），
-        // 没有 desc 才退回「最近道路的侧向」（roads，形如「迎宾街 路南/北站路 路东」）；
-        // 两者都没有才不显示。
-        const position = exit.desc || (exit.roads?.length ? exit.roads.join("/") : "");
+        // 标题：`desc`（维基「出口指示」原文，或相对所属线路站厅的方位填空，如「朝阳街路东」「西北口」）
+        // 本身就作为出口的**正经标题**展示；只有没有 desc 的口才回落成「A 口 / 1 号口」这样的编号文案
+        // ——编号已由左侧方形徽标承载，标题里不再重复一遍。
+        const titleText = exit.desc || `${exit.name}${/^\d/.test(String(exit.name ?? "")) ? " 号口" : " 口"}`;
+        // 兜底方位：仅在没有 desc 时才显示「最近道路的侧向」（roads），
+        // 免得同一个方位在标题与副行里各说一遍。
+        const position = exit.desc ? "" : (exit.roads?.length ? exit.roads.join("/") : "");
         const positionHtml = position ? `<span class="cgo-exit-pos">${escapeHtml(position)}</span>` : "";
         return `
             <div class="cgo-exit-item${exit.closed ? " is-closed" : ""}" data-exit="${escapeHtml(exit.name)}" data-facilities="${escapeHtml([...(facilities || [])].join(" "))}">
                 ${badgeHtml(exit.name)}
                 <div class="cgo-exit-body">
                     <div class="cgo-exit-title">
-                        <span>${escapeHtml(exit.name)}${/^\d/.test(String(exit.name ?? "")) ? " 号口" : " 口"}</span>
+                        <span>${escapeHtml(titleText)}</span>
                         ${positionHtml}
                         ${exit.closed ? `<span class="cgo-exit-closed">暂停使用</span>` : ""}
                     </div>
