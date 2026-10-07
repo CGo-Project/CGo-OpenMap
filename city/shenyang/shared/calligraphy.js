@@ -72,18 +72,20 @@
             + `</div>`;
     }
 
-    /* 题字投稿场景的文案：登记进共享层。同样刻意不写 `label` —— 它的触发点在题字卡片里，
-       不需要出现在「更多」入口的场景切换中。 */
+    /* 题字投稿场景的文案：登记进共享层。带 label/order，故也会出现在「更多」入口的场景切换里
+       ——从那里进来没有车站上下文，模板会退化成「请在补充说明里写明」。 */
     const CALLIGRAPHY_KIND = {
+        label: "站名题字",
+        order: 20,
         modalTitle: "投稿站名题字",
-        heading: ({ cityName, stationCn }) => `${cityName} ${stationCn} · 站名题字`,
-        subject: ({ cityName, stationCn }) => `【站名题字】${cityName} ${stationCn} 素材待补充`,
+        heading: ({ cityName, stationCn }) => [cityName, stationCn].filter(Boolean).join(" "),
+        subject: ({ cityName, stationCn }) => `【站名题字】${cityName}${stationCn ? ` ${stationCn}` : ""} 素材待补充`,
         notePlaceholder: "补充说明（选填，如题写者姓名、落款、拍摄位置）",
         context: ({ cityId, cityName, stationId, stationCn, reason }) => [
-            `【站名题字投稿】${cityName} ${stationCn}`,
+            `【站名题字投稿】${cityName}${stationCn ? ` ${stationCn}` : ""}`,
             "",
             `- 城市：${cityName}（${cityId}）`,
-            `- 车站：${stationCn}（${stationId}）`,
+            ...(stationCn ? [`- 车站：${stationCn}${stationId ? `（${stationId}）` : ""}`] : ["- 车站：请在补充说明里写明是哪座车站"]),
             `- 数据文件：city/${cityId}/data_calligraphy.js`,
             `- 缺失内容：${reason || "本站的题字横图 / 题写者信息尚未收录。"}`,
             "- 如有照片，请说明拍摄位置（站厅哪一侧、靠近哪个出入口）。"

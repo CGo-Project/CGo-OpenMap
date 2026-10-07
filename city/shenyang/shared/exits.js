@@ -79,19 +79,21 @@
         ><cgo-icon name="info" size="11"></cgo-icon>待补充</button>`;
     }
 
-    /* 出口说明场景的文案：登记进共享层。刻意不写 `label`，故不出现在「更多」入口的
-       场景切换里 —— 它有自己的触发点（出入口清单里的「待补充」标）。 */
+    /* 出口说明场景的文案：登记进共享层。带 label/order，故会出现在「更多」入口的场景切换里
+       ——从那里进来没有车站与出口上下文，模板会退化成「请在补充说明里写明」。 */
     const EXIT_KIND = {
+        label: "出口说明",
+        order: 10,
         modalTitle: "反馈出口数据",
-        heading: ({ cityName, stationCn, exitCode }) => `${cityName} ${stationCn} · ${exitCode} 口`,
-        subject: ({ cityName, stationCn, exitCode }) => `【出口数据】${cityName} ${stationCn} ${exitCode} 口 说明待补充`,
+        heading: ({ cityName, stationCn, exitCode }) => [cityName, stationCn, exitCode && `${exitCode} 口`].filter(Boolean).join(" "),
+        subject: ({ cityName, stationCn, exitCode }) => `【出口数据】${cityName}${stationCn ? ` ${stationCn}` : ""}${exitCode ? ` ${exitCode} 口` : ""} 说明待补充`,
         notePlaceholder: "补充说明（选填，比如你看到的实际出口指示）",
         context: ({ cityId, cityName, stationId, stationCn, exitCode, reason }) => [
-            `【出口数据反馈】${cityName} ${stationCn} ${exitCode} 口`,
+            `【出口数据反馈】${cityName}${stationCn ? ` ${stationCn}` : ""}${exitCode ? ` ${exitCode} 口` : ""}`,
             "",
             `- 城市：${cityName}（${cityId}）`,
-            `- 车站：${stationCn}（${stationId}）`,
-            `- 出口：${exitCode}`,
+            ...(stationCn ? [`- 车站：${stationCn}${stationId ? `（${stationId}）` : ""}`] : ["- 车站：请在补充说明里写明是哪座车站"]),
+            ...(exitCode ? [`- 出口：${exitCode}`] : []),
             `- 数据文件：city/${cityId}/data_exits.js`,
             `- 缺失内容：${reason || "该出口还没有「出口指示」说明，界面目前只按方位显示。"}`
         ]

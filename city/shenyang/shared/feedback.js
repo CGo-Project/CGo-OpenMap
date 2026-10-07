@@ -19,7 +19,8 @@
  *
  * 模板字段（label 之外都必需）：
  *   label           场景选择器里的名字；**不写则不参与场景切换**
- *                   （出口说明、题字投稿都有自己的触发点，不需要出现在通用入口的切换里）
+ *                   （只在特定位置出现的场景可以不写，如题字卡片里的投稿按钮）
+ *   order           场景选择器里的排序（小的在前，缺省 500）
  *   modalTitle      面板标题
  *   heading(ctx)    面板顶部一行
  *   subject(ctx)    Issue 标题
@@ -77,6 +78,29 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;");
 
+    /** 当前城市 ID：调用方没给就用正在看的这座城市（「更多」菜单的入口就属于这种） */
+    const currentCityId = () => window.CURRENT_CITY?.id
+        || window.CityDataManager?.getCurrentCity?.()?.id
+        || "";
+
+    /** 站 ID → 站名（stationsData 由各城 data_stations.js 以顶层 const 声明，故用 typeof 探测） */
+    const stationNameOf = (sid) => {
+        if (!sid) return "";
+        return (typeof stationsData !== "undefined" && stationsData?.[sid]?.cn) || sid;
+    };
+
+    /**
+     * 最近一次「路线规划」的起终点（站 ID）。
+     * 由 route-panel 本来就发出的 cgo:route-planned 喂进来 —— 反馈层因此不必反向依赖规划内核，
+     * 拿不到（还没查过路线）时模板退化成「请写明起点站与终点站」。
+     */
+    let lastRouteEnds = null;
+    document.addEventListener("cgo:route-planned", (ev) => {
+        const { from, to } = ev.detail || {};
+        lastRouteEnds = (from || to) ? { from, to } : null;
+    });
+    document.addEventListener("cgo:route-closed", () => { lastRouteEnds = null; });
+
     /* ── 场景模板 ─────────────────────────────────────────────── */
     const KINDS = new Map();
 
@@ -92,6 +116,7 @@
     /** 通用反馈的三种场景：没有天然上下文，靠用户在选择器里挑 + 备注里写细节 */
     registerKind("general", {
         label: "其他 / 综合",
+        order: 90,
         modalTitle: "反馈与纠错",
         heading: ({ cityName }) => `${cityName} 线路图`,
         subject: ({ cityName }) => `【反馈】${cityName} 线路图`,
@@ -106,6 +131,7 @@
     });
     registerKind("timetable", {
         label: "首末班车时间",
+        order: 30,
         modalTitle: "反馈首末班车时间",
         heading: ({ cityName, stationCn }) => `${cityName}${stationCn ? ` ${stationCn}` : ""} · 首末班车`,
         subject: ({ cityName, stationCn }) => `【首末班车】${cityName}${stationCn ? ` ${stationCn}` : ""} 时刻疑似有误`,
@@ -122,6 +148,7 @@
     });
     registerKind("fare", {
         label: "票价",
+        order: 40,
         modalTitle: "反馈票价",
         heading: ({ cityName }) => `${cityName} · 票价`,
         subject: ({ cityName }) => `【票价】${cityName} 票价疑似有误`,
@@ -132,6 +159,45 @@
             `- 城市：${cityName}（${cityId}）`,
             `- 计费规则：city/${cityId}/${cityId}.js 的 CGO_ROUTE_CONFIG.fare`,
             "- 请写明：起点站、终点站、实际票价（如换乘涉及不同计费系统也请说明）。",
+            ...(extra || [])
+        ]
+    });
+    registerKind("route", {
+        label: "路线规划",
+        order: 50,
+        modalTitle: "反馈路线规划",
+        heading: ({ cityName }) => `${cityName} · 路线规划`,
+        subject: ({ cityName }) => `【路线规划】${cityName} 结果疑似有误`,
+        notePlaceholder: "请写明：起点站、终点站，以及期望的走法 / 用时 / 票价与实际结果的差异",
+        context: ({ cityId, cityName, extra }) => {
+            // 刚查过路线就把起终点带上（事件由 route-panel 发出，见文件顶部说明）
+            const ends = lastRouteEnds
+                ? `${stationNameOf(lastRouteEnds.from) || "?"} → ${stationNameOf(lastRouteEnds.to) || "?"}`
+                : "";
+            return [
+                `【路线规划反馈】${cityName}`,
+                "",
+                `- 城市：${cityName}（${cityId}）`,
+                `- 规则配置：city/${cityId}/${cityId}.js 的 CGO_ROUTE_CONFIG（票价 / 换乘 / 站外步行时间）`,
+                ...(ends ? [`- 最近一次查询：${ends}`] : []),
+                "- 请写明：起点站、终点站，以及期望的走法 / 用时 / 票价与实际结果的差异。",
+                ...(extra || [])
+            ];
+        }
+    });
+    registerKind("ux", {
+        label: "操作体验",
+        order: 60,
+        modalTitle: "反馈操作体验",
+        heading: ({ cityName }) => `${cityName} 线路图 · 操作体验`,
+        subject: ({ cityName }) => `【操作体验】${cityName} 线路图`,
+        notePlaceholder: "请描述：在哪个界面、做了什么操作、发生了什么、期望是什么",
+        context: ({ cityId, cityName, extra }) => [
+            `【操作体验反馈】${cityName}`,
+            "",
+            `- 城市：${cityName}（${cityId}）`,
+            "- 反馈对象：界面与交互（缩放平移 / 面板开合 / 亮暗主题 / 移动端手势 / 检索等）",
+            "- 请写明：在哪个界面、做了什么操作、发生了什么、期望是什么；必要时说明设备与浏览器。",
             ...(extra || [])
         ]
     });
@@ -148,7 +214,9 @@
         return el;
     }
 
-    const pickable = () => [...KINDS.entries()].filter(([, t]) => t && t.label);
+    const pickable = () => [...KINDS.entries()]
+        .filter(([, t]) => t && t.label)
+        .sort((a, b) => (a[1].order ?? 500) - (b[1].order ?? 500));
 
     /**
      * 打开反馈面板。ctx 里除模板所需的定位信息外，还可带：
@@ -161,7 +229,9 @@
         const kind = KINDS.get(kindId);
         if (!kind) return;
 
-        const info = { ...ctx, kind: kindId, cityName: cityNameOf(ctx.cityId) };
+        // 城市：调用方没给就取当前正在看的城市（「更多」菜单的入口不带上下文）
+        const cityId = ctx.cityId || currentCityId();
+        const info = { ...ctx, kind: kindId, cityId, cityName: cityNameOf(cityId) };
         const base = `${kind.context(info).join("\n")}\n\n补充说明（选填）：`;
         const scenes = ctx.switchable ? pickable() : [];
 
