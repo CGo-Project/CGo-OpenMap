@@ -261,3 +261,115 @@
     flex: none;
     margin-top: 2px;
 }
+
+/* 「待补充」标：该出口的说明尚未收录（desc 缺失，或只是「相对站厅方位 + 口」的填空）；
+   点开共享层的反馈面板（复制带定位的正文 / 新建 GitHub Issue）。虚线胶囊、弱化处理——
+   它是提示而非告警，不该在清单里抢戏。 */
+.cgo-exit-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: none;
+    padding: 0 6px;
+    border: 1px dashed currentColor;
+    border-radius: 999px;
+    background: transparent;
+    font-size: 11px;
+    font-weight: normal;
+    line-height: 16px;
+    color: var(--text-light);
+    opacity: 0.85;
+    cursor: pointer;
+}
+
+.cgo-exit-pending:hover,
+.cgo-exit-pending:focus-visible {
+    opacity: 1;
+    color: var(--primary-color);
+    outline: none;
+}
+
+/* 反馈面板（挂在 cgo-modal 内部） */
+.cgo-exit-fb {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-main);
+}
+
+.cgo-exit-fb-lead {
+    margin: 0 0 8px;
+    font-weight: bold;
+}
+
+/* 正文预览：等宽换行展示，可直接选中复制（剪贴板不可用时的兜底） */
+.cgo-exit-fb-context {
+    max-height: 180px;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.04));
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-light);
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow: auto;
+    user-select: text;
+}
+
+.cgo-exit-fb-note {
+    box-sizing: border-box;
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+    border-radius: 6px;
+    background: transparent;
+    font: inherit;
+    color: var(--text-main);
+    resize: vertical;
+}
+
+.cgo-exit-fb-note:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+.cgo-exit-fb-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cgo-exit-fb-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+    border-radius: 6px;
+    background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.04));
+    font: inherit;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+.cgo-exit-fb-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.cgo-exit-fb-btn.primary {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.cgo-exit-fb-btn.primary:hover {
+    color: #fff;
+    opacity: 0.9;
+}
+
+.cgo-exit-fb-btn.ghost {
+    background: transparent;
+}

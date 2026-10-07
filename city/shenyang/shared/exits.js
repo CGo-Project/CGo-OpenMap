@@ -48,6 +48,132 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;");
 
+    /* ── 出口说明「待补充」的反馈 ────────────────────────────────────────
+       出入口的说明来自人工核定（维基「出口指示」）或「相对站厅方位 + 口」的填空，
+       总有还没收录的口。与其只留一句「待补充」，不如把反馈路径直接给到访客：
+       面板里给出**带定位信息**的正文（城市 / 车站 ID / 出口编号 / 数据文件路径），
+       一键复制或直接开 GitHub 新建 Issue —— 维护者据此可直接定位到那一行数据。
+
+       仓库地址是**项目级常量**（上游仓库，不含任何城市私有信息，故不违反共享层的解耦约定）；
+       老路径 NokiaimuL/CGo-OpenMap 会 301 到它。GitHub 新建 Issue 需登录，
+       故「复制」是必备兜底。设置 window.CGO_FEEDBACK_REPO 可覆盖（便于分叉部署）。 */
+
+    const FEEDBACK_REPO = "https://github.com/CGo-Project/CGo-OpenMap";
+    const FEEDBACK_MODAL_ID = "cgo-exit-feedback-modal";
+
+    const feedbackRepo = () => window.CGO_FEEDBACK_REPO || FEEDBACK_REPO;
+    const cityNameOf = (cityId) => window.CITY_REGISTRY?.[cityId]?.name || cityId || "";
+
+    /**
+     * 该出口的说明是否「待补充」。
+     *
+     * 两种情形都算：`desc` 本身缺失；或 `desc` 只是数据侧统一写成的「相对站厅方位 + 口」填空
+     * （形如「西北口」，即 `bearing + "口"`）——它只说明方位，并没有收录该口的出口指示。
+     * 维基「出口指示」原文的形态与它不同（多为「XX路（X侧）」「XX路东」），不会误判。
+     */
+    function isDescPending(exit) {
+        if (!exit?.desc) return true;
+        return Boolean(exit.bearing) && exit.desc === `${exit.bearing}口`;
+    }
+
+    /** 「待补充」标：点开反馈面板；定位信息全放在 data-* 上，由清单做事件委托 */
+    function pendingBadgeHtml(exit, ctx) {
+        return `<button type="button" class="cgo-exit-pending" data-exit-feedback
+            data-station-id="${escapeHtml(ctx.stationId || "")}"
+            data-station-cn="${escapeHtml(ctx.stationCn || "")}"
+            data-exit-code="${escapeHtml(exit.name || "")}"
+            title="该出口的说明尚未收录，点击反馈给我们"
+        ><cgo-icon name="info" size="11"></cgo-icon>待补充</button>`;
+    }
+
+    function feedbackModal() {
+        let el = document.getElementById(FEEDBACK_MODAL_ID);
+        if (!el) {
+            el = document.createElement("cgo-modal");
+            el.id = FEEDBACK_MODAL_ID;
+            el.setAttribute("max-width", "460px");
+            document.body.appendChild(el);
+        }
+        return el;
+    }
+
+    /** 反馈正文：定位信息越全，维护者越省一轮来回 */
+    function feedbackText({ cityId, stationId, stationCn, exitCode }) {
+        const cityName = cityNameOf(cityId);
+        return [
+            `【出口数据反馈】${cityName} ${stationCn} ${exitCode} 口`,
+            "",
+            `- 城市：${cityName}（${cityId}）`,
+            `- 车站：${stationCn}（${stationId}）`,
+            `- 出口：${exitCode}`,
+            `- 数据文件：city/${cityId}/data_exits.js`,
+            "- 该出口还没有「出口指示」说明，界面目前只按方位显示（标题旁的「待补充」标即指此）。",
+            "",
+            "补充说明（选填）："
+        ].join("\n");
+    }
+
+    /** 打开反馈面板：正文预览 + 选填备注 + 复制 / 新建 Issue / 关闭 */
+    function openFeedback(ctx) {
+        const modal = feedbackModal();
+        const base = feedbackText(ctx || {});
+        modal.title = "反馈出口数据";
+        modal.innerHTML = `
+            <div class="cgo-exit-fb">
+                <p class="cgo-exit-fb-lead">${escapeHtml(cityNameOf(ctx?.cityId))} ${escapeHtml(ctx?.stationCn || "")} · ${escapeHtml(ctx?.exitCode || "")} 口</p>
+                <div class="cgo-exit-fb-context" data-context></div>
+                <textarea class="cgo-exit-fb-note" data-note rows="3" placeholder="补充说明（选填，比如你看到的实际出口指示）"></textarea>
+                <div class="cgo-exit-fb-actions">
+                    <button type="button" class="cgo-exit-fb-btn" data-act="copy"><cgo-icon name="copy" size="13"></cgo-icon><span data-copy-label>复制</span></button>
+                    <button type="button" class="cgo-exit-fb-btn primary" data-act="issue"><cgo-icon name="external" size="13"></cgo-icon>在 GitHub 新建 Issue</button>
+                    <button type="button" class="cgo-exit-fb-btn ghost" data-act="close"><cgo-icon name="close" size="13"></cgo-icon>关闭</button>
+                </div>
+            </div>
+        `;
+        const contextEl = modal.querySelector("[data-context]");
+        const noteEl = modal.querySelector("[data-note]");
+        const copyLabel = modal.querySelector("[data-copy-label]");
+        // 正文用 textContent 落地（不拼 HTML），备注由用户自己填
+        contextEl.textContent = base;
+
+        const compose = () => {
+            const note = noteEl.value.trim();
+            return note ? `${base}\n${note}` : base;
+        };
+        const selectContext = () => {
+            const range = document.createRange();
+            range.selectNodeContents(contextEl);
+            const sel = window.getSelection();
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        };
+
+        modal.querySelectorAll("[data-act]").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                const act = btn.dataset.act;
+                if (act === "close") { modal.open = false; return; }
+                if (act === "issue") {
+                    const query = new URLSearchParams();
+                    query.set("title", `【出口数据】${cityNameOf(ctx?.cityId)} ${ctx?.stationCn || ""} ${ctx?.exitCode || ""} 口 说明待补充`);
+                    query.set("body", compose());
+                    window.open(`${feedbackRepo()}/issues/new?${query.toString()}`, "_blank", "noopener");
+                    modal.open = false;
+                    return;
+                }
+                // 复制：剪贴板 API 需要安全上下文（https / localhost），失败就退回手动选中
+                try {
+                    await navigator.clipboard.writeText(compose());
+                    copyLabel.textContent = "已复制";
+                } catch {
+                    selectContext();
+                    copyLabel.textContent = "请按 Ctrl+C";
+                }
+                setTimeout(() => { copyLabel.textContent = "复制"; }, 1600);
+            });
+        });
+        modal.open = true;
+    }
+
     function pickData(globals) {
         for (const name of globals || []) {
             const table = window[name];
@@ -358,7 +484,7 @@
      * 一条出口：字母徽标 + 所属线路 + 公交线路 + 周边地标 + 该口的扶梯/电梯；暂停使用的加标记。
      * verticals 由 CGoExitVertical.collect() 给出（城市未接入该层时为空数组）。
      */
-    function exitHtml(exit, verticals = [], facilities = null) {
+    function exitHtml(exit, verticals = [], facilities = null, ctx = {}) {
         const rows = [];
         if (exit.lines?.length) {
             rows.push(`<div class="cgo-exit-row">
@@ -395,6 +521,7 @@
                 <div class="cgo-exit-body">
                     <div class="cgo-exit-title">
                         <span>${escapeHtml(titleText)}</span>
+                        ${isDescPending(exit) ? pendingBadgeHtml(exit, ctx) : ""}
                         ${positionHtml}
                         ${exit.closed ? `<span class="cgo-exit-closed">暂停使用</span>` : ""}
                     </div>
@@ -487,7 +614,7 @@
                     <div class="cgo-exit-section">
                         <div class="cgo-exit-map" data-station-id="${escapeHtml(station?.id || "")}" data-station-name="${escapeHtml(station?.cn || "")}"></div>
                         ${filtersHtml}
-                        <div class="cgo-exit-list">${exits.map((exit) => exitHtml(exit, verticals.get(exit.name) || [], typesByExit.get(exit.name))).join("")}</div>
+                        <div class="cgo-exit-list">${exits.map((exit) => exitHtml(exit, verticals.get(exit.name) || [], typesByExit.get(exit.name), { stationId: station?.id, stationCn: station?.cn })).join("")}</div>
                         ${config.sourceNote ? `<div class="cgo-exit-source">
                             <cgo-icon name="info" size="12"></cgo-icon>
                             <span>${escapeHtml(config.sourceNote)}</span>
@@ -534,6 +661,19 @@
                     }
                 }
 
+                // 「待补充」标：事件委托在清单上，点开反馈面板（正文、复制与 Issue 都由共享层出）
+                const exitList = container.querySelector(".cgo-exit-list");
+                exitList?.addEventListener("click", (ev) => {
+                    const btn = ev.target.closest?.("[data-exit-feedback]");
+                    if (!btn || !exitList.contains(btn)) return;
+                    openFeedback({
+                        cityId: idPrefix,
+                        stationId: btn.dataset.stationId,
+                        stationCn: btn.dataset.stationCn,
+                        exitCode: btn.dataset.exitCode
+                    });
+                });
+
                 // 筛选模式：单选，再点一次取消（互斥，避免叠加出空清单）
                 const buttons = [...container.querySelectorAll(".cgo-exit-filter")];
                 for (const button of buttons) {
@@ -553,5 +693,7 @@
         }));
     }
 
-    window.CGoExits = { register, registered, exitsByStation, requestExitFocus };
+    // openFeedback 一并导出：其他「内容待补充」的场景（如题字投稿）可复用同一套面板，
+    // 只需给出 { cityId, stationId, stationCn, exitCode } 这组定位信息
+    window.CGoExits = { register, registered, exitsByStation, requestExitFocus, openFeedback };
 })();
