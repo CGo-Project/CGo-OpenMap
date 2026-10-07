@@ -71,6 +71,8 @@
     const RESULT_PANEL_ID = "cgo-route-result";
     /** 面板按钮的标识类（幂等注入靠它） */
     const TOOL_BTN_CLASS = "cgo-mt-inline-btn";
+    /** 右上角「更多」菜单里那条入口的 id（幂等注入靠它） */
+    const MENU_ENTRY_ID = "cgo-maptools-entry";
 
     /** 等时圈档宽（分钟）：每 5 分钟一档，色阶才够细 */
     const ISO_STEP = 5;
@@ -2621,8 +2623,30 @@
         trackContextTarget();
         watchTheme();
         onPanelChange();
+        // 右上角「更多」菜单里的入口（工具列表面板是固定浮层，不依赖锚点）
+        registerMenuEntry();
         bodyObserver.observe(document.body, { childList: true });
         window.addEventListener("resize", scheduleStacking);
+    }
+
+    /**
+     * 右上角「更多」菜单里的「地图小工具」入口。
+     *
+     * 工具列表面板本身是贴右下角的固定浮层（`.cgo-mt-panel`），**不依赖锚点元素**，
+     * 所以从菜单进来同样可用：没有预设车站，选定工具后在地图上点站即可。
+     * 位置对齐母产品的菜单顺序（工具在最前），故插在「偏好设置」之前。
+     */
+    function registerMenuEntry() {
+        const content = document.querySelector(".options-dropdown .dropdown-content");
+        if (!content || content.querySelector(`#${MENU_ENTRY_ID}`)) return;
+        const entry = document.createElement("a");
+        entry.href = "javascript:void(0)";
+        entry.id = MENU_ENTRY_ID;
+        entry.innerHTML = `<cgo-icon name="plugin"></cgo-icon><span>地图小工具</span>`;
+        entry.addEventListener("click", () => openTools());
+        const anchor = content.querySelector("#settings-btn");
+        if (anchor) anchor.insertAdjacentElement("beforebegin", entry);
+        else content.prepend(entry);
     }
 
     /** 对外接口：供城市侧或后续接入方直接开启某个工具 */

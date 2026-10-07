@@ -323,7 +323,12 @@
         entry.id = MENU_ENTRY_ID;
         entry.innerHTML = `<cgo-icon name="chat"></cgo-icon><span>反馈与纠错</span>`;
         entry.addEventListener("click", () => open({ kind: "general", switchable: true }));
-        content.appendChild(entry);
+        // 位置对齐母产品那条菜单的顺序（偏好设置 → 问题反馈 → 帮助 → 贡献与主理人）：
+        // 静态项里「帮助与关于」本就在「贡献与主理人」之前，故本项插在「偏好设置」之后，
+        // 而不是追加到末尾 —— 末尾固定留给 CONTRIBUTING 入口
+        const anchor = content.querySelector("#settings-btn");
+        if (anchor) anchor.insertAdjacentElement("afterend", entry);
+        else content.appendChild(entry);
         return true;
     }
 
