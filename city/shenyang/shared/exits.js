@@ -133,9 +133,14 @@
         }
     };
 
-    /** 官方 QQ 交流群：项目级常量，可用 window.CGO_FEEDBACK_QQ 覆盖；置空字符串则面板不显示该入口 */
+    /**
+     * 官方 QQ 交流群：项目级常量（群号 + 分享链接），可用 window.CGO_FEEDBACK_QQ /
+     * window.CGO_FEEDBACK_QQ_URL 覆盖；链接置空串则该按钮不出现。
+     */
     const QQ_GROUP = "619357751";
+    const QQ_GROUP_URL = "https://qm.qq.com/q/nHfgBDS68o";
     const qqGroup = () => (window.CGO_FEEDBACK_QQ === undefined ? QQ_GROUP : window.CGO_FEEDBACK_QQ);
+    const qqGroupUrl = () => (window.CGO_FEEDBACK_QQ_URL === undefined ? QQ_GROUP_URL : window.CGO_FEEDBACK_QQ_URL);
 
     /** 打开反馈面板：正文预览 + 选填备注 + 复制 / 新建 Issue / QQ 群 / 关闭 */
     function openFeedback(ctx = {}) {
@@ -152,7 +157,7 @@
                 <div class="cgo-exit-fb-actions">
                     <button type="button" class="cgo-exit-fb-btn" data-act="copy"><cgo-icon name="copy" size="13"></cgo-icon><span data-copy-label>复制</span></button>
                     <button type="button" class="cgo-exit-fb-btn primary" data-act="issue"><cgo-icon name="external" size="13"></cgo-icon>新建 GitHub Issue</button>
-                    ${qqGroup() ? `<button type="button" class="cgo-exit-fb-btn" data-act="qq"><cgo-icon name="chat" size="13"></cgo-icon><span data-qq-label>QQ 群 ${escapeHtml(String(qqGroup()))}</span></button>` : ""}
+                    ${qqGroupUrl() ? `<button type="button" class="cgo-exit-fb-btn" data-act="qq" title="官方 QQ 交流群 ${escapeHtml(String(qqGroup()))}"><cgo-icon name="chat" size="13"></cgo-icon>加入 QQ 群</button>` : ""}
                     <button type="button" class="cgo-exit-fb-btn ghost" data-act="close"><cgo-icon name="close" size="13"></cgo-icon>关闭</button>
                 </div>
             </div>
@@ -160,7 +165,6 @@
         const contextEl = modal.querySelector("[data-context]");
         const noteEl = modal.querySelector("[data-note]");
         const copyLabel = modal.querySelector("[data-copy-label]");
-        const qqLabel = modal.querySelector("[data-qq-label]");
         // 正文用 textContent 落地（不拼 HTML），备注由用户自己填
         contextEl.textContent = base;
 
@@ -189,14 +193,9 @@
                     return;
                 }
                 if (act === "qq") {
-                    // QQ 群没有稳定的深链，群号直接写在按钮上，点击即复制供用户去 QQ 搜索
-                    try {
-                        await navigator.clipboard.writeText(String(qqGroup()));
-                        qqLabel.textContent = "已复制群号";
-                    } catch {
-                        qqLabel.textContent = "复制失败，请手抄群号";
-                    }
-                    setTimeout(() => { qqLabel.textContent = `QQ 群 ${qqGroup()}`; }, 1800);
+                    // 群分享链接（qm.qq.com）：移动端唤起 QQ、桌面端打开加群页
+                    window.open(qqGroupUrl(), "_blank", "noopener");
+                    modal.open = false;
                     return;
                 }
                 // 复制：剪贴板 API 需要安全上下文（https / localhost），失败就退回手动选中
