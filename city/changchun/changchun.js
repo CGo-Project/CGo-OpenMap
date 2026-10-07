@@ -210,6 +210,26 @@
     ];
 
     /**
+     * 出口垂直交通的搬迁声明（共享层 shared/exit-vertical.js 读取）
+     *
+     * 长春设施表里「无障碍电梯 / 升降平台」的位置大多**直接以出口编号开头**
+     * （「D口」「B口」「A、C口通道」「A2口升降平台」「DC口(升降平台)」），另有「站外C口」
+     * 以「站外」开头——这些出口本身就是设施的落点，故按「出口编号开头 / 站外开头」两条前缀搬走；
+     * 不以出口开头的位置（「换乘通道，站厅层中部」「站台层北侧」「站厅近B口处」「站内A口」）
+     * 属于站内垂直交通、或只是位置靠近出口，一律留在车站设施板块不动。
+     */
+    window.CGO_EXIT_VERTICAL = {
+        patterns: [
+            /^[A-Za-z]{1,2}\d{0,2}(?:\s*[、,，和及]\s*[A-Za-z]{1,2}\d{0,2})*\s*口/,
+            /^站外/
+        ],
+        types: {
+            elevator: { name: "无障碍电梯", icon: "elevator" },
+            a11yplatform: { name: "升降平台", icon: "a11yplatform" }
+        }
+    };
+
+    /**
      * 行程规划的城市侧配置
      *
      * 共享层负责算法、面板、坐标索引与站外换乘收集，本城只描述「数据长什么样」：
@@ -444,7 +464,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261008.100000";
+        const version = "261008.110000";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
@@ -468,6 +488,9 @@
         // 城市私有数据与车站设施（须早于依赖它的模块加载）
         document.write(`<script src="./city/changchun/data_facilities.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_exits.js?v=${version}"><\/script>`);
+        // 出入口垂直交通搬迁：把设施表里以出口开头的「无障碍电梯 / 升降平台」段搬到出口页签下
+        // （须早于 facilities.js 与 exits.js，两者都调用它）
+        document.write(`<script src="./city/shenyang/shared/exit-vertical.js?v=${version}"><\/script>`);
         // 车站设施（配置驱动，共享层位于沈阳目录下）
         document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
         // 车站出入口独立页签：配置驱动，与沈阳、大连同用共享层
