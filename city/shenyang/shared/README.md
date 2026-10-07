@@ -1,10 +1,10 @@
-# 三城共享层（city/shenyang/shared/）
+# 多城共享层（city/shenyang/shared/）
 
 > ⚠️ **临时共享位置**
-> 本目录挂在沈阳城市目录下，实际由 **沈阳、大连、长春、哈尔滨** 四城共用。
+> 本目录挂在沈阳城市目录下，实际由 **沈阳、大连、长春、哈尔滨、呼和浩特** 五城共用；另有福州接入其中的行程规划链、最近车站、侧栏形态与地图小工具（见第三节）。
 > 计划在开发团队确认共享位置后整体迁入 `core/`，届时只需 `git mv` 并改动各城
-> `{city}.js` 里的引用路径与 3 处 stacard import，**零逻辑改动**。
-> 迁移步骤见 [docs/STACARD_TIMETABLE_UNIFICATION.md](../../../docs/STACARD_TIMETABLE_UNIFICATION.md) 第 4.4 节。
+> `{city}.js` 里的引用路径与 5 处 stacard import（沈 / 大 / 长 / 哈 / 呼 的 `stacard/script.js`），**零逻辑改动**。
+> 迁移步骤见 [docs/STACARD_TIMETABLE_UNIFICATION.md](../../../docs/STACARD_TIMETABLE_UNIFICATION.md) 第 2.4 节（该文 4.4 节讲的是同名站索引）。
 
 ---
 
@@ -12,7 +12,7 @@
 
 三条同时满足，才应该放进本目录：
 
-1. **多城共用**：三城之一已接入，其余城市可直接复用同一份实现；
+1. **多城共用**：已有城市接入，其余城市可直接复用同一份实现；
 2. **不含城市业务**：不出现具体站名、线路 ID、季节阈值、运营公司等城市私有数据；
 3. **可被薄配置驱动**：城市侧只写差异（文案、阈值、取数），机制部分留在这里。
 
@@ -25,25 +25,25 @@
 
 | 文件 | 对外接口 | 加载方式 | 职责 |
 | :--- | :--- | :--- | :--- |
-| `timetable-renderer.js` | `window.CGoTimetable`、`window.CGoDayType` | classic script，各城 `{city}.js` 引入 | 首末班车「行 → HTML」、日期类型与季节判定、终点站代号解析，详见 2.1 |
-| `stacard-engine.js` | 具名导出 `createStaCard`；另外把瓦片与投影挂到 `window.CGoMapTiles` | ES module，各城 `stacard/script.js` 相对 import | 高德瓦片地图卡片（ES module）；并把瓦片与投影挂到 `window.CGoMapTiles` 供 classic script 取用，详见 2.1 |
-| `station-title.js` | `window.CGoStationTitle.createStationTitleNormalizer` | classic script | 侧栏站名标题归一化（站类判定、标题拼装、MutationObserver 安装与防自触发） |
-| `tip-card.js` | `window.CGoTipCard.render` | classic script | 车站信息板提示卡片 DOM（与上游官方模板结构一致） |
-| `label-active.js` | `window.CGoLabelActive`（`sync`） | classic script，城市 `{city}.js` 引入 | 呼出线随站名标签同步 active 与淡化（按 `data-cgo-callout` 配对），详见 2.1 |
-| `calligraphy.js` + `calligraphy.css` | `window.CGoCalligraphy.register` | classic script | 站名题字渲染机制（沈阳特色，其他城市可选用）；素材缺失时给「投稿 / 反馈」入口，详见 2.1 |
-| `facilities.js` + `facilities.css` | `window.CGoFacilities`（`register` / `registered`） | classic script，各城 `{city}.js` 引入，须早于城市设施模块 | 车站设施板块（配置驱动，含可选的车站层级图），详见 2.1 |
-| `feedback.js` + `feedback.css` | `window.CGoFeedback`（`open` / `registerKind` / `kinds`） | classic script，各城 `{city}.js` 引入（**建议**早于 `exits.js` 与 `calligraphy.js`；这两者都在**打开面板前补登记**一次自己的场景、幂等，故先后顺序并不敏感，见 `exits.js` 内注释） | 反馈面板：出入口「待补充」、题字投稿与右上角「更多」入口共用，七类场景，详见 2.1 |
-| `exits.js` + `exits.css` | `window.CGoExits.register` | classic script，各城 `{city}.js` 引入，须早于城市出入口模块 | 车站出入口独立页签：分布小地图 + 出口条目，配置驱动，详见 2.1 |
+| `timetable-renderer.js` | `window.CGoTimetable`、`window.CGoDayType` | classic script，按需引入（沈 / 大 / 长 / 呼 已引入；哈尔滨未引入） | 首末班车「行 → HTML」、日期类型与季节判定、终点站代号解析，详见 2.1 |
+| `stacard-engine.js` | 具名导出 `createStaCard`；另外把瓦片与投影挂到 `window.CGoMapTiles` | ES module，五城（沈 / 大 / 长 / 哈 / 呼）的 `stacard/script.js` 相对 import | 高德瓦片地图卡片（ES module）；并把瓦片与投影挂到 `window.CGoMapTiles` 供 classic script 取用，详见 2.1 |
+| `station-title.js` | `window.CGoStationTitle.createStationTitleNormalizer` | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈） | 侧栏站名标题归一化（站类判定、标题拼装、MutationObserver 安装与防自触发） |
+| `tip-card.js` | `window.CGoTipCard.render` | classic script（目前仅沈阳引入） | 车站信息板提示卡片 DOM（与上游官方模板结构一致） |
+| `label-active.js` | `window.CGoLabelActive`（`sync`） | classic script，目前仅沈阳在 `{city}.js` 引入 | 呼出线随站名标签同步 active 与淡化（按 `data-cgo-callout` 配对），详见 2.1 |
+| `calligraphy.js` + `calligraphy.css` | `window.CGoCalligraphy.register` | classic script（目前仅沈阳引入） | 站名题字渲染机制（沈阳特色，其他城市可选用）；素材缺失时给「投稿 / 反馈」入口，详见 2.1 |
+| `facilities.js` + `facilities.css` | `window.CGoFacilities`（`register` / `registered`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 呼），须早于城市设施模块 | 车站设施板块（配置驱动，含可选的车站层级图），详见 2.1 |
+| `feedback.js` + `feedback.css` | `window.CGoFeedback`（`open` / `registerKind` / `kinds`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州未接入）（**建议**早于 `exits.js` 与 `calligraphy.js`；这两者都在**打开面板前补登记**一次自己的场景、幂等，故先后顺序并不敏感，见 `exits.js` 内注释） | 反馈面板：出入口「待补充」、题字投稿与右上角「更多」入口共用，七类场景，详见 2.1 |
+| `exits.js` + `exits.css` | `window.CGoExits.register` | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），须早于城市出入口模块 | 车站出入口独立页签：分布小地图 + 出口条目，配置驱动，详见 2.1 |
 | `exit-vertical.js` | `window.CGoExitVertical`（`codesOf` / `match` / `collect` / `rowHtml`） | classic script，**沈阳 / 大连 / 长春**在 `{city}.js` 引入，**须早于 `facilities.js` 与 `exits.js`**（两者都调用它；未引入的城市经可选链跳过） | 把属于某个出口的扶梯 / 电梯从设施板块搬到出口页签（前缀判据），详见 2.1 |
-| `opening-schedule.js` | `window.CGoOpening` | classic script | 未开通区段与车站的**开通时刻**：状态转换、待开通登记、到点自动刷新，以及未开通车站 footer 的开通文案与倒计时（详见第四节） |
+| `opening-schedule.js` | `window.CGoOpening` | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长） | 未开通区段与车站的**开通时刻**：状态转换、待开通登记、到点自动刷新，以及未开通车站 footer 的开通文案与倒计时（详见第四节） |
 | `opening-schedule.css` | — | 由 `opening-schedule.js` 按自身 URL 注入 | 上述倒计时框的样式（同 `calligraphy.css` 的做法） |
 | `line-link.js` | `window.CGoLineLink`（`list` / `atStation` / `ofLine` / `throughPairs` / `mergeStationLines`） | classic script，**目前仅大连**在 `{city}.js` 引入，须早于 `route-data.js` | 线路接续声明解析：城市用 `lineLinks` 声明「哪两条线在哪个站接续、是否贯通运行」。声明 `through: true` 时，规划内核把经由衔接站的跨线视作同一列车（不计换乘、无换乘耗时），车站详情也把整条贯通区段合并成一条线、相邻站跨线相连 |
-| `loop-direction.js` | `window.CGoLoopDirection`（`of` / `label` / `orientation`） | classic script，按需在 `{city}.js` 引入（有环线的城市；呼和浩特未引入），须早于行程规划与时刻表渲染 | 环线乘车方向的环别文案（按站序做鞋带公式判顺 / 逆），详见 2.1 |
-| `route-data.js` + `route-planner.js` + `route-panel.js` + `route-panel.css` | `window.CGoRouteData`（`build` / `amapCoordIndex` / `collectVirtualTransfers` / `hourSlots`）、`window.CGoRoutePlanner`、`window.CGoRoutePanel` | classic script，各城 `{city}.js` **按 data → planner → panel 的顺序**引入 | 行程规划：网络构建 / 多目标 Dijkstra / 票价结算 / 结果面板（**须按 data → planner → panel 的顺序引入**），详见 2.1 |
-| `nearest-station.js` + `nearest-station.css` | 无对外接口（自动接管 `#locate-btn`） | classic script，各城 `{city}.js` 引入 | 跨城市「查找最近车站」：在 `#locate-btn` 上以**捕获阶段**扣下核心 `findNearestStation` 的点击，本模块自足地定位、换算 GCJ-02、比对全城站点后，改用 `cgo-modal` 三选一（切换到更近的城市 / 查看当前城市最近车站 / 取消），替掉核心那个同步 `confirm`；样式表由脚本按自身 URL 注入 |
-| `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，各城 `{city}.js` 引入（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
-| `viewport-inset.js` | 载体 `window.CGoViewportInsets`（`{left, right, bottom}`，px）、接口 `window.CGoViewportInset`（`refresh` / `compute` / `fit`） | classic script，各城 `{city}.js` 引入 | 浮层遮挡上报：把「哪一侧被遮多少」写回引擎，详见 2.1 |
-| `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close`） | classic script，各城 `{city}.js` 引入（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
+| `loop-direction.js` | `window.CGoLoopDirection`（`of` / `label` / `orientation`） | classic script，按需引入（沈 / 大 / 长 / 哈 / 福 已引入；呼和浩特无环线，未引入），须早于行程规划与时刻表渲染 | 环线乘车方向的环别文案（按站序做鞋带公式判顺 / 逆），详见 2.1 |
+| `route-data.js` + `route-planner.js` + `route-panel.js` + `route-panel.css` | `window.CGoRouteData`（`build` / `amapCoordIndex` / `collectVirtualTransfers` / `hourSlots`）、`window.CGoRoutePlanner`、`window.CGoRoutePanel` | classic script，六城在 `{city}.js` **按 data → planner → panel 的顺序**引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 行程规划：网络构建 / 多目标 Dijkstra / 票价结算 / 结果面板（**须按 data → planner → panel 的顺序引入**），详见 2.1 |
+| `nearest-station.js` + `nearest-station.css` | 无对外接口（自动接管 `#locate-btn`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 跨城市「查找最近车站」：在 `#locate-btn` 上以**捕获阶段**扣下核心 `findNearestStation` 的点击，本模块自足地定位、换算 GCJ-02、比对全城站点后，改用 `cgo-modal` 三选一（切换到更近的城市 / 查看当前城市最近车站 / 取消），替掉核心那个同步 `confirm`；样式表由脚本按自身 URL 注入 |
+| `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
+| `viewport-inset.js` | 载体 `window.CGoViewportInsets`（`{left, right, bottom}`，px）、接口 `window.CGoViewportInset`（`refresh` / `compute` / `fit`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 浮层遮挡上报：把「哪一侧被遮多少」写回引擎，详见 2.1 |
+| `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
 
 ### 2.1 各模块要点
 
@@ -171,20 +171,18 @@
 
 | 机制 | 当前状态 | 参考入口 |
 | :--- | :--- | :--- |
-| 首末班车时刻渲染 | 三城统一中，共享层出渲染、城市只写取数与阈值 | `shared/timetable-renderer.js`、`city/shenyang/modules/shenyang_service_info.js`、`city/dalian/modules/dalian_timetable.js`、`city/changchun/modules/changchun_service_info.js` |
-| 车站地图卡片 | 三城统一为同一份引擎 | `shared/stacard-engine.js`、各城 `stacard/script.js` |
-| 侧栏站名标题归一化 | 三城统一为薄配置 | `shared/station-title.js`、各城 `modules/*_station_title.js` |
+| 首末班车时刻渲染 | 四城统一中（沈 / 大 / 长 / 呼），共享层出渲染、城市只写取数与阈值 | `shared/timetable-renderer.js`、`city/shenyang/modules/shenyang_service_info.js`、`city/dalian/modules/dalian_timetable.js`、`city/changchun/modules/changchun_service_info.js`、`city/hohhot/modules/hohhot_timetable.js` |
+| 车站地图卡片 | 五城统一为同一份引擎（沈 / 大 / 长 / 哈 / 呼） | `shared/stacard-engine.js`、各城 `stacard/script.js` |
+| 侧栏站名标题归一化 | 四城统一为薄配置（沈 / 大 / 长 / 哈） | `shared/station-title.js`、各城 `modules/*_station_title.js` |
 | 车站提示卡片 | 共享层出 DOM，城市只写命中判定与文案 | `shared/tip-card.js`、`city/shenyang/modules/shenyang_cultural.js` |
 | 站名题字 | 沈阳专属，其他城市可选用 | `shared/calligraphy.js`、`city/shenyang/modules/shenyang_calligraphy.js` |
 | **呼出线随标签进入 active** | 沈阳已接入（换乘站的呼出框 + 引线，标签被选中 / 成为路线起终点时引线一同转红，标签被淡化时引线一同淡出）；其他城市给引线元素打 `data-cgo-callout="<车站 ID>"`、给引线层打 `data-cgo-callout-layer`，并在样式表里写 `cgo-callout-active` 的观感即可接入 | `shared/label-active.js`、`city/shenyang/modules/shenyang_map.js`、`city/shenyang/style.css` |
 | **开通时刻** | 长春已接入（5 号线一期），沈阳、大连为空表待用 | `shared/opening-schedule.js`、各城 `data_opening.js` |
-| **行程规划** | 沈阳、大连、长春、哈尔滨、福州已接入：共享层出算法、面板与坐标索引，城市只写 `reader` 取数 + `fareSystems` / `fare` 票价 | `shared/route-data.js`、`shared/route-planner.js`、`shared/route-panel.js`、各城 `{city}.js` 的 `CGO_ROUTE_CONFIG` |
+| **行程规划** | 沈阳、大连、长春、哈尔滨、呼和浩特、福州已接入：共享层出算法、面板与坐标索引，城市只写 `reader` 取数 + `fareSystems` / `fare` 票价 | `shared/route-data.js`、`shared/route-planner.js`、`shared/route-panel.js`、各城 `{city}.js` 的 `CGO_ROUTE_CONFIG` |
 | **贯通运行（线路接续）** | 大连已接入（3 号线支线 ⇄ 13 号线在九里接续跑同一趟车）；其他城市按同一份 `lineLinks` 声明即可接入 | `shared/line-link.js`、`city/dalian/dalian.js` 的 `lineLinks` |
-| **固定侧栏形态（浮岛卡片）** | 三城已接入；上游开发团队认可后再决定是否整体迁入 `core/` | `shared/sidebar-refit.js`、各城 `{city}.js` 里的引入行 |
-| **地图小工具（票价图 / 等时圈 / 多人汇合）** | 东北四市已接入：共享层出选站、计算与分层设色（含悬停读数、起点选中光环与各站数值标注；等时圈带「范围」分段控件、范围上限那条等级线与「最近 10 站」列表，汇合图可点第三座车站升级为三点汇合），城市无需新增任何配置（有 `CGO_ROUTE_CONFIG.fare` 即可出票价图） | `shared/map-tools.js`、各城 `{city}.js` 里的引入行 |
-| **车站设施 / 出入口** | 沈阳已接入（设施，含官网层级图；出入口独立页签，144 站 / 516 条，数据来自高德 Web 服务 API，**每条出口带所属线路与出口描述**（`desc` 已按维基「出口指示」覆盖——含 2026-10-08 补做的 3 号线全线，维基未给的口以「相对所属线路站厅的方位 + 口」填空，如「西北口」；高德逆地理的路口方位整体迁到 `geoDesc`，只留档不渲染；周边地标按维基「建议前往的目的地」补入）；位置在出入口的扶梯 / 电梯已按 `exit-vertical.js` 搬到出口下——460 个「车站-出口」、843 条，设施板块不再重复罗列）；大连已接入（设施 + 出入口独立页签，100 站 / 278 条，同步接入该搬迁——68 个出口、69 条）；长春已接入（设施 + 出入口独立页签，123 站 / 432 条，出口来自高德；出口下已按 `exit-vertical.js` 挂上「无障碍电梯 / 升降平台」——77 站 / 95 段，判据为「出口编号开头 / 站外开头」，站内垂直交通留在设施板块）；哈尔滨已接入（出入口独立页签，72 站 / 261 条，出口来自高德；本城未接设施层）；呼和浩特已接入（出入口独立页签，43 站 / 153 条，出口编号与周边目的地来自**中文维基百科**、**无坐标**故分布小地图不给它标点；本城未接设施层，只有官网层级图）。其中长春的**设施**部分仍是官方公众号表格图的**人工转录**（125 站）。共享层出渲染、逐条开合与来源标注，城市只写数据全局名与「类型 → 名字 + 图标」映射；出入口页签另需在城市 `stationBoard.tabs` 里声明 `{ id: "<city>-exits", title: "出入口", icon: "gate" }`（`id` 与共享层模块的 `targetTab` 一致），页签只对**非点线**车站渲染（`shouldRender` 用引擎已有的 `relatedLines` 与线路 `isPointOnly` 判定——国铁散站 / 轻铁 / 在建线即便数据里被同名误收也不出页签），官网无出入口数据的城市，可改用地图服务商的 LBS 接口取数（沈阳、长春、哈尔滨都走高德 Web 服务 API），或像长春的**设施**那样人工转录。**数据来源分三类**：大连是「官方接口 → 离线抓取脚本 → 落盘」；沈阳是「高德 Web 服务 API → 离线抓取脚本 → 落盘」（官方无出入口数据；注意多边形搜索存在**单区域结果截断**——实测中心区 365 条只返回 225 条，故中心城区必须改用周边搜索逐站取，脚本已固化这条口径（`fetch_city_exits_around.js` 一律走逐站周边搜索，不再用多边形））；长春是「人工转录 → 生成脚本」（官方无接口、只有表格图，且源图是 2025-04 静态快照不再更新）；多线换乘站的位置段是否合并、以及电梯与升降平台如何归类，都由各城自己的抓取/生成脚本决定（沈阳按「只点出入口」的判据 + 两张人工登记表做共用位置合并；长春按「取值一致 + 已查证的共用站厅/同台换乘站 + 单条人工登记」合并） | 共享层：`shared/facilities.js`、`shared/exits.js`、`shared/exit-vertical.js`；**开发期脚本**（Node，零依赖，不进运行时、也不入版本库，见 `.gitignore`）：`drunk/tools/facilities/` 下取**车站设施**的 `fetch_shenyang_facilities.js`、`fetch_dalian_facilities.js`、`gen_changchun_facilities.js`（+ 转录件 `changchun_facilities.transcript.json`）；取**出入口**的 `fetch_city_exits_around.js <city>`（逐站周边搜索，须早于下面两个）；算**方位**的 `fetch_exit_bearings.js <city>`（逆地理编码，产出 `.cache/bearing-<city>.json`）；**总装**的 `build_city_exits.js <city>`；大连另需 `patch_city_exits_bearing.js dalian` —— 它的出口数据来自官网、**没有坐标**，方位只能用高德数据事后按「站名 + 编号」合并进去 |
-| **固定侧栏形态（浮岛卡片）** | 沈阳、大连、长春、哈尔滨、福州已接入；上游开发团队认可后再决定是否整体迁入 `core/` | `shared/sidebar-refit.js`、各城 `{city}.js` 里的引入行 |
-| **地图小工具（票价图 / 等时圈 / 多人汇合）** | 东北四市与福州已接入：共享层出选站、计算与分层设色（含悬停读数、起点选中光环与各站数值标注；等时圈带「范围」分段控件、范围上限那条等级线与「最近 10 站」列表，汇合图可点第三座车站升级为三点汇合），城市无需新增任何配置（有 `CGO_ROUTE_CONFIG.fare` 即可出票价图） | `shared/map-tools.js`、各城 `{city}.js` 里的引入行 |
+| **车站设施 / 出入口** | 沈阳已接入（设施，含官网层级图；出入口独立页签，144 站 / 516 条，数据来自高德 Web 服务 API，**每条出口带所属线路与出口描述**（`desc` 已按维基「出口指示」覆盖——含 2026-10-08 补做的 3 号线全线，维基未给的口以「相对所属线路站厅的方位 + 口」填空，如「西北口」；高德逆地理的路口方位整体迁到 `geoDesc`，只留档不渲染；周边地标按维基「建议前往的目的地」补入）；位置在出入口的扶梯 / 电梯已按 `exit-vertical.js` 搬到出口下——460 个「车站-出口」、843 条，设施板块不再重复罗列）；大连已接入（设施 + 出入口独立页签，100 站 / 278 条，同步接入该搬迁——68 个出口、69 条）；长春已接入（设施 + 出入口独立页签，123 站 / 432 条，出口来自高德；出口下已按 `exit-vertical.js` 挂上「无障碍电梯 / 升降平台」——77 站 / 95 段，判据为「出口编号开头 / 站外开头」，站内垂直交通留在设施板块）；哈尔滨已接入（出入口独立页签，72 站 / 261 条，出口来自高德；本城未接设施层）；呼和浩特已接入（出入口独立页签，43 站 / 153 条，出口编号与周边目的地来自**中文维基百科**、**无坐标**故分布小地图不给它标点；本城**有**设施层但类型为空表（`types: {}`），只配了官网车站分层图）。其中长春的**设施**部分仍是官方公众号表格图的**人工转录**（125 站）。共享层出渲染、逐条开合与来源标注，城市只写数据全局名与「类型 → 名字 + 图标」映射；出入口页签另需在城市 `stationBoard.tabs` 里声明 `{ id: "<city>-exits", title: "出入口", icon: "gate" }`（`id` 与共享层模块的 `targetTab` 一致），页签只对**非点线**车站渲染（`shouldRender` 用引擎已有的 `relatedLines` 与线路 `isPointOnly` 判定——国铁散站 / 轻铁 / 在建线即便数据里被同名误收也不出页签），官网无出入口数据的城市，可改用地图服务商的 LBS 接口取数（沈阳、长春、哈尔滨都走高德 Web 服务 API），或像长春的**设施**那样人工转录。**数据来源分三类**：大连是「官方接口 → 离线抓取脚本 → 落盘」；沈阳是「高德 Web 服务 API → 离线抓取脚本 → 落盘」（官方无出入口数据；注意多边形搜索存在**单区域结果截断**——实测中心区 365 条只返回 225 条，故中心城区必须改用周边搜索逐站取，脚本已固化这条口径（`fetch_city_exits_around.js` 一律走逐站周边搜索，不再用多边形））；长春是「人工转录 → 生成脚本」（官方无接口、只有表格图，且源图是 2025-04 静态快照不再更新）；多线换乘站的位置段是否合并、以及电梯与升降平台如何归类，都由各城自己的抓取/生成脚本决定（沈阳按「只点出入口」的判据 + 两张人工登记表做共用位置合并；长春按「取值一致 + 已查证的共用站厅/同台换乘站 + 单条人工登记」合并） | 共享层：`shared/facilities.js`、`shared/exits.js`、`shared/exit-vertical.js`；**开发期脚本**（Node，零依赖，不进运行时、也不入版本库，见 `.gitignore`）：`drunk/tools/facilities/` 下取**车站设施**的 `fetch_shenyang_facilities.js`、`fetch_dalian_facilities.js`、`gen_changchun_facilities.js`（+ 转录件 `changchun_facilities.transcript.json`）；取**出入口**的 `fetch_city_exits_around.js <city>`（逐站周边搜索，须早于下面两个）；算**方位**的 `fetch_exit_bearings.js <city>`（逆地理编码，产出 `.cache/bearing-<city>.json`）；**总装**的 `build_city_exits.js <city>`；大连另需 `patch_city_exits_bearing.js dalian` —— 它的出口数据来自官网、**没有坐标**，方位只能用高德数据事后按「站名 + 编号」合并进去 |
+| **固定侧栏形态（浮岛卡片）** | 六城已接入（沈 / 大 / 长 / 哈 / 呼 / 福）；上游开发团队认可后再决定是否整体迁入 `core/` | `shared/sidebar-refit.js`、各城 `{city}.js` 里的引入行 |
+| **地图小工具（票价图 / 等时圈 / 多人汇合）** | 东北四市加呼和浩特、福州已接入（六城）：共享层出选站、计算与分层设色（含悬停读数、起点选中光环与各站数值标注；等时圈带「范围」分段控件、范围上限那条等级线与「最近 10 站」列表，汇合图可点第三座车站升级为三点汇合），城市无需新增任何配置（有 `CGO_ROUTE_CONFIG.fare` 即可出票价图） | `shared/map-tools.js`、各城 `{city}.js` 里的引入行 |
 | **站外换乘步行时间（逐对）** | 福州已接入：`CGO_ROUTE_CONFIG.walkMinutes` 可传数字（全城统一，默认 6 分钟）或 `{ "起点ID\|终点ID": 分钟 }` 逐对覆盖（水部→闽都 10 分、三叉街（滨海快线）→三叉街 6 分） | `shared/route-data.js` 的 `walkOverride`、`city/fuzhou/fuzhou.js` 的 `walkMinutes` |
 | **规划优先级只有三种** | 内核 `OBJECTIVES` 为 **时间最快 / 最少换乘 / 票价最低**，**没有「距离最短」**（该目标已整体移除，所有城市一致；原先的按城市开关 `disabledObjectives` 机制已一并删除）。理由：乘客更关心少换乘与时间短，且最短距离常反而更耗时。里程仍保留在结果字段、等时圈口径与按段计价结算里，只是不再作为寻路目标 | `shared/route-planner.js` 的 `OBJECTIVES`、`extremes()` |
 | **官方票价表优先** | 福州已接入：票价**只取自官网抓取的站间票价表**（`city/fuzhou/data_official_fare.js`，10302 组），计算式已删除，查不到的组合返回 `null`（内核按「票价未知」处理）。理由：计价站距与土建站距不同源，用站距套费率必然在档位分界附近错档 | `city/fuzhou/fuzhou.js` 的 `CGO_ROUTE_CONFIG.fare`、`city/fuzhou/tools/fuzhou_check.js`（抓取步骤写在文件头） |
