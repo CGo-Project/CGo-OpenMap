@@ -491,7 +491,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261008.160000";
+        const version = "261008.170000";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -522,6 +522,8 @@
         document.write(`<script src="./city/shenyang/shared/exit-vertical.js?v=${version}"><\/script>`);
         // 车站设施（含可选的车站层级图）：配置驱动，大连等城同用
         document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
+        // 反馈面板（出入口「待补充」、题字投稿与右上角「更多」入口共用；须早于 exits.js）
+        document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
         // 车站出入口独立页签：配置驱动，大连等城同用
         document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）

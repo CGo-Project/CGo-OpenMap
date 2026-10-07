@@ -50,19 +50,12 @@
 
     /* ── 出口说明「待补充」的反馈 ────────────────────────────────────────
        出入口的说明来自人工核定（维基「出口指示」）或「相对站厅方位 + 口」的填空，
-       总有还没收录的口。与其只留一句「待补充」，不如把反馈路径直接给到访客：
-       面板里给出**带定位信息**的正文（城市 / 车站 ID / 出口编号 / 数据文件路径），
-       一键复制或直接开 GitHub 新建 Issue —— 维护者据此可直接定位到那一行数据。
+       总有还没收录的口。与其只留一句「待补充」，不如把反馈路径直接给到访客——
+       点一下标即打开共享层的反馈面板（shared/feedback.js）：正文自带定位信息
+       （城市 / 车站 ID / 出口编号 / 数据文件路径），复制或新建 Issue 都能一键带走。
 
-       仓库地址是**项目级常量**（上游仓库，不含任何城市私有信息，故不违反共享层的解耦约定）；
-       老路径 NokiaimuL/CGo-OpenMap 会 301 到它。GitHub 新建 Issue 需登录，
-       故「复制」是必备兜底。设置 window.CGO_FEEDBACK_REPO 可覆盖（便于分叉部署）。 */
-
-    const FEEDBACK_REPO = "https://github.com/CGo-Project/CGo-OpenMap";
-    const FEEDBACK_MODAL_ID = "cgo-exit-feedback-modal";
-
-    const feedbackRepo = () => window.CGO_FEEDBACK_REPO || FEEDBACK_REPO;
-    const cityNameOf = (cityId) => window.CITY_REGISTRY?.[cityId]?.name || cityId || "";
+       面板本身不在这里 —— 反馈要覆盖共享层的多个场景（出口说明 / 题字 / 首末班车 /
+       票价 / 综合），故收敛到 `CGoFeedback`；本模块只声明「出口说明」这一种场景的文案。 */
 
     /**
      * 该出口的说明是否「待补充」。
@@ -86,130 +79,40 @@
         ><cgo-icon name="info" size="11"></cgo-icon>待补充</button>`;
     }
 
-    function feedbackModal() {
-        let el = document.getElementById(FEEDBACK_MODAL_ID);
-        if (!el) {
-            el = document.createElement("cgo-modal");
-            el.id = FEEDBACK_MODAL_ID;
-            el.setAttribute("max-width", "460px");
-            document.body.appendChild(el);
-        }
-        return el;
-    }
-
-    /* 反馈的两种场景：出口数据（出入口页签的「待补充」标）与站名题字（calligraphy.js 的投稿入口）。
-       正文模板不同，但定位信息、按钮与降级行为完全一致，故共用同一套面板：
-       FEEDBACK_KINDS 只描述「标题 / 首行 / 正文行 / 备注提示」，其余逻辑在 openFeedback 里。 */
-    const FEEDBACK_KINDS = {
-        exit: {
-            modalTitle: "反馈出口数据",
-            heading: ({ cityName, stationCn, exitCode }) => `${cityName} ${stationCn} · ${exitCode} 口`,
-            subject: ({ cityName, stationCn, exitCode }) => `【出口数据】${cityName} ${stationCn} ${exitCode} 口 说明待补充`,
-            notePlaceholder: "补充说明（选填，比如你看到的实际出口指示）",
-            context: ({ cityId, cityName, stationId, stationCn, exitCode, reason }) => [
-                `【出口数据反馈】${cityName} ${stationCn} ${exitCode} 口`,
-                "",
-                `- 城市：${cityName}（${cityId}）`,
-                `- 车站：${stationCn}（${stationId}）`,
-                `- 出口：${exitCode}`,
-                `- 数据文件：city/${cityId}/data_exits.js`,
-                `- 缺失内容：${reason || "该出口还没有「出口指示」说明，界面目前只按方位显示。"}`
-            ]
-        },
-        calligraphy: {
-            modalTitle: "投稿站名题字",
-            heading: ({ cityName, stationCn }) => `${cityName} ${stationCn} · 站名题字`,
-            subject: ({ cityName, stationCn }) => `【站名题字】${cityName} ${stationCn} 素材待补充`,
-            notePlaceholder: "补充说明（选填，如题写者姓名、落款、拍摄位置）",
-            context: ({ cityId, cityName, stationId, stationCn, reason }) => [
-                `【站名题字投稿】${cityName} ${stationCn}`,
-                "",
-                `- 城市：${cityName}（${cityId}）`,
-                `- 车站：${stationCn}（${stationId}）`,
-                `- 数据文件：city/${cityId}/data_calligraphy.js`,
-                `- 缺失内容：${reason || "本站的题字横图 / 题写者信息尚未收录。"}`,
-                "- 如有照片，请说明拍摄位置（站厅哪一侧、靠近哪个出入口）。"
-            ]
-        }
+    /* 出口说明场景的文案：登记进共享层。刻意不写 `label`，故不出现在「更多」入口的
+       场景切换里 —— 它有自己的触发点（出入口清单里的「待补充」标）。 */
+    const EXIT_KIND = {
+        modalTitle: "反馈出口数据",
+        heading: ({ cityName, stationCn, exitCode }) => `${cityName} ${stationCn} · ${exitCode} 口`,
+        subject: ({ cityName, stationCn, exitCode }) => `【出口数据】${cityName} ${stationCn} ${exitCode} 口 说明待补充`,
+        notePlaceholder: "补充说明（选填，比如你看到的实际出口指示）",
+        context: ({ cityId, cityName, stationId, stationCn, exitCode, reason }) => [
+            `【出口数据反馈】${cityName} ${stationCn} ${exitCode} 口`,
+            "",
+            `- 城市：${cityName}（${cityId}）`,
+            `- 车站：${stationCn}（${stationId}）`,
+            `- 出口：${exitCode}`,
+            `- 数据文件：city/${cityId}/data_exits.js`,
+            `- 缺失内容：${reason || "该出口还没有「出口指示」说明，界面目前只按方位显示。"}`
+        ]
     };
+    // 加载时登记一次，打开面板前再登记一次（幂等）：反馈面板先于本模块加载是约定，
+    // 但万一顺序变了，也不至于退化成「综合」场景的文案
+    const registerExitKind = () => window.CGoFeedback?.registerKind("exit", EXIT_KIND);
+    registerExitKind();
 
     /**
-     * 官方 QQ 交流群：项目级常量（群号 + 分享链接），可用 window.CGO_FEEDBACK_QQ /
-     * window.CGO_FEEDBACK_QQ_URL 覆盖；链接置空串则该按钮不出现。
+     * 打开反馈面板（转发到共享层的 CGoFeedback）。
+     * 本名保留给城市模块与题字模块调用：ctx 里带 `kind` 即切到别的场景（如题字投稿）。
      */
-    const QQ_GROUP = "619357751";
-    const QQ_GROUP_URL = "https://qm.qq.com/q/nHfgBDS68o";
-    const qqGroup = () => (window.CGO_FEEDBACK_QQ === undefined ? QQ_GROUP : window.CGO_FEEDBACK_QQ);
-    const qqGroupUrl = () => (window.CGO_FEEDBACK_QQ_URL === undefined ? QQ_GROUP_URL : window.CGO_FEEDBACK_QQ_URL);
-
-    /** 打开反馈面板：正文预览 + 选填备注 + 复制 / 新建 Issue / QQ 群 / 关闭 */
     function openFeedback(ctx = {}) {
-        const kind = FEEDBACK_KINDS[ctx.kind] || FEEDBACK_KINDS.exit;
-        const info = { ...ctx, cityName: cityNameOf(ctx.cityId) };
-        const base = `${kind.context(info).join("\n")}\n\n补充说明（选填）：`;
-        const modal = feedbackModal();
-        modal.title = kind.modalTitle;
-        modal.innerHTML = `
-            <div class="cgo-exit-fb">
-                <p class="cgo-exit-fb-lead">${escapeHtml(kind.heading(info))}</p>
-                <div class="cgo-exit-fb-context" data-context></div>
-                <textarea class="cgo-exit-fb-note" data-note rows="3" placeholder="${escapeHtml(kind.notePlaceholder)}"></textarea>
-                <div class="cgo-exit-fb-actions">
-                    <button type="button" class="cgo-exit-fb-btn" data-act="copy"><cgo-icon name="copy" size="13"></cgo-icon><span data-copy-label>复制</span></button>
-                    <button type="button" class="cgo-exit-fb-btn primary" data-act="issue"><cgo-icon name="external" size="13"></cgo-icon>新建 GitHub Issue</button>
-                    ${qqGroupUrl() ? `<button type="button" class="cgo-exit-fb-btn" data-act="qq" title="官方 QQ 交流群 ${escapeHtml(String(qqGroup()))}"><cgo-icon name="chat" size="13"></cgo-icon>加入 QQ 群</button>` : ""}
-                    <button type="button" class="cgo-exit-fb-btn ghost" data-act="close"><cgo-icon name="close" size="13"></cgo-icon>关闭</button>
-                </div>
-            </div>
-        `;
-        const contextEl = modal.querySelector("[data-context]");
-        const noteEl = modal.querySelector("[data-note]");
-        const copyLabel = modal.querySelector("[data-copy-label]");
-        // 正文用 textContent 落地（不拼 HTML），备注由用户自己填
-        contextEl.textContent = base;
-
-        const compose = () => {
-            const note = noteEl.value.trim();
-            return note ? `${base}\n${note}` : base;
-        };
-        const selectContext = () => {
-            const range = document.createRange();
-            range.selectNodeContents(contextEl);
-            const sel = window.getSelection();
-            sel?.removeAllRanges();
-            sel?.addRange(range);
-        };
-
-        modal.querySelectorAll("[data-act]").forEach((btn) => {
-            btn.addEventListener("click", async () => {
-                const act = btn.dataset.act;
-                if (act === "close") { modal.open = false; return; }
-                if (act === "issue") {
-                    const query = new URLSearchParams();
-                    query.set("title", kind.subject(info));
-                    query.set("body", compose());
-                    window.open(`${feedbackRepo()}/issues/new?${query.toString()}`, "_blank", "noopener");
-                    modal.open = false;
-                    return;
-                }
-                if (act === "qq") {
-                    // 群分享链接（qm.qq.com）：移动端唤起 QQ、桌面端打开加群页
-                    window.open(qqGroupUrl(), "_blank", "noopener");
-                    modal.open = false;
-                    return;
-                }
-                // 复制：剪贴板 API 需要安全上下文（https / localhost），失败就退回手动选中
-                try {
-                    await navigator.clipboard.writeText(compose());
-                    copyLabel.textContent = "已复制";
-                } catch {
-                    selectContext();
-                    copyLabel.textContent = "请按 Ctrl+C";
-                }
-                setTimeout(() => { copyLabel.textContent = "复制"; }, 1600);
-            });
-        });
-        modal.open = true;
+        const feedback = window.CGoFeedback;
+        if (typeof feedback?.open !== "function") {
+            console.warn("[exits] 共享层 CGoFeedback 未加载，反馈面板暂不可用");
+            return;
+        }
+        registerExitKind();
+        feedback.open({ kind: "exit", ...ctx });
     }
 
     function pickData(globals) {
@@ -731,7 +634,7 @@
         }));
     }
 
-    // openFeedback 一并导出：其他「内容待补充」的场景（如题字投稿）可复用同一套面板，
-    // 只需给出 { cityId, stationId, stationCn, exitCode } 这组定位信息
+    // openFeedback 一并导出：面板实体已迁到 CGoFeedback，这里保留转发入口，
+    // 免得城市模块里既有的 `CGoExits.openFeedback(...)` 调用失效
     window.CGoExits = { register, registered, exitsByStation, requestExitFocus, openFeedback };
 })();

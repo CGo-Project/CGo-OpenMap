@@ -282,7 +282,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261008.160000";
+        const version = "261008.170000";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -299,6 +299,8 @@
         document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
         // 车站设施共享渲染层（须早于本城设施模块与数据文件；样式表由共享层按自身 URL 注入）
         document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
+        // 反馈面板（出入口「待补充」与右上角「更多」入口共用；须早于 exits.js）
+        document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
         // 车站出入口共享渲染层（须早于本城出入口模块）
         document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
         // 本城车站层级图数据（须早于本城设施模块）

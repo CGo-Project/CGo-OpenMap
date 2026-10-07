@@ -237,7 +237,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261008.160000";
+        const version = "261008.170000";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -256,6 +256,8 @@
         document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
         // 城市私有数据与车站出入口（须早于依赖它的模块加载）
         document.write(`<script src="./city/harbin/data_exits.js?v=${version}"><\/script>`);
+        // 反馈面板（出入口「待补充」与右上角「更多」入口共用；须早于 exits.js）
+        document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
         (HarbinCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/harbin/${scriptPath}?v=${version}"><\/script>`);

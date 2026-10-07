@@ -54,10 +54,10 @@
      *
      * 早先这里是一段纯文字（「投稿给城市主理人 xxx，或加入官方 QQ 交流群 …」），
      * 联系方式与正文都在本模块里硬编码、也没法一键带走反馈；现在改为按钮，直接打开
-     * **共享层的反馈面板**（`shared/exits.js` 的 `CGoExits.openFeedback`，与出入口页签的
+     * **共享层的反馈面板**（`shared/feedback.js` 的 `CGoFeedback.open`，与出入口页签的
      * 「待补充」标同一套）：正文自带定位信息（城市 / 车站 ID / `data_calligraphy.js` 路径），
-     * 可复制、可直接新建 GitHub Issue、也可一键复制官方 QQ 群号 —— 联系方式与模板
-     * 都收敛在共享层，本模块不再重复硬编码。
+     * 可复制、可新建 GitHub Issue、也可直接加入官方 QQ 群 —— 联系方式与模板
+     * 都收敛在反馈层，本模块只注册这一种场景的文案。
      *
      * @param {string} reason 一句话说明当前缺的是什么（纯文本，函数内转义）
      * @param {object} station 当前车站，取其 id 与站名作为反馈正文的定位信息
@@ -72,23 +72,43 @@
             + `</div>`;
     }
 
+    /* 题字投稿场景的文案：登记进共享层。同样刻意不写 `label` —— 它的触发点在题字卡片里，
+       不需要出现在「更多」入口的场景切换中。 */
+    const CALLIGRAPHY_KIND = {
+        modalTitle: "投稿站名题字",
+        heading: ({ cityName, stationCn }) => `${cityName} ${stationCn} · 站名题字`,
+        subject: ({ cityName, stationCn }) => `【站名题字】${cityName} ${stationCn} 素材待补充`,
+        notePlaceholder: "补充说明（选填，如题写者姓名、落款、拍摄位置）",
+        context: ({ cityId, cityName, stationId, stationCn, reason }) => [
+            `【站名题字投稿】${cityName} ${stationCn}`,
+            "",
+            `- 城市：${cityName}（${cityId}）`,
+            `- 车站：${stationCn}（${stationId}）`,
+            `- 数据文件：city/${cityId}/data_calligraphy.js`,
+            `- 缺失内容：${reason || "本站的题字横图 / 题写者信息尚未收录。"}`,
+            "- 如有照片，请说明拍摄位置（站厅哪一侧、靠近哪个出入口）。"
+        ]
+    };
+    const registerCalligraphyKind = () => window.CGoFeedback?.registerKind("calligraphy", CALLIGRAPHY_KIND);
+    registerCalligraphyKind();
+
     /**
      * 投稿按钮 → 共享层反馈面板。
-     * 未接入出入口模块的城市（`window.CGoExits` 不存在）只提示一句，不抛错——
-     * 按钮仍在原地，缺失的是面板本身。
+     * 未加载反馈层时只提示一句，不抛错——按钮仍在原地，缺的是面板本身。
      */
     function bindContributionButtons(infoPanel) {
         infoPanel?.querySelectorAll("[data-cali-feedback]").forEach((btn) => {
             btn.addEventListener("click", () => {
-                const open = window.CGoExits?.openFeedback;
-                if (typeof open !== "function") {
-                    console.warn("[calligraphy] 共享层 CGoExits 未加载，投稿按钮暂不可用");
+                const feedback = window.CGoFeedback;
+                if (typeof feedback?.open !== "function") {
+                    console.warn("[calligraphy] 共享层 CGoFeedback 未加载，投稿按钮暂不可用");
                     return;
                 }
+                registerCalligraphyKind();
                 const city = (typeof window.CityDataManager?.getCurrentCity === "function")
                     ? window.CityDataManager.getCurrentCity()
                     : null;
-                open({
+                feedback.open({
                     kind: "calligraphy",
                     cityId: city?.id || "",
                     stationId: btn.dataset.stationId,
