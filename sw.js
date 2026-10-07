@@ -83,6 +83,7 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (示例：北京)
     './city/data.js',
     './city/beijing/beijing.js',
+    './city/beijing/style.css',
     './city/beijing/modules/beijing_cultural.js',
     './city/beijing/stacard/script.js',
     './city/beijing/data_stations.js',

@@ -53,6 +53,21 @@
  */
 
 (function () {
+    /** 载入北京城市专属样式表（亦庄T1线等本城专属排版） */
+    (function loadCityStylesheet() {
+        if (typeof document === 'undefined') return;
+        const href = "./city/beijing/style.css";
+        if (document.querySelector(`link[href^="${href}"]`)) return;
+
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+
+        // 带上与其余静态资源一致的版本号，否则改样式后浏览器会一直用缓存里的旧表
+        const v = window.CGO_ASSET_VERSION;
+        link.href = v ? `${href}?v=${v}` : href;
+        document.head.appendChild(link);
+    })();
+
     const BeijingCity = {
         /** 城市唯一标识符 (需与 city/data.js 保持一致) */
         id: "beijing",
@@ -77,7 +92,7 @@
          */
         LINE_SORT_ORDER: [
             "M1", "M1E", "M2", "M3", "M4", "M4S",
-            "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16", "M17", "M18", "M19",
+            "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13", "M14", "M15", "M16", "M17", "M18", "M19", "M22",
             "M24", "M25", "M25W", "M26", "M27",
             "XJ", "T1", "CAE", "DAE", "JX",
             "S1", "S2", "S5", "S6",
