@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261006.140056';
+const CACHE_NAME = 'cgo-openmap-v261007.120000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -287,8 +287,11 @@ const ASSETS_TO_CACHE = [
     './city/qingdao/data_legend.js',
     './city/qingdao/data_timetable.js',
     './city/qingdao/data_station_names.js',
+    './city/qingdao/data_interval_times.js',
     './city/qingdao/data_construction.js',
+    './city/qingdao/modules/qingdao_interval_times.js',
     './city/qingdao/modules/qingdao_station_name_history.js',
+    './city/qingdao/modules/qingdao_construction_progress_map.js',
     './city/qingdao/modules/qingdao_travel_guide.js',
     './city/qingdao/modules/qingdao_engineering_name_notice.js',
     './city/qingdao/modules/qingdao_timetable.js',
