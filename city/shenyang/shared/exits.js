@@ -379,9 +379,10 @@
         const verticalHtml = verticals.length && window.CGoExitVertical?.rowHtml
             ? verticals.map((item) => window.CGoExitVertical.rowHtml(item)).join("")
             : "";
-        // 方位描述并到标题行：优先「最近道路的侧向」（形如「北站路 南侧/迎宾街 东侧」），
-        // 没有道路侧向时退回「最近路口的方位」（desc）；两者都没有才不显示。
-        const position = exit.roads?.length ? exit.roads.join("/") : (exit.desc || "");
+        // 方位描述并到标题行：优先 `desc`（维基「出口指示」原文，如「解放路（西侧）」），
+        // 没有 desc 才退回「最近道路的侧向」（roads，形如「迎宾街 路南/北站路 路东」）；
+        // 两者都没有才不显示。
+        const position = exit.desc || (exit.roads?.length ? exit.roads.join("/") : "");
         const positionHtml = position ? `<span class="cgo-exit-pos">${escapeHtml(position)}</span>` : "";
         return `
             <div class="cgo-exit-item${exit.closed ? " is-closed" : ""}" data-exit="${escapeHtml(exit.name)}" data-facilities="${escapeHtml([...(facilities || [])].join(" "))}">

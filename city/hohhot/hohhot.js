@@ -122,13 +122,20 @@
                 "modules/hohhot_mongolian.js",
                 "modules/hohhot_station_board.js",
                 "modules/hohhot_timetable.js",
-                "modules/hohhot_facilities.js"
+                "modules/hohhot_facilities.js",
+                "modules/hohhot_exits.js"
+            ],
+            // 自定义页签：渲染在「车站信息」之前，紧挨着它
+            tabs: [
+                { id: "hohhot-exits", title: "出入口", icon: "gate" }
             ],
             modules: {
                 "hohhot-line-timetable": { enabled: true, order: 15, targetTab: "line-tab" },
                 // 车站层级图（官网剖面图，折叠行默认展开、缩略图懒加载）挂在「车站信息」选项卡；
                 // order 与沈阳设施板块一致（车站类型之后、运营单位之前）
-                "hohhot-facilities": { enabled: true, order: 6, targetTab: "station-info" }
+                "hohhot-facilities": { enabled: true, order: 6, targetTab: "station-info" },
+                // 出入口页签（自定义 tab，见上方 tabs）
+                "hohhot-exits": { enabled: true, targetTab: "hohhot-exits", order: 10 }
             }
         }
     };
@@ -275,7 +282,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261007.120000";
+        const version = "261008.100000";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -292,8 +299,12 @@
         document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
         // 车站设施共享渲染层（须早于本城设施模块与数据文件；样式表由共享层按自身 URL 注入）
         document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
+        // 车站出入口共享渲染层（须早于本城出入口模块）
+        document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
         // 本城车站层级图数据（须早于本城设施模块）
         document.write(`<script src="./city/hohhot/data_facilities.js?v=${version}"><\/script>`);
+        // 本城出入口数据（须早于本城出入口模块）
+        document.write(`<script src="./city/hohhot/data_exits.js?v=${version}"><\/script>`);
         (HohhotCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/hohhot/${scriptPath}?v=${version}"><\/script>`);
         });

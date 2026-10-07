@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261007.120000';
+const CACHE_NAME = 'cgo-openmap-v261008.100000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -440,6 +440,7 @@ const ASSETS_TO_CACHE = [
     './city/hohhot/modules/hohhot_station_board.js',
     './city/hohhot/modules/hohhot_timetable.js',
     './city/hohhot/modules/hohhot_facilities.js',
+    './city/hohhot/modules/hohhot_exits.js',
     './city/hohhot/stacard/script.js',
     './city/hohhot/data_stations.js',
     './city/hohhot/data_lines.js',
@@ -449,6 +450,7 @@ const ASSETS_TO_CACHE = [
     './city/hohhot/data_timetable.js',
     './city/hohhot/data_notopen.js',
     './city/hohhot/data_facilities.js',
+    './city/hohhot/data_exits.js',
     './city/hohhot/staname.csv',
     './city/hohhot/amap_data.json',
     // 呼和浩特线路徽标（微圆角方标 + 中文/蒙文/英文三行）
