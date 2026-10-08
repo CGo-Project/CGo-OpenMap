@@ -10,7 +10,7 @@ const linesData = [
         svg: "icon@15.svg",
         company: "运营二中心",
         stationIds: ["M1501", "M1502", "M1503", "M1504", "M0713", "M1506", "M0907", "M1508", "M1509", "M1510", "M1511", "M1512", "M1513", "M1514", "M1515", "M1516", "M0208"],
-        distances: [],
+        distances: ["??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??"],
         useStrictRounding: false,
         pathPoints: [
             { x: 1490, y: 240 },
@@ -99,7 +99,7 @@ const linesData = [
         svg: "icon@09.svg",
         company: "运营二中心",
         stationIds: ["M0913", "M0912", "M0911", "M0910", "M0715", "M0908", "M0907", "M0906", "M0905", "M0904", "M0903", "M0902", "M0901"],
-        distances: [],
+        distances: ["??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??"],
         useStrictRounding: false,
         pathPoints: [
             { x: 1530, y: 380 },
@@ -129,7 +129,7 @@ const linesData = [
         svg: "icon@08.svg",
         company: "运营三中心",
         stationIds: ["M0804", "M0819", "M0820", "M0821", "M0822", "M0823", "M0824", "M0825", "M0826", "M0827", "M0828", "M0829"],
-        distances: [],
+        distances: ["??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??"],
         useStrictRounding: false,
         pathPoints: [
             { x: 970, y: 500 },
@@ -181,7 +181,7 @@ const linesData = [
         svg: "icon@07.svg",
         company: "运营一中心",
         stationIds: ["M0701", "M0702", "M0703", "M0704", "M0705", "M0706", "M0707", "M0708", "M0709", "M0710", "M0711", "M0712"],
-        distances: [],
+        distances: ["??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??"],
         useStrictRounding: false,
         pathPoints: [
             { x: 2290, y: 100 },
@@ -212,7 +212,7 @@ const linesData = [
         svg: "icon@07.svg",
         company: "运营一中心",
         stationIds: ["M0112", "M0724", "M0303", "M0812"],
-        distances: [],
+        distances: ["??", "??", "??"],
         useStrictRounding: false,
         pathPoints: [
             { x: 1730, y: 720 },
@@ -278,7 +278,7 @@ const linesData = [
         svg: "icon@05.svg",
         company: "运营三中心",
         stationIds: ["M0221", "M0502", "M0503", "M0314", "M0817", "M0506", "M0507", "M0421", "M0509", "M0510", "M0511", "M0512", "M0513", "M0514", "M0515", "M0516", "M0117", "M0813", "M0519", "M0308", "M0521", "M0522", "M0412", "M0524", "M0525", "M0217", "M0527", "M0528"],
-        distances: [],
+        distances: ["??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??", "??"],
         useStrictRounding: false,
         pathPoints: [
             { x: 1870, y: 1480 },
