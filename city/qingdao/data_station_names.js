@@ -1,12 +1,11 @@
 /**
  * 青岛地铁站名沿革数据
- * 数据源：用户提供《站名对照 - 副本(1).xlsx》
+ * 数据源：用户整理《青岛轨道交通站名沿革汇总_按线路_v69.xlsx》
  *
  * 规则：
- * - 3号线按“拟定站名 → 征集站名 → 正式站名”显示，并移除表头年份；
- * - 其余线路按工程、拟定、备选拟定、正式及后续更名阶段显示；
- * - “(备选: …)”拆为独立“备选拟定站名”行；
- * - 多次拟更改/正式更名使用半角括号版本标签；
+ * - 站名阶段、年份、调整/更名分类均以用户整理表为准；
+ * - 每站沿革按表格中的显示顺序输出；
+ * - 历史译名文本与显示类型分离存储，保持纯字符串渲染；
  * - 换乘站在车站信息页只展示一份信息量最完整的站名沿革。
  */
 window.QINGDAO_STATION_NAME_HISTORY = {
@@ -14,15 +13,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "火车站"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "青岛火车站"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "青岛站"
             }
         ]
@@ -31,15 +30,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "大学路"
             },
             {
-                "type": "征集站名",
-                "name": "人民会堂"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "人民会堂"
             }
         ]
@@ -48,15 +43,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "汇泉"
             },
             {
-                "type": "征集站名",
-                "name": "汇泉广场"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "汇泉广场"
             }
         ]
@@ -65,15 +56,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "八大关"
             },
             {
-                "type": "征集站名",
-                "name": "中山公园"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "中山公园"
             }
         ]
@@ -82,19 +69,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "太平角"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "太平角公园"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "太平角公园(一疗)"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2019更名)",
                 "name": "太平角公园"
             }
         ]
@@ -103,15 +90,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "湛山"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "湛山"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "延安三路"
             }
         ]
@@ -120,15 +107,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "五四广场"
             },
             {
-                "type": "征集站名",
-                "name": "五四广场"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "五四广场"
             }
         ]
@@ -137,15 +120,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "江西路"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "浮山所"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "江西路"
             }
         ]
@@ -154,15 +137,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "宁夏路"
             },
             {
-                "type": "征集站名",
-                "name": "宁夏路"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "宁夏路"
             }
         ]
@@ -171,15 +150,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "敦化路"
             },
             {
-                "type": "征集站名",
-                "name": "敦化路"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "敦化路"
             }
         ]
@@ -188,15 +163,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "辽阳西路"
             },
             {
-                "type": "征集站名",
-                "name": "错埠岭"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "错埠岭"
             }
         ]
@@ -205,15 +176,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "清江路"
             },
             {
-                "type": "征集站名",
-                "name": "清江路"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "清江路"
             }
         ]
@@ -222,15 +189,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "双山"
             },
             {
-                "type": "征集站名",
-                "name": "双山"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "双山"
             }
         ]
@@ -239,15 +202,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "长沙路"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "保儿"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "长沙路"
             }
         ]
@@ -256,15 +219,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "河西"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "河西"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "地铁大厦"
             }
         ]
@@ -273,15 +236,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "河东"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "河东"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "海尔路"
             }
         ]
@@ -290,15 +253,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "万年泉路"
             },
             {
-                "type": "征集站名",
-                "name": "万年泉路"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "万年泉路"
             }
         ]
@@ -307,15 +266,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "李村"
             },
             {
-                "type": "征集站名",
-                "name": "李村"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "李村"
             }
         ]
@@ -324,15 +279,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "君峰路"
             },
             {
-                "type": "征集站名",
-                "name": "君峰路"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "君峰路"
             }
         ]
@@ -341,15 +292,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "重庆中路"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "西流庄"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "振华路"
             }
         ]
@@ -358,15 +309,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "永平路"
             },
             {
-                "type": "征集站名",
-                "name": "永平路"
-            },
-            {
-                "type": "正式站名",
+                "type": "正式站名(2010定名)",
                 "name": "永平路"
             }
         ]
@@ -375,15 +322,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
         "sourceLine": "3",
         "rows": [
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2010)",
                 "name": "火车北站"
             },
             {
-                "type": "征集站名",
+                "type": "正式站名(2010定名)",
                 "name": "火车北站"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015调整)",
                 "name": "青岛北站"
             }
         ]
@@ -396,11 +343,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "轮渡"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "青岛轮渡"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "四川路(轮渡)"
             }
         ]
@@ -413,11 +360,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "小港"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "小港"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "小港"
             }
         ]
@@ -430,11 +377,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "国际邮轮港"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "国际邮轮港"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "国际邮轮港"
             }
         ]
@@ -447,11 +394,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "泰山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "泰山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "泰山路"
             }
         ]
@@ -464,11 +411,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "利津路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "利津路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "利津路"
             }
         ]
@@ -481,11 +428,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "台东"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "台东"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "台东"
             }
         ]
@@ -498,11 +445,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "延安路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "延安路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "海信桥"
             }
         ]
@@ -515,11 +462,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "芝泉路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "芝泉路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "芝泉路"
             }
         ]
@@ -532,11 +479,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "南京路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "南京路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "浮山所"
             }
         ]
@@ -549,19 +496,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "燕儿岛路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "燕儿岛路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2014定名)",
                 "name": "燕儿岛路"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟更名站名(2026)",
                 "name": "燕儿岛路(青岛中央法务区)"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2026更名)",
                 "name": "青岛中央法务区(燕儿岛路)"
             }
         ]
@@ -574,11 +521,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "高雄路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "高雄路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "高雄路"
             }
         ]
@@ -591,11 +538,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "麦岛"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "麦岛路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "麦岛"
             }
         ]
@@ -608,11 +555,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "徐家麦岛"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "海游路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "海游路"
             }
         ]
@@ -625,11 +572,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "海川路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "海川路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "海川路"
             }
         ]
@@ -642,11 +589,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "海安路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "海安路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "海安路"
             }
         ]
@@ -659,15 +606,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "啤酒城"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "啤酒城"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2014)",
                 "name": "石老人浴场"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "石老人浴场"
             }
         ]
@@ -680,11 +627,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "苗岭路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "苗岭路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "苗岭路"
             }
         ]
@@ -697,11 +644,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "同安路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "同安路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "同安路"
             }
         ]
@@ -714,15 +661,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "汽车东站"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "汽车东站"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2014)",
                 "name": "辽阳东路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "辽阳东路"
             }
         ]
@@ -735,11 +682,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "东韩"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "东韩"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "东韩"
             }
         ]
@@ -752,11 +699,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "环城南路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "华楼山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "华楼山路"
             }
         ]
@@ -769,11 +716,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "枣山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "枣山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "枣山路"
             }
         ]
@@ -786,11 +733,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "李村公园"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2014)",
                 "name": "李村公园"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2014定名)",
                 "name": "李村公园"
             }
         ]
@@ -803,11 +750,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "下王埠"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2026)",
                 "name": "下王埠"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2026定名)",
                 "name": "下王埠(外贸学院)"
             }
         ]
@@ -820,11 +767,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "佛耳崖"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2026)",
                 "name": "佛耳崖"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2026定名)",
                 "name": "佛耳崖"
             }
         ]
@@ -837,11 +784,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "合川路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2026)",
                 "name": "长涧"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2026定名)",
                 "name": "长涧"
             }
         ]
@@ -854,11 +801,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "汉川路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2026)",
                 "name": "上臧"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2026定名)",
                 "name": "上臧"
             }
         ]
@@ -871,11 +818,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "东川路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2026)",
                 "name": "上流佳苑(八医东院区)"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2026定名)",
                 "name": "李家上流(八医东院区)"
             }
         ]
@@ -888,11 +835,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "常川路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2026)",
                 "name": "南王家上流"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2026定名)",
                 "name": "南王家上流"
             }
         ]
@@ -905,11 +852,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "龙川路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2026)",
                 "name": "毕家上流"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2026定名)",
                 "name": "毕家上流"
             }
         ]
@@ -922,15 +869,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "世园会"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "世博园"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2015)",
                 "name": "世园大道"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "世博园"
             }
         ]
@@ -943,11 +890,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "会展中心"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "会展中心"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "会展中心"
             }
         ]
@@ -960,11 +907,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "科大路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "青岛二中"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "青岛二中"
             }
         ]
@@ -977,11 +924,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "辽阳东路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "午山"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "青岛科大"
             }
         ]
@@ -994,11 +941,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "枣山东路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "张村河"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "张村"
             }
         ]
@@ -1011,11 +958,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "株洲路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "枯桃"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "枯桃"
             }
         ]
@@ -1028,11 +975,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "海洋大学"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "海大"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "海洋大学"
             }
         ]
@@ -1045,11 +992,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "北宅"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "北宅"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "北宅"
             }
         ]
@@ -1062,15 +1009,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "北九水"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "北九水"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2015)",
                 "name": "大崂"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "北九水"
             }
         ]
@@ -1083,15 +1030,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "王哥庄"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "庙石"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2015)",
                 "name": "解家河"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "庙石"
             }
         ]
@@ -1104,11 +1051,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "土寨河"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "浦里"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "浦里"
             }
         ]
@@ -1121,11 +1068,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "蓝色硅谷"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "硅谷"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "鳌山卫"
             }
         ]
@@ -1138,15 +1085,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "山东大学"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "山大"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2015)",
                 "name": "鳌山卫"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "山东大学"
             }
         ]
@@ -1159,15 +1106,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "大任河"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "星石"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2015)",
                 "name": "硅谷大厦"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "蓝色硅谷"
             }
         ]
@@ -1180,15 +1127,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "摩天三五"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "水泊"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2015)",
                 "name": "鹤山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "水泊"
             }
         ]
@@ -1201,15 +1148,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "博览中心"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "博览中心"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2015)",
                 "name": "黄埠"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "博览中心"
             }
         ]
@@ -1222,15 +1169,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "皋虞"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "海南"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2015)",
                 "name": "温泉镇"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "温泉东"
             }
         ]
@@ -1243,11 +1190,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "大田路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "皋虞"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "皋虞"
             }
         ]
@@ -1260,11 +1207,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "唐家庄"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "臧村"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "臧村"
             }
         ]
@@ -1277,11 +1224,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "盐田西"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "盐田"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "钱谷山"
             }
         ]
@@ -1294,11 +1241,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "王村新城"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2015)",
                 "name": "大桥盐场"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2015定名)",
                 "name": "鳌山湾"
             }
         ]
@@ -1311,15 +1258,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "嘉陵江路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "嘉陵江路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2017定名)",
                 "name": "嘉陵江路"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2021调整)",
                 "name": "嘉陵江西路"
             }
         ]
@@ -1332,11 +1279,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "香江路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "香江路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "香江路"
             }
         ]
@@ -1349,11 +1296,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "井冈山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "井冈山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "井冈山路"
             }
         ]
@@ -1366,11 +1313,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "嘉年华"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "积米崖"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "积米崖"
             }
         ]
@@ -1383,11 +1330,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "灵山卫"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "灵山卫"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "灵山卫"
             }
         ]
@@ -1400,11 +1347,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "黄海东路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "黄海东路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "学院路"
             }
         ]
@@ -1417,15 +1364,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "东方影都"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "东方影都"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2016)",
                 "name": "柏果树"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "朝阳山"
             }
         ]
@@ -1438,19 +1385,23 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "朝阳山CBD"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "灵山湾"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2016)",
                 "name": "朝阳山"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2017定名)",
+                "name": "灵山湾"
+            },
+            {
+                "type": "正式站名(2018调整)",
                 "name": "辛屯(灵山湾)"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2024更名)",
                 "name": "辛屯"
             }
         ]
@@ -1463,11 +1414,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "两河"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "两河"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "两河"
             }
         ]
@@ -1480,11 +1431,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "北京路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "隐珠"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "隐珠"
             }
         ]
@@ -1497,11 +1448,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "泰山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "广城路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "凤凰山路"
             }
         ]
@@ -1514,11 +1465,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "珠海路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "双珠路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "双珠路"
             }
         ]
@@ -1531,11 +1482,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "世纪大道"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "世纪大道"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "世纪大道"
             }
         ]
@@ -1548,15 +1499,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "中铁世博"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "明富大道"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2016)",
                 "name": "博览城"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
+                "name": "盛海路"
+            },
+            {
+                "type": "正式站名(2018调整)",
                 "name": "盛海路(世博城)"
             }
         ]
@@ -1569,11 +1524,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "大珠山"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "大珠山"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "大珠山"
             }
         ]
@@ -1586,15 +1541,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "古镇口"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "张家楼"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2016)",
                 "name": "古镇口"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "张家楼"
             }
         ]
@@ -1607,15 +1562,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "古镇口南"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "古镇口"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2016)",
                 "name": "寨里"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "古镇口"
             }
         ]
@@ -1628,15 +1583,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "港城CBD"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "龙湾"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2016)",
                 "name": "港城"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "龙湾"
             }
         ]
@@ -1649,11 +1604,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "琅琊台"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "琅琊台"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "琅琊"
             }
         ]
@@ -1666,11 +1621,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "贡口湾"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "贡口湾"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "贡口湾"
             }
         ]
@@ -1683,15 +1638,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "中心路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "董家口"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2016)",
                 "name": "董家口港"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "董家口港"
             }
         ]
@@ -1704,11 +1659,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "泊里"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "泊里"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "泊里"
             }
         ]
@@ -1721,11 +1676,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "董家口火车站"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2016)",
                 "name": "董家口火车站"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2017定名)",
                 "name": "董家口火车站"
             }
         ]
@@ -1738,11 +1693,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "峨眉山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "峨眉山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "王家港"
             }
         ]
@@ -1755,11 +1710,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "石油大学"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "石油大学"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "石油大学"
             }
         ]
@@ -1772,11 +1727,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "太行山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "太行山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "太行山路"
             }
         ]
@@ -1789,11 +1744,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "人民广场"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "市民文化广场"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "丁家河"
             }
         ]
@@ -1806,11 +1761,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "衡山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "衡山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "薛家岛"
             }
         ]
@@ -1823,11 +1778,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "天目山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "天目山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "天目山路"
             }
         ]
@@ -1840,11 +1795,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "安子"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "安子"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "安子"
             }
         ]
@@ -1857,11 +1812,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "安子东"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "海汐湾"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "新港山路"
             }
         ]
@@ -1874,11 +1829,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "薛家岛"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "薛家岛"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "南北屯"
             }
         ]
@@ -1891,11 +1846,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "瓦屋庄"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "瓦屋庄"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "山里"
             }
         ]
@@ -1908,15 +1863,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "东环路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "东环路"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2018)",
                 "name": "马头山、婉台山、饮牛湾、滨海"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "凤凰岛"
             }
         ]
@@ -1929,11 +1884,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "贵州路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "贵州路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "团岛"
             }
         ]
@@ -1946,11 +1901,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "西镇"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "西镇"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "西镇"
             }
         ]
@@ -1963,15 +1918,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "中山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "胶州路"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2018)",
                 "name": "中山路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "中山路"
             }
         ]
@@ -1984,11 +1939,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "江苏路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "江苏路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "观象山(市立医院)"
             }
         ]
@@ -2001,11 +1956,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "广饶路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "广饶路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "广饶路"
             }
         ]
@@ -2018,11 +1973,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "海泊桥"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "海泊桥"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "海泊桥(海慈医疗)"
             }
         ]
@@ -2035,11 +1990,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "小村庄"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "小村庄"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "小村庄"
             }
         ]
@@ -2052,11 +2007,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "北岭"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "北岭"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "北岭"
             }
         ]
@@ -2069,11 +2024,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "水清沟"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "水清沟"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "水清沟"
             }
         ]
@@ -2086,15 +2041,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "开封路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "中心医院"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2018)",
                 "name": "开封路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "中心医院"
             }
         ]
@@ -2107,15 +2062,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "胜利桥"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "胜利桥"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "胜利桥"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "拟调整站名(2021)",
+                "name": "胜利桥(纺织谷)"
+            },
+            {
+                "type": "正式站名(2021调整)",
                 "name": "胜利桥(纺织谷)"
             }
         ]
@@ -2128,11 +2087,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "安顺路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "安顺路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "安顺路"
             }
         ]
@@ -2145,11 +2104,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "沧安路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "沧安路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "沧安路"
             }
         ]
@@ -2162,15 +2121,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "永年路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "永年路"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2018)",
                 "name": "牛毛山公园"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "永年路"
             }
         ]
@@ -2183,11 +2142,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "兴国路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "兴国路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "兴国路"
             }
         ]
@@ -2200,11 +2159,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "南岭路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "南岭路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "南岭"
             }
         ]
@@ -2217,11 +2176,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "遵义路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "遵义路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "遵义路"
             }
         ]
@@ -2234,11 +2193,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "瑞金路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "瑞金路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "瑞金路"
             }
         ]
@@ -2251,11 +2210,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "汽车北站"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "汽车北站"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "仙家寨(汽车北站)"
             }
         ]
@@ -2268,15 +2227,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "流亭机场"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "流亭机场"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2018)",
                 "name": "峄阳路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "流亭"
             }
         ]
@@ -2289,11 +2248,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "庙头"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "庙头"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "凤岗路"
             }
         ]
@@ -2306,11 +2265,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "文阳路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "文阳路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "小寨子"
             }
         ]
@@ -2323,11 +2282,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "正阳路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "正阳路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "正阳中路"
             }
         ]
@@ -2340,11 +2299,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "春阳路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "春阳路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "农业大学"
             }
         ]
@@ -2357,11 +2316,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "沟岔村"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "青岛农大"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "沟岔"
             }
         ]
@@ -2374,11 +2333,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "东郭庄"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "东郭庄"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "东郭庄"
             }
         ]
@@ -2391,11 +2350,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "胶州北站"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "胶州北站"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "胶州北站"
             }
         ]
@@ -2408,11 +2367,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "胶东机场"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "胶东机场"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "胶东机场"
             }
         ]
@@ -2425,11 +2384,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "胶东镇"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "胶东镇"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "胶东"
             }
         ]
@@ -2442,11 +2401,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "大涧"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "大涧"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "大涧"
             }
         ]
@@ -2459,11 +2418,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "红岛火车站"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "红岛火车站"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "红岛火车站"
             }
         ]
@@ -2476,11 +2435,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "市民健康中心"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "健康中心"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "健康中心"
             }
         ]
@@ -2493,11 +2452,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "市民健身中心"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "红岛会展"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "健身中心(红岛会展)"
             }
         ]
@@ -2510,11 +2469,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "观涛"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "观涛"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "观涛"
             }
         ]
@@ -2527,11 +2486,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "科技馆"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "科技馆"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "红岛科技馆(方特)"
             }
         ]
@@ -2544,11 +2503,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "大洋"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "大洋"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "大洋"
             }
         ]
@@ -2561,19 +2520,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "沧口"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "曲戈庄"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "曲戈庄"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2026)",
                 "name": "东南山"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2026调整)",
                 "name": "东南山"
             }
         ]
@@ -2586,11 +2545,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "闫家山"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "闫家山"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "闫家山"
             }
         ]
@@ -2603,19 +2562,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "南昌路北"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "东山公园"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2018)",
                 "name": "周口路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "南昌路北"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2026调整)",
                 "name": "小水清沟"
             }
         ]
@@ -2628,44 +2587,44 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "嘉定山"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "嘉定山"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "嘉定山"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2026)",
                 "name": "大山村"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2026调整)",
                 "name": "大山"
             }
         ]
     },
     "M0418": {
-        "sourceLine": "8",
+        "sourceLine": "4",
         "rows": [
             {
                 "type": "工程站名",
                 "name": "鞍山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "鞍山路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "鞍山路"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2022)",
                 "name": "西吴家村"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2022调整)",
                 "name": "西吴家村"
             }
         ]
@@ -2678,15 +2637,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "山东路南"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "澳柯玛桥"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2018)",
                 "name": "亢家庄"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "澳柯玛桥"
             }
         ]
@@ -2699,15 +2658,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "青医附院"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "沂水路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "青大附院"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2022调整)",
                 "name": "信号山(青大附院)"
             }
         ]
@@ -2720,11 +2679,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "昌乐路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "昌乐路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "昌乐路"
             }
         ]
@@ -2737,19 +2696,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "内蒙古路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "内蒙古路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "内蒙古路"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2022)",
                 "name": "海泊河公园"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2022调整)",
                 "name": "海泊河公园"
             }
         ]
@@ -2762,11 +2721,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "福州路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "福辽立交"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "福辽立交桥"
             }
         ]
@@ -2779,23 +2738,23 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "洪山坡"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "洪山坡"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2018)",
                 "name": "妇儿医院"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "妇儿医院"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2022)",
                 "name": "洪山坡(妇儿医院)"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2022调整)",
                 "name": "洪山坡(妇儿医院)"
             }
         ]
@@ -2808,15 +2767,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "劲松三路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "劲松三路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "劲松三路"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2022)",
                 "name": "河马石"
             }
         ]
@@ -2829,19 +2788,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "劲松四路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "劲松四路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "劲松四路"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2022)",
                 "name": "埠西"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2022调整)",
                 "name": "埠西"
             }
         ]
@@ -2854,19 +2813,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "劲松七路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "劲松七路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "劲松七路"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2022)",
                 "name": "大埠东"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2022调整)",
                 "name": "大埠东"
             }
         ]
@@ -2879,11 +2838,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "李家下庄"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "董家下庄"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "董家下庄"
             }
         ]
@@ -2896,23 +2855,23 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "崂山科技城"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "崂山科技城"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "科苑经七路"
             },
             {
-                "type": "拟更改站名 (第一版)",
+                "type": "拟调整站名(2022)",
                 "name": "刘家下庄"
             },
             {
-                "type": "拟更改站名 (第二版)",
+                "type": "拟更名站名(2026)",
                 "name": "雄安路"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2026更名)",
                 "name": "雄安路"
             }
         ]
@@ -2925,11 +2884,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "李宅路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "营房"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "彭家庄"
             }
         ]
@@ -2942,11 +2901,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "九水东路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "南宅"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "南宅科"
             }
         ]
@@ -2959,11 +2918,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "静港路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "静港路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "小崂山"
             }
         ]
@@ -2976,11 +2935,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "沙子口"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "沙子口"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "沙子口"
             }
         ]
@@ -2993,19 +2952,19 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "崂山六中"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "逸海路"
             },
             {
-                "type": "正式站名 (第一版)",
+                "type": "正式站名(2020定名)",
                 "name": "段家埠(崂山六中)"
             },
             {
-                "type": "拟更改站名",
+                "type": "拟调整站名(2022)",
                 "name": "段家埠"
             },
             {
-                "type": "正式站名 (第二版)",
+                "type": "正式站名(2022调整)",
                 "name": "段家埠"
             }
         ]
@@ -3018,11 +2977,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "西登瀛"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "登瀛"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "登瀛"
             }
         ]
@@ -3035,11 +2994,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "大河东"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2018)",
                 "name": "大河东"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2020定名)",
                 "name": "大河东"
             }
         ]
@@ -3052,11 +3011,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "辛屯路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "灵山湾"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "灵山湾"
             }
         ]
@@ -3069,15 +3028,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "华山一路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "华山"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "华山村"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "华山"
             }
         ]
@@ -3090,15 +3049,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "创智谷"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "星海滩路"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "郑戈庄"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "星海滩路"
             }
         ]
@@ -3111,15 +3070,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "石山路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "金爵路"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "赵家庙"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "赵家庙(影视产业园)"
             }
         ]
@@ -3132,11 +3091,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "黄海学院"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "毛家山"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "毛家山(黄海学院)"
             }
         ]
@@ -3149,11 +3108,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "海港路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "海港路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "西门外"
             }
         ]
@@ -3166,11 +3125,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "朝阳路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "北门外"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "北门外"
             }
         ]
@@ -3183,15 +3142,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "富春江路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "富春江路"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "九顶山、薛辛庄"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "九顶山"
             }
         ]
@@ -3204,11 +3163,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "钱塘江路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "钱塘江路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "钱塘江路(青职学院)"
             }
         ]
@@ -3221,11 +3180,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "滨海学院"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "扒山"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "扒山(滨海学院)"
             }
         ]
@@ -3238,15 +3197,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "青医西院区"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "青大附院西海岸院区"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "齐长城路"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "青大附院西海岸院区"
             }
         ]
@@ -3259,11 +3218,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "港头"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "港头"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "港头"
             }
         ]
@@ -3276,11 +3235,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "黄河路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "薛家泊子"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "薛家泊子"
             }
         ]
@@ -3293,11 +3252,11 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "淮河西路"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "马家楼"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "马家楼"
             }
         ]
@@ -3310,15 +3269,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "可洛石"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "抓马山"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "可洛石"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "抓马山"
             }
         ]
@@ -3331,15 +3290,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "抓马山"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "青岛九中"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "管家洼"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "青岛九中(幸福小镇)"
             }
         ]
@@ -3352,15 +3311,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "河洛埠"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "中德生态园"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "河洛埠"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "河洛埠(中德生态园)"
             }
         ]
@@ -3373,15 +3332,15 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "中德工业园"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "山王河公园"
             },
             {
-                "type": "备选拟定站名",
+                "type": "备选拟定站名(2022)",
                 "name": "山王河"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "山王河(福莱社区)"
             }
         ]
@@ -3394,13 +3353,212 @@ window.QINGDAO_STATION_NAME_HISTORY = {
                 "name": "生态园"
             },
             {
-                "type": "拟定站名",
+                "type": "拟定站名(2022)",
                 "name": "基因产业园"
             },
             {
-                "type": "正式站名",
+                "type": "正式站名(2023定名)",
                 "name": "横云山路"
             }
         ]
     }
 };
+
+/**
+ * 历史纯拼音译名。
+ *
+ * 3号线全线及2号线芝泉路—李村公园段曾使用纯汉语拼音站名。
+ * 规则按历史版式整理：全大写、无声调；专名内部原则上连写，通名分写；
+ * A/O/E 起头的后续音节使用右单引号（’）作隔音符号。
+ *
+ * 该字段仅用于车站信息卡“站名沿革”模块，并固定显示在沿革内容末尾；可为每条历史译名单独指定类型/有效期。
+ */
+window.QINGDAO_STATION_HISTORICAL_TRANSLATIONS = {
+    "M0322": "QINGDAO ZHAN",
+    "M0321": "RENMIN HUITANG",
+    "M0320": "HUIQUAN GUANGCHANG",
+    "M0319": "ZHONGSHAN GONGYUAN",
+    "M0318": [
+        "TAIPINGJIAO GONGYUAN (YILIAO)",
+        "Taipingjiao Park (Yiliao)"
+    ],
+    "M0317": "YAN’AN 3 LU",
+    "M0316": "WUSI GUANGCHANG",
+    "M0315": "JIANGXI LU",
+    "M0314": "NINGXIA LU",
+    "M0313": "DUNHUA LU",
+    "M0312": "CUOBULING",
+    "M0311": "QINGJIANG LU",
+    "M0310": "SHUANGSHAN",
+    "M0309": "CHANGSHA LU",
+    "M0308": "DITIE DASHA",
+    "M0307": "HAI’ER LU",
+    "M0306": "WANNIANQUAN LU",
+    "M0305": "LICUN",
+    "M0304": "JUNFENG LU",
+    "M0303": "ZHENHUA LU",
+    "M0302": "YONGPING LU",
+    "M0301": "QINGDAO BEIZHAN",
+    "M0226": "ZHIQUAN LU",
+    "M0224": "FUSHANSUO",
+    "M0223": [
+        "YAN’ERDAO LU",
+        "Yan’erdao Rd"
+    ],
+    "M0222": "GAOXIONG LU",
+    "M0221": "MAIDAO",
+    "M0220": "HAIYOU LU",
+    "M0219": "HAICHUAN LU",
+    "M0218": "HAI’AN LU",
+    "M0217": "SHILAOREN YUCHANG",
+    "M0216": "MIAOLING LU",
+    "M0215": "TONG’AN LU",
+    "M0214": "LIAOYANG DONGLU",
+    "M0213": "DONGHAN",
+    "M0212": "HUALOUSHAN LU",
+    "M0211": "ZAOSHAN LU",
+    "M0209": "LICUN GONGYUAN",
+    "M1108": "International Horticultural Expo Garden",
+    "M1308": "Xintun (Lingshan Bay)",
+    "M0409": "Keyuanjing 7th Rd"
+};
+
+/**
+ * 历史译名的显示元数据。
+ * 文本本体保持在 QINGDAO_STATION_HISTORICAL_TRANSLATIONS 中的纯字符串，
+ * 这里仅保存类型/有效期和局部排版要求，避免渲染层再把译名对象化。
+ */
+window.QINGDAO_STATION_HISTORICAL_TRANSLATION_META = {
+    "M0322": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0321": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0320": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0319": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0318": [
+        {
+            "type": "历史译名(至2018.04)"
+        },
+        {
+            "type": "历史译名(至2019)"
+        }
+    ],
+    "M0317": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0316": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0315": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0314": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0313": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0312": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0311": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0310": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0309": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0308": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0307": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0306": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0305": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0304": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0303": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0302": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0301": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0226": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0224": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0223": [
+        {
+            "type": "历史译名(至2018.04)"
+        },
+        {
+            "type": "历史译名(至2026.09)"
+        }
+    ],
+    "M0222": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0221": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0220": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0219": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0218": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0217": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0216": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0215": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0214": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0213": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0212": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0211": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M0209": {
+        "type": "历史译名(至2018.04)"
+    },
+    "M1108": {
+        "type": "历史译名(至2026.09)",
+        "breakBefore": "Expo"
+    },
+    "M0409": {
+        "superscript": "th"
+    }
+};
+
