@@ -265,11 +265,20 @@
             return note ? `${base}\n${note}` : base;
         };
         const selectContext = () => {
-            const range = document.createRange();
-            range.selectNodeContents(contextEl);
-            const sel = window.getSelection();
-            sel?.removeAllRanges();
-            sel?.addRange(range);
+            // 用可选中的完整正文承接降级复制，保留用户填写的补充说明。
+            let fallback = contextEl.querySelector("textarea");
+            if (!fallback) {
+                fallback = document.createElement("textarea");
+                fallback.className = "cgo-fb-note";
+                fallback.rows = 6;
+                fallback.readOnly = true;
+                fallback.setAttribute("aria-label", "完整反馈正文（手动复制）");
+                contextEl.replaceChildren(fallback);
+            }
+            fallback.value = compose();
+            fallback.focus();
+            fallback.select();
+            fallback.setSelectionRange(0, fallback.value.length);
         };
 
         // 场景切换：换一套模板重开面板，把用户已写的备注带过去
@@ -304,7 +313,7 @@
                     copyLabel.textContent = "已复制";
                 } catch {
                     selectContext();
-                    copyLabel.textContent = "请按 Ctrl+C";
+                    copyLabel.textContent = "请复制已选正文";
                 }
                 setTimeout(() => { copyLabel.textContent = "复制"; }, 1600);
             });
