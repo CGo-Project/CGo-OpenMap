@@ -2122,7 +2122,7 @@ function renderUserModePanel(station, initialTabIndex = 0) {
             const targetPane = infoPanel.querySelector(`.tab-pane[data-tab-index="${targetIndex}"]`);
             if (targetPane) targetPane.classList.add('active');
 
-            const footerScheduleBtn = infoPanel.querySelector('#footer-schedule-btn');
+            const footerScheduleBtn = infoPanel.querySelector('#footer-schedule-btn') || infoPanel._cgoSheetFooter?.querySelector('#footer-schedule-btn');
             if (footerScheduleBtn) {
                 let targetUrl = null;
                 if (targetIndex !== 'station-info') {
@@ -2275,6 +2275,8 @@ function resetMapState() {
     hideLineTooltipNow();
     const infoPanel = document.getElementById('info-panel');
     const dynamicContainer = document.getElementById('sidebar-dynamic-content');
+    infoPanel?._tabSwipeCleanup?.();
+    if (infoPanel) infoPanel._tabSwipeCleanup = null;
     infoPanel?._mobileSheetDragCleanup?.();
     if (infoPanel) infoPanel._mobileSheetDragCleanup = null;
     if (infoPanel && (window.innerWidth <= 640 || !document.body.classList.contains('legend-pinned'))) {
@@ -2311,6 +2313,8 @@ function initMobileSheetDrag() {
     const panel = document.getElementById('info-panel');
     if (!panel || !window.CGoMobileSheet) return;
     panel._mobileSheetDragCleanup?.();
+    panel._tabSwipeCleanup?.();
+    panel._tabSwipeCleanup = window.CGoPanelTabSwipe?.attach(panel);
     let mapFollow = null;
     panel._mobileSheetDragCleanup = window.CGoMobileSheet.attach(panel, {
         getStage: () => document.body.classList.contains('panel-sheet-collapsed') ? 'collapsed'

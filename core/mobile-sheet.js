@@ -136,7 +136,11 @@
             const dy = touch.clientY - candidate.y, dx = touch.clientX - candidate.x;
             const scroller = candidate.scroller;
             if (!candidate.active) {
-                if (Math.abs(dy) < 4 || Math.abs(dy) <= Math.abs(dx)) return;
+                if (!candidate.vertical) {
+                    if (Math.abs(dy) < 10 && Math.abs(dx) < 10) return;
+                    if (Math.abs(dy) <= Math.abs(dx) * 1.15) { candidate = null; return; }
+                    candidate.vertical = true;
+                }
                 if (!(dy < 0 ? stage() === 'half' : (scroller?.scrollTop || 0) <= 1)) return;
                 // 原生滚动已经不可取消时留给浏览器，避免回弹与面板同时移动。
                 if (!e.cancelable) return;
