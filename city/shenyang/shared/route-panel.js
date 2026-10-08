@@ -81,6 +81,12 @@
      */
     const panelRefs = new Map();
     const trackPanel = (panel) => panelRefs.set(panel.id, panel);
+    // 重建或切回桌面侧栏时一并释放抽屉监听与固定底栏。
+    function removePanel(panel) {
+        panel._cgoSheetCleanup?.();
+        panel.remove();
+    }
+
     function livePanel(id) {
         const live = document.getElementById(id);
         if (live) { panelRefs.set(id, live); return live; }
@@ -380,7 +386,8 @@
         const panel = document.getElementById(PLAN_ID);
         if (!panel) return;
         const ready = Boolean(state.from && state.to);
-        panel.querySelector(".cgo-rt-go").disabled = !ready;
+        const button = panel.querySelector(".cgo-rt-go") || panel._cgoSheetFooter?.querySelector(".cgo-rt-go");
+        if (button) button.disabled = !ready;
         if (ready) setStatus("已选好起终点");
         else if (!state.from && !state.to) setStatus("请选择起点和终点");
         else if (!state.from) setStatus("请选择起点");
@@ -388,7 +395,8 @@
     }
 
     function setStatus(text) {
-        const node = document.getElementById(PLAN_ID)?.querySelector(".cgo-rt-status");
+        const panel = document.getElementById(PLAN_ID);
+        const node = panel?.querySelector(".cgo-rt-status") || panel?._cgoSheetFooter?.querySelector(".cgo-rt-status");
         if (node) node.textContent = text;
     }
 
@@ -533,7 +541,7 @@
             panel.classList.remove("show");
             // 固定侧栏：结果面板本身即「有结果」的代表，随结果一起撤出侧栏；
             // 浮层形态保留窗口只清内容，下次查询就地复用
-            if (panel.dataset.cgoMode === "section") panel.remove();
+            if (panel.dataset.cgoMode === "section") removePanel(panel);
             else {
                 panel.querySelector(".cgo-rt-steps")?.remove();
                 const sum = panel.querySelector(".cgo-rt-sum");
@@ -1703,11 +1711,7 @@
         syncBackdrop();
     }
 
-    /**
-     * 移动端抽屉：拖动把手或标题栏跟手调整高度，松手吸附到「最小化 / 半屏 / 全屏」三档；
-     * 轻点把手依次循环三档。核心的 initMobileSheetDrag() 是写死在 #info-panel 上的三档
-     * 甩动系统，无法复用，故按其档位语义做一个精简版；桌面端把手隐藏、整段逻辑不生效。
-     */
+    /** 移动端复用核心通用抽屉，车站与导航遵循同一套手势与回弹规则。 */
     function installDrawer(panel) {
         if (panel.querySelector(".cgo-rt-grabber")) return;
         const grabber = document.createElement("div");
@@ -1715,77 +1719,24 @@
         grabber.title = "拖动调整高度";
         panel.insertBefore(grabber, panel.firstChild);
 
-        const viewportHeight = () => window.visualViewport?.height || window.innerHeight;
-        const header = panel.querySelector(".panel-header");
-        let dragging = false, moved = false, startY = 0, startHeight = 0;
-
-        // 最小化档的高度 = 把手 + 标题栏（内容区与底栏折叠后的自然高度）
-        const minHeight = () => grabber.offsetHeight + header.offsetHeight;
-        const detents = () => {
-            const vh = viewportHeight();
-            // half 取 60vh，与半屏档的 max-height 上限对齐：半屏实际高度是「内容自适应、
-            // 60vh 封顶」，吸附基准若还按旧的 40vh 算，拖到半屏位置会被误判成最小化或全屏
-            return { min: minHeight(), half: vh * 0.6, full: vh - 60 };
-        };
-
-        const onDown = (event) => {
-            if (window.innerWidth > 640) return;
-            // 标题栏上还有「重新选择 / 关闭」等按钮，点它们照常走点击，不起拖
-            if (event.target.closest("button") || event.target.closest("a")) return;
-            dragging = true;
-            moved = false;
-            startY = event.clientY;
-            startHeight = panel.getBoundingClientRect().height;
-            panel.classList.add("cgo-rt-dragging");   // 拖动期间禁掉标题栏站名的文本选中
-            routeBackdrop().classList.remove("show"); // 拖动期间收回填色，落定后再按档位展开
-            // 半屏档的 max-height:60vh 带 !important，会压死内联 height 让面板拖不高，
-            // 拖动期间必须先解除，落定后再交回 CSS
-            panel.style.setProperty("max-height", "none", "important");
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-        };
-
-        const onMove = (event) => {
-            if (!dragging) return;
-            const dy = startY - event.clientY;
-            if (Math.abs(dy) > 4) moved = true;
-            const { min, full } = detents();
-            const next = Math.min(Math.max(startHeight + dy, min), full);
-            // 改 height 而非 max-height：内容不足时 max-height 既撑不高、也切不到档
-            panel.style.height = `${Math.round(next)}px`;
-        };
-
-        const settle = () => {
-            if (!dragging) return;
-            dragging = false;
-            panel.classList.remove("cgo-rt-dragging");
-            // 必须在清空内联 height 之前量，否则拿到的是档位高度而非拖到的位置
-            const dragged = panel.getBoundingClientRect().height;
-            const { min, half, full } = detents();
-            panel.style.height = "";                    // 交回 CSS 档位控制
-            panel.style.removeProperty("max-height");   // 恢复该档位的高度上限
-
-            if (!moved) {
-                // 轻点把手：最小化 → 半屏 → 全屏 → 最小化 循环
-                const current = panel.classList.contains("drawer-min") ? "min"
-                    : panel.classList.contains("drawer-full") ? "full" : "half";
-                applyDrawerStage(panel, current === "min" ? "half" : current === "half" ? "full" : "min");
-                return;
+        if (!window.CGoMobileSheet) return;
+        panel._cgoSheetCleanup = window.CGoMobileSheet.attach(panel, {
+            getStage: () => panel.classList.contains("drawer-min") ? "collapsed"
+                : panel.classList.contains("drawer-full") ? "full" : "half",
+            getDetents: () => {
+                const vh = window.visualViewport?.height || window.innerHeight;
+                const headerHeight = panel.querySelector(".panel-header")?.offsetHeight || 70;
+                return { full: 60, half: vh * 0.4, collapsed: vh - headerHeight - 20 };
+            },
+            onStart: () => routeBackdrop().classList.remove("show"),
+            onStage: stage => {
+                // 落定后再执行完整路线取景，避免手指移动时重算全程。
+                panel.classList.toggle("drawer-min", stage === "collapsed");
+                panel.classList.toggle("drawer-full", stage === "full");
+            },
+            onGeometry: ({ dragging }) => {
+                if (!dragging) { syncBackdrop(); refitIfLayoutChanged(); }
             }
-            const nearest = [
-                { name: "min", height: min },
-                { name: "half", height: half },
-                { name: "full", height: full }
-            ].reduce((a, b) => (Math.abs(dragged - b.height) < Math.abs(dragged - a.height) ? b : a));
-            applyDrawerStage(panel, nearest.name);
-        };
-
-        // 把手与标题栏共用同一套档位拖动；标题栏的按钮已由 onDown 排除
-        [grabber, header].forEach((handle) => {
-            if (!handle) return;
-            handle.addEventListener("pointerdown", onDown);
-            handle.addEventListener("pointermove", onMove);
-            handle.addEventListener("pointerup", settle);
-            handle.addEventListener("pointercancel", settle);
         });
     }
 
@@ -2101,7 +2052,7 @@
      */
     function ensurePlanSection(adopt = false) {
         let panel = livePanel(PLAN_ID);
-        if (panel && panel.dataset.cgoMode !== "section") { panel.remove(); panel = null; }
+        if (panel && panel.dataset.cgoMode !== "section") { removePanel(panel); panel = null; }
         if (!panel) {
             panel = buildPlanPanel("section");
             panel.classList.add("show");
@@ -2354,7 +2305,7 @@
             // 浮层形态下面板按需存在：侧栏里只是折叠着（没被用过）的就不必搬到浮层来占地方
             if (current?.classList.contains("show") && planExpanded) {
                 if (current.dataset.cgoMode !== "float") {
-                    current.remove();
+                    removePanel(current);
                     const rebuilt = buildPlanPanel("float");
                     rebuilt.classList.add("show");
                     document.body.appendChild(rebuilt);
@@ -2365,7 +2316,7 @@
             } else if (current && !current.isConnected) {
                 panelRefs.delete(PLAN_ID);
             } else if (current && current.dataset.cgoMode === "section") {
-                current.remove();
+                removePanel(current);
                 panelRefs.delete(PLAN_ID);
             }
         }
@@ -2383,7 +2334,7 @@
                     else if (!panel.isConnected) document.body.appendChild(panel);
                 } else if (!hasResult) {
                     // 已经没有结果了（浮层形态下只是清了内容没拆窗口），不必搬过去
-                    panel.remove();
+                    removePanel(panel);
                     panelRefs.delete(RESULT_ID);
                 } else {
                     // 形态不符：按「用户此刻看不看得见」重建
@@ -2391,7 +2342,7 @@
                     const visible = panel.dataset.cgoMode === "section"
                         ? !panel.classList.contains("collapsed")
                         : panel.classList.contains("show");
-                    panel.remove();
+                    removePanel(panel);
                     const rebuilt = buildResultPanel(mode);
                     // 侧栏里它是常驻槽位（show 表示「在册」），浮层里 show 就是显示
                     rebuilt.classList.toggle("show", mode === "section" || visible);

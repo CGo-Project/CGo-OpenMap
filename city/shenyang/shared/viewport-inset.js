@@ -236,7 +236,12 @@
         });
     }
 
-    const attrObserver = new MutationObserver(schedule);
+    const attrObserver = new MutationObserver(records => {
+        // 抽屉的实时 transform 不改变地图边界；落定的 class 变化再统一取景。
+        // 逐帧量遮挡会迫使浏览器回流，并与抽屉自己的地图跟随争用变换。
+        if (records.some(record => record.attributeName !== "style"
+            || !record.target.classList.contains("cgo-sheet-moving"))) schedule();
+    });
     const watched = new WeakSet();
 
     /**
