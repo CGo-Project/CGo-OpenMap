@@ -2,7 +2,7 @@
  * CGo OpenMap - 大连画布尺寸、站名与图例交互模块
  *
  * 海域底图已按项目规范迁到 data_scattered.js（散点装饰层），
- * 主题适配由 modules/dalian_sea.js 负责，本模块不再自建地理图层。
+ * 由引擎以 <img> 直出原 SVG，本模块不再自建地理图层。
  *
  * @event cgo:city-module-ready
  * @property {{ cityId: string, moduleId: string }} detail

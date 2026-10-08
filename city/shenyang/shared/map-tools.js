@@ -71,6 +71,8 @@
     const RESULT_PANEL_ID = "cgo-route-result";
     /** 面板按钮的标识类（幂等注入靠它） */
     const TOOL_BTN_CLASS = "cgo-mt-inline-btn";
+    /** 右上角「更多」菜单里那条入口的 id（幂等注入靠它） */
+    const MENU_ENTRY_ID = "cgo-maptools-entry";
 
     /** 等时圈档宽（分钟）：每 5 分钟一档，色阶才够细 */
     const ISO_STEP = 5;
@@ -119,8 +121,17 @@
     const BATCH = 24;
     /** 建图超时（毫秒）：超过即放弃本次并允许重试，免得一次挂起把入口钉死 */
     const BUILD_TIMEOUT = 15000;
-    /** 渲染分片：每算这么多行让出一帧，长耗时也不把界面卡死 */
-    const SLICE_ROWS = 64;
+    /**
+     * 渲染分片：每算这么多行让出一帧，长耗时也不把界面卡死。
+     *
+     * ⚠️ 这个值直接决定总时长 —— 每让出一帧都要等一次 vsync（约 8~17ms），而两次让出
+     * 之间的计算往往只有几毫秒。实测（沈阳、覆盖区 3888×3360、低分辨率 1944×1680）：
+     * 上色阶段 52 次让出耗掉约 870ms，与 52 × 16.7ms 几乎吻合，真正的计算量被等待淹没。
+     * 取 128（原为 64）：让出次数减半、总时长约降 1/3；代价是单帧计算涨到数十毫秒，
+     * 表现为"轻微卡顿"而非假死 —— 换档位本来就是用户主动等待的场合，这个取舍划算。
+     * 再往上调就要明显掉帧了；想继续提速得从每像素的计算量下手（等值线那趟扫描）。
+     */
+    const SLICE_ROWS = 128;
     /** 分层设色的填充与分割线不透明度：色块要透（底图与线网得看得见），线要实 */
     const FILL_ALPHA = 55;
     const EDGE_ALPHA = 205;
@@ -1169,14 +1180,8 @@
         const height = host.clientHeight || host.offsetHeight;
         if (!width || !height) return null;
 
-        const points = [];
-        values.forEach((value, sid) => {
-            const station = stations()[sid];
-            if (!station || !Number.isFinite(station.x) || !Number.isFinite(station.y)) return;
-            points.push({ x: station.x, y: station.y, v: value });
-        });
-        if (!points.length) return null;
-        // 等级线用「背景色外圈 + 文本色内芯」，两色得先从主题里取（canvas 读不到 CSS 变量）
+        // 等级线用「背景色外圈 + 文本色内芯」，两色得先从主题里取（canvas 读不到 CSS 变量）。
+        // 这一对放在缓存判断之外：换档位会走缓存，但主题可能已经换过，两色每次都得重新取。
         const theme = themeInk();
         const inkFg = theme.fg;
         const inkBg = theme.bg;
@@ -1186,13 +1191,46 @@
         const coverH = Math.ceil(height * COVER_SCALE);
         const offsetX = -(coverW - width) / 2;
         const offsetY = -(coverH - height) / 2;
-        const lowW = Math.max(2, Math.ceil(coverW / FIELD_CELL));
-        const lowH = Math.max(2, Math.ceil(coverH / FIELD_CELL));
+
+        /* ── 值场缓存 ──
+           换「范围」档位时站点用时 / 票价压根没变，值场必然一模一样，重新插值纯属浪费；
+           而 ① 低分辨率 IDW 插值 + ② 平滑正是换档延迟的大头（实测一次整图重绘约 2.8 秒，
+           其中这两段约合一半）。命中缓存就整段跳过 ①②，只重跑 ③ 上色 —— 档位变了，
+           色块必须重画，那部分省不掉。
+           命中条件从严：工具、值表引用（换起点 / 换工具都会换引用）、覆盖区几何
+           三者全一致才算命中；任何一项不同都重建，宁可多算一遍也不出错图。
+           只缓存 ①② 的产物：fadeStart / fadeEnd 与档位无关，留在 ③ 里随用随算。
+           ⚠️ 下方 else 块内的代码沿用原缩进，不再整体缩一级 —— 免得一次改动几百行。
+           ⚠️ 用完必须释放（见 clearOverlay），这几个 Float32Array 合起来十几 MB。 */
+        const cacheHit = state.fieldCache
+            && state.fieldCache.tool === tool
+            && state.fieldCache.values === values
+            && state.fieldCache.coverW === coverW
+            && state.fieldCache.coverH === coverH
+            && state.fieldCache.offsetX === offsetX
+            && state.fieldCache.offsetY === offsetY
+            ? state.fieldCache : null;
+        let lowW, lowH, smooth, distance, known, cell, sparseRadius, pointCount;
+        if (cacheHit) {
+            ({ lowW, lowH, smooth, distance, known, cell, sparseRadius, pointCount } = cacheHit);
+        } else {
+        const points = [];
+        values.forEach((value, sid) => {
+            const station = stations()[sid];
+            if (!station || !Number.isFinite(station.x) || !Number.isFinite(station.y)) return;
+            points.push({ x: station.x, y: station.y, v: value });
+        });
+        if (!points.length) return null;
+        pointCount = points.length;
+        lowW = Math.max(2, Math.ceil(coverW / FIELD_CELL));
+        lowH = Math.max(2, Math.ceil(coverH / FIELD_CELL));
         const grid = buildGrid(points, coverW, coverH, offsetX, offsetY);
+        cell = grid.cell;
+        sparseRadius = grid.cell * SPARSE_RING;
 
         const field = new Float32Array(lowW * lowH);
-        const known = new Uint8Array(lowW * lowH);
-        const distance = new Float32Array(lowW * lowH);   // 到最近站点的距离，供距离蒙版用
+        known = new Uint8Array(lowW * lowH);
+        distance = new Float32Array(lowW * lowH);   // 到最近站点的距离，供距离蒙版用
 
         // ① 低分辨率值场。权重在 1/d⁴ 之外再乘一道**在支撑域半径处归零的窗口** —— 这一步是关键：
         //    站点进出加权集合时权重是连续衰减到 0 的，不会沿网格线留下"方正"的接缝
@@ -1264,7 +1302,13 @@
         }
 
         // ② 平滑值场
-        const smooth = boxBlur(field, known, lowW, lowH, SMOOTH_PASSES);
+        smooth = boxBlur(field, known, lowW, lowH, SMOOTH_PASSES);
+        // ①② 的产物入缓存：③ 每轮都要读，故必须存全（用完在 clearOverlay 里释放）
+        state.fieldCache = {
+            tool, values, coverW, coverH, offsetX, offsetY,
+            lowW, lowH, smooth, distance, known, cell, sparseRadius, pointCount
+        };
+        }   // ← 结束「未命中缓存」分支
 
         // ③ 1:1 输出：双线性上采样 + 分档上色
         const outW = coverW;
@@ -1278,7 +1322,7 @@
         // 0 = 未着色、否则档位 + 1、CLIP_MARK = 超出「范围」上限（描线时要当边界用）
         const bandIndex = new Uint8Array(outW * outH);
         // 距离蒙版的两道阈值：以「平均站距」（一个站点平均占多大地方）为单位
-        const avgDist = Math.sqrt((coverW * coverH) / Math.max(1, points.length));
+        const avgDist = Math.sqrt((coverW * coverH) / Math.max(1, pointCount));
         const fadeStart = avgDist * FADE_START_FACTOR;
         const fadeEnd = avgDist * FADE_END_FACTOR;
         const ratio = FIELD_CELL;
@@ -1445,11 +1489,11 @@
         ctx.drawImage(off, 0, 0);
 
         return {
-            tool, lowW, lowH, cell: FIELD_CELL, offsetX, offsetY,
+            tool, lowW, lowH, cell, offsetX, offsetY,
             values: smooth, bands, isolines,
             // 现场插值（汇合图的悬停读数）要按与建图同一口径的支撑域来，故把两轮半径一并带出去
-            radius: grid.cell,
-            sparseRadius: grid.cell * SPARSE_RING
+            radius: cell,
+            sparseRadius
         };
     }
 
@@ -1664,6 +1708,13 @@
             inner.style.transform = `scaleX(${Math.min(1, 2.6 / text.length)})`;
             inner.textContent = text;
             badge.appendChild(inner);
+            // 这枚图元把原站点图元顶掉了（上面给它加了 HIDDEN_CLASS），原图元上的可访问名随之离线，
+            // 故在同处补回。tabindex 取 -1 而非 0：与核心的车站图元同一口径 —— 等时圈 / 票价图会一次
+            // 铺满上百枚图元，让它们全进 Tab 序列等于在图上造一个上百步的 Tab 陷阱；键盘用户改走
+            // 车站检索与上一站 / 下一站，这里只保证读屏能念出「哪一站、读数多少」。
+            badge.setAttribute("role", "button");
+            badge.setAttribute("tabindex", "-1");
+            badge.setAttribute("aria-label", `${station.cn || ""} ${text}`);
             frag.appendChild(badge);
         });
         // 汇合图：各出发点的原图元整个让位，位置由 A / B / C 标记顶上；
@@ -1698,8 +1749,31 @@
             tag.textContent = line.text;
             frag.appendChild(tag);
         });
-        layer.textContent = "";
-        layer.appendChild(frag);
+        /* 交叉淡入：旧图元留在原层当快照淡出，新图元在新层淡入 ——
+           换范围档位 / 换起点都是整块重绘，硬替换会"啪"地跳一下，两层各 180ms 重叠
+           过渡观感就连续了（时长与 map-tools.css 的 .cgo-mt-values 过渡保持一致，
+           脚本这边的 240ms 只是"淡完就移除"的兜底阈值）。
+           同一时刻最多留两层：连续快速换档时，更早那层立即移除，不等它自然淡完。 */
+        const host = mapContent();
+        const prevLayer = layer;
+        const nextLayer = document.createElement("div");
+        nextLayer.id = VALUES_ID;
+        nextLayer.className = "cgo-mt-values is-enter";
+        nextLayer.appendChild(frag);
+        // id 交棒给新层，valuesLayer() 之后返回的就是它
+        prevLayer.removeAttribute("id");
+        if (prevLayer.childElementCount) {
+            prevLayer.classList.add("is-out");
+            setTimeout(() => prevLayer.remove(), 240);
+        } else {
+            prevLayer.remove();   // 首次出图：旧层本来就是空的，不留
+        }
+        host.querySelectorAll(".cgo-mt-values.is-out").forEach((el) => {
+            if (el !== prevLayer) el.remove();
+        });
+        host.appendChild(nextLayer);
+        // 必须等下一帧再摘掉入场态：同一帧内写 "0 → 1" 会被浏览器合并，过渡根本不会发生
+        requestAnimationFrame(() => nextLayer.classList.remove("is-enter"));
         markOrigin(targets);
     }
 
@@ -1708,7 +1782,11 @@
         mapContent()?.classList.remove("cgo-mt-terrain");
         hiddenNodes.forEach((el) => el.classList.remove(HIDDEN_CLASS));
         hiddenNodes = [];
-        document.getElementById(VALUES_ID)?.remove();
+        // 值场缓存（几个 Float32Array 合起来十几 MB）随覆盖层一起释放，
+        // 否则关掉工具后它还会一直攥着内存
+        state.fieldCache = null;
+        // 连正在淡出的旧层一起清（交叉淡入期间可能同时存在两层）
+        mapContent()?.querySelectorAll(".cgo-mt-values").forEach((el) => el.remove());
         document.getElementById(HOVER_ID)?.classList.remove("show");
     }
 
@@ -2434,7 +2512,7 @@
         menu.insertAdjacentHTML("beforeend", `
             <div class="ctx-divider">工具</div>
             <button type="button" class="ctx-menu-btn ${CTX_BTN_CLASS}" data-ctx="to">
-                <cgo-icon name="route" size="16"></cgo-icon> 设为终点
+                <cgo-icon name="arrive" size="16"></cgo-icon> 设为终点
             </button>
             <button type="button" class="ctx-menu-btn ${CTX_BTN_CLASS}" data-ctx="tools">
                 <cgo-icon name="plugin" size="16"></cgo-icon> 地图小工具
@@ -2545,8 +2623,30 @@
         trackContextTarget();
         watchTheme();
         onPanelChange();
+        // 右上角「更多」菜单里的入口（工具列表面板是固定浮层，不依赖锚点）
+        registerMenuEntry();
         bodyObserver.observe(document.body, { childList: true });
         window.addEventListener("resize", scheduleStacking);
+    }
+
+    /**
+     * 右上角「更多」菜单里的「地图小工具」入口。
+     *
+     * 工具列表面板本身是贴右下角的固定浮层（`.cgo-mt-panel`），**不依赖锚点元素**，
+     * 所以从菜单进来同样可用：没有预设车站，选定工具后在地图上点站即可。
+     * 位置对齐母产品的菜单顺序（工具在最前），故插在「偏好设置」之前。
+     */
+    function registerMenuEntry() {
+        const content = document.querySelector(".options-dropdown .dropdown-content");
+        if (!content || content.querySelector(`#${MENU_ENTRY_ID}`)) return;
+        const entry = document.createElement("a");
+        entry.href = "javascript:void(0)";
+        entry.id = MENU_ENTRY_ID;
+        entry.innerHTML = `<cgo-icon name="plugin"></cgo-icon><span>地图小工具</span>`;
+        entry.addEventListener("click", () => openTools());
+        const anchor = content.querySelector("#settings-btn");
+        if (anchor) anchor.insertAdjacentElement("beforebegin", entry);
+        else content.prepend(entry);
     }
 
     /** 对外接口：供城市侧或后续接入方直接开启某个工具 */

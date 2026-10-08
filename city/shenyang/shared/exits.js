@@ -15,9 +15,11 @@
  * 仍放不下的在 onMounted 里按实测宽度横向压扁，不把正方形撑成长方形。
  *
  * 数据由各城的离线抓取脚本生成（drunk/tools/facilities/，开发期工具、不入版本库），结构见生成文件头部：
- * 每条出口含 name（出口字母）、lines（所属线路，可选）、buses（公交线路，可选）、
+ * 每条出口含 name（出口编号）、lines（所属线路，可选）、buses（公交线路，可选）、
+ * desc（出口描述：维基「出口指示」原文，维基没给则以相对所属线路站厅的方位填空，如「西北口」）、
+ * geoDesc（高德逆地理的「最近路口方位」，**只留档不渲染**）、roads（最近道路侧向，可选）、
  * landmarks（周边地标，可选）、closed（是否暂停使用，可选）；缺哪个字段就不渲染哪一行。
- * 各源出入口**均没有可靠的方位信息**，故只按字母与可得的附加信息呈现，不做落图。
+ * 各源出入口的坐标（pos）并不齐全，没有坐标的口不会在小地图上标点，其余信息照常呈现。
  *
  * @event cgo:city-module-ready
  * @property {{ cityId: string, moduleId: string }} detail
@@ -45,6 +47,75 @@
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;");
+
+    /* ── 出口说明「待补充」的反馈 ────────────────────────────────────────
+       出入口的说明来自人工核定（维基「出口指示」）或「相对站厅方位 + 口」的填空，
+       总有还没收录的口。与其只留一句「待补充」，不如把反馈路径直接给到访客——
+       点一下标即打开共享层的反馈面板（shared/feedback.js）：正文自带定位信息
+       （城市 / 车站 ID / 出口编号 / 数据文件路径），复制或新建 Issue 都能一键带走。
+
+       面板本身不在这里 —— 反馈要覆盖共享层的多个场景（出口说明 / 题字 / 首末班车 /
+       票价 / 综合），故收敛到 `CGoFeedback`；本模块只声明「出口说明」这一种场景的文案。 */
+
+    /**
+     * 该出口的说明是否「待补充」。
+     *
+     * 两种情形都算：`desc` 本身缺失；或 `desc` 只是数据侧统一写成的「相对站厅方位 + 口」填空
+     * （形如「西北口」，即 `bearing + "口"`）——它只说明方位，并没有收录该口的出口指示。
+     * 维基「出口指示」原文的形态与它不同（多为「XX路（X侧）」「XX路东」），不会误判。
+     */
+    function isDescPending(exit) {
+        if (!exit?.desc) return true;
+        return Boolean(exit.bearing) && exit.desc === `${exit.bearing}口`;
+    }
+
+    /** 「待补充」标：点开反馈面板；定位信息全放在 data-* 上，由清单做事件委托 */
+    function pendingBadgeHtml(exit, ctx) {
+        return `<button type="button" class="cgo-exit-pending" data-exit-feedback
+            data-station-id="${escapeHtml(ctx.stationId || "")}"
+            data-station-cn="${escapeHtml(ctx.stationCn || "")}"
+            data-exit-code="${escapeHtml(exit.name || "")}"
+            title="该出口的说明尚未收录，点击反馈给我们"
+        ><cgo-icon name="info" size="11"></cgo-icon>待补充</button>`;
+    }
+
+    /* 出口说明场景的文案：登记进共享层。带 label/order，故会出现在「更多」入口的场景切换里
+       ——从那里进来没有车站与出口上下文，模板会退化成「请在补充说明里写明」。 */
+    const EXIT_KIND = {
+        label: "出口说明",
+        order: 10,
+        modalTitle: "反馈出口数据",
+        heading: ({ cityName, stationCn, exitCode }) => [cityName, stationCn, exitCode && `${exitCode} 口`].filter(Boolean).join(" "),
+        subject: ({ cityName, stationCn, exitCode }) => `【出口数据】${cityName}${stationCn ? ` ${stationCn}` : ""}${exitCode ? ` ${exitCode} 口` : ""} 说明待补充`,
+        notePlaceholder: "补充说明（选填，比如你看到的实际出口指示）",
+        context: ({ cityId, cityName, stationId, stationCn, exitCode, reason }) => [
+            `【出口数据反馈】${cityName}${stationCn ? ` ${stationCn}` : ""}${exitCode ? ` ${exitCode} 口` : ""}`,
+            "",
+            `- 城市：${cityName}（${cityId}）`,
+            ...(stationCn ? [`- 车站：${stationCn}${stationId ? `（${stationId}）` : ""}`] : ["- 车站：请在补充说明里写明是哪座车站"]),
+            ...(exitCode ? [`- 出口：${exitCode}`] : []),
+            `- 数据文件：city/${cityId}/data_exits.js`,
+            `- 缺失内容：${reason || "该出口还没有「出口指示」说明，界面目前只按方位显示。"}`
+        ]
+    };
+    // 加载时登记一次，打开面板前再登记一次（幂等）：反馈面板先于本模块加载是约定，
+    // 但万一顺序变了，也不至于退化成「综合」场景的文案
+    const registerExitKind = () => window.CGoFeedback?.registerKind("exit", EXIT_KIND);
+    registerExitKind();
+
+    /**
+     * 打开反馈面板（转发到共享层的 CGoFeedback）。
+     * 本名保留给城市模块与题字模块调用：ctx 里带 `kind` 即切到别的场景（如题字投稿）。
+     */
+    function openFeedback(ctx = {}) {
+        const feedback = window.CGoFeedback;
+        if (typeof feedback?.open !== "function") {
+            console.warn("[exits] 共享层 CGoFeedback 未加载，反馈面板暂不可用");
+            return;
+        }
+        registerExitKind();
+        feedback.open({ kind: "exit", ...ctx });
+    }
 
     function pickData(globals) {
         for (const name of globals || []) {
@@ -205,6 +276,11 @@
             if (marker.kind === "exit") {
                 pin.textContent = marker.label;
                 pin.addEventListener("click", () => focusExit(box, marker.label));
+                // 地图上的辅助标记：点它滚到下方清单里对应的那一条。同核心的车站图元取 tabindex="-1"
+                // （不进 Tab 序列）—— 键盘用户直接读下方清单即可，那里每条出口都是完整的文字描述。
+                pin.setAttribute("role", "button");
+                pin.setAttribute("tabindex", "-1");
+                pin.setAttribute("aria-label", `出口 ${marker.label}，定位到出口清单`);
             }
             if (marker.color) pin.style.setProperty("--pin-color", marker.color);
             pin.style.left = `${item.x}px`;
@@ -213,6 +289,17 @@
         }
         box.replaceChildren(frag);
         return true;
+    }
+
+    /**
+     * 待兑现的「滚到最近出口并高亮一次」：由「查找最近车站」在跳站后登记，
+     * 等这一站的**出入口页签第一次露面**时兑现（见 onMounted），用的就是 focusExit ——
+     * 与用户点小地图徽标完全同一套行为。只兑现一次即清空，免得很久以后再开这一站又被滚一次。
+     */
+    let pendingExitFocus = null;
+
+    function requestExitFocus(stationId, exitCode) {
+        pendingExitFocus = { stationId: String(stationId || ""), exitCode: String(exitCode || "") };
     }
 
     /** 点小地图上的徽标 → 滚到清单里对应的那条出口，并高亮一下当反馈 */
@@ -340,7 +427,7 @@
      * 一条出口：字母徽标 + 所属线路 + 公交线路 + 周边地标 + 该口的扶梯/电梯；暂停使用的加标记。
      * verticals 由 CGoExitVertical.collect() 给出（城市未接入该层时为空数组）。
      */
-    function exitHtml(exit, verticals = [], facilities = null) {
+    function exitHtml(exit, verticals = [], facilities = null, ctx = {}) {
         const rows = [];
         if (exit.lines?.length) {
             rows.push(`<div class="cgo-exit-row">
@@ -363,16 +450,21 @@
         const verticalHtml = verticals.length && window.CGoExitVertical?.rowHtml
             ? verticals.map((item) => window.CGoExitVertical.rowHtml(item)).join("")
             : "";
-        // 方位描述并到标题行：优先「最近道路的侧向」（形如「北站路 南侧/迎宾街 东侧」），
-        // 没有道路侧向时退回「最近路口的方位」（desc）；两者都没有才不显示。
-        const position = exit.roads?.length ? exit.roads.join("/") : (exit.desc || "");
+        // 标题：`desc`（维基「出口指示」原文，或相对所属线路站厅的方位填空，如「朝阳街路东」「西北口」）
+        // 本身就作为出口的**正经标题**展示；只有没有 desc 的口才回落成「A 口 / 1 号口」这样的编号文案
+        // ——编号已由左侧方形徽标承载，标题里不再重复一遍。
+        const titleText = exit.desc || `${exit.name}${/^\d/.test(String(exit.name ?? "")) ? " 号口" : " 口"}`;
+        // 兜底方位：仅在没有 desc 时才显示「最近道路的侧向」（roads），
+        // 免得同一个方位在标题与副行里各说一遍。
+        const position = exit.desc ? "" : (exit.roads?.length ? exit.roads.join("/") : "");
         const positionHtml = position ? `<span class="cgo-exit-pos">${escapeHtml(position)}</span>` : "";
         return `
             <div class="cgo-exit-item${exit.closed ? " is-closed" : ""}" data-exit="${escapeHtml(exit.name)}" data-facilities="${escapeHtml([...(facilities || [])].join(" "))}">
                 ${badgeHtml(exit.name)}
                 <div class="cgo-exit-body">
                     <div class="cgo-exit-title">
-                        <span>${escapeHtml(exit.name)}${/^\d/.test(String(exit.name ?? "")) ? " 号口" : " 口"}</span>
+                        <span>${escapeHtml(titleText)}</span>
+                        ${isDescPending(exit) ? pendingBadgeHtml(exit, ctx) : ""}
                         ${positionHtml}
                         ${exit.closed ? `<span class="cgo-exit-closed">暂停使用</span>` : ""}
                     </div>
@@ -465,7 +557,7 @@
                     <div class="cgo-exit-section">
                         <div class="cgo-exit-map" data-station-id="${escapeHtml(station?.id || "")}" data-station-name="${escapeHtml(station?.cn || "")}"></div>
                         ${filtersHtml}
-                        <div class="cgo-exit-list">${exits.map((exit) => exitHtml(exit, verticals.get(exit.name) || [], typesByExit.get(exit.name))).join("")}</div>
+                        <div class="cgo-exit-list">${exits.map((exit) => exitHtml(exit, verticals.get(exit.name) || [], typesByExit.get(exit.name), { stationId: station?.id, stationCn: station?.cn })).join("")}</div>
                         ${config.sourceNote ? `<div class="cgo-exit-source">
                             <cgo-icon name="info" size="12"></cgo-icon>
                             <span>${escapeHtml(config.sourceNote)}</span>
@@ -495,6 +587,36 @@
                     mountMap(mapBox, mapBox.dataset.stationName || "", getExits(mapBox.dataset.stationId));
                 }
 
+                // 「查找最近车站」跳过来的那一站：等出口清单**真正露面**（页签刚切过来时容器还没尺寸），
+                // 再把最近那个口滚到眼前并高亮一次 —— 与点小地图徽标同一套行为，不弹任何提示。
+                if (pendingExitFocus && mapBox && pendingExitFocus.stationId === mapBox.dataset.stationId) {
+                    const { exitCode } = pendingExitFocus;
+                    pendingExitFocus = null;   // 只兑现一次
+                    const list = container.querySelector(".cgo-exit-list");
+                    const reveal = () => {
+                        if (!list || !list.clientHeight) return false;
+                        focusExit(mapBox, exitCode);
+                        return true;
+                    };
+                    if (!reveal()) {
+                        const observer = new ResizeObserver(() => { if (reveal()) observer.disconnect(); });
+                        observer.observe(list || container);
+                    }
+                }
+
+                // 「待补充」标：事件委托在清单上，点开反馈面板（正文、复制与 Issue 都由共享层出）
+                const exitList = container.querySelector(".cgo-exit-list");
+                exitList?.addEventListener("click", (ev) => {
+                    const btn = ev.target.closest?.("[data-exit-feedback]");
+                    if (!btn || !exitList.contains(btn)) return;
+                    openFeedback({
+                        cityId: idPrefix,
+                        stationId: btn.dataset.stationId,
+                        stationCn: btn.dataset.stationCn,
+                        exitCode: btn.dataset.exitCode
+                    });
+                });
+
                 // 筛选模式：单选，再点一次取消（互斥，避免叠加出空清单）
                 const buttons = [...container.querySelectorAll(".cgo-exit-filter")];
                 for (const button of buttons) {
@@ -514,5 +636,7 @@
         }));
     }
 
-    window.CGoExits = { register, registered, exitsByStation };
+    // openFeedback 一并导出：面板实体已迁到 CGoFeedback，这里保留转发入口，
+    // 免得城市模块里既有的 `CGoExits.openFeedback(...)` 调用失效
+    window.CGoExits = { register, registered, exitsByStation, requestExitFocus, openFeedback };
 })();

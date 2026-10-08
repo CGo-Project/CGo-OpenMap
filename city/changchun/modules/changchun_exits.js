@@ -2,8 +2,8 @@
  * CGo OpenMap - 长春车站出入口配置
  *
  * 渲染逻辑在共享层 `shared/exits.js`（多城共用），本文件只声明数据在哪与页签叫什么。
- * 数据：`city/changchun/data_exits.js`（由 drunk/tools/facilities/ 下的开发期脚本从
- *       高德地图开放平台 Web 服务 API 抓取生成，脚本不进运行时、不入版本库）。
+ * 数据：`city/changchun/data_exits.js`（出口编号来自高德地图开放平台 Web 服务 API，
+ *       出口描述与周边目的地来自中文维基百科；开发期脚本不进运行时、不入版本库）。
  *
  * 页签声明在 `changchun.js` 的 `stationBoard.tabs` 里（id 必须与共享层模块的 targetTab 一致），
  * 自定义页签渲染在「车站信息」之前，正好紧挨着它。
@@ -24,6 +24,8 @@
         idPrefix: "changchun",
         name: "长春车站出入口",
         dataGlobals: ["CHANGCHUN_STATION_EXITS"],
-        sourceNote: "出入口编号摘自高德地图，与现场可能不一致"
+        // 该出口的无障碍电梯 / 升降平台取自车站设施表，判定规则见 changchun.js 的 CGO_EXIT_VERTICAL
+        facilityGlobals: ["CHANGCHUN_STATION_FACILITIES"],
+        sourceNote: "出口编号摘自高德地图、出口描述与周边目的地摘自中文维基百科，与现场可能不一致"
     });
 })();

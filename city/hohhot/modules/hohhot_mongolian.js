@@ -5,8 +5,10 @@
  * 城市私有模块：给站名标签注入竖排蒙文，**不改动 core**。
  *
  * 字体策略（两段式）：
- *   1. 先探测系统蒙文字体（Mongolian Baiti / Noto Sans Mongolian / Menksoft Qagan …）；
- *   2. 系统没有时按需从 CDN 加载 Noto Sans Mongolian（fonts.loli.net，与 main.html
+ *   1. 先探测**系统能否渲染蒙文**（判据见 fontUsable：同一字体栈下比较蒙文探针串与
+ *      等长私用区缺字串的宽度，含 sans-serif 回退 —— 只按字体名逐个比对会误判，
+ *      实测把 Windows 与 Android 都判成「没有蒙文字体」，详见该函数注释）；
+ *   2. 系统不能时按需从 CDN 加载 Noto Sans Mongolian（fonts.loli.net，与 main.html
  *      引 Arimo / Noto Sans SC 用的是同一个镜像，CN 可达），等字体真正就绪后再注入；
  *   3. 两段都拿不到（离线 / 镜像不可达）时**整体不注入**并在控制台说明 ——
  *      此时浏览器会回落成**不连写的假蒙文**（一个字母一个字母断开，不是方块豆腐，
@@ -33,6 +35,8 @@
 (function () {
     const LAYER_ID = "labels-layer";
     const PROBE_TEXT = "ᠰᠢᠨᠬᠤᠸᠠ";   // 新华广场：含初 / 中 / 词尾三种字形的连写串
+    /** 与探针串等长的私用区字符：任何字体都不覆盖，用来量「缺字字形」的基准宽度 */
+    const TOFU_TEXT = "\uE000".repeat(Array.from(PROBE_TEXT).length);
     const CDN_FAMILY = "Noto Sans Mongolian";
     const CDN_HREF = "https://fonts.loli.net/css2?family=Noto+Sans+Mongolian&display=swap";
     const FONT_STACK = ["Mongolian Baiti", CDN_FAMILY, "Menksoft Qagan", "Daicing Xiaokai"];
@@ -46,19 +50,30 @@
      * ================================================================== */
 
     /**
-     * 字族是否真的被命中：逐个与 monospace 对比量宽，宽度不同即说明命中了该字族。
-     * 只用 document.fonts.check() 不够 —— 它对未声明的系统字族也会返回 true。
+     * 系统是否能真正渲染蒙文：**同一字体栈下**比较「蒙文探针串」与「等长私用区缺字串」
+     * 的宽度 —— 宽度不同，说明确有字体在渲染它（蒙文连写会把总宽压窄）；两者相同则只是
+     * 缺字字形（.notdef），即系统确实没有蒙文字体。
+     *
+     * ⚠️ 不要再改回「逐个字体名与 monospace 比宽度」的老判据：蒙文是**竖排**文字，水平
+     * 量宽下各体字形的 advance 都极窄，实测在 Windows（Mongolian Baiti 可用）与
+     * Android 10（系统回退可正常连写）上都与 monospace 撞成同一个宽度（桌面 20.51 /
+     * 手机 35.84，四个字体名全部「未命中」），于是所有设备一律被判成「没有蒙文字体」、
+     * 全被推去走 CDN 分支 —— CDN 通就正常（桌面不易察觉），CDN 不通就整体不显示蒙文
+     * （手机实测正是这种：徽标连写正常，站名一行都没有）。
+     *
+     * 字体栈尾部一律补 sans-serif：浏览器渲染蒙文时允许**字体回退**，家族名对不上也会
+     * 落到系统里能覆盖蒙文的字体上 —— 静态徽标 SVG 走的正是这条路，站名必须同一口径。
+     * 真正没有蒙文字体的设备上两者宽度一致，仍会被拦住（保留「宁可不显示也不给假蒙文」）。
      */
     function fontUsable(families) {
         try {
             if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
             if (!measureCtx) return true;   // 探测不可用时按「可用」处理
-            const measure = (stack) => {
-                measureCtx.font = `10px ${stack}`;
-                return measureCtx.measureText(PROBE_TEXT).width;
-            };
-            const base = measure("monospace");
-            return families.some((name) => Math.abs(measure(`"${name}", monospace`) - base) > 0.5);
+            const stack = families.map((name) => `"${name}"`).concat("sans-serif").join(", ");
+            measureCtx.font = `10px ${stack}`;
+            const mn = measureCtx.measureText(PROBE_TEXT).width;
+            const tofu = measureCtx.measureText(TOFU_TEXT).width;
+            return Math.abs(mn - tofu) > 0.5;
         } catch (_) {
             return true;
         }

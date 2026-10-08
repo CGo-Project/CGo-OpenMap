@@ -35,6 +35,15 @@ const CGO_OPENING_SCHEDULE = [
         // 开通后并入既有站并把既有站升级为换乘站。
         // 东大桥（0501）不在合并之列：它与 3 号线东大桥站厅并不连通，属付费出站换乘，
         // 开通后保留为独立车站（站型由 opensAs 决定），换乘关系登记在 data_virtual_transfers.js。
+        //
+        // ⚠️ 本表**必须保留**，即便站点数据已写回开通态：
+        //   - 新开通通知（shared/opening-schedule.js 的 getOpenNotices，推送窗口
+        //     noticeWindowDays 默认 30 天）与开通前倒计时都以本表为唯一数据源，
+        //     删掉条目＝通知与倒计时一起失效；
+        //   - 下面的 merge / notOpenLines 现在只是**幂等兜底**：站点数据（data_stations.js
+        //     的 -1 站条目已删、data_lines.js 的 5 号线站序已改指既有站、既有站已标 tsf、
+        //     data_notopen.js 的 CCM05 虚线已撤）写回开通态后，这两项在运行时不再有实际动作，
+        //     但保留可在数据回退时自动恢复合并行为。
         merge: {
             "0127-1": "0127",
             "0233-1": "0233",

@@ -241,12 +241,36 @@
         background-color: var(--map-bg) !important;
     }
 
+    /* 固定侧栏展开时：缩放条横向上让开侧栏列，纵向**上移到与标题栏双岛齐平**。
+       核心那条「避让双岛」的 top: 96px 是给浮层形态准备的，固定侧栏下会把缩放条压得
+       比左右两个浮岛矮一截、观感不成套；这里改回与浮岛同一条基准线。
+       侧栏收起（pinned-hidden）时本选择器不再命中，自动回落到 96px 的避让位。
+       有意不加 transition：核心自己已有 left 的过渡，这里再加一条会让「收起瞬间」
+       在后台标签页里冻结成中间态（实测过），反而看不出该在哪。 */
     body.legend-pinned:not(.pinned-hidden) #modern-zoom-control {
         left: calc(var(--cgo-sb-left) + var(--cgo-sb-width) + var(--cgo-sb-zoom-gap)) !important;
+        top: calc(env(safe-area-inset-top, 0px) + 20px) !important;
     }
 
     /* 收起态：容器左缘已经是 0，核心自己的 translateX(-100%) 就足以整块移出屏幕，
        这里不再覆盖 transform */
+
+    /* ── 缩放条里的竖滑块：下方常驻浮层在场时先收起来 ─────────────────────────
+       缩放条特别长（竖滑块占了大半），而贴下方常驻的浮层（地图小工具的浮层、等级图
+       图例、以及任何自报 data-cgo-inset 带 bottom 的贴角浮层）与它同在右侧，叠上就互相挡。
+       故这类浮层一在场就把竖滑块收起、控件随之变短，浮层撤走即恢复。
+       ⚠️ 要隐藏的是**滑块的轨道容器 `.mz-slider-track`**（它才是占高度的那一层），
+       不是 `#mz-slider` 那个 input 本身 —— 核心在移动端分屏时隐藏的也是这个类
+       （css/style.css 的 `body.mobile-split-active #modern-zoom-control .mz-slider-track`），
+       这里沿用同一口径。
+       判据覆盖两种标记：
+         · data-cgo-inset 里带 bottom 且确实在显示的（贴角浮层自报的遮挡声明）；
+         · 浮层形态下的地图小工具面板（.cgo-mt-panel.show）。
+       全部由 :has() 在样式层判定 —— **不挂任何 JS 监听**，开合零成本。 */
+    body.legend-pinned:has([data-cgo-inset~="bottom"].show) #modern-zoom-control .mz-slider-track,
+    body.legend-pinned:has(.cgo-mt-panel.show) #modern-zoom-control .mz-slider-track {
+        display: none;
+    }
 
     /* ── 5. 缩放条里的取消固定按钮：占检索面板按钮所在的顶部位置 ──────────────── */
     #modern-zoom-control > .legend-pin-btn {
@@ -312,5 +336,14 @@
         border-right: 2px dashed rgba(52, 152, 219, 0.55) !important;
         backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
         -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
+    }
+
+    /* ── 8. 车站窗口里的页签栏：页签内边距收细 ──────────────────────────────────
+       内核给 .tab-item 的 9 / 13 / 7 / 13px 在侧栏里明显偏胖：侧栏列本身不宽，
+       车站窗口的页签（车站信息 / 出入口 / 线路 …）一多就横向滚动，滚出去的页签看不见。
+       收成原值约 1/3（3 / 4 / 2 / 4px），一栏能多露出一个页签；字号与行高不动，
+       只压内边距，所以视觉重量不变、只是更紧凑。 */
+    body.legend-pinned #info-panel .tab-item {
+        padding: 3px 4px 2px;
     }
 }

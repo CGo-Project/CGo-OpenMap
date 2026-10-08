@@ -124,12 +124,12 @@ body.sy-calligraphy-active .mobile-top-bar-backdrop {
 }
 
 /* ==========================================================================
-   题字信息缺失时的投稿引导（展开区里的一段普通文字）
+   题字信息缺失时的投稿入口（展开区里的一句说明 + 一个按钮）
 
-   早先它是一枚 hover / focus 气泡（短标签 + 悬浮面板）：卡片上只留一行短标签，
-   完整引导连同联系方式收进气泡以免常驻占高。折叠面板上线后并入展开区——
-   面板本身就是「展开看更多」，再套一层气泡既多余，触屏上又基本触发不了。
-   引导里含可点击的主理人链接，故用真实元素承载而非 ::after + attr(data-tooltip)。
+   早先这里是一段纯文字（「投稿给城市主理人 xxx，或加入官方 QQ 交流群 …」），
+   联系方式与正文都硬编码在本模块里、也没法一键带走反馈；现在按钮直接打开
+   **共享层的反馈面板**（`shared/exits.js`），正文模板、GitHub / QQ 联系方式
+   都收敛到那一处，按钮本身的观感见 exits.css 的 `.cgo-feedback-link`。
    ========================================================================== */
 .sy-cali-note {
     margin-top: 6px;
@@ -138,8 +138,10 @@ body.sy-calligraphy-active .mobile-top-bar-backdrop {
     color: var(--text-light);
 }
 
-.sy-cali-note a {
-    color: var(--primary-color, #1a73e8);
+/* 说明与按钮同排；按钮不参与换行，长说明先折行 */
+.sy-cali-note .cgo-feedback-link {
+    margin-left: 6px;
+    white-space: nowrap;
 }
 
 /* ── 题写者一行 + 可展开详情（车站信息板模块）──────────────────────────────

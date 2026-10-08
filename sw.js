@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261008.220100';
+const CACHE_NAME = 'cgo-openmap-v261008.220300';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -153,6 +153,8 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/exit-vertical.js',
     './city/shenyang/shared/exits.js',
     './city/shenyang/shared/exits.css',
+    './city/shenyang/shared/feedback.js',
+    './city/shenyang/shared/feedback.css',
     './city/shenyang/shared/opening-schedule.js',
     './city/shenyang/shared/opening-schedule.css',
     // 行程规划（三城共用）：线路接续声明解析 / 数据构建器 / 规划内核 / 面板
@@ -310,7 +312,6 @@ const ASSETS_TO_CACHE = [
     // 城市配置与业务数据 (大连)
     './city/dalian/dalian.js',
     './city/dalian/modules/dalian_map.js',
-    './city/dalian/modules/dalian_sea.js',
     './city/dalian/modules/dalian_timetable.js',
     './city/dalian/modules/dalian_transfers.js',
     './city/dalian/modules/dalian_station_title.js',
@@ -445,6 +446,7 @@ const ASSETS_TO_CACHE = [
     './city/hohhot/modules/hohhot_station_board.js',
     './city/hohhot/modules/hohhot_timetable.js',
     './city/hohhot/modules/hohhot_facilities.js',
+    './city/hohhot/modules/hohhot_exits.js',
     './city/hohhot/stacard/script.js',
     './city/hohhot/data_stations.js',
     './city/hohhot/data_lines.js',
@@ -454,6 +456,7 @@ const ASSETS_TO_CACHE = [
     './city/hohhot/data_timetable.js',
     './city/hohhot/data_notopen.js',
     './city/hohhot/data_facilities.js',
+    './city/hohhot/data_exits.js',
     './city/hohhot/staname.csv',
     './city/hohhot/amap_data.json',
     // 呼和浩特线路徽标（微圆角方标 + 中文/蒙文/英文三行）

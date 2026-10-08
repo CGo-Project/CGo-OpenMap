@@ -69,12 +69,20 @@
      *     "M104": { mode: "通道换乘", minutes: 5 },
      *     "M108": { mode: "十字节点换乘", minutes: 1 },
      *     "M423": { mode: "同台换乘", minutes: 1,           // 默认（不分线路对）
-     *               pairs: { "M3|M6": { mode: "通道换乘", minutes: 4 } } }
+     *               pairs: { "M3|M6": { mode: "通道换乘", minutes: 4 } } },
+     *     "S0117": { mode: "十字节点换乘", minutes: 1,       // 同一线对、两个乘车方向不同
+     *                pairs: { "S01>S02": { mode: "十字节点换乘", minutes: 1 },
+     *                         "S02>S01": { mode: "通道换乘", minutes: 3 } } }
      *   }
      * 规格：
      *   · 键为换乘站 ID；pairs 的键是「线路A|线路B」，两条线的顺序无关，内部会归一化；
      *   · pairs 命中时覆盖本站的默认 mode / minutes，故「同站不同线路对换乘方式不同」
      *     （如帝封江：4/5 号线同台 1 分钟、换滨海快线通道 4 分钟）可以直接表达；
+     *   · pairs 的键也可写成**有向**的「线路A>线路B」（从 A 线换到 B 线，不排序），
+     *     用于「同一线对的两个乘车方向换乘方式不同」的情形 —— 这种不对称由站体结构
+     *     决定（如沈阳青年大街：1 号线换 2 号线从站台层楼梯直上、2 号线换 1 号线要经
+     *     站厅通道），与列车上下行无关，sameDir 表达不了。有向键优先于无向键命中，
+     *     两者可并存（有向键只覆盖它点明的那一个方向）；未写有向键的城市行为不变；
      *   · `sameDirMinutes` 可选：只给**两列车同向**的那一对方向用这个时长，
      *     反向仍用 minutes —— 用于「同向同台」这类方向不对称的换乘
      *     （同向恰好同台、反向要绕对面站台）。
@@ -136,6 +144,20 @@
     };
 
     /**
+     * 有向线路对键：`A>B` 表示「从 A 线换到 B 线」，**不排序**。
+     *
+     * 用于「同一个线对的两个乘车方向换乘方式不同」的情形 —— 这类不对称由站体结构
+     * 决定（如沈阳青年大街：1 号线换 2 号线从站台层楼梯直上、2 号线换 1 号线要经
+     * 站厅通道），与列车上下行无关，故 sameDir（按列车方向）表达不了。
+     * 键里的 `#` 后缀（贯通运行的线路实例标记）与 pairKey 一样剥掉。
+     */
+    const directedPairKey = (from, to) => {
+        const x = String(from).split("#")[0];
+        const y = String(to).split("#")[0];
+        return `${x}>${y}`;
+    };
+
+    /**
      * 生成一个「按站 + 按线路对 + 按方向」查换乘时间的函数。
      * 返回 null 表示该站未配置，交由内核用默认换乘时间。
      */
@@ -151,7 +173,9 @@
             if (!entry) return null;
             const fromBase = String(fromLine).split("#")[0];
             const toBase = String(toLine).split("#")[0];
-            const perPair = entry.pairs?.[pairKey(fromBase, toBase)];
+            // 有向键（A>B）比无向键（A|B）更具体，故优先命中
+            const perPair = entry.pairs?.[directedPairKey(fromBase, toBase)]
+                || entry.pairs?.[pairKey(fromBase, toBase)];
             const spec = perPair || entry;
             let minutes = Number(spec.minutes);
             // 两种表达同台对的方式都算触发：显式 sameDir 优先，其次 sameDirMinutes 走几何
