@@ -216,6 +216,8 @@
 
     window.showSegmentBubble = function (line, fromStation, toStation, time, midPoint) {
         if (!line || !fromStation || !toStation || !midPoint) return;
+        // 未开通站与虚拟线路标题不是可乘车区间，不展示运行时间。
+        if ([fromStation, toStation].some(s => s.type === 'no' || s.type === 'terminus')) return;
         removeExistingCard('.segment-card');
         const content = document.getElementById('map-content');
         if (!content) return;
@@ -437,6 +439,8 @@
 
                 const frag = document.createDocumentFragment();
                 for (let i = 0; i < pts.length - 1; i++) {
+                    const endpoints = [stationsData[line.stationIds[i]], stationsData[line.stationIds[i + 1]]];
+                    if (endpoints.some(s => !s || s.type === 'no' || s.type === 'terminus')) continue;
                     const p1 = pts[i];
                     const p2 = pts[i + 1];
                     const seg = document.createElementNS("http://www.w3.org/2000/svg", "path");
