@@ -491,9 +491,11 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261008.260000";
+        const version = "261009.090919";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
+        // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
+        document.write(`<script src="./city/shenyang/shared/geo-estimate.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
