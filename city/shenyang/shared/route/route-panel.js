@@ -408,88 +408,19 @@
      * 搜索
      * ==================================================================== */
 
-    function searchStations(keyword) {
-        const kw = String(keyword || "").trim().toLowerCase();
-        if (!kw) return [];
-        const hits = [];
-        Object.entries(allStations()).forEach(([sid, station]) => {
-            if (!pickable(sid) || !station.cn) return;
-            const cn = String(station.cn), en = String(station.en || "");
-            const cnLower = cn.toLowerCase(), enLower = en.toLowerCase();
-            let score = -1;
-            if (cnLower === kw || enLower === kw || sid.toLowerCase() === kw) score = 0;
-            else if (cnLower.startsWith(kw) || enLower.startsWith(kw)) score = 1;
-            else if (cnLower.includes(kw) || enLower.includes(kw)) score = 2;
-            if (score >= 0) hits.push({ sid, cn, en, score });
+    /* 搜索（searchStations / badgesHtml / searchExitsForKeyword / exitItemHtml / renderSuggest）
+       已抽到 route/route-panel-search.js —— 拆巨石第 3 步。依赖一律以**箭头**传入，只在使用时
+       读本闭包，故不受声明顺序影响（避免初始化期读 const 的 TDZ）；调用点（renderSuggest 两处）不变。 */
+    const { searchStations, badgesHtml, searchExitsForKeyword, exitItemHtml, renderSuggest } =
+        window.CGoRoutePanelSearch.create({
+            allStations: () => allStations(),
+            pickable: (sid) => pickable(sid),
+            linesAt: (sid) => linesAt(sid),
+            exitsApi: () => exitsApi(),
+            escAttr: (value) => escAttr(value),
+            injectSvgs: (root) => injectSvgs(root),
+            maxSuggest: () => MAX_SUGGEST
         });
-        return hits
-            .sort((a, b) => a.score - b.score || a.cn.length - b.cn.length)
-            .slice(0, MAX_SUGGEST);
-    }
-
-    /**
-     * 线路徽标占位符：与核心检索面板使用同一套结构与类名。
-     * 由 core 注入 SVG 后，城市模块会把同一行内的多条线路合并为单个紧凑徽标；
-     * 未实现该能力的城市自动退化为并列的单线路图标，与检索面板表现一致。
-     */
-    function badgesHtml(sid) {
-        const sorted = linesAt(sid).slice().sort((a, b) =>
-            (window.getLineSortIndex?.(a.id) ?? 0) - (window.getLineSortIndex?.(b.id) ?? 0));
-        return sorted.map((line) => {
-            if (!line.svg) return "";
-            const meta = window.getLineSvgMeta?.(line.svg || line.id);
-            const style = meta ? `--svgclr:${meta.svgclr};--svgtext:${meta.svgtext};` : "";
-            const src = window.getSvgPath?.(line.svg) || "";
-            return `<span class="svg-icon-placeholder search-line-icon" data-src="${src}" style="${style}"></span>`;
-        }).join("");
-    }
-
-    /**
-     * 出入口命中项：站名 + 口 + 匹配到的地标 / 出口指示，选中即把口写进端点状态。
-     * 只收可参与规划的车站（pickable 口径与车站项一致），城市未接入出入口数据时返回空。
-     */
-    function searchExitsForKeyword(keyword) {
-        const api = exitsApi();
-        if (typeof api?.search !== "function") return [];
-        return (api.search(keyword) || []).filter((hit) => pickable(hit.sid)).slice(0, 5);
-    }
-
-    function exitItemHtml(hit) {
-        const label = exitsApi()?.exitLabel?.(hit.code) || `${hit.code} 口`;
-        // 主次对调：地标 / 出口指示（用户搜的东西）当主标题，站名 + 口退为次行；
-        // 没有 context 的口回落成「站名 A 口」主标题
-        const main = hit.context || `${hit.cn} ${label}`;
-        const sub = hit.context ? `${hit.cn} ${label}` : "";
-        const subHtml = sub
-            ? `<span style="font-size:12px;color:var(--text-light);">${sub}</span>`
-            : "";
-        return `
-            <div class="search-item cgo-rt-exit-item" data-sid="${hit.sid}" data-exit="${hit.code}" data-landmark="${escAttr(hit.context || "")}">
-                <cgo-icon name="location" size="14"></cgo-icon>
-                <span class="search-item-text">${main} ${subHtml}</span>
-            </div>
-        `;
-    }
-
-    function renderSuggest(field, panel, keyword) {
-        const hits = searchStations(keyword);
-        const exitHits = searchExitsForKeyword(keyword);
-        if (!hits.length && !exitHits.length) {
-            panel.innerHTML = `<div class="cgo-rt-empty">没有匹配的车站或出入口</div>`;
-            panel.classList.add("show");
-            return;
-        }
-        panel.innerHTML = hits.map((hit) => `
-            <div class="search-item" data-sid="${hit.sid}">
-                ${badgesHtml(hit.sid)}
-                <span class="search-item-text">${hit.cn}
-                    <span style="font-size:12px;color:var(--text-light);">${hit.en}</span>
-                </span>
-            </div>
-        `).join("") + exitHits.map(exitItemHtml).join("");
-        panel.classList.add("show");
-        injectSvgs(panel);
-    }
 
     /* ======================================================================
      * 规划行程面板
