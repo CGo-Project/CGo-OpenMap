@@ -6,6 +6,13 @@
     z-index: auto;
 }
 
+/* 上面放弃图层隔离后，未开通站图元（core 默认 z=5）会落到线路层（z=10）之下被线体盖住
+   ——沈阳此前没有 type "no" 车站，隐患一直未暴露。这里提到 14：高于线路(10)/未开通
+   芯线层(12)/高亮层(13)，但仍低于 .dot(15)，准换乘孪生处彩色圆点继续压在 ⊘ 之上。 */
+.station.no {
+    z-index: 14;
+}
+
 /* 深色主题下提高沈阳黑色装饰线与地图背景的对比度。 */
 [data-theme="dark"] #scattered-layer img[src$="/backslash.svg"],
 [data-theme="dark"] #scattered-layer img[src$="/slash.svg"],
