@@ -1870,10 +1870,12 @@
         const layoutWidth = host.offsetWidth || rect.width;
         const scale = rect.width / layoutWidth;
         // 屏幕坐标 → 画布坐标 → 值场坐标（覆盖区从 offset 起算）
+        // ⚠️ 分辨率必须用值场格宽 FIELD_CELL：field.cell 是建桶用的分桶格宽（几十上百 px），
+        // 拿它换算会把 fx/fy 恒压在值场左上角一格附近，tooltip 于是永远读到同一个值。
         const mapX = (event.clientX - rect.left) / scale;
         const mapY = (event.clientY - rect.top) / scale;
-        const fx = (mapX - field.offsetX) / field.cell - 0.5;
-        const fy = (mapY - field.offsetY) / field.cell - 0.5;
+        const fx = (mapX - field.offsetX) / FIELD_CELL - 0.5;
+        const fy = (mapY - field.offsetY) / FIELD_CELL - 0.5;
         if (fx < 0 || fy < 0 || fx > field.lowW - 1 || fy > field.lowH - 1) {
             tip.classList.remove("show");
             return;
