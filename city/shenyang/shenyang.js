@@ -573,7 +573,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261009.2040";
+        const version = "261010.0014";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -581,6 +581,8 @@
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
+        // 移动端抽屉手势引擎（车站详情与行程/结果面板共用；须早于两个消费方）
+        document.write(`<script src="./city/shenyang/shared/sheet-drag.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
@@ -599,6 +601,8 @@
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
+        // 移动端抽屉手势仲裁：内容区优先滚动、半屏上滑优先展开（core 零改动，见 shared/panel-sheet-gesture.js）
+        document.write(`<script src="./city/shenyang/shared/panel-sheet-gesture.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/tip-card.js?v=${version}"><\/script>`);
         // 呼出线随标签进入 active：按 data-cgo-callout 把站名标签的选中态同步到引线
         document.write(`<script src="./city/shenyang/shared/label-active.js?v=${version}"><\/script>`);

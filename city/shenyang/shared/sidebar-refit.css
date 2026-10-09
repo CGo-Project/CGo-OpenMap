@@ -18,6 +18,13 @@
  * 脚本未执行（或浮岛量不到）时也能对上，不依赖 JS 才能成形。
  */
 
+/* 车站窗口标题栏控件（展开 / 收缩 + 关闭）默认隐藏：
+   控件由 sidebar-refit.js 注入，只在固定侧栏形态下显示（见下方 body.legend-pinned 段）。
+   否则取消固定后，那几个按钮会以浏览器默认样式裸着露出来。 */
+.cgo-sb-hctl {
+    display: none;
+}
+
 @media (min-width: 641px) {
     :root {
         /* 标题栏浮岛左缘（含安全区）／浮岛宽度 */
@@ -173,6 +180,114 @@
     body.legend-pinned .panel-section.collapsed .section-header {
         border-radius: 11px;
     }
+
+    /* ── 区块标题栏控件（展开/收缩；车站窗口另有「关闭」）──────────────────
+       取代核心那个只作状态指示的折叠箭头：箭头在各区块统一隐藏，改由我们这枚可点的
+       切换按钮承担「指示 + 操作」两件事；车站窗口右侧另加关闭按钮。
+       控件见 sidebar-refit.js 第 4 节；布局模型见 README 第六节。 */
+    body.legend-pinned .panel-section .section-header > .section-arrow {
+        display: none !important;
+    }
+
+    body.legend-pinned .cgo-sb-hctl {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        margin-left: auto;   /* 顶到标题栏最右 */
+        flex: none;
+    }
+
+    body.legend-pinned .cgo-sb-hctl-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-light);
+        cursor: pointer;
+        transition: background-color .15s, color .15s;
+    }
+
+    body.legend-pinned .cgo-sb-hctl-btn:hover {
+        background-color: var(--list-hover);
+        color: var(--text-main);
+    }
+
+    /* 展开/收缩按钮的两枚图标按档位互斥显示：
+       展开态 → zoom-out（点它收起）；折叠态 → zoom-in（点它展开）。与地图缩放条同一套图标。 */
+    body.legend-pinned .cgo-sb-hctl-toggle cgo-icon {
+        display: none;
+    }
+
+    body.legend-pinned .cgo-sb-hctl-toggle cgo-icon[name="zoom-out"] {
+        display: inline-block;
+    }
+
+    body.legend-pinned .station-history-section.collapsed .cgo-sb-hctl-toggle cgo-icon[name="zoom-out"],
+    body.legend-pinned .panel-section.collapsed .cgo-sb-hctl-toggle cgo-icon[name="zoom-out"] {
+        display: none;
+    }
+
+    body.legend-pinned .panel-section.collapsed .cgo-sb-hctl-toggle cgo-icon[name="zoom-in"] {
+        display: inline-block;
+    }
+
+    /* ── 区块统一的最大高度（布局模型见 README 第六节）────────────────────────
+       任何一块都不得超过它，超出则在自己的内容区里滚 —— 侧栏于是永远不会被某一块撑溢。
+       （此前「规划行程」展开时内容很高，会把下面的图例与车站窗口顶到视口外、且侧栏不可滚。）
+       值挂变量、便于统一调整：默认取「侧栏可用高度」的约六成，给其余折叠头留足位置。 */
+    :root {
+        --cgo-sb-sec-max: calc((100dvh - var(--cgo-sb-top) - var(--cgo-sb-inset)) * 0.6);
+    }
+
+    /* 只作用于 #legend-content 的直接子区块（搜索 / 图例 / 规划行程）；
+       动态区里的车站窗口与路线结果由核心的 flex 模型分配高度（展开者吃剩余、min-height:0 自滚），
+       本就不溢出，不再重复加帽。搜索是矮块，豁免。 */
+    body.legend-pinned #legend-content > .panel-section:not(#section-search) > .section-body {
+        max-height: var(--cgo-sb-sec-max);
+    }
+
+    /* 一般区块（图例）：内容区自己滚 */
+    body.legend-pinned #legend-content > .panel-section:not(#section-search):not(#cgo-route-card) > .section-body {
+        overflow-y: auto !important;
+    }
+
+    /* ── 规划行程卡片：外层定高 flex 列、内层 .panel-body 滚 ────────────────────
+       卡片正文是 .panel-body、底栏 .panel-footer 是它的兄弟（都在 .cgo-rt-section-body 里）。
+       把滚动交给内层的 .panel-body，底栏就天然被固定在卡片底部——不必用 sticky
+       （sticky 在带内边距的滚动容器里会露出侧边缝隙，内容从底栏两侧滑过）。 */
+    body.legend-pinned #cgo-route-card .cgo-rt-section-body {
+        /* 压过 route-panel.css 的 overflow: visible：候选列表早已改成内容流内联展开，不需要探出 */
+        overflow: hidden !important;
+    }
+
+    body.legend-pinned #cgo-route-card .cgo-rt-section-body > .panel-body {
+        flex: 1 1 auto !important;   /* 压过 route-panel.css 的 flex: none */
+        min-height: 0;
+        overflow-y: auto !important;
+    }
+
+    /* 「快速前往」网格：不要再自带限高自滚 —— 外层 .panel-body 已经统一限高自滚，
+       两层滚动条并存很难用；让它自然撑开，由外层滚动接管。 */
+    body.legend-pinned #cgo-route-card .cgo-rt-quickgo-grid {
+        max-height: none !important;
+        overflow-y: visible !important;
+    }
+
+    /* ── 动态区（车站窗口 / 路线结果）：只允许一层滚动 ─────────────────────────
+       动态区本身**不滚**（保持上面那条 `overflow: visible`）；展开的那个窗口由核心的
+       `flex: 1; min-height: 0` 限制在动态区高度内，内容在**窗口内部**滚——这就是唯一那层滚动。
+       ⚠️ 两条禁止（都实测踩过）：
+         · 不要给动态区加 `overflow-y: auto` —— 会叠出第二层滚动（外滚 + 内滚），
+           于是「窗口有上千像素高、只能靠外层滚着看」的错位就会出现；
+         · 不要给展开窗口加 `min-height`（如 22em）—— 高度恒 ≥ 下限会让
+           `sidebar-refit.js` 的 `refitExpandedSection()` 里「已够高就到此为止」永远成立，
+           **把高度清退机制彻底架空**（清退永远不触发）。
+       窗口堆不下时由那套清退兜底：不足 22em 就从**最旧**的折叠窗口开始清。 */
 
     /* ── 3. 标题栏线路标：结果面板同款正方/正圆徽标的缩小版，紧贴标题文本 ───────── */
     /* 原本是 8px 纯色方块且被空间均分推到中间；现在改成徽标并贴到站名/起终点文案之后，

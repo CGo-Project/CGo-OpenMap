@@ -639,7 +639,9 @@
         // 拖动与移动端抽屉只属于浮层形态：侧栏里的面板由侧栏布局接管，不该被拖走
         if (mode === "float") {
             makeDraggable(panel);
-            installDrawer(panel);
+            // 规划面板内容短：半屏禁滚 + 上滑优先展开
+            installDrawer(panel, { lockHalfScroll: true });
+            panel._cgoSheetDrag?.refresh?.();   // 面板被复用重建时，内容容器已换新，重同步滚动锁
         }
         trackPanel(panel);
         return panel;
@@ -1481,7 +1483,9 @@
         bindResultEvents(panel);
         if (mode === "float") {
             makeDraggable(panel);
-            installDrawer(panel);
+            // 结果面板是长步骤列表：半屏保留原生滚动（滚动到边界才跟手换档）
+            installDrawer(panel, { lockHalfScroll: false });
+            panel._cgoSheetDrag?.refresh?.();
         }
         trackPanel(panel);
         return panel;
@@ -2673,11 +2677,9 @@
         setTimeout(() => {
             if (panelMode() !== "section") return;
             if (draggedResult) {
-                // 结果面板保持可见展开，其余一并让位
-                setPlanExpanded(false);
+                // 结果面板保持可见展开，其余一并让位（含搜索——它平时不与结果互斥，这次要一起收）
+                sideLayoutApi()?.collapseOthers("result");
                 document.getElementById("section-search")?.classList.add("collapsed");
-                document.getElementById("section-legend-tree")?.classList.add("collapsed");
-                collapseStationSections();
                 const result = livePanel(RESULT_ID);
                 if (result?.dataset.cgoMode === "section" && result.classList.contains("collapsed")) {
                     // 迁移途中可能已被互斥观察器顺手收掉，而用户拖过来就是要看它，补回展开态
@@ -2787,87 +2789,61 @@
 
     /**
      * 移动端抽屉：拖动把手或标题栏跟手调整高度，松手吸附到「最小化 / 半屏 / 全屏」三档；
-     * 轻点把手依次循环三档。核心的 initMobileSheetDrag() 是写死在 #info-panel 上的三档
-     * 甩动系统，无法复用，故按其档位语义做一个精简版；桌面端把手隐藏、整段逻辑不生效。
+     * 轻点循环三档。拖动与内容区手势都委托给共享层通用引擎 shared/sheet-drag.js——
+     * 位置空间是面板的 `height`、档位是面板自身的 `drawer-*` 类；桌面端把手隐藏、整段不生效。
+     * @param {HTMLElement} panel
+     * @param {{lockHalfScroll?: boolean}} [opts] 半屏是否禁掉内容区原生滚动：
+     *        规划面板 true（半屏上滑优先展开）；结果面板 false（长步骤列表得能在半屏滚动）
      */
-    function installDrawer(panel) {
+    function installDrawer(panel, opts) {
         if (panel.querySelector(".cgo-rt-grabber")) return;
         const grabber = document.createElement("div");
         grabber.className = "cgo-rt-grabber";
         grabber.title = "拖动调整高度";
         panel.insertBefore(grabber, panel.firstChild);
 
+        if (!window.CGoSheetDrag) return;   // 引擎未就绪：退化为不可拖（不报错）
+        panel._cgoSheetDrag?.destroy();
+
         const viewportHeight = () => window.visualViewport?.height || window.innerHeight;
         const header = panel.querySelector(".panel-header");
-        let dragging = false, moved = false, startY = 0, startHeight = 0;
-
         // 最小化档的高度 = 把手 + 标题栏（内容区与底栏折叠后的自然高度）
         const minHeight = () => grabber.offsetHeight + header.offsetHeight;
-        const detents = () => {
-            const vh = viewportHeight();
-            // half 取 60vh，与半屏档的 max-height 上限对齐：半屏实际高度是「内容自适应、
-            // 60vh 封顶」，吸附基准若还按旧的 40vh 算，拖到半屏位置会被误判成最小化或全屏
-            return { min: minHeight(), half: vh * 0.6, full: vh - 60 };
-        };
 
-        const onDown = (event) => {
-            if (window.innerWidth > 640) return;
-            // 标题栏上还有「重新选择 / 关闭」等按钮，点它们照常走点击，不起拖
-            if (event.target.closest("button") || event.target.closest("a")) return;
-            dragging = true;
-            moved = false;
-            startY = event.clientY;
-            startHeight = panel.getBoundingClientRect().height;
-            panel.classList.add("cgo-rt-dragging");   // 拖动期间禁掉标题栏站名的文本选中
-            routeBackdrop().classList.remove("show"); // 拖动期间收回填色，落定后再按档位展开
-            // 半屏档的 max-height:60vh 带 !important，会压死内联 height 让面板拖不高，
-            // 拖动期间必须先解除，落定后再交回 CSS
-            panel.style.setProperty("max-height", "none", "important");
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-        };
-
-        const onMove = (event) => {
-            if (!dragging) return;
-            const dy = startY - event.clientY;
-            if (Math.abs(dy) > 4) moved = true;
-            const { min, full } = detents();
-            const next = Math.min(Math.max(startHeight + dy, min), full);
-            // 改 height 而非 max-height：内容不足时 max-height 既撑不高、也切不到档
-            panel.style.height = `${Math.round(next)}px`;
-        };
-
-        const settle = () => {
-            if (!dragging) return;
-            dragging = false;
-            panel.classList.remove("cgo-rt-dragging");
-            // 必须在清空内联 height 之前量，否则拿到的是档位高度而非拖到的位置
-            const dragged = panel.getBoundingClientRect().height;
-            const { min, half, full } = detents();
-            panel.style.height = "";                    // 交回 CSS 档位控制
-            panel.style.removeProperty("max-height");   // 恢复该档位的高度上限
-
-            if (!moved) {
-                // 轻点把手：最小化 → 半屏 → 全屏 → 最小化 循环
-                const current = panel.classList.contains("drawer-min") ? "min"
-                    : panel.classList.contains("drawer-full") ? "full" : "half";
-                applyDrawerStage(panel, current === "min" ? "half" : current === "half" ? "full" : "min");
-                return;
-            }
-            const nearest = [
-                { name: "min", height: min },
-                { name: "half", height: half },
-                { name: "full", height: full }
-            ].reduce((a, b) => (Math.abs(dragged - b.height) < Math.abs(dragged - a.height) ? b : a));
-            applyDrawerStage(panel, nearest.name);
-        };
-
-        // 把手与标题栏共用同一套档位拖动；标题栏的按钮已由 onDown 排除
-        [grabber, header].forEach((handle) => {
-            if (!handle) return;
-            handle.addEventListener("pointerdown", onDown);
-            handle.addEventListener("pointermove", onMove);
-            handle.addEventListener("pointerup", settle);
-            handle.addEventListener("pointercancel", settle);
+        panel._cgoSheetDrag = window.CGoSheetDrag.create({
+            panel,
+            getScrollEl: () => panel.querySelector(".panel-body"),
+            stages: ["min", "half", "full"],
+            halfStage: "half",
+            lockHalfScroll: !opts || opts.lockHalfScroll !== false,
+            // 档位类在面板自身；且面板会被整体重建，故不把观察器挂到 document.body（否则泄漏）
+            stageObserveEl: panel,
+            getStage: () => panel.classList.contains("drawer-min") ? "min"
+                : panel.classList.contains("drawer-full") ? "full" : "half",
+            detents: () => {
+                const vh = viewportHeight();
+                // half 取 60vh，与半屏档的 max-height 上限对齐：半屏实际高度是「内容自适应、
+                // 60vh 封顶」，吸附基准若还按旧的 40vh 算，拖到半屏位置会被误判成最小化或全屏
+                return { min: minHeight(), half: vh * 0.6, full: vh - 60 };
+            },
+            deltaSign: -1,                                  // height 空间：手指上滑 → 高度变大
+            readPosition: () => panel.getBoundingClientRect().height,
+            writePosition: (p) => { panel.style.height = `${Math.round(p)}px`; },
+            clearPosition: () => {
+                panel.style.height = "";                    // 交回 CSS 档位控制
+                panel.style.removeProperty("max-height");   // 恢复该档位的高度上限
+            },
+            beginDrag: () => {
+                panel.classList.add("cgo-rt-dragging");     // 拖动期间禁掉标题栏站名的文本选中
+                routeBackdrop().classList.remove("show");   // 拖动期间收回填色，落定后再按档位展开
+                // 半屏档的 max-height:60vh 带 !important，会压死内联 height 让面板拖不高，
+                // 拖动期间必须先解除，落定后再交回 CSS
+                panel.style.setProperty("max-height", "none", "important");
+            },
+            endDrag: () => panel.classList.remove("cgo-rt-dragging"),
+            applyStage: (name) => applyDrawerStage(panel, name),
+            // 轻点把手 / 标题栏：最小化 → 半屏、半屏 ⇄ 全屏（与车站详情面板同一套循环）
+            tapTarget: (cur) => (cur === "full" ? "half" : cur === "half" ? "full" : "half")
         });
     }
 
@@ -3058,13 +3034,19 @@
      * 固定侧栏入驻：槽位同步、折叠接管与互斥展开
      * ==================================================================== */
 
-    /** 查询面板落在「搜索」区块之后（两者相邻，互斥展开的观感才连贯） */
+    /**
+     * 查询面板落在「搜索」区块之后（两者相邻，互斥展开的观感才连贯）。
+     * ⚠️ 地图小工具区块也要占这一带（见 map-tools.js 的 ensureToolsSection），两个都往「搜索之后」
+     *    挤会互相顶、来回跳；故约定死顺序：**搜索 → 工具 → 规划**——小工具在时排到它后面。
+     */
     function mountPlanSection(panel) {
         const content = document.getElementById("legend-content");
         if (!content) return;
         const search = document.getElementById("section-search");
-        if (panel.parentElement !== content || panel.previousElementSibling !== search) {
-            content.insertBefore(panel, search ? search.nextSibling : content.firstChild);
+        const tools = document.getElementById("cgo-map-tools-section");
+        const anchor = tools && tools.parentElement === content ? tools : search;
+        if (panel.parentElement !== content || panel.previousElementSibling !== anchor) {
+            content.insertBefore(panel, anchor ? anchor.nextSibling : content.firstChild);
         }
         takeOverHeader(panel);
     }
@@ -3090,20 +3072,31 @@
         if (header) header.onclick = null;
     }
 
-    /** 收起动态内容区里的历史车站区块（车站详情面板停靠在其中，一并让出位置） */
-    function collapseStationSections() {
-        document.querySelectorAll("#sidebar-dynamic-content .station-history-section")
-            .forEach((section) => section.classList.add("collapsed"));
+    /**
+     * 把「规划行程 / 路线结果」的收起方式登记给侧栏布局协调器（sidebar-refit.js 第 5 节）。
+     * 懒登记：本模块早于 sidebar-refit.js 加载（且必须维持该顺序——它的样式表要压过本模块的），
+     * 故不在模块顶层登记，改为首次用到时登记一次。
+     * 登记的是**函数**而不是让协调器硬编码类名：这两块在浮层 / 侧栏两种形态下收起写法不同
+     * （浮层要摘 show 并出栈、规划还要同步 planExpanded 真源），那份知识只在 owner 手里。
+     */
+    let layoutRegistered = false;
+    function sideLayoutApi() {
+        const api = window.CGoSidebarRefit;
+        if (!api || typeof api.registerHighSection !== "function") return null;
+        if (!layoutRegistered) {
+            layoutRegistered = true;
+            api.registerHighSection("plan", () => setPlanExpanded(false));
+            api.registerHighSection("result", () => collapseResultSection());
+        }
+        return api;
     }
 
     /**
-     * 结果面板入场时腾出侧栏空间：规划行程、图例分区与历史车站区块一并收起，
-     * 把纵向空间整块让给路线结果。三者都能在结果收起后手动展开回来。
+     * 结果面板入场时腾出侧栏空间：让位给结果（收起规划行程、图例与历史车站区块）。
+     * 「单展开」规则本身只在 sidebar-refit 第 5 节实现一次，这里只说「谁胜出」。
      */
     function makeRoomForResult() {
-        setPlanExpanded(false);
-        document.getElementById("section-legend-tree")?.classList.add("collapsed");
-        collapseStationSections();
+        sideLayoutApi()?.collapseOthers("result");
     }
 
     /**
@@ -3142,12 +3135,9 @@
         clearHighlight();
     }
 
-    /** 侧栏里让位给规划行程：搜索、图例、历史车站区块与路线结果一并收起 */
+    /** 侧栏里让位给规划行程：搜索、图例、历史车站区块与路线结果一并收起（规则见 sidebar-refit 第 5 节） */
     function yieldSidebarToPlan() {
-        document.getElementById("section-search")?.classList.add("collapsed");
-        document.getElementById("section-legend-tree")?.classList.add("collapsed");
-        collapseStationSections();
-        collapseResultSection();
+        sideLayoutApi()?.collapseOthers("plan");
     }
 
     /**
@@ -3157,9 +3147,7 @@
      * 收回去（那条分支本意是拦核心自动停靠的车站详情，见 bindExclusiveSections）。
      */
     function yieldSidebarToStation() {
-        setPlanExpanded(false);
-        document.getElementById("section-legend-tree")?.classList.add("collapsed");
-        collapseResultSection();
+        sideLayoutApi()?.collapseOthers("station");
     }
 
     /**
@@ -3244,6 +3232,7 @@
         if (exclusiveObserver) exclusiveObserver.disconnect();
         exclusiveObserver = null;
         if (!plan) return;
+        sideLayoutApi();   // 先把 plan / result 的收起方式登记给协调器（懒登记，见上）
         exclusiveObserver = new MutationObserver((records) => {
             let expanded = null;
             for (const record of records) {
@@ -3272,9 +3261,8 @@
                 return;
             }
             if (id === "section-legend-tree") {
-                setPlanExpanded(false);
-                collapseStationSections();
-                collapseResultSection();
+                // 图例胜出：收起其余全部占高区块（搜索是矮块、保持不动）
+                sideLayoutApi()?.collapseOthers("legend");
                 return;
             }
             // 剩下就是车站详情区块。它此刻展开有两种来路：
@@ -3284,12 +3272,12 @@
             //      走 setTimeout，绕过上面那条捕获监听）—— 此时用户拖过来的那个面板还亮着。
             // 第 2 种是「用户拖路线面板过来、却被一个自动冒出的车站详情抢走展开位」，故反过来收起它。
             if (isResultVisible() || planExpanded) {
-                collapseStationSections();
+                // 结果 / 规划仍占着位：这次展开是核心自动停靠的，反手把它收回去（只收临时块）
+                window.CGoSidebarRefit?.collapseStationWindows();
                 return;
             }
-            setPlanExpanded(false);
-            collapseResultSection();
-            document.getElementById("section-legend-tree")?.classList.add("collapsed");
+            // 用户点的：车站详情胜出，收起其余全部占高区块
+            sideLayoutApi()?.collapseOthers("station");
         });
         [search, legend, plan].forEach((section) => {
             if (section) exclusiveObserver.observe(section, {

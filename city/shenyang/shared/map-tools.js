@@ -339,6 +339,122 @@
         new ResizeObserver(() => window.CGoViewportInset?.refresh?.()).observe(el);
     }
 
+    /* ======================================================================
+     * 固定侧栏形态：同一个区块、两个层级
+     *
+     * 浮层形态下「工具列表」与「结果小窗」是两个贴右下的浮层、同一位置、同时只留一个。
+     * 固定侧栏形态下把它们搬进侧栏区块 #cgo-map-tools-section（一个 .panel-section）——
+     * 于是「列表 → 点工具 → 结果」就是同一个区块里换层级，与母产品一致（README 第六节 6.4）。
+     * 面板元素本身仍在 document.body 上按需创建，只是被 appendChild 进区块里；
+     * 核心重渲 #legend-content 会把区块（连同其中的面板）一起清掉，故重渲后补挂区块、
+     * 并给当时正开着的工具 closePanel() 收尾（UI 已不复存在，别留一地画布叠加层）。
+     * ==================================================================== */
+    const SECTION_ID = "cgo-map-tools-section";
+    const SIDEBAR_CONTENT_ID = "legend-content";
+    /** 区块标题：各层会把当前工具名写进它，收尾时要复位（见 closePanel） */
+    const SECTION_TITLE = "地图小工具";
+    const inPinnedSidebar = () => window.innerWidth > 640 && document.body.classList.contains("legend-pinned");
+    const toolsSection = () => document.getElementById(SECTION_ID);
+
+    /** 取（必要时创建并挂回）侧栏里的「地图小工具」区块：**紧贴搜索栏下方** */
+    function ensureToolsSection() {
+        let section = toolsSection();
+        if (!section) {
+            section = document.createElement("div");
+            section.id = SECTION_ID;
+            section.className = "panel-section cgo-mt-section collapsed";
+            // 告诉 sidebar-refit：本区块的展开要走「单展开」规则（README 第六节 6.2）
+            section.dataset.cgoHighId = "tools";
+            section.innerHTML = `
+                <div class="section-header">
+                    <span class="section-title-text">${SECTION_TITLE}</span>
+                    <cgo-icon name="expand-more" class="section-arrow"></cgo-icon>
+                </div>
+                <div class="section-body"></div>
+            `;
+        }
+        const content = document.getElementById(SIDEBAR_CONTENT_ID);
+        const search = document.getElementById("section-search");
+        if (content) {
+            const anchored = search
+                ? section.previousElementSibling === search
+                : section.parentElement === content && section === content.lastElementChild;
+            if (!anchored) content.insertBefore(section, search ? search.nextSibling : null);
+        }
+        watchSectionExpand(section);
+        return section;
+    }
+
+    /**
+     * 侧栏形态：从标题栏**单独展开**本区块时也要有初始内容（工具列表）。
+     * 之前只有从「更多」菜单 / 面板按钮进来才会填内容，直接点标题栏展开就是一片空白（实测踩过）。
+     */
+    function watchSectionExpand(section) {
+        if (section.dataset.cgoMtWatched === "true") return;
+        section.dataset.cgoMtWatched = "true";
+        new MutationObserver(() => {
+            // 选站期间绝不动内容：那会把 state.picking 清掉（见 closePanel），
+            // 用户随后点的车站就变成普通点站、直接打开详情了（实测踩过）
+            if (state.picking) return;
+            if (section.classList.contains("collapsed")) return;
+            if (section.querySelector(".cgo-mt-panel.show")) return;   // 已有内容（开着某一层）
+            openTools(state.preset);
+        }).observe(section, { attributes: true, attributeFilter: ["class"] });
+    }
+
+    /** 已注入过「返回」的结果面板（WeakSet 防重复挂观察器） */
+    const backInjected = new WeakSet();
+
+    /**
+     * 侧栏形态的结果层：「返回」按用户要求做成**一枚 .cgo-mt-quick，放进结果的操作行 .cgo-mt-actions**。
+     * 操作行是各工具渲染正文时才生成的，故这里盯住面板子树，出现且尚未注入时补一枚。
+     */
+    function watchResultActions(panel) {
+        if (backInjected.has(panel)) return;
+        backInjected.add(panel);
+        const inject = () => {
+            const actions = panel.querySelector(".cgo-mt-actions");
+            if (!actions || actions.querySelector(".cgo-mt-back")) return;
+            const back = document.createElement("button");
+            back.type = "button";
+            back.className = "cgo-mt-quick cgo-mt-back";
+            back.innerHTML = '<cgo-icon name="arrow-right" size="13"></cgo-icon>返回工具列表';
+            back.addEventListener("click", () => openTools(state.preset));
+            actions.insertBefore(back, actions.firstChild);
+        };
+        new MutationObserver(inject).observe(panel, { childList: true, subtree: true });
+        inject();
+    }
+
+    /** 侧栏形态：展开工具区块（顺带按单展开规则收起其余占高区块） */
+    function expandToolsSection() {
+        const section = ensureToolsSection();
+        window.CGoSidebarRefit?.collapseOthers("tools");
+        section.classList.remove("collapsed");
+    }
+
+    /** 侧栏形态的「收起 / 关闭工具」：收起区块，并把正在进行的工具连同画布叠加一并关掉 */
+    function collapseToolsSection() {
+        toolsSection()?.classList.add("collapsed");
+        hidePanel(MENU_ID);
+        closePanel();
+    }
+
+    /** 核心重渲 #legend-content 会连本区块一起清掉：补挂区块（并保持贴在搜索栏下方），并给正在进行的工具收尾 */
+    function watchSidebarContent() {
+        const content = document.getElementById(SIDEBAR_CONTENT_ID);
+        if (!content) return;
+        new MutationObserver(() => {
+            if (!inPinnedSidebar()) return;
+            // 区块被清掉 → 里面的面板也没了，先收尾（清画布叠加与状态）
+            if (!toolsSection()) closePanel();
+            ensureToolsSection();   // 补挂；已锚在搜索栏下方时为空操作（内部有 anchored 判断）
+        }).observe(content, { childList: true });
+    }
+
+    // 登记给侧栏布局协调器：别的区块胜出时按这套收起本区块（规则见 sidebar-refit 第 5 节）
+    window.CGoSidebarRefit?.registerHighSection("tools", collapseToolsSection);
+
     /**
      * 面板外壳：工具列表与结果小窗共用同一套外观、位置与标题栏。
      * 关窗动作由调用方给（结果小窗要连画布与叠加层一并清理，不能只藏起面板）。
@@ -349,30 +465,54 @@
             el = document.createElement("div");
             el.id = id;
             el.className = "cgo-mt-panel";
-            // 本模块的浮层都贴右下角：向引擎声明右下留白，别让地图内容压在它下面
-            el.setAttribute(INSET_ATTR, "right bottom");
             document.body.appendChild(el);
             watchPanelSize(el);
         }
-        el.innerHTML = `
-            <div class="cgo-mt-head">
-                <span class="cgo-mt-head-title"></span>
-                <button type="button" class="cgo-mt-close" title="关闭">
-                    <cgo-icon name="close" size="14"></cgo-icon>
-                </button>
-            </div>
-            <div class="cgo-mt-body"></div>
-        `;
-        const headTitle = el.querySelector(".cgo-mt-head-title");
-        // 汇合图的标题里带一个矢量箭头图标，故标题允许给 HTML（其余仍走文本）
-        if (asHtml) headTitle.innerHTML = title;
-        else headTitle.textContent = title;
-        el.querySelector(".cgo-mt-close").addEventListener("click", onClose);
+        const section = inPinnedSidebar() ? ensureToolsSection() : null;
+        if (section) {
+            // 侧栏形态：标题搬到区块标题栏（不再有层级条），面板只留正文
+            el.innerHTML = `<div class="cgo-mt-body"></div>`;
+            const titleEl = section.querySelector(".section-title-text");
+            if (titleEl) titleEl.textContent = asHtml ? String(title).replace(/<[^>]*>/g, "").trim() : title;
+        } else {
+            el.innerHTML = `
+                <div class="cgo-mt-head">
+                    <span class="cgo-mt-head-title"></span>
+                    <button type="button" class="cgo-mt-close" title="关闭">
+                        <cgo-icon name="close" size="14"></cgo-icon>
+                    </button>
+                </div>
+                <div class="cgo-mt-body"></div>
+            `;
+            const headTitle = el.querySelector(".cgo-mt-head-title");
+            // 汇合图的标题里带一个矢量箭头图标，故标题允许给 HTML（其余仍走文本）
+            if (asHtml) headTitle.innerHTML = title;
+            else headTitle.textContent = title;
+            el.querySelector(".cgo-mt-close").addEventListener("click", onClose);
+        }
+        // 侧栏形态：把面板搬进工具区块；.cgo-mt-in-section 由 CSS 把它从「贴右下浮层」复位成区块内的普通容器。
+        // 同时撤销右下留白声明——它不再吃画布空间了（侧栏自己让位）。
+        if (section) {
+            const body = section.querySelector(".section-body");
+            if (body && el.parentElement !== body) body.appendChild(el);
+            el.classList.add("cgo-mt-in-section");
+            el.removeAttribute(INSET_ATTR);
+            // 结果层：把「返回」补进工具自己的操作行（内容渲染完成后注入）
+            if (id === PANEL_ID) watchResultActions(el);
+        } else {
+            if (el.parentElement !== document.body) document.body.appendChild(el);
+            el.classList.remove("cgo-mt-in-section");
+            el.setAttribute(INSET_ATTR, "right bottom");
+        }
         return el;
     }
 
     function showPanel(id) {
-        document.getElementById(id)?.classList.add("show");
+        const el = document.getElementById(id);
+        if (!el) return;
+        // 侧栏形态：显示某一层 = 展开区块（并收起其余占高区块）
+        if (inPinnedSidebar()) expandToolsSection();
+        el.classList.add("show");
     }
 
     function hidePanel(id) {
@@ -392,6 +532,7 @@
      *   省掉再点一次地图。
      */
     function openTools(preset) {
+        state.preset = preset;   // 侧栏形态的「返回」要复用这次进来时带的预设车站
         // 工具列表与结果小窗同一位置，故同时只留一个
         closePanel();
         const el = shell(MENU_ID, "地图小工具", () => hidePanel(MENU_ID));
@@ -465,6 +606,27 @@
         return document.getElementById("map-content");
     }
 
+    /** 地图最外层舞台（#map-container）：选站监听挂这里，覆盖一切落在地图上的点击
+        （init 里记 lastTappedStationId 也挂在它上面，同一层） */
+    function mapStage() {
+        return document.getElementById("map-container");
+    }
+
+    /**
+     * 从点击目标解析车站 ID。与核心同口径（`.station` / `.label-group` / `[data-sid]`，
+     * 见 script.js 的右键菜单解析），再兜一层 `node_<sid>` / `label_<sid>` 的 id 形式——
+     * 站点与标签的 `data-sid` 挂在**外层 div** 上，而城市侧自定义的图元（如呼出框引线、
+     * 部分 SVG 图元）并不带它；只认 `[data-sid]` 会让这些点击解析不出车站，
+     * 于是选站态被跳过、点击直接落到核心的「打开车站详情」（实测踩过）。
+     */
+    function pickStationId(target) {
+        const el = target?.closest?.(".station, .label-group, [data-sid]");
+        if (el?.dataset?.sid) return el.dataset.sid;
+        const named = target?.closest?.("[id^='node_'], [id^='label_']");
+        const matched = named?.id?.match(/^(?:node|label)_(.+)$/);
+        return matched ? matched[1] : "";
+    }
+
     function startPick(tool, presetStationId) {
         if (!TOOLS[tool]) return;
         if (!Object.keys(stations()).length) { alert("线路图尚未就绪，请稍后再试。"); return; }
@@ -475,7 +637,10 @@
         // 选点期间站名标签与站点一并成为点击热区，指针样式由 map-tools.css 接管
         mapContent()?.classList.add("cgo-mt-picking");
         showPickTip();
-        mapContent()?.addEventListener("click", onPickClick, true);
+        // 侧栏形态：点选期间把区块收起——浮层形态这里是 hidePanel 把面板藏起来，
+        // 侧栏里若不收，就只剩一张展开的空卡片（实测观感很怪）
+        if (inPinnedSidebar()) toolsSection()?.classList.add("collapsed");
+        mapStage()?.addEventListener("click", onPickClick, true);
         emit("cgo:map-tools-picking", { tool });
     }
 
@@ -498,20 +663,18 @@
         if (!state.picking) return;
         state.picking = null;
         mapContent()?.classList.remove("cgo-mt-picking");
-        mapContent()?.removeEventListener("click", onPickClick, true);
+        mapStage()?.removeEventListener("click", onPickClick, true);
         document.getElementById(PICK_TIP_ID)?.classList.remove("show");
     }
 
     function onPickClick(event) {
         const tool = state.picking;
         if (!tool) return;
-        // 站点与站名标签都带 data-sid（与行程规划的选点同口径）
-        const node = event.target.closest?.("[data-sid]");
-        if (!node) return;
+        const sid = pickStationId(event.target);
+        if (!sid) return;
         // 拦下这次点击，避免同时打开车站详情面板
         event.preventDefault();
         event.stopPropagation();
-        const sid = node.dataset.sid;
         // 选不了的站（未开通、国铁散点）当没点到：不撤选站态、也不去报"不参与规划"。
         // 真实指针路径上 CSS 已经把这两类的 pointer-events 撤了、事件会穿透过去；
         // 这里兜的是"事件被别处直接派发"或将来类名变动的情形 —— 那种时候不该把选站态弄丢
@@ -544,9 +707,8 @@
         if (state.tool !== "meet" || state.picking) return;
         const targets = state.stationId;
         if (!Array.isArray(targets) || targets.length !== 2) return;
-        const node = event.target.closest?.("[data-sid]");
-        if (!node) return;
-        const sid = node.dataset.sid;
+        const sid = pickStationId(event.target);   // 与 onPickClick 同一套解析（别只认 data-sid）
+        if (!sid) return;
         if (targets.includes(sid) || !isPickable(sid)) return;
         event.preventDefault();
         event.stopPropagation();
@@ -558,7 +720,9 @@
     let meetAddBound = false;
 
     function syncMeetAdd(on) {
-        const host = mapContent();
+        // 与选站监听挂在同一层（#map-container）：挂在 #map-content 上会漏掉落在其它图层/图元上的点击，
+        // 于是这一下既没被拦、又直接落到核心的「打开车站详情」（实测：选站那边就是这个原因）
+        const host = mapStage();
         if (!host || on === meetAddBound) return;
         meetAddBound = on;
         if (on) host.addEventListener("click", onMeetAddClick, true);
@@ -2174,6 +2338,15 @@
         state.rangeQueued = false;
         // 本来就没开着（如点工具按钮时顺手收一遍）就不必报一次空事件
         if (tool) emit("cgo:map-tools-closed", { tool });
+        // 侧栏形态：关掉工具即收起区块（浮层形态没有区块，此段空操作）。
+        // 标题一并复位——它会被各层改写成当前工具名（如「票价图」），画布都清空了还挂着旧名，
+        // 会让人以为工具仍在、还能接着展开（用户反馈）。
+        if (inPinnedSidebar() && toolsSection()) {
+            const section = toolsSection();
+            section.classList.add("collapsed");
+            const titleEl = section.querySelector(".section-title-text");
+            if (titleEl) titleEl.textContent = SECTION_TITLE;
+        }
     }
 
     function clearCanvas() {
@@ -2608,6 +2781,8 @@
     }
 
     function init() {
+        // 固定侧栏形态：盯住 #legend-content，核心重渲后把「地图小工具」区块补挂回去
+        watchSidebarContent();
         // 悬停读数挂在容器上：画布自身 pointer-events: none，地图的拖拽与缩放照常
         const container = document.getElementById("map-container");
         container?.addEventListener("mousemove", onHover);

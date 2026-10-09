@@ -1,0 +1,41 @@
+/**
+ * CGo OpenMap - 移动端车站详情抽屉「手势仲裁」样式 (shared/panel-sheet-gesture.css)
+ *
+ * 只做一件事：把 core 在移动端给 #info-panel 打的 touch-action: none 拆开分区，
+ * 放行内容区的原生纵向滚动（以及页签栏的横向滚动），其余区域仍不参与滚动。
+ * 手势仲裁逻辑见同目录 panel-sheet-gesture.js。
+ */
+@media (max-width: 640px) {
+    /* 面板默认放行纵向：内容区（.panel-body）据此恢复原生滚动
+       （core 在 @media(max-width:640px) 里写的是 none，本表晚注入、同选择器覆盖） */
+    #info-panel {
+        touch-action: pan-y !important;
+    }
+
+    /* 头部 / 把手 / 底栏：不参与滚动，仍旧交给脚本（core 的跟手拖拽 + 本模块的换档） */
+    #info-panel .panel-header,
+    #info-panel .sheet-grabber,
+    #info-panel .panel-footer {
+        touch-action: none !important;
+    }
+
+    /* 页签栏：保持横向可滑（纵向不参与，免得误触抽屉） */
+    #info-panel .panel-tabs-nav {
+        touch-action: pan-x !important;
+    }
+
+    /* 内容区：全屏下纵向滚动，且不把滚动链传出面板。
+       ⚠️ 半屏禁滚实际由 JS 用内联 !important 接管（见 panel-sheet-gesture.js 的 syncBodyTouchAction，
+       不依赖样式表是否命中），下列规则只作 JS 未运行时的兜底。 */
+    #info-panel .panel-body {
+        touch-action: pan-y !important;
+        overscroll-behavior: contain;
+    }
+
+    /* 半屏：禁掉内容区的原生滚动。
+       否则「半屏上滑想展开」会被浏览器先抢去滚内容（我们介入时 touchmove 已不可取消），
+       跟手起不来。半屏可视区本就小，想看更多直接上滑展开到全屏再滚即可。 */
+    body.mobile-split-active:not(.mobile-panel-expanded):not(.panel-sheet-collapsed) #info-panel .panel-body {
+        touch-action: none !important;
+    }
+}

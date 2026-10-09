@@ -920,6 +920,55 @@ body.legend-pinned:not(.pinned-hidden) .cgo-mt-pick-tip {
     cursor: pointer;
 }
 
+/* ── 固定侧栏形态：本模块收进侧栏区块（#cgo-map-tools-section）后，浮层外壳复位 ──────
+   面板元素仍由 map-tools.js 按需创建，只是被搬进区块的 .section-body；这里把它从
+   「贴右下的固定浮层」复位成区块内的普通纵向容器，标题栏缩成「层级条」（返回 + 层标题 + 关闭）。
+   与浮层形态共用同一套内容结构，故只在 .cgo-mt-in-section 上做覆盖。 */
+.cgo-mt-panel.cgo-mt-in-section {
+    position: static;
+    right: auto;
+    bottom: auto;
+    z-index: auto;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.cgo-mt-panel.cgo-mt-in-section.show {
+    display: flex;
+}
+
+/* 区块正文：纵向排布 + 让面板吃掉区块给的高度。
+   内边距**交给面板自己的 .cgo-mt-body**（与浮层形态同一份 14px），这里清零避免双重缩进——
+   先前反过来（区块给内边距、面板清零）在侧栏里没生效、内容贴边（实测）。 */
+body.legend-pinned .cgo-mt-section > .section-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+}
+
+/* 正文：吃掉剩余高度并自滚（内边距由 .cgo-mt-body 自己那份给） */
+.cgo-mt-panel.cgo-mt-in-section .cgo-mt-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* 「返回工具列表」：按用户意见做成操作行里的一枚 .cgo-mt-quick（外观全由它给），
+   只补一条——CGoUI 只有 arrow-right，翻转过来当「返回」用 */
+.cgo-mt-back {
+    flex: none;
+}
+
+.cgo-mt-back cgo-icon {
+    transform: rotate(180deg);
+}
+
 /* ── 移动端：面板贴底全宽，提示条避让刘海 ─────────────────────── */
 @media (max-width: 640px) {
     .cgo-mt-panel {

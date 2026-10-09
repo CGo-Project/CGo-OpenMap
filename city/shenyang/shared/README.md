@@ -46,6 +46,8 @@
 | `nearest-station.js` + `nearest-station.css` | 无对外接口（自动接管 `#locate-btn`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 跨城市「查找最近车站」：在 `#locate-btn` 上以**捕获阶段**扣下核心 `findNearestStation` 的点击，本模块自足地定位、换算 GCJ-02、比对全城站点后，改用 `cgo-modal` 三选一（切换到更近的城市 / 查看当前城市最近车站 / 取消），替掉核心那个同步 `confirm`；样式表由脚本按自身 URL 注入 |
 | `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
 | `viewport-inset.js` | 载体 `window.CGoViewportInsets`（`{left, right, bottom}`，px）、接口 `window.CGoViewportInset`（`refresh` / `compute` / `fit`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 浮层遮挡上报：把「哪一侧被遮多少」写回引擎，详见 2.1 |
+| `sheet-drag.js` | `window.CGoSheetDrag`（`create`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），**须早于 `route-panel.js` 与 `panel-sheet-gesture.js`** | 移动端抽屉手势引擎：头部/把手拖拽 + 内容区跟手仲裁 + 半屏滚动锁；与面板解耦，由适配器接入车站详情 / 行程规划 / 路线结果三个面板，详见 2.1 |
+| `panel-sheet-gesture.js` + `panel-sheet-gesture.css` | `window.CGoPanelSheetGesture`（`refresh`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），**须晚于 `sheet-drag.js` 与 `viewport-inset.js`** | 车站详情抽屉的适配器：把引擎接到 `top` 空间 + body 档位类上，并卸掉 core 的移动端拖拽，详见 2.1 |
 | `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
 
 ### 2.1 各模块要点
@@ -112,6 +114,26 @@
 #### viewport-inset.js —— 浮层遮挡上报
 
 浮层遮挡上报：只统计 `position: fixed` 且确实可见的面板（核心的 `#info-panel`、行程规划 `#cgo-route-card`、结果 `#cgo-route-result`，以及任何自行声明 `data-cgo-inset` 的浮层——小工具就是用它补上贴角浮层那个 `bottom`），把「哪一侧被遮多少」写回 `window.CGoViewportInsets`，由引擎的 `getViewportInsets()` 消费、收窄平移边界与居中区；遮挡一变就调一次核心的 `enforceBoundaries()` 与 `updateMapTransform()`，全为 0 时与不加本模块完全一致。口径：桌面端按浮层**实际所在的那一侧**留白（跨过中线才左右互换），窄屏按贴底抽屉的高度留底；只认浮层，固定侧栏里的区块是文档流内排布、不与画布重叠，天然不计入，故本模块不需要知道任何形态细节。**窄屏另做一次「主动避让」**：光把平移**区间**放宽是看不见的——内容仍停在原地被压在浮层底下，故在遮挡变化时把地图整体平移「可用区中心移动的那段距离」。该中心的底部口径**必须与引擎 `getViewportCenter()` 一致**（同样含 `mobile-split-active` 期间「0.6 容器高」的托底）：引擎在点选车站时已按这个中心把车站取好景，本模块再按抽屉真实高度算一遍的话，两次位移会叠加、把选中车站顶出屏幕。`fit(box)` 是「查看全程」的取景口（缩放钳在城市 `minScale` / `maxScale` 之内，带一段复用核心 `.animate-zoom` 的过渡）
+
+#### sheet-drag.js —— 移动端抽屉手势引擎（通用）
+
+与面板解耦的底部抽屉手势引擎，三个面板共用（车站详情 / 行程规划 / 路线结果）。**位置空间、档位读写、拖动期的类切换、滚动锁全部由适配器提供**，引擎只管通用行为：
+
+1. **头部 / 把手**：跟手拖动，松手按速度甩动 / 就近吸附到最近档；轻点循环换档（`tapTarget` 决定循环目标）。
+2. **内容区**：首次超过阈值（8px）的位移定档，整段手势不再翻转——`lockHalfScroll` 且「半屏 + 上滑」→ 跟手展开（优先展开、不先滚内容）；内容已在顶部 + 下滑 → 跟手收起；内容已在底部 + 上滑（非最大档）→ 跟手展开；其余交给原生滚动。滚动中抵达顶部 / 底部会**无缝接管**为跟手（不必松手再划一次）。⚠️ 仲裁**不跳过 `a` / `button`**（只跳真正的表单控件）：车站层级图是整宽 `<a>`，若在它上面起手就跳过，用户在那块区域滑动会毫无反应（实测踩过「车站信息页签滑动不了、绕开层级图就能滑」）；只在超过阈值后才接管并 `preventDefault`，轻点与点击不受影响。
+3. **滚动锁**：`lockHalfScroll` 时把半屏的内容区 `touch-action` **内联写死**为 `none`——否则「半屏上滑想展开」会被浏览器先把滚动抢走（判定时 touchmove 已不可取消 `preventDefault`）。全屏则移除内联、交回页面样式。
+4. **落位**：退出拖动（恢复过渡）→ 写档位 → 强制重排锁定起点 → 清内联位置，让 CSS 从「拖到的位置」过渡过去。
+
+⚠️ 引擎会接管面板上**所有**抽屉手势，调用方必须先卸掉原有拖拽监听。
+⚠️ `stageObserveEl` 默认 `document.body`（车站的档位类在 body 上）；行程面板会被整体重建，故传面板自身——观察器挂在 body 上会让它从根可达，把已拆除的面板连同引擎一起吊住（内存泄漏）。
+
+#### panel-sheet-gesture.js + panel-sheet-gesture.css —— 车站详情抽屉（适配器）
+
+车站详情 `#info-panel` 的三档抽屉（收起 / 半屏 / 全屏）在移动端的**全部**手势都委托给上面的引擎；本文件只提供适配器：位置空间是 `top`、档位是 body 上的三个类（`panel-sheet-collapsed` / `mobile-split-active` / `mobile-panel-expanded`）、滚动容器是 `.panel-body`、`lockHalfScroll: true`、`deltaSign: 1`；`applyStage` 落位后调 `CGoViewportInset.refresh()` 重算遮挡并重新取景（落位改的是 `body` 类，不会落到 `#info-panel` 的 class/style 上，`viewport-inset` 的观察器收不到，故必须主动调）。
+
+core 的 `initMobileSheetDrag()` 写死在 `#info-panel` 上（内容区按下也会被拖走、且把 `touch-action` 连同内容滚动一起禁掉），且是闭包私有、无法复用；既然统一到一份实现，就由本模块在**每次渲染后**调用它暴露的 `panel._mobileSheetDragCleanup()` 卸掉、再装上引擎（core 每次重渲染都会重绑，故每次面板重建都要再卸一次）。用「`.panel-body` 是否换过」判断要不要重建，避免被地图卡片铺瓦片之类的子节点变动频繁触发重建。
+
+样式表按自身 URL 注入：只处理 `touch-action` 分区（`#info-panel` 放行 `pan-y`、头部 / 把手 / 底栏 `none`、页签栏 `pan-x`），半屏禁滚由引擎内联写死、样式表那份只作 JS 未运行时的兜底。
 
 #### map-tools.js + map-tools.css —— 地图小工具
 
@@ -426,3 +448,112 @@ core/script.js init()
    > 因此带该前缀**并不表示**某项能力已被上游收录或获得背书。判断一个能力属于核心还是
    > 各城自维护，看它的**位置**：`core/` 为上游核心；`city/{city}/shared/`、各城 `modules/`
    > 与 `data_*.js` 为自维护内容（第三节即其清单）。
+
+## 六、固定侧栏布局模型（单一真源）
+
+> 桌面端固定侧栏（`body.legend-pinned`）的「谁展开、谁让位、高度怎么分」此前散在**三套互不
+> 商量的机制**里——核心 `dockStationPanel`、`route-panel.js` 的 `bindExclusiveSections`、
+> `sidebar-refit.js` 的 `refitExpandedSection`。三者都在写 `.collapsed`、又都靠观察器猜对方
+> 意图，规则是隐式的，越加补丁越乱。本节把它收敛成**一条显式规则**，本节之外的代码一律不得
+> 再自行写 `.collapsed`。
+
+### 6.1 区块分类与顺序
+
+| 类别 | 区块 | 顺序 | 参与「单展开」 | 标题栏控件 |
+| :--- | :--- | :--- | :--- | :--- |
+| 矮块 | 搜索（`#section-search`） | 1 | 否 | 展开 / 收缩 |
+| 主块 | 规划行程（`#cgo-route-card`） | 2 | 是 | 展开 / 收缩 |
+| 主块 | 图例（`#section-legend-tree`） | 3 | 是 | 展开 / 收缩 |
+| 主块 | 路线结果（`#cgo-route-result`） | 4 | 是 | 展开 / 收缩 + 关闭（清空结果） |
+| 主块 | 地图小工具（`#cgo-map-tools-section`） | 5 | 是 | 关闭（收起工具） |
+| 临时块 | 车站窗口（`.station-history-section` ×N） | 动态区 | 是 | 展开 / 收缩 + 关闭（= 从历史移除该站） |
+
+- **矮块**：矮且独立，可与任何区块共存、不参与互斥。
+- **主块**：常驻入口，只切换展开 / 折叠；除结果与工具外不提供「关闭」。
+- **临时块**：由 `window.STATION_HISTORY` 决定存在性，可被用户显式关闭。
+- **标题栏控件**：**所有**区块的标题栏右侧都有一枚展开/收缩按钮（展开态显示 `zoom-out`、折叠态显示
+  `zoom-in`，与地图缩放条同一套图标；核心那枚只作指示的 `.section-arrow` 统一隐藏）；车站窗口
+  另有一枚关闭按钮，关闭 = 移出 `STATION_HISTORY` 并走核心退场动画。
+  ⚠️ 关闭前必须把停靠在区块里的 `#info-panel` 挪回 `body`：核心的 `resetMapState()` 在固定侧栏下
+  **不会**收回面板，直接删节点会把面板一起删掉，此后点任何车站都再也弹不出详情。
+
+### 6.2 唯一规则
+
+```
+展开任一「主块 / 临时块」→ 折叠其余所有「主块 / 临时块」
+```
+
+即「同一时刻至多一个占高区块展开」。**这条规则只在 `sidebar-refit.js` 第 5 节实现一处**
+（`CGoSidebarRefit.collapseOthers(keepId)`，`keepId` ∈ plan / legend / result / station），
+其它模块只报「谁胜出」：
+
+- `sidebar-refit.js` 自带登记**图例**与**临时块**（车站窗口）；
+- `route-panel.js` 运行期**懒登记** plan / result —— 登的是**收起函数**而不是类名：这两块在
+  浮层 / 侧栏两种形态下收起写法不同（浮层要摘 `show` 并出栈、规划还要同步 `planExpanded` 真源），
+  那份知识只在 owner 手里。懒登记是因为该模块必须早于 `sidebar-refit.js` 加载（见 6.5 的加载顺序）。
+
+「搜索」是矮块、不参与单展开；唯一例外是**规划行程与搜索互斥**——`keepId` 为 `plan` 时顺带收起它。
+
+> 仍未收敛的两处（刻意的例外，改动前先读它们的注释）：
+> 1. `route-panel.js` 的互斥观察器仍负责**裁定**（判「本轮刚展开的是谁」、识别核心自动停靠的车站详情），
+>    但它已不再自己折叠别人，只调 `collapseOthers`；
+> 2. `sidebar-refit.js` 的 `collapseOtherExpandedSections()` 是高度兜底的第一步，服务于
+>    「规划区块尚未创建、互斥观察器还没绑上」的那段时间，故保留其独立实现。
+
+### 6.3 高度分配
+
+- 纵向 flex 骨架由**核心** `css/style.css` 定：`#section-search` / `#section-legend-tree`
+  `flex-shrink:0`；`#sidebar-dynamic-content { flex:1; min-height:0 }`、
+  `.station-history-section:not(.collapsed) { flex:1; min-height:0 }`。
+  规划 / 结果两块在侧栏形态下的 `flex` 规则见 `route-panel.css`。
+- **展开的那个独占剩余高度**，其余不参与分配。内容放不下时**内容区自己滚动**。
+- **统一上限**：`#legend-content` 的直接子区块（图例 / 规划行程）的内容区有统一最大高度
+  `--cgo-sb-sec-max`（默认约侧栏可用高度的 60%），超出即自滚——**任何一块都不得把侧栏撑溢**
+  （否则展开的规划行程会把下面的图例与车站窗口顶到视口外，而侧栏不可滚）。搜索是矮块、豁免；
+  动态区里的车站窗口与结果由核心 flex 模型分配高度（展开者吃剩余、`min-height:0` 自滚），本就不溢出。
+- **规划行程卡片的滚动归属**：卡片正文是 `.panel-body`、底栏 `.panel-footer` 是它的**兄弟**（都在
+  `.cgo-rt-section-body` 里）。故外层 `.cgo-rt-section-body` 只定高不滚（`overflow: hidden`），
+  滚动交给内层 `.panel-body`（`flex: 1 1 auto; min-height: 0; overflow-y: auto`）——**底栏于是天然
+  固定在卡片底部**（不必 sticky；sticky 在带内边距的滚动容器里会从两侧露出缝隙）。
+  另：「快速前往」的 `.cgo-rt-quickgo-grid` 在侧栏里**取消自带的限高自滚**，交给外层 `.panel-body` 一层滚。
+- **动态区只允许一层滚动**：`#sidebar-dynamic-content` 本身**不滚**（`overflow: visible`）；展开的车站窗口 /
+  结果块由核心的 `flex: 1; min-height: 0` 限制在动态区高度内，内容在**窗口内部**滚——这就是唯一那层滚动。
+  ⚠️ 两条禁止（都实测踩过）：**不要**给动态区加 `overflow-y: auto`（会叠出第二层滚动，出现「窗口高上千像素、
+  只能靠外层滚」的错位）；**不要**给展开窗口加 `min-height`（高度恒 ≥ 下限会让 `refitExpandedSection()` 的
+  「已够高就到此为止」永远成立，**把高度清退彻底架空**）。
+  窗口堆不下时由清退兜底：展开窗口不足 22em 就从**最旧**的折叠窗口开始清（沿用核心退场动画并同步
+  移除 `window.STATION_HISTORY`）；关窗口另有标题栏的「关闭」按钮。
+
+### 6.4 地图小工具的侧栏形态
+
+列表与结果小窗是**同一区块的两个层级**（列表 → 选工具 → 结果，带返回），与浮动形态共享同一套
+内容构建；固定侧栏下渲染成 `#cgo-map-tools-section`，**紧贴搜索栏下方**（与规划区块约定死顺序
+**搜索 → 工具 → 规划**，见 `mountPlanSection` 的注释——两个都往「搜索之后」挤会互相顶），
+并**撤销** `data-cgo-inset="right bottom"`（侧栏已由 `--cgo-sb-column` 让出画布）；非固定形态维持右下浮层。
+
+实现要点（`map-tools.js`）：
+
+- **面板元素不搬进侧栏 DOM 树**：它们仍按需创建在 `document.body`，只是被 `appendChild` 进区块的
+  `.section-body`，由 `.cgo-mt-in-section` 把外壳从「贴右下浮层」复位成区块内的普通容器。
+  侧栏形态下**没有层级条**：标题直接写进区块的 `.section-title-text`，面板只留正文。
+- **单独展开也要有初始内容**：从标题栏展开（而非从菜单 / 面板按钮进来）时也要显示工具列表，
+  故 `watchSectionExpand()` 盯区块的 class，展开且没有任何一层在显示时补一次 `openTools()`。
+- **返回是一枚操作行按钮**：结果层的「返回工具列表」做成 `.cgo-mt-quick`，注入到各工具自己的
+  操作行 `.cgo-mt-actions` 首位（操作行是渲染正文时才生成的，故 `watchResultActions()` 盯子树补挂）。
+- **区块自愈**：核心重渲 `#legend-content` 会把区块（连同其中的面板）一起清掉，故 `watchSidebarContent()`
+  盯住容器：缺了就补挂并保持贴在搜索栏下方，同时 `closePanel()` 给当时正开着的工具收尾。
+- **接进单展开规则**：区块声明 `data-cgo-high-id="tools"` 并 `registerHighSection("tools", collapseToolsSection)`；
+  sidebar-refit 的标题栏开关遇到该声明时**展开走 `collapseOthers("tools")`**、收起直接收，并摘掉核心注入的
+  纯 toggle（否则从标题栏展开时别人不让位）。
+- 关闭语义 = **收起区块 + 关掉工具**（画布叠加一并清），对应 6.1 里的「关闭（收起工具）」。
+
+### 6.5 新增侧栏区块时必须遵守
+
+1. **重建即重挂**：核心每次 `renderLegend()` 都会重写 `#legend-content` 的 `innerHTML`，
+   `#sidebar-dynamic-content` 随之换成新节点 —— 一律按**元素身份**判断是否已挂（`route-panel.js`
+   的 `livePanel`、`sidebar-refit.js` 的 `historyContainer` 都是这么做的）。
+2. **必须 `takeOverHeader`**：核心给所有 `.panel-section:not(.station-history-section)` 注入了
+   折叠 `onclick`，自定义区块挂载后要把它摘掉，否则两套折叠语义互相抵消。
+3. **纳入快照**：侧栏收起 / 重开时核心会强制清掉非历史区块的 `collapsed`，自定义区块要一并
+   纳入 `route-panel.js` 的 `snapshotSidebarSections` / `restoreSidebarSections`。
+4. **别自行写 `.collapsed`**：只发意图给 6.2 的状态机，否则又回到"三套机制互猜"的老路。
