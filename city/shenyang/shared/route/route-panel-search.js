@@ -31,11 +31,17 @@
             Object.entries(d.allStations()).forEach(([sid, station]) => {
                 if (!d.pickable(sid) || !station.cn) return;
                 const cn = String(station.cn), en = String(station.en || "");
-                const cnLower = cn.toLowerCase(), enLower = en.toLowerCase();
+                // 旧名 / 历史站名 / 拼音缩写别名：核心载入 staname.csv 后把结果挂在车站对象的
+                // `aliases` 上（见 core/script.js 的 loadStationAliases），且核心检索让它们与中英文名
+                // **同等**参与打分。这里沿用同一口径——否则「搜旧名搜不到」（用户反馈）。
+                const aliases = Array.isArray(station.aliases) ? station.aliases : [];
+                const names = [cn, en, ...aliases]
+                    .map((name) => String(name).toLowerCase())
+                    .filter(Boolean);
                 let score = -1;
-                if (cnLower === kw || enLower === kw || sid.toLowerCase() === kw) score = 0;
-                else if (cnLower.startsWith(kw) || enLower.startsWith(kw)) score = 1;
-                else if (cnLower.includes(kw) || enLower.includes(kw)) score = 2;
+                if (sid.toLowerCase() === kw || names.includes(kw)) score = 0;
+                else if (names.some((name) => name.startsWith(kw))) score = 1;
+                else if (names.some((name) => name.includes(kw))) score = 2;
                 if (score >= 0) hits.push({ sid, cn, en, score });
             });
             return hits
