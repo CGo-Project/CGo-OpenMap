@@ -35,7 +35,18 @@ const SHENYANG_HOTSPOTS = [
     { name: "新乐遗址", sid: "0203", kind: "poi", tag: "全国文保", exit: "B" },
     { name: "九·一八历史博物馆", sid: "1011", kind: "poi", tag: "博物馆", exit: "E" },
     { name: "辽宁省博物馆", sid: "0222", kind: "poi", tag: "省博", exit: "A" },
-    { name: "沈阳博物馆", sid: "0209", kind: "poi", tag: "市博", exit: "D" }
+    { name: "沈阳博物馆", sid: "0209", kind: "poi", tag: "市博", exit: "D" },
+    // ── 省市级公共建筑与公园（2026-10-09 按沈阳本地宝「地铁可及」补录）──
+    // 科技馆：本地宝「2 号线省博物馆站 D 口向南 200 米」
+    { name: "辽宁省科学技术馆", sid: "0222", kind: "poi", tag: "省属场馆", exit: "D" },
+    // 省图与省博同片区，方位依据不足时取西北口兜底（原则：条目须绑定口，否则结果无出入口信息）
+    { name: "辽宁省图书馆", sid: "0222", kind: "poi", tag: "省属场馆", exit: "B" },
+    // 市图书馆（青年大街×科普路口径）
+    { name: "沈阳市图书馆", sid: "0213", kind: "poi", tag: "市属场馆", exit: "C" },
+    { name: "科普公园", sid: "0214", kind: "poi", tag: "市级公园", exit: "B" },
+    // 公园均在浑河南岸：取贴桥南侧的口
+    { name: "长白岛森林公园", sid: "0415", kind: "poi", tag: "市级公园", exit: "D" },
+    { name: "奥林匹克生态公园", sid: "1018", kind: "poi", tag: "市级公园", exit: "D" }
 ];
 window.SHENYANG_HOTSPOTS = SHENYANG_HOTSPOTS;
 window.CGO_HOTSPOTS = SHENYANG_HOTSPOTS;

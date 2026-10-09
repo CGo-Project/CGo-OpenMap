@@ -447,6 +447,15 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     color: var(--text-light);
 }
 
+/* 名胜景点头标：出口所属线路标识色圆点（母产品设计；无色时退回次级文字色） */
+.cgo-rt-poi-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-light);
+}
+
 .cgo-rt-quickgo-text {
     display: flex;
     flex-direction: column;

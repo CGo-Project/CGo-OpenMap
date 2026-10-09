@@ -16,7 +16,18 @@ const HARBIN_HOTSPOTS = [
     { name: "太阳岛", sid: "TYD", kind: "poi", tag: "5A", exit: "1" },
     { name: "中央大街", sid: "ZYDJ", kind: "poi", tag: "中国历史文化名街", exit: "1" },
     { name: "圣索菲亚教堂", sid: "SZDJ", kind: "poi", tag: "全国文保 · 4A", exit: "2" },
-    { name: "黑龙江省博物馆", sid: "BWG", kind: "poi", tag: "省博", exit: "1" }
+    { name: "黑龙江省博物馆", sid: "BWG", kind: "poi", tag: "省博", exit: "1" },
+    // 以下按「官方交通建议含地铁」补录（2026-10-09 搜索核实，接驳口待逐口核对暂不配）：
+    // 731 罪证陈列馆：馆方公告与新华网「地铁 1 号线新疆大街站 2 号口」；旧址为全国重点文保
+    { name: "侵华日军第七三一部队罪证陈列馆", sid: "XJD", kind: "poi", tag: "全国文保", exit: "2" },
+    // 冰雪大世界（5A）：哈尔滨市政府网「2 号线串联中央大街、冰雪大世界、太阳岛」；西口兜底
+    { name: "冰雪大世界", sid: "BXDDSJ", kind: "poi", tag: "5A", exit: "1" },
+    // ── 省市级公共建筑与公园（2026-10-09 补录）──
+    // 极地公园：哈尔滨本地宝「2 号线太阳岛站 1 号出口出站直达」
+    { name: "哈尔滨极地公园", sid: "TYD", kind: "poi", tag: "4A", exit: "1" },
+    // 兆麟公园（1906 年建，市级公园）：哈尔滨市政府网「3 号线兆麟公园站进出」；
+    // 旅游指南标注该站即公园北门 → 取 2 号北口
+    { name: "兆麟公园", sid: "ZLGY", kind: "poi", tag: "市级公园", exit: "2" }
 ];
 window.HARBIN_HOTSPOTS = HARBIN_HOTSPOTS;
 window.CGO_HOTSPOTS = HARBIN_HOTSPOTS;

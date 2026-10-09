@@ -868,6 +868,21 @@
     }
 
     /**
+     * poi 条目头的圆点颜色（母产品设计：名胜景点用**出口所属线路标识色圆点**、
+     * 交通枢纽保留具象图标）：优先接驳口声明的 `lines`（形如「2号线」，匹配 line.name），
+     * 退回该站经停的首条线路色；都取不到返回空串走 CSS 默认色。
+     */
+    function hotDotColor(hot) {
+        const sid = String(hot.sid || "");
+        const code = hotExitOf(hot, "to");
+        const exit = code ? (exitsApi()?.exitsById?.(sid) || []).find((e) => String(e.name) === code) : null;
+        const lines = typeof allLines === "function" ? allLines() : [];
+        const byExit = (exit?.lines || []).map((n) => lines.find((l) => l.name === n)).filter(Boolean);
+        const target = byExit[0] || linesAt(sid)[0];
+        return target?.color || "";
+    }
+
+    /**
      * 「快速前往」区（母产品 /map 同名功能的**静态版**）：读约定全局 `CGO_HOTSPOTS`
      * （`city/{city}/data_hotspots.js` 写入），交通枢纽 / 名胜景点两组切换；
      * 纯静态清单、无热度算法、不消费规划结果；没有该数据的城市整区隐藏。
@@ -882,12 +897,13 @@
         box.querySelectorAll("[data-qg]").forEach((tab) => {
             tab.classList.toggle("is-on", tab.dataset.qg === state.qg);
         });
-        const ICONS = { hub: "railway", poi: "tourist" };
         const items = list.map((hot, index) => ({ hot, index })).filter(({ hot }) => hot.kind === state.qg);
         const grid = box.querySelector(".cgo-rt-quickgo-grid");
         grid.innerHTML = items.map(({ hot, index }) => `
             <button type="button" class="cgo-rt-quickgo-item" data-hot="${index}" data-sid="${escAttr(hot.sid)}" title="设为起点或终点">
-                <cgo-icon name="${escAttr(hot.icon || ICONS[hot.kind] || "location")}" size="14"></cgo-icon>
+                ${hot.kind === "poi"
+                    ? `<span class="cgo-rt-poi-dot"${hotDotColor(hot) ? ` style="background:${hotDotColor(hot)}"` : ""}></span>`
+                    : `<cgo-icon name="${escAttr(hot.icon || "railway")}" size="14"></cgo-icon>`}
                 <span class="cgo-rt-quickgo-text">
                     <span>${escAttr(hot.name)}</span>
                     ${hot.tag ? `<small>${escAttr(hot.tag)}</small>` : ""}
