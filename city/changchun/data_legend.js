@@ -15,7 +15,8 @@ const LEGEND_CONFIG = [
             { targets: ["CCM05"], name: "5号线" },
             { targets: ["CCM06"], name: "6号线" },
             { targets: ["CCM07"], name: "7号线" },
-            { targets: ["CCM08"], name: "8号线" }
+            { targets: ["CCM08"], name: "8号线" },
+            { targets: ["CCM09"], name: "9号线" }
         ]
     },
     { type: "title", title: "有轨线路", subtitle: "Tram Lines" },

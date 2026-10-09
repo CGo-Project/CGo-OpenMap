@@ -38,6 +38,12 @@ const VIRTUAL_TRANSFER_MAP = {
     //  与 5 号线站厅东侧」—— 即换乘通道尚未启用，故两站保持独立 ID，不合并为 tsf。
     "0424": ["0501"],
     "0501": ["0424"],
+    // 9 号线一期（在建）国铁换乘：龙嘉站（长吉城际）⇄ 龙嘉机场T3、
+    // 九台南站（长珲城际）⇄ 九台南站，均为付费/出站口径，与 CCT/CRT 同款。
+    "UJL": ["0903"],
+    "0903": ["UJL"],
+    "JNL": ["0907"],
+    "0907": ["JNL"],
 };
 const VIRTUAL_CONNECT_LINES = [
     { from: "CCT", to: "0124"},
@@ -48,4 +54,6 @@ const VIRTUAL_CONNECT_LINES = [
     { from: "G5412", to: "0229"},
     { from: "G5401", to: "0507"},
     { from: "0424", to: "0501"},
+    { from: "UJL", to: "0903"},
+    { from: "JNL", to: "0907"},
 ];

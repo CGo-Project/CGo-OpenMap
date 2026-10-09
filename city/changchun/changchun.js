@@ -71,10 +71,10 @@
         searchCity: "长春",
         center: { x: 1150, y: 950 },
         defaultScale: 0.7,
-        mapSize: { width: 2300, height: 2100 },
+        mapSize: { width: 2650, height: 2100 },
         officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
         LINE_META: {},
-        LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM05", "CCM06", "CCM07", "CCM08"],
+        LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM05", "CCM06", "CCM07", "CCM08", "CCM09"],
         LINE_SYNC_GROUPS: [],
         SUBURBAN_LINES: ["Rwy"],
         /**
@@ -464,10 +464,12 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261008.220300";
+        const version = "261009.090919";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
+        // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
+        document.write(`<script src="./city/shenyang/shared/geo-estimate.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
@@ -546,5 +548,29 @@
         } else {
             apply();
         }
+    })();
+
+    /**
+     * 龙嘉机场徽标（散布层）的着色样式：底板吃文字色、飞机镂空露地图底色。
+     * 散布层是 <img> 直出 SVG，处于独立文档拿不到页面 CSS 变量（同 RAILWAY_ICON 内联的
+     * 理由），故改为「外层容器吃变量 + SVG 当蒙版」：assets/airport.svg 已重绘为
+     * 「底板挖飞机」的 evenodd 轮廓，容器背景 var(--text-color) 被蒙版裁出底板形状，
+     * 飞机镂空处透明直接露出地图底色——亮暗主题自动跟随。:has 选择器按图片路径精准命中本条目。
+     */
+    (function installAirportBadgeStyle() {
+        if (typeof document === 'undefined' || document.getElementById('cc-airport-badge-style')) return;
+        const style = document.createElement('style');
+        style.id = 'cc-airport-badge-style';
+        style.textContent = [
+            '.scattered-item:has(> img[src*="changchun/assets/airport.svg"]) {',
+            '    background-color: var(--text-color, #00263b);',
+            '    -webkit-mask: url("./city/changchun/assets/airport.svg") center / contain no-repeat;',
+            '    mask: url("./city/changchun/assets/airport.svg") center / contain no-repeat;',
+            '}',
+            '.scattered-item:has(> img[src*="changchun/assets/airport.svg"]) > img {',
+            '    visibility: hidden;',
+            '}'
+        ].join('\n');
+        document.head.appendChild(style);
     })();
 })();
