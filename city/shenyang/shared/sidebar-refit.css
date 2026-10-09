@@ -338,12 +338,30 @@
         -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
     }
 
-    /* ── 8. 车站窗口里的页签栏：页签内边距收细 ──────────────────────────────────
+    /* ── 8. 车站窗口里的页签栏：压缩放宽一档，并让出左侧一段 ────────────────────
        内核给 .tab-item 的 9 / 13 / 7 / 13px 在侧栏里明显偏胖：侧栏列本身不宽，
-       车站窗口的页签（车站信息 / 出入口 / 线路 …）一多就横向滚动，滚出去的页签看不见。
-       收成原值约 1/3（3 / 4 / 2 / 4px），一栏能多露出一个页签；字号与行高不动，
-       只压内边距，所以视觉重量不变、只是更紧凑。 */
-    body.legend-pinned #info-panel .tab-item {
-        padding: 3px 4px 2px;
+       车站窗口的页签（车站信息 / 出入口 / 线路 …）一多就横向滚动，滚出去的页签看不见，
+       故先收成原值约 1/3（3 / 4 / 2 / 4px）。这里再把 inline 那一档放宽一倍
+       （4 → 8px）：仍远紧于内核的 13px，但相邻页签的文字不再互相贴住。
+       纵向 3 / 2px 与字号、行高都不动，视觉重量不变，只是横向松一档。
+       候选路线页签栏一并取同一组值，两处页签的横向密度保持一致。 */
+    body.legend-pinned #info-panel .tab-item,
+    body.legend-pinned .cgo-rt-routebar .tab-item {
+        padding: 3px 8px 2px;
+    }
+
+    /* 页签栏左侧再让出一段。内核那条 `padding: 0 20px` 会被它自己的
+       `margin: 0 -20px` 抵消（页签栏 border box 先左移 20px，再把内容推回来），
+       而 #info-panel 自身的内边距是 0，于是首个页签的实际左起是 0、紧贴面板左缘。
+       内核没有留下可调的左起量，这里就把左侧单独提到 28px，净得 8px。 */
+    body.legend-pinned #info-panel .panel-tabs-nav {
+        padding-inline-start: 28px !important;
+    }
+
+    /* 候选路线页签栏与车站信息板统一。它自己就是 .panel-tabs-container
+       （结构上没有中间的 .panel-tabs-nav 层，见 route-panel.js 的 resultContentHtml），
+       所在区块的正文内边距又是 0，所以左起这一段得直接加在它身上，同样取净 8px。 */
+    body.legend-pinned .cgo-rt-routebar {
+        padding-inline-start: 8px !important;
     }
 }
