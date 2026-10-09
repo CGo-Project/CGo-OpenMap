@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261010.0055';
+const CACHE_NAME = 'cgo-openmap-v261010.0060';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -173,6 +173,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/station/line-link.js',
     './city/shenyang/shared/route/route-data.js',
     './city/shenyang/shared/route/route-planner.js',
+    './city/shenyang/shared/route/route-panel.js',
     './city/shenyang/shared/route/route-panel.js',
     './city/shenyang/shared/route/route-panel.css',
     // 跨城市「查找最近车站」（三城共用）：接管核心 LBS 的 confirm，改用 cgo-modal 三选一

@@ -330,7 +330,7 @@
      */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.0055";
+        const version = "261010.0060";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
@@ -345,6 +345,7 @@
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         write(`${shared}/route/route-data.js`);
         write(`${shared}/route/route-planner.js`);
+        write(`${shared}/route/route-panel-icons.js`);
         write(`${shared}/route/route-panel.js`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         write(`${shared}/station/nearest-station.js`);
