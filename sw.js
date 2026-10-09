@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261010.0050';
+const CACHE_NAME = 'cgo-openmap-v261010.0055';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -182,6 +182,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/base/sidebar-refit.js',
     './city/shenyang/shared/base/sidebar-refit.css',
     // 地图小工具（东北四市共用）：票价图 / 等时圈，入口在「查找最近车站」按钮下方
+    './city/shenyang/shared/tools/map-tools.js',
     './city/shenyang/shared/tools/map-tools.js',
     './city/shenyang/shared/tools/map-tools.css',
     './city/shenyang/amap_data.json',

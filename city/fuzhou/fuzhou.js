@@ -330,7 +330,7 @@
      */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.0050";
+        const version = "261010.0055";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
@@ -351,6 +351,7 @@
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
         write(`${shared}/base/sidebar-refit.js`);
         // 地图小工具（票价图 / 等时圈 / 多人汇合）：入口在车站详情与路线结果的页签栏
+        write(`${shared}/tools/map-tools-color.js`);
         write(`${shared}/tools/map-tools.js`);
 
         // 城市专属数据与模块（城市数据文件由 main.html 统一加载，此处只补模块所需的数据）
