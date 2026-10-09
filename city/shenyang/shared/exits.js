@@ -410,6 +410,91 @@
         }
     }
 
+    /** 当前城市登记的出入口配置（与 shared/exit-search.js 同口径解析，防跨城 ID 撞号） */
+    function currentConfig() {
+        const id = window.getActiveCity?.()?.id || window.CURRENT_CITY?.id || "";
+        if (id && registered.has(id)) return registered.get(id);
+        return registered.size === 1 ? registered.values().next().value : null;
+    }
+
+    /**
+     * 该站每个出口命中的设施类型 `Map<口编号, Set<设施类型>>`——给行程规划的
+     * 「携带行李 / 无障碍」需求筛选与合规提醒用。判定与页签筛选按钮同源
+     * （facilityTypesByExit，含「排掉站台层」的防误判），城市未配 facilityGlobals 时返回空表。
+     * ⚠️ 空表语义要区分：Map 里**没有该口** = 该口设施**未收录**；有口但命中为空 = 收录了却没有此类设施。
+     */
+    function exitFacilities(stationId) {
+        const config = currentConfig();
+        if (!config?.facilityGlobals) return new Map();
+        return facilityTypesByExit(stationId, config.facilityGlobals);
+    }
+
+    /**
+     * 该站每个出口命中的设施**明细** `Map<口编号, [{type, name, icon, text}]>`——
+     * 取自 CGoExitVertical.collect（含城市搬迁前缀判据），供行程结果把「符合需求的
+     * 设施 + 位置原文」搬过来展示；城市未接设施层 / 未配 facilityGlobals 时返回空表。
+     */
+    function exitFacilityRows(stationId) {
+        const config = currentConfig();
+        const facilities = config?.facilityGlobals ? pickData(config.facilityGlobals)?.[String(stationId || "")] : null;
+        if (!Array.isArray(facilities) || !window.CGoExitVertical?.collect) return new Map();
+        return window.CGoExitVertical.collect(facilities);
+    }
+
+    /**
+     * 该站的设施明细（**不按口归组、不排站台层**）`[{type, name, icon, text}]`——
+     * 给行程结果的换乘段列出「需求相关设施 + 位置原文」。**只留与换乘 / 乘车有关的位置段**：
+     * 先保「站台 / 换乘」（核心链路），再剔「地面 / 出入口」（那是进出站口的链路，
+     * 对换乘旅客没用），其余站内段（如「站厅层 站厅中部」= 站厅去站台）保留；
+     * 一段都不剩的设施整条不出。展示名与图标取城市 CGO_EXIT_VERTICAL.types；
+     * 未配 facilityGlobals 或该声明时返回空数组。
+     */
+    function stationFacilityRows(stationId) {
+        const config = currentConfig();
+        const table = config?.facilityGlobals ? pickData(config.facilityGlobals)?.[String(stationId || "")] : null;
+        const vtypes = window.CGO_EXIT_VERTICAL?.types;
+        if (!Array.isArray(table) || !vtypes) return [];
+        const ridesRelated = (text) => {
+            if (/站台|换乘/.test(text)) return true;
+            if (/地面|出入口/.test(text)) return false;
+            return true;
+        };
+        const rows = [];
+        for (const facility of table) {
+            const meta = vtypes[facility.type];
+            if (!meta) continue;
+            // 位置段保留线路归属：多线换乘站的段是 { line, text } 对象（line = 所属线路 ID），
+            // 明细区据此加线路名前缀——与车站详情设施板块（facilities.js）同一口径
+            const parts = [];
+            for (const seg of facility.location || []) {
+                const text = typeof seg === "string" ? seg : (seg?.text || "");
+                if (!text || !ridesRelated(text)) continue;
+                parts.push({ line: (typeof seg === "object" && seg?.line) || null, text });
+            }
+            if (!parts.length) continue;
+            rows.push({
+                type: facility.type,
+                name: meta.name || facility.type,
+                icon: meta.icon || "info",
+                parts,
+                text: parts.map((p) => p.text).join(" / ")
+            });
+        }
+        return rows;
+    }
+
+    /**
+     * 行程规划选口的需求联动：该站的出入口页签在场时，按需求把合规口的
+     * 小地图徽标挑出来（.is-hit）、其余淡出（.is-dim）——复用页签筛选按钮的
+     * applyFilter；types 为空即恢复全部。页签不在场（没开信息板）则静默不动作。
+     */
+    function highlightFor(stationId, types) {
+        const map = [...document.querySelectorAll("#info-panel .cgo-exit-map")]
+            .find((el) => el.dataset.stationId === String(stationId || ""));
+        const section = map?.closest(".cgo-exit-section");
+        if (section) applyFilter(section, Array.isArray(types) && types.length ? types : null);
+    }
+
     /**
      * 出口徽标：方形描边 + 编号。
      * 编号拆成「主字 + 下标」——第一段连续字母或数字作主字，其后部分转下标（C1 → C₁、A2 → A₂），
@@ -636,7 +721,14 @@
         }));
     }
 
+    // 事件驱动：行程规划面板（route-panel.js）只管广播 cgo:route-exit-filter { sid, types }，
+    // 本模块听到就地联动小地图徽标，听不到（页签不在场）就什么都不发生——两侧零耦合
+    document.addEventListener("cgo:route-exit-filter", (event) => {
+        const { sid, types } = event.detail || {};
+        if (sid) highlightFor(sid, types);
+    });
+
     // openFeedback 一并导出：面板实体已迁到 CGoFeedback，这里保留转发入口，
     // 免得城市模块里既有的 `CGoExits.openFeedback(...)` 调用失效
-    window.CGoExits = { register, registered, exitsByStation, requestExitFocus, openFeedback };
+    window.CGoExits = { register, registered, exitsByStation, requestExitFocus, openFeedback, exitFacilities, exitFacilityRows, stationFacilityRows, highlightFor };
 })();

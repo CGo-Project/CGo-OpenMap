@@ -34,6 +34,7 @@
 | `facilities.js` + `facilities.css` | `window.CGoFacilities`（`register` / `registered`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 呼），须早于城市设施模块 | 车站设施板块（配置驱动，含可选的车站层级图），详见 2.1 |
 | `feedback.js` + `feedback.css` | `window.CGoFeedback`（`open` / `registerKind` / `kinds`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州未接入）（**建议**早于 `exits.js` 与 `calligraphy.js`；这两者都在**打开面板前补登记**一次自己的场景、幂等，故先后顺序并不敏感，见 `exits.js` 内注释） | 反馈面板：出入口「待补充」、题字投稿与右上角「更多」入口共用，七类场景，详见 2.1 |
 | `exits.js` + `exits.css` | `window.CGoExits.register` | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），须早于城市出入口模块 | 车站出入口独立页签：分布小地图 + 出口条目，配置驱动，详见 2.1 |
+| `exit-search.js` | `window.CGoExitSearch`（`search` / `exitsById` / `exitLabel` / `attach`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州无出入口数据未引入），须晚于 `exits.js` | 出入口检索：全局搜索栏命中出入口（包装 core 搜索框的 `oninput`，**core 零改动**）+ 行程规划起终点的出入口命中与「指定 / 不指定口」，详见 2.1 |
 | `exit-vertical.js` | `window.CGoExitVertical`（`codesOf` / `match` / `collect` / `rowHtml`） | classic script，**沈阳 / 大连 / 长春**在 `{city}.js` 引入，**须早于 `facilities.js` 与 `exits.js`**（两者都调用它；未引入的城市经可选链跳过） | 把属于某个出口的扶梯 / 电梯从设施板块搬到出口页签（前缀判据），详见 2.1 |
 | `opening-schedule.js` | `window.CGoOpening` | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长） | 未开通区段与车站的**开通时刻**：状态转换、待开通登记、到点自动刷新，以及未开通车站 footer 的开通文案与倒计时（详见第四节） |
 | `opening-schedule.css` | — | 由 `opening-schedule.js` 按自身 URL 注入 | 上述倒计时框的样式（同 `calligraphy.css` 的做法） |
@@ -78,6 +79,15 @@
 
 车站出入口**独立页签**（配置驱动）：顶部一张**分布小地图**（标出各线路的站厅位置与全部出入口；瓦片与 Web Mercator 投影取自 `window.CGoMapTiles`，见 `stacard-engine.js`；容器未显示时用 ResizeObserver 等它露面再画），下面是一条条出口——「方形编号徽标 + 出口描述 + 所属线路 + 公交线路 + 周边地标 + 该口的扶梯 / 电梯（后者见 `exit-vertical.js`）」，各字段缺哪个就不渲染哪一行；出口之间用**虚线底线**分隔（不再各自成卡片），`closed` 为真的整条压暗并加标签。**地图上的标记配色全部硬编码、不跟随亮暗主题**（底图是浅色栅格图，跟随主题会在暗色下变成白底浅字）：线路站厅直接沿用 `.stacard-pin-dot` 的观感（12px 圆点 + 白描边 + 投影，只靠颜色区分线路、**不带文字**），出入口则是白底胶囊 + 编号，两者一眼分得开。**出口标题就是 `desc`**（维基「出口指示」原文，如「解放路（西侧）」；维基没给的口以「相对所属线路站厅的方位」填空，如「西北口」）——编号由左侧方形徽标承载，标题里不再重复；**只有没有 `desc` 的口**才回落成「A 口 / 1 号口」这样的编号文案（以数字开头的写「1 号口」，哈尔滨的出口编号就是 1 / 2 / 3a 这种）。**兜底的 `roads`**（最近道路的侧向，形如「迎宾街 路南/北站路 路东」，四正方向、最多两条**且必定互相垂直**）只在没有 `desc` 时以弱化小字跟在标题后，免得同一件事说两遍。**说明未收录的口挂「待补充」标**：`desc` 缺失、或它只是「相对站厅方位 + 口」的填空（`desc === bearing + "口"`）时，标题旁出现一枚虚线胶囊，点它打开共享层的**反馈面板**（`shared/feedback.js`；本模块只把「出口说明」这一种场景的文案注册进去，正文带出口编号与数据文件路径）。`window.CGoExits.openFeedback(ctx)` 保留为转发入口。高德逆地理的「最近路口方位」留在 `geoDesc`，**只留档不渲染**。`bearing`（相对所属线路车站的 8 向方位）**仍只存不渲染**。**编号徽标恒为 22×22 正方形**：多段编号按「第一段连续字母 / 数字」拆成主字 + `<sub>` 下标（C1 → C₁、D1 → D₁），仍放不下的由 `onMounted` 按实测宽度横向 `scaleX` 压扁，不把正方形撑成长方形。页签本身由城市在 `stationBoard.tabs` 里声明（`{ id: "<city>-exits", title: "出入口", icon: "gate" }`，`id` 与共享层模块的 `targetTab` 一致），渲染在「车站信息」之前，**激活底线取 `--success-color`**（按 `data-custom-tab$="-exits"` 匹配，与线路页签的线路色、车站信息的文字色区分开）；另配 `facilityGlobals`（指向城市设施表）时才会把扶梯 / 电梯挂到出口下。样式表由脚本按自身 URL 注入。已接入：大连（官网接口 + 高德补方位与坐标）、沈阳 / 长春 / 哈尔滨 / 呼和浩特（前三者来自高德 Web 服务 API，呼和浩特来自中文维基百科）
 
+#### exit-search.js —— 出入口检索与搜索栏命中
+
+一个关键词既能命中车站、也能命中 `data_exits.js` 里的出入口条目。匹配字段与打分：周边地标（`landmarks`）100、「站名 + 口编号」直查（如「沈阳北站A」）90、出口指示（`desc`）与道路侧向（`roads`）80、单独命中站名 60（该站各口顺带列出供指定）；每站最多列 4 口、总上限 6 条（行程候选里 5 条）。只收**非点线**车站（口径同 `exits.js` 的 `onRidableLine`），数据从 `CGoExits.registered` 按当前城市取（`getActiveCity().id`，防跨城 ID 撞号）。**命中项主次对调**：用户搜的地标 / 出口指示当主标题，站名 + 口退为次行，图标统一 `location`；`context` 缺失的口回落成「站名 A 口」主标题。两个消费方：
+
+1. **核心全局搜索栏**——**不改 core**：core 对搜索框用的是属性赋值（`oninput` / `onclick`），等它绑定完成后由 `attach()` 包装 `oninput`（先跑 core 原逻辑、再把出入口命中项追加进 `#search-results-list`，复用 `.search-item` 天然纳入上下键 / 回车导航，并清掉 core 的「未找到相关车站」占位）；点击时 core 的 `onclick` 先 `selectStation`，本模块再登记 `requestExitFocus` 并用 rAF 重试切到出入口页签（搜地标的用户就是要看这个口，不等他自己翻页签），随后派发 `cgo:exit-search-hit { cityId, sid, code, keyword }`。core 重建搜索 DOM（形态切换）后新元素没有记录，800ms 轮询的下个周期自动补挂；WeakMap / WeakSet 保证同元素不重复包装。
+2. **行程规划起终点**（`route-panel.js`）——候选列表合并出入口命中项（同样主次对调，`data-exit` + `data-landmark` 记下口与地标来源）；选中后 `state.fromExit / toExit`（null = 不指定）与 `state.fromExitLandmark / toExitLandmark`（这个口是从哪个地标命中的）一并落状态。**指定口的控件内嵌在输入框行内**：右侧触发钮显示「全部 / 口编号」（指定后主题色高亮），点开才在字段下方浮出「不指定 / A / B …」菜单——字段高度与纯输入框完全一致，不单独占行；换站 / 改口清地标来源、对调时口与地标随站一起交换，地图选点 / 定位 / 从车站面板预设同理。输入框回显带口与地标（如「陵西 B 口 · 沈鼓集团」）。**结果展示按「起终点都是地标」的口径**：结果标题（浮层起讫行与侧栏标题）有地标侧直接显示**纯地标名**（「起点地标 → 终点地标」，无地标侧回落「站名 · A 口」）；步骤区插两条同款 `cgo-rt-leg`（`exitgate` 变体，徽标位放 **`depart` / `gate` 图标**）——进站条「〈depart〉 地标名 出发」+ 说明行「经 **X** 口 进站」（口编号以 `<b>` 加粗，数字口作「**3** 号口」；此时首条乘车的 em 由「出发」改「**上车**」，避免重复），`到达`条之前「〈gate〉 终点站 下车」+ 说明行「出 **X** 口 前往」，且 `到达`行的目的地换成**终点地标名**；芯片手选的口（无地标来源）不插条、标题只带口。**跨线进 / 出站与出站换乘的站内换乘折算**（三处同一口径）：进站条（地标场景）判「口所属线 ≠ 首程乘车线」、终点出站条判「≠ 末程下车线」、出站换乘行判「≠ 刚下车的线」，命中即在说明行追加「· 经〈换乘方式〉前往〈线路名〉站厅 · 约 N 分钟」（`gateNote` 统一文案；进站方向 = 口线 → 乘车线、出站方向 = 下车线 → 口线，均查 `CGO_ROUTE_CONFIG.transferAt` 的有向键 `A>B` → 无向 `A|B` → 整站条目，`lineName` 即「前往」的目标线）；分钟数由 `gateOverhead()` 同步**计入总用时**（`约 N 分钟`、`cgo:route-planned` 的 minutes、分享文案三处）。出站换乘的「从 **X** 口出」取本站出口 `pos` 中**朝对侧站最近**的那个（`ensureGeoIndex` 惰性拉 amap 坐标、按线路分组消歧同名站，纯本地计算不联网）。说明行的淡化由 `opacity` 改为 `color: var(--text-light)`——opacity 是整组栅格化、行内 `<b>` 无法提亮，改走颜色后**出入口编号以 `var(--text-main)` 正常文本色 + 加粗作强调**。步骤区末尾恒挂一条用时口径脚注：「乘车用时不含等车及前往进站口或目的地的时间」。`cgo:route-opened` / `cgo:route-planned` 的 detail 带 `fromExit / toExit`，改口派发 `cgo:route-endpoint-exit { field, sid, code }` 并就地刷新回显（不重算路线）。**候选列表为内容流内联展开**（推开下方按钮行）——从前 absolute 悬浮时，字段位置偏下会探出 `.panel-body` 的 60vh 可视区被面板 `overflow:hidden` 裁掉半截、下方按钮行还会盖上来，内联后从根上消除该遮挡。
+
+城市未接入出入口数据（无 `CGoExitSearch`）时整条支路经可选链静默退化，行为与从前完全一致
+
 #### exit-vertical.js —— 出入口垂直交通搬迁
 
 把设施数据里「属于某个出入口的扶梯 / 电梯」从车站设施板块搬到出口页签：`facilities.js` 渲染前用 `match(type, text)` 过滤掉已搬走的段（整条被搬空则该行消失），`exits.js` 用 `collect(facilities)` 取到每个出口名下的设施并渲染成「图标 + 名称 + 位置原文」。城市在 `{city}.js` 顶层声明 `window.CGO_EXIT_VERTICAL = { types }`：`types` 是参与搬迁的设施类型，各自带展示名 / 图标（须与城市 `*_facilities.js` 的 `types` 一致）与位置前缀正则 `patterns`；类型自己没写 `patterns` 则回退到顶层的 `patterns`（大连即此写法）。⚠️ **判据必须是前缀，不能是「文本里出现了出口编号」**——「地面-站厅 A出入口附近」（出口本身就是起终点，该搬）与「站厅-站台 A出入口附近」（站内电梯，只是位置靠近出口，不该搬）都提到出口编号，只有前缀能区分。⚠️ **前缀还必须按类型分开配**：同一句「站厅层 …出入口」对上行与下行含义正好相反——上行扶梯在站厅层，是「站厅 → 地面出口」的起点（属于出口）；下行扶梯在站厅层，是「站厅 → 站台层」的向下交通（与出口无关），真正属于出口的下行扶梯位置写的是「地面层」（地面 → 站厅）。三类共用一组前缀会把站厅层的下行扶梯误搬进出口（沈阳实测多搬 122 条，已修正）。沈阳的配置：`elevator` 用 `地面-站厅 / 地面-过街通道-站厅 / 站厅-地面`，`escalator_up` 用 `站厅层 / 地下一层`，`escalator_down` 用 `地面层`；大连用顶层 `patterns: [/^站外/]`，其混合描述（「站外电梯：A口旁1台，站厅与站台中间位置1台」）整条搬走并保留原文。长春已接入：本城设施表里「无障碍电梯 / 升降平台」的位置多以出口编号开头（「D口」「A、C口通道」「A2口升降平台」），另有「站外C口」以「站外」开头，故两类共用顶层 `patterns: [/^[A-Za-z]{1,2}\d{0,2}(?:[、,，和及][A-Za-z]{1,2}\d{0,2})*\s*口/, /^站外/]`（77 站 / 95 段搬到出口下），不以出口开头的位置（「换乘通道，站厅层中部」「站台层北侧」「站内A口」）属站内垂直交通，留在设施板块。未加载本层、也未声明 `CGO_EXIT_VERTICAL` 的城市经可选链跳过，行为与从前完全一致
@@ -88,7 +98,7 @@
 
 #### route-data / route-planner / route-panel —— 行程规划
 
-行程规划：网络构建（时刻表实测区间用时 + 坐标里程兜底 + 站外换乘 + 贯通直通 + 未开通车站的穿过判定）、多目标 Dijkstra（最快 / 最短 / 最少换乘 / 最省）、按计费系统结算票价（`fareSystems` 把各自购票的有轨等拆成独立系统，付费出站换乘另行购票）、结果面板与图上高亮。「我的位置」按需取坐标索引
+行程规划：网络构建（时刻表实测区间用时 + 坐标里程兜底 + 站外换乘 + 贯通直通 + 未开通车站的穿过判定）、多目标 Dijkstra（最快 / 最短 / 最少换乘 / 最省）、按计费系统结算票价（`fareSystems` 把各自购票的有轨等拆成独立系统，付费出站换乘另行购票）、结果面板与图上高亮。「我的位置」按需取坐标索引。**出行需求（携带行李 / 无障碍）**：需求切换为**「需求」文本标签 + 三段胶囊控件**（`walk` 步行 / `luggage` / `vi-stn`，**图标 + 文字**，结构对齐 map-tools 的 `cgo-mt-range-opts`、opts 撑满行内剩余宽度，段位按各城 `CGO_EXIT_FILTERS` 裁剪；两个需求都没勾（need 为 null）时默认选中「步行」段），常驻**按钮行** `.cgo-rt-needbar`（贯穿全程，故不藏在口菜单里），选需求后口菜单按**字段方向**判定（起点进站、终点出站——扶梯带方向：地下站进站找下行、出站找上行，高架站由 `CGO_ROUTE_CONFIG.elevatedStations` 反转，电梯类方向无关照常算）：可用口排前、不可用口划掉置灰（仍可点，数据可能滞后），给出行方向的**可用口清单**「可进站：A、B」，**已选口不合规时提示行优先报推荐**（「已选 B 口不满足「携带行李」，推荐：A、D」），全站无可用口时明说（「未收录」与「确无」分开表述，绝不把没采集到的报成没有）；携带行李时另给**站型方向指引**（未声明地上站清单的城市不出）。结果侧六重呈现：① 进 / 出站条的地标口不合规时**推荐优先**——本站有替代合规口就先出推荐行（中性 muted：「推荐改用 A 口 · 设施：…」+ `cgo-rt-expandable` 展开各口设施，**不弹警示**），实在没有替代口才弹红色警示（`warning` 图标 + `--danger-color` 短句「该口无无障碍电梯 · 本站无替代口」，`gateAdviseLine`）；② 进 / 出站条的设施同样收进**说明行展开区**（`facilityRowsOf` 按口取需求命中设施，`cgo-rt-expandable` 点开见 cgo-rt-fac-row 折叠组——与换乘段完全同一套结构，不再平铺长文）；③ **端点没选口时也出推荐条**（`cgo-rt-leg-head` head-only 式，徽标固定 `login` 进站 / `gate` 出站，正文「A、B、D 推荐可进站出入口」；head 下接 `cgo-rt-leg-line muted` **摘要行**「设施：电梯、自动扶梯」并带 `cgo-rt-expandable` 提示——点开 `data-list` 展开区逐口看设施折叠行，即便起点 / 终点就是车站本身）；④ **换乘段列设施明细**（`stationFacilityRows`——不按口归组、不排站台层，且**只留换乘 / 乘车相关的位置段**：先保「站台 / 换乘」、再剔「地面 / 出入口」的进出站链路；多线换乘站的 `{ line, text }` 段保留线路归属、明细区加**线路名前缀**——与车站详情设施板块同口径），呈现为设施板块同款 **info-row cgo-fac-row 折叠行**（默认收起、点「详情」展开位置，`bindFacToggles` 随结果渲染重绑），**整组收进换乘主行的展开区**——主行（方式 · 分钟）带 `cgo-rt-expandable`（同 ride 段「乘坐 N 站」行的提示），点开才见（`data-list`，`fac-N` 唯一键避开 ride 的数字键），设施组内部仍套一条 `cgo-rt-leg-line muted`（`cgo-rt-facwrap` 纵向排开，竖线连续、行左内边距已清零）；⑤ 换乘走**需求变体**路线：`transferAt[站].needs[需求ID]` 配 `{ mode, minutes?, note? }`——`mode` 覆盖 xfer 行文案、`note` 作**设施位置提醒**单独一行、`minutes` 覆盖换乘用时并把差值计入总用时（缺省回退默认）；**沈阳 15 座换乘站已按主理人现场口径转译填充**（铁西广场直梯跨线存疑、滂江街升降平台位置等要点写在 `note`），其他城市未配自然降级；⑥ **结果标题栏带需求徽记**——浮层起讫行前与侧栏区块标题前点亮 `luggage` / `vi-stn` 图标（无需求即隐藏，`.cgo-rt-need-mark[hidden]` 显式压过组件 display）。**地图联动走事件**：口菜单开 / 关广播单站、需求切换广播两个端点站——`cgo:route-exit-filter { sid, types }`，`exits.js` 单例监听后复用 `applyFilter` 把该站小地图徽标 `.is-hit` / `.is-dim`（不在场则静默）——两侧零耦合。合规判定的唯一真源是 `CGoExits.exitFacilities(sid)`、设施明细是 `CGoExits.exitFacilityRows(sid)` / `stationFacilityRows(sid)`（均与页签筛选按钮同源，含「排掉站台层」防误判——换乘明细除外）
 
 #### sidebar-refit.js + sidebar-refit.css —— 桌面端固定侧栏形态
 
@@ -115,7 +125,8 @@
    label-active.js         呼出线随标签进入 active（按 data-cgo-callout 同步）
    facilities.js           车站设施（含可选的车站层级图）：配置驱动，样式在同目录 facilities.css
    exits.js                车站出入口独立页签：配置驱动，样式在同目录 exits.css
-   exit-vertical.js        出入口垂直交通搬迁（前缀判据），被上面两者共同调用
+   exit-vertical.js        出口垂直交通搬迁（前缀判据），被上面两者共同调用
+   exit-search.js          出入口检索与搜索栏命中（运行时取 CGoExits 的登记表 + core 的搜索框 DOM）
    feedback.js             反馈面板：被 exits / calligraphy 打开，场景由使用方注册
    station-title.js        侧栏站名标题归一化
    timetable-renderer.js   首末班车渲染 / 日期类型 / 季节判定
@@ -142,6 +153,8 @@
                    ← route-panel 的 #cgo-route-card / #cgo-route-result
    calligraphy     → feedback（投稿按钮打开面板；两者打开前各补登记一次自己的场景，幂等）
    nearest-station ← core 的 #locate-btn（捕获阶段接管其点击）+ cgo-modal 组件
+   exit-search     ← CGoExits（登记表，运行时可选）+ core 的 #station-search-input（包装 oninput）
+                     → route-panel（search / exitsById / exitLabel，运行时可选）
    opening-schedule → core 的 applyOpeningSchedule 钩子 + notice.js 的推送合并
    stacard-engine  ← 高德瓦片；ES module，与上述各条均无耦合
 
@@ -161,6 +174,50 @@
 例如沈阳把 `timetable-renderer.js`、`viewport-inset.js` 排在 `route-panel.js` 之后，靠的正是这一点。
 
 > 新增共享模块或调整取用关系后，请连同本节一起更新。
+
+### 2.3 出行需求数据：其他城市怎么接（三步，按需选）
+
+每一步不配，**对应功能整体不出现，其余零影响**；三步之间无顺序依赖。
+
+**第 1 步（可选）：要「携带行李 / 无障碍」需求按钮与筛选** —— `{city}.js` 顶层声明：
+
+```js
+window.CGO_EXIT_FILTERS = [
+    { id: "luggage",   name: "携带行李", icon: "luggage", types: ["elevator", "escalator_up", "escalator_down"] },
+    { id: "accessible", name: "无障碍",  icon: "vi-stn",  types: ["elevator"] }
+];
+```
+
+- `types` 填**本城设施表里真实存在的类型**（判定与出入口页签的筛选按钮共用同一份规则）；
+- 本城没有分方向扶梯数据，`luggage.types` 只填 `"elevator"` 即可，不要编造类型；
+- `id` 只认 `luggage` / `accessible`（分段控件图标位的约定），不配的那类整段不出；
+- 不配 → 需求按钮、口菜单筛选、结果提醒与徽记全部不出现（如福州）。
+
+**第 2 步（可选）：要选口下拉 / 地图徽标联动 / 设施行** —— 按 2.1 接 `data_exits.js` 与
+`CGoExits.register`，关键是把 `facilityGlobals` 指向本城设施表。没接设施层时合规判定
+一律显示「未收录」，**不会**把没采集到的报成「没有」。
+
+**第 3 步（可选，两件独立小配置）**：
+
+```js
+// ① 有地上（高架）车站才配：不出「进站优先上行扶梯」方向指引；判定本身不受影响
+CGO_ROUTE_CONFIG.elevatedStations = ["0301", "0302" /* 站 ID */];
+
+// ② 想让某换乘站在需求下改换乘方式 / 用时 / 加设施提醒才配（参考沈阳 15 站样例：
+//    city/shenyang/shenyang.js 的 transferAt[站].needs）
+needs: {
+    luggage:   { mode: "站厅换乘（双向扶梯）" },                          // minutes 省略=用本站默认换乘分钟
+    accessible: { mode: "站厅换乘（有直梯）", note: "直梯在 4 号线站厅" }   // note 会作为结果里的提醒行
+}
+```
+
+不配 → 换乘按 `transferAt` 默认方式原样显示（福州即此态）；`needs` 只覆盖你写的字段。
+
+**第 4 步（可选）：要「快速前往」推荐区** —— 建 `city/{city}/data_hotspots.js`，写
+`window.CGO_HOTSPOTS = [{ name: "…", sid: "站ID", kind: "hub" 或 "poi", tag: "副标题", icon: "图标名", exit: "通用接驳口", enterExit: "进站口", leaveExit: "出站口" }]`
+（`kind` 只认 `hub` / `poi` 两组；`sid` 必须是**可规划的地铁站 ID**；接驳口三项全可选，
+口编号须在 `data_exits.js` 里存在，不存在则静默不设）。不建文件 → 面板不出该区。
+参考五城现成写法与收录口径：`city/shenyang/data_hotspots.js`（最全，含接驳口与机场航站楼口）。
 
 ---
 
@@ -185,6 +242,9 @@
 | **固定侧栏形态（浮岛卡片）** | 六城已接入（沈 / 大 / 长 / 哈 / 呼 / 福）；上游开发团队认可后再决定是否整体迁入 `core/` | `shared/sidebar-refit.js`、各城 `{city}.js` 里的引入行 |
 | **地图小工具（票价图 / 等时圈 / 多人汇合）** | 东北四市加呼和浩特、福州已接入（六城）：共享层出选站、计算与分层设色（含悬停读数、起点选中光环与各站数值标注；等时圈带「范围」分段控件、范围上限那条等级线与「最近 10 站」列表，汇合图可点第三座车站升级为三点汇合），城市无需新增任何配置（有 `CGO_ROUTE_CONFIG.fare` 即可出票价图） | `shared/map-tools.js`、各城 `{city}.js` 里的引入行 |
 | **站外换乘步行时间（逐对）** | 福州已接入：`CGO_ROUTE_CONFIG.walkMinutes` 可传数字（全城统一，默认 6 分钟）或 `{ "起点ID\|终点ID": 分钟 }` 逐对覆盖（水部→闽都 10 分、三叉街（滨海快线）→三叉街 6 分） | `shared/route-data.js` 的 `walkOverride`、`city/fuzhou/fuzhou.js` 的 `walkMinutes` |
+| **出入口检索（搜索栏 / 规划起终点）** | 沈阳、大连、长春、哈尔滨、呼和浩特已接入（有 `data_exits.js` 即生效，城市零配置）：搜索栏输入**出入口地标**（如「沈鼓集团」「市府恒隆广场」）即可命中车站出入口、点选后自动切到出入口页签并高亮该口；命中项主次对调（地标为主、站名+口为次，图标 `location`）；行程规划起终点可按地标命中口（回显「陵西 B 口 · 沈鼓集团」）或用输入框右侧内嵌下拉指定 / 不指定口，结果标题显示「起点地标 → 终点地标」，步骤区按 `showExitLeg` 规则插 `depart` / `gate` 图标的进站 / 出站条（口编号加粗；**指定了口就出**——条要表达「经 X 口进 / 出站」，是刚需，**即便该口无设施数据也照出**，只是此时说明行不带 `cgo-rt-expandable`；例外只剩起终点为车站本身或车站无出入口数据），出站换乘行标「从 X 口出 · 经 Y 口进站」（朝对侧站最近的口，**启用需求时两侧都优先在合规口里选**——虚拟换乘也要尽量从满足需求设施的口进出；进站口的跨线换乘同样按 `transferAt` 标注并计入总用时），口跨线时按 `transferAt` 标注换乘方式并把分钟计入总用时（`cgo:exit-search-hit`、`cgo:route-endpoint-exit` 两个事件对外广播） | `shared/exit-search.js`、各城 `{city}.js` 引入行 |
+| **快速前往（静态推荐目的地）** | 沈 / 大 / 长 / 哈 / 呼五城已接入：母产品 /map 同名功能的**静态版**——规划面板尾部「快速前往」区，`交通枢纽 / 名胜景点` 两组切换（复用分段胶囊样式），点选即填入起 / 终点（起点空优先，两头已满覆盖起点），**并把热点名作为地标来源**（`landmark`）——标题「起点地标 → 终点地标」、进 / 出站条与回显口与在输入框里输入出口地标**同一套体验**。**纯静态清单、无热度算法、不消费规划结果**（归属体检口径 = OpenMap 侧）。**接驳出入口**：条目可配 `exit`（通用口）或 `enterExit` / `leaveExit` 分别覆盖「设为起点（进站）/ 终点（出站）」，点选自动带上该口，随后经 `enforceExitCompliance` 按当前需求替换为合规口（需求切换 / 地标 / 菜单 / 快速前往选入口均触发；无合规口保留原口由警示兜底）。**网格自适应**：浮层里 `panel-body` 转 flex 纵列，grid 优先吃剩余空间（内容少自然高、内容多先压缩自滚、保留约一行可见），杜绝面板与网格双滚动条；侧栏形态走 `max-height:250` 兜底。数据约定：`city/{city}/data_hotspots.js` 写 `window.CGO_HOTSPOTS = [{ name, sid, kind: "hub"\|"poi", tag?, icon?, exit?, enterExit?, leaveExit? }]`（`sid` 必须是**可规划的地铁站 ID**；`kind` 只认 `hub` / `poi`）。各城收录：沈阳 4 枢纽 + 8 景点（**含接驳口**：沈阳站 L1/A2、桃仙机场「航站楼」人工补录口等）、大连 3+3、长春 2+3（机场在建不收）、哈尔滨 2+4（机场无地铁不收）、呼和浩特 3+2（白塔机场=坝堰（机场）站）。无该文件的城市整区隐藏 | `city/{city}/data_hotspots.js`、`shared/route-panel.js`（`syncQuickGo` / `enforceExitCompliance` / `hotExitOf`） |
+| **出行需求筛选（携带行李 / 无障碍）** | 沈阳、大连、长春、哈尔滨、呼和浩特已接入（需求定义读各城 `CGO_EXIT_FILTERS`，城市零配置）：「需求」标签 + 三段胶囊控件（`walk` 步行/`luggage`/`vi-stn`，对齐 `cgo-mt-range-opts`、撑满行宽）常驻行程规划**按钮行**（贯穿全程），口菜单按**字段方向**判可用（起点进站 / 终点出站，扶梯方向随站型翻转、高架清单 `elevatedStations`——沈阳 3 号线李达—余良 9 站），可用口排前、不可用划掉、给出「可进站：A、B」清单，**已选口不合规时直接报推荐替代口**，并附站型方向指引；结果侧：进/出站条的需求警示独立成行（warning 图标 + 提示色短句「该口无无障碍电梯 · 推荐 E 口」）、**进/出站条与换乘段的设施统一收进说明行展开区**（`cgo-rt-expandable` 点开见 cgo-fac-row 折叠组，不再平铺长文）、**端点没选口也出推荐条**（`cgo-rt-leg-head` 式，徽标 `login`/`gate`，head 下接设施摘要行并可 `cgo-rt-expandable` 展开逐口设施）、**换乘段列设施明细**（`stationFacilityRows`，含站台层、只留换乘/乘车相关段、多线段带线路名前缀，cgo-fac-row 折叠行**收进换乘主行的展开区**）、**结果标题栏点亮需求徽记**（luggage / vi-stn，`color: inherit` 跟随标题文字色，浮层与侧栏同款）、换乘走需求变体 `transferAt[站].needs[需求ID]`（`mode` 覆盖文案、`note` 设施位置提醒、`minutes` 差值计入总用时——**沈阳 15 座换乘站已按主理人现场口径转译填充**，其他城市未配自然降级）；地图徽标高亮 / 淡出走 `cgo:route-exit-filter` 事件复用 `applyFilter`（`shared/route-panel.js`、`shared/exits.js`，合规判定唯一真源 `CGoExits.exitFacilities`） | `shared/route-panel.js`、`shared/exits.js`、各城 `CGO_EXIT_FILTERS` 与 `elevatedStations`、`city/shenyang/shenyang.js` 的 `transferAt.*.needs` |
 | **站距「约X米」经纬度优先** | 沈阳、大连、长春已接入：`distances` 为 `"?"` / `"??"` 的区段，面板里的「约X米」**有经纬度就地改写为球面距离**（自建 `amap_data.json` 站名扁平索引，与核心 LBS 同源同语义）；同城同名多站先按「与当前站同线且站序相邻」收窄、仍歧义不改，球面值与画布现值之比超出 [0.5, 2] 窗口也不改（防「同名异位站」被拉爆，如沈阳有轨 / 地铁两个「杨官」）；缺经纬度原样保留核心画布值 | `shared/geo-estimate.js`、各城 `{city}.js` 引入行 |
 | **规划优先级只有三种** | 内核 `OBJECTIVES` 为 **时间最快 / 最少换乘 / 票价最低**，**没有「距离最短」**（该目标已整体移除，所有城市一致；原先的按城市开关 `disabledObjectives` 机制已一并删除）。理由：乘客更关心少换乘与时间短，且最短距离常反而更耗时。里程仍保留在结果字段、等时圈口径与按段计价结算里，只是不再作为寻路目标 | `shared/route-planner.js` 的 `OBJECTIVES`、`extremes()` |
 | **官方票价表优先** | 福州已接入：票价**只取自官网抓取的站间票价表**（`city/fuzhou/data_official_fare.js`，10302 组），计算式已删除，查不到的组合返回 `null`（内核按「票价未知」处理）。理由：计价站距与土建站距不同源，用站距套费率必然在档位分界附近错档 | `city/fuzhou/fuzhou.js` 的 `CGO_ROUTE_CONFIG.fare`、`city/fuzhou/tools/fuzhou_check.js`（抓取步骤写在文件头） |

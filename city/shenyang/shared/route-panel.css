@@ -162,19 +162,17 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     transform: rotate(90deg);
 }
 
-/* ── 搜索建议 ──────────────────────────────────────────────────── */
+/* ── 搜索建议 ────────────────────────────────────────────────────
+   内容流内联展开（推开下方按钮行），不悬浮、不越界：
+   从前 absolute 悬浮时，字段位置偏下就会探出 .panel-body 的 60vh 可视区
+   被面板 overflow:hidden 裁掉半截，下方按钮行还会盖上来（遮挡问题的根因）。 */
 .cgo-rt-suggest {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(100% + 4px);
-    z-index: 5;
+    margin-top: 4px;
     max-height: 220px;
     overflow-y: auto;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
     display: none;
 }
 
@@ -191,11 +189,338 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     opacity: 0.55;
 }
 
+/* ── 出入口内嵌下拉（起点 / 终点指定口，可「不指定」）────────────────
+   触发钮是输入框行内的 flex 项（与 input 同行同高，候选列表展开也不会错位），
+   不占额外行高；口菜单点开才在字段下方浮出 */
+.cgo-rt-inputrow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cgo-rt-inputrow input {
+    flex: 1;
+    min-width: 0;
+    padding-right: 12px;
+}
+
+.cgo-rt-exittrigger {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 8px;
+    font: inherit;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+    border: 1px solid var(--divider);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-rt-exittrigger:hover {
+    background: var(--border-color);
+}
+
+/* 已指定口：主题色高亮，一眼看出这端定了口 */
+.cgo-rt-exittrigger.active {
+    color: var(--btn-text, #fff);
+    background: var(--primary-color);
+    border-color: transparent;
+}
+
+.cgo-rt-exittrigger[hidden] {
+    display: none;
+}
+
+.cgo-rt-exitmenu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 10;   /* 盖在候选列表与按钮行之上 */
+    display: block;   /* 块级：需求行 / 提示行 / 芯片行自上而下各占一层 */
+    padding: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
+}
+
+.cgo-rt-exitmenu[hidden] {
+    display: none;
+}
+
+/* 需求分段控件（.cgo-rt-needbar，按钮行内独占一行）：
+   左侧文本标签 + 三段胶囊 walk(步行) / luggage / vi-stn，结构对齐 cgo-mt-range-opts */
+.cgo-rt-needbar {
+    flex: 1 0 100%;   /* 独占一行，排在定位 / 地图选点 / 清空之前 */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cgo-rt-needbar[hidden] {
+    display: none;
+}
+
+.cgo-rt-need-label {
+    flex: none;
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.cgo-rt-need-opts {
+    flex: 1;   /* 撑满标签之外的剩余宽度 */
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--btn-info-bg);
+    border-radius: 999px;
+}
+
+.cgo-rt-need-opt {
+    flex: 1 1 0;   /* 容器已撑满行宽，段内均分填满（高度由自身 padding 定，不会撑成大圆） */
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 5px 11px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600 !important;   /* 同 .cgo-mt-range-opt：覆盖全局表单重置 */
+    white-space: nowrap;
+    color: var(--text-main);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-rt-need-opt.is-on {
+    background: var(--card-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.cgo-rt-need-opt:hover:not(.is-on) {
+    background: var(--border-color);
+}
+
+/* 结果标题栏的需求徽记（浮层起讫行前 / 侧栏标题前）：无需求时隐藏——
+   cgo-icon 组件自带 display 规则会压过 UA 的 [hidden]，必须显式声明；
+   颜色**跟随所在标题文字色**（浮层标题栏是深底浅字，写死 text-main 在浅色主题下会隐身） */
+.cgo-rt-need-mark {
+    flex: none;
+    color: inherit;
+}
+
+.cgo-rt-need-mark[hidden] {
+    display: none;
+}
+
+/* 需求不满足的独立警示行：短句 + warning 图标 + 提示色，区别于 muted 说明行 */
+.cgo-rt-leg-line.cgo-rt-warn {
+    font-size: 12px;
+    color: var(--danger-color);
+}
+
+.cgo-rt-leg-line.cgo-rt-warn cgo-icon {
+    color: var(--danger-color);
+}
+
+/* 换乘设施折叠行的纵向容器：leg-line 是 flex，这里让整组折叠行占满整行并纵向排开
+   （cgo-fac-row / cgo-fac-detail 仍在同一纵列里，row.nextElementSibling 即明细区） */
+.cgo-rt-facwrap {
+    flex: 1;
+    min-width: 0;
+}
+
+/* 结果区的设施行去掉详情页签里的左内边距（那里靠缩进对齐图标，这里脊线已给足缩进） */
+.cgo-rt-facwrap .info-row,
+.cgo-rt-facwrap .cgo-fac-row,
+.cgo-rt-facwrap .cgo-fac-name {
+    padding-left: 0;
+}
+
+/* 菜单内提示行：可用口清单（可进站：A、B）/ 无可用口 / 设施未收录 / 扶梯方向指引 */
+.cgo-rt-need-none,
+.cgo-rt-need-ok {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-light);
+    margin-bottom: 6px;
+}
+
+/* ── 快速前往（静态推荐目的地，母产品 /map 同名功能的静态版）──────── */
+.cgo-rt-quickgo {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--divider);
+}
+
+.cgo-rt-quickgo[hidden] {
+    display: none;
+}
+
+.cgo-rt-quickgo-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.cgo-rt-quickgo-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+/* 复用分段胶囊样式（同需求控件），仅借用外观 */
+.cgo-rt-quickgo-tabs {
+    flex: none;
+    width: auto;
+}
+
+.cgo-rt-quickgo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    /* 地点多时本区优先出滚动条（限高自滚），先于整个面板的滚动——
+       侧栏（section）形态的兜底值；浮层形态见下方「浮层高度分配」的增强覆盖 */
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+/* ── 浮层高度分配：grid 优先吃剩余空间 ──────────────────────────────
+   根因：写死 max-height 时 panel-body（core 定的 60vh 上限 + 自身滚动）与 grid
+   各挂一条滚动条，小屏上双滚动条并存、grid 还按固定值把行切一半。
+   修法：浮层的 panel-body 转 flex 纵列——head 不缩、grid 用 flex 收缩吃剩余：
+   · 内容少 → grid 保持自然高度（不拉伸、不留白）；
+   · 内容多 → 先压缩 grid 至剩余空间再自滚（保留 96px≈一行可见），
+     panel 整体基本不再滚。侧栏形态无 .cgo-rt-panel，仍走 max-height 兜底。 */
+.cgo-rt-panel .panel-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.cgo-rt-panel .cgo-rt-quickgo {
+    min-height: 0;
+}
+
+.cgo-rt-panel .cgo-rt-quickgo-head {
+    flex: none;
+}
+
+.cgo-rt-panel .cgo-rt-quickgo-grid {
+    flex: 0 1 auto;
+    max-height: none;
+    min-height: 96px;
+}
+
+.cgo-rt-quickgo-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--text-main);
+    text-align: left;
+    background: var(--card-bg);
+    border: 1px solid var(--divider);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.cgo-rt-quickgo-item:hover {
+    background: var(--btn-info-bg);
+}
+
+.cgo-rt-quickgo-item cgo-icon {
+    flex: none;
+    color: var(--text-light);
+}
+
+.cgo-rt-quickgo-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.cgo-rt-quickgo-text > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cgo-rt-quickgo-text small {
+    font-size: 11px;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 口芯片行 */
+.cgo-rt-gaterow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.cgo-rt-exit-chip {
+    font: inherit;
+    font-size: 12px;
+    line-height: 1;
+    padding: 5px 9px;
+    color: var(--text-main);
+    background: var(--card-bg);
+    border: 1px solid var(--divider);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-rt-exit-chip:hover {
+    background: var(--btn-info-bg);
+}
+
+.cgo-rt-exit-chip.active {
+    color: var(--btn-text, #fff);
+    background: var(--primary-color);
+    border-color: transparent;
+}
+
+/* 暂停使用的口：弱化但不拦选（数据可能滞后，交给用户判断） */
+.cgo-rt-exit-chip.is-closed {
+    opacity: 0.55;
+    text-decoration: line-through;
+}
+
+/* 当前需求下不合规的口：划掉置灰但保留可见（先找合规口，全无时提示行会明说） */
+.cgo-rt-exit-chip.is-unmet {
+    opacity: 0.45;
+    text-decoration: line-through;
+}
+
 /* ── 快捷按钮行 ────────────────────────────────────────────────── */
 .cgo-rt-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    /* 红框区（需求条 + 快速/定位/选点/清空）相对固定：panel-body 一旦滚动
+       （上方内容超高、小屏），本行钉在滚动区顶部不随输入框滚走；
+       实底用面板同色，挡住从上方滚过的内容。panel-body 不滚时无视觉变化 */
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--card-bg);
     margin-top: 12px;
 }
 
@@ -411,7 +736,8 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
 
 .cgo-rt-mode.xfer,
 .cgo-rt-mode.walk,
-.cgo-rt-mode.arrive {
+.cgo-rt-mode.arrive,
+.cgo-rt-mode.exitgate {
     color: var(--text-main);
     background: var(--btn-info-bg);
 }
@@ -455,9 +781,16 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     background: var(--leg-line);
 }
 
+/* 说明行的淡化改走颜色变量而非 opacity：opacity 是整组栅格化，行内的 <b>（出入口编号）
+   无法自行「提亮」回到正常文本色；换成 color 后 b 可以覆盖，以示强调（暗亮主题各有其值） */
 .cgo-rt-leg-line.muted {
     font-size: 12px;
-    opacity: 0.65;
+    color: var(--text-light);
+}
+
+/* 出入口编号：回到正常文本色 + 加粗，在淡化说明行里作强调 */
+.cgo-rt-leg-line.muted b {
+    color: var(--text-main);
 }
 
 /* 换乘时间说明：只带一条文字行、没有图标列，故不要左侧那条粗边 */
