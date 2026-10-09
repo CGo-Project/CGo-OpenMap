@@ -1,5 +1,5 @@
 /**
- * CGo OpenMap - 共享层：站距「约X米」估算的经纬度优先实现 (shared/geo-estimate.js)
+ * CGo OpenMap - 共享层：站距「约X米」估算的经纬度优先实现 (shared/base/geo-estimate.js)
  *
  * 背景：核心在 distances 为 "?" / "??" 时，把相邻站行渲染成「(约X米)」——数值来自
  * `estimateSchematicMeters()`（画布距离 × 全网中位数米/像素），示意图各段比例失真时误差不小。

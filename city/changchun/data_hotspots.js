@@ -5,7 +5,7 @@
  * ⚠️ 龙嘉机场暂无地铁直达（轨道交通空港线在建）——**机场不做端点**（pickable 会拦
  * 在建站），待通车后补录；伪满国务院等无就近地铁站映射的景点暂不收录。
  * 接驳口字段（exit / enterExit / leaveExit）可选，未配则点选只填车站、不指定口。
- * 供共享层 shared/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
+ * 供共享层 shared/route/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
  */
 const CHANGCHUN_HOTSPOTS = [
     // ── 交通枢纽 ──

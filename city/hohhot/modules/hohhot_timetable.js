@@ -4,7 +4,7 @@
  *
  * 取数留在本模块（读 data_timetable.js 的 GLOBAL_SCHEDULE_DATA），
  * 「归一化行 → HTML」交由共享渲染层处理
- * （city/shenyang/shared/timetable-renderer.js，window.CGoTimetable）。
+ * （city/shenyang/shared/station/timetable-renderer.js，window.CGoTimetable）。
  * 挂载于「线路」选项卡（line-tab），order 15 —— 夹在「地图卡片」(stacard, order 10)
  * 与「上一站 / 下一站」(adjacent-stations, order 20) 之间，与沈阳 / 大连同一排法。
  *

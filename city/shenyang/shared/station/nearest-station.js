@@ -466,7 +466,7 @@
                 window.selectStation?.(local.sid);   // 在本市范围内，行为与核心完全一致
                 // 车站就在身边时，用户最需要的是「从哪个口进」，但刚跳过来就弹提示会打断看站名。
                 // 改为把这件事交给出入口页签：他第一次切过去时，出口清单自己把最近那个口滚到眼前
-                // 并高亮一次（见 shared/exits.js 的 requestExitFocus）—— 不催、不打断，需要时才出现。
+                // 并高亮一次（见 shared/station/exits.js 的 requestExitFocus）—— 不催、不打断，需要时才出现。
                 if (local.exit) {
                     window.CGoExits?.requestExitFocus?.(local.sid, local.exit.name);
                 }

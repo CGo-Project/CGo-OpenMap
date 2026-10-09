@@ -918,7 +918,7 @@
      * 出入口内嵌下拉：该站有出入口数据时在输入框**右侧**露出触发钮
      * （未指定口显示「全部」、指定后显示口编号并高亮），点开才在下方浮出选口菜单——
      * 字段高度与从前的纯输入框完全一致，不再单独占一行。
-     * 口径与 shared/exits.js 一致——只列本站出口，暂停使用的口带样式标记但不拦选。
+     * 口径与 shared/station/exits.js 一致——只列本站出口，暂停使用的口带样式标记但不拦选。
      */
     function syncExitPicker() {
         const panel = document.getElementById(PLAN_ID);
@@ -2789,7 +2789,7 @@
 
     /**
      * 移动端抽屉：拖动把手或标题栏跟手调整高度，松手吸附到「最小化 / 半屏 / 全屏」三档；
-     * 轻点循环三档。拖动与内容区手势都委托给共享层通用引擎 shared/sheet-drag.js——
+     * 轻点循环三档。拖动与内容区手势都委托给共享层通用引擎 shared/base/sheet-drag.js——
      * 位置空间是面板的 `height`、档位是面板自身的 `drawer-*` 类；桌面端把手隐藏、整段不生效。
      * @param {HTMLElement} panel
      * @param {{lockHalfScroll?: boolean}} [opts] 半屏是否禁掉内容区原生滚动：

@@ -54,7 +54,7 @@
      *
      * 早先这里是一段纯文字（「投稿给城市主理人 xxx，或加入官方 QQ 交流群 …」），
      * 联系方式与正文都在本模块里硬编码、也没法一键带走反馈；现在改为按钮，直接打开
-     * **共享层的反馈面板**（`shared/feedback.js` 的 `CGoFeedback.open`，与出入口页签的
+     * **共享层的反馈面板**（`shared/feedback/feedback.js` 的 `CGoFeedback.open`，与出入口页签的
      * 「待补充」标同一套）：正文自带定位信息（城市 / 车站 ID / `data_calligraphy.js` 路径），
      * 可复制、可新建 GitHub Issue、也可直接加入官方 QQ 群 —— 联系方式与模板
      * 都收敛在反馈层，本模块只注册这一种场景的文案。

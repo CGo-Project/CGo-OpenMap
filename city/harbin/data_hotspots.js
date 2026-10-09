@@ -5,7 +5,7 @@
  * ⚠️ 太平国际机场暂无地铁直达——机场不做端点；东北虎林园、731 遗址等
  * 站名对不上的暂不收录（宁少勿错）。
  * 接驳口字段（exit / enterExit / leaveExit）可选，未配则点选只填车站、不指定口。
- * 供共享层 shared/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
+ * 供共享层 shared/route/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
  */
 const HARBIN_HOTSPOTS = [
     // ── 交通枢纽 ──

@@ -215,7 +215,7 @@
         },
         /**
          * 站外换乘的步行时间（分钟）。键为 `起点ID|终点ID`，逐对覆盖共享层的 6 分钟
-         * 默认值（机制见 shared/route-data.js；行程规划、等时圈与票价图的用时都吃这个数）。
+         * 默认值（机制见 shared/route/route-data.js；行程规划、等时圈与票价图的用时都吃这个数）。
          *
          * 本城两条站外配对都是「国铁车站 ⇄ 同名地铁站」：两者分属国铁与地铁两套票务系统、
          * 付费区不连通，出站换乘需重新购票（见 data_virtual_transfers.js）。
@@ -239,7 +239,7 @@
             "NDC|M116": 8, "M116|NDC": 8    // 呼和浩特东站（国铁）⇄ 呼和浩特东站（1 号线）
         },
         /**
-         * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route-data.js
+         * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route/route-data.js
          * 的 transferAt：`pairs` 用于「同一站上不同线路对方式不同」的情形。
          * 未列出的换乘站用共享层默认值（2 分钟）。
          *
@@ -282,35 +282,35 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.0014";
+        const version = "261010.0050";
         // 首末班车共享渲染层（须早于城市时刻表模块）
-        document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
-        document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-data.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-planner.js?v=${version}"><\/script>`);
         // 移动端抽屉手势引擎（车站详情与行程/结果面板共用；须早于两个消费方）
-        document.write(`<script src="./city/shenyang/shared/sheet-drag.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/sheet-drag.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
-        document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
-        document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/sidebar-refit.js?v=${version}"><\/script>`);
         // 地图小工具（票价图 / 等时圈 / 多人汇合）：取 route-data + route-planner 建图寻路
-        document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/map-tools.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区（须晚于上面三者）
-        document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
-        // 移动端抽屉手势仲裁：内容区优先滚动、半屏上滑优先展开（core 零改动，见 shared/panel-sheet-gesture.js）
-        document.write(`<script src="./city/shenyang/shared/panel-sheet-gesture.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/viewport-inset.js?v=${version}"><\/script>`);
+        // 移动端抽屉手势仲裁：内容区优先滚动、半屏上滑优先展开（core 零改动，见 shared/base/panel-sheet-gesture.js）
+        document.write(`<script src="./city/shenyang/shared/base/panel-sheet-gesture.js?v=${version}"><\/script>`);
         // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
-        document.write(`<script src="./city/shenyang/shared/adjacent-jump.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         // 车站设施共享渲染层（须早于本城设施模块与数据文件；样式表由共享层按自身 URL 注入）
-        document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/facilities.js?v=${version}"><\/script>`);
         // 反馈面板（出入口「待补充」与右上角「更多」入口共用；须早于 exits.js）
-        document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/feedback/feedback.js?v=${version}"><\/script>`);
         // 车站出入口共享渲染层（须早于本城出入口模块）
-        document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/exits.js?v=${version}"><\/script>`);
         // 出入口检索：全局搜索栏与行程规划起终点的出入口命中（须在 exits.js 之后）
-        document.write(`<script src="./city/shenyang/shared/exit-search.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/exit-search.js?v=${version}"><\/script>`);
         // 本城车站层级图数据（须早于本城设施模块）
         document.write(`<script src="./city/hohhot/data_facilities.js?v=${version}"><\/script>`);
         // 本城出入口数据（须早于本城出入口模块）

@@ -7,7 +7,7 @@
  * （老虎滩、俄罗斯风情街等无地铁直达或站名对不上的暂不收录）。
  * 接驳口字段（exit / enterExit / leaveExit）可选——本城出口表逐口核对后再补，
  * 未配则点选只填车站、不指定口。
- * 供共享层 shared/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
+ * 供共享层 shared/route/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
  */
 const DALIAN_HOTSPOTS = [
     // ── 交通枢纽 ──

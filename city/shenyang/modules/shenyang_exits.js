@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 沈阳车站出入口配置
  *
- * 渲染逻辑在共享层 `shared/exits.js`（多城共用），本文件只声明数据在哪与页签叫什么。
+ * 渲染逻辑在共享层 `shared/station/exits.js`（多城共用），本文件只声明数据在哪与页签叫什么。
  * 数据：`city/shenyang/data_exits.js`（由 drunk/tools/facilities/ 下的开发期脚本从
  *       高德地图开放平台 Web 服务 API 抓取生成，脚本不入版本库）。
  *

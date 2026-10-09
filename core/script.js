@@ -275,7 +275,7 @@ async function initStaCardSystem() {
  * 应用城市开通时刻表 (城市可选能力)
  *
  * 未开通区段与车站的预计开通时刻由各城 data_opening.js 维护，
- * 共享层 city/shenyang/shared/opening-schedule.js 负责按当前时刻把状态转为
+ * 共享层 city/shenyang/shared/station/opening-schedule.js 负责按当前时刻把状态转为
  * 已开通或保持未开通。这里只提供通用入口，未接入该能力的城市整段不产生任何影响。
  * 在模块顶层、init() 之前调用：既要早于 processData()，让派生出的车站站型与经停线路
  * 与最终状态一致；也要早于 DOMContentLoaded，好让 core/notice.js 推送「新开通线路」通知时

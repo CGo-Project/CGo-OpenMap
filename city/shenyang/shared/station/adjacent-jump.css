@@ -1,5 +1,5 @@
 /**
- * 上一站 / 下一站 点击跳转的观感 (shared/adjacent-jump.css)
+ * 上一站 / 下一站 点击跳转的观感 (shared/station/adjacent-jump.css)
  * 由 adjacent-jump.js 按自身 URL 注入（带上 ?v= 版本串）。
  * 只作用于已解析出目标站的 info-value——解析不出的行不带标记，保持纯文本原样。
  */

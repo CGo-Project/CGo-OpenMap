@@ -1,5 +1,5 @@
 /**
- * CGo OpenMap - 共享层：上一站 / 下一站 点击跳转 (shared/adjacent-jump.js)
+ * CGo OpenMap - 共享层：上一站 / 下一站 点击跳转 (shared/station/adjacent-jump.js)
  *
  * 车站详情「线路」页签里的「上一站 / 下一站」行（core 的 adjacent-stations 模块渲染）
  * 原本只是纯文本；本模块给它加上「点一下就跳到那座车站详情」的交互，

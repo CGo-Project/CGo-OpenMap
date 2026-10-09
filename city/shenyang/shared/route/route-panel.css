@@ -1132,7 +1132,7 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
    一旦被滤镜处理就会显形（浅色下灰边、深色下亮边），故必须原样保留、不参与淡化。
    虚换乘连线（.virtual-connectors）没有外描边这层顾虑，整组淡化即可。
    站名呼出线层也住在 #lines-layer 里，它是「站名标签的一部分」，淡化跟着标签走
-   （见 shared/label-active.js）；被这层规则连坐就会露出「路线上的站名亮着、引线却暗着」。 */
+   （见 shared/base/label-active.js）；被这层规则连坐就会露出「路线上的站名亮着、引线却暗着」。 */
 #map-content.cgo-routing #lines-layer .line-visual-inner,
 #map-content.cgo-routing #lines-layer .line-visual-overlay,
 #map-content.cgo-routing #lines-layer > .virtual-connectors {

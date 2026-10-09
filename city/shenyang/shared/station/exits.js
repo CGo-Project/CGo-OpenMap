@@ -51,7 +51,7 @@
     /* ── 出口说明「待补充」的反馈 ────────────────────────────────────────
        出入口的说明来自人工核定（维基「出口指示」）或「相对站厅方位 + 口」的填空，
        总有还没收录的口。与其只留一句「待补充」，不如把反馈路径直接给到访客——
-       点一下标即打开共享层的反馈面板（shared/feedback.js）：正文自带定位信息
+       点一下标即打开共享层的反馈面板（shared/feedback/feedback.js）：正文自带定位信息
        （城市 / 车站 ID / 出口编号 / 数据文件路径），复制或新建 Issue 都能一键带走。
 
        面板本身不在这里 —— 反馈要覆盖共享层的多个场景（出口说明 / 题字 / 首末班车 /
@@ -410,7 +410,7 @@
         }
     }
 
-    /** 当前城市登记的出入口配置（与 shared/exit-search.js 同口径解析，防跨城 ID 撞号） */
+    /** 当前城市登记的出入口配置（与 shared/station/exit-search.js 同口径解析，防跨城 ID 撞号） */
     function currentConfig() {
         const id = window.getActiveCity?.()?.id || window.CURRENT_CITY?.id || "";
         if (id && registered.has(id)) return registered.get(id);

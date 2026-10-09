@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 呼和浩特车站设施配置
  *
- * 渲染、开合与来源标注都在共享层 `city/shenyang/shared/facilities.js`（多城共用），
+ * 渲染、开合与来源标注都在共享层 `city/shenyang/shared/station/facilities.js`（多城共用），
  * 本文件只声明呼和浩特的数据在哪、官网层级图叫什么、用哪个 CGoUI 图标。
  *
  * 本城官网「服务设施」只发布车站层级图（剖面图），没有逐条设施位置数据，

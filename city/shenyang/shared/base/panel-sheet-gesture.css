@@ -1,5 +1,5 @@
 /**
- * CGo OpenMap - 移动端车站详情抽屉「手势仲裁」样式 (shared/panel-sheet-gesture.css)
+ * CGo OpenMap - 移动端车站详情抽屉「手势仲裁」样式 (shared/base/panel-sheet-gesture.css)
  *
  * 只做一件事：把 core 在移动端给 #info-panel 打的 touch-action: none 拆开分区，
  * 放行内容区的原生纵向滚动（以及页签栏的横向滚动），其余区域仍不参与滚动。

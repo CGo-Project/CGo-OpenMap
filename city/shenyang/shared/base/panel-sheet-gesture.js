@@ -1,11 +1,11 @@
 /**
- * CGo OpenMap - 共享层：移动端车站详情抽屉手势 (shared/panel-sheet-gesture.js)
+ * CGo OpenMap - 共享层：移动端车站详情抽屉手势 (shared/base/panel-sheet-gesture.js)
  *
  * 车站详情 #info-panel 的三档抽屉（收起 / 半屏 / 全屏）在移动端的**全部**手势：
  *   · 头部 / 把手：跟手拖动、松手甩动 / 就近吸附、轻点循环换档；
  *   · 内容区：半屏上滑优先展开、到顶下滑跟手收起、其余交给原生滚动；
  *   · 半屏禁掉内容区原生滚动（否则上滑会被浏览器先抢去滚内容）；
- * 均**委托给通用引擎** shared/sheet-drag.js，本文件只提供「车站面板适配器」：
+ * 均**委托给通用引擎** shared/base/sheet-drag.js，本文件只提供「车站面板适配器」：
  * 位置空间是 `top`、档位是 body 上的三个类、滚动容器是 `.panel-body`。
  *
  * 为什么卸掉 core 的拖拽：

@@ -5,7 +5,7 @@
  * ⚠️ 白塔机场的地铁站名为「坝堰（机场）」（M120），显示名用机场常用名；
  * 大召寺、昭君墓、五塔寺等站名对不上的暂不收录（宁少勿错）。
  * 接驳口字段（exit / enterExit / leaveExit）可选，未配则点选只填车站、不指定口。
- * 供共享层 shared/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
+ * 供共享层 shared/route/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
  */
 const HOHHOT_HOTSPOTS = [
     // ── 交通枢纽 ──

@@ -42,7 +42,7 @@
 且**换乘站在每条线各占一行、数值往往不同**（如双丰的卫生间，2 号线在站台层东北、6 号线在站台层东侧），
 故多线换乘站的位置段带线名、彼此不合并。
 
-渲染在共享层 `city/shenyang/shared/facilities.js`（配置驱动），本城只写 `modules/changchun_facilities.js`
+渲染在共享层 `city/shenyang/shared/station/facilities.js`（配置驱动），本城只写 `modules/changchun_facilities.js`
 的类型名与 CGoUI 图标，挂载于「车站信息」页签 order 6。
 
 `staname.csv` 收录 3 条已查证的站名别名——`职业学院` → 职业技术大学（2026-05 官方更名公告）、

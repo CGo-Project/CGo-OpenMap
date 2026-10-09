@@ -100,8 +100,8 @@
     display: block;
 }
 
-/* 站名题字样式已抽到共享层 city/shenyang/shared/calligraphy.css（多城共用），
-   由 shared/calligraphy.js 按自身 URL 推导路径按需注入，本文件不再保留题字规则。 */
+/* 站名题字样式已抽到共享层 city/shenyang/shared/station/calligraphy.css（多城共用），
+   由 shared/station/calligraphy.js 按自身 URL 推导路径按需注入，本文件不再保留题字规则。 */
 
 /* 方城地标（<img> 独立 SVG，拿不到 currentColor）由 shenyang_calligraphy.js 在
    深底题字 header 上直接换用白色单色版 fangcheng_mono.svg，此处不再做滤镜反色。
@@ -143,6 +143,6 @@
     color: inherit;
 }
 
-/* 车站层级图与车站设施的样式已抽到共享层 city/shenyang/shared/facilities.css（多城共用），
-   由 shared/facilities.js 按自身 URL 按需注入，本文件不再保留相关规则。 */
+/* 车站层级图与车站设施的样式已抽到共享层 city/shenyang/shared/station/facilities.css（多城共用），
+   由 shared/station/facilities.js 按自身 URL 按需注入，本文件不再保留相关规则。 */
 

@@ -17,7 +17,7 @@
  * 站点映射出处：cultural 报站字典（沈阳故宫→怀远门、九一八→合作街、沈阳博物馆→
  *       人民广场）与站名直取（北陵公园 / 东陵公园 / 新乐遗址即站名本身）。
  *
- * 供共享层 shared/route-panel.js 读取（约定全局 CGO_HOTSPOTS，其他城市自建同名
+ * 供共享层 shared/route/route-panel.js 读取（约定全局 CGO_HOTSPOTS，其他城市自建同名
  * 文件与全局即可接入；没有该文件的城不出「快速前往」区）。
  */
 const SHENYANG_HOTSPOTS = [

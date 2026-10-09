@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 哈尔滨车站地图卡片 (city/harbin/stacard/script.js)
  *
- * 渲染逻辑位于共享层（临时位置 city/shenyang/shared/stacard-engine.js，
+ * 渲染逻辑位于共享层（临时位置 city/shenyang/shared/station/stacard-engine.js，
  * 计划在开发团队确认后迁入 core/，详见 docs/STACARD_TIMETABLE_UNIFICATION.md）。
  *
  * 坐标来源：高德地铁图接口生成的 city/harbin/amap_data.json（GCJ-02），
@@ -9,7 +9,7 @@
  * 因此索引沿用默认（按站名匹配），配置口径与大连一致。
  */
 
-import { createStaCard } from "../../shenyang/shared/stacard-engine.js";
+import { createStaCard } from "../../shenyang/shared/station/stacard-engine.js";
 
 const HarbinStaCard = createStaCard({
     cityName: "哈尔滨",

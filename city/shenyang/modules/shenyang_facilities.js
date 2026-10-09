@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 沈阳车站设施配置
  *
- * 渲染、开合与来源标注都在共享层 `shared/facilities.js`（多城共用），本文件只声明
+ * 渲染、开合与来源标注都在共享层 `shared/station/facilities.js`（多城共用），本文件只声明
  * 沈阳的数据在哪、各类设施叫什么、用哪个 CGoUI 图标，以及官网剖面图地址表。
  *
  * 数据：`city/shenyang/data_facilities.js`（由 `drunk/tools/facilities/fetch_shenyang_facilities.js` 抓取，

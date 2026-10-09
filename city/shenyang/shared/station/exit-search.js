@@ -9,11 +9,11 @@
  *     单点包装位。这里等 core 绑定完成后接管 oninput：先跑 core 原逻辑，再把出入口命中项
  *     追加到 #search-results-list（复用 .search-item，天然纳入上下键 / 回车导航）；
  *     点击时 core 的 onclick 先 selectStation，本模块随后切到出入口页签并高亮该口；
- *   - 消费方二：行程规划面板的起点 / 终点候选（shared/route-panel.js）——
+ *   - 消费方二：行程规划面板的起点 / 终点候选（shared/route/route-panel.js）——
  *     直接调 search() 合并进候选列表，exitsById() 供「指定 / 不指定出入口」选择行取数。
  *
  * 出入口只属于可乘行的地铁车站：isPointOnly 线路（国铁散站 / 轻铁 / 在建点线）的
- * 站点即便在数据里被误收了条目也不参与检索（口径同 shared/exits.js 的 onRidableLine）。
+ * 站点即便在数据里被误收了条目也不参与检索（口径同 shared/station/exits.js 的 onRidableLine）。
  *
  * @event cgo:exit-search-hit      搜索栏点选出入口命中 { cityId, sid, code, keyword }
  * @event cgo:route-endpoint-exit  行程端点出入口变更 { field, sid, code }（由 route-panel 派发）
@@ -44,7 +44,7 @@
         return s.replace(/[\s\u3000.''\(\)\-\[\]【】（）·、,，。：；:;!?！？/／]/g, "");
     }
 
-    /** 出口编号的中文口径（字母口「A 口」、数字口「3 号口」），与 shared/exits.js 标题一致 */
+    /** 出口编号的中文口径（字母口「A 口」、数字口「3 号口」），与 shared/station/exits.js 标题一致 */
     function exitLabel(code) {
         const text = String(code ?? "");
         return `${text}${/^\d/.test(text) ? " 号口" : " 口"}`;
@@ -210,7 +210,7 @@
 
     /**
      * 出入口命中兑现：跳站之后把用户搜的那个口摆到眼前——
-     * 先登记 requestExitFocus（出入口页签露面时兑现高亮，见 shared/exits.js），
+     * 先登记 requestExitFocus（出入口页签露面时兑现高亮，见 shared/station/exits.js），
      * 再主动切到出入口页签：搜地标的用户就是要看这个口，不能等他自己翻页签。
      * 页签在 selectStation 渲染信息板之后才进 DOM，故用 rAF 重试到出现为止。
      */
