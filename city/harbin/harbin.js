@@ -237,7 +237,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261009.180248";
+        const version = "261009.2040";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -254,6 +254,8 @@
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
+        // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
+        document.write(`<script src="./city/shenyang/shared/adjacent-jump.js?v=${version}"><\/script>`);
         // 城市私有数据与车站出入口（须早于依赖它的模块加载）
         document.write(`<script src="./city/harbin/data_exits.js?v=${version}"><\/script>`);
         // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）

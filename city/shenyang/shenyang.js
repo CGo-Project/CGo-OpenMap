@@ -573,7 +573,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261009.180248";
+        const version = "261009.2040";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -602,6 +602,8 @@
         document.write(`<script src="./city/shenyang/shared/tip-card.js?v=${version}"><\/script>`);
         // 呼出线随标签进入 active：按 data-cgo-callout 把站名标签的选中态同步到引线
         document.write(`<script src="./city/shenyang/shared/label-active.js?v=${version}"><\/script>`);
+        // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
+        document.write(`<script src="./city/shenyang/shared/adjacent-jump.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/calligraphy.js?v=${version}"><\/script>`);
         // 出入口垂直交通：把「地面-站厅 X出入口」这类电梯/扶梯从设施板块搬到出口页签
         // （须早于 facilities.js 与 exits.js，两者都调用它）

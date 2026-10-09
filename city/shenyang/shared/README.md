@@ -30,6 +30,7 @@
 | `station-title.js` | `window.CGoStationTitle.createStationTitleNormalizer` | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈） | 侧栏站名标题归一化（站类判定、标题拼装、MutationObserver 安装与防自触发） |
 | `tip-card.js` | `window.CGoTipCard.render` | classic script（目前仅沈阳引入） | 车站信息板提示卡片 DOM（与上游官方模板结构一致） |
 | `label-active.js` | `window.CGoLabelActive`（`sync`） | classic script，目前仅沈阳在 `{city}.js` 引入 | 呼出线随站名标签同步 active 与淡化（按 `data-cgo-callout` 配对），详见 2.1 |
+| `adjacent-jump.js` + `adjacent-jump.css` | 无对外接口（自动注册 `cgo-adjacent-jump` 模块） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州未引入） | 「上一站 / 下一站」点击跳转：面板装配完成后给 `info-value` 反查目标站并绑定跳转（core 零改动），详见 2.1 |
 | `calligraphy.js` + `calligraphy.css` | `window.CGoCalligraphy.register` | classic script（目前仅沈阳引入） | 站名题字渲染机制（沈阳特色，其他城市可选用）；素材缺失时给「投稿 / 反馈」入口，详见 2.1 |
 | `facilities.js` + `facilities.css` | `window.CGoFacilities`（`register` / `registered`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 呼），须早于城市设施模块 | 车站设施板块（配置驱动，含可选的车站层级图），详见 2.1 |
 | `feedback.js` + `feedback.css` | `window.CGoFeedback`（`open` / `registerKind` / `kinds`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州未接入）（**建议**早于 `exits.js` 与 `calligraphy.js`；这两者都在**打开面板前补登记**一次自己的场景、幂等，故先后顺序并不敏感，见 `exits.js` 内注释） | 反馈面板：出入口「待补充」、题字投稿与右上角「更多」入口共用，七类场景，详见 2.1 |
@@ -62,6 +63,10 @@
 #### label-active.js —— 呼出线随标签进入 active
 
 呼出线随站名标签进入 active、也随它淡化：城市给引线元素打 `data-cgo-callout="<车站 ID>"`（引线重建时也要带上）、给装引线的图层打 `data-cgo-callout-layer`，本模块据此把「标签 `label_<ID>` 带 `.active`」同步成引线的 `cgo-callout-active`，并把标签的计算淡化抄给引线（`opacity` 与 `filter` 都抄：路线高亮的淡化走 `filter`、核心让位支线走内联 `opacity`）。引线整层重画后由本模块补回。只管类名与引线自己的 opacity/filter，线宽/颜色等观感由城市样式表定义（沈阳见第三节）
+
+#### adjacent-jump.js + adjacent-jump.css —— 上一站 / 下一站点击跳转
+
+车站详情「线路」页签里的「上一站 / 下一站」原本只是纯文本；本模块注册一个**空渲染**的 `cgo-adjacent-jump` 模块（`line-tab` 槽、order 21，紧跟 core 的 `adjacent-stations` 之后），借 `onMounted` 在面板装配完成后给已有的 `.info-value` 事后增强，对 core 零改动（与 `geo-estimate.js` 的「面板就地改写」同一思路）。目标站 ID 走**站名反查**：取 `info-value` 的首个非空文本子节点（其后那个 span 是距离，不参与匹配）回查 `processedStations.cn`；同城同名多站（如沈阳有轨 / 地铁两个「杨官」）按「与当前站在任一线路站序上相邻」收窄，**仍歧义就不绑**——宁可该行保持纯文本，也不跳错站；反查忠实于「显示什么跳什么」，`line-link.js` 贯通合并改写过的 prev / next 也能正确解析。绑定后补 `data-cgo-jump-sid`（CSS 可点击形态的钩子）、`role="button"` + `tabindex` + `aria-label`（Enter / 空格可触发）；点击调 `selectStation(sid)` 后再按**线路名**点选新面板里的同名页签，保住「沿线上下站连续浏览」的链路（不必复刻 core 的 `relatedLinesInfo` 排序，且天然覆盖贯通改名的线名）。样式表由脚本按自身 URL 注入。无配置项，城市引入脚本即生效，可在 `stationBoard.modules` 里以 `cgo-adjacent-jump: { enabled: false }` 关闭
 
 #### calligraphy.js + calligraphy.css —— 站名题字
 
@@ -235,6 +240,7 @@ needs: {
 | 车站提示卡片 | 共享层出 DOM，城市只写命中判定与文案 | `shared/tip-card.js`、`city/shenyang/modules/shenyang_cultural.js` |
 | 站名题字 | 沈阳专属，其他城市可选用 | `shared/calligraphy.js`、`city/shenyang/modules/shenyang_calligraphy.js` |
 | **呼出线随标签进入 active** | 沈阳已接入（换乘站的呼出框 + 引线，标签被选中 / 成为路线起终点时引线一同转红，标签被淡化时引线一同淡出）；其他城市给引线元素打 `data-cgo-callout="<车站 ID>"`、给引线层打 `data-cgo-callout-layer`，并在样式表里写 `cgo-callout-active` 的观感即可接入 | `shared/label-active.js`、`city/shenyang/modules/shenyang_map.js`、`city/shenyang/style.css` |
+| **上一站 / 下一站点击跳转** | 沈阳、大连、长春、哈尔滨、呼和浩特已接入（点上一站 / 下一站的站名即跳到该站详情并停在同一线路页签，站名反查歧义时保持纯文本不可点）；其他城市在 `{city}.js` 的 `document.write` 列表里加一行 `shared/adjacent-jump.js` 即接入，无需任何配置 | `shared/adjacent-jump.js`、各城 `{city}.js` 引入行 |
 | **开通时刻** | 长春已接入（5 号线一期），沈阳、大连为空表待用 | `shared/opening-schedule.js`、各城 `data_opening.js` |
 | **行程规划** | 沈阳、大连、长春、哈尔滨、呼和浩特、福州已接入：共享层出算法、面板与坐标索引，城市只写 `reader` 取数 + `fareSystems` / `fare` 票价 | `shared/route-data.js`、`shared/route-planner.js`、`shared/route-panel.js`、各城 `{city}.js` 的 `CGO_ROUTE_CONFIG` |
 | **贯通运行（线路接续）** | 大连已接入（3 号线支线 ⇄ 13 号线在九里接续跑同一趟车）；其他城市按同一份 `lineLinks` 声明即可接入 | `shared/line-link.js`、`city/dalian/dalian.js` 的 `lineLinks` |

@@ -1,0 +1,29 @@
+/**
+ * 上一站 / 下一站 点击跳转的观感 (shared/adjacent-jump.css)
+ * 由 adjacent-jump.js 按自身 URL 注入（带上 ?v= 版本串）。
+ * 只作用于已解析出目标站的 info-value——解析不出的行不带标记，保持纯文本原样。
+ */
+
+/* 可点击：主题色 + 指针 + 圆角底，亮暗两套主题均取自全局变量 */
+.info-value[data-cgo-jump-sid] {
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+/* 核心 .info-value 的 color 带 !important，这里必须同权重覆盖 */
+.info-value[data-cgo-jump-sid]:hover {
+    color: var(--primary-color) !important;
+    background-color: color-mix(in srgb, var(--primary-color) 12%, transparent);
+}
+
+/* 键盘可达：Enter / 空格触发，焦点环用主题色 */
+.info-value[data-cgo-jump-sid]:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* 距离小字保持淡化，不跟着主题色抢视觉 */
+.info-value[data-cgo-jump-sid]:hover span {
+    color: var(--text-light);
+}
