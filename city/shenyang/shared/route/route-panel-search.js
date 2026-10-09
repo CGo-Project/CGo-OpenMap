@@ -31,11 +31,13 @@
             Object.entries(d.allStations()).forEach(([sid, station]) => {
                 if (!d.pickable(sid) || !station.cn) return;
                 const cn = String(station.cn), en = String(station.en || "");
-                // 旧名 / 历史站名 / 拼音缩写别名：核心载入 staname.csv 后把结果挂在车站对象的
-                // `aliases` 上（见 core/script.js 的 loadStationAliases），且核心检索让它们与中英文名
-                // **同等**参与打分。这里沿用同一口径——否则「搜旧名搜不到」（用户反馈）。
-                const aliases = Array.isArray(station.aliases) ? station.aliases : [];
-                const names = [cn, en, ...aliases]
+                // 旧名 / 历史站名 / 拼音缩写别名：核心载入 staname.csv 后把结果挂在
+                // **processedStations** 上（core/script.js 的 loadStationAliases）—— 注意它与本模块
+                // allStations() 拿到的城市原始数据 stationsData 是**两个不同对象**，故必须显式从
+                // window.processedStations 取（核心在 script.js:4328 导出）。核心检索让别名与中英文名
+                // **同等**参与打分，这里沿用同一口径，否则「搜旧名搜不到」（用户反馈）。
+                const aliases = window.processedStations?.[sid]?.aliases || station.aliases;
+                const names = [cn, en, ...(Array.isArray(aliases) ? aliases : [])]
                     .map((name) => String(name).toLowerCase())
                     .filter(Boolean);
                 let score = -1;
