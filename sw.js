@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261008.260000';
+const CACHE_NAME = 'cgo-openmap-v261009.090919';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -140,6 +140,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/data_legend.js',
     './city/shenyang/data_timetable.js',
     './city/shenyang/shared/loop-direction.js',
+    './city/shenyang/shared/geo-estimate.js',
     './city/shenyang/shared/timetable-renderer.js',
     './city/shenyang/shared/stacard-engine.js',
     './city/shenyang/shared/station-title.js',
@@ -354,6 +355,7 @@ const ASSETS_TO_CACHE = [
     './city/changchun/data_exits.js',
     './city/changchun/staname.csv',
     './city/changchun/amap_data.json',
+    './city/changchun/assets/airport.svg',
     './city/changchun/assets/ccgj.svg',
     './city/changchun/assets/railway.svg',
     './city/changchun/assets/transfer-badge.svg',
