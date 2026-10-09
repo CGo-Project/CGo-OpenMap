@@ -282,7 +282,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261009.090919";
+        const version = "261009.173801";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -303,10 +303,14 @@
         document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
         // 车站出入口共享渲染层（须早于本城出入口模块）
         document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
+        // 出入口检索：全局搜索栏与行程规划起终点的出入口命中（须在 exits.js 之后）
+        document.write(`<script src="./city/shenyang/shared/exit-search.js?v=${version}"><\/script>`);
         // 本城车站层级图数据（须早于本城设施模块）
         document.write(`<script src="./city/hohhot/data_facilities.js?v=${version}"><\/script>`);
         // 本城出入口数据（须早于本城出入口模块）
         document.write(`<script src="./city/hohhot/data_exits.js?v=${version}"><\/script>`);
+        // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
+        document.write(`<script src="./city/hohhot/data_hotspots.js?v=${version}"><\/script>`);
         (HohhotCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/hohhot/${scriptPath}?v=${version}"><\/script>`);
         });

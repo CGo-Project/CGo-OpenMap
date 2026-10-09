@@ -330,7 +330,7 @@
      */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261009.090919";
+        const version = "261009.173801";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 

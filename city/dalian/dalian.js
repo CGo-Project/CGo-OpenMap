@@ -429,7 +429,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261009.090919";
+        const version = "261009.173801";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
@@ -457,6 +457,8 @@
         // 城市私有数据（须早于依赖它的模块加载）
         document.write(`<script src="./city/dalian/data_facilities.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/dalian/data_exits.js?v=${version}"><\/script>`);
+        // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
+        document.write(`<script src="./city/dalian/data_hotspots.js?v=${version}"><\/script>`);
         // 车站设施 / 出入口（配置驱动，共享层位于沈阳目录下）
         // 出入口垂直交通：把「站外 X口」这类电梯从设施板块搬到出口页签（须早于下面两者）
         document.write(`<script src="./city/shenyang/shared/exit-vertical.js?v=${version}"><\/script>`);
@@ -464,6 +466,8 @@
         // 反馈面板（出入口「待补充」与右上角「更多」入口共用；须早于 exits.js）
         document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
+        // 出入口检索：全局搜索栏与行程规划起终点的出入口命中（须在 exits.js 之后）
+        document.write(`<script src="./city/shenyang/shared/exit-search.js?v=${version}"><\/script>`);
         (DalianCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/dalian/${scriptPath}?v=${version}"><\/script>`);
         });

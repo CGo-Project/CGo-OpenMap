@@ -464,7 +464,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261009.090919";
+        const version = "261009.173801";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
@@ -490,6 +490,8 @@
         // 城市私有数据与车站设施（须早于依赖它的模块加载）
         document.write(`<script src="./city/changchun/data_facilities.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_exits.js?v=${version}"><\/script>`);
+        // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
+        document.write(`<script src="./city/changchun/data_hotspots.js?v=${version}"><\/script>`);
         // 出入口垂直交通搬迁：把设施表里以出口开头的「无障碍电梯 / 升降平台」段搬到出口页签下
         // （须早于 facilities.js 与 exits.js，两者都调用它）
         document.write(`<script src="./city/shenyang/shared/exit-vertical.js?v=${version}"><\/script>`);
@@ -499,6 +501,8 @@
         document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
         // 车站出入口独立页签：配置驱动，与沈阳、大连同用共享层
         document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
+        // 出入口检索：全局搜索栏与行程规划起终点的出入口命中（须在 exits.js 之后）
+        document.write(`<script src="./city/shenyang/shared/exit-search.js?v=${version}"><\/script>`);
         (ChangchunCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/changchun/${scriptPath}?v=${version}"><\/script>`);
         });

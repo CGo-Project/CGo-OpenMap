@@ -401,6 +401,14 @@
             "T510|0923": 8, "0923|T510": 8
         },
         /**
+         * 地上（高架）车站清单（站 ID）。沈阳地铁仅 3 号线李达—余良区间为地上站，
+         * 其余车站均为地下站——**不在本清单即为地下站**（共享层据此给「携带行李」
+         * 需求出行方向指引：地下站进站找下行扶梯、高架站反过来）。
+         * 9 站：李达 0301、铁西汽车工厂 0302、马贝 0303、中德大街 0304、细河悠谷 0305、
+         * 翟家 0306、工业大学 0307、宁官 0308、余良 0309（主理人 2026-10-09 口径）。
+         */
+        elevatedStations: ["0301", "0302", "0303", "0304", "0305", "0306", "0307", "0308", "0309"],
+        /**
          * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route-data.js
          * 的 transferAt。未列出的换乘站用共享层默认值（2 分钟）。
          *
@@ -425,6 +433,10 @@
             // 2 号线换 1 号线为通道换乘（约 3 分钟）** —— 这是按线路对方向的不对称
             // （由站体结构决定，与列车上下行无关），用 pairs 的**有向键**「A>B」表达。
             "0117": {
+                needs: {
+                    luggage: { mode: "通道换乘（通道双向扶梯）" },
+                    accessible: { mode: "通道换乘（通道有电梯）" }
+                },
                 mode: "十字节点换乘", minutes: 1,
                 pairs: {
                     "SYM01>SYM02": { mode: "十字节点换乘", minutes: 1 },
@@ -435,63 +447,133 @@
             // 反向乘扶梯 / 步行梯上行（搜狐·一点资讯《驶向新时代 沈阳地铁九号线开通
             // 试运营》2019-05-25）。主理人现场口径：1 号线换 9 号线为节点换乘，
             // 9 号线站厅北端接入 1 号线站厅中部（即节点为主、站厅相接为辅）。
-            "0112": { mode: "节点换乘", minutes: 1 },
+            "0112": {
+                needs: {
+                    luggage: { mode: "站厅平接换乘（9号线站厅双向扶梯）" },
+                    accessible: { mode: "站厅平接换乘",  note: "两线直梯分处站厅两头、疑隔非付费区，能否跨线使用待核，以现场为准" }
+                },
+                mode: "节点换乘", minutes: 1 },
             // 淮河街沈医二院 9号线 ⇄ 10号线：设计为「L」形换乘站，10 号线车站地下两层、
             // 9 号线车站地下三层，站厅层实现付费区与非付费区换乘，站台与站台以换乘楼梯
             // 连接、单向循环换乘（中国网 / 央视网 2012-07-04《沈阳地铁9、10号线重要站点
             // 怎么建》）。主理人现场口径：10 号线换 9 号线使用站台一端楼梯换乘，
             // 站厅之间有通道连接。
-            "0902": { mode: "L型节点换乘", minutes: 1 },
+            "0902": {
+                needs: {
+                    luggage: { mode: "站厅换乘（双向扶梯）" },
+                    accessible: { mode: "站厅换乘（有直梯）" }
+                },
+                mode: "L型节点换乘", minutes: 1 },
             // 中医药大学 2号线 ⇄ 10号线：10 号线车站沿崇山中路东西向、上跨 2 号线，
             // 与 2 号线实现通道换乘，两线共用一个换乘厅（同上 2012-07-04 报道）。
             // 主理人现场口径：通道换乘。→ 取通道换乘档下限 4 分钟。
-            "0205": { mode: "通道换乘", minutes: 4 },
+            "0205": {
+                needs: {
+                    luggage: { mode: "通道换乘（双向扶梯）" },
+                    accessible: { mode: "通道换乘（换乘通道有升降平台）" }
+                },
+                mode: "通道换乘", minutes: 4 },
             // 滂江街 1号线 ⇄ 10号线：10 号线滂江街站为地下三层岛式站台（地下一层站厅、
             // 地下二层设备层、地下三层站台），与 1 号线滂江街车站通道换乘、单向循环
             // （同上 2012-07-04 报道）。主理人现场口径：10 号线站厅北端有楼梯直通
             // 1 号线 A 口所在的东站厅，也有通道连接到 1 号线 C 口所在的西站厅
             // —— 两条路径都在站厅层面，仍按通道换乘档取 4 分钟。
-            "0121": { mode: "通道换乘", minutes: 4 },
+            "0121": {
+                needs: {
+                    luggage: { mode: "站厅换乘（走 B/C 口方向通道）" },
+                    accessible: { mode: "站厅换乘（走 B/C 口方向通道，有升降平台与直梯）",  note: "升降平台与直梯在通向 B/C 口的 1 号线站厅一侧" }
+                },
+                mode: "通道换乘", minutes: 4 },
             // 奥体中心 2号线 ⇄ 9号线：9 号线车站沿浑河大街设置，既有 2 号线奥体中心站
             // 位于本站东北侧（同上 2012-07-04 报道）。主理人现场口径：9 号线站厅东端
             // 接入 2 号线站厅中部 —— 属站厅换乘；现场换乘实录用时约 3 分钟
             // （B 站《沈阳地铁「奥体中心站」换乘实录》2026-05，爱好者现场实测）。
-            "0215": { mode: "站厅换乘", minutes: 3 },
+            "0215": {
+                needs: {
+                    luggage: { mode: "站厅平接换乘（9号线站厅双向扶梯）" },
+                    accessible: { mode: "站厅平接换乘（两线均有直梯）" }
+                },
+                mode: "站厅换乘", minutes: 3 },
             // 太原街 1号线 ⇄ 4号线：主理人现场口径：两个站厅之间有通道连接。
             // 现场实录另述该通道明显偏长（B 站换乘实录标题即「长通道换乘！沈阳地铁
             // 太原街站 4 号线换乘 1 号线第一视角记录」「谁让你把换乘通道修那么长的？」）
             // → 按通道换乘档上限取 5 分钟。
-            "0115": { mode: "通道换乘", minutes: 5 },
+            "0115": {
+                needs: {
+                    luggage: { mode: "通道换乘（通道双向扶梯）" },
+                    accessible: { mode: "通道换乘（通道与站厅有直梯）" }
+                },
+                mode: "通道换乘", minutes: 5 },
             // 工业展览馆 2号线 ⇄ 3号线：主理人现场口径：两条线的站厅之间有通道连接。
             // 官方报道亦述两线以换乘通道相连，通道内设置沈阳工业发展史时间轴
             // （沈阳晚报 / 辽宁日报 2026-06-30 3 号线东段开通报道引沈阳地铁集团口径）
             // → 站厅之间另有通道，取 3 分钟。
-            "0212": { mode: "站厅换乘", minutes: 3 },
+            "0212": {
+                needs: {
+                    luggage: { mode: "站厅换乘（双向扶梯）" },
+                    accessible: { mode: "站厅换乘（有直梯）" }
+                },
+                mode: "站厅换乘", minutes: 3 },
             // 沈阳北站 2号线 ⇄ 4号线：主理人现场口径：两个站厅之间有通道连接 → 3 分钟。
             // （国铁沈阳北站经「联建通道」进站属站外换乘，见上方 walkMinutes 的未收录说明。）
-            "0207": { mode: "站厅换乘", minutes: 3 },
+            "0207": {
+                needs: {
+                    luggage: { mode: "通道换乘（双向扶梯）" },
+                    accessible: { mode: "通道换乘（换乘通道有升降平台）" }
+                },
+                mode: "站厅换乘", minutes: 3 },
             // 砂阳 3号线 ⇄ 4号线：主理人现场口径：3 号线站厅东端接入 4 号线站厅南端
             // —— 两个站厅直接相接、无额外长通道，取 2 分钟。
-            "0414": { mode: "站厅换乘", minutes: 2 },
+            "0414": {
+                needs: {
+                    luggage: { mode: "站厅换乘（双向扶梯）" },
+                    accessible: { mode: "站厅换乘（有直梯）" }
+                },
+                mode: "站厅换乘", minutes: 2 },
             // 大通湖街 3号线 ⇄ 9号线：主理人现场口径：两条线的站厅之间有通道连接 → 3 分钟。
-            "0911": { mode: "站厅换乘", minutes: 3 },
+            "0911": {
+                needs: {
+                    luggage: { mode: "站厅换乘（双向扶梯）" },
+                    accessible: { mode: "站厅换乘（有直梯）" }
+                },
+                mode: "站厅换乘", minutes: 3 },
             // 长白南 4号线 ⇄ 9号线：主理人现场口径：9 号线换 4 号线有楼梯直通（节点），
             // 两个站厅之间另有通道连接 → 按主路径的节点换乘取 1 分钟。
-            "0915": { mode: "节点换乘", minutes: 1 },
+            "0915": {
+                needs: {
+                    luggage: { mode: "站厅平接换乘（双向扶梯）" },
+                    accessible: { mode: "站厅平接换乘（有直梯）" }
+                },
+                mode: "节点换乘", minutes: 1 },
             // 长青南街 9号线 ⇄ 10号线：主理人现场口径：9 号线换 10 号线有楼梯直通，
             // 10 号线站厅南端接入 9 号线站厅中部 → 按主路径的节点换乘取 1 分钟。
-            "0922": { mode: "节点换乘", minutes: 1 },
+            "0922": {
+                needs: {
+                    luggage: { mode: "站厅换乘（双向扶梯）" },
+                    accessible: { mode: "站厅换乘（有直梯）" }
+                },
+                mode: "节点换乘", minutes: 1 },
             // 合作街 4号线 ⇄ 10号线：主理人现场口径：4 号线换 10 号线有楼梯直通，
             // 站厅之间有通道连接 → 按主路径的节点换乘取 1 分钟。
-            "1011": { mode: "节点换乘", minutes: 1 },
+            "1011": {
+                needs: {
+                    luggage: { mode: "站厅平接换乘（双向扶梯）" },
+                    accessible: { mode: "站厅平接换乘（有直梯）" }
+                },
+                mode: "节点换乘", minutes: 1 },
             // 江东街 3号线 ⇄ 10号线：主理人现场口径：两条线的站厅之间有通道连接 → 3 分钟。
-            "1017": { mode: "站厅换乘", minutes: 3 }
+            "1017": {
+                needs: {
+                    luggage: { mode: "站厅换乘（双向扶梯）" },
+                    accessible: { mode: "站厅换乘（有直梯）" }
+                },
+                mode: "站厅换乘", minutes: 3 }
         }
     };
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261009.090919";
+        const version = "261009.173801";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -510,6 +592,8 @@
         document.write(`<script src="./city/shenyang/data_calligraphy.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/data_facilities.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/data_exits.js?v=${version}"><\/script>`);
+        // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
+        document.write(`<script src="./city/shenyang/data_hotspots.js?v=${version}"><\/script>`);
         // 共享层（本目录下，须早于各城模块加载）
         document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
@@ -528,6 +612,8 @@
         document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
         // 车站出入口独立页签：配置驱动，大连等城同用
         document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
+        // 出入口检索：全局搜索栏与行程规划起终点的出入口命中（须在 exits.js 之后）
+        document.write(`<script src="./city/shenyang/shared/exit-search.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/data_opening.js?v=${version}"><\/script>`);
