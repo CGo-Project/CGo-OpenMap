@@ -110,6 +110,8 @@
         exporting: false,   // 是否正在导出视频（导出期间锁住实时播放那几枚控件）
         exportCancelled: false,
         muxerLoading: null, // mp4-muxer 的按需加载 Promise（同一份只注入一次）
+        exportTheme: null,  // 导出用：从 DOM 算好的主题色（画布读不到 CSS 变量）
+        cardPos: "br",      // 导出进度卡的角落：tl / tr / bl / br / off
         shown: new Map(),   // sid → form：已经出现在画布上的车站（引线重建后据此补状态）
         dotColors: new Map(), // sid → dot 形态的环色（首条开通线路的颜色）
         alwaysOn: new Set(), // 全程固定显示的车站（国铁散点等，不参与逐个弹出）
@@ -1239,38 +1241,56 @@
     }
 
     /**
-     * 面板在 t 时刻的取值：日期与进度条在起笔运镜期间从上一事件收到本事件；车站 / 里程
-     * 随生长一起滚；线路数在段落归档后补上；徽标、说明与清单高亮只在事件切换时刷一次。
+     * t 时刻面板上的取值（**唯一真源**）：面板正文与导出视频里的进度卡都读它，
+     * 免得两边各算一套、数字对不上。
+     * 日期与进度条在起笔运镜期间从上一事件收到本事件；车站 / 里程随生长一起滚；
+     * 线路数在段落归档后补上。
      */
-    function applyPanel(t, rec) {
-        if (!state.els) return;
+    function panelModel(t, rec) {
         const i = rec.i;
         const step = state.steps[i];
         const prev = i > 0 ? state.steps[i - 1] : null;
         const head = state.timeline.head;
         const rolling = !rec.whole && head > 0 && t < rec.headEnd;
         const p = rolling ? (t - rec.from) / head : 1;
-        state.els.date.textContent = lerpDate(prev ? prev.date : step.date, step.date, p);
         const pctFrom = prev ? trackPercentAt(i - 1) : trackPercentAt(i);
-        setTrack(rolling ? pctFrom + (trackPercentAt(i) - pctFrom) * p : trackPercentAt(i));
 
         const gp = rec.growDur > 0 ? Math.max(0, Math.min(1, (t - rec.growT0) / rec.growDur)) : 1;
         const stFrom = prev ? prev.stationCount : 0, stTo = step.stationCount;
         const miFrom = prev ? prev.mileage : 0, miTo = step.mileage;
-        state.els.stations.textContent = String(Math.round(stFrom + (stTo - stFrom) * gp));
-        state.els.mileage.textContent = (miFrom + (miTo - miFrom) * gp).toFixed(1);
         const lc = lineCountAround(i);
         const lp = Math.max(0, Math.min(1, (t - rec.growEnd) / 150));
-        state.els.lines.textContent = String(Math.round(lc.before + (lc.after - lc.before) * lp));
 
-        // 徽标 / 说明 / 清单高亮：只在事件切换时刷一次
-        if (state.lastPanelI !== i) {
-            state.lastPanelI = i;
+        return {
+            i: i, step: step,
+            date: lerpDate(prev ? prev.date : step.date, step.date, p),
+            trackPct: rolling ? pctFrom + (trackPercentAt(i) - pctFrom) * p : trackPercentAt(i),
+            stations: Math.round(stFrom + (stTo - stFrom) * gp),
+            mileage: miFrom + (miTo - miFrom) * gp,
+            lines: Math.round(lc.before + (lc.after - lc.before) * lp),
+            badge: KIND_LABEL[step.kind] || step.kind,
+            badgeColor: step.color,
+            desc: stepDesc(step)
+        };
+    }
+
+    /** 把 panelModel 的取值落到面板 DOM；徽标 / 说明 / 清单高亮只在事件切换时刷一次 */
+    function applyPanel(t, rec) {
+        if (!state.els) return;
+        const m = panelModel(t, rec);
+        state.els.date.textContent = m.date;
+        setTrack(m.trackPct);
+        state.els.stations.textContent = String(m.stations);
+        state.els.mileage.textContent = m.mileage.toFixed(1);
+        state.els.lines.textContent = String(m.lines);
+
+        if (state.lastPanelI !== m.i) {
+            state.lastPanelI = m.i;
             syncNow();
             state.els.list.querySelectorAll(".cgo-oh-item").forEach((li) => {
                 const no = Number(li.dataset.go);
-                li.classList.toggle("is-active", no === i + 1);
-                li.classList.toggle("is-done", no <= i);
+                li.classList.toggle("is-active", no === m.i + 1);
+                li.classList.toggle("is-done", no <= m.i);
             });
         }
     }
@@ -1342,6 +1362,16 @@
                             <label for="cgo-oh-exp-to">结束</label>
                             <select id="cgo-oh-exp-to" data-oh="expTo"></select>
                         </div>
+                        <div class="cgo-oh-field">
+                            <label for="cgo-oh-exp-card">进度卡</label>
+                            <select id="cgo-oh-exp-card" data-oh="expCard">
+                                <option value="br">右下角</option>
+                                <option value="bl">左下角</option>
+                                <option value="tr">右上角</option>
+                                <option value="tl">左上角</option>
+                                <option value="off">不显示</option>
+                            </select>
+                        </div>
                         <div class="cgo-oh-exp-actions">
                             <button type="button" class="cgo-mt-launch" data-oh="expStart">导出 MP4</button>
                             <button type="button" class="cgo-mt-quick" data-oh="expCancel" hidden>取消</button>
@@ -1401,6 +1431,18 @@
         return Math.max(0, Math.min(100, (cur - first) / (last - first) * 100));
     }
 
+    /** 事件的说明文案（含新增 / 转乘计数）—— 面板与导出进度卡共用这一份 */
+    function stepDesc(step) {
+        let desc = stepLabel(step);
+        if (step.kind === "line-open") {
+            const parts = [];
+            if (step.enterCount) parts.push(`新增 ${step.enterCount} 站`);
+            if (step.upgradeCount) parts.push(`${step.upgradeCount} 站转为换乘站`);
+            if (parts.length) desc += `（${parts.join("，")}）`;
+        }
+        return desc;
+    }
+
     /** 徽标与说明。日期不在这里设 —— 它由 `applyPanel` 按 t 算 */
     function syncNow() {
         const step = state.steps[state.index];
@@ -1409,14 +1451,7 @@
         badge.hidden = false;
         badge.textContent = KIND_LABEL[step.kind] || step.kind;
         badge.style.background = step.color;
-        let desc = stepLabel(step);
-        if (step.kind === "line-open") {
-            const parts = [];
-            if (step.enterCount) parts.push(`新增 ${step.enterCount} 站`);
-            if (step.upgradeCount) parts.push(`${step.upgradeCount} 站转为换乘站`);
-            if (parts.length) desc += `（${parts.join("，")}）`;
-        }
-        state.els.desc.textContent = desc;
+        state.els.desc.textContent = stepDesc(step);
     }
 
     function syncPlayBtn() {
@@ -1674,7 +1709,11 @@
         const xml = new XMLSerializer().serializeToString(clone);
         const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">'
             + '<foreignObject width="' + W + '" height="' + H + '">'
-            + '<style><![CDATA[' + state.exportCss + '#labels-layer{display:none !important}]]></style>'
+            // ⚠️ 只藏**文字**、不藏整个 #labels-layer：呼出框（如沈阳换乘站的「文本框底部描边」
+            //    `border-bottom`）是挂在 .label-group 上的，整层藏掉会连框一起丢；文字本身仍要
+            //    由 canvas 画（SVG 里没有页面已加载的 webfont，留下会用回退字体、字形不一致）
+            + '<style><![CDATA[' + state.exportCss
+            + '#labels-layer .stacn, #labels-layer .staen { visibility: hidden !important }]]></style>'
             + xml + '</foreignObject></svg>';
         const img = await imgFromData(svg);
 
@@ -1693,6 +1732,12 @@
             ctx2d.globalAlpha = a;
             ctx2d.font = L.font;
             if ("letterSpacing" in ctx2d) ctx2d.letterSpacing = L.spacing;
+            // 与页面一致：淡入时带 blur（页面里是 `--cgo-oh-pop-blur` = 4px × (1 - alpha)，
+            // 但那是**地图局部坐标**下的值，会被 map-content 的 scale 放大 —— 导出的输出比例是
+            // s = cam.scale × k，故这里也要乘 s 才与页面观感一致）。
+            // ⚠️ canvas 的 filter 半径是**输出像素**，不受当前 CTM 缩放影响（实测），所以必须手乘
+            const blur = 4 * (1 - a) * s;
+            ctx2d.filter = blur > 0.3 ? "blur(" + blur.toFixed(2) + "px)" : "none";
             ctx2d.fillStyle = L.color;
             // 基线按 Chrome 的行盒模型算：行盒高 = 上/下半行距 + 字体 ascent/descent
             const baseY = L.y + (L.h - (L.ascent + L.descent)) / 2 + L.ascent;
@@ -1713,7 +1758,117 @@
             if (L.sx !== 1) ctx2d.restore();
             ctx2d.globalAlpha = 1;
         });
+        ctx2d.filter = "none";
+        if ("letterSpacing" in ctx2d) ctx2d.letterSpacing = "0px";
+
+        // ── 进度卡：回到设备坐标单独画，不受相机变换影响 ──
         ctx2d.setTransform(1, 0, 0, 1, 0, 0);
+        drawCard(ctx2d, cw, ch, t);
+    }
+
+    /* ---- 进度卡：把面板那套「当前事件 + 说明 + 规模 + 进度」合成进画面 ---- */
+
+    const CARD = { w: 384, pad: 16, margin: 24, radius: 12, descMax: 3 };
+
+    /** 圆角矩形（Chrome 已支持 roundRect，留一个手写兜底） */
+    function roundRect(ctx2d, x, y, w, h, r) {
+        ctx2d.beginPath();
+        if (typeof ctx2d.roundRect === "function") { ctx2d.roundRect(x, y, w, h, r); return; }
+        ctx2d.moveTo(x + r, y);
+        ctx2d.arcTo(x + w, y, x + w, y + h, r);
+        ctx2d.arcTo(x + w, y + h, x, y + h, r);
+        ctx2d.arcTo(x, y + h, x, y, r);
+        ctx2d.arcTo(x, y, x + w, y, r);
+        ctx2d.closePath();
+    }
+
+    /** 逐字折行（中英混排按实际量测宽度切，够用且无需依赖） */
+    function wrapText(ctx2d, text, maxW) {
+        const out = [];
+        let line = "";
+        for (const ch of String(text)) {
+            const test = line + ch;
+            if (line && ctx2d.measureText(test).width > maxW) { out.push(line); line = ch; }
+            else line = test;
+        }
+        if (line) out.push(line);
+        return out;
+    }
+
+    /**
+     * 把进度卡画到画面指定角落（`state.cardPos` = tl / tr / bl / br / off）。
+     * 取值与面板**同源**（panelModel），所以视频里的数字与面板逐帧一致。
+     */
+    function drawCard(ctx2d, cw, ch, t) {
+        const pos = state.cardPos;
+        if (!pos || pos === "off") return;
+        const th = state.exportTheme || {};
+        const fam = th.font || "sans-serif";
+        const m = panelModel(t, recAt(t));
+        const W = CARD.w, PAD = CARD.pad, innerW = W - PAD * 2;
+
+        // 先排版量高度（说明最多三行）
+        ctx2d.font = "400 14px " + fam;
+        const descLines = wrapText(ctx2d, m.desc, innerW).slice(0, CARD.descMax);
+        const H = PAD + 26 + 6 + descLines.length * 20 + 8 + 18 + 12 + 5 + PAD;
+
+        const x = (pos === "tr" || pos === "br") ? cw - CARD.margin - W : CARD.margin;
+        const y = (pos === "bl" || pos === "br") ? ch - CARD.margin - H : CARD.margin;
+
+        ctx2d.save();
+        ctx2d.textAlign = "left";
+        ctx2d.textBaseline = "top";
+        // 卡面
+        ctx2d.globalAlpha = 0.92;
+        ctx2d.fillStyle = th.mapBg || "#fff";
+        roundRect(ctx2d, x, y, W, H, CARD.radius);
+        ctx2d.fill();
+        ctx2d.globalAlpha = 1;
+        ctx2d.lineWidth = 1;
+        ctx2d.strokeStyle = th.border || "rgba(0,0,0,.12)";
+        ctx2d.stroke();
+
+        let cy = y + PAD;
+        // 日期 + 类型徽标
+        ctx2d.font = "700 21px " + fam;
+        ctx2d.fillStyle = th.text || "#222";
+        ctx2d.fillText(m.date, x + PAD, cy + 2);
+        const bx = x + PAD + ctx2d.measureText(m.date).width + 12, by = cy + 4;
+        ctx2d.font = "600 12px " + fam;
+        const btw = ctx2d.measureText(m.badge).width + 16;
+        ctx2d.fillStyle = m.badgeColor || th.primary || "#006098";
+        roundRect(ctx2d, bx, by, btw, 18, 9);
+        ctx2d.fill();
+        ctx2d.fillStyle = "#fff";
+        ctx2d.fillText(m.badge, bx + 8, by + 3);
+        cy += 26 + 6;
+
+        // 说明
+        ctx2d.font = "400 14px " + fam;
+        ctx2d.globalAlpha = 0.72;
+        ctx2d.fillStyle = th.text || "#222";
+        descLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += 20; });
+        ctx2d.globalAlpha = 1;
+        cy += 8;
+
+        // 规模
+        ctx2d.font = "400 13px " + fam;
+        ctx2d.globalAlpha = 0.62;
+        ctx2d.fillText(`线路 ${m.lines} 条 · 车站 ${m.stations} 座 · 里程 ${m.mileage.toFixed(1)} km`, x + PAD, cy);
+        ctx2d.globalAlpha = 1;
+        cy += 18 + 12;
+
+        // 进度条
+        ctx2d.fillStyle = th.info || "rgba(0,0,0,.06)";
+        roundRect(ctx2d, x + PAD, cy, innerW, 5, 2.5);
+        ctx2d.fill();
+        const pw = Math.max(0, Math.min(1, m.trackPct / 100)) * innerW;
+        if (pw > 0.5) {
+            ctx2d.fillStyle = th.primary || "#006298";
+            roundRect(ctx2d, x + PAD, cy, Math.max(5, pw), 5, 2.5);
+            ctx2d.fill();
+        }
+        ctx2d.restore();
     }
 
     /** data URL 的 SVG → <img>（decoded ≠ painted，调用方已在外层留出等待） */
@@ -1752,6 +1907,22 @@
             } catch (e) { /* 取不到就保持原样（该图在导出里会缺失，不致命） */ }
         }
         labelCache = buildLabelCache();
+        state.exportTheme = readThemeVars();
+    }
+
+    /** 进度卡要用的主题色：canvas 读不到 CSS 变量，只能先把算好的值取出来 */
+    function readThemeVars() {
+        const host = stageHost() || document.body;
+        const cs = getComputedStyle(host);
+        const v = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
+        return {
+            font: getComputedStyle(document.body).fontFamily || "sans-serif",
+            text: v("--text-main", "#222"),
+            primary: v("--primary-color", "#00263b"),
+            border: v("--border-color", "rgba(0,0,0,.12)"),
+            info: v("--btn-info-bg", "rgba(0,0,0,.06)"),
+            mapBg: v("--map-bg", "#ffffff")
+        };
     }
 
     function b64Bytes(buf) {
@@ -1825,6 +1996,7 @@
         if (state.exporting) return;
         state.exporting = true;
         state.exportCancelled = false;
+        state.cardPos = state.els && state.els.expCard ? state.els.expCard.value : "br";
         // 导出与 rAF 会抢同一条时间线：先把实时播放停干净
         clearTimers();
         state.playing = false;
@@ -1956,12 +2128,16 @@
         const on = state.exporting;
         const open = e.exportSet && !e.exportSet.hidden;
         [e.back, e.play, e.replay, e.setSpeed, e.setZoom, e.toggleInfo].forEach((b) => { if (b) b.disabled = on; });
+        // 展开导出区时把「当前事件 / 说明 / 规模 / 进度条」四块藏起来：它们已合成进视频的进度卡，
+        // 面板上再放一份既重复又占高度（见 opening-history.css 的 .cgo-oh.is-export）
+        if (e.root) e.root.classList.toggle("is-export", open);
         if (e.exportToggle) {
             e.exportToggle.classList.toggle("is-on", open);
             e.exportToggle.setAttribute("aria-pressed", String(open));
         }
         if (e.expFrom) e.expFrom.disabled = on;
         if (e.expTo) e.expTo.disabled = on;
+        if (e.expCard) e.expCard.disabled = on;
         if (e.expStart) e.expStart.hidden = on;
         if (e.expCancel) e.expCancel.hidden = !on;
         if (e.expBar) e.expBar.style.width = on ? "0%" : e.expBar.style.width;
@@ -2004,6 +2180,7 @@
             exportSet: q('[data-oh="exportSet"]'),
             expFrom: q('[data-oh="expFrom"]'),
             expTo: q('[data-oh="expTo"]'),
+            expCard: q('[data-oh="expCard"]'),
             expStart: q('[data-oh="expStart"]'),
             expCancel: q('[data-oh="expCancel"]'),
             expBar: q('[data-oh="expBar"]'),
@@ -2058,12 +2235,14 @@
             state.els.speedSet.hidden = !show;
             state.els.zoomSet.hidden = true;
             state.els.exportSet.hidden = true;
+            syncExportUI();
         });
         state.els.setZoom.addEventListener("click", () => {
             const show = state.els.zoomSet.hidden;
             state.els.zoomSet.hidden = !show;
             state.els.speedSet.hidden = true;
             state.els.exportSet.hidden = true;
+            syncExportUI();
         });
         state.els.exportToggle.addEventListener("click", () => {
             if (state.exporting) return;

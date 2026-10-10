@@ -503,6 +503,16 @@
     background: var(--btn-info-bg);
 }
 
+/* 展开导出区时，「当前事件 / 说明 / 规模 / 进度条」四块先收起来：
+   它们已经合成进导出画面里的进度卡（右下角），面板上再放一份既重复又占高度。
+   与「清单态」互不干扰 —— 两者都只是把这几块 display:none。 */
+.cgo-oh.is-export .cgo-oh-now,
+.cgo-oh.is-export .cgo-oh-desc,
+.cgo-oh.is-export .cgo-oh-sum,
+.cgo-oh.is-export .cgo-oh-track {
+    display: none;
+}
+
 .cgo-oh-export .cgo-oh-field select {
     flex: 1;
     min-width: 0;

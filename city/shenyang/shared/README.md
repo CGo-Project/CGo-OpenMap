@@ -196,6 +196,10 @@ core 的 `initMobileSheetDrag()` 写死在 `#info-panel` 上（内容区按下�
 
 与播放**共用 `applyFrame`**，但逐帧走**非落定模式**（省略 settle）：传 `settle=true` 会把站点弹出、涟漪在同一帧立刻收尾，录出来就没有「弹」的过程（`paintFrame` 的 `alphaAt` 正是按「正在弹的那几个」算可见度）。`from>0` 时先 `jumpTo(from-1)` 把此前事件落成「已开通」，因此任意区间的起手画面都是完整的线网。导出期间停下实时播放并锁住操作行其余按钮（只留「取消」），`encoder.encodeQueueSize > 8` 时等待背压；结束/取消都把画面按时间轴末尾落定一次，面板若已关闭（`unmount` 已 `exitStage` 还原取景）则不再落位。⚠️ 逐帧渲染的三条硬约束（站名走 canvas `fillText` 而不是内联进每帧 SVG、`foreignObject` 里没有 `:root` 故 CSS 变量要搬到克隆根、相对图片必须内联成 data URL 否则静默消失）写在脚本「导出视频」一节的注释里。
 
+**进度卡**：导出时可把面板那套「当前事件（日期 + 类型徽标）/ 说明 / 规模（线路 · 车站 · 里程）/ 进度条」合成进画面（`drawCard`），默认落在**右下角**，另可选左下 / 右上 / 左上或**不显示**（导出区的「进度卡」下拉）。取值与面板**同源** —— 两者都读 `panelModel(t, rec)`，所以视频里的数字与面板逐帧一致；主题色在 `prepareExport` 里从 `#map-content` 的 computedStyle 取好（canvas 读不到 CSS 变量）。展开导出区时，面板上那四块会先收起来（`.cgo-oh.is-export`），免得与卡重复又占高度。
+
+⚠️ **站名渲染**：克隆里**只藏文字**（`#labels-layer .stacn` / `.staen`），**不藏整个站名层** —— 沈阳呼出框的「文本框底部描边」是 `.label-group.label-callout` 上的 `border-bottom`，整层藏掉会连框一起丢；文字仍由 canvas `fillText` 画（SVG 里没有页面已加载的 webfont，留下会用回退字体）。淡入时按页面口径补 `blur`（`4px × (1 − alpha) × s`，`s` 为导出比例）：canvas 的 `filter: blur` 半径是**输出像素**、不受当前 CTM 缩放影响（实测：1× 与 4× 下的扩张量相同），所以必须手乘 `s` 才与页面观感一致。
+
 ### 2.2 模块依赖关系
 
 本目录的模块除少数几个纯函数外，都通过 `window.CGoX` 全局对象在**运行时**互相取用（不 import），
