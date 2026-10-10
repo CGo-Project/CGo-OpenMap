@@ -496,7 +496,10 @@ const stationsData = {
         y: 760,
         cn: "人民广场",
         en: "RENMINGUANGCHANG",
-        aliases: ["市府广场", "沈阳博物馆"],
+        // 旧名检索库：中文旧名（市府广场，2024-12-30 更名）与旧英文名（SHIFUGUANGCHANG）
+        // 都写在这里。staname.csv 只有「中文站名 → 年份列旧名」的结构、放不下英文旧名，
+        // 而 csv 里若有该站又会覆盖本字段，故该站已从 csv 移除、别名以本文件为准。
+        aliases: ["市府广场", "SHIFUGUANGCHANG", "沈阳博物馆"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
