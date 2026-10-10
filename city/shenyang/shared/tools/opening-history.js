@@ -531,10 +531,7 @@
 
     function exitStage() {
         unwatchCallouts();
-        const host = stageHost();
-        host?.classList.remove(STAGE_CLASS);
-        ["--cgo-oh-pop-dur", "--cgo-oh-label-dur", "--cgo-oh-ripple-dur", "--cgo-oh-glide-dur"]
-            .forEach((key) => host?.style.removeProperty(key));
+        stageHost()?.classList.remove(STAGE_CLASS);
         clearMarks();
         popScaleLimit();
         const prev = state.prevView;
@@ -743,7 +740,13 @@
         host?.querySelectorAll("." + NO_ICON_CLASS).forEach((el) => el.remove());
         host?.querySelectorAll("#lines-layer .virtual-connectors ." + ON_CLASS)
             .forEach((el) => el.classList.remove(ON_CLASS));
-        host?.querySelectorAll("#stations-layer .station").forEach((el) => el.style.removeProperty("--cgo-oh-dot"));
+        // ⚠️ 弹出进度现在是 CSS 变量写的（站点图元一半形态在 ::before 上，内联够不着），
+        //    撤类名**不足以**把站藏回去 —— 变量不清掉，站就停在最后一次的透明度上。
+        //    这正是「暂停后点已播完的事件：线藏了、站没藏」的根因。
+        const vars = ["--cgo-oh-dot", "--cgo-oh-pop-alpha", "--cgo-oh-pop-scale", "--cgo-oh-pop-blur"];
+        host?.querySelectorAll(
+            "#stations-layer .station, #labels-layer .label-group, [data-cgo-callout-layer] [data-cgo-callout]"
+        ).forEach((el) => vars.forEach((v) => el.style.removeProperty(v)));
         state.shown.clear();
         restoreNames();
     }
@@ -1649,10 +1652,7 @@
         state.index = -1;
         clearCanvas();
         exitStage();
-        if (state.body) {
-            state.body.classList.remove(BODY_CLASS);
-            state.body.style.removeProperty("--cgo-oh-pop-dur");
-        }
+        if (state.body) state.body.classList.remove(BODY_CLASS);
         state.body = null;
         state.els = null;
     }
