@@ -237,7 +237,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.1513";
+        const version = "261010.1526";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -272,6 +272,10 @@
         document.write(`<script src="./city/shenyang/shared/station/exits.js?v=${version}"><\/script>`);
         // 出入口检索：全局搜索栏与行程规划起终点的出入口命中（须在 exits.js 之后）
         document.write(`<script src="./city/shenyang/shared/station/exit-search.js?v=${version}"><\/script>`);
+        // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
+        document.write(`<script src="./city/harbin/data_opening_history.js?v=${version}"><\/script>`);
+        // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
         (HarbinCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/harbin/${scriptPath}?v=${version}"><\/script>`);
         });

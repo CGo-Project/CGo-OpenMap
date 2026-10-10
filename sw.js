@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261010.1513';
+const CACHE_NAME = 'cgo-openmap-v261010.1526';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -448,6 +448,7 @@ const ASSETS_TO_CACHE = [
     './city/harbin/stacard/script.js',
     './city/harbin/data_stations.js',
     './city/harbin/data_lines.js',
+    './city/harbin/data_opening_history.js',
     './city/harbin/data_virtual_transfers.js',
     './city/harbin/data_scattered.js',
     './city/harbin/data_legend.js',
