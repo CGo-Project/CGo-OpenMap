@@ -1369,21 +1369,21 @@
                     <div class="cgo-oh-set cgo-oh-export" data-oh="exportSet" hidden>
                         <div class="cgo-oh-field">
                             <label for="cgo-oh-exp-from">起始</label>
-                            <select id="cgo-oh-exp-from" data-oh="expFrom"></select>
+                            <cgo-toolbar-select id="cgo-oh-exp-from" data-oh="expFrom"></cgo-toolbar-select>
                         </div>
                         <div class="cgo-oh-field">
                             <label for="cgo-oh-exp-to">结束</label>
-                            <select id="cgo-oh-exp-to" data-oh="expTo"></select>
+                            <cgo-toolbar-select id="cgo-oh-exp-to" data-oh="expTo"></cgo-toolbar-select>
                         </div>
                         <div class="cgo-oh-field">
-                            <label for="cgo-oh-exp-card">进度卡</label>
-                            <select id="cgo-oh-exp-card" data-oh="expCard">
-                                <option value="br">右下角</option>
-                                <option value="bl">左下角</option>
-                                <option value="tr">右上角</option>
-                                <option value="tl">左上角</option>
-                                <option value="off">不显示</option>
-                            </select>
+                            <label>进度卡</label>
+                            <div class="cgo-rt-need-opts" data-oh="expCard" role="group" aria-label="进度卡位置">
+                                <button type="button" class="cgo-rt-need-opt is-on" data-card="br">右下</button>
+                                <button type="button" class="cgo-rt-need-opt" data-card="bl">左下</button>
+                                <button type="button" class="cgo-rt-need-opt" data-card="tr">右上</button>
+                                <button type="button" class="cgo-rt-need-opt" data-card="tl">左上</button>
+                                <button type="button" class="cgo-rt-need-opt" data-card="off">关</button>
+                            </div>
                         </div>
                         <div class="cgo-oh-exp-actions">
                             <button type="button" class="cgo-mt-launch" data-oh="expStart">导出 MP4</button>
@@ -1782,7 +1782,17 @@
 
     /* ---- 进度卡：把面板那套「当前事件 + 说明 + 规模 + 进度」合成进画面 ---- */
 
-    const CARD = { w: 384, pad: 16, margin: 24, radius: 12, descMax: 3 };
+    /* 画面浮层（进度卡 / 水印）整体放大一档：视频多在手机或大屏远看，字要比页面里大。
+       字号与盒子的尺寸同步放大，版式比例不变。 */
+    const OVERLAY_S = 1.5;
+    const F = (px) => px * OVERLAY_S;
+    const CARD = {
+        w: Math.round(384 * OVERLAY_S),
+        pad: Math.round(16 * OVERLAY_S),
+        margin: Math.round(24 * OVERLAY_S),
+        radius: Math.round(12 * OVERLAY_S),
+        descMax: 3
+    };
 
     /** 圆角矩形（Chrome 已支持 roundRect，留一个手写兜底） */
     function roundRect(ctx2d, x, y, w, h, r) {
@@ -1813,13 +1823,18 @@
      * 画布上的玻璃态卡面：把底下**已经画好的地图**挖一块 → 模糊 + 提饱和 → 贴回圆角矩形，
      * 再叠 CGoUI `.glass-panel` 的那几层（0.82 衬底 / 顶部微光圈 / 0.5px 外圈 / 投影）。
      * canvas 没有 backdrop-filter，只能这样「先糊底、再盖膜」，做出同样的磨砂观感。
+     * 底衬按 `GLASS_DS` 降采样后再模糊（半径同比缩），再放大贴回 —— 模糊看不出细节，
+     * 代价却掉到约 1/4（大半径模糊尤其明显）。
      */
+    const GLASS_DS = 0.5;
+
     let glassScratch = null;
     function paintGlass(ctx2d, cw, ch, x, y, w, h, r, blur) {
         const P = Math.ceil(blur * 2) + 2;
         const sx = Math.max(0, Math.round(x - P)), sy = Math.max(0, Math.round(y - P));
         const ex = Math.min(cw, Math.round(x + w + P)), ey = Math.min(ch, Math.round(y + h + P));
-        const tw = Math.max(1, ex - sx), th = Math.max(1, ey - sy);
+        const sw = Math.max(1, ex - sx), sh = Math.max(1, ey - sy);
+        const tw = Math.max(1, Math.round(sw * GLASS_DS)), th = Math.max(1, Math.round(sh * GLASS_DS));
         if (!glassScratch) glassScratch = document.createElement("canvas");
         const tmp = glassScratch;
         if (tmp.width < tw || tmp.height < th) {
@@ -1829,25 +1844,25 @@
         const tc = tmp.getContext("2d");
         tc.setTransform(1, 0, 0, 1, 0, 0);
         tc.clearRect(0, 0, tw, th);
-        tc.filter = "blur(" + blur.toFixed(1) + "px) saturate(135%)";
-        tc.drawImage(ctx2d.canvas, sx, sy, tw, th, 0, 0, tw, th);
+        tc.filter = "blur(" + (blur * GLASS_DS).toFixed(1) + "px) saturate(135%)";
+        tc.drawImage(ctx2d.canvas, sx, sy, sw, sh, 0, 0, tw, th);
         tc.filter = "none";
 
-        // 投影（对齐 --glass-shadow 的 0 8px 24px）
+        // 投影（对齐 --glass-shadow 的 0 8px 24px；半径收着给，太大很费且看不出差别）
         ctx2d.save();
         ctx2d.shadowColor = "rgba(0,38,59,0.16)";
-        ctx2d.shadowBlur = Math.max(10, blur);
-        ctx2d.shadowOffsetY = Math.max(4, blur * 0.3);
+        ctx2d.shadowBlur = Math.max(8, blur * 0.6);
+        ctx2d.shadowOffsetY = Math.max(4, blur * 0.25);
         roundRect(ctx2d, x, y, w, h, r);
         ctx2d.fillStyle = "rgba(0,0,0,0.002)";
         ctx2d.fill();
         ctx2d.restore();
 
-        // 糊好的底 + 衬底（对齐 --glass-bg-panel）
+        // 糊好的底（放大贴回）+ 衬底（对齐 --glass-bg-panel）
         ctx2d.save();
         roundRect(ctx2d, x, y, w, h, r);
         ctx2d.clip();
-        ctx2d.drawImage(tmp, 0, 0, tw, th, sx, sy, tw, th);
+        ctx2d.drawImage(tmp, 0, 0, tw, th, sx, sy, sw, sh);
         ctx2d.fillStyle = (state.exportTheme && state.exportTheme.glassPanel) || "rgba(255,255,255,.82)";
         ctx2d.fillRect(x, y, w, h);
         ctx2d.restore();
@@ -1880,9 +1895,9 @@
         const W = CARD.w, PAD = CARD.pad, innerW = W - PAD * 2;
 
         // 先排版量高度（说明最多三行）
-        ctx2d.font = "400 14px " + fam;
+        ctx2d.font = "400 " + F(14) + "px " + fam;
         const descLines = wrapText(ctx2d, m.desc, innerW).slice(0, CARD.descMax);
-        const H = PAD + 26 + 6 + descLines.length * 20 + 8 + 18 + 12 + 5 + PAD;
+        const H = PAD + F(26) + F(6) + descLines.length * F(20) + F(8) + F(18) + F(12) + F(5) + PAD;
 
         const x = (pos === "tr" || pos === "br") ? cw - CARD.margin - W : CARD.margin;
         const y = (pos === "bl" || pos === "br") ? ch - CARD.margin - H : CARD.margin;
@@ -1896,42 +1911,42 @@
 
         let cy = y + PAD;
         // 日期 + 类型徽标
-        ctx2d.font = "700 21px " + fam;
+        ctx2d.font = "700 " + F(21) + "px " + fam;
         ctx2d.fillStyle = th.text || "#222";
-        ctx2d.fillText(m.date, x + PAD, cy + 2);
-        const bx = x + PAD + ctx2d.measureText(m.date).width + 12, by = cy + 4;
-        ctx2d.font = "600 12px " + fam;
-        const btw = ctx2d.measureText(m.badge).width + 16;
+        ctx2d.fillText(m.date, x + PAD, cy + F(2));
+        const bx = x + PAD + ctx2d.measureText(m.date).width + F(12), by = cy + F(4);
+        ctx2d.font = "600 " + F(12) + "px " + fam;
+        const btw = ctx2d.measureText(m.badge).width + F(16);
         ctx2d.fillStyle = m.badgeColor || th.primary || "#006098";
-        roundRect(ctx2d, bx, by, btw, 18, 9);
+        roundRect(ctx2d, bx, by, btw, F(18), F(9));
         ctx2d.fill();
         ctx2d.fillStyle = "#fff";
-        ctx2d.fillText(m.badge, bx + 8, by + 3);
-        cy += 26 + 6;
+        ctx2d.fillText(m.badge, bx + F(8), by + F(3));
+        cy += F(26) + F(6);
 
         // 说明
-        ctx2d.font = "400 14px " + fam;
+        ctx2d.font = "400 " + F(14) + "px " + fam;
         ctx2d.globalAlpha = 0.72;
         ctx2d.fillStyle = th.text || "#222";
-        descLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += 20; });
+        descLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += F(20); });
         ctx2d.globalAlpha = 1;
-        cy += 8;
+        cy += F(8);
 
         // 规模
-        ctx2d.font = "400 13px " + fam;
+        ctx2d.font = "400 " + F(13) + "px " + fam;
         ctx2d.globalAlpha = 0.62;
         ctx2d.fillText(`线路 ${m.lines} 条 · 车站 ${m.stations} 座 · 里程 ${m.mileage.toFixed(1)} km`, x + PAD, cy);
         ctx2d.globalAlpha = 1;
-        cy += 18 + 12;
+        cy += F(18) + F(12);
 
         // 进度条
         ctx2d.fillStyle = th.info || "rgba(0,0,0,.06)";
-        roundRect(ctx2d, x + PAD, cy, innerW, 5, 2.5);
+        roundRect(ctx2d, x + PAD, cy, innerW, F(5), F(2.5));
         ctx2d.fill();
         const pw = Math.max(0, Math.min(1, m.trackPct / 100)) * innerW;
         if (pw > 0.5) {
             ctx2d.fillStyle = th.primary || "#006298";
-            roundRect(ctx2d, x + PAD, cy, Math.max(5, pw), 5, 2.5);
+            roundRect(ctx2d, x + PAD, cy, Math.max(F(5), pw), F(5), F(2.5));
             ctx2d.fill();
         }
         ctx2d.restore();
@@ -1961,16 +1976,16 @@
         const fam = th.font || "sans-serif";
         const pad = CARD.margin;
         const mark = state.exportMark;
-        const markSize = 20, gap = 8;
+        const markSize = F(20), gap = F(8);
 
         ctx2d.save();
-        ctx2d.font = "600 14px " + fam;
+        ctx2d.font = "600 " + F(14) + "px " + fam;
         ctx2d.textBaseline = "middle";
         ctx2d.textAlign = "left";
         const textW = ctx2d.measureText(text).width;
         const totalW = (mark ? markSize + gap : 0) + textW;
         const x = watermarkOnRight() ? cw - pad - totalW : pad;
-        const cy = ch - pad - 13;   // 与进度卡底边同一行
+        const cy = ch - pad - F(13);   // 与进度卡底边同一行
         let cx = x;
         ctx2d.globalAlpha = 0.72;
         if (mark) {
@@ -1978,7 +1993,7 @@
             cx += markSize + gap;
         }
         // 先描一圈背景色做底衬，压在线上也看得清
-        ctx2d.lineWidth = 3;
+        ctx2d.lineWidth = F(3);
         ctx2d.lineJoin = "round";
         ctx2d.strokeStyle = th.mapBg || "#fff";
         ctx2d.strokeText(text, cx, cy);
@@ -2028,17 +2043,25 @@
     }
 
     /**
-     * 水印左侧的 CGo 小图标：把 CGoUI 的 `<cgo-icon name="cgo">` 临时挂到页面上，
-     * 取出它 shadow DOM 里的 SVG、改成文字色后栅格化一次（拿不到就退化成纯文字水印）。
+     * 水印左侧的 CGo 小图标：把 CGoUI 的 `<cgo-icon name="cgo">` 临时挂到页面上，取出它
+     * shadow DOM 里的 SVG、栅格化一次（拿不到就退化成纯文字水印）。
+     * ⚠️ 隔离的 SVG（data URL）里没有页面上的 CSS 变量，品牌渐变（`color-mode="brand"` 的
+     * `<stop stop-color="var(--brand-gradient-…)">`）与 `--icon-clr` 都得在根上补好，
+     * 否则渐变那两笔会解析不出来、整块不画。
      */
+    const MARK_COLOR_MODE = "brand";   // 'mono' 跟随文字色 / 'brand' 用 CGoUI 品牌渐变
+
     async function prepareMark() {
-        const col = (state.exportTheme && state.exportTheme.text) || "#222";
+        const th = state.exportTheme || {};
+        const col = th.text || "#222";
+        const brand = MARK_COLOR_MODE === "brand";
         let host = document.querySelector('cgo-icon[name="cgo"]');
         let temp = null;
-        if (!host) {
+        if (!host || (brand && host.getAttribute("color-mode") !== "brand")) {
             temp = document.createElement("cgo-icon");
             temp.setAttribute("name", "cgo");
             temp.setAttribute("size", "24");
+            if (brand) temp.setAttribute("color-mode", "brand");
             temp.style.cssText = "position:absolute;left:-9999px;top:0;";
             document.body.appendChild(temp);
             host = temp;
@@ -2047,17 +2070,21 @@
         try {
             const svg = host.shadowRoot && host.shadowRoot.querySelector("svg");
             if (!svg) return null;
-            const clone = svg.cloneNode(true);
-            clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-            clone.setAttribute("width", "24");
-            clone.setAttribute("height", "24");
-            clone.setAttribute("fill", col);
-            clone.style.color = col;   // 图标若走 currentColor，隔离的 SVG 里默认是黑，得显式给色
-            clone.querySelectorAll("*").forEach((n) => {
-                const f = n.getAttribute("fill");
-                if (f && f !== "none" && f !== "currentColor") n.setAttribute("fill", col);
-            });
-            return await imgFromData(new XMLSerializer().serializeToString(clone));
+            const doc = new DOMParser().parseFromString(new XMLSerializer().serializeToString(svg), "image/svg+xml");
+            const root = doc.documentElement;
+            if (!root || root.nodeName === "parsererror") return null;
+            root.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            root.setAttribute("width", "72");    // 画布上按 30px 画，栅格化给足余量才不发虚
+            root.setAttribute("height", "72");
+            const cs = getComputedStyle(host);
+            const vars = {
+                "--icon-clr": col,
+                "--brand-gradient-start-appname": cs.getPropertyValue("--brand-gradient-start-appname").trim() || th.primary || "#006098",
+                "--brand-gradient-end-appname": cs.getPropertyValue("--brand-gradient-end-appname").trim() || th.primary || "#006098"
+            };
+            Object.keys(vars).forEach((k) => root.style.setProperty(k, vars[k]));
+            root.style.color = col;   // 其余笔画走 currentColor
+            return await imgFromData(new XMLSerializer().serializeToString(root));
         } catch (e) {
             return null;
         } finally {
@@ -2159,7 +2186,6 @@
         if (state.exporting) return;
         state.exporting = true;
         state.exportCancelled = false;
-        state.cardPos = state.els && state.els.expCard ? state.els.expCard.value : "br";
         // 导出与 rAF 会抢同一条时间线：先把实时播放停干净
         clearTimers();
         state.playing = false;
@@ -2270,18 +2296,31 @@
         setExportStatus("导出中 " + (total ? Math.round(done / total * 100) : 0) + "%");
     }
 
-    /** 起止事件下拉：选项即事件清单，默认整段（首 → 末） */
+    /** 下拉里用的短标签：面板窄，放不下完整说明（完整名称在事件清单里） */
+    const shortStepLabel = (s) =>
+        (s.kind === "line-open" ? (s.lineName || "区段开通") : s.kind === "rename" ? "更名" : "补开");
+
+    /** 起止事件下拉：用 CGoUI 的 `<cgo-toolbar-select>`（自带下拉面板与主题跟随） */
     function renderExportSelects() {
         const e = state.els;
         if (!e || !e.expFrom || !e.expTo) return;
         const opts = state.steps
-            .map((s) => `<option value="${s.no - 1}">${s.no}. ${s.date} ${stepLabel(s)}</option>`)
+            .map((s) => `<cgo-toolbar-option value="${s.no - 1}">${s.no}. ${s.date} ${shortStepLabel(s)}</cgo-toolbar-option>`)
             .join("");
         e.expFrom.innerHTML = opts;
         e.expTo.innerHTML = opts;
         e.expFrom.value = "0";
         e.expTo.value = String(state.steps.length - 1);
         setExportStatus("");
+    }
+
+    /** 进度卡位置的分段控件高亮（值存在 state.cardPos，不走 DOM 读值） */
+    function syncCardOpts() {
+        const box = state.els && state.els.expCard;
+        if (!box) return;
+        box.querySelectorAll(".cgo-rt-need-opt").forEach((b) => {
+            b.classList.toggle("is-on", b.dataset.card === state.cardPos);
+        });
     }
 
     /** 导出期间锁住会干扰时间线的控件，只留「取消」；同时同步导出按钮的按下态 */
@@ -2300,7 +2339,7 @@
         }
         if (e.expFrom) e.expFrom.disabled = on;
         if (e.expTo) e.expTo.disabled = on;
-        if (e.expCard) e.expCard.disabled = on;
+        if (e.expCard) e.expCard.querySelectorAll(".cgo-rt-need-opt").forEach((b) => { b.disabled = on; });
         if (e.expStart) e.expStart.hidden = on;
         if (e.expCancel) e.expCancel.hidden = !on;
         if (e.expBar) e.expBar.style.width = on ? "0%" : e.expBar.style.width;
@@ -2386,8 +2425,10 @@
         state.els.exportSet.hidden = true;
         state.exporting = false;
         state.exportCancelled = false;
+        state.cardPos = "br";       // 每次挂载都回到默认角落（与速度 / 倍数一样不记忆）
         renderList();
         renderExportSelects();
+        syncCardOpts();
 
         state.els.play.addEventListener("click", play);
         state.els.replay.addEventListener("click", replay);
@@ -2415,15 +2456,22 @@
             syncExportUI();
         });
         // 起止两个下拉互相钳制，避免选出「起 > 止」的空区间
-        state.els.expFrom.addEventListener("change", () => {
+        state.els.expFrom.addEventListener("cgo-change", () => {
             if (Number(state.els.expTo.value) < Number(state.els.expFrom.value)) {
                 state.els.expTo.value = state.els.expFrom.value;
             }
         });
-        state.els.expTo.addEventListener("change", () => {
+        state.els.expTo.addEventListener("cgo-change", () => {
             if (Number(state.els.expFrom.value) > Number(state.els.expTo.value)) {
                 state.els.expFrom.value = state.els.expTo.value;
             }
+        });
+        // 进度卡位置：分段控件，点哪段就把 state.cardPos 切到哪
+        state.els.expCard.addEventListener("click", (ev) => {
+            const b = ev.target.closest(".cgo-rt-need-opt");
+            if (!b || state.exporting) return;
+            state.cardPos = b.dataset.card;
+            syncCardOpts();
         });
         state.els.expStart.addEventListener("click", () => {
             runExport(Number(state.els.expFrom.value), Number(state.els.expTo.value));

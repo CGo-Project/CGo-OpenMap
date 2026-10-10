@@ -513,21 +513,58 @@
     display: none;
 }
 
-.cgo-oh-export .cgo-oh-field select {
+/* 起止事件：用 CGoUI 的 <cgo-toolbar-select>（内容在 shadow DOM 里，这里只让它撑满剩余宽度） */
+.cgo-oh-export .cgo-oh-field cgo-toolbar-select {
     flex: 1;
     min-width: 0;
-    height: 28px;
-    padding: 0 6px;
-    font: inherit;
-    font-size: 12px;
-    color: var(--text-main);
-    background: var(--btn-info-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
 }
 
 .cgo-oh-export .cgo-oh-field label {
-    min-width: 28px;
+    min-width: 32px;
+}
+
+/* 进度卡位置：分段控件（观感对齐 route-panel 的 .cgo-rt-need-opts / .cgo-rt-need-opt）。
+   这里复刻一份是为了本模块自足，并把段内边距收紧，好让 5 段塞进 320px 的面板。 */
+.cgo-oh-export .cgo-rt-need-opts {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--btn-info-bg);
+    border-radius: 999px;
+}
+
+.cgo-oh-export .cgo-rt-need-opt {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 2px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600 !important;   /* 同 route-panel：覆盖全局表单重置 */
+    white-space: nowrap;
+    color: var(--text-main);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-oh-export .cgo-rt-need-opt.is-on {
+    background: var(--card-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.cgo-oh-export .cgo-rt-need-opt:hover:not(.is-on) {
+    background: var(--border-color);
+}
+
+.cgo-oh-export .cgo-rt-need-opt:disabled {
+    opacity: 0.45;
+    cursor: default;
 }
 
 .cgo-oh-exp-actions {
