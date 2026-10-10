@@ -111,6 +111,7 @@
         exportCancelled: false,
         muxerLoading: null, // mp4-muxer 的按需加载 Promise（同一份只注入一次）
         exportTheme: null,  // 导出用：从 DOM 算好的主题色（画布读不到 CSS 变量）
+        exportMark: null,   // 导出用：水印左侧的 CGo 小图标（栅格化后的 <img>，取不到则只留文字）
         cardPos: "br",      // 导出进度卡的角落：tl / tr / bl / br / off
         shown: new Map(),   // sid → form：已经出现在画布上的车站（引线重建后据此补状态）
         dotColors: new Map(), // sid → dot 形态的环色（首条开通线路的颜色）
@@ -809,11 +810,23 @@
             left = Math.max(0, Math.min(hr.width, modal.getBoundingClientRect().right - hr.left));
         }
         const bottom = window.innerWidth <= MOBILE_MAX ? Math.max(0, Number(insets.bottom) || 0) : 0;
-        return {
-            left: left,
-            vw: Math.max(120, hr.width - left),
-            vh: Math.max(120, hr.height - bottom)
-        };
+        let top = 0;
+        let vw = Math.max(120, hr.width - left);
+        let vh = Math.max(120, hr.height - bottom);
+
+        // 导出时用「安全区」代替可见区：视频是 16:9，且以**覆盖 + 居中裁剪**出画 —— 真正看得见的
+        // 只是居中一块（放大系数 k = max(cw/hostW, ch/hostH)，可见宽 = cw/k、可见高 = ch/k）。
+        // 取景按这块算，才不会出现「页面里装得下、导出视频里上下（或左右）被裁掉」的溢出。
+        // 图例与贴底浮层在视频里根本不存在，故这里也不扣它们的留白，直接居中。
+        if (state.exporting) {
+            const k = Math.max(EXPORT.width / hr.width, EXPORT.height / hr.height);
+            const sw = Math.max(120, EXPORT.width / k), sh = Math.max(120, EXPORT.height / k);
+            vw = Math.min(vw, sw);
+            vh = Math.min(vh, sh);
+            left = hr.width / 2 - vw / 2;
+            top = hr.height / 2 - vh / 2;
+        }
+        return { left: left, top: top, vw: vw, vh: vh };
     }
 
     /* 取景的「算」在 camForPoint / camForBox（见时间轴一节）；这里不再有「落位」的取景函数
@@ -905,7 +918,7 @@
         const box = viewportBox();
         if (!box || !pt) return null;
         const s = clampZoom(scale);
-        return { scale: s, x: box.left + box.vw / 2 - pt.x * s, y: box.vh / 2 - pt.y * s };
+        return { scale: s, x: box.left + box.vw / 2 - pt.x * s, y: (box.top || 0) + box.vh / 2 - pt.y * s };
     }
 
     /** 把某个画布范围整块摆进可见区对应的相机参数 */
@@ -1761,9 +1774,10 @@
         ctx2d.filter = "none";
         if ("letterSpacing" in ctx2d) ctx2d.letterSpacing = "0px";
 
-        // ── 进度卡：回到设备坐标单独画，不受相机变换影响 ──
+        // ── 进度卡 / 水印：回到设备坐标单独画，不受相机变换影响 ──
         ctx2d.setTransform(1, 0, 0, 1, 0, 0);
-        drawCard(ctx2d, cw, ch, t);
+        drawCard(ctx2d, cw, ch, t, k);
+        drawWatermark(ctx2d, cw, ch);
     }
 
     /* ---- 进度卡：把面板那套「当前事件 + 说明 + 规模 + 进度」合成进画面 ---- */
@@ -1796,10 +1810,68 @@
     }
 
     /**
+     * 画布上的玻璃态卡面：把底下**已经画好的地图**挖一块 → 模糊 + 提饱和 → 贴回圆角矩形，
+     * 再叠 CGoUI `.glass-panel` 的那几层（0.82 衬底 / 顶部微光圈 / 0.5px 外圈 / 投影）。
+     * canvas 没有 backdrop-filter，只能这样「先糊底、再盖膜」，做出同样的磨砂观感。
+     */
+    let glassScratch = null;
+    function paintGlass(ctx2d, cw, ch, x, y, w, h, r, blur) {
+        const P = Math.ceil(blur * 2) + 2;
+        const sx = Math.max(0, Math.round(x - P)), sy = Math.max(0, Math.round(y - P));
+        const ex = Math.min(cw, Math.round(x + w + P)), ey = Math.min(ch, Math.round(y + h + P));
+        const tw = Math.max(1, ex - sx), th = Math.max(1, ey - sy);
+        if (!glassScratch) glassScratch = document.createElement("canvas");
+        const tmp = glassScratch;
+        if (tmp.width < tw || tmp.height < th) {
+            tmp.width = Math.max(tmp.width, tw);
+            tmp.height = Math.max(tmp.height, th);
+        }
+        const tc = tmp.getContext("2d");
+        tc.setTransform(1, 0, 0, 1, 0, 0);
+        tc.clearRect(0, 0, tw, th);
+        tc.filter = "blur(" + blur.toFixed(1) + "px) saturate(135%)";
+        tc.drawImage(ctx2d.canvas, sx, sy, tw, th, 0, 0, tw, th);
+        tc.filter = "none";
+
+        // 投影（对齐 --glass-shadow 的 0 8px 24px）
+        ctx2d.save();
+        ctx2d.shadowColor = "rgba(0,38,59,0.16)";
+        ctx2d.shadowBlur = Math.max(10, blur);
+        ctx2d.shadowOffsetY = Math.max(4, blur * 0.3);
+        roundRect(ctx2d, x, y, w, h, r);
+        ctx2d.fillStyle = "rgba(0,0,0,0.002)";
+        ctx2d.fill();
+        ctx2d.restore();
+
+        // 糊好的底 + 衬底（对齐 --glass-bg-panel）
+        ctx2d.save();
+        roundRect(ctx2d, x, y, w, h, r);
+        ctx2d.clip();
+        ctx2d.drawImage(tmp, 0, 0, tw, th, sx, sy, tw, th);
+        ctx2d.fillStyle = (state.exportTheme && state.exportTheme.glassPanel) || "rgba(255,255,255,.82)";
+        ctx2d.fillRect(x, y, w, h);
+        ctx2d.restore();
+
+        // 0.5px 外圈 + 顶部 1px 微光圈（`.glass-panel::before` 的简化）
+        ctx2d.save();
+        ctx2d.lineWidth = 1;
+        ctx2d.strokeStyle = "rgba(0,0,0,0.07)";
+        roundRect(ctx2d, x + 0.5, y + 0.5, w - 1, h - 1, r);
+        ctx2d.stroke();
+        ctx2d.beginPath();
+        ctx2d.moveTo(x + r, y + 1.5);
+        ctx2d.lineTo(x + w - r, y + 1.5);
+        ctx2d.strokeStyle = "rgba(255,255,255,0.55)";
+        ctx2d.stroke();
+        ctx2d.restore();
+    }
+
+    /**
      * 把进度卡画到画面指定角落（`state.cardPos` = tl / tr / bl / br / off）。
      * 取值与面板**同源**（panelModel），所以视频里的数字与面板逐帧一致。
+     * @param {number} k 可见视口 → 输出画面的放大系数（玻璃模糊半径按它换算）
      */
-    function drawCard(ctx2d, cw, ch, t) {
+    function drawCard(ctx2d, cw, ch, t, k) {
         const pos = state.cardPos;
         if (!pos || pos === "off") return;
         const th = state.exportTheme || {};
@@ -1815,18 +1887,12 @@
         const x = (pos === "tr" || pos === "br") ? cw - CARD.margin - W : CARD.margin;
         const y = (pos === "bl" || pos === "br") ? ch - CARD.margin - H : CARD.margin;
 
+        paintGlass(ctx2d, cw, ch, x, y, W, H, CARD.radius,
+            Math.max(6, Math.min(30, (th.glassBlur || 14) * (k || 1))));
+
         ctx2d.save();
         ctx2d.textAlign = "left";
         ctx2d.textBaseline = "top";
-        // 卡面
-        ctx2d.globalAlpha = 0.92;
-        ctx2d.fillStyle = th.mapBg || "#fff";
-        roundRect(ctx2d, x, y, W, H, CARD.radius);
-        ctx2d.fill();
-        ctx2d.globalAlpha = 1;
-        ctx2d.lineWidth = 1;
-        ctx2d.strokeStyle = th.border || "rgba(0,0,0,.12)";
-        ctx2d.stroke();
 
         let cy = y + PAD;
         // 日期 + 类型徽标
@@ -1871,6 +1937,56 @@
         ctx2d.restore();
     }
 
+    /* ---- 角落水印：来源署名（AGPLv3 / ODbL 双轨下，视频出片同样要署名） ---- */
+
+    /** 水印文案：`CGo OpenMap · {城市} 开放地图`（城市名取当前注册城市） */
+    function watermarkText() {
+        let city = "";
+        try {
+            const c = window.CityDataManager && window.CityDataManager.getCurrentCity
+                ? window.CityDataManager.getCurrentCity() : null;
+            city = (c && c.name) || "";
+        } catch (e) { /* 取不到就只留项目名 */ }
+        return "CGo OpenMap · " + (city ? city + " " : "") + "开放地图";
+    }
+
+    /** 水印落在右侧吗：与进度卡**分居左右下角**（卡右下→水印左下；卡左下→水印右下；
+        卡在上半屏或关掉→固定右下），这样两者永不重叠 */
+    const watermarkOnRight = () => state.cardPos !== "br";
+
+    function drawWatermark(ctx2d, cw, ch) {
+        const text = watermarkText();
+        if (!text) return;
+        const th = state.exportTheme || {};
+        const fam = th.font || "sans-serif";
+        const pad = CARD.margin;
+        const mark = state.exportMark;
+        const markSize = 20, gap = 8;
+
+        ctx2d.save();
+        ctx2d.font = "600 14px " + fam;
+        ctx2d.textBaseline = "middle";
+        ctx2d.textAlign = "left";
+        const textW = ctx2d.measureText(text).width;
+        const totalW = (mark ? markSize + gap : 0) + textW;
+        const x = watermarkOnRight() ? cw - pad - totalW : pad;
+        const cy = ch - pad - 13;   // 与进度卡底边同一行
+        let cx = x;
+        ctx2d.globalAlpha = 0.72;
+        if (mark) {
+            ctx2d.drawImage(mark, cx, cy - markSize / 2, markSize, markSize);
+            cx += markSize + gap;
+        }
+        // 先描一圈背景色做底衬，压在线上也看得清
+        ctx2d.lineWidth = 3;
+        ctx2d.lineJoin = "round";
+        ctx2d.strokeStyle = th.mapBg || "#fff";
+        ctx2d.strokeText(text, cx, cy);
+        ctx2d.fillStyle = th.text || "#222";
+        ctx2d.fillText(text, cx, cy);
+        ctx2d.restore();
+    }
+
     /** data URL 的 SVG → <img>（decoded ≠ painted，调用方已在外层留出等待） */
     function imgFromData(svgStr) {
         const bytes = new TextEncoder().encode(svgStr);
@@ -1908,20 +2024,63 @@
         }
         labelCache = buildLabelCache();
         state.exportTheme = readThemeVars();
+        state.exportMark = await prepareMark();
     }
 
-    /** 进度卡要用的主题色：canvas 读不到 CSS 变量，只能先把算好的值取出来 */
+    /**
+     * 水印左侧的 CGo 小图标：把 CGoUI 的 `<cgo-icon name="cgo">` 临时挂到页面上，
+     * 取出它 shadow DOM 里的 SVG、改成文字色后栅格化一次（拿不到就退化成纯文字水印）。
+     */
+    async function prepareMark() {
+        const col = (state.exportTheme && state.exportTheme.text) || "#222";
+        let host = document.querySelector('cgo-icon[name="cgo"]');
+        let temp = null;
+        if (!host) {
+            temp = document.createElement("cgo-icon");
+            temp.setAttribute("name", "cgo");
+            temp.setAttribute("size", "24");
+            temp.style.cssText = "position:absolute;left:-9999px;top:0;";
+            document.body.appendChild(temp);
+            host = temp;
+            await new Promise((r) => requestAnimationFrame(() => r()));   // 等组件渲染出 shadow DOM
+        }
+        try {
+            const svg = host.shadowRoot && host.shadowRoot.querySelector("svg");
+            if (!svg) return null;
+            const clone = svg.cloneNode(true);
+            clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+            clone.setAttribute("width", "24");
+            clone.setAttribute("height", "24");
+            clone.setAttribute("fill", col);
+            clone.style.color = col;   // 图标若走 currentColor，隔离的 SVG 里默认是黑，得显式给色
+            clone.querySelectorAll("*").forEach((n) => {
+                const f = n.getAttribute("fill");
+                if (f && f !== "none" && f !== "currentColor") n.setAttribute("fill", col);
+            });
+            return await imgFromData(new XMLSerializer().serializeToString(clone));
+        } catch (e) {
+            return null;
+        } finally {
+            if (temp) temp.remove();
+        }
+    }
+
+    /** 进度卡 / 水印要用的主题色：canvas 读不到 CSS 变量，只能先把算好的值取出来 */
     function readThemeVars() {
         const host = stageHost() || document.body;
         const cs = getComputedStyle(host);
         const v = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
+        // CGoUI 玻璃系统的模糊半径（blur(14px) saturate(135%) 里的那个 14）
+        const gm = /blur\(\s*([\d.]+)px/.exec(v("--glass-backdrop-blur-surface", "blur(14px)"));
         return {
             font: getComputedStyle(document.body).fontFamily || "sans-serif",
             text: v("--text-main", "#222"),
             primary: v("--primary-color", "#00263b"),
             border: v("--border-color", "rgba(0,0,0,.12)"),
             info: v("--btn-info-bg", "rgba(0,0,0,.06)"),
-            mapBg: v("--map-bg", "#ffffff")
+            mapBg: v("--map-bg", "#ffffff"),
+            glassPanel: v("--glass-bg-panel", "rgba(255,255,255,.82)"),
+            glassBlur: gm ? parseFloat(gm[1]) : 14
         };
     }
 
@@ -1980,10 +2139,14 @@
         setTimeout(() => URL.revokeObjectURL(url), 4000);
     }
 
+    /** 文件名：`线网发展史_{起}_{止}_{导出时间戳}.mp4`（时间戳避免同名导出互相覆盖/看不出先后） */
     const exportFileName = (from, to) => {
+        const d = new Date();
+        const p = (n) => String(n).padStart(2, "0");
+        const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
         const a = state.steps[from] ? state.steps[from].date : "start";
         const b = state.steps[to] ? state.steps[to].date : "end";
-        return `线网发展史_${a}_${b}.mp4`;
+        return `线网发展史_${a}_${b}_${stamp}.mp4`;
     };
 
     /**

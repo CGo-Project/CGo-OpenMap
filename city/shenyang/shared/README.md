@@ -192,11 +192,15 @@ core 的 `initMobileSheetDrag()` 写死在 `#info-panel` 上（内容区按下�
 
 自检见 `drunk/tools/selfcheck.js` 的「开通沿革时间线」一节：端点合法性、区段连续性、**每条线路所有区段并集必须构成连续段且覆盖该线全部已开通车站**（漏一段在动画上只表现为"某段永远长不出来"，不报错，故必须用断言钉住）。
 
-**导出视频**：操作行第 7 枚图标按钮（`download`）展开导出区 —— 两个起止事件下拉（互相钳制，默认整段）+「导出 MP4」+ 进度条/状态行；导出期间主按钮换成「取消」。产物是 **1280×720 @ 30fps 的 MP4（H.264）**，取景沿用「覆盖当前可见取景、等比放大居中裁剪」，所以所见即所得。管线：**WebCodecs `VideoEncoder` + mp4-muxer**（v5.2.2 / MIT / © 2023 Vanilagy，`vendor/mp4-muxer.min.js` + 随附 `LICENSE.txt`，**按需注入**，不占页面启动路径）——`buildTimeline(from,to)` 摊平时刻表 → 逐帧 `applyFrame(t)` 落到 DOM → `paintFrame` 取图 → `VideoFrame` → `encoder.encode`（`avc.format:'avc'`，mp4-muxer 要的是 AVCC 块）→ `flush` → `muxer.finalize()` → Blob 下载。
+**导出视频**：操作行第 7 枚图标按钮（`download`）展开导出区 —— 两个起止事件下拉（互相钳制，默认整段）+「进度卡」位置下拉 +「导出 MP4」+ 进度条/状态行；导出期间主按钮换成「取消」。产物是 **1280×720 @ 30fps 的 MP4（H.264）**，取景沿用「覆盖当前可见取景、等比放大居中裁剪」，所以所见即所得；文件名 `线网发展史_{起}_{止}_{导出时间戳}.mp4`。管线：**WebCodecs `VideoEncoder` + mp4-muxer**（v5.2.2 / MIT / © 2023 Vanilagy，`vendor/mp4-muxer.min.js` + 随附 `LICENSE.txt`，**按需注入**，不占页面启动路径）——`buildTimeline(from,to)` 摊平时刻表 → 逐帧 `applyFrame(t)` 落到 DOM → `paintFrame` 取图 → `VideoFrame` → `encoder.encode`（`avc.format:'avc'`，mp4-muxer 要的是 AVCC 块）→ `flush` → `muxer.finalize()` → Blob 下载。
+
+⚠️ **导出时的取景换用「安全区」**：视频是 16:9，而可见视口未必是，覆盖裁剪只留下居中一块（放大系数 `k = max(cw/hostW, ch/hostH)`，可见宽 `cw/k`、可见高 `ch/k`）。`viewportBox()` 在 `state.exporting` 时按这块安全区（并居中、不扣图例与浮层留白——它们在视频里根本不存在）回报，否则页面里装得下的高瘦元素（南北向线路、全图收尾那拍）到了视频里会被**上下裁掉**。
 
 与播放**共用 `applyFrame`**，但逐帧走**非落定模式**（省略 settle）：传 `settle=true` 会把站点弹出、涟漪在同一帧立刻收尾，录出来就没有「弹」的过程（`paintFrame` 的 `alphaAt` 正是按「正在弹的那几个」算可见度）。`from>0` 时先 `jumpTo(from-1)` 把此前事件落成「已开通」，因此任意区间的起手画面都是完整的线网。导出期间停下实时播放并锁住操作行其余按钮（只留「取消」），`encoder.encodeQueueSize > 8` 时等待背压；结束/取消都把画面按时间轴末尾落定一次，面板若已关闭（`unmount` 已 `exitStage` 还原取景）则不再落位。⚠️ 逐帧渲染的三条硬约束（站名走 canvas `fillText` 而不是内联进每帧 SVG、`foreignObject` 里没有 `:root` 故 CSS 变量要搬到克隆根、相对图片必须内联成 data URL 否则静默消失）写在脚本「导出视频」一节的注释里。
 
-**进度卡**：导出时可把面板那套「当前事件（日期 + 类型徽标）/ 说明 / 规模（线路 · 车站 · 里程）/ 进度条」合成进画面（`drawCard`），默认落在**右下角**，另可选左下 / 右上 / 左上或**不显示**（导出区的「进度卡」下拉）。取值与面板**同源** —— 两者都读 `panelModel(t, rec)`，所以视频里的数字与面板逐帧一致；主题色在 `prepareExport` 里从 `#map-content` 的 computedStyle 取好（canvas 读不到 CSS 变量）。展开导出区时，面板上那四块会先收起来（`.cgo-oh.is-export`），免得与卡重复又占高度。
+**进度卡**：导出时可把面板那套「当前事件（日期 + 类型徽标）/ 说明 / 规模（线路 · 车站 · 里程）/ 进度条」合成进画面（`drawCard`），默认落在**右下角**，另可选左下 / 右上 / 左上或**不显示**（导出区的「进度卡」下拉）。取值与面板**同源** —— 两者都读 `panelModel(t, rec)`，所以视频里的数字与面板逐帧一致；主题色在 `prepareExport` 里从 `#map-content` 的 computedStyle 取好（canvas 读不到 CSS 变量）。展开导出区时，面板上那四块会先收起来（`.cgo-oh.is-export`），免得与卡重复又占高度。**卡面走 CGoUI 的玻璃态**：canvas 没有 `backdrop-filter`，`paintGlass()` 就「先糊底、再盖膜」—— 把底下**已画好的地图**挖一块出来 `blur + saturate(135%)` 再贴回圆角矩形，然后叠 `.glass-panel` 的那几层（`--glass-bg-panel` 衬底 / 顶部 1px 微光圈 / 0.5px 外圈 / 投影）；模糊半径取 `--glass-backdrop-blur-surface` 的那个数并按导出比例 `k` 换算。
+
+**角落水印**：视频右下/左下角一行 `CGo OpenMap · {城市} 开放地图`（AGPLv3 / ODbL 双轨下出片同样要署名），左侧的 CGo 小图标由 `prepareMark()` 把 `cgo-icon[name="cgo"]` 的 shadow SVG 取出来、改成文字色后栅格化一次（取不到就退化成纯文字）。位置与进度卡**自动分居左右下角**（卡在右下→水印左下；卡在左下→水印右下；卡在上半屏或关掉→固定右下），两者永不重叠；文字先按 `--map-bg` 描一圈底衬，压在线上也看得清。
 
 ⚠️ **站名渲染**：克隆里**只藏文字**（`#labels-layer .stacn` / `.staen`），**不藏整个站名层** —— 沈阳呼出框的「文本框底部描边」是 `.label-group.label-callout` 上的 `border-bottom`，整层藏掉会连框一起丢；文字仍由 canvas `fillText` 画（SVG 里没有页面已加载的 webfont，留下会用回退字体）。淡入时按页面口径补 `blur`（`4px × (1 − alpha) × s`，`s` 为导出比例）：canvas 的 `filter: blur` 半径是**输出像素**、不受当前 CTM 缩放影响（实测：1× 与 4× 下的扩张量相同），所以必须手乘 `s` 才与页面观感一致。
 
