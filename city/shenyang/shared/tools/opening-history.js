@@ -1278,16 +1278,21 @@
     async function runStep(i, token) {
         const step = state.steps[i];
         state.index = i;
-        // 日期与进度条都先落在**上一个事件**上（首段即本事件），间隙里再一起走到本事件
-        const prevPct = trackPercentAt(Math.max(0, i - 1));
-        state.els.date.textContent = i > 0 ? state.steps[i - 1].date : step.date;
-        setTrack(prevPct);
+        // 面板（徽标 / 说明 / 规模）立刻切到本事件 —— 本步一开始它就代表「正在画的这一段」
         syncNow();
         syncStats(growDuration(step));   // 统计数字随生长一起滚上去
         // 引线可能被核心重画过（它随视口与缩放重算），补一次状态
         resyncShown();
+        // ⚠️ 日期与进度条的收口必须赶在**生长之前**：它们此刻还停在上一事件上，
+        //    要随起笔运镜一起走到本事件。若放到段尾（上一步的间隙里）去滚，
+        //    等画笔已经在画本事件了，面板上的时间点却还是上一步的 —— 整整晚一个事件。
+        const fromPct = trackPercentAt(Math.max(0, i - 1));
+        const prevDate = i > 0 ? state.steps[i - 1].date : step.date;
         // 先推近到该段起点起笔，等过渡落地，免得逐帧跟随立刻把它顶掉
         frameOn(step.pts ? pointAt(step.pts, 0) : step.focus);
+        const glide = glideMs() ? glideMs() + 90 : 0;
+        rollTrack(fromPct, trackPercentAt(i), glide);
+        rollDate(state.els.date, prevDate, step.date, glide);
         if (glideMs()) await delay(glideMs() + 90);
         if (token !== state.token) return;
         await growSegment(step, token);
@@ -1300,10 +1305,6 @@
         frameStep(step);
         if (glideMs()) await delay(glideMs() + 90);
         if (token !== state.token) return;
-        // 事件间隙：日期从上一个事件一天天走到本事件，进度条与它同步一起长
-        const prevDate = i > 0 ? state.steps[i - 1].date : step.date;
-        rollTrack(prevPct, trackPercentAt(i), holdMs());
-        rollDate(state.els.date, prevDate, step.date, holdMs());
     }
 
     function play() {
