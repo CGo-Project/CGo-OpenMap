@@ -1735,19 +1735,32 @@
             let caption = kind === "transfer"
                 ? `${step.free ? "免费出站换乘" : "付费出站换乘"} · 约 ${meters} 米 · ${Math.round(step.minutes)} 分钟`
                 : `${kind === "exit" ? "出站步行至目的地" : "步行前往乘车"} · 约 ${meters} 米 · ${Math.round(step.minutes)} 分钟`;
+            let gateRows = "";
             if (kind === "transfer") {
-                // 「从哪个口出 / 经哪个口进」：朝对侧站最近的口（本地按出口坐标算），
-                // 启用需求时两侧都优先在合规口里选；口所属线 ≠ 对应乘车线时按 transferAt
-                // 追加站厅换乘方式与用时（时间同步计入总用时，见 gateOverhead）
+                // 「从哪个口出 / 经哪个口进」朝对侧站最近的口（本地按出口坐标算）；启用需求时
+                // 两侧都**优先在合规口里选**（无合规口才回退最近口，并由 gateAdviseLine 出警示）。
+                // 两个口**各占一行**：行内 = 口 + 跨线站厅换乘注记；该口有设施数据时整行可展开看
+                // 设施（与进站条 / 出站条同款）。口所属线 ≠ 对应乘车线时按 transferAt 标注方式与
+                // 用时（时间同步计入总用时，见 gateOverhead）。
                 const gateExit = nearestExitToward(step.a, step.b, "exit");
-                if (gateExit) caption += ` · 从 ${boldExitCode(gateExit.name)}出`;
-                const spec = exitGateSpec(step.a, gateExit, lastLineId);
-                if (spec) caption += gateNote(spec);
                 const enterExit = nearestExitToward(step.b, step.a, "entry");
-                if (enterExit) caption += ` · 经 ${boldExitCode(enterExit.name)}进站`;
-                // 进站侧方向相反：口所属线 → 下一程乘车线，用 entryGateSpec（与 gateOverhead 同源）
-                const enterSpec = entryGateSpec(step.b, enterExit, nextLineMap.get(step));
-                if (enterSpec) caption += gateNote(enterSpec);
+                const gateSpec = exitGateSpec(step.a, gateExit, lastLineId);                 // 出站侧：刚下车的线 → 口所属线
+                const enterSpec = entryGateSpec(step.b, enterExit, nextLineMap.get(step));   // 进站侧：口所属线 → 下一程乘车线
+                const gateSide = (dir, sid, exit, spec) => {
+                    if (!exit) return "";
+                    const fac = facilityRowsOf(sid, exit.name);
+                    const key = fac ? `fac-${++facSeq}` : "";
+                    const lead = dir === "exit" ? `从 ${boldExitCode(exit.name)}出` : `经 ${boldExitCode(exit.name)}进站`;
+                    return `
+                        <div class="cgo-rt-leg-line muted${fac ? " cgo-rt-expandable" : ""}"${fac ? ` data-expand="${key}" title="查看出入口设施"` : ""}>
+                            ${fac ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
+                            <span>${lead}${spec ? gateNote(spec) : ""}</span>
+                        </div>
+                        ${fac ? `<div data-list="${key}" hidden><div class="cgo-rt-leg-line muted"><div class="cgo-rt-facwrap">${fac}</div></div></div>` : ""}
+                        ${gateAdviseLine(sid, exit.name, dir, `fac-${++facSeq}`)}
+                    `;
+                };
+                gateRows = gateSide("exit", step.a, gateExit, gateSpec) + gateSide("entry", step.b, enterExit, enterSpec);
             }
             legs.push(`
                 <li class="cgo-rt-leg walk">
@@ -1760,6 +1773,7 @@
                     <div class="cgo-rt-leg-line muted">
                         <span>${caption}</span>
                     </div>
+                    ${gateRows}
                 </li>
             `);
         });
