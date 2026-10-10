@@ -3609,5 +3609,5 @@
         init();
     }
 
-    window.CGoRoutePanel = { open: openPlan, close: closePanel, toggle };
+    window.CGoRoutePanel = { open: openPlan, close: closePanel, toggle, clearHighlight };
 })();
