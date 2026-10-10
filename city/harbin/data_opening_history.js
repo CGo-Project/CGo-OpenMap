@@ -34,8 +34,8 @@ const CGO_OPENING_HISTORY = [
     // ── 1 号线 ──────────────────────────────────────────────────────────
     { date: "2013-09-26", lineId: "HBM01", kind: "line-open", from: "HEBN", to: "HEBD",
         note: "1号线一、二期：哈尔滨南站 ⇄ 哈尔滨东站" },
-    { date: "2019-04-10", lineId: "HBM01", kind: "line-open", from: "XJD", to: "HEBD",
-        note: "1号线三期：新疆大街 → 哈尔滨东站" },
+    { date: "2019-04-10", lineId: "HBM01", kind: "line-open", from: "XJD", to: "HEBN",
+        note: "1号线三期：新疆大街 ⇄ 哈尔滨南站（只画新开的那一段，哈尔滨南站是一、二期的端点）" },
 
     // ── 2 号线 ──────────────────────────────────────────────────────────
     { date: "2021-09-19", lineId: "HBM02", kind: "line-open", from: "JBDXC", to: "QXT",

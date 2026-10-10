@@ -1301,7 +1301,7 @@
 
         if (state.lastPanelI !== m.i) {
             state.lastPanelI = m.i;
-            syncNow();
+            syncNow(m.i);
             state.els.list.querySelectorAll(".cgo-oh-item").forEach((li) => {
                 const no = Number(li.dataset.go);
                 li.classList.toggle("is-active", no === m.i + 1);
@@ -1458,9 +1458,13 @@
         return desc;
     }
 
-    /** 徽标与说明。日期不在这里设 —— 它由 `applyPanel` 按 t 算 */
-    function syncNow() {
-        const step = state.steps[state.index];
+    /**
+     * 徽标与说明。日期不在这里设 —— 它由 `applyPanel` 按 t 算。
+     * 步号必须**由调用方传进来**：`state.index` 只在暂停 / 跳转时写，播放途中不写，
+     * 用它会让徽标与说明一直停在上一次的步号上（播放时看起来「不更新」）。
+     */
+    function syncNow(i) {
+        const step = state.steps[Number.isFinite(i) ? i : state.index];
         if (!step) return;
         const badge = state.els.badge;
         badge.hidden = false;
