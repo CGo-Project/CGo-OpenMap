@@ -489,3 +489,81 @@
 
 /* 「减少动态效果」不再需要在这里压 CSS 动画 —— 弹出、涟漪、换字都改由 applyFrame
    按 t 逐帧应用，脚本里 `applyAnimDurations` 会把时长直接归零。 */
+
+/* ── 导出视频区 ──────────────────────────────────────────────────────
+   与两条设置滑条同一套折叠逻辑（三块互斥），额外放两个事件下拉、一枚主按钮、
+   一条进度与状态行。导出期间本区常驻：主按钮换成「取消」，进度条跑起来；
+   操作行的其它按钮由 syncExportUI 统一禁用，免得抢走同一条时间线。 */
+.cgo-oh-actions button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.cgo-oh-actions button:disabled:hover {
+    background: var(--btn-info-bg);
+}
+
+.cgo-oh-export .cgo-oh-field select {
+    flex: 1;
+    min-width: 0;
+    height: 28px;
+    padding: 0 6px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-main);
+    background: var(--btn-info-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.cgo-oh-export .cgo-oh-field label {
+    min-width: 28px;
+}
+
+.cgo-oh-exp-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.cgo-oh-exp-actions .cgo-mt-launch {
+    flex: 1 1 auto;
+    justify-content: center;
+}
+
+.cgo-oh-exp-actions .cgo-mt-quick {
+    flex: 0 0 auto;
+    padding: 7px 12px;
+}
+
+.cgo-oh-exp-actions [hidden] {
+    display: none;
+}
+
+.cgo-oh-exp-track {
+    height: 4px;
+    margin-top: 6px;
+    border-radius: 2px;
+    background: var(--btn-info-bg);
+    overflow: hidden;
+}
+
+.cgo-oh-exp-bar {
+    height: 100%;
+    width: 0;
+    background: var(--primary-color, #00263b);
+}
+
+.cgo-oh-exp-status {
+    margin: 0;
+    min-height: 1.1em;
+    font-size: 11px;
+    line-height: 1.5;
+    opacity: 0.62;
+    font-variant-numeric: tabular-nums;
+}
+
+.cgo-oh-exp-status.is-error {
+    color: #d33;
+    opacity: 1;
+}

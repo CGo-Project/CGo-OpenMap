@@ -65,7 +65,7 @@
 | `sheet-drag.js` | `window.CGoSheetDrag`（`create`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），**须早于 `route-panel.js` 与 `panel-sheet-gesture.js`** | 移动端抽屉手势引擎：头部/把手拖拽 + 内容区跟手仲裁 + 半屏滚动锁；与面板解耦，由适配器接入车站详情 / 行程规划 / 路线结果三个面板，详见 2.1 |
 | `panel-sheet-gesture.js` + `panel-sheet-gesture.css` | `window.CGoPanelSheetGesture`（`refresh`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），**须晚于 `sheet-drag.js` 与 `viewport-inset.js`** | 车站详情抽屉的适配器：把引擎接到 `top` 空间 + body 档位类上，并卸掉 core 的移动端拖拽，详见 2.1 |
 | `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close` / `registerTool(def)`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
-| `opening-history.js` + `opening-history.css` | 经 `window.CGoMapTools.registerTool` 注册成**免选站工具**（`window.CGoOpeningHistory` 只暴露 `hasData` / `mount` / `unmount` / `open`） | classic script，**目前仅沈阳**在 `{city}.js` 引入（须晚于 `map-tools.js` 与城市 `data_opening_history.js`） | 线网发展史动态演示：按开通沿革把线网逐段「长」出来（区段沿真实走向生长 → 新开车站脉冲 → 段间跳视口 → 播放 / 暂停 / 重播 / 倍速 / 跳年份），详见 2.1 |
+| `opening-history.js` + `opening-history.css` | 经 `window.CGoMapTools.registerTool` 注册成**免选站工具**（`window.CGoOpeningHistory` 只暴露 `hasData` / `mount` / `unmount` / `open`） | classic script，**目前仅沈阳**在 `{city}.js` 引入（须晚于 `map-tools.js` 与城市 `data_opening_history.js`） | 线网发展史动态演示：按开通沿革把线网逐段「长」出来（区段沿真实走向生长 → 新开车站脉冲 → 段间跳视口 → 播放 / 暂停 / 重播 / 倍速 / 跳年份），并可把选定区间导出为 **1280×720@30fps 的 MP4**（WebCodecs `VideoEncoder` + mp4-muxer，按需注入），详见 2.1 |
 
 ### 2.1 各模块要点
 
@@ -191,6 +191,10 @@ core 的 `initMobileSheetDrag()` 写死在 `#info-panel` 上（内容区按下�
 **进度条按时间推进**（`(当前事件日期 − 首事件日期) ÷ 总跨度`），不是按事件条数 —— 事件在时间轴上疏密不均，按条数会骗人。**里程**是逐段累加的已开通区间站距之和（`distances` 里非数值的跳过），即面板上那个「当前运营里程」；**车站数**含全程固定显示的既有设施（无开通记录的国铁散点），否则统计与画布对不上。点清单任一项即跳到该时刻（把此前各段补成「已开通」并弹出各站、更名直接落成新名，不重播生长动画，于是能直接看某一年份的线网形态）。**侧栏形态下把侧栏收起**时（`body` 上的 `legend-pinned` 被摘掉），区块会连同面板一起消失 —— 本模块盯着这个类，一旦摘掉就重新 `openTool` 把面板改挂成浮层（走 `closePanel` → `unmount` 把旧实例收干净），演示也随之收尾，不会留下「窗口没了、线还在长」。**退出即还原**：关闭面板（或收起区块）时移除接管类、清掉弹出态与改名、还原城市缩放范围，并把取景复位到接管前的位置与缩放 —— 否则会留下「内容回来了、镜头还停在特写」的状态。**暂停**采用「当前段收尾后停」而非冻在半截：描边偏移动画一旦中断，线条会整段消失，观感反而更差。
 
 自检见 `drunk/tools/selfcheck.js` 的「开通沿革时间线」一节：端点合法性、区段连续性、**每条线路所有区段并集必须构成连续段且覆盖该线全部已开通车站**（漏一段在动画上只表现为"某段永远长不出来"，不报错，故必须用断言钉住）。
+
+**导出视频**：操作行第 7 枚图标按钮（`download`）展开导出区 —— 两个起止事件下拉（互相钳制，默认整段）+「导出 MP4」+ 进度条/状态行；导出期间主按钮换成「取消」。产物是 **1280×720 @ 30fps 的 MP4（H.264）**，取景沿用「覆盖当前可见取景、等比放大居中裁剪」，所以所见即所得。管线：**WebCodecs `VideoEncoder` + mp4-muxer**（v5.2.2 / MIT / © 2023 Vanilagy，`vendor/mp4-muxer.min.js` + 随附 `LICENSE.txt`，**按需注入**，不占页面启动路径）——`buildTimeline(from,to)` 摊平时刻表 → 逐帧 `applyFrame(t)` 落到 DOM → `paintFrame` 取图 → `VideoFrame` → `encoder.encode`（`avc.format:'avc'`，mp4-muxer 要的是 AVCC 块）→ `flush` → `muxer.finalize()` → Blob 下载。
+
+与播放**共用 `applyFrame`**，但逐帧走**非落定模式**（省略 settle）：传 `settle=true` 会把站点弹出、涟漪在同一帧立刻收尾，录出来就没有「弹」的过程（`paintFrame` 的 `alphaAt` 正是按「正在弹的那几个」算可见度）。`from>0` 时先 `jumpTo(from-1)` 把此前事件落成「已开通」，因此任意区间的起手画面都是完整的线网。导出期间停下实时播放并锁住操作行其余按钮（只留「取消」），`encoder.encodeQueueSize > 8` 时等待背压；结束/取消都把画面按时间轴末尾落定一次，面板若已关闭（`unmount` 已 `exitStage` 还原取景）则不再落位。⚠️ 逐帧渲染的三条硬约束（站名走 canvas `fillText` 而不是内联进每帧 SVG、`foreignObject` 里没有 `:root` 故 CSS 变量要搬到克隆根、相对图片必须内联成 data URL 否则静默消失）写在脚本「导出视频」一节的注释里。
 
 ### 2.2 模块依赖关系
 
@@ -330,7 +334,7 @@ needs: {
 | **规划优先级只有三种** | 内核 `OBJECTIVES` 为 **时间最快 / 最少换乘 / 票价最低**，**没有「距离最短」**（该目标已整体移除，所有城市一致；原先的按城市开关 `disabledObjectives` 机制已一并删除）。理由：乘客更关心少换乘与时间短，且最短距离常反而更耗时。里程仍保留在结果字段、等时圈口径与按段计价结算里，只是不再作为寻路目标 | `shared/route/route-planner.js` 的 `OBJECTIVES`、`extremes()` |
 | **官方票价表优先** | 福州已接入：票价**只取自官网抓取的站间票价表**（`city/fuzhou/data_official_fare.js`，10302 组），计算式已删除，查不到的组合返回 `null`（内核按「票价未知」处理）。理由：计价站距与土建站距不同源，用站距套费率必然在档位分界附近错档 | `city/fuzhou/fuzhou.js` 的 `CGO_ROUTE_CONFIG.fare`、`city/fuzhou/tools/fuzhou_check.js`（抓取步骤写在文件头） |
 | **站内换乘方式与用时** | 福州已接入：城市用 `CGO_ROUTE_CONFIG.transferAt` 逐站声明换乘方式（同台 / 节点 / 站厅 / 通道换乘）与用时；`pairs` 可按线路对进一步区分（帝封江：4/5 号线同台、换滨海快线通道 4 分），键也可写成**有向**的 `"线路A>线路B"`（从 A 线换到 B 线、优先于无向键命中），用于「同一线对两个乘车方向方式不同」的站体结构差异（沈阳青年大街：1 号线换 2 号线站台层楼梯直上 1 分、2 号线换 1 号线经站厅通道 3 分）；同台方向对用 `sameDir`（如 `"M1+M5-"`）**显式点明**，几何判定（`sameDirMinutes`）仅作兜底 —— 实测中帝封江的几何同向对与现场站台并不一致。换乘方式会随结果步骤显示在行程规划面板上，行程含换乘时末尾附一条「换乘时间因步行速度和车站人流量不同，仅供参考」；未配置的城市行为与不加完全一致 | `shared/route/route-data.js` 的 `makeTransferLookup` / `resolveSameDir` / `directedPairKey`、`city/fuzhou/fuzhou.js` 与 `city/shenyang/shenyang.js` 的 `transferAt` |
-| **线网发展史动态演示** | 沈阳已接入（14 条沿革 · 6 条线路 · 144 座车站，含区段开通 / 单站补开 / 车站更名三类事件）；放映时底图线网由本模块接管，从空白画布跟着画笔逐段画出，**范围即沿革数据**——未登记开通记录的线路（有轨、已停运等）不出现；其他城市只需补一份 `data_opening_history.js`（写端点即可，区段由站序自动切）并在 `{city}.js` 引入 `shared/tools/opening-history.js`，工具入口即在「地图小工具」列表中出现；对应的自检断言会自动开始校验该城数据 | `shared/tools/opening-history.js`、`city/shenyang/data_opening_history.js`、`drunk/tools/selfcheck.js` 的「开通沿革时间线」一节 |
+| **线网发展史动态演示** | 沈阳已接入（14 条沿革 · 6 条线路 · 144 座车站，含 11 段区段开通 / 2 站补开 / 1 站更名三类事件）；放映时底图线网由本模块接管，从空白画布跟着画笔逐段画出，**范围即沿革数据**——未登记开通记录的线路（有轨、已停运等）不出现；另可把选定起止事件的区间**导出为 1280×720@30fps 的 MP4**（WebCodecs `VideoEncoder` + 按需注入的 mp4-muxer，与播放共用同一条时间轴与取景）；其他城市只需补一份 `data_opening_history.js`（写端点即可，区段由站序自动切）并在 `{city}.js` 引入 `shared/tools/opening-history.js`，工具入口即在「地图小工具」列表中出现；对应的自检断言会自动开始校验该城数据 | `shared/tools/opening-history.js`、`city/shenyang/data_opening_history.js`、`drunk/tools/selfcheck.js` 的「开通沿革时间线」一节 |
 
 ---
 

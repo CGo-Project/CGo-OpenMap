@@ -105,6 +105,11 @@
         ripples: [],        // 正在扩散的涟漪
         lastPanelI: null,   // 上一次刷新面板的事件序号
         lastResyncI: null,  // 上一次补「已出现车站」状态的事件序号
+        exportCss: "",      // 导出用：内联进每帧 SVG 的同源 CSS 文本
+        exportImgCache: new Map(), // 导出用：外部图片 → data URL
+        exporting: false,   // 是否正在导出视频（导出期间锁住实时播放那几枚控件）
+        exportCancelled: false,
+        muxerLoading: null, // mp4-muxer 的按需加载 Promise（同一份只注入一次）
         shown: new Map(),   // sid → form：已经出现在画布上的车站（引线重建后据此补状态）
         dotColors: new Map(), // sid → dot 形态的环色（首条开通线路的颜色）
         alwaysOn: new Set(), // 全程固定显示的车站（国铁散点等，不参与逐个弹出）
@@ -1308,6 +1313,9 @@
                         <button type="button" class="cgo-mt-quick cgo-oh-icon-btn" data-oh="toggleInfo" title="查看事件清单" aria-pressed="false">
                             <cgo-icon name="view-list" size="14"></cgo-icon>
                         </button>
+                        <button type="button" class="cgo-mt-quick cgo-oh-icon-btn" data-oh="exportToggle" title="导出视频" aria-pressed="false">
+                            <cgo-icon name="download" size="14"></cgo-icon>
+                        </button>
                     </div>
                     <div class="cgo-oh-set" data-oh="speedSet" hidden>
                         <div class="cgo-oh-field">
@@ -1324,6 +1332,22 @@
                                 min="${ZOOM.min}" max="${ZOOM.max}" step="${ZOOM.step}" value="${ZOOM.def}">
                             <output data-oh="zoomOut">${ZOOM.def.toFixed(1)}×</output>
                         </div>
+                    </div>
+                    <div class="cgo-oh-set cgo-oh-export" data-oh="exportSet" hidden>
+                        <div class="cgo-oh-field">
+                            <label for="cgo-oh-exp-from">起始</label>
+                            <select id="cgo-oh-exp-from" data-oh="expFrom"></select>
+                        </div>
+                        <div class="cgo-oh-field">
+                            <label for="cgo-oh-exp-to">结束</label>
+                            <select id="cgo-oh-exp-to" data-oh="expTo"></select>
+                        </div>
+                        <div class="cgo-oh-exp-actions">
+                            <button type="button" class="cgo-mt-launch" data-oh="expStart">导出 MP4</button>
+                            <button type="button" class="cgo-mt-quick" data-oh="expCancel" hidden>取消</button>
+                        </div>
+                        <div class="cgo-oh-exp-track"><div class="cgo-oh-exp-bar" data-oh="expBar"></div></div>
+                        <p class="cgo-oh-exp-status" data-oh="expStatus"></p>
                     </div>
                 </div>
                 <ul class="cgo-oh-list"></ul>
@@ -1534,6 +1558,416 @@
     }
 
     /* ======================================================================
+     * 导出视频：逐帧渲染（与播放共用同一条时间轴）
+     * ====================================================================
+     * 一帧 = 把 `applyFrame(t)` 之后的**图形层**（去掉站名整层）栅格化，再用 canvas
+     * `fillText` 把站名叠上去。之所以把站名从 SVG 里拿出来：内联字体会让每帧的 SVG
+     * 涨到 6MB、光序列化就 530ms（实测），而 canvas 文字直接吃页面里已经加载好的 webfont。
+     * 相机**不作为 DOM transform** 参与导出 —— 它是渲染时的 canvas 变换，于是文字按最终
+     * 分辨率栅格化，比「先渲染再缩放」清晰。
+     */
+
+    const EXPORT = {
+        width: 1280,
+        height: 720,
+        fps: 30,
+        bitrate: 6000000,
+        codec: "avc1.640028",
+        muxerSrc: "./city/shenyang/shared/tools/vendor/mp4-muxer.min.js"
+    };
+
+    /** 站名的位置与字体样式只量一次 —— 逐帧量 400 个标签的 getComputedStyle 要 60ms */
+    let labelCache = null;
+
+    function buildLabelCache() {
+        const host = stageHost();
+        const mc = document.getElementById("map-content");
+        if (!host || !mc) return [];
+        const view = window.getMapView ? window.getMapView() : { scale: 1, x: 0, y: 0 };
+        const mr = mc.getBoundingClientRect();
+        const probe = document.createElement("canvas").getContext("2d");
+        const out = [];
+        host.querySelectorAll("#labels-layer .label-group").forEach((g) => {
+            const sid = g.dataset.sid || "";
+            g.querySelectorAll(".stacn, .staen").forEach((sp) => {
+                const cs = getComputedStyle(sp);
+                if (cs.display === "none" || cs.visibility === "hidden") return;
+                const r = sp.getBoundingClientRect();
+                if (r.width < 0.5 || r.height < 0.5) return;
+                const size = parseFloat(cs.fontSize);
+                const font = `${cs.fontStyle} ${cs.fontWeight} ${size}px ${cs.fontFamily}`;
+                probe.font = font;
+                const met = probe.measureText(sp.textContent || "中");
+                // 站名可能带 scaleX（station.textScale），缩放锚点在 transform-origin 上
+                const m = /matrix\(([-\d.]+)[, ]+[-\d.]+[, ]+[-\d.]+[, ]+[-\d.]+[, ]+([-\d.]+)/.exec(cs.transform || "");
+                const sx = m ? parseFloat(m[1]) : 1;
+                const orgPct = parseFloat(cs.transformOrigin) / 100;
+                const w = r.width / view.scale;
+                out.push({
+                    el: sp, sid: sid,
+                    // 画布坐标（与相机无关）：把屏幕矩形反解回未变换的画布
+                    x: (r.left - mr.left) / view.scale,
+                    y: (r.top - mr.top) / view.scale,
+                    h: r.height / view.scale,
+                    ascent: met.fontBoundingBoxAscent || size * 0.8,
+                    descent: met.fontBoundingBoxDescent || size * 0.2,
+                    font: font,
+                    spacing: cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing,
+                    color: cs.color,
+                    strokeW: parseFloat(cs.webkitTextStrokeWidth) || 0,
+                    strokeColor: cs.webkitTextStrokeColor,
+                    sx: sx,
+                    anchorX: (r.left - mr.left) / view.scale + (Number.isFinite(orgPct) ? orgPct : 0) * w
+                });
+            });
+        });
+        return out;
+    }
+
+    /**
+     * 该站此刻的可见度（0~1）。**不读 DOM**：已弹过的站按 `state.shown` 直接判定，
+     * 正在弹的用时间轴上的进度算 —— 逐帧 getComputedStyle 正是要避免的开销。
+     */
+    function alphaAt(sid, t) {
+        if (state.alwaysOn.has(sid)) return 1;
+        const ap = state.activePops.find((p) => p.sid === sid);
+        if (ap) return Math.max(0, Math.min(1, EASE_POP(state.popDur > 0 ? (t - ap.t0) / state.popDur : 1)));
+        return state.shown.has(sid) ? 1 : 0;
+    }
+
+    /** 把一帧画到 canvas：图形层（栅格化）+ 站名（canvas 文字），相机作为 canvas 变换 */
+    async function paintFrame(canvas, t, ctx2d) {
+        const mc = document.getElementById("map-content");
+        if (!mc) return;
+        const W = Math.round(mc.offsetWidth), H = Math.round(mc.offsetHeight);
+        const cam = camAt(t) || { x: 0, y: 0, scale: 1 };
+        const cw = canvas.width, ch = canvas.height;
+        const hostW = mc.parentElement ? mc.parentElement.clientWidth : cw;
+        const hostH = mc.parentElement ? mc.parentElement.clientHeight : ch;
+        // 「盖住取景」：整体铺满 720p（等比放大到覆盖，超出部分裁掉），内容始终在中央
+        const k = Math.max(cw / hostW, ch / hostH);
+        const ox = (cw - hostW * k) / 2, oy = (ch - hostH * k) / 2;
+        const s = cam.scale * k;
+
+        // ── 图形层：克隆 → 藏站名 → 变量搬到根上 → 外部图片换 data URL → 栅格化 ──
+        const clone = mc.cloneNode(true);
+        clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+        clone.style.transform = "none";
+        // ⚠️ foreignObject 里没有 :root，`:root { --x: … }` 一条都匹配不上 → 变量要逐个搬
+        [document.documentElement, document.body].forEach((src) => {
+            const cs = getComputedStyle(src);
+            for (let i = 0; i < cs.length; i++) {
+                const name = cs[i];
+                if (name.slice(0, 2) === "--") clone.style.setProperty(name, cs.getPropertyValue(name));
+            }
+        });
+        // ⚠️ data URL 的 SVG 没有 base URL，相对图片引用解析不了（静默消失）；
+        //    换 blob URL 又会被判跨源加载、污染画布 → 只能先内联成 data URL
+        for (const el of clone.querySelectorAll("img, image")) {
+            const src = el.getAttribute("src") || el.getAttribute("xlink:href") || el.getAttribute("href");
+            const data = src && state.exportImgCache.get(src);
+            if (!data) continue;
+            if (el.hasAttribute("src")) el.setAttribute("src", data);
+            if (el.hasAttribute("xlink:href")) el.setAttribute("xlink:href", data);
+            if (el.hasAttribute("href")) el.setAttribute("href", data);
+        }
+        const xml = new XMLSerializer().serializeToString(clone);
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">'
+            + '<foreignObject width="' + W + '" height="' + H + '">'
+            + '<style><![CDATA[' + state.exportCss + '#labels-layer{display:none !important}]]></style>'
+            + xml + '</foreignObject></svg>';
+        const img = await imgFromData(svg);
+
+        ctx2d.setTransform(1, 0, 0, 1, 0, 0);
+        ctx2d.fillStyle = "#fff";
+        ctx2d.fillRect(0, 0, cw, ch);
+        ctx2d.setTransform(s, 0, 0, s, ox + cam.x * k, oy + cam.y * k);
+        ctx2d.drawImage(img, 0, 0, W, H);
+
+        // ── 站名：与图形层同一套变换，于是文字按最终分辨率栅格化 ──
+        (labelCache || []).forEach((L) => {
+            const a = alphaAt(L.sid, t);
+            if (a <= 0.01) return;
+            const txt = L.el.textContent || "";
+            if (!txt) return;
+            ctx2d.globalAlpha = a;
+            ctx2d.font = L.font;
+            if ("letterSpacing" in ctx2d) ctx2d.letterSpacing = L.spacing;
+            ctx2d.fillStyle = L.color;
+            // 基线按 Chrome 的行盒模型算：行盒高 = 上/下半行距 + 字体 ascent/descent
+            const baseY = L.y + (L.h - (L.ascent + L.descent)) / 2 + L.ascent;
+            ctx2d.textAlign = "left";
+            ctx2d.textBaseline = "alphabetic";
+            if (L.sx !== 1) {
+                ctx2d.save();
+                ctx2d.translate(L.anchorX, 0);
+                ctx2d.scale(L.sx, 1);
+                ctx2d.translate(-L.anchorX, 0);
+            }
+            if (L.strokeW > 0) {
+                ctx2d.lineWidth = L.strokeW;
+                ctx2d.strokeStyle = L.strokeColor;
+                ctx2d.strokeText(txt, L.x, baseY);
+            }
+            ctx2d.fillText(txt, L.x, baseY);
+            if (L.sx !== 1) ctx2d.restore();
+            ctx2d.globalAlpha = 1;
+        });
+        ctx2d.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    /** data URL 的 SVG → <img>（decoded ≠ painted，调用方已在外层留出等待） */
+    function imgFromData(svgStr) {
+        const bytes = new TextEncoder().encode(svgStr);
+        let bin = ""; const CH = 0x8000;
+        for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+        return new Promise((res, rej) => {
+            const img = new Image();
+            img.onload = () => res(img);
+            img.onerror = () => rej(new Error("SVG 栅格化失败"));
+            img.src = "data:image/svg+xml;base64," + btoa(bin);
+        });
+    }
+
+    /** 导出前的准备：同源 CSS 文本、外部图片 data URL 缓存、站名度量缓存 */
+    async function prepareExport() {
+        let css = "";
+        const sheets = document.styleSheets;
+        for (let i = 0; i < sheets.length; i++) {
+            try {
+                const rules = sheets[i].cssRules;
+                for (let j = 0; j < rules.length; j++) css += rules[j].cssText + "\n";
+            } catch (e) { /* 跨域表（远在字体站的，导出用不到）读不到，跳过 */ }
+        }
+        state.exportCss = css;
+        state.exportImgCache = new Map();
+        const mc = document.getElementById("map-content");
+        for (const el of mc.querySelectorAll("img, image")) {
+            const src = el.getAttribute("src") || el.getAttribute("xlink:href") || el.getAttribute("href");
+            if (!src || /^(data:|blob:)/.test(src) || state.exportImgCache.has(src)) continue;
+            try {
+                const r = await fetch(new URL(src, document.baseURI).href);
+                const b = await r.arrayBuffer();
+                state.exportImgCache.set(src, "data:" + (r.headers.get("content-type") || "image/png") + ";base64," + b64Bytes(b));
+            } catch (e) { /* 取不到就保持原样（该图在导出里会缺失，不致命） */ }
+        }
+        labelCache = buildLabelCache();
+    }
+
+    function b64Bytes(buf) {
+        const b = new Uint8Array(buf); let s = ""; const CH = 0x8000;
+        for (let i = 0; i < b.length; i += CH) s += String.fromCharCode.apply(null, b.subarray(i, i + CH));
+        return btoa(s);
+    }
+
+    /* ---- 编码：WebCodecs `VideoEncoder` + mp4-muxer ----
+     * 逐帧循环与播放共用 `applyFrame(t)`：每帧先把它之后的画面落到 DOM，再用
+     * `paintFrame` 取图。⚠️ 这里用**非落定**模式（settle 省略）—— 站点弹出、涟漪要逐帧
+     * 保留，`paintFrame` 的 `alphaAt` 正是按「正在弹的那几个」算可见度；若传 settle=true，
+     * 弹出会在同一帧被立刻收尾，导出里就看不到站「弹」出来了。 */
+
+    const encoderConfig = () => ({
+        codec: EXPORT.codec,
+        width: EXPORT.width,
+        height: EXPORT.height,
+        bitrate: EXPORT.bitrate,
+        framerate: EXPORT.fps,
+        avc: { format: "avc" }   // mp4-muxer 要的是 AVCC 格式的块，缺了它封不出可播的 MP4
+    });
+
+    /** 按需注入 mp4-muxer（31KB）：不导出就不加载，同一份只注入一次 */
+    function loadMuxer() {
+        if (window.Mp4Muxer) return Promise.resolve(window.Mp4Muxer);
+        if (state.muxerLoading) return state.muxerLoading;
+        state.muxerLoading = new Promise((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = EXPORT.muxerSrc;
+            s.onload = () => (window.Mp4Muxer ? resolve(window.Mp4Muxer) : reject(new Error("mp4-muxer 未挂到全局")));
+            s.onerror = () => reject(new Error("mp4-muxer 加载失败"));
+            document.head.appendChild(s);
+        });
+        return state.muxerLoading;
+    }
+
+    /** 能力自检：浏览器是否真支持这套编码配置（判 supported 而不是只看构造函数存在） */
+    async function canEncode() {
+        if (typeof window.VideoEncoder !== "function" || typeof window.VideoFrame !== "function") return false;
+        try {
+            const r = await window.VideoEncoder.isConfigSupported(encoderConfig());
+            return !!(r && r.supported);
+        } catch (e) { return false; }
+    }
+
+    function downloadBlob(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+
+    const exportFileName = (from, to) => {
+        const a = state.steps[from] ? state.steps[from].date : "start";
+        const b = state.steps[to] ? state.steps[to].date : "end";
+        return `线网发展史_${a}_${b}.mp4`;
+    };
+
+    /**
+     * 把第 from..to 步导出为 MP4。与播放共用一条时间轴：
+     * ① from>0 时先把之前的事件落成「已开通」（jumpTo），画面从 from 起播；
+     * ② 逐帧 `applyFrame(t)` → `paintFrame` → `VideoFrame` → `encode`，按背压等队列；
+     * ③ flush → finalize → Blob 下载。导出期间停下实时播放并锁住相关控件。
+     */
+    async function runExport(from, to) {
+        if (state.exporting) return;
+        state.exporting = true;
+        state.exportCancelled = false;
+        // 导出与 rAF 会抢同一条时间线：先把实时播放停干净
+        clearTimers();
+        state.playing = false;
+        syncPlayBtn();
+        syncExportUI();
+        setExportStatus("正在检查编码支持…");
+        let encoder = null;
+        let muxer = null;
+        try {
+            if (!(await canEncode())) {
+                throw new Error("当前浏览器不支持 WebCodecs H.264 编码，请用较新版 Chrome / Edge");
+            }
+            setExportStatus("准备资源…");
+            // 起点画面：from>0 时先补出「之前已开通」的全部线网与车站
+            if (from > 0) jumpTo(from - 1);
+            else { clearCanvas(); clearMarks(); enterStage(); }
+            state.timeline = buildTimeline(from, to);
+            state.popDone = new Set();
+            state.activePops = [];
+            state.ripples = [];
+            state.lastPanelI = null;
+            state.lastResyncI = null;
+            await prepareExport();
+
+            const Mp4Muxer = await loadMuxer();
+            muxer = new Mp4Muxer.Muxer({
+                target: new Mp4Muxer.ArrayBufferTarget(),
+                video: { codec: "avc", width: EXPORT.width, height: EXPORT.height },
+                fastStart: "in-memory"
+            });
+            let encError = null;
+            encoder = new window.VideoEncoder({
+                output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+                error: (e) => { encError = e; }
+            });
+            encoder.configure(encoderConfig());
+
+            const canvas = document.createElement("canvas");
+            canvas.width = EXPORT.width;
+            canvas.height = EXPORT.height;
+            const ctx2d = canvas.getContext("2d");
+            const total = state.timeline.total;
+            const dt = 1000 / EXPORT.fps;
+            const frames = Math.max(1, Math.ceil(total / dt));
+            for (let i = 0; i <= frames; i++) {
+                if (state.exportCancelled) break;
+                if (encError) throw encError;
+                const t = Math.min(total, i * dt);
+                applyFrame(t);
+                await paintFrame(canvas, t, ctx2d);
+                const frame = new window.VideoFrame(canvas, {
+                    timestamp: Math.round(i * 1e6 / EXPORT.fps),
+                    duration: Math.round(1e6 / EXPORT.fps)
+                });
+                encoder.encode(frame, { keyFrame: i % (EXPORT.fps * 2) === 0 });
+                frame.close();
+                // 背压：待编码帧堆太多会把内存打爆，超阈值就等一会儿
+                while (encoder.encodeQueueSize > 8 && !state.exportCancelled && !encError) {
+                    await new Promise((r) => setTimeout(r, 4));
+                }
+                setExportProgress(i + 1, frames + 1);
+                if (i % 4 === 0) await new Promise((r) => setTimeout(r, 0));  // 定期让出主线程
+            }
+            if (encError) throw encError;
+
+            if (state.exportCancelled) {
+                setExportStatus("已取消");
+            } else {
+                setExportStatus("正在封装 MP4…");
+                await encoder.flush();
+                encoder.close();
+                encoder = null;
+                muxer.finalize();
+                const blob = new Blob([muxer.target.buffer], { type: "video/mp4" });
+                downloadBlob(blob, exportFileName(from, to));
+                setExportStatus(`已导出 ${frames + 1} 帧 · ${(total / 1000).toFixed(1)} 秒 · ${(blob.size / 1048576).toFixed(1)} MB`);
+            }
+            document.dispatchEvent(new CustomEvent("cgo:opening-export-done", {
+                detail: { from: from, to: to, cancelled: state.exportCancelled }
+            }));
+        } catch (e) {
+            console.error("[线网发展史] 导出失败：", e);
+            setExportStatus("导出失败：" + (e && e.message ? e.message : e), true);
+        } finally {
+            if (encoder) { try { encoder.close(); } catch (e) { /* 已关闭或未配置 */ } }
+            // 取消时画面可能停在半截弹出上：按时间轴末尾落定一次。
+            // ⚠️ 面板已被关掉（unmount 已 exitStage 把取景还原）时不能再落位，否则镜头会被重新拽走
+            if (state.timeline && state.els) {
+                try { applyFrame(state.timeline.total, true); } catch (e) { /* 忽略 */ }
+                state.index = to;
+                state.tCur = state.timeline.total;
+            }
+            state.exporting = false;
+            syncExportUI();
+        }
+    }
+
+    function setExportStatus(text, isError) {
+        const el = state.els && state.els.expStatus;
+        if (!el) return;
+        el.textContent = text || "";
+        el.classList.toggle("is-error", !!isError);
+    }
+
+    function setExportProgress(done, total) {
+        const bar = state.els && state.els.expBar;
+        if (bar) bar.style.width = (total ? Math.round(done / total * 100) : 0) + "%";
+        setExportStatus("导出中 " + (total ? Math.round(done / total * 100) : 0) + "%");
+    }
+
+    /** 起止事件下拉：选项即事件清单，默认整段（首 → 末） */
+    function renderExportSelects() {
+        const e = state.els;
+        if (!e || !e.expFrom || !e.expTo) return;
+        const opts = state.steps
+            .map((s) => `<option value="${s.no - 1}">${s.no}. ${s.date} ${stepLabel(s)}</option>`)
+            .join("");
+        e.expFrom.innerHTML = opts;
+        e.expTo.innerHTML = opts;
+        e.expFrom.value = "0";
+        e.expTo.value = String(state.steps.length - 1);
+        setExportStatus("");
+    }
+
+    /** 导出期间锁住会干扰时间线的控件，只留「取消」；同时同步导出按钮的按下态 */
+    function syncExportUI() {
+        const e = state.els;
+        if (!e) return;
+        const on = state.exporting;
+        const open = e.exportSet && !e.exportSet.hidden;
+        [e.back, e.play, e.replay, e.setSpeed, e.setZoom, e.toggleInfo].forEach((b) => { if (b) b.disabled = on; });
+        if (e.exportToggle) {
+            e.exportToggle.classList.toggle("is-on", open);
+            e.exportToggle.setAttribute("aria-pressed", String(open));
+        }
+        if (e.expFrom) e.expFrom.disabled = on;
+        if (e.expTo) e.expTo.disabled = on;
+        if (e.expStart) e.expStart.hidden = on;
+        if (e.expCancel) e.expCancel.hidden = !on;
+        if (e.expBar) e.expBar.style.width = on ? "0%" : e.expBar.style.width;
+    }
+
+    /* ======================================================================
      * 挂载 / 卸载（由地图小工具的免选站工具机制驱动）
      * ==================================================================== */
 
@@ -1566,6 +2000,14 @@
             mileage: q('[data-oh="mileage"]'),
             play: q('[data-oh="play"]'),
             replay: q('[data-oh="replay"]'),
+            exportToggle: q('[data-oh="exportToggle"]'),
+            exportSet: q('[data-oh="exportSet"]'),
+            expFrom: q('[data-oh="expFrom"]'),
+            expTo: q('[data-oh="expTo"]'),
+            expStart: q('[data-oh="expStart"]'),
+            expCancel: q('[data-oh="expCancel"]'),
+            expBar: q('[data-oh="expBar"]'),
+            expStatus: q('[data-oh="expStatus"]'),
             list: q(".cgo-oh-list")
         };
         state.steps = build();
@@ -1601,22 +2043,50 @@
         syncToggle();
         state.els.speedSet.hidden = true;
         state.els.zoomSet.hidden = true;
+        state.els.exportSet.hidden = true;
+        state.exporting = false;
+        state.exportCancelled = false;
         renderList();
+        renderExportSelects();
 
         state.els.play.addEventListener("click", play);
         state.els.replay.addEventListener("click", replay);
         state.els.back.addEventListener("click", () => window.CGoMapTools?.open?.());
-        // 两枚设置按钮各管各的滑条：点开的那个显示、另一个收起；再点一次收起来
+        // 三枚展开按钮各管各的区块：点开的那个显示、另两个收起；再点一次收起来
         state.els.setSpeed.addEventListener("click", () => {
             const show = state.els.speedSet.hidden;
             state.els.speedSet.hidden = !show;
             state.els.zoomSet.hidden = true;
+            state.els.exportSet.hidden = true;
         });
         state.els.setZoom.addEventListener("click", () => {
             const show = state.els.zoomSet.hidden;
             state.els.zoomSet.hidden = !show;
             state.els.speedSet.hidden = true;
+            state.els.exportSet.hidden = true;
         });
+        state.els.exportToggle.addEventListener("click", () => {
+            if (state.exporting) return;
+            state.els.exportSet.hidden = !state.els.exportSet.hidden;
+            state.els.speedSet.hidden = true;
+            state.els.zoomSet.hidden = true;
+            syncExportUI();
+        });
+        // 起止两个下拉互相钳制，避免选出「起 > 止」的空区间
+        state.els.expFrom.addEventListener("change", () => {
+            if (Number(state.els.expTo.value) < Number(state.els.expFrom.value)) {
+                state.els.expTo.value = state.els.expFrom.value;
+            }
+        });
+        state.els.expTo.addEventListener("change", () => {
+            if (Number(state.els.expFrom.value) > Number(state.els.expTo.value)) {
+                state.els.expFrom.value = state.els.expTo.value;
+            }
+        });
+        state.els.expStart.addEventListener("click", () => {
+            runExport(Number(state.els.expFrom.value), Number(state.els.expTo.value));
+        });
+        state.els.expCancel.addEventListener("click", () => { state.exportCancelled = true; });
         // 信息区 ⟷ 事件清单：二选一，不是「收起 / 展开」
         state.els.toggleInfo.addEventListener("click", () => {
             state.els.root.classList.toggle("is-list");
@@ -1639,6 +2109,7 @@
         state.els.list.addEventListener("click", (e) => {
             const li = e.target.closest(".cgo-oh-item");
             if (!li) return;
+            if (state.exporting) return;   // 导出期间跳年份会抢走同一条时间线
             pause();
             jumpTo(Number(li.dataset.go) - 1);
         });
@@ -1646,6 +2117,7 @@
     }
 
     function unmount() {
+        state.exportCancelled = true;   // 关面板即中止正在进行的导出
         clearTimers();
         unwatchPinned();
         state.playing = false;
