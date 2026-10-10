@@ -24,24 +24,17 @@
     stroke-linejoin: round;
 }
 
-/* 站点涟漪：以圆心为基准放大淡出（时长由脚本按运镜速度写进 CSS 变量） */
+/* 站点涟漪：以圆心为基准放大淡出。
+   缩放与透明度由 applyFrame 按 t 逐帧写，所以这里只留框与原点，不挂 CSS 动画
+   （CSS 动画没法定位到任意 t，导出就取不回画面）。 */
 .cgo-oh-pulse {
     fill: none;
     stroke-width: 2.2;
     transform-box: fill-box;
     transform-origin: center;
-    animation: cgo-oh-pulse var(--cgo-oh-ripple-dur, 900ms) ease-out forwards;
 }
 
-@keyframes cgo-oh-pulse {
-    0% { transform: scale(0.5); opacity: 0.95; }
-    100% { transform: scale(2.5); opacity: 0; }
-}
-
-/* 段间取景：只在这一瞬间给 #map-content 挂过渡，落地即摘 */
-#map-content.cgo-oh-glide {
-    transition: transform var(--cgo-oh-glide-dur, 380ms) ease;
-}
+/* 取景过渡不再用 CSS transition —— 相机由 applyFrame 每帧调 setMapView 落位 */
 
 /* ── 播放期间：底图交给发展史接管 ──────────────────────────────────
    要的是「从空白画布上把地图画出来」，所以核心的线网本体整个藏掉，
@@ -54,11 +47,18 @@
     display: none;
 }
 
-/* 站点动画挂在 .station 内层的 svg 上（.station 自身承担 left/top 定位，不动它）；
-   站名则整组淡入 —— 标签的行内 transform 负责锚点定位，所以只动透明度与模糊 */
-#map-content.cgo-oh-stage #stations-layer .station > svg,
+/* 站点 / 站名的「还没弹出来」与「弹到几成」都由 applyFrame 写的 CSS 变量决定：
+   站点图元 = 透明度 + 缩放；站名 = 透明度 + 模糊。
+   ⚠️ 用变量而不是内联样式：站点图元有一半形态在 `::before` 伪元素上（内联够不着），
+   而核心自己也会往标签上写内联 opacity，变量既能盖住又能在退出时一撤复原。 */
+#map-content.cgo-oh-stage #stations-layer .station > svg {
+    opacity: var(--cgo-oh-pop-alpha, 0);
+    transform: scale(var(--cgo-oh-pop-scale, 0.35));
+}
+
 #map-content.cgo-oh-stage #labels-layer .label-group {
-    opacity: 0;
+    opacity: var(--cgo-oh-pop-alpha, 0);
+    filter: blur(var(--cgo-oh-pop-blur, 4px));
 }
 
 /* 还没轮到的车站不该能点：看不见的东西弹出车站详情最让人迷惑 */
@@ -67,30 +67,18 @@
     pointer-events: none;
 }
 
-#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-pop > svg {
-    animation: cgo-oh-pop var(--cgo-oh-pop-dur, 420ms) cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
-}
-
-#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-pop {
-    animation: cgo-oh-label var(--cgo-oh-label-dur, 550ms) ease-out both;
-}
-
-@keyframes cgo-oh-pop {
-    from { opacity: 0; transform: scale(0.35); }
-    to { opacity: 1; transform: none; }
-}
-
-@keyframes cgo-oh-label {
-    from { opacity: 0; filter: blur(4px); }
-    to { opacity: 1; filter: blur(0); }
-}
-
 /* ── 既有设施（没有开通记录的国铁站）：全程固定显示 ──────────────────
    沈阳站 1899、沈阳北站 1990 这类早于本城线网的车站由脚本挂上这个类；
-   而有开通记录的国铁站（沈阳南站 2015-09-01）不挂，照常按时间入场。 */
-#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-always > svg,
+   而有开通记录的国铁站（沈阳南站 2015-09-01）不挂，照常按时间入场。
+   这些站从不「弹出」，所以直接把两个变量钉成终值。 */
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-always {
+    --cgo-oh-pop-alpha: 1;
+    --cgo-oh-pop-scale: 1;
+}
+
 #map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-always {
-    opacity: 1;
+    --cgo-oh-pop-alpha: 1;
+    --cgo-oh-pop-blur: 0px;
 }
 
 #map-content.cgo-oh-stage #stations-layer .station.cgo-oh-always,
@@ -121,10 +109,8 @@
     border: 1.6px solid var(--cgo-oh-dot, var(--station-stroke, #666));
     border-radius: 50%;
     background: var(--map-bg);
-}
-
-#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot.cgo-oh-pop::before {
-    animation: cgo-oh-pop var(--cgo-oh-pop-dur, 420ms) cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
+    opacity: var(--cgo-oh-pop-alpha, 0);
+    transform: scale(var(--cgo-oh-pop-scale, 0.35));
 }
 
 /* ── 暂缓开通站：以「未开通」图元入场 ────────────────────────────────
@@ -142,16 +128,14 @@
     height: 10px;
     margin: -5px 0 0 -5px;
     pointer-events: none;
+    opacity: var(--cgo-oh-pop-alpha, 0);
+    transform: scale(var(--cgo-oh-pop-scale, 0.35));
 }
 
 #map-content.cgo-oh-stage #stations-layer .station .cgo-oh-noicon svg {
     display: block;
     width: 100%;
     height: 100%;
-}
-
-#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-no-shape.cgo-oh-pop .cgo-oh-noicon {
-    animation: cgo-oh-pop var(--cgo-oh-pop-dur, 420ms) cubic-bezier(0.2, 0.9, 0.3, 1.35) both;
 }
 
 /* ⚠️ 站名的基础色是 `color: var(--text-main) !important`，这里必须同级对抗才盖得住 */
@@ -169,6 +153,7 @@
 
 #map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-pop {
     display: block;
+    opacity: var(--cgo-oh-pop-alpha, 1);
 }
 
 /* 虚拟换乘（站外连通）连线：两端车站都还没出现在画布上时先不画。
@@ -182,23 +167,7 @@
     display: block;
 }
 
-/* ── 更名：换字时的一次淡出淡入 ─────────────────────────────────────
-   站名文本由脚本就地改写（在开通时用回旧名），改的那一下给个交代 */
-.cgo-oh-name-out {
-    animation: cgo-oh-name-out 180ms ease-out both;
-}
-
-.cgo-oh-name-in {
-    animation: cgo-oh-name-in 320ms ease-out both;
-}
-
-@keyframes cgo-oh-name-out {
-    to { opacity: 0; }
-}
-
-@keyframes cgo-oh-name-in {
-    from { opacity: 0; }
-}
+/* 更名的换字淡出淡入由 applyRenameAt 按 t 直接写透明度，这里没有 CSS 动画可挂 */
 
 /* ── 面板正文 ────────────────────────────────────────────────────────
    固定区（当前事件 / 说明 / 统计 / 进度 / 操作 / 折叠的设置）不滚动，
@@ -518,14 +487,5 @@
     opacity: 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    #map-content.cgo-oh-stage #stations-layer .station.cgo-oh-pop > svg,
-    #map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-pop {
-        animation: none !important;
-        opacity: 1;
-    }
-    .cgo-oh-name-out,
-    .cgo-oh-name-in {
-        animation: none !important;
-    }
-}
+/* 「减少动态效果」不再需要在这里压 CSS 动画 —— 弹出、涟漪、换字都改由 applyFrame
+   按 t 逐帧应用，脚本里 `applyAnimDurations` 会把时长直接归零。 */

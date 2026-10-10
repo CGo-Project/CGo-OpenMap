@@ -6,8 +6,13 @@
  *
  * 三层分离（与 shared/README.md「线网发展史」一节一致）：
  *   数据层：window.CGO_OPENING_HISTORY（只写端点，区段由 data_lines.js 站序自动切）
- *   时钟层：本模块的 state.index / state.playing（全局唯一播放进度）
- *   表现层：growSegment / showStation / commitSegment（无状态，按当前进度推导画面）
+ *   时钟层：`buildTimeline` 把 [from, to] 摊成绝对时刻表，`tick` 只负责推进 t
+ *   表现层：`applyFrame(t)` —— **幂等**地把 t 时刻的画面落到 DOM（弹出、涟漪、描边、
+ *           相机、面板全在里头），播放与「导出视频」共用这一份实现
+ *
+ * ⚠️ 三套时钟（WAAPI 描边、CSS 动画、rAF 补间）已经统一成这一条时间轴：原先那种写法
+ *    时间只活在 setTimeout 里、取不回来，导出就没法逐帧出图。缓动改用同一条贝塞尔的
+ *    JS 求值，CSS 侧不再挂任何动画 —— 弹出进度一律用 CSS 变量 + `applyFrame` 写值。
  *
  * 画布接管（手法参考香港的開場動畫，见 city/hongkong/hongkong.js 的 playIntro）：
  *   - 核心的线路本体（#lines-layer .line-visual-group）与在建虚线层让出去；
@@ -37,7 +42,6 @@
     const NO_ICON_CLASS = "cgo-oh-noicon";  // 那层覆盖图元本身
     const ON_CLASS = "cgo-oh-on";           // 虚拟换乘连线：该条两端都通了，可以画
     const ALWAYS_CLASS = "cgo-oh-always";   // 没有开通记录的国铁站：全程固定显示
-    const GLIDE_CLASS = "cgo-oh-glide";     // 取景移动瞬间的过渡
     const BODY_CLASS = "cgo-oh-body";       // 挂到面板正文上：交给本模块管滚动
 
     /**
@@ -89,13 +93,18 @@
         playing: false,
         speed: SPEED.def,
         zoom: ZOOM.def,
-        token: 0,           // 每次停/跳/关都 +1，让在飞的异步链路自行作废
-        timers: [],
         raf: 0,
-        numRafs: [],        // 数字滚动动画的 rAF 句柄
-        anims: [],
-        popDur: POP_BASE,
-        lastLines: null,    // 上一次「画布上正在展示的线路数」，供数字滚动取起点
+        popDur: POP_BASE,   // 站点弹出时长（ms）
+        rippleDur: POP_BASE * 1.6,
+        timeline: null,     // 当前时间线（buildTimeline 的产物）
+        tCur: 0,            // 本次播放已推进到的时刻
+        tStart: 0,          // 本次播放的起点（performance.now()）
+        frameT: 0,          // 正在应用的帧时刻（涟漪等取用）
+        popDone: new Set(), // 「步:站」：已经弹过的站（同一步只弹一次）
+        activePops: [],     // 正在弹的站
+        ripples: [],        // 正在扩散的涟漪
+        lastPanelI: null,   // 上一次刷新面板的事件序号
+        lastResyncI: null,  // 上一次补「已出现车站」状态的事件序号
         shown: new Map(),   // sid → form：已经出现在画布上的车站（引线重建后据此补状态）
         dotColors: new Map(), // sid → dot 形态的环色（首条开通线路的颜色）
         alwaysOn: new Set(), // 全程固定显示的车站（国铁散点等，不参与逐个弹出）
@@ -107,24 +116,11 @@
         els: null
     };
 
+    /** 停下所有时钟：只留一个 rAF 句柄 —— 弹出、涟漪、滚动都由 applyFrame 按 t 现算 */
     function clearTimers() {
-        state.timers.forEach((id) => clearTimeout(id));
-        state.timers = [];
         if (state.raf) { cancelAnimationFrame(state.raf); state.raf = 0; }
-        state.numRafs.forEach((h) => cancelAnimationFrame(h.id));
-        state.numRafs = [];
-        state.anims.forEach((a) => { try { a.cancel(); } catch (e) { /* 已结束 */ } });
-        state.anims = [];
-    }
-
-    function delay(ms) {
-        return new Promise((resolve) => {
-            const id = setTimeout(() => {
-                state.timers = state.timers.filter((t) => t !== id);
-                resolve();
-            }, ms);
-            state.timers.push(id);
-        });
+        state.activePops = [];
+        state.ripples = [];
     }
 
     const glideMs = () => (REDUCE ? 0 : T.glide);
@@ -555,18 +551,32 @@
      * 是**以这个速度向画外退去**的，故两个因子都要按反比缩时长。只看运镜速度的话，
      * 特写推到 4~6 倍时站点会明显跟不上镜头（「还没弹完就出画」）。
      * 基准点取「默认运镜速度 × 默认特写」，此时系数正好是 1，既有手感不变。
+     * 时长只存在 state 里：动画由 `applyFrame` 逐帧应用，不再落成 CSS 变量
+     * （CSS 动画没法定位到任意 t，导出时取不回画面）。
      */
     function applyAnimDurations() {
-        const host = stageHost();
-        if (!host) return;
+        // 「减少动态效果」下把弹出 / 涟漪时长直接归零：applyFrame 一算就是终值，等于不播动画
+        if (REDUCE) { state.popDur = 0; state.rippleDur = 0; return; }
         const k = (SPEED.def / state.speed) * (ZOOM.def / state.zoom);
-        const pop = Math.max(80, Math.min(700, Math.round(POP_BASE * k)));
-        state.popDur = pop;
-        host.style.setProperty("--cgo-oh-pop-dur", pop + "ms");
-        // 站名与涟漪压得比站点更紧 —— 镜头是跟着画笔走的，慢一拍就会「还没播完就出画」
-        host.style.setProperty("--cgo-oh-label-dur", Math.round(pop * 1.05) + "ms");
-        host.style.setProperty("--cgo-oh-ripple-dur", Math.round(pop * 1.6) + "ms");
-        host.style.setProperty("--cgo-oh-glide-dur", glideMs() + "ms");
+        state.popDur = Math.max(80, Math.min(700, Math.round(POP_BASE * k)));
+        state.rippleDur = Math.round(state.popDur * 1.6);
+    }
+
+    /**
+     * 改运镜速度 / 特写倍数后**重建时间线**，并按「当前步 + 步内进度」落到等价位置：
+     * 各段时长与取景倍数都是建表时算死的，不重建的话新设置不会生效。
+     */
+    function reseek() {
+        const tl = state.timeline;
+        if (!tl || state.index < 0 || state.index > tl.to) return;
+        const old = tl.list.find((r) => r.i === state.index);
+        const prog = old ? Math.max(0, Math.min(1, (state.tCur - old.from) / Math.max(1, old.end - old.from))) : 0;
+        state.timeline = buildTimeline(state.index, tl.to);
+        const rec = state.timeline.list[0];
+        if (!rec) return;
+        state.tCur = rec.from + prog * (rec.end - rec.from);
+        state.tStart = performance.now() - state.tCur;
+        if (!state.playing) applyFrame(state.tCur, true);
     }
 
     const calloutOf = (sid) =>
@@ -661,10 +671,17 @@
         calloutObserver = null;
     }
 
-    /** 站点元素也可能被核心重建（如切换城市视图），按记录补一次状态 */
+    /**
+     * 站点元素可能被核心重建（它随视口 / 缩放重算），按记录补一次状态。
+     * 弹出进度也要补 —— 否则重建出来的站会停在「还没弹出」（CSS 变量默认 0）而看不见；
+     * `state.shown` 里只有**已经弹过**的站，所以补 alpha=1 不会让未到点的站提前露头。
+     */
     function resyncShown() {
-        state.shown.forEach((form, sid) => applyForm({ sid: sid, form: form }));
-        state.shown.forEach((form, sid) => popStation(sid));
+        state.shown.forEach((form, sid) => {
+            applyForm({ sid: sid, form: form });
+            popStation(sid);
+            applyPopProgress(sid, 1);
+        });
         markAlwaysOn();
         repaintCallouts();
         syncVirtualConnectors();
@@ -789,67 +806,8 @@
         };
     }
 
-    /** 把某点摆到可见区中心 */
-    function centerAt(pt, scale) {
-        const box = viewportBox();
-        if (!box || !pt || !window.setMapView) return;
-        const s = Math.max(SCALE_FLOOR, Math.min(ZOOM.max, scale));
-        window.setMapView({
-            scale: s,
-            x: box.left + box.vw / 2 - pt.x * s,
-            y: box.vh / 2 - pt.y * s
-        });
-    }
-
-    /**
-     * 把某个画布范围整块摆进可见区。
-     * @param {number} pad      该范围占可见区的比例
-     * @param {number} maxScale 放大上限（短区段不该一路顶到极限倍数）
-     */
-    function fitBox(minX, minY, maxX, maxY, pad, maxScale) {
-        const box = viewportBox();
-        if (!box || !window.setMapView) return;
-        const bw = Math.max(1, maxX - minX), bh = Math.max(1, maxY - minY);
-        const s = Math.min(box.vw / bw, box.vh / bh) * pad;
-        centerAt({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 },
-            Math.min(maxScale || ZOOM.max, s));
-    }
-
-    function withGlide(fn) {
-        const content = stageHost();
-        if (glideMs() && content) {
-            content.classList.add(GLIDE_CLASS);
-            setTimeout(() => content.classList.remove(GLIDE_CLASS), glideMs() + 80);
-        }
-        fn();
-    }
-
-    /** 推近到某个点起笔（用当前特写倍数） */
-    function frameOn(pt) {
-        if (!pt) return;
-        withGlide(() => centerAt(pt, state.zoom));
-    }
-
-    /** 收笔：缩到能看该事件的全貌（长段自动缩小，短段不超过特写倍数） */
-    function frameStep(step) {
-        if (!step.pts || step.pts.length < 2) { frameOn(step.focus); return; }
-        const b = bboxOf(step.pts);
-        withGlide(() => fitBox(b.minX, b.minY, b.maxX, b.maxY, 0.72, state.zoom));
-    }
-
-    /** 收尾：缩到全图（按已出现在画布上的车站取范围，未开通的散点不参与） */
-    function frameWhole() {
-        const st = stationMap();
-        const pts = [];
-        state.shown.forEach((form, sid) => {
-            const s = st[sid];
-            if (s && Number.isFinite(s.x)) pts.push(s);
-        });
-        const list = pts.length ? pts : Object.keys(st).map((k) => st[k]).filter((s) => s && Number.isFinite(s.x));
-        if (!list.length) { window.centerMap?.(); return; }
-        const b = bboxOf(list);
-        withGlide(() => fitBox(b.minX, b.minY, b.maxX, b.maxY, 0.94, ZOOM.max));
-    }
+    /* 取景的「算」在 camForPoint / camForBox（见时间轴一节）；这里不再有「落位」的取景函数
+       —— 落位统一由 applyFrame 每帧调 setMapView 完成。 */
 
     /* ======================================================================
      * 站名更名
@@ -872,27 +830,7 @@
         if (en && info.fromEn && en.textContent !== info.fromEn) en.textContent = info.fromEn;
     }
 
-    /** 更名事件：中英一起淡出 → 换字 → 淡入 */
-    async function renameLabel(sid, name, enName) {
-        const cn = cnSpanOf(sid);
-        const en = enSpanOf(sid);
-        const setAll = () => {
-            if (cn) cn.textContent = name;
-            if (en && enName) en.textContent = enName;
-        };
-        state.renamed.delete(sid);   // 换成新名之后不再需要还原
-        if (REDUCE || (!cn && !en)) { setAll(); return; }
-        [cn, en].forEach((el) => el && el.classList.add("cgo-oh-name-out"));
-        await delay(180);
-        setAll();
-        [cn, en].forEach((el) => {
-            if (!el) return;
-            el.classList.remove("cgo-oh-name-out");
-            el.classList.add("cgo-oh-name-in");
-        });
-        await delay(320);
-        [cn, en].forEach((el) => el && el.classList.remove("cgo-oh-name-in"));
-    }
+    /* 更名的换字动画不在这里 —— 它由时间轴上的 `applyRenameAt` 按 t 逐帧演 */
 
     function restoreNames() {
         state.renamed.forEach((rec, sid) => {
@@ -902,6 +840,9 @@
             if (en && rec.en != null) en.textContent = rec.en;
         });
         state.renamed.clear();
+        // 换字动画留下的透明度也要撤掉，否则退出后名字会是半透明的
+        document.querySelectorAll("#labels-layer .stacn, #labels-layer .staen")
+            .forEach((el) => el.style.removeProperty("opacity"));
     }
 
     /** 直接落成新名（跳转用：跳转不是「演」，不播换字动画） */
@@ -914,23 +855,188 @@
     }
 
     /* ======================================================================
-     * 表现层
+     * 时间轴（唯一时钟）
+     * ====================================================================
+     * 「播放」与「导出」共用同一条时间线：把第 from 步到第 to 步摊成绝对时刻表，
+     * 任意 t 都能把画面重算出来（applyFrame）。原先的播放是「一段段 await +
+     * setTimeout + WAAPI + CSS 动画」几套时钟并存的异步链 —— 时间只活在定时器里、
+     * 取不回来，导出就没法逐帧出图。缓动改为在 JS 里用同一条贝塞尔求值。
      * ==================================================================== */
 
-    /** 一路跟着画笔走：生长期间把画笔当前位置持续摆到可见区中心 */
-    function followBrush(step, dur, token) {
-        if (REDUCE) return;
-        const t0 = performance.now();
-        const tick = () => {
-            if (token !== state.token) return;
-            const p = Math.min(1, (performance.now() - t0) / dur);
-            centerAt(pointAt(step.pts, step.lengthPx * p), state.zoom);
-            if (p < 1) state.raf = requestAnimationFrame(tick);
+    /** CSS cubic-bezier(x1,y1,x2,y2) → 求值函数（Newton 迭代；无依赖） */
+    function bezier(x1, y1, x2, y2) {
+        const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+        const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+        const fx = (t) => ((ax * t + bx) * t + cx) * t;
+        const dx = (t) => (3 * ax * t + 2 * bx) * t + cx;
+        const fy = (t) => ((ay * t + by) * t + cy) * t;
+        return (x) => {
+            if (!(x > 0)) return 0;
+            if (x >= 1) return 1;
+            let t = x;
+            for (let i = 0; i < 6; i++) {
+                const d = dx(t);
+                if (Math.abs(d) < 1e-6) break;
+                t = Math.max(0, Math.min(1, t - (fx(t) - x) / d));
+            }
+            return fy(t);
         };
-        state.raf = requestAnimationFrame(tick);
+    }
+    const EASE = bezier(0.25, 0.1, 0.25, 1);        // CSS ease —— 原取景过渡 .cgo-oh-glide
+    const EASE_OUT = bezier(0, 0, 0.58, 1);         // CSS ease-out —— 站名淡入、涟漪
+    const EASE_POP = bezier(0.2, 0.9, 0.3, 1.35);   // 站点弹出（原 cgo-oh-pop 关键帧）
+
+    /* ---- 取景：只算不落位，这样任意 t 都能重算出相机 ---- */
+
+    const clampZoom = (s) => Math.max(SCALE_FLOOR, Math.min(ZOOM.max, s));
+
+    /** 把某点摆到可见区中心对应的相机参数 */
+    function camForPoint(pt, scale) {
+        const box = viewportBox();
+        if (!box || !pt) return null;
+        const s = clampZoom(scale);
+        return { scale: s, x: box.left + box.vw / 2 - pt.x * s, y: box.vh / 2 - pt.y * s };
     }
 
-    /** 站点涟漪：笔到人到时那一圈扩散 */
+    /** 把某个画布范围整块摆进可见区对应的相机参数 */
+    function camForBox(b, pad, maxScale) {
+        const box = viewportBox();
+        if (!box || !b) return null;
+        const bw = Math.max(1, b.maxX - b.minX), bh = Math.max(1, b.maxY - b.minY);
+        const s = Math.min(box.vw / bw, box.vh / bh) * pad;
+        return camForPoint({ x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 }, Math.min(maxScale || ZOOM.max, s));
+    }
+
+    const camLerp = (a, b, e) => (!a ? b : !b ? a
+        : { scale: a.scale + (b.scale - a.scale) * e, x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e });
+
+    /** 某一步里画笔停在哪（无走向的单站开通就停在那一站上） */
+    const brushAt = (step, p) =>
+        (step.pts && step.pts.length > 1 ? pointAt(step.pts, step.lengthPx * p) : step.focus);
+
+    /** 收笔取景：缩到能看该段全貌（长段自动缩小、短段不超过特写倍数） */
+    const camTailOf = (step) =>
+        (step.pts && step.pts.length > 1
+            ? camForBox(bboxOf(step.pts), 0.72, state.zoom)
+            : camForPoint(step.focus, state.zoom));
+
+    /** 收尾取景：缩到全图（按已出现在画布上的车站取范围，未开通的散点不参与） */
+    function camWholeOf(to) {
+        const seen = [];
+        for (let i = 0; i <= to; i++) state.steps[i].stations.forEach((x) => seen.push(x));
+        const st = stationMap();
+        const list = seen.length ? seen : Object.keys(st).map((k) => st[k]).filter((s) => s && Number.isFinite(s.x));
+        if (!list.length) return null;
+        return camForBox(bboxOf(list), 0.94, ZOOM.max);
+    }
+
+    /* ---- 时间线 ---- */
+
+    /**
+     * 把 [from, to] 摊成绝对时刻表。每步四拍：
+     * 起笔运镜（顺带把日期与进度条从上一事件收口到本事件）→ 生长（含更名换字）
+     * → 收笔运镜 → 停顿；末尾再接「缩到全图 + 长停」一段。
+     */
+    function buildTimeline(from, to) {
+        const head = glideMs() ? glideMs() + 90 : 0;
+        const hold = holdMs();
+        const v0 = window.getMapView ? window.getMapView() : { x: 0, y: 0, scale: 1 };
+        let prevCam = { x: v0.x, y: v0.y, scale: v0.scale };
+        const list = [];
+        let t = 0;
+        for (let i = from; i <= to; i++) {
+            const step = state.steps[i];
+            // ⚠️ 只有「有走向」的步骤才生长：单站开通（station-open）与纯更名步骤没有 pts，
+            //    生长时长必须为 0，否则会被 growDuration 的最小值撑出一段空生长，
+            //    还会让 ensureGrowPath 拿到 null 的折线点（实测就是这么崩的）。
+            const hasPath = !!(step.pts && step.pts.length > 1);
+            const growDur = hasPath ? growDuration(step) : 0;
+            const renameMs = step.rename ? 500 : 0;
+            const rec = {
+                i: i, step: step,
+                from: t,
+                headEnd: t + head,
+                growT0: t + head,
+                growEnd: t + head + growDur,
+                renameEnd: t + head + growDur + renameMs,
+                tailEnd: t + head + growDur + renameMs + head,
+                end: t + head + growDur + renameMs + head + hold,
+                growDur: growDur,
+                camFrom: prevCam,
+                camHead: camForPoint(brushAt(step, 0), state.zoom),
+                camGrowEnd: camForPoint(brushAt(step, 1), state.zoom),
+                camTail: camTailOf(step)
+            };
+            // 站点弹出时刻：笔到人到（末尾留 30ms，别让最后一个站压着收笔）；
+            // 无走向的步骤没有「画笔推进」，全部在本拍起点弹出
+            rec.pops = step.stations
+                .map((x) => ({
+                    x: x, step: step,
+                    t: rec.growT0 + (growDur > 0 ? Math.max(0, Math.min(growDur - 30, growDur * x.t)) : 0)
+                }))
+                .sort((a, b) => a.t - b.t);
+            list.push(rec);
+            prevCam = rec.camTail;
+            t = rec.end;
+        }
+        const whole = {
+            whole: true, i: to, step: state.steps[to],
+            from: t, headEnd: t + head, growT0: t + head, growEnd: t + head,
+            renameEnd: t + head, tailEnd: t + head + head, end: t + head + head + T.tailHold,
+            growDur: 0, camFrom: prevCam, camHead: camWholeOf(to), pops: []
+        };
+        whole.camGrowEnd = whole.camHead;
+        whole.camTail = whole.camHead;
+        return { list: list, whole: whole, from: from, to: to, total: whole.end, head: head };
+    }
+
+    /** t 落在哪一段（段数 ≤ 14，线性扫足够） */
+    function recAt(t) {
+        const tl = state.timeline;
+        for (let k = 0; k < tl.list.length; k++) if (t < tl.list[k].end) return tl.list[k];
+        return tl.whole;
+    }
+
+    /** t 时刻的相机 */
+    function camAt(t) {
+        const r = recAt(t);
+        const head = state.timeline.head;
+        if (t < r.headEnd) return camLerp(r.camFrom, r.camHead, head ? EASE((t - r.from) / head) : 1);
+        if (t < r.growEnd) return camForPoint(brushAt(r.step, (t - r.growT0) / r.growDur), state.zoom) || r.camHead;
+        if (t < r.renameEnd) return r.camGrowEnd;
+        if (t < r.tailEnd) return camLerp(r.camGrowEnd, r.camTail, head ? EASE((t - r.renameEnd) / head) : 1);
+        return r.camTail;
+    }
+
+    /* ======================================================================
+     * 表现层（逐帧应用，唯一实现）
+     * ==================================================================== */
+
+    /**
+     * 站点 / 站名的弹出：按缓动进度写「缩放 + 透明度」。
+     * ⚠️ 一律写成 **CSS 变量**，不写内联 opacity / transform：
+     *   · 站点图元的可见形态有一半在 `::before` 伪元素上，内联样式够不着；
+     *   · 核心自己会在标签上写内联 opacity（图层避让），用变量才不打架，
+     *     退出时把变量一撤即可复原，不留痕。
+     */
+    function applyPopProgress(sid, e) {
+        const alpha = Math.max(0, Math.min(1, e));
+        const scale = 0.35 + 0.65 * e;
+        const node = document.getElementById("node_" + sid);
+        if (node) {
+            node.style.setProperty("--cgo-oh-pop-alpha", String(alpha));
+            node.style.setProperty("--cgo-oh-pop-scale", String(scale));
+        }
+        const label = document.getElementById("label_" + sid);
+        if (label) {
+            label.style.setProperty("--cgo-oh-pop-alpha", String(alpha));
+            label.style.setProperty("--cgo-oh-pop-blur", (4 * (1 - alpha)).toFixed(2) + "px");
+        }
+        const line = calloutOf(sid);
+        if (line) line.style.setProperty("--cgo-oh-pop-alpha", String(alpha));
+    }
+
+    /** 站点涟漪：笔到人到时那一圈扩散（同一条时间线，散够就收） */
     function ripple(st, color) {
         const group = liveGroup();
         if (!group || REDUCE) return;
@@ -942,9 +1048,7 @@
         dot.setAttribute("stroke", color);
         dot.setAttribute("vector-effect", "non-scaling-stroke");
         group.appendChild(dot);
-        const life = state.popDur * 1.6 + 120;
-        const id = setTimeout(() => dot.remove(), life);
-        state.timers.push(id);
+        state.ripples.push({ el: dot, t0: state.frameT, life: state.rippleDur });
     }
 
     /** 车站到点了：切形态、弹出、涟漪 */
@@ -954,66 +1058,127 @@
         applyForm(x, step.color);
         applyOldName(x.sid, step.date);
         popStation(x.sid);
+        state.activePops.push({ sid: x.sid, t0: state.frameT });
         // 未开通形态的涟漪用「未开通色」，别拿线路色误导人
         ripple(x, x.form === "no" ? (themeVar("--not-open-color") || step.color) : step.color);
         syncVirtualConnectors();   // 站到齐了，站外连通那条虚线可以画了
     }
 
-    /** 沿真实走向把这一段「画」出来（描边偏移，写法同香港的開場動畫） */
-    function growSegment(step, token) {
+    /** 生长中的那一段：描边偏移由 t 直接算（原先是 WAAPI fill:forwards） */
+    function ensureGrowPath(step) {
+        if (!step.pts || step.pts.length < 2) return null;   // 无走向的步骤没有可画的折线
         const group = liveGroup();
-        if (!group || !step.pts || step.pts.length < 2) {
-            step.stations.forEach((x) => showStation(x, step));
-            return delay(0);
+        if (!group) return null;
+        let node = group.querySelector(".cgo-oh-grow");
+        if (!node || node.dataset.no !== String(step.no)) {
+            node = document.createElementNS(NS, "path");
+            node.setAttribute("class", "cgo-oh-grow");
+            node.dataset.no = String(step.no);
+            node.setAttribute("d", toD(step.pts));
+            node.setAttribute("stroke", step.color);
+            node.setAttribute("stroke-width", "5.4");   // 与核心 .line-visual-inner 同宽
+            node.setAttribute("vector-effect", "non-scaling-stroke");
+            group.replaceChildren(node);
+            let len = step.lengthPx;
+            try { len = node.getTotalLength(); } catch (e) { /* 用折线长度 */ }
+            node.__len = len;
+            node.style.strokeDasharray = `${len} ${len}`;
         }
-        const grow = document.createElementNS(NS, "path");
-        grow.setAttribute("class", "cgo-oh-grow");
-        grow.setAttribute("d", toD(step.pts));
-        grow.setAttribute("stroke", step.color);
-        grow.setAttribute("stroke-width", "5.4");   // 与核心 .line-visual-inner 同宽
-        grow.setAttribute("vector-effect", "non-scaling-stroke");
-        group.replaceChildren(grow);   // 上一段的生长层收掉（它已归档进 done 层）
-
-        let len = step.lengthPx;
-        try { len = grow.getTotalLength(); } catch (e) { /* 用折线长度 */ }
-        const dur = growDuration(step);
-
-        // 车站按沿线位置同步弹出（笔到人到）
-        step.stations.forEach((x) => {
-            const at = Math.max(0, Math.min(dur - 30, dur * x.t));
-            const id = setTimeout(() => {
-                if (token !== state.token) return;
-                showStation(x, step);
-            }, at);
-            state.timers.push(id);
-        });
-
-        if (REDUCE) {
-            grow.style.strokeDasharray = "";
-            step.stations.forEach((x) => showStation(x, step));
-            return delay(1);
-        }
-
-        grow.style.strokeDasharray = `${len} ${len}`;
-        grow.style.strokeDashoffset = String(len);
-        followBrush(step, dur, token);
-        if (typeof grow.animate === "function") {
-            const anim = grow.animate(
-                [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
-                { duration: dur, easing: "linear", fill: "forwards" }
-            );
-            state.anims.push(anim);
-        } else {
-            requestAnimationFrame(() => {
-                grow.style.transition = `stroke-dashoffset ${dur}ms linear`;
-                grow.style.strokeDashoffset = "0";
-            });
-        }
-        return delay(dur);
+        return node;
     }
 
-    /** 播完的段落进「已开通」层，留在线网上才能看出线网在长大 */
-    function commitSegment(step) {
+    /**
+     * 把 t 时刻的画面**幂等**地落到 DOM。播放的每一帧与导出的每一帧都走它。
+     * 只做增量：站点弹出沿时间单调推进，每帧只碰「正在弹的那几个」。
+     * @param {boolean} [settle] 落定模式：把还在进行中的弹出 / 涟漪直接收尾（跳转、暂停用）
+     */
+    function applyFrame(t, settle) {
+        const tl = state.timeline;
+        if (!tl) return;
+        state.frameT = t;
+        const rec = recAt(t);
+
+        // 换到新的一步时补一次「已出现车站」的状态（核心可能重建过那些节点）
+        if (state.lastResyncI !== rec.i) {
+            state.lastResyncI = rec.i;
+            resyncShown();
+        }
+
+        // ── 相机 ──
+        const cam = camAt(t);
+        if (cam && window.setMapView) window.setMapView({ x: cam.x, y: cam.y, scale: cam.scale });
+
+        // ── 线网：已播完的段落归档进 done 层，当前段在 live 层按 t 拉出描边偏移 ──
+        tl.list.forEach((r) => {
+            if (r.i < rec.i || (r === rec && t >= r.growEnd)) commitPath(state.steps[r.i]);
+        });
+        const live = liveGroup();
+        const growing = rec.growDur > 0 && t < rec.growEnd;
+        if (live && !growing) live.replaceChildren();
+        if (live && growing) {
+            const node = ensureGrowPath(rec.step);
+            if (node) {
+                const p = Math.max(0, Math.min(1, (t - rec.growT0) / rec.growDur));
+                node.style.strokeDashoffset = String(node.__len * (1 - p));
+            }
+        }
+
+        // ── 车站：到点的依次弹出（沿时间推进，不回头） ──
+        tl.list.forEach((r) => {
+            if (r.i > rec.i) return;
+            r.pops.forEach((p) => {
+                if (p.t > t) return;
+                const key = r.i + ":" + p.x.sid;
+                if (state.popDone.has(key)) return;
+                state.popDone.add(key);
+                showStation(p.x, r.step);
+            });
+        });
+
+        // ── 正在弹的站：更新进度；弹完的落定 ──
+        for (let k = state.activePops.length - 1; k >= 0; k--) {
+            const ap = state.activePops[k];
+            const prog = settle ? 1 : (state.popDur > 0 ? (t - ap.t0) / state.popDur : 1);
+            if (prog >= 1) { applyPopProgress(ap.sid, 1); state.activePops.splice(k, 1); }
+            else applyPopProgress(ap.sid, EASE_POP(prog));
+        }
+
+        // ── 涟漪：散够就收 ──
+        for (let k = state.ripples.length - 1; k >= 0; k--) {
+            const rp = state.ripples[k];
+            const prog = settle ? 1 : (rp.life > 0 ? (t - rp.t0) / rp.life : 1);
+            if (prog >= 1) { rp.el.remove(); state.ripples.splice(k, 1); continue; }
+            const e = EASE_OUT(prog);
+            rp.el.style.transform = "scale(" + (0.5 + 2 * e).toFixed(3) + ")";
+            rp.el.style.opacity = String(0.95 * (1 - e));
+        }
+
+        // ── 更名：生长之后的那 500ms 里淡出换字 ──
+        tl.list.forEach((r) => { if (r.step.rename) applyRenameAt(r, t); });
+
+        // ── 面板 ──
+        applyPanel(t, rec);
+    }
+
+    /** 更名的换字动画：0~180ms 淡出旧名 → 换字 → 180~500ms 淡入新名 */
+    function applyRenameAt(rec, t) {
+        const rn = rec.step.rename;
+        const p = (t - rec.growEnd) / 500;
+        const cn = cnSpanOf(rn.sid), en = enSpanOf(rn.sid);
+        if (p < 0) return;
+        const put = (name, enName) => {
+            if (cn) cn.textContent = name;
+            if (en && enName) en.textContent = enName;
+        };
+        let alpha = 1;
+        if (p < 0.36) { put(rn.from, rn.fromEn); alpha = 1 - EASE_OUT(p / 0.36); }
+        else { put(rn.to, rn.toEn); alpha = EASE_OUT(Math.min(1, (p - 0.36) / 0.64)); }
+        if (p >= 1) { state.renamed.delete(rn.sid); return; }
+        [cn, en].forEach((el) => { if (el) el.style.opacity = String(alpha); });
+    }
+
+    /** 播完的段落归档进「已开通」层，留在线网上才能看出线网在长大（站点由时间轴负责） */
+    function commitPath(step) {
         const group = doneGroup();
         if (!group || !step.pts || step.pts.length < 2) return;
         if (group.querySelector(`[data-no="${step.no}"]`)) return;
@@ -1025,91 +1190,81 @@
         p.setAttribute("stroke-width", "5.4");
         p.setAttribute("vector-effect", "non-scaling-stroke");
         group.appendChild(p);
-        step.stations.forEach((x) => showStation(x, step));
     }
 
     /* ======================================================================
-     * 数字与日期滚动
+     * 面板（全部按 t 直接算，不再用 rAF 补间）
      * ==================================================================== */
 
     const pad2 = (n) => String(n).padStart(2, "0");
 
-    /**
-     * 把一个数字从 from 滚到 to。句柄存成对象，取消时按对象里的最新 id 处理
-     * （rAF 每帧返回新 id，直接存数字会取消错）。
-     */
-    function rollNumber(el, from, to, ms, digits) {
-        if (!el) return;
-        // 兜底：任何一端取不到值（新增/缺失字段）都按 0 处理，绝不让 NaN 上屏
-        const end = Number.isFinite(to) ? to : 0;
-        const start = Number.isFinite(from) ? from : 0;
-        // 未给时长（跳转 / 复位）就是「直接落值」——注意不能写 ms <= 0，
-        // undefined 与数字比较恒为 false，会带着 undefined 去做除法算出 NaN
-        const dur = Number.isFinite(ms) && ms > 0 ? ms : 0;
-        const fmt = (v) => (digits > 0 ? v.toFixed(digits) : String(Math.round(v)));
-        if (REDUCE || !dur || start === end) { el.textContent = fmt(end); return; }
-        const handle = { id: 0 };
-        state.numRafs.push(handle);
-        const t0 = performance.now();
-        const tick = () => {
-            const p = Math.min(1, (performance.now() - t0) / dur);
-            el.textContent = fmt(start + (end - start) * p);
-            if (p < 1) handle.id = requestAnimationFrame(tick);
-        };
-        handle.id = requestAnimationFrame(tick);
+    /** 日期按比例插值：起笔运镜期间「时间在走」就是它 */
+    function lerpDate(a, b, p) {
+        const ta = Date.parse(a), tb = Date.parse(b);
+        if (!Number.isFinite(ta) || !Number.isFinite(tb) || ta === tb) return b;
+        const d = new Date(ta + (tb - ta) * p);
+        return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
     }
 
-    /** 日期同样可以滚：事件间隙里从上一个事件的日期一天天走到本事件 */
-    function rollDate(el, fromStr, toStr, ms) {
-        if (!el) return;
-        const a = Date.parse(fromStr), b = Date.parse(toStr);
-        const dur = Number.isFinite(ms) && ms > 0 ? ms : 0;
-        if (REDUCE || !dur || !Number.isFinite(a) || !Number.isFinite(b) || a === b) {
-            el.textContent = toStr;
-            return;
-        }
-        const handle = { id: 0 };
-        state.numRafs.push(handle);
-        const t0 = performance.now();
-        const tick = () => {
-            const p = Math.min(1, (performance.now() - t0) / dur);
-            const d = new Date(a + (b - a) * p);
-            el.textContent = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-            if (p < 1) handle.id = requestAnimationFrame(tick);
-        };
-        handle.id = requestAnimationFrame(tick);
-    }
-
-    /**
-     * 进度条。`setTrack` 直接落值（跳转 / 复位 / 暂停收尾），`rollTrack` 逐帧补间。
-     * 两者与 `rollDate` **同一时长、同一节拍**：事件间隙里「时间在走」时进度条一起长，
-     * 而不是在事件开头就一步跳到终点（那样间隙里日期在动、进度却不动，很割裂）。
-     */
+    /** 进度条直接落值。逐帧写 width，得把 CSS 那条 .25s 过渡摘掉，否则每帧重起一段过渡、慢半拍 */
     function setTrack(pct) {
         const bar = state.els && state.els.bar;
         if (!bar) return;
-        bar.style.removeProperty("transition");
+        bar.style.transition = "none";
         bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
     }
 
-    function rollTrack(fromPct, toPct, ms) {
-        const bar = state.els && state.els.bar;
-        if (!bar) return;
-        const dur = Number.isFinite(ms) && ms > 0 ? ms : 0;
-        if (REDUCE || !dur || Math.abs(toPct - fromPct) < 0.05) { setTrack(toPct); return; }
-        // 逐帧写 width 时得把 CSS 那条 .25s 过渡摘掉：否则每帧都重新起一段过渡，
-        // 表现出来是「慢半拍地追」，与日期对不上拍
-        bar.style.transition = "none";
-        const handle = { id: 0 };
-        state.numRafs.push(handle);
-        const t0 = performance.now();
-        const tick = () => {
-            const p = Math.min(1, (performance.now() - t0) / dur);
-            bar.style.width = (fromPct + (toPct - fromPct) * p) + "%";
-            if (p < 1) handle.id = requestAnimationFrame(tick);
-            else bar.style.removeProperty("transition");
-        };
-        handle.id = requestAnimationFrame(tick);
+    /**
+     * 该步归档前 / 归档后的「画布所见线路数」：**按已画出走向的段落去重**，
+     * 与画面上严格对应（生长中的那条线还没归档就不算）。
+     */
+    function lineCountAround(i) {
+        const set = new Set();
+        for (let k = 0; k < i; k++) {
+            const s = state.steps[k];
+            if (s.pts && s.pts.length > 1) set.add(s.lineId);
+        }
+        const before = set.size;
+        const cur = state.steps[i];
+        if (cur.pts && cur.pts.length > 1) set.add(cur.lineId);
+        return { before: before, after: set.size };
+    }
+
+    /**
+     * 面板在 t 时刻的取值：日期与进度条在起笔运镜期间从上一事件收到本事件；车站 / 里程
+     * 随生长一起滚；线路数在段落归档后补上；徽标、说明与清单高亮只在事件切换时刷一次。
+     */
+    function applyPanel(t, rec) {
+        if (!state.els) return;
+        const i = rec.i;
+        const step = state.steps[i];
+        const prev = i > 0 ? state.steps[i - 1] : null;
+        const head = state.timeline.head;
+        const rolling = !rec.whole && head > 0 && t < rec.headEnd;
+        const p = rolling ? (t - rec.from) / head : 1;
+        state.els.date.textContent = lerpDate(prev ? prev.date : step.date, step.date, p);
+        const pctFrom = prev ? trackPercentAt(i - 1) : trackPercentAt(i);
+        setTrack(rolling ? pctFrom + (trackPercentAt(i) - pctFrom) * p : trackPercentAt(i));
+
+        const gp = rec.growDur > 0 ? Math.max(0, Math.min(1, (t - rec.growT0) / rec.growDur)) : 1;
+        const stFrom = prev ? prev.stationCount : 0, stTo = step.stationCount;
+        const miFrom = prev ? prev.mileage : 0, miTo = step.mileage;
+        state.els.stations.textContent = String(Math.round(stFrom + (stTo - stFrom) * gp));
+        state.els.mileage.textContent = (miFrom + (miTo - miFrom) * gp).toFixed(1);
+        const lc = lineCountAround(i);
+        const lp = Math.max(0, Math.min(1, (t - rec.growEnd) / 150));
+        state.els.lines.textContent = String(Math.round(lc.before + (lc.after - lc.before) * lp));
+
+        // 徽标 / 说明 / 清单高亮：只在事件切换时刷一次
+        if (state.lastPanelI !== i) {
+            state.lastPanelI = i;
+            syncNow();
+            state.els.list.querySelectorAll(".cgo-oh-item").forEach((li) => {
+                const no = Number(li.dataset.go);
+                li.classList.toggle("is-active", no === i + 1);
+                li.classList.toggle("is-done", no <= i);
+            });
+        }
     }
 
     /* ======================================================================
@@ -1219,35 +1374,7 @@
         return Math.max(0, Math.min(100, (cur - first) / (last - first) * 100));
     }
 
-    /** 画布上正在展示的线路数（已画出的区段所属线路去重）—— 与画面严格对应 */
-    function linesOnCanvas() {
-        const ids = new Set();
-        doneGroup()?.querySelectorAll("[data-line]").forEach((el) => ids.add(el.dataset.line));
-        return ids.size;
-    }
-
-    /**
-     * 统计行。传 animMs 就让数字从**上一次的值**滚到当前值（生长期间播）；
-     * 不传则直接落值（跳转、复位用）。
-     * 进度条不在这里 —— 它由 `setTrack` / `rollTrack` 单独驱动，好与日期滚动同拍。
-     */
-    function syncStats(animMs) {
-        const step = state.steps[state.index];
-        const prev = state.index > 0 ? state.steps[state.index - 1] : null;
-        // 线路数按「画布所见」：生长中的那条线还没画出来就不算，画完（commitSegment）才 +1
-        const shownLines = linesOnCanvas();
-        rollNumber(state.els.lines, state.lastLines == null ? shownLines : state.lastLines, shownLines, animMs, 0);
-        state.lastLines = shownLines;
-        rollNumber(state.els.stations, prev ? prev.stationCount : 0, step ? step.stationCount : 0, animMs, 0);
-        rollNumber(state.els.mileage, prev ? prev.mileage : 0, step ? step.mileage : 0, animMs, 1);
-        state.els.list.querySelectorAll(".cgo-oh-item").forEach((li) => {
-            const no = Number(li.dataset.go);
-            li.classList.toggle("is-active", no === state.index + 1);
-            li.classList.toggle("is-done", no <= state.index);
-        });
-    }
-
-    /** 徽标与说明。日期不在这里设 —— 它由事件间隙的滚动动画负责 */
+    /** 徽标与说明。日期不在这里设 —— 它由 `applyPanel` 按 t 算 */
     function syncNow() {
         const step = state.steps[state.index];
         if (!step) return;
@@ -1275,97 +1402,97 @@
      * 时钟层：播放 / 暂停 / 重播 / 跳转
      * ==================================================================== */
 
-    async function runStep(i, token) {
-        const step = state.steps[i];
-        state.index = i;
-        // 面板（徽标 / 说明 / 规模）立刻切到本事件 —— 本步一开始它就代表「正在画的这一段」
-        syncNow();
-        syncStats(growDuration(step));   // 统计数字随生长一起滚上去
-        // 引线可能被核心重画过（它随视口与缩放重算），补一次状态
-        resyncShown();
-        // ⚠️ 日期与进度条的收口必须赶在**生长之前**：它们此刻还停在上一事件上，
-        //    要随起笔运镜一起走到本事件。若放到段尾（上一步的间隙里）去滚，
-        //    等画笔已经在画本事件了，面板上的时间点却还是上一步的 —— 整整晚一个事件。
-        const fromPct = trackPercentAt(Math.max(0, i - 1));
-        const prevDate = i > 0 ? state.steps[i - 1].date : step.date;
-        // 先推近到该段起点起笔，等过渡落地，免得逐帧跟随立刻把它顶掉
-        frameOn(step.pts ? pointAt(step.pts, 0) : step.focus);
-        const glide = glideMs() ? glideMs() + 90 : 0;
-        rollTrack(fromPct, trackPercentAt(i), glide);
-        rollDate(state.els.date, prevDate, step.date, glide);
-        if (glideMs()) await delay(glideMs() + 90);
-        if (token !== state.token) return;
-        await growSegment(step, token);
-        if (token !== state.token) return;
-        commitSegment(step);
-        syncStats(150);   // 这一段画完了，线路数按「画布所见」跟着 +1
-        if (step.rename) await renameLabel(step.rename.sid, step.rename.to, step.rename.toEn);
-        if (token !== state.token) return;
-        // 收笔：缩到能看该事件的全貌，停一会儿再走下一段
-        frameStep(step);
-        if (glideMs()) await delay(glideMs() + 90);
-        if (token !== state.token) return;
+    /**
+     * 从第 from 步播到第 to 步。播放与导出共用这一条路径：导出只是换一种「推进 t 并取帧」的驱动。
+     */
+    function startPlayback(from, to) {
+        state.timeline = buildTimeline(from, to);
+        state.popDone = new Set();
+        state.activePops = [];
+        state.ripples = [];
+        state.lastPanelI = null;
+        state.lastResyncI = null;
+        state.tStart = performance.now();
+        state.tCur = 0;
+        state.playing = true;
+        syncPlayBtn();
+        state.raf = requestAnimationFrame(tick);
+    }
+
+    /** 播放循环：把「现在」喂给 applyFrame —— 时间轴是唯一时钟，不再有别的定时器 */
+    function tick() {
+        const tl = state.timeline;
+        if (!state.playing || !tl) return;
+        const t = performance.now() - state.tStart;
+        state.tCur = Math.min(t, tl.total);
+        try {
+            applyFrame(state.tCur);
+        } catch (e) {
+            // ⚠️ 一抛异常 rAF 就断了，而 state.playing 还停在 true —— 按钮卡在「暂停」、
+            //    时间轴永远不再推进。所以这里必须兜住并把播放收干净。
+            console.error("[线网发展史] 帧应用失败，已停止播放：", e);
+            state.raf = 0;
+            state.playing = false;
+            syncPlayBtn();
+            return;
+        }
+        if (t < tl.total) {
+            state.raf = requestAnimationFrame(tick);
+        } else {
+            state.raf = 0;
+            state.playing = false;
+            state.index = tl.to;
+            syncPlayBtn();
+        }
     }
 
     function play() {
         if (!state.steps.length) return;
         if (state.playing) { pause(); return; }
-        if (state.index >= state.steps.length - 1) replay();
-        state.playing = true;
+        let from = state.index + 1;
+        if (from > state.steps.length - 1) { reset(); from = 0; }
         enterStage();
-        syncPlayBtn();
-        const token = ++state.token;
-        const from = state.index + 1;
-        (async () => {
-            for (let i = from; i < state.steps.length; i++) {
-                if (token !== state.token) return;
-                await runStep(i, token);
-                if (token !== state.token) return;
-                await delay(holdMs());
-            }
-            if (token !== state.token) return;
-            // 全部播完：缩到全图，多停一会儿
-            frameWhole();
-            state.playing = false;
-            syncPlayBtn();
-            await delay(REDUCE ? 0 : T.tailHold);
-        })();
+        startPlayback(from, state.steps.length - 1);
     }
 
     /**
-     * 暂停：把当前段**收尾**（画完 + 弹出余下车站 + 归档），再停。
-     * 不做「冻在半截」是因为描边偏移动画一旦中断，线条会整段消失，观感反而更差。
+     * 暂停：把画面**落定在当前这一步**（线画满、站弹完、面板落到本事件），再停。
+     * 不做「冻在半截」是因为描边偏移停在中途会缺一段线，观感反而更差。
      */
     function pause() {
         if (!state.playing) return;
         state.playing = false;
-        state.token++;
-        clearTimers();
-        const step = state.steps[state.index];
-        if (step) {
-            commitSegment(step);
-            // 数字滚动、日期滚动与进度条都可能被打断在半途，落到当前事件的确定值
-            state.els.date.textContent = step.date;
-            syncStats();
-            setTrack(trackPercentAt(state.index));
+        if (state.raf) { cancelAnimationFrame(state.raf); state.raf = 0; }
+        const tl = state.timeline;
+        if (tl) {
+            const r = recAt(state.tCur);
+            state.index = r.i;
+            state.tCur = r.growEnd;
+            applyFrame(r.growEnd, true);
         }
+        clearTimers();
         syncPlayBtn();
     }
 
     function reset() {
-        state.token++;
         clearTimers();
         state.playing = false;
         state.index = -1;
+        state.timeline = null;
+        state.tCur = 0;
+        state.lastPanelI = null;
+        state.lastResyncI = null;
         clearCanvas();
         clearMarks();
-        state.lastLines = null;
         if (state.els) {
             state.els.badge.hidden = true;
             state.els.date.textContent = "尚未开始";
             state.els.desc.textContent = "点「播放」从空白画布起笔，镜头跟着画笔把线网逐段画出来；也可用操作行的清单按钮跳到任一年份。";
-            syncStats();
+            state.els.lines.textContent = "0";
+            state.els.stations.textContent = "0";
+            state.els.mileage.textContent = "0.0";
             setTrack(0);
+            state.els.list.querySelectorAll(".cgo-oh-item").forEach((li) => li.classList.remove("is-active", "is-done"));
             syncPlayBtn();
         }
     }
@@ -1375,34 +1502,31 @@
         play();
     }
 
-    /** 跳到第 i 步（含之前的全部）：清画布后把 0..i-1 补成「已开通」，不重播生长动画 */
+    /**
+     * 跳到第 i 步（含之前的全部）：把 0..i 补成「已开通」，不重播生长动画。
+     * 做法就是建一条 0..i 的时间线，再把 t 直接落在第 i 步**生长结束**那一刻并落定收尾。
+     */
     function jumpTo(i) {
-        state.token++;
         clearTimers();
         state.playing = false;
         clearCanvas();
         clearMarks();
         enterStage();
-        for (let k = 0; k < i; k++) {
-            const s = state.steps[k];
-            commitSegment(s);
-            // 单站开通（station-open，如皇姑屯补开、沈阳南站启用）没有走向，
-            // commitSegment 会直接返回，这里得把车站补上 —— 否则往后跳一步，
-            // 那些站就凭空消失了（它们只在该步「跳到自己」时才落图）
-            if (!s.pts || s.pts.length < 2) s.stations.forEach((x) => showStation(x, s));
-            if (s.rename) applyNewName(s.rename.sid, s.rename.to, s.rename.toEn);
-        }
+        state.timeline = buildTimeline(0, i);
+        state.popDone = new Set();
+        state.activePops = [];
+        state.ripples = [];
+        state.lastPanelI = null;
+        state.lastResyncI = null;
         state.index = i;
-        const step = state.steps[i];
-        syncNow();
-        syncStats();
-        setTrack(trackPercentAt(i));
-        state.els.date.textContent = step.date;
-        if (step.pts && step.pts.length > 1) commitSegment(step);
-        else step.stations.forEach((x) => showStation(x, step));
+        const list = state.timeline.list;
+        const r = list[list.length - 1];
+        state.tCur = r.growEnd;
+        applyFrame(r.growEnd, true);
         // 跳到更名这一步：名字直接落成新名（跳转不是「演」，不播换字动画）
-        if (step.rename) applyNewName(step.rename.sid, step.rename.to, step.rename.toEn);
-        frameStep(step);
+        if (r.step.rename) applyNewName(r.step.rename.sid, r.step.rename.to, r.step.rename.toEn);
+        // 最后落到「能看该段全貌」的取景（applyFrame 给的是生长结束时的取景）
+        if (window.setMapView && r.camTail) window.setMapView({ x: r.camTail.x, y: r.camTail.y, scale: r.camTail.scale });
         syncPlayBtn();
     }
 
@@ -1469,7 +1593,6 @@
         state.shown.clear();
         state.dotColors.clear();
         state.renamed.clear();
-        state.lastLines = null;
         state.els.mileage.textContent = "0.0";
         state.els.root.classList.remove("is-list");   // 每次挂载都回到「信息区」那一态
         syncToggle();
@@ -1501,15 +1624,14 @@
             state.els.speedOut.textContent = `${state.speed} px/s`;
             state.els.setSpeed.querySelector("span").textContent = `${state.speed} px/s`;
             applyAnimDurations();     // 进场动画跟着运镜速度走
+            reseek();                 // 各段时长是建表时算死的，改速度得重建时间线
         });
         state.els.zoom.addEventListener("input", () => {
             state.zoom = Number(state.els.zoom.value) || ZOOM.def;
             state.els.zoomOut.textContent = `${state.zoom.toFixed(1)}×`;
             state.els.setZoom.querySelector("span").textContent = `${state.zoom.toFixed(1)}×`;
             applyAnimDurations();     // 倍数也决定画面上的推进速度，进场动画跟着一起调
-            // 拖倍数时立刻换景别；播放中不打断当前段，留给下一段生效
-            const step = state.steps[state.index];
-            if (step && !state.playing) frameStep(step);
+            reseek();                 // 取景倍数同样是建表时算死的
         });
         state.els.list.addEventListener("click", (e) => {
             const li = e.target.closest(".cgo-oh-item");
@@ -1521,7 +1643,6 @@
     }
 
     function unmount() {
-        state.token++;
         clearTimers();
         unwatchPinned();
         state.playing = false;
