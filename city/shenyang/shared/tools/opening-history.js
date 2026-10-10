@@ -53,6 +53,8 @@
     const T = { glide: 380, holdBase: 900, tailHold: 1600 };
     /** 演示期间临时放宽的缩放范围：全图取景比城市默认下限还小 */
     const SCALE_FLOOR = 0.2;
+    /** 窄屏口径（与全仓 `MOBILE_MAX` 一致）：此宽度下浮层是贴底抽屉，而非贴在角落的浮岛 */
+    const MOBILE_MAX = 640;
 
     const KIND_LABEL = { "line-open": "区段开通", "station-open": "车站开通", rename: "车站更名" };
 
@@ -547,12 +549,18 @@
         }
     }
 
-    /** 进场动画时长随运镜速度走：画笔越快，站点越要「弹得快」，否则还没弹完就出画了 */
+    /**
+     * 进场动画时长随「画面上的推进速度」走：画笔越快、特写倍数越高，站点越要「弹得快」。
+     * 画面速度 = 运镜速度（画布 px/s）× 当前缩放 —— 车头固定在可见区中心，已弹出的站点
+     * 是**以这个速度向画外退去**的，故两个因子都要按反比缩时长。只看运镜速度的话，
+     * 特写推到 4~6 倍时站点会明显跟不上镜头（「还没弹完就出画」）。
+     * 基准点取「默认运镜速度 × 默认特写」，此时系数正好是 1，既有手感不变。
+     */
     function applyAnimDurations() {
         const host = stageHost();
         if (!host) return;
-        const k = SPEED.def / state.speed;
-        const pop = Math.max(110, Math.min(700, Math.round(POP_BASE * k)));
+        const k = (SPEED.def / state.speed) * (ZOOM.def / state.zoom);
+        const pop = Math.max(80, Math.min(700, Math.round(POP_BASE * k)));
         state.popDur = pop;
         host.style.setProperty("--cgo-oh-pop-dur", pop + "ms");
         // 站名与涟漪压得比站点更紧 —— 镜头是跟着画笔走的，慢一拍就会「还没播完就出画」
@@ -753,23 +761,31 @@
      * ==================================================================== */
 
     /**
-     * 可见区几何：地图容器减去被固定侧栏挡掉的那一条。
-     * 侧栏是浮在地图之上的，要取**在地图容器坐标系里**的右边界 —— 用侧栏自身宽度
-     * 会在侧栏有外边距/偏移时算偏，取景中心随之跑偏（这也是「侧栏态特写偏移」的原因）。
+     * 可见区几何：地图容器减去被浮层占掉的那几条。
+     * - 固定侧栏（浮在地图之上的 `.legend-modal`）取**在地图容器坐标系里**的右边界 ——
+     *   用侧栏自身宽度会在侧栏有外边距/偏移时算偏（「侧栏态特写偏移」就是这么来的）；
+     * - **底部**读共享层 `window.CGoViewportInsets.bottom`（由 `viewport-inset.js` 从浮层的
+     *   `data-cgo-inset` 汇总，地图小工具面板本尊就是其中一块）。但**只在窄屏口径下扣**：
+     *   那里面板是横跨整屏的贴底抽屉，取景中心会整个落在它底下（画面看着整体偏下）；
+     *   桌面端同一块面板是贴在右下角的浮岛（320px 宽，同样申报了 `bottom`），只占一角，
+     *   扣掉反而把整幅构图无谓上推、收笔取景也白缩小一圈。
+     *   横向同理不扣：左侧缩放条与右下角浮岛都只占角落，扣了会把桌面端已经调好的横向构图推偏。
      */
     function viewportBox() {
         const host = document.getElementById("map-container");
         if (!host) return null;
         const hr = host.getBoundingClientRect();
+        const insets = window.CGoViewportInsets || {};
         let left = 0;
         const modal = document.querySelector("#legend-overlay .legend-modal");
         if (modal && document.body.classList.contains("legend-pinned")) {
             left = Math.max(0, Math.min(hr.width, modal.getBoundingClientRect().right - hr.left));
         }
+        const bottom = window.innerWidth <= MOBILE_MAX ? Math.max(0, Number(insets.bottom) || 0) : 0;
         return {
-            sidebar: left,
+            left: left,
             vw: Math.max(120, hr.width - left),
-            vh: Math.max(120, hr.height)
+            vh: Math.max(120, hr.height - bottom)
         };
     }
 
@@ -780,7 +796,7 @@
         const s = Math.max(SCALE_FLOOR, Math.min(ZOOM.max, scale));
         window.setMapView({
             scale: s,
-            x: box.sidebar + box.vw / 2 - pt.x * s,
+            x: box.left + box.vw / 2 - pt.x * s,
             y: box.vh / 2 - pt.y * s
         });
     }
@@ -1064,6 +1080,38 @@
         handle.id = requestAnimationFrame(tick);
     }
 
+    /**
+     * 进度条。`setTrack` 直接落值（跳转 / 复位 / 暂停收尾），`rollTrack` 逐帧补间。
+     * 两者与 `rollDate` **同一时长、同一节拍**：事件间隙里「时间在走」时进度条一起长，
+     * 而不是在事件开头就一步跳到终点（那样间隙里日期在动、进度却不动，很割裂）。
+     */
+    function setTrack(pct) {
+        const bar = state.els && state.els.bar;
+        if (!bar) return;
+        bar.style.removeProperty("transition");
+        bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+    }
+
+    function rollTrack(fromPct, toPct, ms) {
+        const bar = state.els && state.els.bar;
+        if (!bar) return;
+        const dur = Number.isFinite(ms) && ms > 0 ? ms : 0;
+        if (REDUCE || !dur || Math.abs(toPct - fromPct) < 0.05) { setTrack(toPct); return; }
+        // 逐帧写 width 时得把 CSS 那条 .25s 过渡摘掉：否则每帧都重新起一段过渡，
+        // 表现出来是「慢半拍地追」，与日期对不上拍
+        bar.style.transition = "none";
+        const handle = { id: 0 };
+        state.numRafs.push(handle);
+        const t0 = performance.now();
+        const tick = () => {
+            const p = Math.min(1, (performance.now() - t0) / dur);
+            bar.style.width = (fromPct + (toPct - fromPct) * p) + "%";
+            if (p < 1) handle.id = requestAnimationFrame(tick);
+            else bar.style.removeProperty("transition");
+        };
+        handle.id = requestAnimationFrame(tick);
+    }
+
     /* ======================================================================
      * 面板正文
      * ==================================================================== */
@@ -1076,7 +1124,7 @@
                         <span class="cgo-oh-date">尚未开始</span>
                         <span class="cgo-oh-badge" hidden></span>
                     </div>
-                    <p class="cgo-oh-desc">点「播放」从空白画布起笔，镜头跟着画笔把线网逐段画出来；也可直接点下方任一事件跳到该时刻。</p>
+                    <p class="cgo-oh-desc">点「播放」从空白画布起笔，镜头跟着画笔把线网逐段画出来；也可用操作行的清单按钮跳到任一年份。</p>
                     <div class="cgo-oh-sum">
                         <span>线路 <b data-oh="lines">0</b> 条</span>
                         <span>车站 <b data-oh="stations">0</b> 座</span>
@@ -1099,7 +1147,7 @@
                         <button type="button" class="cgo-mt-quick cgo-oh-set-btn" data-oh="setZoom" title="特写倍数">
                             <span>${ZOOM.def.toFixed(1)}×</span>
                         </button>
-                        <button type="button" class="cgo-mt-quick cgo-oh-icon-btn" data-oh="toggleInfo" title="显示 / 隐藏信息">
+                        <button type="button" class="cgo-mt-quick cgo-oh-icon-btn" data-oh="toggleInfo" title="查看事件清单" aria-pressed="false">
                             <cgo-icon name="view-list" size="14"></cgo-icon>
                         </button>
                     </div>
@@ -1126,6 +1174,21 @@
         `;
     }
 
+    /**
+     * 正文两态：**信息区**（当前事件 + 规模 + 进度）与**事件清单**二选一，
+     * 由操作行那枚 `view-list` 按钮切换。默认给信息区 —— 放映时最常看的是它；
+     * 想要跳年份再切到清单。两态互斥也就顺手把面板高度压下来了（矮屏上尤其要紧）。
+     */
+    function syncToggle() {
+        const root = state.els && state.els.root;
+        const btn = state.els && state.els.toggleInfo;
+        if (!root || !btn) return;
+        const listOn = root.classList.contains("is-list");
+        btn.classList.toggle("is-on", listOn);
+        btn.setAttribute("aria-pressed", String(listOn));
+        btn.title = listOn ? "返回信息区" : "查看事件清单";
+    }
+
     function renderList() {
         state.els.list.innerHTML = state.steps.map((s) => {
             // 计数用 CGoUI 图标而不是 +/↑ 字符：CGoUI 里没有上箭头，
@@ -1142,12 +1205,15 @@
         }).join("");
     }
 
-    /** 进度条按**时间**推进，不是按事件条数 —— 事件在时间轴上疏密不均，按条数会骗人 */
-    function trackPercent() {
+    /**
+     * 第 i 个事件在时间轴上的位置（%）—— 进度条按**时间**推进，不是按事件条数：
+     * 事件在时间轴上疏密不均，按条数会骗人。
+     */
+    function trackPercentAt(i) {
         if (!state.steps.length) return 0;
         const first = Date.parse(state.steps[0].date);
         const last = Date.parse(state.steps[state.steps.length - 1].date);
-        const step = state.steps[state.index];
+        const step = state.steps[i];
         const cur = step ? Date.parse(step.date) : first;
         if (!Number.isFinite(first) || !Number.isFinite(last) || last <= first) return 0;
         return Math.max(0, Math.min(100, (cur - first) / (last - first) * 100));
@@ -1163,6 +1229,7 @@
     /**
      * 统计行。传 animMs 就让数字从**上一次的值**滚到当前值（生长期间播）；
      * 不传则直接落值（跳转、复位用）。
+     * 进度条不在这里 —— 它由 `setTrack` / `rollTrack` 单独驱动，好与日期滚动同拍。
      */
     function syncStats(animMs) {
         const step = state.steps[state.index];
@@ -1173,7 +1240,6 @@
         state.lastLines = shownLines;
         rollNumber(state.els.stations, prev ? prev.stationCount : 0, step ? step.stationCount : 0, animMs, 0);
         rollNumber(state.els.mileage, prev ? prev.mileage : 0, step ? step.mileage : 0, animMs, 1);
-        state.els.bar.style.width = `${trackPercent()}%`;
         state.els.list.querySelectorAll(".cgo-oh-item").forEach((li) => {
             const no = Number(li.dataset.go);
             li.classList.toggle("is-active", no === state.index + 1);
@@ -1212,8 +1278,10 @@
     async function runStep(i, token) {
         const step = state.steps[i];
         state.index = i;
-        // 日期先落在**上一个事件**上（首段则落本事件），间隙里再一天天滚到本事件
+        // 日期与进度条都先落在**上一个事件**上（首段即本事件），间隙里再一起走到本事件
+        const prevPct = trackPercentAt(Math.max(0, i - 1));
         state.els.date.textContent = i > 0 ? state.steps[i - 1].date : step.date;
+        setTrack(prevPct);
         syncNow();
         syncStats(growDuration(step));   // 统计数字随生长一起滚上去
         // 引线可能被核心重画过（它随视口与缩放重算），补一次状态
@@ -1232,8 +1300,9 @@
         frameStep(step);
         if (glideMs()) await delay(glideMs() + 90);
         if (token !== state.token) return;
-        // 事件间隙：日期从上一个事件一天天走到本事件
+        // 事件间隙：日期从上一个事件一天天走到本事件，进度条与它同步一起长
         const prevDate = i > 0 ? state.steps[i - 1].date : step.date;
+        rollTrack(prevPct, trackPercentAt(i), holdMs());
         rollDate(state.els.date, prevDate, step.date, holdMs());
     }
 
@@ -1274,9 +1343,10 @@
         const step = state.steps[state.index];
         if (step) {
             commitSegment(step);
-            // 数字滚动与日期滚动可能被打断在半途，落到当前事件的确定值
+            // 数字滚动、日期滚动与进度条都可能被打断在半途，落到当前事件的确定值
             state.els.date.textContent = step.date;
             syncStats();
+            setTrack(trackPercentAt(state.index));
         }
         syncPlayBtn();
     }
@@ -1292,8 +1362,9 @@
         if (state.els) {
             state.els.badge.hidden = true;
             state.els.date.textContent = "尚未开始";
-            state.els.desc.textContent = "点「播放」从空白画布起笔，镜头跟着画笔把线网逐段画出来；也可直接点下方任一事件跳到该时刻。";
+            state.els.desc.textContent = "点「播放」从空白画布起笔，镜头跟着画笔把线网逐段画出来；也可用操作行的清单按钮跳到任一年份。";
             syncStats();
+            setTrack(0);
             syncPlayBtn();
         }
     }
@@ -1324,6 +1395,7 @@
         const step = state.steps[i];
         syncNow();
         syncStats();
+        setTrack(trackPercentAt(i));
         state.els.date.textContent = step.date;
         if (step.pts && step.pts.length > 1) commitSegment(step);
         else step.stations.forEach((x) => showStation(x, step));
@@ -1346,7 +1418,7 @@
         body.innerHTML = renderBody();
         const q = (sel) => body.querySelector(sel);
         state.els = {
-            fixed: q(".cgo-oh-fixed"),
+            root: q(".cgo-oh"),
             date: q(".cgo-oh-date"),
             badge: q(".cgo-oh-badge"),
             desc: q(".cgo-oh-desc"),
@@ -1398,7 +1470,8 @@
         state.renamed.clear();
         state.lastLines = null;
         state.els.mileage.textContent = "0.0";
-        state.els.fixed.classList.remove("is-compact");
+        state.els.root.classList.remove("is-list");   // 每次挂载都回到「信息区」那一态
+        syncToggle();
         state.els.speedSet.hidden = true;
         state.els.zoomSet.hidden = true;
         renderList();
@@ -1417,8 +1490,10 @@
             state.els.zoomSet.hidden = !show;
             state.els.speedSet.hidden = true;
         });
+        // 信息区 ⟷ 事件清单：二选一，不是「收起 / 展开」
         state.els.toggleInfo.addEventListener("click", () => {
-            state.els.fixed.classList.toggle("is-compact");
+            state.els.root.classList.toggle("is-list");
+            syncToggle();
         });
         state.els.speed.addEventListener("input", () => {
             state.speed = Number(state.els.speed.value) || SPEED.def;
@@ -1430,6 +1505,7 @@
             state.zoom = Number(state.els.zoom.value) || ZOOM.def;
             state.els.zoomOut.textContent = `${state.zoom.toFixed(1)}×`;
             state.els.setZoom.querySelector("span").textContent = `${state.zoom.toFixed(1)}×`;
+            applyAnimDurations();     // 倍数也决定画面上的推进速度，进场动画跟着一起调
             // 拖倍数时立刻换景别；播放中不打断当前段，留给下一段生效
             const step = state.steps[state.index];
             if (step && !state.playing) frameStep(step);

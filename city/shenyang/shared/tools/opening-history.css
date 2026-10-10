@@ -220,6 +220,17 @@
     max-height: min(56vh, 520px);
 }
 
+/* ── 矮视口：面板别占掉大半屏 ────────────────────────────────────────
+   这个功能本来就是看地图的。435px 高的视口下 56vh 会让面板吃掉 64%（只剩一条缝
+   给地图），故「窄」（移动端）与「矮」（被压扁的桌面窗口）两种情形都收到 44vh；
+   再靠「信息区 / 事件清单」二选一，信息态通常只用到内容高度，实际占屏更小。 */
+@media (max-width: 640px), (max-height: 560px) {
+    .cgo-mt-body.cgo-oh-body,
+    .cgo-mt-panel.cgo-mt-in-section .cgo-mt-body.cgo-oh-body {
+        max-height: min(44vh, 440px);
+    }
+}
+
 /* 正文吃掉面板给的高度，让只有事件清单那一块滚 */
 .cgo-mt-body.cgo-oh-body > .cgo-oh {
     flex: 1 1 auto;
@@ -238,9 +249,21 @@
     gap: 10px;
 }
 
-/* 信息区收起态：只留操作行。
-   设置滑条要留着 —— 用户点开设置按钮后如果被一起藏掉，就再也调不出速度/倍数了。 */
-.cgo-oh-fixed.is-compact > :not(.cgo-oh-actions):not(.cgo-oh-set) {
+/* 正文两态：**信息区**（默认）与**事件清单**，由操作行那枚 view-list 按钮二选一。
+   互斥也顺手把面板高度压下来了 —— 矮屏上不必让「当前事件 + 规模 + 进度」与「事件清单」
+   挤在同一屏里抢高度。操作行与设置滑条两态都留着：点开的滑条若被一起藏掉，
+   就再也调不出速度 / 倍数了。 */
+.cgo-oh-list,
+.cgo-oh-note {
+    display: none;
+}
+
+.cgo-oh.is-list .cgo-oh-list,
+.cgo-oh.is-list .cgo-oh-note {
+    display: block;
+}
+
+.cgo-oh.is-list .cgo-oh-fixed > :not(.cgo-oh-actions):not(.cgo-oh-set) {
     display: none;
 }
 
@@ -318,6 +341,13 @@
 
 .cgo-oh-actions .cgo-oh-icon-btn {
     width: 30px;
+}
+
+/* 切到清单态时给按钮一个明确的「按下去了」的样子 —— 两态互斥，
+   光看正文有时分不清是「清单空了」还是「还在信息区」 */
+.cgo-oh-actions .cgo-oh-icon-btn.is-on {
+    color: #fff;
+    background: var(--primary-color, #00263b);
 }
 
 .cgo-oh-actions .cgo-oh-set-btn {
