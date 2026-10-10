@@ -13,7 +13,7 @@ const LEGEND_CONFIG = [
             { targets: ['SYM02'], name: '2号线' },
             { targets: ['SYM03'], name: '3号线' },
             { targets: ['SYM04'], name: '4号线' },
-            //{ targets: ['SYM06'], name: '6号线' },
+            { targets: ['SYM06'], name: '6号线' },
             { targets: ['SYM09'], name: '9号线' },
             { targets: ['SYM10'], name: '10号线' },
         ]

@@ -113,7 +113,7 @@
      *
      * 官网时刻表给的终点站名是与本站同线的车站中文名（如 1 号线「三江口」「象峰」），
      * 而规划内核的 dest 只认车站 ID、或 "line-first" / "line-last" 两个端点代号
-     * （见 shared/route-data.js 的 chainDirection）——认不出来的链会被整条丢弃，
+     * （见 shared/route/route-data.js 的 chainDirection）——认不出来的链会被整条丢弃，
      * 区间用时只能退化成坐标模型估算，故这里必须翻译。
      *
      * 同名不唯一时不写进表：宁可退化成端点代号，也不要认错方向。
@@ -241,7 +241,7 @@
         },
         /**
          * 站外换乘的步行时间（分钟）。键为 `起点ID|终点ID`，逐对覆盖共享层的 6 分钟默认值
-         * （机制见 shared/route-data.js；行程规划、等时圈与票价图的用时都吃这个数）。
+         * （机制见 shared/route/route-data.js；行程规划、等时圈与票价图的用时都吃这个数）。
          *
          * 取值来自地面实测：
          *   · 水部（2 号线）⇄ 闽都（滨海快线）    约 10 分钟（地面直线 525 m，
@@ -257,7 +257,7 @@
             "M113|M605": 6, "M605|M113": 6        // 三叉街 ⇄ 三叉街（滨海快线）
         },
         /**
-         * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route-data.js
+         * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route/route-data.js
          * 的 transferAt：`pairs` 用于「同一站上不同线路对换乘方式不同」的情形（帝封江），
          * 其余站直接给 mode + minutes。未列出的换乘站用共享层默认值（2 分钟）。
          *
@@ -330,7 +330,7 @@
      */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261008.220300";
+        const version = "261010.1537";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
@@ -339,19 +339,22 @@
         // 文旅景点名录（含建库时算好的最近车站与直线距离），供车站信息板的文旅卡片使用
         write("./city/fuzhou/data_attractions.js");
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
-        write(`${shared}/loop-direction.js`);
+        write(`${shared}/route/loop-direction.js`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
-        write(`${shared}/viewport-inset.js`);
+        write(`${shared}/base/viewport-inset.js`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
-        write(`${shared}/route-data.js`);
-        write(`${shared}/route-planner.js`);
-        write(`${shared}/route-panel.js`);
+        write(`${shared}/route/route-data.js`);
+        write(`${shared}/route/route-planner.js`);
+        write(`${shared}/route/route-panel-icons.js`);
+        write(`${shared}/route/route-panel-search.js`);
+        write(`${shared}/route/route-panel.js`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
-        write(`${shared}/nearest-station.js`);
+        write(`${shared}/station/nearest-station.js`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
-        write(`${shared}/sidebar-refit.js`);
+        write(`${shared}/base/sidebar-refit.js`);
         // 地图小工具（票价图 / 等时圈 / 多人汇合）：入口在车站详情与路线结果的页签栏
-        write(`${shared}/map-tools.js`);
+        write(`${shared}/tools/map-tools-color.js`);
+        write(`${shared}/tools/map-tools.js`);
 
         // 城市专属数据与模块（城市数据文件由 main.html 统一加载，此处只补模块所需的数据）
         write("./city/fuzhou/data_site_space.js");

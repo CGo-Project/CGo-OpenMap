@@ -116,7 +116,7 @@
             calloutLayer.setAttribute("aria-hidden", "true");
             calloutLayer.setAttribute("pointer-events", "none");
             // 本层是「站名标签的一部分」，不是线网：共享层的路线高亮淡化规则据此放过它，
-            // 它自己则跟随标签的淡化（见 shared/label-active.js）
+            // 它自己则跟随标签的淡化（见 shared/base/label-active.js）
             calloutLayer.setAttribute("data-cgo-callout-layer", "");
             linesLayer.appendChild(calloutLayer);
         }

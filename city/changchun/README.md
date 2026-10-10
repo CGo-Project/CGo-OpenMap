@@ -19,7 +19,7 @@
 官方交互线路图 SVG 源码仅包含线路示意几何和站点位置，没有可核验的站间里程字段；但官网「行程查询」（`http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html`）背后的接口
 `http://app.ccetravel.cn/micro/other/urban/trave/query/list` 会一次性下发全网相邻站对的实测站间距离（`betweenStations[].distance`，单位米）。
 
-因此 `data_lines.js` 的 `distances` 直接采用该接口的站间距离，不再按坐标估算：接口未收录的区段（1 号线南延、3 号线南延尚未开通）原按官方规划里程均分，但均分值属推算，现改为 `"?"` 占位——前端只显示「约XXX米」（按画布比例估算），行程规划的里程也走坐标兜底，不做伪精确展示。换乘站与预留换乘节点因站码不同，匹配时以站名兜底。
+因此 `data_lines.js` 的 `distances` 直接采用该接口的站间距离，不再按坐标估算：接口未收录的区段（1 号线南延、3 号线南延尚未开通）原按官方规划里程均分，但均分值属推算，现改为 `"?"` 占位——前端只显示「约XXX米」（两站有经纬度时优先按球面距离，否则按画布比例估算），行程规划的里程也走坐标兜底，不做伪精确展示。换乘站与预留换乘节点因站码不同，匹配时以站名兜底。
 
 ## 首末班车
 
@@ -42,7 +42,7 @@
 且**换乘站在每条线各占一行、数值往往不同**（如双丰的卫生间，2 号线在站台层东北、6 号线在站台层东侧），
 故多线换乘站的位置段带线名、彼此不合并。
 
-渲染在共享层 `city/shenyang/shared/facilities.js`（配置驱动），本城只写 `modules/changchun_facilities.js`
+渲染在共享层 `city/shenyang/shared/station/facilities.js`（配置驱动），本城只写 `modules/changchun_facilities.js`
 的类型名与 CGoUI 图标，挂载于「车站信息」页签 order 6。
 
 `staname.csv` 收录 3 条已查证的站名别名——`职业学院` → 职业技术大学（2026-05 官方更名公告）、

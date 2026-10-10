@@ -1,4 +1,4 @@
-/* CGo OpenMap - 站名题字共享样式层 (city/shenyang/shared/calligraphy.css)
+/* CGo OpenMap - 站名题字共享样式层 (city/shenyang/shared/station/calligraphy.css)
  *
  * ⚠️ 临时共享位置
  * 本文件与 calligraphy.js 同址，供多城共用。计划在开发团队确认共享位置后随共享层
@@ -128,7 +128,7 @@ body.sy-calligraphy-active .mobile-top-bar-backdrop {
 
    早先这里是一段纯文字（「投稿给城市主理人 xxx，或加入官方 QQ 交流群 …」），
    联系方式与正文都硬编码在本模块里、也没法一键带走反馈；现在按钮直接打开
-   **共享层的反馈面板**（`shared/exits.js`），正文模板、GitHub / QQ 联系方式
+   **共享层的反馈面板**（`shared/station/exits.js`），正文模板、GitHub / QQ 联系方式
    都收敛到那一处，按钮本身的观感见 exits.css 的 `.cgo-feedback-link`。
    ========================================================================== */
 .sy-cali-note {

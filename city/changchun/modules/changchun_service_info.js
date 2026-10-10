@@ -3,7 +3,7 @@
  *
  * 取数逻辑（季节阈值、四维数据的读取方式）留在本模块；
  * 「归一化行 → HTML」「日期类型判定」「季节与日期类型标签的差异判定」交由共享渲染层
- * 处理（city/shenyang/shared/timetable-renderer.js）。
+ * 处理（city/shenyang/shared/station/timetable-renderer.js）。
  *
  * 时刻数据来自长春轨道交通官网各线路首末班车图（录入于 data_timetable.js）；
  * 官网查询链接仍由 data_timetable.js 中的 GLOBAL_SCHEDULE_DATA 单独维护。

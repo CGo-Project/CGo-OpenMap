@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 沈阳站名题字配置
  *
- * 题字渲染逻辑已抽到共享层 `shared/calligraphy.js`（供多城共用），本文件只保留
+ * 题字渲染逻辑已抽到共享层 `shared/station/calligraphy.js`（供多城共用），本文件只保留
  * 沈阳侧的差异配置：题字数据全局名、header 取色优先级、可读文字色来源，以及
  * 方城地标在染色 header 上换用白色单色版的联动。
  *

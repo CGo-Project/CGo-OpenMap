@@ -2,7 +2,7 @@
  * CGo OpenMap - 长春开通时刻表 (city/changchun/data_opening.js)
  *
  * 记录已确定开通时间的未开通区段与车站；由共享层
- * city/shenyang/shared/opening-schedule.js 在渲染前应用：
+ * city/shenyang/shared/station/opening-schedule.js 在渲染前应用：
  *   - 开通时刻之前：车站保持 type "no"，区段虚线保留，车站面板底部显示倒计时；
  *   - 开通时刻之后：车站转为开通后站型，未开通区段虚线撤销，跨过时刻时页面自动刷新。
  * 未在此登记的未开通车站与区段一律按"永久未开通"处理，不做任何转换。
@@ -37,7 +37,7 @@ const CGO_OPENING_SCHEDULE = [
         // 开通后保留为独立车站（站型由 opensAs 决定），换乘关系登记在 data_virtual_transfers.js。
         //
         // ⚠️ 本表**必须保留**，即便站点数据已写回开通态：
-        //   - 新开通通知（shared/opening-schedule.js 的 getOpenNotices，推送窗口
+        //   - 新开通通知（shared/station/opening-schedule.js 的 getOpenNotices，推送窗口
         //     noticeWindowDays 默认 30 天）与开通前倒计时都以本表为唯一数据源，
         //     删掉条目＝通知与倒计时一起失效；
         //   - 下面的 merge / notOpenLines 现在只是**幂等兜底**：站点数据（data_stations.js

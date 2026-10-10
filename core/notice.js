@@ -284,7 +284,7 @@
     function init() {
         injectNoticeStyles();
 
-        // 合并共享层产出的「新开通线路」通知（见 city/shenyang/shared/opening-schedule.js）：
+        // 合并共享层产出的「新开通线路」通知（见 city/shenyang/shared/station/opening-schedule.js）：
         // 并入 items 后既会走下面的一次性推送，也会出现在「帮助与关于」的公告列表里。
         if (typeof window.CGoOpening?.getOpenNotices === 'function') {
             window.NAL_NOTICE.items = window.NAL_NOTICE.items.concat(window.CGoOpening.getOpenNotices());

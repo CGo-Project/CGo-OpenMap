@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 大连车站设施配置
  *
- * 渲染、开合与来源标注都在共享层 `shared/facilities.js`（多城共用），本文件只声明
+ * 渲染、开合与来源标注都在共享层 `shared/station/facilities.js`（多城共用），本文件只声明
  * 大连的数据在哪、各类设施叫什么、用哪个 CGoUI 图标。
  *
  * 数据：`city/dalian/data_facilities.js`（由 `drunk/tools/facilities/fetch_dalian_facilities.js` 抓取）。

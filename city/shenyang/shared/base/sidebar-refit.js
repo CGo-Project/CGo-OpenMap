@@ -506,6 +506,176 @@
     }
 
     /* ======================================================================
+     * 4. 车站窗口标题栏控件：展开 / 收缩 + 关闭
+     *
+     * 布局模型见 shared/README.md 第六节。核心原本只把整个 .section-header 做成可点的
+     * 切换区（动态区委托 onclick：折叠态点 → selectStation 展开，展开态点 → resetMapState 折叠），
+     * 没有显式的「展开/收缩」与「关闭」。这里补上两个控件：
+     *   · 展开 / 收缩：与核心委托同一套语义（selectStation / resetMapState），故不另造状态；
+     *   · 关闭：把该站从 window.STATION_HISTORY 移除并走核心的退场动画移除节点，
+     *     这是「高度不够时清退窗口」的首选替代——由用户显式决定，而非程序按高度偷删。
+     * ⚠️ 按钮必须 stopPropagation：否则会冒泡到动态区的委托 onclick，一次点击toggle两回。
+     * ==================================================================== */
+
+    /** 标题栏控件的标记属性（同时也是「已装饰」的判据，避免观察器反复处理） */
+    const HCTL_ATTR = "data-cgo-sb-hctl";
+
+    /** 关闭一个车站窗口 */
+    function closeStationSection(section) {
+        const sid = section.dataset.sid;
+        const wasExpanded = !section.classList.contains("collapsed");
+        // ⚠️ 先把 #info-panel 挪出该区块再删节点：核心的 resetMapState() 在固定侧栏下**不会**
+        //    把它收回浮层（只折叠各区块），照旧留在展开区块的 .section-body 里；直接 remove
+        //    会把面板一起删掉，此后点任何车站都再也弹不出详情（实测踩过）。
+        const panel = document.getElementById("info-panel");
+        if (panel && section.contains(panel)) {
+            document.body.appendChild(panel);
+            panel.style.display = "none";
+        }
+        // 同步移出历史，免得核心下次 rebuildSidebarHistory 又把它放回来
+        if (sid && Array.isArray(window.STATION_HISTORY)) {
+            window.STATION_HISTORY = window.STATION_HISTORY.filter((id) => id !== sid);
+        }
+        // 关的是展开中的那个：顺手清掉地图上的选中与高亮
+        if (wasExpanded && typeof window.resetMapState === "function") window.resetMapState();
+        if (!section.isConnected) return;
+        // 沿用核心的退场动画（.history-item-out：左移 + 塌陷）
+        section.classList.add("history-item-out");
+        setTimeout(() => {
+            if (section.isConnected) section.remove();
+        }, REMOVE_ANIMATION_MS);
+    }
+
+    /**
+     * 展开 / 折叠一个常驻「主块」（搜索 / 图例 / 规划行程 / 工具…）。
+     * 若该区块声明了 `data-cgo-high-id`，**展开时走单展开规则**（先收起其它占高区块），
+     * 而不是核心那种纯 toggle —— 否则从标题栏展开时别人不会让位（规则见 README 第六节 6.2）。
+     * 未声明 id 的区块（如核心生成的搜索 / 图例）仍走纯 toggle，它们的互斥由 route-panel 的观察器负责。
+     */
+    function toggleHighSection(section) {
+        const id = section.dataset.cgoHighId;
+        if (id && section.classList.contains("collapsed")) {
+            collapseOthers(id);
+            section.classList.remove("collapsed");
+            return;
+        }
+        section.classList.toggle("collapsed");
+    }
+
+    /** 给一个区块的标题栏补上控件（幂等）：展开/收缩按钮人人有；关闭只给可移除的「临时块」 */
+    function decorateSectionHeader(section) {
+        const header = section.querySelector(":scope > .section-header");
+        if (!header || header.querySelector(`[${HCTL_ATTR}]`)) return;
+        const isStation = section.classList.contains("station-history-section");
+
+        // 声明了 data-cgo-high-id 的区块：核心注入的纯 toggle 会让「展开时不收别人」，故摘掉它，
+        // 改由本模块统一定夺（与下面那枚开关按钮同一套逻辑）
+        if (section.dataset.cgoHighId) {
+            header.onclick = null;
+            header.addEventListener("click", (e) => {
+                if (e.target.closest(`[${HCTL_ATTR}]`)) return;   // 控件自己的点击已在处理
+                toggleHighSection(section);
+            });
+        }
+
+        const box = document.createElement("span");
+        box.className = "cgo-sb-hctl";
+        box.setAttribute(HCTL_ATTR, "");
+
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "cgo-sb-hctl-btn cgo-sb-hctl-toggle";
+        toggle.title = "展开 / 收缩";
+        toggle.setAttribute("aria-label", "展开或收缩该区块");
+        // 两枚图标都放进按钮，由 CSS 按 .collapsed 切换：展开态显示 zoom-out（点它收起）、
+        // 折叠态显示 zoom-in（点它展开）——与地图缩放条同一套图标，观感统一
+        toggle.innerHTML = '<cgo-icon name="zoom-out" size="14"></cgo-icon>'
+            + '<cgo-icon name="zoom-in" size="14"></cgo-icon>';
+        toggle.addEventListener("click", (e) => {
+            e.stopPropagation();   // 别冒泡到核心的标题栏 onclick（否则一次点击切换两回）
+            if (!isStation) {
+                // 常驻主块（搜索 / 图例 / 规划行程 / 工具）：展开时按单展开规则，收起时直接收
+                toggleHighSection(section);
+                return;
+            }
+            // 车站窗口的「展开」要真的把信息板停靠进来，故走核心的同一套语义
+            const sid = section.dataset.sid;
+            if (section.classList.contains("collapsed")) {
+                if (sid && typeof window.selectStation === "function") window.selectStation(sid);
+            } else if (typeof window.resetMapState === "function") {
+                window.resetMapState();
+            }
+        });
+        box.appendChild(toggle);
+
+        // 关闭只给「临时块」：主块是常驻入口，不给关闭
+        if (isStation) {
+            const close = document.createElement("button");
+            close.type = "button";
+            close.className = "cgo-sb-hctl-btn cgo-sb-hctl-close";
+            close.title = "关闭";
+            close.setAttribute("aria-label", "关闭该车站窗口");
+            close.innerHTML = '<cgo-icon name="close" size="14"></cgo-icon>';
+            close.addEventListener("click", (e) => {
+                e.stopPropagation();
+                closeStationSection(section);
+            });
+            box.appendChild(close);
+        }
+
+        header.appendChild(box);
+    }
+
+    function decorateSectionHeaders(scope) {
+        const root = scope && typeof scope.querySelectorAll === "function" ? scope : document;
+        root.querySelectorAll(".panel-section").forEach(decorateSectionHeader);
+    }
+
+    /* ======================================================================
+     * 5. 单展开规则（布局模型见 README 第六节 6.2）：唯一一处实现
+     *
+     * 「展开任一主块 / 临时块 → 收起其余全部」这条规则此前散在三处（核心 dockStationPanel、
+     * route-panel 的互斥观察器、本模块的高度兜底），谁都在写 .collapsed、又都靠观察器猜对方意图。
+     * 现在收敛到这里：**规则只此一处**，其它模块只登记「自己怎么被收起」——
+     * 面板在浮层 / 侧栏两种形态下的收起写法与副作用不同，那份知识必须留在各自的 owner 手里。
+     * ==================================================================== */
+
+    /** id → 收起函数。登记的是「占高区块」；搜索是矮块，不在此列（见 collapseOthers） */
+    const HIGH_SECTIONS = new Map();
+
+    /**
+     * 登记一个占高区块的收起方式（owner 提供；可重复调用，后者覆盖前者）。
+     * @param {string} id 区块标识：plan / legend / result / station
+     * @param {() => void} collapse 收起它
+     */
+    function registerHighSection(id, collapse) {
+        HIGH_SECTIONS.set(id, collapse);
+    }
+
+    /** 收起动态区里的全部车站窗口（临时块） */
+    function collapseStationWindows() {
+        document.querySelectorAll("#sidebar-dynamic-content .station-history-section")
+            .forEach((section) => section.classList.add("collapsed"));
+    }
+
+    /**
+     * 单展开规则：收起除 keepId 之外的**全部占高区块**。
+     * @param {"plan"|"legend"|"result"|"station"} keepId 本轮胜出的那个
+     * 搜索是矮块、不参与单展开；唯一例外是「规划行程与搜索互斥」——keepId 为 plan 时顺带收起它。
+     */
+    function collapseOthers(keepId) {
+        HIGH_SECTIONS.forEach((collapse, id) => {
+            if (id !== keepId) collapse();
+        });
+        if (keepId === "plan") document.getElementById("section-search")?.classList.add("collapsed");
+    }
+
+    // 本模块负责的两个：图例（#legend-content 直接子区块）与临时块（车站窗口）。
+    // plan / result 由 route-panel 在运行期登记（它早于本模块加载，见那边的懒登记）。
+    registerHighSection("legend", () => document.getElementById("section-legend-tree")?.classList.add("collapsed"));
+    registerHighSection("station", collapseStationWindows);
+
+    /* ======================================================================
      * 启动
      * ==================================================================== */
 
@@ -519,12 +689,15 @@
         // 只盯子节点：压扁编号会写内联样式，若连属性一起盯就会自触发
         contentObserver = new MutationObserver(() => {
             decorateSquares(content);
+            // 各区块标题栏的「展开/收缩」（车站窗口另有「关闭」）——核心重建侧栏后要补挂
+            decorateSectionHeaders(content);
             // 侧栏重建（renderLegend → container.innerHTML = …）会连 #sidebar-dynamic-content
             // 一并换掉，顺带把高度兜底的观察器重挂到新节点上
             watchForHistoryContainer();
         });
         contentObserver.observe(content, { childList: true, subtree: true });
         decorateSquares(content);
+        decorateSectionHeaders(content);
     }
 
     function refresh() {
@@ -554,5 +727,5 @@
 
     start();
 
-    window.CGoSidebarRefit = { refresh };
+    window.CGoSidebarRefit = { refresh, registerHighSection, collapseOthers, collapseStationWindows };
 })();

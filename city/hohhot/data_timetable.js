@@ -11,7 +11,7 @@
  * directions[终点站名] = { first, last }；终点站名不含「方向」二字。
  * url（信息板与行程面板「官网查询」按钮的目标）不在表里逐条写，由文件末尾统一按 cn
  * 生成「官网分站点查询」地址，见彼处说明。
- * 渲染走共享层 city/shenyang/shared/timetable-renderer.js（window.CGoTimetable）。
+ * 渲染走共享层 city/shenyang/shared/station/timetable-renderer.js（window.CGoTimetable）。
  */
 
 const GLOBAL_SCHEDULE_DATA = {

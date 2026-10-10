@@ -18,7 +18,7 @@
  *   图上文字可能仍是旧站名，属官网原始状态，此处不改。
  *
  * 由车站设施板块（city/hohhot/modules/hohhot_facilities.js，渲染在共享层
- * city/shenyang/shared/facilities.js）读取：折叠行默认展开、缩略图懒加载
+ * city/shenyang/shared/station/facilities.js）读取：折叠行默认展开、缩略图懒加载
  * （loading="lazy"），点击缩略图在新标签页打开官网原图；图片加载失败即不展示该条目。
  */
 const HOHHOT_STATION_LEVEL_MAP = {

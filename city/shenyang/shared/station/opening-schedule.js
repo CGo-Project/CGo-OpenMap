@@ -1,6 +1,6 @@
 /**
  * CGo OpenMap - 未开通区段与车站的开通时刻共享层
- * (city/shenyang/shared/opening-schedule.js)
+ * (city/shenyang/shared/station/opening-schedule.js)
  *
  * ⚠️ 临时共享位置
  * 本文件与 stacard-engine.js、timetable-renderer.js、tip-card.js、station-title.js

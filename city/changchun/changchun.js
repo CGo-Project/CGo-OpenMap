@@ -71,10 +71,10 @@
         searchCity: "长春",
         center: { x: 1150, y: 950 },
         defaultScale: 0.7,
-        mapSize: { width: 2300, height: 2100 },
+        mapSize: { width: 2650, height: 2100 },
         officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
         LINE_META: {},
-        LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM05", "CCM06", "CCM07", "CCM08"],
+        LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM05", "CCM06", "CCM07", "CCM08", "CCM09"],
         LINE_SYNC_GROUPS: [],
         SUBURBAN_LINES: ["Rwy"],
         /**
@@ -210,7 +210,7 @@
     ];
 
     /**
-     * 出口垂直交通的搬迁声明（共享层 shared/exit-vertical.js 读取）
+     * 出口垂直交通的搬迁声明（共享层 shared/station/exit-vertical.js 读取）
      *
      * 长春设施表里「无障碍电梯 / 升降平台」的位置大多**直接以出口编号开头**
      * （「D口」「B口」「A、C口通道」「A2口升降平台」「DC口(升降平台)」），另有「站外C口」
@@ -291,7 +291,7 @@
         },
         /**
          * 站外换乘的步行时间（分钟）。键为 `起点ID|终点ID`，逐对覆盖共享层的 6 分钟
-         * 默认值（机制见 shared/route-data.js）。
+         * 默认值（机制见 shared/route/route-data.js）。
          *
          * 口径为「出站 → 步行 → 进站 → 到站台」的总时间。2026-10-06 起并入高德地图
          * 步行路径规划：取「出站口 POI → 对方站点」的步行距离 ÷ 60 米/分钟 + 3 分钟
@@ -327,7 +327,7 @@
             "G5401|0507": 4, "0507|G5401": 4
         },
         /**
-         * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route-data.js
+         * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route/route-data.js
          * 的 transferAt。未列出的换乘站用共享层默认值（2 分钟）。
          *
          * 换乘方式有三个来源，逐站交叉核对：
@@ -464,39 +464,54 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261008.220300";
+        const version = "261010.1537";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
-        document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
+        // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
+        document.write(`<script src="./city/shenyang/shared/base/geo-estimate.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
-        document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/viewport-inset.js?v=${version}"><\/script>`);
+        // 移动端抽屉手势仲裁：内容区优先滚动、半屏上滑优先展开（core 零改动，见 shared/base/panel-sheet-gesture.js）
+        document.write(`<script src="./city/shenyang/shared/base/panel-sheet-gesture.js?v=${version}"><\/script>`);
+        // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
+        document.write(`<script src="./city/shenyang/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
-        document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_opening.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
-        document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-data.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-planner.js?v=${version}"><\/script>`);
+        // 移动端抽屉手势引擎（车站详情与行程/结果面板共用；须早于两个消费方）
+        document.write(`<script src="./city/shenyang/shared/base/sheet-drag.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
-        document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
-        document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/sidebar-refit.js?v=${version}"><\/script>`);
         // 地图小工具（票价图 / 等时圈）：入口在「查找最近车站」按钮下方
-        document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/map-tools-color.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/map-tools.js?v=${version}"><\/script>`);
         // 城市私有数据与车站设施（须早于依赖它的模块加载）
         document.write(`<script src="./city/changchun/data_facilities.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_exits.js?v=${version}"><\/script>`);
+        // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
+        document.write(`<script src="./city/changchun/data_hotspots.js?v=${version}"><\/script>`);
         // 出入口垂直交通搬迁：把设施表里以出口开头的「无障碍电梯 / 升降平台」段搬到出口页签下
         // （须早于 facilities.js 与 exits.js，两者都调用它）
-        document.write(`<script src="./city/shenyang/shared/exit-vertical.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/exit-vertical.js?v=${version}"><\/script>`);
         // 车站设施（配置驱动，共享层位于沈阳目录下）
-        document.write(`<script src="./city/shenyang/shared/facilities.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/facilities.js?v=${version}"><\/script>`);
         // 反馈面板（出入口「待补充」与右上角「更多」入口共用；须早于 exits.js）
-        document.write(`<script src="./city/shenyang/shared/feedback.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/feedback/feedback.js?v=${version}"><\/script>`);
         // 车站出入口独立页签：配置驱动，与沈阳、大连同用共享层
-        document.write(`<script src="./city/shenyang/shared/exits.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/exits.js?v=${version}"><\/script>`);
+        // 出入口检索：全局搜索栏与行程规划起终点的出入口命中（须在 exits.js 之后）
+        document.write(`<script src="./city/shenyang/shared/station/exit-search.js?v=${version}"><\/script>`);
         (ChangchunCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/changchun/${scriptPath}?v=${version}"><\/script>`);
         });
@@ -546,5 +561,29 @@
         } else {
             apply();
         }
+    })();
+
+    /**
+     * 龙嘉机场徽标（散布层）的着色样式：底板吃文字色、飞机镂空露地图底色。
+     * 散布层是 <img> 直出 SVG，处于独立文档拿不到页面 CSS 变量（同 RAILWAY_ICON 内联的
+     * 理由），故改为「外层容器吃变量 + SVG 当蒙版」：assets/airport.svg 已重绘为
+     * 「底板挖飞机」的 evenodd 轮廓，容器背景 var(--text-color) 被蒙版裁出底板形状，
+     * 飞机镂空处透明直接露出地图底色——亮暗主题自动跟随。:has 选择器按图片路径精准命中本条目。
+     */
+    (function installAirportBadgeStyle() {
+        if (typeof document === 'undefined' || document.getElementById('cc-airport-badge-style')) return;
+        const style = document.createElement('style');
+        style.id = 'cc-airport-badge-style';
+        style.textContent = [
+            '.scattered-item:has(> img[src*="changchun/assets/airport.svg"]) {',
+            '    background-color: var(--text-color, #00263b);',
+            '    -webkit-mask: url("./city/changchun/assets/airport.svg") center / contain no-repeat;',
+            '    mask: url("./city/changchun/assets/airport.svg") center / contain no-repeat;',
+            '}',
+            '.scattered-item:has(> img[src*="changchun/assets/airport.svg"]) > img {',
+            '    visibility: hidden;',
+            '}'
+        ].join('\n');
+        document.head.appendChild(style);
     })();
 })();

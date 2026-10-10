@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 呼和浩特车站出入口配置
  *
- * 渲染逻辑在共享层 `shared/exits.js`（多城共用），本文件只声明数据在哪与页签叫什么。
+ * 渲染逻辑在共享层 `shared/station/exits.js`（多城共用），本文件只声明数据在哪与页签叫什么。
  * 数据：`city/hohhot/data_exits.js`（来源为中文维基百科各车站条目的「车站出口」章节）。
  *
  * 本城官网「服务设施」只发布车站层级图、没有逐条设施位置数据，故不配 `facilityGlobals`

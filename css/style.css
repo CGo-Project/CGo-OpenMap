@@ -637,6 +637,8 @@ html.nb-fadein #map-content {
 
 [data-theme="dark"] .panel-body {
     --data2: #ffffff;
+    /* 深色下滚动条：浅色写死值（#bdcbd2 #f0f2f5）在暗底上刺眼，改半透明浅滑块 + 透明轨道 */
+    scrollbar-color: rgba(255, 255, 255, 0.32) transparent;
 }
 
 .panel-body::-webkit-scrollbar {
@@ -650,6 +652,19 @@ html.nb-fadein #map-content {
 .panel-body::-webkit-scrollbar-thumb {
     background-color: #bdcbd2;
     border-radius: 3px;
+}
+
+[data-theme="dark"] .panel-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+[data-theme="dark"] .panel-body::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.32);
+    border-radius: 3px;
+}
+
+[data-theme="dark"] .panel-body::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.48);
 }
 
 .info-row {
@@ -1546,8 +1561,7 @@ html.nb-fadein #map-content {
     /* 恢复 padding: Top 0, others kept */
     background-color: var(--card-bg) !important;
     color: var(--text-main) !important;
-    scrollbar-width: thin;
-    scrollbar-color: #bdcbd2 #f0f2f5;
+    /* 滚动条配色由文件前部的 .panel-body 统一给出（含深色分支），此处不再重复写死 */
 }
 
 .panel-footer {

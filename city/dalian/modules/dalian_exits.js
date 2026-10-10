@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 大连车站出入口配置
  *
- * 渲染逻辑在共享层 `shared/exits.js`（多城共用），本文件只声明数据在哪与页签叫什么。
+ * 渲染逻辑在共享层 `shared/station/exits.js`（多城共用），本文件只声明数据在哪与页签叫什么。
  * 数据：`city/dalian/data_exits.js`（由 `drunk/tools/facilities/fetch_dalian_exits.js` 逐站抓取）。
  *
  * 页签声明在 `dalian.js` 的 `stationBoard.tabs` 里（id 必须与共享层模块的 targetTab 一致），

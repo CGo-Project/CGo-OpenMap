@@ -8,6 +8,7 @@ const LEGEND_CONFIG = [
             { targets: ["DLM01"], name: "1号线" },
             { targets: ["DLM02"], name: "2号线" },
             { targets: ["DLM03", "DLM99"], name: "3号线 / 3号线支线" },
+            { targets: ["DLM04"], name: "4号线" },
             { targets: ["DLM05"], name: "5号线" },
             { targets: ["DLM12"], name: "12号线" },
             { targets: ["DLM13"], name: "13号线" }

@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 长春车站设施配置
  *
- * 渲染、逐条开合与来源标注都在共享层 `shared/facilities.js`（多城共用），本文件只声明
+ * 渲染、逐条开合与来源标注都在共享层 `shared/station/facilities.js`（多城共用），本文件只声明
  * 长春的数据在哪、各类设施叫什么、用哪个 CGoUI 图标。
  *
  * 数据：`city/changchun/data_facilities.js`（由 `drunk/tools/facilities/gen_changchun_facilities.js`
@@ -36,7 +36,7 @@
          * 归一化类型 → 展示名与 CGoUI 图标（数据层只存 type 与位置）。
          * 官方把「无障碍电梯 / 升降平台」并在一列，数据层已按官方原文分行拆成两个类型。
          * 饮料 / 文创自动售卖机与充电宝在 CGoUI 里暂无专用图标，按现有图标择近降级为 info。
-         * `tone: "alert"` 是共享层的通用强调位（样式表见 shared/facilities.css）：
+         * `tone: "alert"` 是共享层的通用强调位（样式表见 shared/station/facilities.css）：
          * AED 是急救设备，图标与开合按钮文字转红以便一眼找到。
          */
         types: {

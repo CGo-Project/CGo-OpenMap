@@ -339,7 +339,7 @@ commercialBuilding, dynamicNotice, status（"2" = 暂停使用）, statusStr
     位置段是自由文本、按来源原文逐段保留，不做结构化。
   - `city/dalian/data_exits.js`：`本地车站 ID → [{ name, buses, landmarks, closed }]`；
     官网未覆盖的线路（国铁、有轨电车等）不收录，这些站也就不渲染出入口页签。
-- **渲染**：与沈阳共用共享层 `city/shenyang/shared/facilities.js` 与 `exits.js`
+- **渲染**：与沈阳共用共享层 `city/shenyang/shared/station/facilities.js` 与 `exits.js`
   （配置驱动，样式在同目录 `facilities.css` / `exits.css`，由脚本按自身 URL 注入）。
   - 设施挂在「车站信息」（`station-info`，order 6），配置见
     `city/dalian/modules/dalian_facilities.js`；大连官网没有站内剖面图，故不配 `levelMap`。
@@ -390,10 +390,10 @@ commercialBuilding, dynamicNotice, status（"2" = 暂停使用）, statusStr
   「CE换乘通道(升降平台)」两行），故**按段落归类**：提到升降平台的归升降平台、其余归无障碍电梯，
   共 3 处（吉林大路、解放桥、卫星广场）。
 - **渲染**：`city/changchun/modules/changchun_facilities.js`，注册于 `station-info`（order 6），
-  与沈阳、大连同用共享层 `city/shenyang/shared/facilities.js`。饮料 / 文创自动售卖机与充电宝
+  与沈阳、大连同用共享层 `city/shenyang/shared/station/facilities.js`。饮料 / 文创自动售卖机与充电宝
   在 CGoUI 暂无专用图标，按现有图标择近降级为 `info`；其余用 `toilet` / `baby` / `elevator` /
   `a11yplatform` / `aed` / `camera`。**AED 一行用共享层的 `tone` 强调位**（`tone: "alert"`，
-  样式在 `shared/facilities.css`）：图标与开合按钮文字转红，急救设备一眼可辨。
+  样式在 `shared/station/facilities.css`）：图标与开合按钮文字转红，急救设备一眼可辨。
 - **顺带补的**：`city/changchun/staname.csv`（该城原本没有此文件）收录 3 条已查证的站名别名
   ——`职业学院` → 职业技术大学（2026-05 官方更名公告）、`市委市政府` → 市政府、
   `硅谷广场` → 硅谷广场(吉大中心校区)；并在 `changchun.js` 的 `dataFiles` 里声明了 `stanameCsvUrl`。

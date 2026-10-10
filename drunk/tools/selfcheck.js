@@ -396,6 +396,89 @@ section('车站图元 (core/station-icons.js)');
 }
 
 // ============================================================================
+// 四点十、开通沿革：区段必须拼满、不得留空洞
+// ============================================================================
+// 「发展史动态演示」把 data_opening_history.js 按日期顺序播成生长动画。数据里
+// 少一段或多一段都不报错，只会在动画上表现为「某段凭空长出来」或「某段永远
+// 长不出来」。这里把几条硬约束钉死：
+//   1. 端点必须真实存在于该线站序中，区段在该线站序里必须连续；
+//   2. 同一线路所有 line-open 区段的并集必须构成**连续段**——地铁不会跳站开通，
+//      暂缓开通的单站用 station-open 表达，不加这条就查不出「中间漏了一段」；
+//   3. 该线全部已开通车站（type !== "no"）必须被覆盖，未开通站不得被覆盖；
+//   4. station-open 的车站必须在站序内，且不能仍是 type "no"；
+//   5. rename 的旧名必须已登记为目标站的别名（检索库），否则搜索会失配。
+section('开通沿革时间线');
+{
+    let withHistory = 0;
+    for (const city of cities) {
+        const p = path.join(ROOT, 'city', city, 'data_opening_history.js');
+        if (!fs.existsSync(p)) continue;
+        withHistory++;
+
+        const events = evalData(fs.readFileSync(p, 'utf8'), 'CGO_OPENING_HISTORY');
+        const stations = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
+        const lines = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_lines.js'), 'utf8'), 'linesData');
+        const lineById = {};
+        lines.forEach(l => { lineById[l.id] = l; });
+
+        const bad = [];
+        const byLine = {};   // lineId → Set(被区段覆盖的站)
+        const opened = {};   // stationId → 首次开通日期
+
+        events.forEach((ev, k) => {
+            const where = `#${k + 1} ${ev.date} ${ev.lineId}`;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(ev.date || '')) { bad.push(`${where} 日期格式非法`); return; }
+            const line = lineById[ev.lineId];
+            if (!line) { bad.push(`${where} 线路不存在`); return; }
+            const ids = IO.lineAllStationIds(line);
+
+            if (ev.kind === 'line-open') {
+                const i = ids.indexOf(ev.from), j = ids.indexOf(ev.to);
+                if (i < 0 || j < 0) { bad.push(`${where} 端点 ${ev.from}/${ev.to} 不在站序中`); return; }
+                byLine[ev.lineId] = byLine[ev.lineId] || new Set();
+                ids.slice(Math.min(i, j), Math.max(i, j) + 1).forEach(sid => {
+                    byLine[ev.lineId].add(sid);
+                    if (!opened[sid]) opened[sid] = ev.date;
+                });
+            } else if (ev.kind === 'station-open') {
+                const list = Array.isArray(ev.stations) ? ev.stations : [];
+                if (!list.length) bad.push(`${where} 补开站列表为空`);
+                list.forEach(sid => {
+                    if (!ids.includes(sid)) bad.push(`${where} 补开站 ${sid} 不在站序中`);
+                    else if (stations[sid] && stations[sid].type === 'no') bad.push(`${where} 补开站 ${sid} 仍标记为未开通`);
+                    if (!opened[sid]) opened[sid] = ev.date;
+                });
+            } else if (ev.kind === 'rename') {
+                const hit = Object.values(stations).some(s => s.cn === ev.to
+                    && Array.isArray(s.aliases) && s.aliases.includes(ev.from));
+                if (!hit) bad.push(`${where} 更名「${ev.from}」→「${ev.to}」未在车站数据中闭环`);
+            } else {
+                bad.push(`${where} 未知事件类型 ${ev.kind}`);
+            }
+        });
+
+        Object.keys(byLine).forEach(lineId => {
+            const ids = IO.lineAllStationIds(lineById[lineId]);
+            const idx = ids.map((sid, i) => byLine[lineId].has(sid) ? i : -1).filter(i => i >= 0);
+            if (idx.length && idx[idx.length - 1] - idx[0] !== idx.length - 1) {
+                bad.push(`${lineId} 已开通区段不连续（站序下标 ${idx.join(',')}）`);
+            }
+            const missing = ids.filter(sid => byLine[lineId].has(sid) === false
+                && (!stations[sid] || stations[sid].type !== 'no'));
+            if (missing.length) bad.push(`${lineId} 有 ${missing.length} 座已开通站未被覆盖：${missing.join(',')}`);
+            const hitClosed = ids.filter(sid => byLine[lineId].has(sid)
+                && stations[sid] && stations[sid].type === 'no');
+            if (hitClosed.length) bad.push(`${lineId} 区段覆盖了未开通站：${hitClosed.join(',')}`);
+        });
+
+        check(bad.length === 0, `${city}: ${events.length} 条沿革 · ${Object.keys(byLine).length} 条线路 `
+            + `覆盖 ${Object.keys(opened).length} 座车站，区段连续且拼满`);
+        bad.forEach(msg => check(false, `${city}: ${msg}`));
+    }
+    check(withHistory >= 1, `${withHistory} 座城市登记了开通沿革（其余可选）`);
+}
+
+// ============================================================================
 // 五、识别结果净化器
 // ============================================================================
 section('识别结果净化器');

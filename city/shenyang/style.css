@@ -6,6 +6,13 @@
     z-index: auto;
 }
 
+/* 上面放弃图层隔离后，未开通站图元（core 默认 z=5）会落到线路层（z=10）之下被线体盖住
+   ——沈阳此前没有 type "no" 车站，隐患一直未暴露。这里提到 14：高于线路(10)/未开通
+   芯线层(12)/高亮层(13)，但仍低于 .dot(15)，准换乘孪生处彩色圆点继续压在 ⊘ 之上。 */
+.station.no {
+    z-index: 14;
+}
+
 /* 深色主题下提高沈阳黑色装饰线与地图背景的对比度。 */
 [data-theme="dark"] #scattered-layer img[src$="/backslash.svg"],
 [data-theme="dark"] #scattered-layer img[src$="/slash.svg"],
@@ -93,8 +100,8 @@
     display: block;
 }
 
-/* 站名题字样式已抽到共享层 city/shenyang/shared/calligraphy.css（多城共用），
-   由 shared/calligraphy.js 按自身 URL 推导路径按需注入，本文件不再保留题字规则。 */
+/* 站名题字样式已抽到共享层 city/shenyang/shared/station/calligraphy.css（多城共用），
+   由 shared/station/calligraphy.js 按自身 URL 推导路径按需注入，本文件不再保留题字规则。 */
 
 /* 方城地标（<img> 独立 SVG，拿不到 currentColor）由 shenyang_calligraphy.js 在
    深底题字 header 上直接换用白色单色版 fangcheng_mono.svg，此处不再做滤镜反色。
@@ -136,6 +143,6 @@
     color: inherit;
 }
 
-/* 车站层级图与车站设施的样式已抽到共享层 city/shenyang/shared/facilities.css（多城共用），
-   由 shared/facilities.js 按自身 URL 按需注入，本文件不再保留相关规则。 */
+/* 车站层级图与车站设施的样式已抽到共享层 city/shenyang/shared/station/facilities.css（多城共用），
+   由 shared/station/facilities.js 按自身 URL 按需注入，本文件不再保留相关规则。 */
 

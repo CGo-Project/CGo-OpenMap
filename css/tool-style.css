@@ -1000,6 +1000,15 @@ canvas {
     border-radius: 3px;
 }
 
+/* 深色下黑滑块会隐身，改半透明浅滑块 */
+[data-theme="dark"] .help-container::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.28);
+}
+
+[data-theme="dark"] .help-container::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.44);
+}
+
 .help-header {
     display: flex;
     align-items: center;
