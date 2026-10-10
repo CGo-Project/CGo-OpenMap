@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261010.0075';
+const CACHE_NAME = 'cgo-openmap-v261010.1125';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -137,6 +137,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/data_scattered.js',
     './city/shenyang/data_notopen.js',
     './city/shenyang/data_opening.js',
+    './city/shenyang/data_opening_history.js',
     './city/shenyang/data_legend.js',
     './city/shenyang/data_timetable.js',
     './city/shenyang/shared/route/loop-direction.js',
@@ -188,6 +189,9 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/tools/map-tools.js',
     './city/shenyang/shared/tools/map-tools.js',
     './city/shenyang/shared/tools/map-tools.css',
+    // 线网发展史（沈阳）：按开通沿革把线网逐段「长」出来，作为免选站工具挂进地图小工具
+    './city/shenyang/shared/tools/opening-history.js',
+    './city/shenyang/shared/tools/opening-history.css',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',

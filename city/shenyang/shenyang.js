@@ -573,7 +573,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.0075";
+        const version = "261010.1125";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -626,6 +626,10 @@
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/station/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/data_opening.js?v=${version}"><\/script>`);
+        // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
+        document.write(`<script src="./city/shenyang/data_opening_history.js?v=${version}"><\/script>`);
+        // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
         (ShenyangCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/shenyang/${scriptPath}?v=${version}"><\/script>`);
         });

@@ -231,6 +231,15 @@
     };
 
     /**
+     * 外部注册的「免选站」工具（如 shared/tools/opening-history.js 的线网发展史）。
+     * 它们不需要在地图上点站，故不进 startPick / run 这条链路，由 runAuto 直接挂载正文；
+     * 面板外壳、浮层/侧栏两种形态、返回按钮与关闭收尾全部复用地图小工具这一套，
+     * 注册方只需实现 mount(body) / unmount()。带 when 的工具按可用性动态显示
+     * （如城市没有 data_opening_history.js 时，发展史入口不出现）。
+     */
+    const AUTO_TOOLS = {};
+
+    /**
      * 汇合色标（**两点**口径：以差值 0 为中心的双向色标；三点汇合取它的右半段，见 buildBands）。
      * 中间的黄是"汇合带"（两人用时相等），往两侧先**淡化**（浅粉 / 浅蓝）再**变浓**
      * （深红 / 深蓝）—— 直接从黄插到红会经过一片很脏的橙，先提亮再压深才有过渡感。
@@ -396,7 +405,12 @@
             // 选站期间绝不动内容：那会把 state.picking 清掉（见 closePanel），
             // 用户随后点的车站就变成普通点站、直接打开详情了（实测踩过）
             if (state.picking) return;
-            if (section.classList.contains("collapsed")) return;
+            if (section.classList.contains("collapsed")) {
+                // 折叠区块 = 收起工具。免选站工具（如线网发展史）会接管画布，
+                // 只折叠不收尾会留下「区块空了、底图还被藏着」的状态
+                if (state.tool && AUTO_TOOLS[state.tool]) closePanel();
+                return;
+            }
             if (section.querySelector(".cgo-mt-panel.show")) return;   // 已有内容（开着某一层）
             openTools(state.preset);
         }).observe(section, { attributes: true, attributeFilter: ["class"] });
@@ -537,10 +551,10 @@
         closePanel();
         const el = shell(MENU_ID, "地图小工具", () => hidePanel(MENU_ID));
         el.querySelector(".cgo-mt-body").innerHTML = `
-            <p class="cgo-mt-lead">可选的地图分析小工具。点「开启」后在地图上点选一个车站即可。</p>
+            <p class="cgo-mt-lead">可选的地图分析小工具。点「开启」开始，选站类工具需在地图上点选车站。</p>
             <p class="cgo-mt-note">受 <a href="https://centralgo.site/map" target="_blank" rel="noreferrer">Central Go 地图本体</a><cgo-icon name="external" size="12"></cgo-icon> 启发</p>
             <div class="cgo-mt-list">
-                ${Object.values(TOOLS).map((tool) => `
+                ${Object.values(TOOLS).filter((tool) => !tool.when || tool.when()).map((tool) => `
                     <div class="cgo-mt-item">
                         <span class="cgo-mt-item-icon"><cgo-icon name="${tool.icon}" size="22"></cgo-icon></span>
                         <div class="cgo-mt-item-text">
@@ -570,6 +584,7 @@
     function launchTool(tool, preset) {
         if (!TOOLS[tool]) return;
         hidePanel(MENU_ID);
+        if (AUTO_TOOLS[tool]) { runAuto(tool); return; }
         const picks = presetList(preset);
         if (!picks.length) { startPick(tool); return; }
         if (tool !== "meet") { run(tool, picks[0]); return; }
@@ -581,6 +596,24 @@
     function presetList(preset) {
         return (Array.isArray(preset) ? preset : [preset])
             .filter((sid) => sid && stations()[sid]);
+    }
+
+    /**
+     * 开启「免选站」工具：不点地图，直接把注册方的正文挂进结果小窗。
+     * 复用 PANEL_ID 这层外壳 —— 浮层形态有标题栏与关闭键、固定侧栏形态标题搬进区块标题栏，
+     * 并自动获得「返回工具列表」按钮与尺寸观察；关闭时由 closePanel 调 unmount 收尾。
+     */
+    function runAuto(tool) {
+        const def = AUTO_TOOLS[tool];
+        if (!def) return;
+        closePanel();                       // 收掉上一个工具（含它自己的 unmount）
+        const el = shell(PANEL_ID, def.name, () => closePanel());
+        const body = el.querySelector(".cgo-mt-body");
+        body.innerHTML = "";
+        state.tool = tool;
+        showPanel(PANEL_ID);
+        def.mount?.(body);
+        emit("cgo:map-tools-opened", { tool });
     }
 
     /* ======================================================================
@@ -2270,6 +2303,8 @@
 
     function closePanel() {
         const tool = state.tool;
+        // 免选站工具（如线网发展史）自带的画布叠加层与定时器由注册方自己回收
+        if (tool && AUTO_TOOLS[tool]) AUTO_TOOLS[tool].unmount?.();
         stopPick();
         syncMeetAdd(false);
         hidePanel(PANEL_ID);
@@ -2776,8 +2811,25 @@
     /** 对外接口：供城市侧或后续接入方直接开启某个工具 */
     window.CGoMapTools = {
         open: openTools,
+        /**
+         * 注册一个「免选站」工具（不在地图上点站，直接把正文挂进结果小窗）。
+         * @param {{id:string,icon?:string,name:string,desc?:string,when?:()=>boolean,mount:(body:HTMLElement)=>void,unmount?:()=>void}} def
+         */
+        registerTool: (def) => {
+            if (!def || !def.id || AUTO_TOOLS[def.id]) return;
+            AUTO_TOOLS[def.id] = def;
+            TOOLS[def.id] = {
+                id: def.id,
+                icon: def.icon || "plugin",
+                name: def.name || def.id,
+                desc: def.desc || "",
+                when: def.when,
+                auto: true
+            };
+        },
         openTool: (tool, stationId) => {
             if (!TOOLS[tool]) return;
+            if (AUTO_TOOLS[tool]) { runAuto(tool); return; }
             hidePanel(MENU_ID);
             if (stationId) run(tool, stationId);
             else startPick(tool);

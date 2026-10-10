@@ -43,6 +43,16 @@
 
 `data_timetable.js` 按沈阳地铁官网的线路站序生成 `GLOBAL_SCHEDULE_DATA`，为每个线路/车站组合提供 `stationInfo2` 查询地址。核心信息板会据此统一渲染标准的“官网查询”按钮；首页城市卡片的“官方参考”链接则由城市注册信息中的 `officialMapUrl` 提供，指向沈阳地铁移动端线路查询页。
 
+## 开通沿革（线网发展史）
+
+`data_opening_history.js` 的 `CGO_OPENING_HISTORY` 记录沈阳地铁逐段开通、单站补开与更名的时间线，由共享层 `shared/tools/opening-history.js` 渲染成「地图小工具 → 线网发展史」的动态演示（把线网逐段长出来，可播放 / 跳看任一年份）。
+
+数据只写**端点**：`line-open` 给该段两端站点 ID（中间站由 `data_lines.js` 的 `stationIds` 顺序自动切，接点站与既有区段重叠是正常的），`station-open` 给车站 ID 数组（「暂缓开通」车站的后续补开，以及国铁车站晚于线网投用的情形），`rename` 给旧名与新名（新名须与车站 `cn` 一致、旧名须已登记在该站的 `aliases` 检索库中）。事件在 `data_opening_history.js` 里**按线路分组书写**便于维护，播放顺序由共享层归一成日期升序。
+
+国铁车站（`Rwy` 线路、`type: "rdot"`）按是否登记事件分成两类：**沈阳站**（1899 年始建、1950 年定名）与**沈阳北站**（1990-12-22 新站房投用）都远早于本城线网，**不登记**，共享层把它们当作既有设施全程显示；**沈阳南站**是 2015-09-01 随沈丹高铁同步启用的高铁站，晚于地铁 1、2 号线，故按 `station-open` 单独登记。
+
+新增或修订条目后，`node drunk/tools/selfcheck.js` 会自动校验：端点合法性、区段在站序中的连续性、以及**每条线路所有区段并集必须构成连续段且覆盖该线全部已开通车站**。开通日期以沈阳地铁官网（`symtc.com`）公告与线路百科条目双源互证为准，未经核实的日期不要写入。
+
 ## 车站运营信息
 
 `stacard/data.js` 保存沈阳车站的位置、首末班车和出入口数据，`modules/shenyang_service_info.js` 将这些数据注册为 `shenyang-timetable` StationBoard 模块。城市配置中的 `stationBoard.scripts` 是该城市自定义模块的唯一清单，由 `shenyang.js` 在加载时写入页面。
