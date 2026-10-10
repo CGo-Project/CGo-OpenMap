@@ -1175,7 +1175,7 @@
                 total += exitGateSpec(step.a, gateExit, fromLine)?.minutes || 0;
                 const enterExit = nearestExitToward(step.b, step.a, "entry");
                 // 进站侧是「从口所属线 → 下一程乘车线」，方向与出站侧相反，必须用 entryGateSpec
-                total += enterGateSpec(step.b, enterExit, nextMap.get(step))?.minutes || 0;
+                total += entryGateSpec(step.b, enterExit, nextMap.get(step))?.minutes || 0;
             }
         }
         // 需求变体换乘的差时：transferAt[站].needs[需求] 覆盖默认换乘分钟（未配则无差时，
@@ -1746,7 +1746,7 @@
                 const enterExit = nearestExitToward(step.b, step.a, "entry");
                 if (enterExit) caption += ` · 经 ${boldExitCode(enterExit.name)}进站`;
                 // 进站侧方向相反：口所属线 → 下一程乘车线，用 entryGateSpec（与 gateOverhead 同源）
-                const enterSpec = enterGateSpec(step.b, enterExit, nextLineMap.get(step));
+                const enterSpec = entryGateSpec(step.b, enterExit, nextLineMap.get(step));
                 if (enterSpec) caption += gateNote(enterSpec);
             }
             legs.push(`
