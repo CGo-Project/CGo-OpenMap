@@ -429,7 +429,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.1537";
+        const version = "261011.0007";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
@@ -468,6 +468,10 @@
         document.write(`<script src="./city/dalian/data_exits.js?v=${version}"><\/script>`);
         // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
         document.write(`<script src="./city/dalian/data_hotspots.js?v=${version}"><\/script>`);
+        // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
+        document.write(`<script src="./city/dalian/data_opening_history.js?v=${version}"><\/script>`);
+        // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
         // 车站设施 / 出入口（配置驱动，共享层位于沈阳目录下）
         // 出入口垂直交通：把「站外 X口」这类电梯从设施板块搬到出口页签（须早于下面两者）
         document.write(`<script src="./city/shenyang/shared/station/exit-vertical.js?v=${version}"><\/script>`);

@@ -157,6 +157,8 @@ const stationsData = {
         y: 750,
         cn: "省医院",
         en: "Provincial Hospital",
+        // 工程名（2016 年 8 月全线 77 站正式命名前的暂用名）
+        aliases: ["衡山路"],
         align: "bottom-left"
     },
     "ZJL": {
@@ -224,7 +226,9 @@ const stationsData = {
         x: 540,
         y: 1260,
         cn: "瓦盆窑",
-        en: "Wapengyao",
+        en: "Wapenyao",
+        // 工程名（2016 年定名前按四环北路命名，后取知名度更高的瓦盆窑收费站）
+        aliases: ["四环路"],
         align: "right"
     },
     "TJL": {
@@ -422,6 +426,8 @@ const stationsData = {
         y: 560,
         cn: "市第二医院",
         en: "Second Hospital of Harbin City",
+        // 工程名（3 号线二期东南半环沿红旗大街的暂用名「先锋路」）
+        aliases: ["先锋路"],
         align: "right"
     },
     "DYFJ": {
@@ -543,6 +549,8 @@ const stationsData = {
         y: 780,
         cn: "医大一院群力院区",
         en: "Qunli Hospital, the First Affiliated <br>Hospital of Harbin Medical University",
+        // 工程名（原按路口命名「群力第六大道」）
+        aliases: ["群力第六大道"],
         align: "top-right"
     },
     "KSYGC": {
@@ -551,6 +559,8 @@ const stationsData = {
         y: 920,
         cn: "凯盛源广场",
         en: "Kaishengyuan Plaza",
+        // 曾用名：哈尔滨大街（2017-06-16 以此名开通，2018 年末更名凯盛源广场）
+        aliases: ["哈尔滨大街", "Harbin Street"],
         align: "bottom-left"
     },
     "GNDJ": {
@@ -584,6 +594,8 @@ const stationsData = {
         y: 940,
         cn: "哈西大街",
         en: "Haxi Street",
+        // 工程名（3 号线一期开挖区间名，2016 年定名哈西大街）
+        aliases: ["学府四道街"],
         align: "top"
     },
     "ZYL": {
@@ -616,6 +628,8 @@ const stationsData = {
         y: 940,
         cn: "劳动公园",
         en: "Labor Park",
+        // 曾用名（3 号线二期试验段沿用的规划名「松江生态园」）
+        aliases: ["松江生态园"],
         align: "bottom"
     },
     "JXJ": {

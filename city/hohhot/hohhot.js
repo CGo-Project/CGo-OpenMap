@@ -282,7 +282,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.1537";
+        const version = "261011.0007";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -320,6 +320,10 @@
         document.write(`<script src="./city/hohhot/data_exits.js?v=${version}"><\/script>`);
         // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
         document.write(`<script src="./city/hohhot/data_hotspots.js?v=${version}"><\/script>`);
+        // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
+        document.write(`<script src="./city/hohhot/data_opening_history.js?v=${version}"><\/script>`);
+        // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
         (HohhotCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/hohhot/${scriptPath}?v=${version}"><\/script>`);
         });

@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261010.1537';
+const CACHE_NAME = 'cgo-openmap-v261011.0007';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -338,6 +338,7 @@ const ASSETS_TO_CACHE = [
     './city/dalian/stacard/script.js',
     './city/dalian/data_stations.js',
     './city/dalian/data_lines.js',
+    './city/dalian/data_opening_history.js',
     './city/dalian/data_virtual_transfers.js',
     './city/dalian/data_scattered.js',
     './city/dalian/data_notopen.js',
@@ -470,6 +471,7 @@ const ASSETS_TO_CACHE = [
     './city/hohhot/stacard/script.js',
     './city/hohhot/data_stations.js',
     './city/hohhot/data_lines.js',
+    './city/hohhot/data_opening_history.js',
     './city/hohhot/data_virtual_transfers.js',
     './city/hohhot/data_scattered.js',
     './city/hohhot/data_legend.js',
@@ -518,15 +520,19 @@ const ASSETS_TO_CACHE = [
  * 瞬时堆积几百个文件流，部分请求被浏览器取消后句柄回收不及，直接 EMFILE 打穿服务
  * （2026-10-04 实测：服务端 `Error: EMFILE ... open 'city/hohhot/data_stations.js'` 崩退出，
  *  预缓存随之中断，已 bump 的新资源整批取不到，控制台只留 net::ERR_FAILED）。
- * 故按批推进：批内并行、批间串行并留间隔，瞬时压力从 400+ 降到 4。
+ * 故按批推进：批内并行、批间串行并留间隔，瞬时压力从 400+ 降到 2。
  */
-const PRECACHE_BATCH_SIZE = 4;
+const PRECACHE_BATCH_SIZE = 2;
 /**
  * 批间隔（ms）：让静态服务来得及回收上一批的文件句柄。
- * 400+ 条清单按 4 条一批推进约需 100 批，即使每批等 60ms 也只多花 6 秒左右，
+ * 400+ 条清单按 2 条一批推进约需 200 批，即使每批等 180ms 也只多花半分多钟，
  * 而预缓存在后台进行、不阻塞页面，这点代价换的是本地服务不再被打崩。
+ * ⚠️ 2026-10-10 又崩了一次（`EMFILE ... open 'city/sydney/assets/line/WSA.svg'`）：
+ *    当天连续递增了 4 次版本串，等于让浏览器连着跑 4 轮全量预缓存，光靠限流扛不住。
+ *    根治方向是把预缓存清单缩到「外壳 + 当前城市」（其余城市首访时由 fetch 处理器按需缓存），
+ *    待与上游对齐后再动；在此之前**不要连续 bump 版本串**。
  */
-const PRECACHE_BATCH_GAP_MS = 60;
+const PRECACHE_BATCH_GAP_MS = 180;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

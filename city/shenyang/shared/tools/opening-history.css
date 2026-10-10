@@ -91,26 +91,36 @@
 }
 
 /* ── 换乘站的「以普通站入场」─────────────────────────────────────────
-   该站此刻只通了一条线，还不是换乘站：图元按普通 dot 画（环色取**首条开通线路**
-   的颜色）。标签与呼出线照旧 —— 呼出框是这套图的标签体系，不该因为线路数而跳变。 */
+   该站此刻只通了一条线，还不是换乘站：**原生换乘图元藏起来，换成该城普通站的
+   图元**（由 JS 走 city.renderStationIcon / CGoStationIcons 取真源 HTML 盖上来，
+   环色取**首条开通线路**的颜色）。不在这里另画一个圆 —— 各城普通站画法不同
+   （沈阳线路色环、哈尔滨与大连文字色环、上海短横……），自己画必然和图上其他
+   普通站对不上。标签与呼出线照旧 —— 呼出框是这套图的标签体系，不该因为线路数跳变。 */
 #map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot > svg {
     display: none;
 }
 
-#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot::before {
-    content: "";
+#map-content.cgo-oh-stage #stations-layer .station .cgo-oh-doticon {
     position: absolute;
     left: 50%;
     top: 50%;
     box-sizing: border-box;
     width: 10px;
     height: 10px;
-    margin: -5px 0 0 -5px;
-    border: 1.6px solid var(--cgo-oh-dot, var(--station-stroke, #666));
-    border-radius: 50%;
-    background: var(--map-bg);
+    display: none;
+    pointer-events: none;
     opacity: var(--cgo-oh-pop-alpha, 0);
-    transform: scale(var(--cgo-oh-pop-scale, 0.35));
+    transform: translate(-50%, -50%) scale(var(--cgo-oh-pop-scale, 0.35));
+}
+
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot .cgo-oh-doticon {
+    display: block;
+}
+
+#map-content.cgo-oh-stage #stations-layer .station .cgo-oh-doticon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 /* ── 暂缓开通站：以「未开通」图元入场 ────────────────────────────────
@@ -154,6 +164,19 @@
 #map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-pop {
     display: block;
     opacity: var(--cgo-oh-pop-alpha, 1);
+}
+
+/* ── 拆除（永久闭站）：图元、站名与引线一并隐去 ──────────────────────
+   与上面的「暂缓开通」不同：暂缓 / 闭站只是把图元换成未开通圈（将来还会恢复），
+   拆除（如长春 3 号线原辽宁路站，随东延入地废弃）则**直接从画布上消失**。
+   由 applyFrame 在拆除那一步给三处元素挂上 .cgo-oh-gone；重放 / 回拖时
+   clearMarks 会把类摘掉，站又回来（与其它形态同一套还原机制）。
+   ⚠️ 必须 !important：核心的 `#stations-layer .station` 是 `display: flex`，
+   不带 !important 盖不住；导出时这条规则随样式表内联进每帧 SVG，图元才会一起消失。 */
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-gone,
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-gone,
+#map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-gone {
+    display: none !important;
 }
 
 /* 虚拟换乘（站外连通）连线：两端车站都还没出现在画布上时先不画。
@@ -266,6 +289,22 @@
     line-height: 1.55;
     color: var(--text-main);
     opacity: 0.72;
+}
+
+/* 信息区与导出进度卡同版式：标题 / 描述 / 状态三块 */
+.cgo-oh-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-main);
+}
+
+/* 状态：直接放清单里那两颗计数块（`.cgo-oh-item-add`），这里只管排布 */
+.cgo-oh-status {
+    display: flex;
+    gap: 10px;
+    margin-top: 3px;
 }
 
 /* 统计：摆在进度条上方，先看规模再看进度 */
@@ -507,7 +546,9 @@
    它们已经合成进导出画面里的进度卡（右下角），面板上再放一份既重复又占高度。
    与「清单态」互不干扰 —— 两者都只是把这几块 display:none。 */
 .cgo-oh.is-export .cgo-oh-now,
+.cgo-oh.is-export .cgo-oh-title,
 .cgo-oh.is-export .cgo-oh-desc,
+.cgo-oh.is-export .cgo-oh-status,
 .cgo-oh.is-export .cgo-oh-sum,
 .cgo-oh.is-export .cgo-oh-track {
     display: none;

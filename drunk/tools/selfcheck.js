@@ -403,10 +403,14 @@ section('车站图元 (core/station-icons.js)');
 // 长不出来」。这里把几条硬约束钉死：
 //   1. 端点必须真实存在于该线站序中，区段在该线站序里必须连续；
 //   2. 同一线路所有 line-open 区段的并集必须构成**连续段**——地铁不会跳站开通，
-//      暂缓开通的单站用 station-open 表达，不加这条就查不出「中间漏了一段」；
+//      暂缓开通的单站用 station-state{open} 表达，不加这条就查不出「中间漏了一段」；
 //   3. 该线全部已开通车站（type !== "no"）必须被覆盖，未开通站不得被覆盖；
-//   4. station-open 的车站必须在站序内，且不能仍是 type "no"；
-//   5. rename 的旧名必须已登记为目标站的别名（检索库），否则搜索会失配。
+//   4. station-state{open} 的车站必须在站序内，且不能仍是 type "no"；
+//   5. rename 的旧名必须已登记为目标站的别名（检索库），否则搜索会失配；
+//   6. station-state{suspended|removed} 的车站必须在站序内（interchange 还须是 tsf 换乘站）；
+//   7. line-state 的端点必须在站序内（区段收缩侧只校验端点，不参与「拼满」判定）；
+//   8. 状态取值白名单：station-state ∈ open/suspended/removed/interchange、
+//      line-state ∈ suspended/removed —— 拼错一个值会静默失效，必须当错误拦下。
 section('开通沿革时间线');
 {
     let withHistory = 0;
@@ -422,8 +426,36 @@ section('开通沿革时间线');
         lines.forEach(l => { lineById[l.id] = l; });
 
         const bad = [];
-        const byLine = {};   // lineId → Set(被区段覆盖的站)
+        const byLine = {};
+        const endsByLine = {};   // lineId → Set(区段端点站 ID)
         const opened = {};   // stationId → 首次开通日期
+        const renameChains = {};   // stationId → [{ from, to, date, where }]：一站的更名链
+
+        /**
+         * 一个区段覆盖的站点集合。
+         * 非环线取两端之间的站序区间；环线取站序更短的那条弧 —— 必须与共享层
+         * opening-history.js 里 arcOf() 同口径，否则同一段数据在自检与播放
+         * 中会各算一套（如哈尔滨 3 号线「医大二院 → 太平桥」在站序里要绕缝）。
+         */
+        const coverOf = (line, ids, from, to) => {
+            const i = ids.indexOf(from), j = ids.indexOf(to);
+            if (i < 0 || j < 0) return null;
+            const n = ids.length, out = new Set();
+            if (line.isLoop && n > 1) {
+                const fwd = ((j - i) % n + n) % n;
+                if (fwd === 0) { out.add(ids[i]); return out; }
+                if (fwd <= n - fwd) for (let k = 0; k <= fwd; k++) out.add(ids[(i + k) % n]);
+                else for (let k = 0; k <= n - fwd; k++) out.add(ids[((i - k) % n + n) % n]);
+            } else {
+                for (let k = Math.min(i, j); k <= Math.max(i, j); k++) out.add(ids[k]);
+            }
+            return out;
+        };
+
+        // 事件契约：几何 / 标签类专属 kind，状态类归一成两个 `*-state`（取值白名单在此把关，
+        // 数据侧拼错一个 state 会静默失效，必须当错误拦下）。见共享层 README「线网发展史」一节。
+        const STATION_STATES = ['open', 'suspended', 'removed', 'interchange'];
+        const LINE_STATES = ['suspended', 'removed'];
 
         events.forEach((ev, k) => {
             const where = `#${k + 1} ${ev.date} ${ev.lineId}`;
@@ -433,42 +465,135 @@ section('开通沿革时间线');
             const ids = IO.lineAllStationIds(line);
 
             if (ev.kind === 'line-open') {
-                const i = ids.indexOf(ev.from), j = ids.indexOf(ev.to);
-                if (i < 0 || j < 0) { bad.push(`${where} 端点 ${ev.from}/${ev.to} 不在站序中`); return; }
+                // 一条事件可带多段（ev.segments: [{from,to}, …]）：环线同一天开通的两段弧、
+                // 或一条线一周内补全的几处区间，共用一条事件、同一开通日期
+                const spec = (Array.isArray(ev.segments) && ev.segments.length)
+                    ? ev.segments : [{ from: ev.from, to: ev.to }];
+                const cover = new Set();
+                const ends = endsByLine[ev.lineId] = endsByLine[ev.lineId] || new Set();
+                let ok = true;
+                spec.forEach(sp => {
+                    ends.add(sp.from); ends.add(sp.to);
+                    const hit = coverOf(line, ids, sp.from, sp.to);
+                    if (!hit) { bad.push(`${where} 端点 ${sp.from}/${sp.to} 不在站序中`); ok = false; return; }
+                    hit.forEach(sid => cover.add(sid));
+                });
+                if (!ok) return;
                 byLine[ev.lineId] = byLine[ev.lineId] || new Set();
-                ids.slice(Math.min(i, j), Math.max(i, j) + 1).forEach(sid => {
+                cover.forEach(sid => {
                     byLine[ev.lineId].add(sid);
-                    if (!opened[sid]) opened[sid] = ev.date;
+                    if (!opened[sid] || ev.date < opened[sid]) opened[sid] = ev.date;
                 });
-            } else if (ev.kind === 'station-open') {
+            } else if (ev.kind === 'line-state') {
+                // 区段状态（停运 / 移除）：端点必须落在站序里，但**不计入「已开通区段拼满」**
+                // —— 它是开通的对偶（收缩侧），只会把已开通的段收回去，不会让线网多出一段。
+                if (!LINE_STATES.includes(ev.state)) { bad.push(`${where} 未知线路状态 ${ev.state}`); return; }
+                const spec = (Array.isArray(ev.segments) && ev.segments.length)
+                    ? ev.segments : [{ from: ev.from, to: ev.to }];
+                spec.forEach(sp => {
+                    if (!coverOf(line, ids, sp.from, sp.to)) bad.push(`${where} 端点 ${sp.from}/${sp.to} 不在站序中`);
+                });
+            } else if (ev.kind === 'station-state') {
+                if (!STATION_STATES.includes(ev.state)) { bad.push(`${where} 未知车站状态 ${ev.state}`); return; }
                 const list = Array.isArray(ev.stations) ? ev.stations : [];
-                if (!list.length) bad.push(`${where} 补开站列表为空`);
-                list.forEach(sid => {
-                    if (!ids.includes(sid)) bad.push(`${where} 补开站 ${sid} 不在站序中`);
-                    else if (stations[sid] && stations[sid].type === 'no') bad.push(`${where} 补开站 ${sid} 仍标记为未开通`);
-                    if (!opened[sid]) opened[sid] = ev.date;
-                });
+                if (ev.state === 'open') {
+                    if (!list.length) bad.push(`${where} 补开站列表为空`);
+                    list.forEach(sid => {
+                        if (!ids.includes(sid)) bad.push(`${where} 补开站 ${sid} 不在站序中`);
+                        else if (stations[sid] && stations[sid].type === 'no') bad.push(`${where} 补开站 ${sid} 仍标记为未开通`);
+                        if (!opened[sid] || ev.date < opened[sid]) opened[sid] = ev.date;
+                    });
+                } else if (ev.state === 'interchange') {
+                    // 站内换乘启用日：只写车站（必须是该线站序里的换乘站）——它不改线路拓扑，
+                    // 也不参与「已开通区段拼满」的判定，只是让共享层在此时刻之前压住换乘图元。
+                    if (!list.length) bad.push(`${where} 换乘启用站列表为空`);
+                    // 一条换乘启用事件可以横跨几条线（同日同批开通站内换乘），故只校验「在各线的站序里」，
+                    // 不再要求落在事件自己的 lineId 那条线上。
+                    const inAnyLine = (sid) => Object.keys(byLine).some(lid => IO.lineAllStationIds(lineById[lid]).includes(sid));
+                    list.forEach(sid => {
+                        if (!inAnyLine(sid)) bad.push(`${where} 换乘启用站 ${sid} 不在任何线路站序中`);
+                        else if (stations[sid] && stations[sid].type !== 'tsf') bad.push(`${where} 换乘启用站 ${sid} 并非换乘站`);
+                    });
+                } else {
+                    // suspended（停运）/ removed（拆除）
+                    if (!list.length) bad.push(`${where} 闭站站列表为空`);
+                    list.forEach(sid => { if (!ids.includes(sid)) bad.push(`${where} 闭站站 ${sid} 不在站序中`); });
+                }
             } else if (ev.kind === 'rename') {
-                const hit = Object.values(stations).some(s => s.cn === ev.to
-                    && Array.isArray(s.aliases) && s.aliases.includes(ev.from));
-                if (!hit) bad.push(`${where} 更名「${ev.from}」→「${ev.to}」未在车站数据中闭环`);
+                // 更名可以是「旧名 → 中间名 → … → 现名」的**链**：目标站按 ev.sid 指定，
+                // 或按「现名 / 曾用名」反查（兼容只有 from / to 的老数据）；
+                // 旧名必须已登记为该站 aliases 检索库里的别名。链的连续性在下面统一校验。
+                // 一条事件也可以带多对（`ev.renames: [{sid, from, to}, …]`），逐对走同样校验。
+                const specs = (Array.isArray(ev.renames) && ev.renames.length) ? ev.renames : [ev];
+                specs.forEach(spec => {
+                const evx = Object.assign({}, ev, spec);
+                const sid = evx.sid && stations[evx.sid] ? evx.sid
+                    : Object.keys(stations).find(k => stations[k].cn === evx.to
+                        || (Array.isArray(stations[k].aliases) && stations[k].aliases.includes(evx.to)));
+                if (!sid) { bad.push(`${where} 更名「${evx.from}」→「${evx.to}」找不到对应车站`); return; }
+                if (!Array.isArray(stations[sid].aliases)
+                    || (!stations[sid].aliases.includes(evx.from) && stations[sid].cn !== evx.from)) {
+                    bad.push(`${where} 更名「${evx.from}」→「${evx.to}」的旧名未登记为 ${sid} 的别名`);
+                }
+                renameChains[sid] = renameChains[sid] || [];
+                // 链要按**日期**排（不是文件顺序）：一条事件可以带多对更名，且批次事件的书写位置
+                // 未必与日期同序，最早的那次更名必须排在链首，连续性校验才成立。
+                const ch = renameChains[sid];
+                const item = { from: evx.from, to: evx.to, date: ev.date, where: where };
+                let at = ch.length;
+                while (at > 0 && ch[at - 1].date > item.date) at--;
+                ch.splice(at, 0, item);
+                });
             } else {
                 bad.push(`${where} 未知事件类型 ${ev.kind}`);
             }
         });
 
+        // 更名必须发生在**该站开通之后**：开通前改名只是「工程名 / 规划名 → 正式名」，
+        // 旧名从未对外运营，不该作为沿革事件（动画里也看不到它）。等全部事件跑完再判，
+        // 因为车站的开通日期可能由排在更名之后的事件给出。
+        // 顺便校验更名链本身：多次更名必须首尾相接，且最后一次的「新名」就是该站的现名。
+        Object.keys(renameChains).forEach(sid => {
+            const chain = renameChains[sid];
+            chain.forEach(r => {
+                if (opened[sid] && opened[sid] > r.date) {
+                    bad.push(`更名「${r.from}」→「${r.to}」(${r.date}) 早于该站开通 (${opened[sid]})`);
+                }
+            });
+            for (let i = 1; i < chain.length; i++) {
+                if (chain[i].from !== chain[i - 1].to) {
+                    bad.push(`${chain[i].where} 更名链断裂：「${chain[i - 1].to}」≠「${chain[i].from}」`);
+                }
+            }
+            // 链上每个名字都必须是该站的「现名或已登记别名」——防止写错站名 / 把链挂错站。
+            // ⚠️ 不强制「末端必须是现名」：现名若又改过一次、而那次更名还没查到生效日，
+            //    链条就只能先停在中间名上（长春「职业学院 → 职业技术大学」即此例）。
+            const known = new Set([stations[sid].cn].concat(stations[sid].aliases || []));
+            chain.forEach(r => {
+                if (!known.has(r.to)) {
+                    bad.push(`${r.where} 更名「${r.from}」→「${r.to}」的新名不是 ${sid} 的现名或别名`);
+                }
+            });
+        });
+
         Object.keys(byLine).forEach(lineId => {
-            const ids = IO.lineAllStationIds(lineById[lineId]);
-            const idx = ids.map((sid, i) => byLine[lineId].has(sid) ? i : -1).filter(i => i >= 0);
+            const allIds = IO.lineAllStationIds(lineById[lineId]);
+            // 「已开通区段连续」的判定先剔除未开通站（type "no"）：它们夹在已开通站
+            // 中间完全正常（如长春 5 号线的 0508），按原数组下标判会把整条线误判为断裂
+            const openIds = allIds.filter(sid => !stations[sid] || stations[sid].type !== 'no');
+            const idx = openIds.map((sid, i) => byLine[lineId].has(sid) ? i : -1).filter(i => i >= 0);
             if (idx.length && idx[idx.length - 1] - idx[0] !== idx.length - 1) {
                 bad.push(`${lineId} 已开通区段不连续（站序下标 ${idx.join(',')}）`);
             }
-            const missing = ids.filter(sid => byLine[lineId].has(sid) === false
-                && (!stations[sid] || stations[sid].type !== 'no'));
+            const missing = openIds.filter(sid => byLine[lineId].has(sid) === false);
             if (missing.length) bad.push(`${lineId} 有 ${missing.length} 座已开通站未被覆盖：${missing.join(',')}`);
-            const hitClosed = ids.filter(sid => byLine[lineId].has(sid)
+            // 区段**端点**必须是已开通站（端点落在未开通站＝在宣称它已开通）；
+            // 而区段**穿过**未开通站是允许的：暂缓站（长春 5 号线 0508、沈阳 9 号线皇姑屯一类）
+            // 就是线路从其站厅通过并运营、站点本身等到补开日才投用 —— 线条不该为此断开。
+            const ends = endsByLine[lineId] || new Set();
+            const hitClosed = allIds.filter(sid => byLine[lineId].has(sid) && ends.has(sid)
                 && stations[sid] && stations[sid].type === 'no');
-            if (hitClosed.length) bad.push(`${lineId} 区段覆盖了未开通站：${hitClosed.join(',')}`);
+            if (hitClosed.length) bad.push(`${lineId} 区段端点落在未开通站上：${hitClosed.join(',')}`);
         });
 
         check(bad.length === 0, `${city}: ${events.length} 条沿革 · ${Object.keys(byLine).length} 条线路 `
