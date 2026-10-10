@@ -109,6 +109,7 @@
         exportImgCache: new Map(), // 导出用：外部图片 → data URL
         exporting: false,   // 是否正在导出视频（导出期间锁住实时播放那几枚控件）
         exportCancelled: false,
+        exportGen: 0,       // 导出代次：关面板 / 重开时 +1，让在飞的旧导出自行作废
         muxerLoading: null, // mp4-muxer 的按需加载 Promise（同一份只注入一次）
         exportTheme: null,  // 导出用：从 DOM 算好的主题色（画布读不到 CSS 变量）
         exportMark: null,   // 导出用：水印左侧的 CGo 小图标（栅格化后的 <img>，取不到则只留文字）
@@ -544,9 +545,10 @@
         popScaleLimit();
         const prev = state.prevView;
         state.prevView = null;
+        // 原样还原接管前的 x / y / scale 三项。早先只还原缩放再 centerMap()，等于回城市默认中心——
+        // 用户先拖到某片区域再打开演示，关掉后镜头就丢了（上游审查意见 #3）。
         if (prev && window.setMapView) {
-            window.setMapView({ scale: prev.scale });
-            window.centerMap?.();   // 回到城市初始取景
+            window.setMapView({ x: prev.x, y: prev.y, scale: prev.scale });
         }
     }
 
@@ -1829,7 +1831,7 @@
     const GLASS_DS = 0.5;
 
     let glassScratch = null;
-    function paintGlass(ctx2d, cw, ch, x, y, w, h, r, blur) {
+    function paintGlass(ctx2d, cw, ch, x, y, w, h, r, blur, fade) {
         const P = Math.ceil(blur * 2) + 2;
         const sx = Math.max(0, Math.round(x - P)), sy = Math.max(0, Math.round(y - P));
         const ex = Math.min(cw, Math.round(x + w + P)), ey = Math.min(ch, Math.round(y + h + P));
@@ -1849,8 +1851,9 @@
         tc.filter = "none";
 
         // 投影（对齐 --glass-shadow 的 0 8px 24px；半径收着给，太大很费且看不出差别）
+        // ⚠️ 阴影不吃 globalAlpha，淡出时得把 alpha 直接揉进 shadowColor
         ctx2d.save();
-        ctx2d.shadowColor = "rgba(0,38,59,0.16)";
+        ctx2d.shadowColor = "rgba(0,38,59," + (0.16 * fade).toFixed(3) + ")";
         ctx2d.shadowBlur = Math.max(8, blur * 0.6);
         ctx2d.shadowOffsetY = Math.max(4, blur * 0.25);
         roundRect(ctx2d, x, y, w, h, r);
@@ -1860,6 +1863,7 @@
 
         // 糊好的底（放大贴回）+ 衬底（对齐 --glass-bg-panel）
         ctx2d.save();
+        ctx2d.globalAlpha = fade;
         roundRect(ctx2d, x, y, w, h, r);
         ctx2d.clip();
         ctx2d.drawImage(tmp, 0, 0, tw, th, sx, sy, sw, sh);
@@ -1869,6 +1873,7 @@
 
         // 0.5px 外圈 + 顶部 1px 微光圈（`.glass-panel::before` 的简化）
         ctx2d.save();
+        ctx2d.globalAlpha = fade;
         ctx2d.lineWidth = 1;
         ctx2d.strokeStyle = "rgba(0,0,0,0.07)";
         roundRect(ctx2d, x + 0.5, y + 0.5, w - 1, h - 1, r);
@@ -1882,6 +1887,20 @@
     }
 
     /**
+     * 收尾那拍「缩到全图」时把进度卡淡出：全图是主画面，卡再杵着就挡景了。
+     * 淡出窗口取全图那一拍的**运镜时长**（`whole.from → whole.headEnd`），镜头缩、卡同步消；
+     * 之后的停驻期一直是 0。更名换字那类的中间步骤不受影响（整段都是 1）。
+     */
+    function cardAlphaAt(t) {
+        const tl = state.timeline;
+        if (!tl || !tl.whole) return 1;
+        const w = tl.whole;
+        if (t < w.from) return 1;
+        const span = Math.max(1, w.headEnd - w.from);
+        return Math.max(0, 1 - (t - w.from) / span);
+    }
+
+    /**
      * 把进度卡画到画面指定角落（`state.cardPos` = tl / tr / bl / br / off）。
      * 取值与面板**同源**（panelModel），所以视频里的数字与面板逐帧一致。
      * @param {number} k 可见视口 → 输出画面的放大系数（玻璃模糊半径按它换算）
@@ -1889,6 +1908,8 @@
     function drawCard(ctx2d, cw, ch, t, k) {
         const pos = state.cardPos;
         if (!pos || pos === "off") return;
+        const fade = cardAlphaAt(t);
+        if (fade <= 0.01) return;   // 已淡尽：整块别画（也省掉玻璃那笔开销）
         const th = state.exportTheme || {};
         const fam = th.font || "sans-serif";
         const m = panelModel(t, recAt(t));
@@ -1903,11 +1924,12 @@
         const y = (pos === "bl" || pos === "br") ? ch - CARD.margin - H : CARD.margin;
 
         paintGlass(ctx2d, cw, ch, x, y, W, H, CARD.radius,
-            Math.max(6, Math.min(30, (th.glassBlur || 14) * (k || 1))));
+            Math.max(6, Math.min(30, (th.glassBlur || 14) * (k || 1))), fade);
 
         ctx2d.save();
         ctx2d.textAlign = "left";
         ctx2d.textBaseline = "top";
+        ctx2d.globalAlpha = fade;   // 卡面已淡出多少，里面的字就跟着淡多少
 
         let cy = y + PAD;
         // 日期 + 类型徽标
@@ -1926,17 +1948,17 @@
 
         // 说明
         ctx2d.font = "400 " + F(14) + "px " + fam;
-        ctx2d.globalAlpha = 0.72;
+        ctx2d.globalAlpha = 0.72 * fade;
         ctx2d.fillStyle = th.text || "#222";
         descLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += F(20); });
-        ctx2d.globalAlpha = 1;
+        ctx2d.globalAlpha = fade;
         cy += F(8);
 
         // 规模
         ctx2d.font = "400 " + F(13) + "px " + fam;
-        ctx2d.globalAlpha = 0.62;
+        ctx2d.globalAlpha = 0.62 * fade;
         ctx2d.fillText(`线路 ${m.lines} 条 · 车站 ${m.stations} 座 · 里程 ${m.mileage.toFixed(1)} km`, x + PAD, cy);
-        ctx2d.globalAlpha = 1;
+        ctx2d.globalAlpha = fade;
         cy += F(18) + F(12);
 
         // 进度条
@@ -2184,6 +2206,11 @@
      */
     async function runExport(from, to) {
         if (state.exporting) return;
+        // ⚠️ 代次令牌：`state` 是本模块单例，导出期间把面板关掉再打开时，
+        //    在飞的旧导出会继续往**新面板**上写状态、还会把画面落位（把新实例的镜头拽走）。
+        //    unmount 里 +1 即可让它下一拍自行收手（上游审查意见 #4）。
+        const gen = ++state.exportGen;
+        const alive = () => gen === state.exportGen;
         state.exporting = true;
         state.exportCancelled = false;
         // 导出与 rAF 会抢同一条时间线：先把实时播放停干净
@@ -2198,6 +2225,7 @@
             if (!(await canEncode())) {
                 throw new Error("当前浏览器不支持 WebCodecs H.264 编码，请用较新版 Chrome / Edge");
             }
+            if (!alive()) return;
             setExportStatus("准备资源…");
             // 起点画面：from>0 时先补出「之前已开通」的全部线网与车站
             if (from > 0) jumpTo(from - 1);
@@ -2231,7 +2259,7 @@
             const dt = 1000 / EXPORT.fps;
             const frames = Math.max(1, Math.ceil(total / dt));
             for (let i = 0; i <= frames; i++) {
-                if (state.exportCancelled) break;
+                if (!alive() || state.exportCancelled) break;
                 if (encError) throw encError;
                 const t = Math.min(total, i * dt);
                 applyFrame(t);
@@ -2243,13 +2271,15 @@
                 encoder.encode(frame, { keyFrame: i % (EXPORT.fps * 2) === 0 });
                 frame.close();
                 // 背压：待编码帧堆太多会把内存打爆，超阈值就等一会儿
-                while (encoder.encodeQueueSize > 8 && !state.exportCancelled && !encError) {
+                while (encoder.encodeQueueSize > 8 && alive() && !state.exportCancelled && !encError) {
                     await new Promise((r) => setTimeout(r, 4));
                 }
+                if (!alive()) break;
                 setExportProgress(i + 1, frames + 1);
                 if (i % 4 === 0) await new Promise((r) => setTimeout(r, 0));  // 定期让出主线程
             }
             if (encError) throw encError;
+            if (!alive()) return;
 
             if (state.exportCancelled) {
                 setExportStatus("已取消");
@@ -2268,18 +2298,20 @@
             }));
         } catch (e) {
             console.error("[线网发展史] 导出失败：", e);
-            setExportStatus("导出失败：" + (e && e.message ? e.message : e), true);
+            if (alive()) setExportStatus("导出失败：" + (e && e.message ? e.message : e), true);
         } finally {
             if (encoder) { try { encoder.close(); } catch (e) { /* 已关闭或未配置 */ } }
-            // 取消时画面可能停在半截弹出上：按时间轴末尾落定一次。
-            // ⚠️ 面板已被关掉（unmount 已 exitStage 把取景还原）时不能再落位，否则镜头会被重新拽走
-            if (state.timeline && state.els) {
-                try { applyFrame(state.timeline.total, true); } catch (e) { /* 忽略 */ }
-                state.index = to;
-                state.tCur = state.timeline.total;
+            // 面板已被关掉 / 已换新实例（代次变了）时，什么都不碰：旧实例的落位会把新实例的镜头拽走
+            if (alive()) {
+                // 取消时画面可能停在半截弹出上：按时间轴末尾落定一次
+                if (state.timeline && state.els) {
+                    try { applyFrame(state.timeline.total, true); } catch (e) { /* 忽略 */ }
+                    state.index = to;
+                    state.tCur = state.timeline.total;
+                }
+                state.exporting = false;
+                syncExportUI();
             }
-            state.exporting = false;
-            syncExportUI();
         }
     }
 
@@ -2508,6 +2540,7 @@
 
     function unmount() {
         state.exportCancelled = true;   // 关面板即中止正在进行的导出
+        state.exportGen++;              // 代次 +1：在飞的旧导出彻底作废（不再碰面板、不落位）
         clearTimers();
         unwatchPinned();
         state.playing = false;

@@ -1064,11 +1064,13 @@
         let exits = exitsApi()?.exitsById?.(fromSid) || [];
         const target = coordOfStation(toSid);
         const [tx, ty] = String(target || "").split(",").map(Number);
-        if (!exits.length || !Number.isFinite(tx)) return null;
+        // 两侧都要校验：坐标串缺项时 Number("") 会变成 0，只判 tx 会让「另一半缺失」的站
+        // 悄悄拿 (0,0) 当参照，算出一堆看似有效的距离
+        if (!exits.length || !Number.isFinite(tx) || !Number.isFinite(ty)) return null;
         const scored = [];
         for (const exit of exits) {
             const [x, y] = String(exit.pos || "").split(",").map(Number);
-            if (!Number.isFinite(x)) continue;
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
             scored.push({ exit, dist: (x - tx) ** 2 + (y - ty) ** 2 });
         }
         if (!scored.length) return null;
@@ -1148,16 +1150,20 @@
     }
 
     /**
-     * 出入口站内换乘折算进总用时的分钟数：进站条（地标场景）、终点出站条（地标场景）
+     * 出入口站内换乘折算进总用时的分钟数：进站条、终点出站条
      * 与各出站换乘口（出站侧 + 进站侧，与步骤区标注一一对应，标注出现在哪时间就加在哪）。
      */
     function gateOverhead(route) {
         if (!exitsApi()) return 0;
         let total = 0;
-        if (state.fromExit && state.fromExitLandmark) {
+        // ⚠️ 只看「有没有选口」，**不看地标来源**：进站条 / 出站条的跨线说明只要选了口就出
+        //    （见 showExitLeg），总用时必须照此计入。早先多挂了一个 `&& …Landmark`，
+        //    而手动挑口会清掉地标来源（见口菜单点击处），于是出现「步骤里写了约 1 分钟、
+        //    总用时却没加」的口径分裂。
+        if (state.fromExit) {
             total += entryGateSpec(state.from, exitOf(state.from, state.fromExit), firstRideLineId(route))?.minutes || 0;
         }
-        if (state.toExit && state.toExitLandmark) {
+        if (state.toExit) {
             total += exitGateSpec(state.to, exitOf(state.to, state.toExit), lastRideLineId(route))?.minutes || 0;
         }
         let fromLine = null;
@@ -1168,7 +1174,8 @@
                 const gateExit = nearestExitToward(step.a, step.b, "exit");
                 total += exitGateSpec(step.a, gateExit, fromLine)?.minutes || 0;
                 const enterExit = nearestExitToward(step.b, step.a, "entry");
-                total += exitGateSpec(step.b, enterExit, nextMap.get(step))?.minutes || 0;
+                // 进站侧是「从口所属线 → 下一程乘车线」，方向与出站侧相反，必须用 entryGateSpec
+                total += enterGateSpec(step.b, enterExit, nextMap.get(step))?.minutes || 0;
             }
         }
         // 需求变体换乘的差时：transferAt[站].needs[需求] 覆盖默认换乘分钟（未配则无差时，
@@ -1738,7 +1745,8 @@
                 if (spec) caption += gateNote(spec);
                 const enterExit = nearestExitToward(step.b, step.a, "entry");
                 if (enterExit) caption += ` · 经 ${boldExitCode(enterExit.name)}进站`;
-                const enterSpec = exitGateSpec(step.b, enterExit, nextLineMap.get(step));
+                // 进站侧方向相反：口所属线 → 下一程乘车线，用 entryGateSpec（与 gateOverhead 同源）
+                const enterSpec = enterGateSpec(step.b, enterExit, nextLineMap.get(step));
                 if (enterSpec) caption += gateNote(enterSpec);
             }
             legs.push(`
