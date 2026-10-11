@@ -44,6 +44,8 @@
     const ON_CLASS = "cgo-oh-on";           // 虚拟换乘连线：该条两端都通了，可以画
     const ALWAYS_CLASS = "cgo-oh-always";   // 没有开通记录的国铁站：全程固定显示
     const GONE_CLASS = "cgo-oh-gone";       // 已拆除车站：图元、站名与引线一并隐去（永久闭站）
+    const HOST_CLASS = "cgo-oh-host-off";   // 出站换乘期：主点让位（该站此刻只由幽灵点呈现）
+    const DUP_LABEL_CLASS = "cgo-oh-dup-label"; // 同一站的两个幽灵点同名：只留一个站名标签
     const BODY_CLASS = "cgo-oh-body";       // 挂到面板正文上：交给本模块管滚动
 
     /**
@@ -57,6 +59,10 @@
     const POP_BASE = 300;
     /** 多站巡览：镜头在每站的停留（ms）与站间平移（ms）——「停一下、直接平移到下一站」 */
     const STOP_HOLD = 900;
+    /** 同一站区内「旧的（幽灵点）撤掉」到「新的（主点）入场」之间的空当（ms） */
+    const STOP_STAGGER = 250;
+    /** 开通站内换乘那拍：镜头到位（headEnd）后**再停一小段**才把站外连线切成免费画法（ms） */
+    const FREE_SWITCH_HOLD = 400;
     /** 段形态转换补间的最小窗口（ms）：纯转换拍没有站可巡时也得看得见擦除 */
     const CONV_MIN = 800;
     /** 取景移动/段落停顿（ms） */
@@ -120,20 +126,33 @@
      */
     (function hideRetiredStations() {
         const ids = [];
-        const pushIds = (list) => (list || []).forEach((sid) => { if (ids.indexOf(sid) < 0) ids.push(sid); });
+        const retired = [];
+        const pushIds = (list, isRetired) => (list || []).forEach((sid) => {
+            if (ids.indexOf(sid) < 0) ids.push(sid);
+            if (isRetired && retired.indexOf(sid) < 0) retired.push(sid);
+        });
         eventOps().forEach((ev) => {
-            if (ev.kind === "station-state" && ev.state === "removed") { pushIds(ev.stations); return; }
+            if (ev.kind === "station-state" && ev.state === "removed") { pushIds(ev.stations, true); return; }
+            if (ev.kind !== "line-state") return;
+            // 区段级移除有两种写法：整段 `state: "removed"`，以及停运段上的站级豁免
+            // `except: [{ sid, state: "removed" }]`（长春 3 号线 0323 随段拆除即此例）——
+            // 后者的站同样是**终态消失**，底图与非演示态都不该再出现。
+            (Array.isArray(ev.except) ? ev.except : []).forEach((ex) => {
+                if (ex && ex.sid && ex.state === "removed") pushIds([ex.sid], true);
+            });
+            if (ev.state !== "removed") return;
             // 线路级移除：按站序展开出该区段的**独占**车站（共站站名要留着，另一条线还在跑）；
             // 此处尚未进演示流程，站点数据若未就绪则跳过
-            if (ev.kind === "line-state" && ev.state === "removed") {
-                const line = byLineId(ev.lineId);
-                if (!line) return;
-                pushIds(stationRangeOf(line, lineStations(line), ev).filter((sid) => soleOnLine(sid, ev.lineId)));
-            }
+            const line = byLineId(ev.lineId);
+            if (!line) return;
+            pushIds(stationRangeOf(line, lineStations(line), ev).filter((sid) => soleOnLine(sid, ev.lineId)), true);
         });
         (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
-            if (pf && pf.id && ids.indexOf(pf.id) < 0) ids.push(pf.id);
+            if (pf && pf.id) pushIds([pf.id]);
         });
+        // 「已拆除站」对外暴露：上一站/下一站、接驳徽标等后处理模块据此判定「活站」
+        // （共享层其它模块读它，见 shared/station/adjacent-jump.js）
+        window.CGO_RETIRED_STATIONS = retired;
         if (!ids.length) return;
         const css = ids.map((sid) => [
             `#map-content:not(.cgo-oh-stage) #node_${sid}`,
@@ -184,11 +203,13 @@
         alwaysOn: new Set(), // 全程固定显示的车站（国铁散点等，不参与逐个弹出）
         railStations: new Set(), // 国铁散点（type "rdot"）：按时间入场，但不参与全览取景
         demoOnly: new Set(),    // 演示专用车站（站台级幽灵点）：不计入站数统计、也不进全览取景
-        offPairs: [],           // 站外换乘对 [主点 sid, 幽灵点 sid, 切免费画法的动作步号]：渲染层据此画那条虚线
+        offPairs: [],           // 站外换乘对 { host, ghost, ghostIn, ghostOut, freeFrom, peer }（见 build）
         renamed: new Map(), // sid → 原文：被本模块改成旧名的标签，退出时还原
         renameMap: new Map(), // sid → [{ from, to, …, i }]：更名链（mount 时按数据重建，升序）
         scaleCity: null,    // 被临时放宽缩放范围的城市
         prevView: null,     // 接管前的取景
+        phantomClickEl: null, // 幽灵点点击拦截的挂载点（#map-content），unmount 时摘掉
+        modalObserver: null, // 监听导出浮层的 open 变化（关掉浮层即取消导出），unmount 时断开
         body: null,
         els: null
     };
@@ -211,8 +232,19 @@
 
     const dist = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
 
+    /**
+     * 核心路径采样结果缓存（线路 ID → 折线）。
+     * ⚠️ 这层缓存不是锦上添花：camAt 的**波前跟随**要沿路径连续取点，若每帧都重新采样，
+     * 就是每帧一次 getTotalLength + 最多 2000 次 getPointAtLength —— 实测每帧 50~66ms，
+     * 「停运 / 恢复」这两类转换拍会肉眼可见地卡顿、像被快放。演示期间核心的线路几何不变，
+     * 按线路缓存即可（mount / unmount 时清空，换城市后重新采样）。
+     * 采样失败（路径尚未渲染）不写缓存，下次重试。
+     */
+    const pathCache = new Map();
+
     /** 把核心的线路路径按约 2px 一步采样成折线 —— 这样子段自带倒角，与底图分毫不差 */
     function sampleCorePath(lineId) {
+        if (pathCache.has(lineId)) return pathCache.get(lineId);
         const group = document.querySelector(`.line-visual-group[data-visual-id="${esc(lineId)}"]`);
         const path = group && group.querySelector(".line-visual-inner");
         if (!path || typeof path.getTotalLength !== "function") return null;
@@ -225,6 +257,7 @@
             const p = path.getPointAtLength(total * i / n);
             pts.push({ x: p.x, y: p.y });
         }
+        pathCache.set(lineId, pts);
         return pts;
     }
 
@@ -373,6 +406,13 @@
         return step.lineName;
     }
 
+    /**
+     * 导出视频能力检测：WebCodecs `VideoEncoder` 是硬性前提（mp4-muxer 是纯 JS、可随时注入，
+     * 不构成前提）。设备 / 浏览器不支持时**整个导出入口都不渲染** —— 露一个点了报错的
+     * 下载按钮不如不露。
+     */
+    const canExportVideo = () => typeof window !== "undefined" && typeof window.VideoEncoder === "function";
+
     /* ======================================================================
      * 数据准备
      * ==================================================================== */
@@ -438,6 +478,8 @@
                         // 操作可自带 title / desc 覆盖事件级说明（同一事件各拍说各拍的事）
                         title: op.title || ev.title || "",
                         desc: op.desc || ev.desc || "",
+                        // 事件级原文标题另存一份（不掺操作覆盖）：事件清单按**事件**列时用它
+                        evTitle: ev.title || "",
                         evIdx: evIdx,
                         opIdx: opIdx
                     });
@@ -504,7 +546,12 @@
         const delayed = new Map();   // 暂缓开通站 → 补开日期（该站最后一次补开日，供 closedAt 判恢复）
         const delayedBy = new Map(); // sid → Map(lineId → 该线在本站的补开日)：判暂缓要按线路粒度看
         const closed = new Map();    // sid → [{ date, permanent }]（闭站 / 拆除，升序）
-        const goneForever = new Set();   // 拆除终态的站（permanent 闭站）：永不复活
+        /**
+         * 拆除终态的站 → 拆除日期（`goneAt`，只记首次）。⚠️ 不是无条件剔除：
+         * **拆除日之前**的 step 里它照常入场（长春辽宁路站 2002 年随一期开通、2021 年才拆除），
+         * 只有拆除日及之后的操作才不许再让它复活 / 记服务账。
+         */
+        const goneAt = new Map();
         const transferAt = new Map(); // sid → 站内换乘启用日（此前维持单线普通站形态）
         /**
          * 更名事件指向的车站：优先用事件里显式写的 `sid`，没写时按「现名或曾用名」反查
@@ -557,7 +604,7 @@
         const markClosed = (sid, ev, permanent) => {
             if (!closed.has(sid)) closed.set(sid, []);
             closed.get(sid).push({ date: ev.date, permanent: !!permanent, lineId: ev.lineId });
-            if (permanent) goneForever.add(sid);   // 拆除是终态：之后任何操作都不许让它复活
+            if (permanent && !goneAt.has(sid)) goneAt.set(sid, ev.date);   // 拆除是终态：之后任何操作都不许让它复活（但拆除日之前照常存在）
         };
         events.forEach((ev) => {
             if (ev.kind === "station-state") {
@@ -583,7 +630,12 @@
                 const line = byId[ev.lineId];
                 if (!line) return;
                 const ids = lineStations(line);
-                stationRangeOf(line, ids, ev).forEach((sid) => markClosed(sid, ev, ev.state === "removed"));
+                // except 的站级 `state: "removed"`（随段拆除）同样是**终态**，要登记 goneAt
+                const exRem = {};
+                (Array.isArray(ev.except) ? ev.except : []).forEach((e) => {
+                    if (e && e.state === "removed") exRem[e.sid] = true;
+                });
+                stationRangeOf(line, ids, ev).forEach((sid) => markClosed(sid, ev, ev.state === "removed" || !!exRem[sid]));
             }
         });
 
@@ -716,6 +768,9 @@
                 // 说明分两块挂在**事件**上（title / desc），同一事件的各拍共享
                 title: ev.title || "",
                 desc: ev.desc || "",
+                // 事件级标题单独留一份：事件清单按**事件**列，标题要用它（各拍自己的 title
+                // 是操作级文案，留给面板信息区）
+                evTitle: ev.evTitle || ev.title || "",
                 lineId: ev.lineId,
                 lineName: line.name || ev.lineId,
                 color: line.color || "#8a94a6",
@@ -744,9 +799,14 @@
              *   · state "removed"：该站随段移除；
              *   · tsf: false：照常记服务账，但压住本拍的自动升换乘（换乘通道未通）。
              */
-            const collect = (segIds, path, s0, s1, reversed, base, total, exMap) => {
+            /** 该站此刻是否已被拆除（终态）：拆除日之前照常，之后不复活 */
+            const isGoneAt = (sid, date) => {
+                const g = goneAt.get(sid);
+                return !!g && date >= g;
+            };
+            const collect = (segIds, path, s0, s1, reversed, base, total, exMap, convTo) => {
                 segIds.forEach((sid) => {
-                    if (goneForever.has(sid)) return;   // 拆除终态：不复活、不记服务账
+                    if (isGoneAt(sid, ev.date)) return;   // 拆除终态：拆除日之后不复活、不记服务账
                     const e = exMap && exMap[sid];
                     if (e && (e.state === "suspended" || e.state === "removed")) return;   // 豁免：不记服务账
                     if (!lineIdsAt.has(sid)) {
@@ -763,7 +823,7 @@
                     delayedBy.set(sid, per);
                 });
                 segIds.forEach((sid) => {
-                    if (goneForever.has(sid)) return;   // 拆除终态：不复活
+                    if (isGoneAt(sid, ev.date)) return;   // 拆除终态：拆除日之后不复活
                     const s = st[sid];
                     if (!s || !Number.isFinite(s.x)) return;
                     const e = exMap && exMap[sid];
@@ -795,12 +855,14 @@
                         return;   // 已在画布上、形态也没变：无事发生
                     }
                     let t = 0.5;
+                    let tg = 0.5;   // 全局弧长正向占比（不随画笔翻转）：段转换的擦除波前按它定位
                     if (path && Number.isFinite(s0) && Number.isFinite(s1) && s1 !== s0) {
                         const at = projectOnPath(path, s);
                         // t 是「沿线位置」，必须与画笔的行进方向一致：
                         // 线条从已开通端起笔时子折线是反的，站点的 t 也要跟着翻过来
                         if (at !== null) {
-                            t = Math.max(0, Math.min(1, (at - s0) / (s1 - s0)));
+                            tg = Math.max(0, Math.min(1, (at - s0) / (s1 - s0)));
+                            t = tg;
                             if (reversed) t = 1 - t;
                         }
                     }
@@ -810,11 +872,10 @@
                     }
                     const firstLine = byId[firstLineOf.get(sid)];
                     step.stations.push({
-                        sid: sid, x: s.x, y: s.y, t: t, form: want, mode: mode,
+                        sid: sid, x: s.x, y: s.y, t: t, tg: tg, convTo: convTo || null, form: want, mode: mode,
                         dotColor: aliveColorOf(sid, ev.date) || (firstLine ? firstLine.color : line.color)
                     });
                 });
-                step.stations.sort((a, b) => a.t - b.t);
             };
 
             if (ev.kind === "line-state" && ev.state === "open") {
@@ -863,9 +924,13 @@
                         let pts = slicePath(path, s0, s1);
                         if (!pts || pts.length < 2) return;
                         if (arc.flip) pts = pts.slice().reverse();
+                        // 端点站 ID：生长端点要按它对齐到「此刻可见的图元」（幽灵点让位时连到幽灵点），
+                        // 见 alignEndsToVisible。⚠️ pts 已按 arc.flip 翻过，故首端对应 hi 端。
                         segs.push({
                             pts: pts, lo: lo, hi: hi, s0: s0, s1: s1, flip: arc.flip,
-                            len: Math.max(1, segLength(pts))
+                            len: Math.max(1, segLength(pts)),
+                            headSid: ids[arc.flip ? hi : lo],
+                            tailSid: ids[arc.flip ? lo : hi]
                         });
                     });
                 });
@@ -878,7 +943,7 @@
                 const grow = [], conv = [];
                 segs.forEach((sg) => {
                     const covered = drawn.some((iv) => iv.s0 <= sg.s0 + 0.01 && sg.s1 - 0.01 <= iv.s1);
-                    if (covered) conv.push(sg);
+                    if (covered) { sg.convTo = "solid"; conv.push(sg); }
                     else grow.push(sg);
                 });
                 step.segConv = conv.map((sg) => ({ s0: sg.s0, s1: sg.s1, style: "solid" }));
@@ -894,7 +959,7 @@
                     drawn.push({ s0: Math.min(sg.s0, sg.s1), s1: Math.max(sg.s0, sg.s1) });
                 });
                 buildDrawn.set(ev.lineId, drawn);
-                segs.forEach((sg) => collect(ids.slice(sg.lo, sg.hi + 1), path, sg.s0, sg.s1, sg.flip, sg.base, total, ex));
+                segs.forEach((sg) => collect(ids.slice(sg.lo, sg.hi + 1), path, sg.s0, sg.s1, sg.flip, sg.base, total, ex, sg.convTo));
             } else if (ev.kind === "station-state"
                 && (ev.state === "open" || ev.state === "interchange")) {
                 // open = 投用 / 补开 / 恢复运营（暂缓站与闭站复开都走这里，collect 负责入场或转形态）；
@@ -909,13 +974,14 @@
                 }
             } else if (ev.kind === "line-state" || ev.kind === "station-state") {
                 // 撤站：suspended = 该段 / 该站**不通车**（未开通圈，线路段转镂空双线）；
+                let projPath = null;   // 波前定位用的采样折线（line-state 块内赋值）
                 // removed = 移除（图元、站名与引线一并抹掉，mode: "leave"；线路段转空白）。
                 // 只对**已经出现在画布上**的站生效 —— 尚未入场的规划站没有「关」这一说。
                 // `line-state` 是「区段」级的事，先按站序展开成站，判定路径与站级完全一致。
                 if (ev.kind === "line-state") {
                     // 段的形态转换：suspended → 未开通镂空；removed → 空白（从已画账销掉，
                     // 将来重新开通时重新生长）。停运 / 移除的里程同步倒扣。
-                    const path = sampleCorePath(ev.lineId)
+                    const path = projPath = sampleCorePath(ev.lineId)
                         || (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2 ? line.pathPoints : null)
                         || ids.map((sid) => st[sid]).filter((s) => s && Number.isFinite(s.x));
                     const dists = Array.isArray(line.distances) ? line.distances : [];
@@ -965,8 +1031,21 @@
                     formOf.set(sid, want);
                     if (gone) shown.delete(sid);   // 重新开通时按「再次入场」处理（回放计数也才对）
                     const first = byId[firstLineOf.get(sid)];
+                    // 站点在擦除方向上的位置：投影到全局弧长、按所属转换段归一（波前逐站驱动用）
+                    let tg = 0.5;
+                    const at = projPath && projPath.length >= 2 ? projectOnPath(projPath, s) : null;
+                    if (at !== null && step.segConv.length) {
+                        const seg = step.segConv.find((c) => at >= Math.min(c.s0, c.s1) - 0.01 && at <= Math.max(c.s0, c.s1) + 0.01);
+                        if (seg && Math.abs(seg.s1 - seg.s0) > 0.01) {
+                            tg = Math.max(0, Math.min(1, (at - Math.min(seg.s0, seg.s1)) / Math.abs(seg.s1 - seg.s0)));
+                        }
+                    }
                     step.stations.push({
-                        sid: sid, x: s.x, y: s.y, t: 0, form: want,
+                        sid: sid, x: s.x, y: s.y, t: 0, tg: tg,
+                        // 波前绑定只对**线级形态转换**（segConv）成立；单站停运/拆除没有线转换，
+                        // 保持 null 走原有巡览逻辑
+                        convTo: step.segConv.length ? (gone ? "hidden" : step.segConv[0].style) : null,
+                        form: want,
                         mode: gone ? "leave" : "upgrade",
                         dotColor: aliveColorOf(sid, ev.date) || (first ? first.color : line.color)
                     });
@@ -997,37 +1076,90 @@
             }
 
             stepOfEvent[evIdx] = steps.length;
+            // 步标识：live 组的复用键（`dataset.no`）、归档节点的 `data-no`、端点对齐时判定
+            // 「该步是否处于让位区间」。⚠️ 早先漏了这一步赋值，`step.no` 恒 undefined，
+            // live 组只在节点离线（stale）时才重建 —— 连着两步都生长时会复用旧路径。
+            step.no = steps.length;
+            // 段形态转换的站按**擦除波前方向**排 —— 车站消失 / 更改的顺序必须与擦除方向一致
+            // （波前扫到哪、站跟到哪）：波前自 tg=1 端（收笔端 / 已开通端）推进，
+            // 故按 tg 降序；生长 / 入场的站仍按画笔顺序。
+            step.stations.sort((a, b) => {
+                if (a.convTo || b.convTo) return -((a.tg || 0) - (b.tg || 0));
+                return a.t - b.t;
+            });
             steps.push(step);
         });
 
         /**
          * 站台级「幽灵点」（`CGO_OFFSTATION_PLATFORMS`）：同一座车站两条线各有站台、却只能
          * **付费站外换乘**的那段时期，在图上多画一个点，并配一条虚线连到主点。
-         * 出现时刻 =「主点在该线首次通车」与「主点自己的 `station-state/open`（站台投用）」里**较晚**的那一步；
-         * 消失时刻 = 主点 `station-state/interchange`（开通站内换乘）那一步 —— 都从已有事件里取，不必另写日期。
+         * 出现时刻 =「该站**首次出现在画布上**」与「该站**本线**首次投用（`station-state/open`）」
+         *            里较晚的那一步 —— 后者用来处理「线路已通过、本站暂缓（列车过站不停）」；
+         * 消失时刻 = 主点 `station-state/interchange`（开通站内换乘）那一步，或配置里的 `until`。
+         * 都从已有事件里取，不必另写日期。
          * 这类点**不属于任何线路（不在 stationIds 里）**，底图上由共享层的样式规则隐藏。
          */
         const demoOnly = new Set();
         const offPairs = [];
+        /**
+         * 主点「第一次出现在画布上」的那一步 = 该站第一条线通到它的那一拍。
+         * ⚠️ 不能用「某条线的首通步」代替：3 号线分两期（卫星广场在二期 2006-12-26 才通车）、
+         *    4 号线也分两期（长春站北在地下段 2012-05-06 才通车），取线首通会把这些站台
+         *    幽灵点的出生日提前到与它无关的那一期。
+         */
+        const firstAppear = new Map();
+        steps.forEach((s, k) => s.stations.forEach((x) => {
+            if (!firstAppear.has(x.sid)) firstAppear.set(x.sid, k);
+        }));
+        /**
+         * 某站被**某条线**首次服务的那一步 = 该线**覆盖本站**的第一个区段开通拍。
+         * 幽灵点是**按线**的站台（3 号线侧、1 号线侧各一个），每侧都要用它自己那条线到站的
+         * 时刻：长春站北的 4 号线侧 2012-05-06 出现，1 号线侧要等 2017-06-30。
+         * ⚠️ 两个坑都在这里踩过：
+         *   · 不能取「该线**全线首通**」—— 3 号线分两期（卫星广场在二期 2006 才通车）、
+         *     4 号线也分两期（长春站北在地下段 2012 才通车）；
+         *   · 不能取「该步的 `stations` 里有没有本站」—— 车站早已在线网上时，那一步 collect 会
+         *     按「形态没变」提前返回、根本不登记它，于是会把「开通站内换乘」那拍（形态变了才登记）
+         *     误当成该线到站，birth 与 ghostOut 撞在一起、整条幽灵点被丢掉。
+         * 正解：看该线自己那些 `line-state{open}` 拍里，哪一拍的**生长区段站序范围**盖住了本站。
+         */
+        const lineReach = (sid, lineId) => {
+            const line = byId[lineId];
+            if (!line) return -1;
+            const idx = lineStations(line).indexOf(sid);
+            if (idx < 0) return -1;
+            for (let k = 0; k < steps.length; k++) {
+                const s0 = steps[k];
+                if (s0.kind !== "line-state" || s0.state !== "open" || s0.lineId !== lineId) continue;
+                if ((s0.segs || []).some((sg) => sg.lo != null && idx >= sg.lo && idx <= sg.hi)) return k;
+            }
+            return -1;
+        };
         (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
             const s = pf && pf.id ? st[pf.id] : null;
             if (!pf || !s || !Number.isFinite(s.x)) return;
-            let arr = -1, open = -1, end = -1, endOp = -1;
-            // ⚠️ 不能用「某一步的 stations 里有没有 of」来判该线何时到站：车站早已在线网上时，
-            //    collect 会按「形态没变」提前返回、那一步的 stations 里根本没有它。
-            //    改用「该线首次通车」那一步 —— 幽灵点对应的站台都在各自线路的首通段上。
-            for (let k = 0; k < steps.length; k++) {
-                if (steps[k].kind === "line-state" && steps[k].state === "open" && steps[k].lineId === pf.line) { arr = k; break; }
-            }
+            let open = -1, end = -1, endOp = -1, sawClose = false;
             events.forEach((ev, k) => {
                 const si = stepOfEvent[k];
                 if (si === undefined) return;
-                if (open < 0 && ev.kind === "station-state" && ev.state === "open"
-                    && (ev.stations || []).indexOf(pf.of) >= 0) open = si;
-                if (end < 0 && ev.kind === "station-state" && ev.state === "interchange"
-                    && (ev.stations || []).indexOf(pf.of) >= 0) { end = si; endOp = k; }
+                const touches = (ev.stations || []).indexOf(pf.of) >= 0;
+                // 本站自己的闭站（改造停运 / 拆除）一旦出现，其后所有 open 都只是「恢复运营」
+                if (touches && ev.kind === "station-state"
+                    && (ev.state === "suspended" || ev.state === "removed")) sawClose = true;
+                // ⚠️ 只有「**该线**在本站的首次投用」才算站台投用 —— 两个限定缺一不可：
+                //    · 按线（`ev.lineId === pf.line`）：长春站 3 号线的站台 2002 年就有了，
+                //      不能拿 2019-01-26「1 号线站台投用」把它拖后；
+                //    · 排除闭站之后的 open（`!sawClose`）：解放桥 2019-06-01 封闭改造、
+                //      2020-01-01 恢复，后者是**恢复运营**不是首次投用。
+                if (open < 0 && !sawClose && ev.kind === "station-state" && ev.state === "open"
+                    && ev.lineId === pf.line && touches) open = si;
+                if (end < 0 && ev.kind === "station-state" && ev.state === "interchange" && touches) { end = si; endOp = k; }
             });
-            const birth = Math.max(arr, open);
+            // 出生 = 三者较晚：该站首次出现（先到线）· 本幽灵点所属线到站 · 该站本线首次投用
+            const birth = Math.max(
+                firstAppear.has(pf.of) ? firstAppear.get(pf.of) : -1,
+                lineReach(pf.of, pf.line),
+                open);
             // 幽灵点的「移出」时刻：默认是主点开通站内换乘那一步；配置里给了 `until`
             // （如 3、4 号线站名统一那天，或主点所属那条线自己被停运那天）就以 until 为准 ——
             // 站名已统一、或那条线已不在这座站，就没有「两个同名站台相望」这回事了。
@@ -1077,11 +1209,44 @@
                 }
             }
             demoOnly.add(pf.id);
-            // 第三项 =「主点开通站内换乘」**动作**的步号（绑动作不绑日期，同 until 的口径）：
-            // 此前两端是**付费出站**换乘（连线用付费画法），此后是**免费**换乘（连线换成免费画法）。
-            // 两套画法见 syncOffStationLinks。找不到该动作时留 -1，连线一直按付费画。
-            offPairs.push([pf.of, pf.id, end]);
+            /**
+             * 三件事的步号各不相同，用**具名字段**记（早先用数组、极易把「切画法」与
+             * 「幽灵点移出」当成同一个，出现主点提前归位、与幽灵点并存的重影）：
+             *   ghostIn  —— 幽灵点进场（出站换乘开始）：主点自此让位；
+             *   ghostOut —— 幽灵点移出（配对结束，取 `until` 覆盖后的值）：主点归位；
+             *   freeFrom —— 两端转为**免费**换乘那一步（主点开通站内换乘），此前的
+             *               连线用付费画法；找不到该动作时为 -1（连线一直按付费画）。
+             * ⚠️ ghostOut 与 freeFrom **常常不是同一步**：卫星路/临河街（0343）2012-09-22
+             *    就开通了站内换乘（切免费），但两边站名到 2019-05-30 才统一（幽灵点那时才撤）。
+             */
+            // 该幽灵点所属线在本站「停运」的步骤区间：运行时据此把它转成「未开通」圈 ——
+            // 解放桥 3 号线侧 2019-06-01 甩站改造即此例（**两座站台之间的付费换乘线仍然留着**，
+            // 因为站台还在、只是列车不停；到 2020-01-01 恢复运营再转回普通站）。
+            const downSpans = [];
+            let downFrom = -1;
+            steps.forEach((s0, k) => {
+                const down = closedLinesAt(pf.of, s0.date).has(pf.line);
+                if (down && downFrom < 0) downFrom = k;
+                if (!down && downFrom >= 0) { downSpans.push([downFrom, k]); downFrom = -1; }
+            });
+            if (downFrom >= 0) downSpans.push([downFrom, steps.length]);
+            offPairs.push({ host: pf.of, ghost: pf.id, ghostIn: birth, ghostOut: endStep, freeFrom: end, downSpans: downSpans });
         });
+        // 同一座车站可以配**多条线**的站台幽灵点（各线一个，如长春站既有 3 号线侧也有 1 号线侧）：
+        // 让同组的点互相指认（`peer`），站台之间的连线于是画在**两个幽灵点之间**，
+        // 而不是连到那个已被隐藏起来的主点位置上。
+        // ⚠️ 只配了一个点的车站（双丰 / 长春西站）`peer` **留空**、不回落主点：回落只会让
+        //    那条线去连一个已被隐藏的主点（两点本就几乎同位），图上多出一截没意义的接头。
+        const byHost = new Map();
+        offPairs.forEach((p) => {
+            const arr = byHost.get(p.host) || [];
+            arr.push(p);
+            byHost.set(p.host, arr);
+        });
+        byHost.forEach((arr) => arr.forEach((p) => {
+            const other = arr.find((q) => q !== p);
+            p.peer = other ? other.ghost : null;
+        }));
         state.demoOnly = demoOnly;
         state.offPairs = offPairs;
 
@@ -1443,6 +1608,34 @@
     }
 
     /**
+     * rdot 国铁标签「接驳前显示、接驳后藏」（数据意图 `_rdotHideAfterLink`，见 shared/base/rdot-label.js）：
+     * 「有没有接驳」带时间维度 —— 接驳对端（轨交站）**已入场**才算接驳开通，此前国铁站名
+     * 强制显示（如长春西站 2012 启用、2 号线 2018 才到：2018 前显示、之后收起）。
+     * 对端集合与判定表**复用 rdot-label.js 的同一套实现**（peersOf 读三张换乘登记表：
+     * 免费 / 付费 / 站外连线），底图与演示因此天然同口径，不再各读一半漏掉付费映射。
+     * 用类名控制（`.cgo-oh-rdot-hidden` 只在演示态有样式），退出演示自动还原。
+     */
+    function syncRdotLabels() {
+        const api = window.CGoRdotLabel;
+        if (!api) return;   // 该模块未接入（main.html 会全局引入；缺失时退化为「始终显示」）
+        const st = stationMap();
+        const tables = api.transferTables();
+        Object.keys(st).forEach((sid) => {
+            const s = st[sid];
+            if (!s || s.type !== "rdot" || !s._rdotHideAfterLink) return;
+            const linked = api.peersOf(sid, tables).some((p) => {
+                const q = st[p];
+                // 对端**只要已入场**就算接驳成立 —— 不挑形态（dot / tsf / 连在建的 no 都算）：
+                // 那条线的车站已经画在图上，国铁名就该让位给轨交站名
+                // （龙嘉 / 九台南的接驳线在建，对端以 no 形态入场后标签即收起）。
+                return !!q && q.type !== "rdot" && state.shown.has(p);
+            });
+            const el = document.getElementById("label_" + sid);
+            if (el) el.classList.toggle("cgo-oh-rdot-hidden", linked);
+        });
+    }
+
+    /**
      * 站外换乘连线（同站不同台、只能出站换乘的那段时期，把「站台幽灵点」与主点连起来）。
      * ⚠️ 样式**照抄核心那套**（见 core/script.js 的 `renderVirtualConnectors` / `createSvgPath` /
      * `getConnectorPath`）：每条配对画三段叠起来 —— 底色描边 3.25 → `#78848b` 2.25 → 底色 0.85，
@@ -1450,29 +1643,56 @@
      * 同一张图上两种「站外连通」长得一样，才不会让人以为是两种不同的东西。
      *
      * 两端都在画布上才画，任一端消失就收掉 —— 幽灵点本身由时间轴决定出现 / 消失（见 build）。
-     * 画在本模块自己的图层里：核心与城市数据都不必知道「这座站还分站台」这件事，
-     * 也因此不能挂进 `data_virtual_transfers.js`（那是**当前线网**的站外连通，进去就会常驻底图）。
+     *
+     * ⚠️ 为什么**不**把这条线写进 `data_virtual_transfers.js` 的 `VIRTUAL_CONNECT_LINES`：
+     *    那张表是「**当前线网**的站外连通」，核心会把它常驻画在底图上，而幽灵点在底图上是
+     *    隐藏的（见 rdot 同款的 `:not(.cgo-oh-stage)` 规则族）—— 写进去就会多出一条连到
+     *    「看不见的点」的线；它还会被行程规划当作站外换乘边消费，而幽灵点并不是可规划车站。
+     *    所以这条线只能由演示层自画、跟着幽灵点的进出走。
      */
-    function syncOffStationLinks() {
+    function syncOffStationLinks(stepIdx, tNow) {
         const group = layer()?.querySelector(".cgo-oh-offlink");
         if (!group) return;
         const pairs = state.offPairs || [];
-        if (!pairs.length) { if (group.childNodes.length) group.replaceChildren(); return; }
+        if (!pairs.length) {
+            if (group.childNodes.length) group.replaceChildren();
+            group.__links = null;
+            group.__sig = "";
+            return;
+        }
         // 样式随「是否已开通站内换乘」切换：核心对两类连接给了两套画法，
         // 付费出站连通三层（底色 3.25 → #78848b 2.25 → 底色 0.85），
         // 免费换乘两层（底色 2.75 → #78848b 1.5）—— 见 core/script.js 的
         // VIRTUAL_CONNECT_LINES / VIRTUAL_FREE_CONNECT_LINES。
-        // ⚠️ 切画法的阈值 = 开通站内换乘那个**动作**的步号（p[2]），不是日期 ——
+        // ⚠️ 切画法的阈值 = 开通站内换乘那个**动作**的步号（p.freeFrom），不是日期 ——
         //    一条事件有多拍时按日期会在当天第一拍、对应动作还没开演就先改了。
-        const idx = state.index == null ? -1 : state.index;
-        const free = pairs.map((p) => p[2] != null && p[2] >= 0 && idx >= p[2]);
+        // ⚠️ 同一拍内还要**等镜头到位**再切：该拍的起笔运镜（到 headEnd 结束）把镜头移到
+        //    这座站之前保持付费画法，镜头落定后才收紧成免费画法 —— 早先按拍号一刀切，
+        //    拍一开始连线就变了，看上去像画面别处出了什么事（用户验收反馈）。
+        // ⚠️ 传进来的必须是**当前拍号**（applyFrame 给 rec.i）与**当前时刻**（t）：
+        //    不能用 `state.index`：后者只在暂停 / 跳转时写，播放途中一直是旧值 ——
+        //    于是整段播放里画法永远不切，表现就是「开通站内换乘那一拍看不出任何变化」。
+        const rec = ((state.timeline && state.timeline.list) || []).find((r) => r.i === stepIdx);
+        const free = pairs.map((p) => {
+            if (p.freeFrom == null || p.freeFrom < 0) return false;
+            if (stepIdx !== p.freeFrom) return stepIdx > p.freeFrom;
+            // 同一拍内：镜头到位（headEnd）后**再停一小段**才切 —— 旧状态先停住让人看清，
+            // 再收紧成新画法（用户验收反馈：「镜头移到位后在旧状态停住一小段再变新状态」）。
+            return rec ? tNow >= rec.headEnd + FREE_SWITCH_HOLD : true;
+        });
         const sig = free.join(",");
         if (group.__sig !== sig) {
             group.__sig = sig;
             const st = stationMap();
+            const links = [];
             group.replaceChildren();
             pairs.forEach((pair, k) => {
-                const a = st[pair[0]], b = st[pair[1]];
+                // 只有**同行还有另一个站台**（peer 是另一个幽灵点）才画连线：只配了一个幽灵点的
+                // 车站（双丰 / 长春西站）压根没有「两座站台相望」这回事，回落主点只会画出一条
+                // 连到已被隐藏主点的多余接头（两点本就几乎同位）。
+                if (!pair.peer) return;
+                // 两端都在场（幽灵点 ↔ 同组的另一个幽灵点）才画
+                const a = st[pair.ghost], b = st[pair.peer];
                 if (!a || !b) return;
                 const STROKE = free[k]
                     ? [["var(--map-bg)", "2.75"], ["#78848b", "1.5"]]
@@ -1489,13 +1709,245 @@
                     g.appendChild(el);
                 });
                 group.appendChild(g);
+                links.push({ pair: pair, g: g });   // 与 childNodes 一一对应（跳过的 pair 不占位）
             });
+            group.__links = links;
         }
-        pairs.forEach((pair, k) => {
-            const g = group.childNodes[k];
-            if (!g) return;
-            g.style.display = (isOnCanvas(pair[0]) && isOnCanvas(pair[1])) ? "" : "none";
+        (group.__links || []).forEach((e) => {
+            e.g.style.display = (isOnCanvas(e.pair.ghost) && isOnCanvas(e.pair.peer)) ? "" : "none";
         });
+    }
+
+    /**
+     * 出站换乘期间**主点让位**：同一座车站的两条线各有站台、只能出站换乘的那段时期，
+     * 交叉点上的共用图元（图元 / 站名 / 呼出线）整体隐去 —— 该站此刻的呈现就是幽灵点
+     * （它按「避开交叉点」标定，停在各自线路的走向上）。到幽灵点移出那一拍（`ghostOut`），
+     * 主点按正式形态回来。只挂类名、样式仅在演示态生效（见 opening-history.css 的
+     * `.cgo-oh-host-off`）。
+     */
+    function syncPhantomHosts(stepIdx) {
+        // 同一站可能有多条线的幽灵点（各自的进出步不同）—— 取**并集**：
+        // 只要还有一座站台的幽灵点在场上，主点就要让位（不能按后一条线把它提前放回来）。
+        const off = new Map();
+        (state.offPairs || []).forEach((p) => {
+            if (!p.host || p.ghostIn == null || p.ghostOut == null || p.ghostOut < 0) return;
+            const inSpan = stepIdx >= p.ghostIn && stepIdx < p.ghostOut;
+            off.set(p.host, (off.get(p.host) || false) || inSpan);
+        });
+        off.forEach((hidden, host) => {
+            ["node_", "label_"].forEach((prefix) => {
+                document.getElementById(prefix + host)?.classList.toggle(HOST_CLASS, hidden);
+            });
+            calloutOf(host)?.classList.toggle(HOST_CLASS, hidden);
+        });
+        // 让位状态一变，**已归档的线路端点**与**已画段落（含镂空双线）**都要跟着挪：让位期端点
+        // 落在幽灵点上、让位结束后再挪回主点。**每帧都跑**（内部先比对 d、只在真的不同才写属性）——
+        // 早先只用「集合签名」当闸门，结果跳转 / 回拖后签名虽变、视觉却可能错过那一帧的重写。
+        realignArchivedPaths(stepIdx);
+        realignPiecePaths(stepIdx);
+    }
+
+    /**
+     * 幽灵点的**形态**跟着它所属那条线在本站的状态走：该线在本站停运（甩站改造 / 整段停运）
+     * → 转「未开通」圈，恢复运营 → 转回普通站。两座站台之间的付费换乘线**不受影响**
+     * （站台还在、只是列车不停，见 syncOffStationLinks）。解放桥 3 号线侧 2019-06-01 即此例。
+     */
+    function syncGhostForms(stepIdx) {
+        (state.offPairs || []).forEach((p) => {
+            if (!isOnCanvas(p.ghost)) return;
+            const down = (p.downSpans || []).some((sp) => stepIdx >= sp[0] && stepIdx < sp[1]);
+            const form = down ? "no" : "dot";
+            if (p.__form === form) return;
+            p.__form = form;
+            const s = stationMap()[p.ghost];
+            if (!s) return;
+            applyForm({ sid: p.ghost, form: form, dotColor: state.dotColors.get(p.ghost) }, null);
+        });
+    }
+
+    /**
+     * 同一站的两个站台幽灵点带着**同一个站名**（长春站 / 长春站北…）：两个都入场后只留**一个**
+     * 站名标签，免得图上并排出现两个一模一样的名字。留先入场的那个（通常即先到线路侧）。
+     */
+    function syncGhostLabels() {
+        const first = new Map();
+        (state.offPairs || []).forEach((p) => {
+            if (!isOnCanvas(p.ghost)) return;
+            const s = stationMap()[p.ghost];
+            if (!s) return;
+            const key = p.host + "|" + s.cn;   // 同一座站的同名站台才算重复
+            if (!first.has(key)) first.set(key, p.ghost);
+        });
+        (state.offPairs || []).forEach((p) => {
+            if (!isOnCanvas(p.ghost)) return;
+            const s = stationMap()[p.ghost];
+            if (!s) return;
+            const dup = first.get(p.host + "|" + s.cn) !== p.ghost;
+            document.getElementById("label_" + p.ghost)?.classList.toggle(DUP_LABEL_CLASS, dup);
+        });
+    }
+
+    /**
+     * 某站在**这一步**此刻「可见的图元」坐标：处于让位区间内（该站由幽灵点呈现）时返回幽灵点
+     * 坐标，否则返回 null（照旧用主点坐标）。
+     * ⚠️ 判据必须是**步号**（ghostIn ≤ stepIdx < ghostOut），不能看 `isOnCanvas(幽灵点)` ——
+     *    幽灵点的入场时刻由「笔到人到」定在拍内某处（4 号线地下段的 0124 就在生长**终点**才
+     *    入场），按弹出判会让整段生长的端点一直挂在那个已被隐藏的主点上。
+     */
+    function ghostPointAt(sid, stepIdx) {
+        if (!sid || stepIdx == null) return null;
+        const p = (state.offPairs || []).find((q) => q.host === sid
+            && q.ghostIn != null && q.ghostOut != null
+            && stepIdx >= q.ghostIn && stepIdx < q.ghostOut);
+        if (!p) return null;
+        const s = stationMap()[p.ghost];
+        return s && Number.isFinite(s.x) ? s : null;
+    }
+
+    /**
+     * 该站**此刻实际可见的图元**坐标：出站换乘期主点让位给了幽灵点 —— 线路端点、站外连通线
+     * 都该跟着幽灵点走，否则线头悬在（已被隐藏的）主点位置、和幽灵点错开一小段。
+     */
+    function visiblePointOf(sid, stepIdx) {
+        const st = stationMap();
+        const s = ghostPointAt(sid, stepIdx) || st[sid];
+        return s && Number.isFinite(s.x) ? s : null;
+    }
+
+    /**
+     * 把折线的**首尾**对齐到「此刻可见的图元」：按**端点站 ID**（`headSid` / `tailSid`）
+     * 精确匹配，只有该站此刻正处于让位区间时才动它，中间的点一律不动。
+     * ⚠️ 光把首点坐标换成幽灵点是不够的：**下一个点还停在主点附近**，折线会「回头」突刺
+     *    一小段 —— 画面上就是用户报的「线头」（实测归档 d：`M202 864 L184.7 864 L186.7 …`）。
+     *    故这里按幽灵点在折线上的**投影弧长切开**：幽灵点在折线外侧（「补」的情况）接一段，
+     *    在里侧（「剪」的情况）把多出来的裁掉。
+     */
+    function alignEndsToVisible(pts, headSid, tailSid, stepIdx) {
+        if (!pts || pts.length < 2) return pts;
+        const a = ghostPointAt(headSid, stepIdx);
+        const b = ghostPointAt(tailSid, stepIdx);
+        if (!a && !b) return pts;
+        let out = pts;
+        if (a) out = trimEndToPoint(out, a, true);
+        if (b) out = trimEndToPoint(out, b, false);
+        return out;
+    }
+
+    /**
+     * 把折线的**首端**（`isHead`）或**末端**截/接到给定点上：按该点在折线上的投影弧长切开，
+     * 投影点由 `slicePath` 插值出来，因此新端点正好落在折线上、不会「回头」。
+     * 投影落在端点之外（该点在折线延长方向）时不去切，直接接一段（「补路径」的观感）。
+     */
+    function trimEndToPoint(pts, at, isHead) {
+        const total = segLength(pts);
+        if (!(total > 0)) return pts;
+        const s = projectOnPath(pts, at);
+        if (s == null) return pts;
+        const EPS = 0.5;   // 投影落在端点 0.5px 内即视为「在延长方向上」
+        if (isHead) {
+            if (s <= EPS) return [{ x: at.x, y: at.y }].concat(pts);
+            const seg = slicePath(pts, s, total);
+            return (seg && seg.length > 1) ? seg : pts;
+        }
+        if (s >= total - EPS) return pts.concat([{ x: at.x, y: at.y }]);
+        const seg = slicePath(pts, 0, s);
+        return (seg && seg.length > 1) ? seg : pts;
+    }
+
+    /** 已归档段落（done 层）的端点重写：按生成时留存的原始折线与端点站 ID 重算 d */
+    function realignArchivedPaths(stepIdx) {
+        const g = doneGroup();
+        if (!g) return;
+        g.querySelectorAll("path[data-no]").forEach((el) => {
+            const raw = el.__rawPts;
+            if (!raw || raw.length < 2) return;
+            const d = toD(alignEndsToVisible(raw, el.__headSid, el.__tailSid, stepIdx));
+            if (el.getAttribute("d") !== d) el.setAttribute("d", d);
+        });
+    }
+
+    /**
+     * 「已画段落」注册表（`state.segPieces`）里的节点也要跟着让位状态改端点 —— 这些是段形态转换
+     * （镂空双线 / 恢复实线 / 空白）的对象，还可能由 `convertRange` 从原段切出来。早先只重写了
+     * 归档层的 `path[data-no]`，镂空盖面与切出来的碎片全被漏掉（用户反馈「未开通的双线两种
+     * 情况都没有正确处理」）。这里按各段自己留存的端点站 ID 重算 d，长度变了就让它下次重算。
+     */
+    function realignPiecePaths(stepIdx) {
+        (state.segPieces || []).forEach((pc) => {
+            if (!pc.pts || pc.pts.length < 2) return;
+            const d = toD(alignEndsToVisible(pc.pts, pc.headSid, pc.tailSid, stepIdx));
+            let changed = false;
+            pc.nodes.forEach((n) => {
+                if (n.getAttribute("d") !== d) { n.setAttribute("d", d); changed = true; }
+            });
+            if (changed) pc.len = 0;   // 长度可能变了，下次 pieceLen 重算
+        });
+    }
+
+    /**
+     * **生长中**那一段（live 层）的端点也要逐帧对齐到「此刻可见的图元」：幽灵点常常在
+     * 生长**途中**才入场（出生时刻绑着主点在当拍的弹出），而 path 节点只在**该拍首次**
+     * 创建时对齐过一次 —— 于是端点停在主点坐标上、与幽灵点错开一小段（用户验收反馈
+     * 「生长动画用的路径好像还是未经调整的路径」）。
+     * 逐段按原折线（`m.pts`）重算 d，只在真的不同时才写属性；长度随之变化时同步 dasharray，
+     * 整步的已画长度基准（`__len` 与各段 `start`）一并刷新。
+     */
+    function realignLiveSegs(g, stepIdx) {
+        let acc = 0;
+        (g.__segs || []).forEach((m) => {
+            if (m.pts && m.pts.length > 1) {
+                const d = toD(alignEndsToVisible(m.pts, m.headSid, m.tailSid, stepIdx));
+                if (m.node.getAttribute("d") !== d) {
+                    m.node.setAttribute("d", d);
+                    try { m.len = m.node.getTotalLength() || m.len; } catch (e) { /* 用折线长度兜底 */ }
+                    m.node.style.strokeDasharray = m.len + " " + m.len;
+                }
+            }
+            m.start = acc;
+            acc += m.len;
+        });
+        g.__len = acc;
+    }
+
+    /**
+     * 核心画的**站外连通线**（`.virtual-connectors`，rdot ⇄ 轨交站等）：端点在演示里要跟着
+     * 「此刻可见的图元」走 —— 出站换乘期那座站的图元是幽灵点，线就该连到幽灵点上。
+     * 核心给的是直线（`M x y L x y`），所以按端点坐标直接重写 d 即可，不必复刻任何曲线算法。
+     */
+    function syncConnectorEnds(stepIdx) {
+        const group = document.querySelector("#lines-layer .virtual-connectors");
+        if (!group || !group.children.length) return;
+        const conns = typeof VIRTUAL_CONNECT_LINES !== "undefined" && Array.isArray(VIRTUAL_CONNECT_LINES)
+            ? VIRTUAL_CONNECT_LINES : [];
+        if (!conns.length) return;
+        conns.forEach((c, i) => {
+            const a = visiblePointOf(c.from, stepIdx);
+            const b = visiblePointOf(c.to, stepIdx);
+            if (!a || !b) return;
+            const d = `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+            for (let k = 0; k < 3; k++) {
+                const el = group.children[i * 3 + k];
+                if (el && el.getAttribute("d") !== d) el.setAttribute("d", d);
+            }
+        });
+    }
+
+    /**
+     * 演示中点击**幽灵点**（站台级历史图元，如 4 号线侧的「卫星路」站台）：重定向到它在
+     * 底图上的对应车站（那座车站今天叫「职业技术大学」）。
+     * 幽灵点不在任何线路站序里 —— 核心的选站逻辑拿不到它的线路信息，面板只会渲染出一座
+     * 空站台；而用户点它想看的是**那座真实的车站**。故在**捕获阶段**拦下这次点击，
+     * 改选 `of` 指向的主点（`state.offPairs` 的 host）。
+     */
+    function onPhantomClick(e) {
+        const el = e.target && e.target.closest ? e.target.closest("[id^='node_'],[id^='label_']") : null;
+        if (!el) return;
+        const sid = el.id.replace(/^(node_|label_)/, "");
+        const pair = (state.offPairs || []).find((p) => p.ghost === sid);
+        if (!pair || typeof window.selectStation !== "function") return;
+        e.stopPropagation();
+        e.preventDefault();
+        window.selectStation(pair.host);
     }
 
     /** 给「既有设施」（没有开通记录的国铁站）打上固定显示的标记 */
@@ -1509,7 +1961,7 @@
 
     function clearMarks() {
         const host = stageHost();
-        const marks = [POP_CLASS, DOT_CLASS, ALWAYS_CLASS, NO_CLASS, NO_SHAPE_CLASS, GONE_CLASS];
+        const marks = [POP_CLASS, DOT_CLASS, ALWAYS_CLASS, NO_CLASS, NO_SHAPE_CLASS, GONE_CLASS, HOST_CLASS];
         host?.querySelectorAll(marks.map((c) => "." + c).join(", "))
             .forEach((el) => el.classList.remove(...marks));
         host?.querySelectorAll("." + NO_ICON_CLASS + ", ." + DOT_ICON_CLASS).forEach((el) => el.remove());
@@ -1979,52 +2431,108 @@
             // 纯转换拍没有站可巡（growDur 为 0）时给一个最小窗，免得瞬变没得看。
             const convAnims = (step.segConv && step.segConv.length)
                 ? step.segConv.map((c) => ({ s0: c.s0, s1: c.s1, style: c.style })) : null;   // 拷贝：touched 挂在副本上，不污染 step
-            const growDur2 = (convAnims && growDur < CONV_MIN) ? CONV_MIN : growDur;
             // 多站更名的换字逐站落在各停留窗里（500ms < STOP_HOLD），拍尾不再单开换字段；
             // 单对更名保持原节奏：生长后 500ms 淡出换字。
             const renameMs = (step.rename && !multi) ? 500 : 0;
+            // 纯形态转换步：起笔取景在**擦除波前起点**（全局大端 tg=1，如 2021-12-31 的
+            // 宽平桥侧），收笔在波前终点（小端）——与 camAt 的波前跟随、站点波前同向。
+            // 擦除时长与生长同一速度口径：**转换段画布长度 ÷ 运镜速度**（用户设定的 px/s），
+            // 不再是固定兜底窗 —— 拖快运镜速度，擦除同步变快。
+            const convOnly = !!(convAnims && convAnims.length && !(step.segs && step.segs.length));
+            // 混合拍（既有段形态转换、又有真生长，如长春 2021-12-31「恢复段擦除 + 东延段生长」）：
+            // 两者必须**串行** —— 先整段擦除 / 还原（镜头只跟恢复段波前），随后镜头落到生长段
+            // 起点，再画新段。并行会「一边擦一边长」，且镜头会提前跑去看新段（用户验收反馈）。
+            const mixed = !!(convAnims && convAnims.length && step.segs && step.segs.length);
+            let convHeadPt = null, convEndPt = null, convLen = 0;
+            if (convAnims && convAnims.length) {
+                const c = convAnims[0];
+                const lo = Math.min(c.s0, c.s1), hi = Math.max(c.s0, c.s1);
+                const pts = sampleCorePath(step.lineId);
+                if (pts && pts.length > 1) {
+                    convHeadPt = pointAt(pts, hi);
+                    convEndPt = pointAt(pts, lo);
+                    const sliced = slicePath(pts, lo, hi);
+                    if (sliced && sliced.length > 1) convLen = segLength(sliced);
+                }
+            }
+            // 转换时长与生长同一速度口径：转换段画布长度 ÷ 运镜速度（用户设定 px/s）。
+            // ⚠️ px ÷ (px/s) 得到的是**秒**，必须 ×1000 才是毫秒 —— 早先漏了这个换算，
+            //    结果恒被 CONV_MIN（800ms）兜底：整段擦除 / 还原只用 0.8 秒，肉眼可见地「快放」。
+            const convDur = convAnims
+                ? (REDUCE ? 1 : Math.max(CONV_MIN, convLen / Math.max(1, state.speed || SPEED.def) * 1000))
+                : 0;
+            const growDur2 = convOnly ? convDur
+                : ((convAnims && growDur < CONV_MIN) ? CONV_MIN : growDur);
+            // 混合拍：转换占时序**前段**，生长整体后移一个转换窗
+            const convT0 = t + head;
+            const convEnd = convT0 + convDur;
+            const growT0 = mixed ? convEnd : convT0;
             const rec = {
                 i: i, step: step,
                 from: t,
-                headEnd: t + head,
-                growT0: t + head,
-                growEnd: t + head + growDur2,
-                renameEnd: t + head + growDur2 + renameMs,
-                tailEnd: t + head + growDur2 + renameMs + head,
-                end: t + head + growDur2 + renameMs + head + hold,
+                headEnd: convT0,
+                convT0: convT0,
+                convDur: convDur,
+                convEnd: convEnd,
+                growT0: growT0,
+                growEnd: growT0 + growDur2,
+                renameEnd: growT0 + growDur2 + renameMs,
+                tailEnd: growT0 + growDur2 + renameMs + head,
+                end: growT0 + growDur2 + renameMs + head + hold,
                 growDur: growDur2,
                 phases: phases,
                 stops: multi ? stops : null,
                 hop: hop,
                 convAnims: convAnims,
-                convDur: growDur2,
                 // ⚠️ 纯形态转换 / 多站巡览的步骤没有 phases（growDur 可能仍 > 0），
                 //    progAtDt 对空表会取到 undefined 的阶段直接抛错（面板滚数即中招），
                 //    故回落成「按拍内时间线性推进」。
                 progAt: (dt) => (phases.length ? progAtDt(phases, dt)
                     : (growDur2 > 0 ? Math.max(0, Math.min(1, dt / growDur2)) : 1)),
                 camFrom: prevCam,
-                camHead: camForPoint(brushAt(step, 0), state.zoom),
-                camGrowEnd: camForPoint(multi ? stops[stops.length - 1] : brushAt(step, 1), state.zoom),
+                camHead: camForPoint(convAnims ? (convHeadPt || brushAt(step, 0)) : brushAt(step, 0), state.zoom),
+                camGrowEnd: camForPoint(multi ? stops[stops.length - 1]
+                    : (convOnly ? (convEndPt || brushAt(step, 1)) : brushAt(step, 1)), state.zoom),
                 camTail: camTailOf(step)
             };
-            // 站点弹出时刻：有画笔推进的「笔到人到」（末尾留 30ms，别让最后一个站压着收笔）；
-            // 无走向的多站步骤按「停留 → 平移」逐站弹出（idx × hop），单站步骤就在本拍起点弹出。
+            // 站点弹出时刻：
+            //   · 段形态转换的站（`convTo`）绑**擦除波前** —— 线擦到哪、站跟到哪，顺序与
+            //     线路擦除方向严格一致（波前自 tg=1 端推进，恢复与反向擦除互逆同向），
+            //     满足「车站消失或更改的顺序和擦除方向相同」；
+            //   · 有画笔推进的「笔到人到」（末尾留 30ms，别让最后一个站压着收笔）；
+            //   · 无走向的多站步骤按「停留 → 平移」逐站弹出（idx × hop），单站步骤就在本拍起点弹出。
             rec.pops = [];
+            const convPops = [], flowPops = [];
+            step.stations.forEach((x) => (x.convTo ? convPops : flowPops).push(x));
+            convPops.forEach((x) => {
+                // 波前自 **tg=1 端**（收笔端 / 已开通端，如 2021-12-31 恢复段的宽平桥侧）推进：
+                // 恢复（→solid）与反向擦除（→hollow/hidden）互逆、同段同向 —— 「从宽平桥开始擦除」。
+                // 时刻绑**转换窗**（convT0 + convDur×f）：混合拍里转换占前段，站点也跟着走前段。
+                const f = 1 - (x.tg || 0);
+                rec.pops.push({ x: x, step: step, t: rec.convT0 + convDur * Math.max(0, Math.min(1, f)) });
+            });
             if (phases.length) {
-                rec.pops = step.stations
-                    .map((x) => ({
+                flowPops.forEach((x) => {
+                    rec.pops.push({
                         x: x, step: step,
                         t: rec.growT0 + Math.max(0, Math.min(growDur2 - 30, timeOfProg(phases, x.t)))
-                    }))
-                    .sort((a, b) => a.t - b.t);
+                    });
+                });
             } else {
                 stops.forEach((st2, idx) => {
                     const at = multi ? idx * hop : 0;
-                    st2.pops.forEach((x) => rec.pops.push({ x: x, step: step, t: rec.growT0 + at }));
+                    // 同一站区里分两批演：**旧的（幽灵点）同时撤掉** → 空一个 STOP_STAGGER →
+                    // **新的（主点）随后入场**。早先按登记顺序逐个错峰，看起来是「一个元素一个
+                    // 元素地撤掉再加上」，缺了「旧的一起走、站台再亮」的整批感（用户验收反馈）。
+                    const hasLeave = st2.pops.some((x) => x.mode === "leave" && !x.convTo);
+                    st2.pops.forEach((x) => {
+                        if (x.convTo) return;
+                        const delay = (hasLeave && x.mode !== "leave") ? STOP_STAGGER : 0;
+                        rec.pops.push({ x: x, step: step, t: rec.growT0 + at + delay });
+                    });
                 });
-                rec.pops.sort((a, b) => a.t - b.t);
             }
+            rec.pops.sort((a, b) => a.t - b.t);
             // 更名换字逐站挂到各停留窗开头（多站）/ 本拍开头（单对），由 applyRenameAt 逐帧演
             rec.renameStops = [];
             stops.forEach((st2, idx) => {
@@ -2040,7 +2548,8 @@
         state.cardReserve = false;
         const whole = {
             whole: true, i: to, step: state.steps[to],
-            from: t, headEnd: t + head, growT0: t + head, growEnd: t + head,
+            from: t, headEnd: t + head, convT0: t + head, convDur: 0, convEnd: t + head,
+            growT0: t + head, growEnd: t + head,
             renameEnd: t + head, tailEnd: t + head + head, end: t + head + head + T.tailHold,
             growDur: 0, phases: [], progAt: () => 1, camFrom: prevCam, camHead: camWholeOf(to), pops: []
         };
@@ -2064,6 +2573,20 @@
         if (t < r.headEnd) return camLerp(r.camFrom, r.camHead, head ? EASE((t - r.from) / head) : 1);
         if (t < r.growEnd) {
             const dt = t - r.growT0;
+            // 段形态转换（停运 / 移除的反向擦除、恢复的擦除还原）：镜头跟**擦除波前** ——
+            // 线擦到哪、镜头跟到哪（波前自全局大端 tg=1 向小端推进，与 applyPieceProgress
+            // 与站点波前同一方向），而不是一站一停地巡览。
+            // 混合拍（转换+生长一拍）里转换占时序**前段**（[convT0, convEnd]），这段时间
+            // 镜头同样只跟恢复段波前；生长段自 convEnd 才起步，镜头再落到它的起点。
+            if (r.convAnims && r.convAnims.length && r.convDur > 0 && t < r.convEnd) {
+                const e = Math.max(0, Math.min(1, (t - r.convT0) / r.convDur));
+                const c0 = r.convAnims[0];
+                const lo = Math.min(c0.s0, c0.s1), hi = Math.max(c0.s0, c0.s1);
+                const at = hi - (hi - lo) * e;
+                const pts = sampleCorePath(r.step.lineId);
+                const p = (pts && pts.length > 1) ? pointAt(pts, at) : null;
+                return (p && camForPoint(p, state.zoom)) || r.camHead;
+            }
             // 多站巡览：停留窗定格在本站，窗尾直接平移到下一站（「停一下 → 平移」）
             if (r.stops && r.stops.length > 1) {
                 const move = glideMs();
@@ -2151,7 +2674,7 @@
     }
 
     /** 车站到点了：切形态、弹出、涟漪（`mode: "leave"` 的则是拆除，见 leaveStation） */
-    function showStation(x, step) {
+    function showStation(x, step, stepIdx) {
         if (x.mode === "leave") { leaveStation(x.sid); return; }
         state.shown.set(x.sid, x.form);
         if (x.dotColor) state.dotColors.set(x.sid, x.dotColor);
@@ -2159,8 +2682,12 @@
         // 旧名不在这里切 —— 统一交给每帧的 syncRenameNames（按步号判，同日多事件也不会错）
         popStation(x.sid);
         state.activePops.push({ sid: x.sid, t0: state.frameT });
-        // 未开通形态的涟漪用「未开通色」，别拿线路色误导人
-        ripple(x, x.form === "no" ? (themeVar("--not-open-color") || step.color) : step.color);
+        // 让位期这座站由幽灵点呈现（主点图元已隐去）：涟漪是按**图元**位置扩散的，画在那个
+        // 已隐藏的主点坐标上会像「有个看不见的站冒出来」（用户验收反馈）。幽灵点自己的涟漪照旧。
+        if (!ghostPointAt(x.sid, stepIdx)) {
+            // 未开通形态的涟漪用「未开通色」，别拿线路色误导人
+            ripple(x, x.form === "no" ? (themeVar("--not-open-color") || step.color) : step.color);
+        }
         syncVirtualConnectors();   // 站到齐了，站外连通那条虚线可以画了
     }
 
@@ -2188,7 +2715,7 @@
                 if (!sg.pts || sg.pts.length < 2) return;
                 const node = document.createElementNS(NS, "path");
                 node.setAttribute("class", "cgo-oh-grow");
-                node.setAttribute("d", toD(sg.pts));
+                node.setAttribute("d", toD(alignEndsToVisible(sg.pts, sg.headSid, sg.tailSid, step.no)));
                 node.setAttribute("stroke", step.color);
                 node.setAttribute("stroke-width", "5.4");   // 与核心 .line-visual-inner 同宽
                 node.setAttribute("vector-effect", "non-scaling-stroke");
@@ -2196,7 +2723,7 @@
                 try { len = node.getTotalLength() || len; } catch (e) { /* 用折线长度 */ }
                 node.style.strokeDasharray = `${len} ${len}`;
                 node.style.strokeDashoffset = String(len);
-                made.push({ node: node, len: len, start: acc });
+                made.push({ node: node, len: len, start: acc, pts: sg.pts, headSid: sg.headSid, tailSid: sg.tailSid });
                 acc += len;
             });
             if (!made.length) return null;
@@ -2233,11 +2760,13 @@
             if (r.i < rec.i || (r === rec && t >= r.growEnd)) commitPath(state.steps[r.i]);
         });
         const live = liveGroup();
-        const growing = rec.growDur > 0 && t < rec.growEnd;
+        // 混合拍的转换阶段（t < growT0）还不该画生长段 —— 生长自 convEnd 才起步
+        const growing = rec.growDur > 0 && t >= rec.growT0 && t < rec.growEnd;
         if (live && !growing) live.replaceChildren();
         if (live && growing) {
             const g = ensureGrowPath(rec.step);
             if (g) {
+                realignLiveSegs(g, rec.i);   // 端点按步号对齐（让位期连到幽灵点，不受弹出时刻影响）
                 const p = rec.progAt(t - rec.growT0);   // 逐段绘制 + 段间运镜，由阶段表反算
                 const drawn = g.__len * p;   // 整步已画长度 → 按段分摊成各自的描边偏移
                 g.__segs.forEach((m) => {
@@ -2254,7 +2783,7 @@
                 const key = r.i + ":" + p.x.sid;
                 if (state.popDone.has(key)) return;
                 state.popDone.add(key);
-                showStation(p.x, r.step);
+                showStation(p.x, r.step, r.i);
             });
         });
 
@@ -2276,8 +2805,19 @@
             rp.el.style.opacity = String(0.95 * (1 - e));
         }
 
-        // ── 站外换乘虚线：两端都在画布上才画 ──
-        syncOffStationLinks();
+        // ── 站外换乘：连线两端都在画布上才画；主点在换乘期让位给幽灵点 ──
+        syncOffStationLinks(rec.i, t);
+        syncPhantomHosts(rec.i);
+        syncGhostForms(rec.i);   // 幽灵点形态（本线停运 → 未开通圈）
+        syncGhostLabels();       // 同站同名幽灵点：只留一个站名标签
+        // ── 底图的「站外连通」连线（核心画在 #lines-layer .virtual-connectors 里的那批）：
+        //    两端车站都入场了才画。⚠️ 必须**逐帧**算 —— jumpTo / replay 走 clearMarks 时会把这些
+        //    线的类拔掉，只在站点弹出时调一次的话，回退到前序事件后线就再也不出现（用户实测
+        //    到的「点前序事件后虚拟换乘线都不见了」）。成本很低：只对几十个 path 做 class 开关。
+        syncVirtualConnectors();
+        // 站外连通线的端点跟着「此刻可见的图元」走（出站换乘期连到幽灵点上）
+        syncConnectorEnds(rec.i);
+        syncRdotLabels();   // rdot 国铁标签：接驳前显示、接驳后藏（按此刻接驳状态）
 
         // ── 更名：**开通后改名的站，从入场那一刻起就用旧名**（回退拖动 / 跳步 /
         //    核心重建过标签节点都要能还原），当前正在演换字的那个站交给 applyRenameAt ──
@@ -2366,7 +2906,7 @@
     }
 
     /** 造一段「已画段落」的节点组（彩色实线，hollow 另带盖面），返回注册表条目 */
-    function makeSegPiece(lineId, s0, s1, pts, style, color, proto) {
+    function makeSegPiece(lineId, s0, s1, pts, style, color, proto, headSid, tailSid) {
         const base = document.createElementNS(NS, "path");
         base.setAttribute("d", toD(pts));
         base.setAttribute("stroke", color);
@@ -2381,7 +2921,11 @@
         }
         const nodes = [base];
         if (style === "hollow") nodes.push(makeHollowMask(pts));
-        return { lineId: lineId, s0: s0, s1: s1, pts: pts, style: style, color: color, nodes: nodes };
+        return {
+            lineId: lineId, s0: s0, s1: s1, pts: pts,
+            headSid: headSid, tailSid: tailSid,
+            style: style, color: color, nodes: nodes
+        };
     }
 
     /**
@@ -2424,9 +2968,10 @@
      * 单段样式转换的**逐帧进度**（e: 0 原样式 from → 1 目标样式 to）——与生长同一套
      * stroke-dash 补间（导出逐帧出图要求 applyFrame(t) 幂等可随机访问，不能用 WAAPI /
      * CSS 动画）：
-     *   solid → hollow  彩色不动，盖面从**收笔端**长出 —— 观感即「实线自尾端起逐渐变镂空」；
-     *   hollow → solid  盖面从**起笔端**退去 —— 实线自头端长出，与生长同向；
-     *   *    → hidden  整段自**收笔端**反向擦除 —— 语义「撤回」，与生长对偶。
+     *   solid → hollow  彩色不动，盖面自**尾端**（tg=1）长出 —— 观感即「实线自尾端起逐渐变镂空」；
+     *   hollow → solid  盖面自**尾端**（tg=1）退去 —— 实线自尾端（已开通端）长回，
+     *                   与擦除波前同向（如 2021-12-31 从宽平桥方向恢复）；
+     *   *    → hidden  整段自**尾端**反向擦除 —— 语义「撤回」，与生长对偶。
      * e ≥ 1 落定 to；e ≤ 0 落定回 from（回拖进度条也能还原）。同一 t 写多少次都一样。
      */
     function applyPieceProgress(pc, from, to, e) {
@@ -2479,14 +3024,22 @@
                 continue;
             }
             const proto = pc.nodes[0];
-            const cut = (x0, x1) => makeSegPiece(lineId, x0, x1,
-                slicePath(pc.pts, x0 - pc.s0, x1 - pc.s0), pc.style, pc.color, proto);
+            // 切片端点站 ID：只有与**原段端点重合**的那一侧才继承（切出来的碎片端点不是车站）
+            const cut = (x0, x1, hSid, tSid) => makeSegPiece(lineId, x0, x1,
+                slicePath(pc.pts, x0 - pc.s0, x1 - pc.s0), pc.style, pc.color, proto, hSid, tSid);
             const made = [];
-            if (a > pc.s0 + 0.05) made.push(cut(pc.s0, a));
-            const mid = makeSegPiece(lineId, a, b, slicePath(pc.pts, a - pc.s0, b - pc.s0), pc.style, pc.color, proto);
+            if (a > pc.s0 + 0.05) made.push(cut(pc.s0, a, pc.headSid, null));
+            // ⚠️ 切出来的**中段**若贴着原段的某一端（极常见：停运段 / 恢复段正好从原段端点起算），
+            //    那一端仍然是**车站**端点，必须继承原段的站 ID —— 早先一律给 null，于是
+            //    「未开通的双线」（2021-03-08 停运段）与「恢复的实线」（2021-12-31 还原段）
+            //    在让位站的端点永远不跟着幽灵点走、线头悬空（用户验收反馈的正是这两处）。
+            const mid = makeSegPiece(lineId, a, b, slicePath(pc.pts, a - pc.s0, b - pc.s0),
+                pc.style, pc.color, proto,
+                a <= pc.s0 + 0.05 ? pc.headSid : null,
+                b >= pc.s1 - 0.05 ? pc.tailSid : null);
             touched.push({ pc: mid, from: pc.style, to: style });
             made.push(mid);
-            if (b < pc.s1 - 0.05) made.push(cut(b, pc.s1));
+            if (b < pc.s1 - 0.05) made.push(cut(b, pc.s1, null, pc.tailSid));
             // 换节点时保持原图层位置（跨线遮挡关系不乱）
             const frag = document.createDocumentFragment();
             made.forEach((mp) => mp.nodes.forEach((n) => frag.appendChild(n)));
@@ -2499,12 +3052,13 @@
 
     /**
      * 段形态转换的逐帧驱动：结构拆分每步只做一次（`__convBuilt`，视觉无损、可重复进入），
-     * 样式按「本拍生长窗」的进度补间 —— 与站巡览并行，镜头逐站停的同时线自收笔端撤回。
+     * 样式按**本拍转换窗**的进度补间 —— 与站巡览并行，镜头逐站停的同时线自收笔端撤回。
+     * 混合拍里转换窗（convT0 → convEnd）只占本拍前段，生长段在此之前保持起始态（e=0）。
      */
     function applyConvs(rec, t) {
         const anims = rec.convAnims;
         if (!anims || !anims.length) return;
-        const e = rec.convDur > 0 ? (t - rec.growT0) / rec.convDur : 1;
+        const e = rec.convDur > 0 ? Math.max(0, Math.min(1, (t - rec.convT0) / rec.convDur)) : 1;
         if (!rec.__convBuilt && e > 0) {
             rec.__convBuilt = true;
             anims.forEach((c) => {
@@ -2533,7 +3087,11 @@
             p.setAttribute("data-no", String(step.no));
             p.setAttribute("data-line", String(step.lineId));   // 供「画布上正在展示的线路数」统计
             if (k) p.setAttribute("data-part", String(k));
-            p.setAttribute("d", toD(sg.pts));
+            p.setAttribute("d", toD(alignEndsToVisible(sg.pts, sg.headSid, sg.tailSid, step.no)));
+            // 原始折线 + 端点站 ID 留一份：让位状态变化时按它重算端点（见 realignArchivedPaths）
+            p.__rawPts = sg.pts;
+            p.__headSid = sg.headSid;
+            p.__tailSid = sg.tailSid;
             p.setAttribute("stroke", step.color);
             p.setAttribute("stroke-width", "5.4");
             p.setAttribute("fill", "none");
@@ -2541,11 +3099,14 @@
             group.appendChild(p);
             if (Number.isFinite(sg.s0) && Number.isFinite(sg.s1)) {
                 // 注册表按全局弧长正向存（flip 的段翻回来），形态转换的切片才对得上；
-                // 节点就是刚画的这条 path 本尊（形态转换直接动它）
+                // 节点就是刚画的这条 path 本尊（形态转换直接动它）。
+                // ⚠️ 端点站 ID 也跟着 flip 翻过来：注册表里的 pts 是正向的（首端对应 lo 端）。
                 state.segPieces.push({
                     lineId: step.lineId,
                     s0: Math.min(sg.s0, sg.s1), s1: Math.max(sg.s0, sg.s1),
                     pts: sg.flip ? sg.pts.slice().reverse() : sg.pts,
+                    headSid: sg.flip ? sg.tailSid : sg.headSid,
+                    tailSid: sg.flip ? sg.headSid : sg.tailSid,
                     style: "solid", color: step.color, nodes: [p]
                 });
             }
@@ -2645,12 +3206,32 @@
         if (state.lastPanelI !== m.i) {
             state.lastPanelI = m.i;
             syncNow(m.i);
+            // 清单按**事件**列：高亮当前拍所属的那一条（同一事件的各拍都点亮它）
+            const curEv = state.steps[m.i] ? state.steps[m.i].evIdx : -1;
             state.els.list.querySelectorAll(".cgo-oh-item").forEach((li) => {
-                const no = Number(li.dataset.go);
-                li.classList.toggle("is-active", no === m.i + 1);
-                li.classList.toggle("is-done", no <= m.i);
+                li.classList.toggle("is-active", Number(li.dataset.ev) === curEv);
+                li.classList.toggle("is-done", Number(li.dataset.go) <= m.i + 1);
             });
+            // 正在播放的这一行自己滚进可视区（只滚清单自身，不牵动面板与页面）
+            scrollListToActive();
         }
+    }
+
+    /**
+     * 让清单里 `.is-active` 的那一行保持可见。
+     * 用两端的 `getBoundingClientRect` 算相对偏移，**不用 offsetTop** —— 后者的参照是
+     * offsetParent（面板里那层定位祖先），拿它跟 `list.scrollTop` 直接比会算错。
+     * 清单没露出高度时（面板停在信息区那一态）直接跳过。
+     */
+    function scrollListToActive() {
+        const list = state.els && state.els.list;
+        if (!list || !list.clientHeight) return;
+        const li = list.querySelector(".cgo-oh-item.is-active");
+        if (!li) return;
+        const lr = list.getBoundingClientRect();
+        const ar = li.getBoundingClientRect();
+        if (ar.top < lr.top) list.scrollTop -= (lr.top - ar.top);
+        else if (ar.bottom > lr.bottom) list.scrollTop += (ar.bottom - lr.bottom);
     }
 
     /* ======================================================================
@@ -2694,9 +3275,10 @@
                         <button type="button" class="cgo-mt-quick cgo-oh-icon-btn" data-oh="toggleInfo" title="查看事件清单" aria-pressed="false">
                             <cgo-icon name="view-list" size="14"></cgo-icon>
                         </button>
+                        ${canExportVideo() ? `
                         <button type="button" class="cgo-mt-quick cgo-oh-icon-btn" data-oh="exportToggle" title="导出视频" aria-pressed="false">
                             <cgo-icon name="download" size="14"></cgo-icon>
-                        </button>
+                        </button>` : ""}
                     </div>
                     <div class="cgo-oh-set" data-oh="speedSet" hidden>
                         <div class="cgo-oh-field">
@@ -2735,14 +3317,27 @@
                         </div>
                         <div class="cgo-oh-exp-actions">
                             <button type="button" class="cgo-mt-launch" data-oh="expStart">导出 MP4</button>
-                            <button type="button" class="cgo-mt-quick" data-oh="expCancel" hidden>取消</button>
                         </div>
-                        <div class="cgo-oh-exp-track"><div class="cgo-oh-exp-bar" data-oh="expBar"></div></div>
-                        <p class="cgo-oh-exp-status" data-oh="expStatus"></p>
                     </div>
                 </div>
                 <ul class="cgo-oh-list"></ul>
                 <p class="cgo-oh-note">演示只覆盖有开通记录的区段，底图线网在放映期间由本演示接管，关闭后恢复。</p>
+                <!-- 导出进度走 CGoUI 的 <cgo-modal> 浮层：面板本身可被拖动 / 缩放 / 滚动，
+                     进度与取消放在浮层里就不会跟着乱动（用户验收反馈）。
+                     ⚠️ 不写 close-on-overlay：Boolean 属性「存在即真」，不写才是「点遮罩不关」。 -->
+                <cgo-modal data-oh="expModal" title="正在导出视频">
+                    <dl class="cgo-oh-exp-meta">
+                        <div><dt>事件范围</dt><dd data-oh="expRange">—</dd></div>
+                        <div><dt>运镜速度</dt><dd data-oh="expSpeed">—</dd></div>
+                        <div><dt>放大倍数</dt><dd data-oh="expZoom">—</dd></div>
+                        <div><dt>当前事件</dt><dd data-oh="expNow">—</dd></div>
+                    </dl>
+                    <div class="cgo-oh-exp-track"><div class="cgo-oh-exp-bar" data-oh="expBar"></div></div>
+                    <p class="cgo-oh-exp-status" data-oh="expStatus"></p>
+                    <div class="cgo-oh-exp-modal-actions">
+                        <button type="button" class="cgo-mt-quick" data-oh="expCancel">取消导出</button>
+                    </div>
+                </cgo-modal>
             </div>
         `;
     }
@@ -2760,29 +3355,43 @@
         btn.classList.toggle("is-on", listOn);
         btn.setAttribute("aria-pressed", String(listOn));
         btn.title = listOn ? "返回信息区" : "查看事件清单";
+        // 刚展开清单：等这一帧布局稳定后再把当前拍滚进视野（clientHeight 此刻才有值）
+        if (listOn) requestAnimationFrame(scrollListToActive);
     }
 
     function renderList() {
-        // 同一**事件**的多个操作在清单里只列一行（如 2021-12-31 的恢复运营 / 换乘启用 / 东延
-        // 通车是同一次开通动作的三拍）——时间轴上仍是各自的拍，点击跳到该事件第一拍。
-        const seen = new Set();
-        const rows = state.steps.filter((s) => {
-            const key = String(s.evIdx);
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
+        // **每个事件一行**：同一事件的多拍（2019-05-30 先开站内换乘、再演 17 站更名；
+        // 2021-12-31 恢复运营 → 站内换乘 → 东延通车）合并成一条，点击跳到该事件的**末拍** ——
+        // 时间线上这些拍本来就连着演完，落在末拍即该事件完成后的静态形态，不会停在"半成品"画面。
+        // ⚠️ 早先每拍一行，同一事件被拆成几个可点项（用户点到中间拍就会看到演了一半的图）；
+        // 标题用**事件级**标题（`evTitle`），各拍自己的操作标题留给面板信息区。
+        const rows = state.steps;
+        const groups = [];
+        rows.forEach((s, i) => {
+            const last = groups[groups.length - 1];
+            if (last && last.evIdx === s.evIdx) {
+                last.to = i;
+                last.enter += s.enterCount || 0;
+                last.up += s.upgradeCount || 0;
+            } else {
+                groups.push({
+                    evIdx: s.evIdx, from: i, to: i, step: s,
+                    enter: s.enterCount || 0, up: s.upgradeCount || 0
+                });
+            }
         });
-        state.els.list.innerHTML = rows.map((s) => {
+        state.els.list.innerHTML = groups.map((g) => {
             // 计数用 CGoUI 图标而不是 +/↑ 字符：CGoUI 里没有上箭头，
-            // 「转为换乘站」用它的 transfer 图标（语义也比箭头准）
-            const add = s.enterCount
-                ? `<span class="cgo-oh-item-add"><cgo-icon name="add" size="12"></cgo-icon>${s.enterCount}</span>` : "";
-            const up = s.upgradeCount
-                ? `<span class="cgo-oh-item-add"><cgo-icon name="transfer" size="12"></cgo-icon>${s.upgradeCount}</span>` : "";
-            return `<li class="cgo-oh-item" data-go="${s.no}">
-                <span class="cgo-oh-item-date">${s.date}</span>
-                <span class="cgo-oh-item-dot" style="background:${s.color}"></span>
-                <span class="cgo-oh-item-text">${stepLabel(s)}</span>${add}${up}
+            // 「转为换乘站」用它的 transfer 图标（语义也比箭头准）。计数为该事件各拍之和。
+            const add = g.enter
+                ? `<span class="cgo-oh-item-add"><cgo-icon name="add" size="12"></cgo-icon>${g.enter}</span>` : "";
+            const up = g.up
+                ? `<span class="cgo-oh-item-add"><cgo-icon name="transfer" size="12"></cgo-icon>${g.up}</span>` : "";
+            const text = g.step.evTitle || stepLabel(g.step);
+            return `<li class="cgo-oh-item" data-go="${g.to + 1}" data-ev="${g.evIdx}">
+                <span class="cgo-oh-item-date">${g.step.date}</span>
+                <span class="cgo-oh-item-dot" style="background:${g.step.color}"></span>
+                <span class="cgo-oh-item-text">${text}</span>${add}${up}
             </li>`;
         }).join("");
     }
@@ -2836,6 +3445,19 @@
         state.els.play.innerHTML = state.playing
             ? '<cgo-icon name="pause" size="14"></cgo-icon>'
             : '<cgo-icon name="play" size="14"></cgo-icon>';
+        // 播放期间**收起并禁用**「运镜速度 / 特写倍数」：这两项决定整条时间线的步长、取景与
+        // 转换窗，中途改必须重建时间线并重新对齐「当前播到哪」，边界极多、画面还会跳变。
+        // 干脆播放时锁住，暂停后再调（改完由 input 事件重建时间线，见下方监听）。
+        const lock = !!state.playing;
+        [state.els.setSpeed, state.els.setZoom].forEach((btn) => {
+            if (!btn) return;
+            btn.disabled = lock;
+            btn.classList.toggle("is-disabled", lock);
+        });
+        if (lock) {
+            if (state.els.speedSet) state.els.speedSet.hidden = true;
+            if (state.els.zoomSet) state.els.zoomSet.hidden = true;
+        }
     }
 
     /* ======================================================================
@@ -3088,6 +3710,13 @@
      */
     function alphaAt(sid, t) {
         if (state.alwaysOn.has(sid)) return 1;
+        // 出站换乘期间主点让位（与画面同一口径，见 syncPhantomHosts）—— 导出逐帧走这里，
+        // 不能让视频里还留着交叉点上那颗共用的站图元
+        if (state.timeline) {
+            const i = recAt(t).i;
+            if ((state.offPairs || []).some((p) => p.host === sid && p.ghostIn != null
+                && i >= p.ghostIn && i < p.ghostOut)) return 0;
+        }
         const ap = state.activePops.find((p) => p.sid === sid);
         if (ap) return Math.max(0, Math.min(1, EASE_POP(state.popDur > 0 ? (t - ap.t0) / state.popDur : 1)));
         return state.shown.has(sid) ? 1 : 0;
@@ -3125,9 +3754,25 @@
             const src = el.getAttribute("src") || el.getAttribute("xlink:href") || el.getAttribute("href");
             const data = src && state.exportImgCache.get(src);
             if (!data) continue;
-            if (el.hasAttribute("src")) el.setAttribute("src", data);
-            if (el.hasAttribute("xlink:href")) el.setAttribute("xlink:href", data);
-            if (el.hasAttribute("href")) el.setAttribute("href", data);
+            let use = data;
+            // 龙嘉机场徽标在页面里靠「CSS mask + 文字色底板」着色（见 changchun.js 的
+            // installAirportBadgeStyle），而 mask 里的 url 是**相对路径** —— 内联进导出 SVG 后
+            // 没有 base URL、解析不到，mask 静默失效（同下面 img 那条注释的理由），
+            // 结果只剩一块底色、与「镂空」不符。这里改成**直接把单色轮廓重着色成主题文字色**，
+            // 并摘掉 mask、让 img 显形 —— 与页面上看到的一致，且不再依赖 mask。
+            if (/\/airport\.svg$/i.test(src.split("?")[0])) {
+                use = recolorSvg(data, (state.exportTheme || {}).text || "#222");
+                const item = el.closest ? el.closest(".scattered-item") : null;
+                if (item) {
+                    item.style.setProperty("-webkit-mask", "none");
+                    item.style.setProperty("mask", "none");
+                    item.style.setProperty("background-color", "transparent");
+                }
+                el.style.setProperty("visibility", "visible");
+            }
+            if (el.hasAttribute("src")) el.setAttribute("src", use);
+            if (el.hasAttribute("xlink:href")) el.setAttribute("xlink:href", use);
+            if (el.hasAttribute("href")) el.setAttribute("href", use);
         }
         const xml = new XMLSerializer().serializeToString(clone);
         // ⚠️ 内联 CSS 走 CDATA：里面出现 `]]>` 就会提前闭合、把后面的标签名当文本，整份 SVG 直接解析失败。
@@ -3147,7 +3792,9 @@
         const img = await imgFromData(sanitizeXml(svg));
 
         ctx2d.setTransform(1, 0, 0, 1, 0, 0);
-        ctx2d.fillStyle = "#fff";
+        // 底色取**底图背景色**（暗色主题下不能再铺白）：全览那一拍地图内容缩得比输出画布还小，
+        // 四周露出来的就是这层底 —— 早先硬编码 #fff，暗色导出会围一圈白边（用户验收反馈）。
+        ctx2d.fillStyle = (state.exportTheme && state.exportTheme.mapBg) || "#fff";
         ctx2d.fillRect(0, 0, cw, ch);
         // 进度卡的让位已在**取景**层做掉（见 viewportBox：导出时按卡的所在侧扣掉一个卡宽），
         // 这里直接把图形层贴上去；站名随后按最终分辨率栅格化。
@@ -3207,6 +3854,8 @@
         ctx2d.setTransform(1, 0, 0, 1, 0, 0);
         drawCard(ctx2d, cw, ch, t, k);
         drawWatermark(ctx2d, cw, ch);
+        // 收尾那一拍（缩到全图的长停）才补一条免责说明，与水印分居底部两侧
+        if (recAt(t).whole) drawDisclaimer(ctx2d, cw, ch);
     }
 
     /* ---- 进度卡：把面板那套「当前事件 + 说明 + 规模 + 进度」合成进画面 ---- */
@@ -3522,6 +4171,35 @@
         ctx2d.restore();
     }
 
+    /* ---- 末尾全览的免责说明：与水印**分居底部两侧**（用户指定），只在收尾那一拍出现 ---- */
+
+    /** 免责说明文案：三条口径（数据由主理团队整理 / 线路图经过变形 / 以实际数据为准） */
+    const DISCLAIMER_TEXT = "数据由该项目主理团队整理 · 线路图经过变形处理 · 请以实际数据为准";
+
+    function drawDisclaimer(ctx2d, cw, ch) {
+        const th = state.exportTheme || {};
+        const fam = th.font || "sans-serif";
+        const pad = CARD.margin;
+        ctx2d.save();
+        // 字号与角落水印**取同一个**（同为 F(14)）、 cy 也同一行 —— 两端文字才会视觉齐平
+        ctx2d.font = "500 " + F(14) + "px " + fam;
+        ctx2d.textBaseline = "middle";
+        // 角落水印在左时说明居右（反之亦然）—— 两端各占一头，互不遮挡
+        const onRight = !watermarkOnRight();
+        ctx2d.textAlign = onRight ? "right" : "left";
+        const x = onRight ? cw - pad : pad;
+        const cy = ch - pad - F(13);   // 与水印同一行（贴着底边）
+        ctx2d.globalAlpha = 0.72;
+        // 与角落水印同款：先描一圈底色做底衬，压在线上也看得清
+        ctx2d.lineWidth = F(3);
+        ctx2d.lineJoin = "round";
+        ctx2d.strokeStyle = th.mapBg || "#fff";
+        ctx2d.strokeText(DISCLAIMER_TEXT, x, cy);
+        ctx2d.fillStyle = th.text || "#222";
+        ctx2d.fillText(DISCLAIMER_TEXT, x, cy);
+        ctx2d.restore();
+    }
+
     /**
      * XML 1.0 里**不允许出现**的字符：控制符（除 \t \n \r）、孤立代理项、U+FFFE / U+FFFF。
      * HTML 解析对它们照收不误，但把同一棵 DOM 序列化成 SVG 再交给 XML 解析器就整份失败
@@ -3710,6 +4388,29 @@
         return btoa(s);
     }
 
+    /**
+     * 把单色 SVG 图片（base64 data URL）的填充色统一换成给定色。
+     * 导出时给「靠 CSS mask 着色」的徽标兜底用（见 paintFrame 里对 airport.svg 的处理）：
+     * mask 的相对 url 内联进 SVG 后没有 base URL、解析不到，只能改成直接着色。取不到就原样返回。
+     */
+    function recolorSvg(dataUrl, color) {
+        try {
+            const m = /^data:image\/svg\+xml;base64,/i.exec(dataUrl);
+            if (!m) return dataUrl;
+            const bin = atob(dataUrl.slice(m[0].length).replace(/\s+/g, ""));
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            let svg = new TextDecoder("utf-8").decode(bytes);
+            svg = svg.replace(/fill=(['"])(?!none\b)[^'"]*\1/gi, 'fill="' + color + '"');
+            if (!/fill=/i.test(svg)) svg = svg.replace(/<svg\b/i, '<svg fill="' + color + '"');
+            const out = new TextEncoder().encode(svg);
+            let s = "";
+            const CH = 0x8000;
+            for (let i = 0; i < out.length; i += CH) s += String.fromCharCode.apply(null, out.subarray(i, i + CH));
+            return "data:image/svg+xml;base64," + btoa(s);
+        } catch (e) { return dataUrl; }
+    }
+
     /* ---- 编码：WebCodecs `VideoEncoder` + mp4-muxer ----
      * 逐帧循环与播放共用 `applyFrame(t)`：每帧先把它之后的画面落到 DOM，再用
      * `paintFrame` 取图。⚠️ 这里用**非落定**模式（settle 省略）—— 站点弹出、涟漪要逐帧
@@ -3791,6 +4492,15 @@
         const alive = () => gen === state.exportGen;
         state.exporting = true;
         state.exportCancelled = false;
+        // 浮层的静态信息：本次导出的范围 + 当前运镜参数（导出期间这些控件都被锁住）
+        {
+            const e0 = state.els;
+            const a = state.steps[from], b = state.steps[to];
+            if (e0 && e0.expRange) e0.expRange.textContent = (a && b) ? a.date + " → " + b.date : "—";
+            if (e0 && e0.expSpeed) e0.expSpeed.textContent = state.speed + " px/s";
+            if (e0 && e0.expZoom) e0.expZoom.textContent = state.zoom.toFixed(1) + "×";
+            if (e0 && e0.expNow) e0.expNow.textContent = a ? a.date + " " + (a.title || stepLabel(a)) : "—";
+        }
         // 导出与 rAF 会抢同一条时间线：先把实时播放停干净
         clearTimers();
         state.playing = false;
@@ -3853,7 +4563,7 @@
                     await new Promise((r) => setTimeout(r, 4));
                 }
                 if (!alive()) break;
-                setExportProgress(i + 1, frames + 1);
+                setExportProgress(i + 1, frames + 1, t);
                 if (i % 4 === 0) await new Promise((r) => setTimeout(r, 0));  // 定期让出主线程
             }
             if (encError) throw encError;
@@ -3892,7 +4602,16 @@
                     state.tCur = state.timeline.total;
                 }
                 state.exporting = false;
-                syncExportUI();
+                // 成功收尾时让「已导出 N 帧 · xx MB」在浮层上停一会儿再收（否则一闪而过）；
+                // 取消 / 失败 / 面板已换则立即收。
+                const modal = state.els && state.els.expModal;
+                if (modal && !state.exportCancelled) {
+                    setTimeout(() => {
+                        if (state.els && state.els.expModal === modal) syncExportUI();
+                    }, 2600);
+                } else {
+                    syncExportUI();
+                }
             }
         }
     }
@@ -3904,10 +4623,40 @@
         el.classList.toggle("is-error", !!isError);
     }
 
-    function setExportProgress(done, total) {
-        const bar = state.els && state.els.expBar;
-        if (bar) bar.style.width = (total ? Math.round(done / total * 100) : 0) + "%";
-        setExportStatus("导出中 " + (total ? Math.round(done / total * 100) : 0) + "%");
+    /** 导出首次进度的打点时刻：用来估剩余时间（每轮导出在 done ≤ 1 时重打） */
+    let exportStartAt = 0;
+
+    /** 毫秒 → 「N 秒」/「M 分 N 秒」 */
+    function fmtDuration(ms) {
+        const s = Math.max(1, Math.round(ms / 1000));
+        if (s < 60) return s + " 秒";
+        return Math.floor(s / 60) + " 分 " + (s % 60) + " 秒";
+    }
+
+    function setExportProgress(done, total, t) {
+        const e = state.els;
+        const pct = total ? Math.round(done / total * 100) : 0;
+        if (e && e.expBar) e.expBar.style.width = pct + "%";
+        // 预估剩余时间：已用时间 ÷ 已导帧数 × 剩余帧数。⚠️ 从第 3 帧起才显示 —— 头几帧
+        // 还要摊上编码器初始化与首屏渲染的开销，拿它估会把结果抬得离谱。
+        const now = Date.now();
+        if (done <= 1) exportStartAt = now;
+        const elapsed = exportStartAt ? (now - exportStartAt) / 1000 : 0;
+        // 实时渲染帧率（相对目标帧率）—— 拼在状态行**末尾**（紧随预计剩余时间）
+        const fps = (elapsed > 0.3 && done > 1)
+            ? (done / elapsed).toFixed(1) + "/" + EXPORT.fps + " fps"
+            : "—/" + EXPORT.fps + " fps";
+        // 当前正在导出的事件：按 t 落到哪一拍
+        if (e && e.expNow && t != null && state.timeline) {
+            const rec = recAt(t);
+            const s = rec ? state.steps[rec.i] : null;
+            if (s) e.expNow.textContent = s.date + " " + (s.title || stepLabel(s));
+        }
+        let eta = "";
+        if (exportStartAt && done > 2 && total && done < total) {
+            eta = " · 预计剩余 " + fmtDuration((now - exportStartAt) / done * (total - done));
+        }
+        setExportStatus(`导出中 ${pct}%${eta} · ${fps}`);
     }
 
     /** 起止事件下拉：用 CGoUI 的 `<cgo-toolbar-select>`（自带下拉面板与主题跟随） */
@@ -3954,7 +4703,8 @@
         if (e.expTo) e.expTo.disabled = on;
         if (e.expCard) e.expCard.querySelectorAll(".cgo-rt-need-opt").forEach((b) => { b.disabled = on; });
         if (e.expStart) e.expStart.hidden = on;
-        if (e.expCancel) e.expCancel.hidden = !on;
+        // 进度 / 剩余时间 / 帧率 / 取消都在 CGoUI 的浮层里（导出期间不随面板乱动）
+        if (e.expModal) e.expModal.open = !!on;
         if (e.expBar) e.expBar.style.width = on ? "0%" : e.expBar.style.width;
     }
 
@@ -3964,6 +4714,7 @@
 
     function mount(body) {
         state.body = body;
+        pathCache.clear();   // 换城市 / 重进演示：旧的路径采样作废，按需重新采
         // 一打开就收干净：从车站详情 / 路线结果点进来时，那些浮窗与线路、车站的高亮
         // 会残留在画布上（这个面板本就要接管画布，留着很突兀）
         resetMapSelection();
@@ -4002,8 +4753,26 @@
             expCancel: q('[data-oh="expCancel"]'),
             expBar: q('[data-oh="expBar"]'),
             expStatus: q('[data-oh="expStatus"]'),
+            expModal: q('[data-oh="expModal"]'),
+            expRange: q('[data-oh="expRange"]'),
+            expSpeed: q('[data-oh="expSpeed"]'),
+            expZoom: q('[data-oh="expZoom"]'),
+            expNow: q('[data-oh="expNow"]'),
             list: q(".cgo-oh-list")
         };
+        // 导出浮层改挂到 **body**：面板容器可能带 transform（拖动 / 吸附定位），
+        // 留在里面 `position: fixed` 会相对它定位、盖不住整屏。
+        if (state.els.expModal) {
+            document.body.appendChild(state.els.expModal);
+            // 安全冗余：关掉浮层（点右上角 ×）**即视为取消导出** —— 浮层一收，进度与取消按钮
+            // 就都看不见了，若导出还在后台跑，用户既没有反馈、也没法再中止它。
+            // cgo-modal 是 Web Component，关闭走内部方法、不派发事件，故监听 `open` 属性的消失；
+            // 导出正常收尾时 state.exporting 已置 false，不会误判成取消。
+            state.modalObserver = new MutationObserver(() => {
+                if (state.exporting && !state.els.expModal.open) state.exportCancelled = true;
+            });
+            state.modalObserver.observe(state.els.expModal, { attributes: true, attributeFilter: ["open"] });
+        }
         state.steps = build();
         // 更名链：同一站可以有多次更名（旧名 → 中间名 → … → 现名），按步号升序存成数组
         state.renameMap = new Map();
@@ -4068,7 +4837,8 @@
             state.els.exportSet.hidden = true;
             syncExportUI();
         });
-        state.els.exportToggle.addEventListener("click", () => {
+        // 不支持 WebCodecs 的设备上按钮不渲染（见 canExportVideo），绑定随之跳过
+        if (state.els.exportToggle) state.els.exportToggle.addEventListener("click", () => {
             if (state.exporting) return;
             const open = state.els.exportSet.hidden;
             state.els.exportSet.hidden = !open;
@@ -4133,11 +4903,17 @@
             pause();
             jumpTo(Number(li.dataset.go) - 1);
         });
+        // 点幽灵点 → 跳它对应的真实车站（捕获阶段，见 onPhantomClick）
+        state.phantomClickEl = document.getElementById("map-content");
+        state.phantomClickEl?.addEventListener("click", onPhantomClick, true);
         watchPinned();
     }
 
     function unmount() {
         state.exportCancelled = true;   // 关面板即中止正在进行的导出
+        pathCache.clear();              // 释放采样折线
+        state.phantomClickEl?.removeEventListener("click", onPhantomClick, true);
+        state.phantomClickEl = null;
         // ⚠️ 同时把 exporting 清掉：导出收尾那一段被 `alive()` 挡着（代次已变），不会重置它；
         //    留着 true 会让下一次导出在 runExport 开头就被 `if (state.exporting) return` 挡回去。
         state.exporting = false;
@@ -4150,7 +4926,44 @@
         exitStage();
         if (state.body) state.body.classList.remove(BODY_CLASS);
         state.body = null;
+        state.modalObserver?.disconnect();
+        state.modalObserver = null;
+        state.els?.expModal?.remove();   // 导出浮层挂在 body 上，得自己摘掉
         state.els = null;
+    }
+
+    /** 幽灵车站 ID 集合（`CGO_OFFSTATION_PLATFORMS` 的 id）：演示专用图元，不是可选的「一座真实车站」 */
+    function phantomIds() {
+        const out = new Set();
+        (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
+            if (pf && pf.id) out.add(pf.id);
+        });
+        return out;
+    }
+
+    /**
+     * 幽灵车站不该被**选到 / 搜到**：底图上它们的图元已由 `:not(.cgo-oh-stage)` 规则隐藏，却仍会
+     * 出现在两个候选列表里 —— 站名选择器（core 点站名弹出的 `#selector-layer`）与全局搜索框
+     * （core 的 `#search-results-list`）。这里做**共享层 DOM 后处理**（core 零改动，装挂手法同
+     * shared/station/exit-search.js 的「立即试一次 + 低频轮询」）：命中幽灵站就把那条候选摘掉。
+     * ⚠️ 常驻、不随 mount/unmount 走 —— 演示开始前的**底图态**同样要过滤（用户验收反馈：
+     *    底图上仍能选到 / 搜到 0125A 这类幽灵站）。
+     */
+    function watchPhantomNodes() {
+        const ids = phantomIds();
+        if (!ids.size) return;
+        const prune = (host) => {
+            host.querySelectorAll("[data-sid]").forEach((el) => {
+                if (ids.has(el.dataset.sid)) el.remove();
+            });
+        };
+        ["selector-layer", "search-results-list"].forEach((hostId) => {
+            const host = document.getElementById(hostId);
+            if (!host || host.__cgoPhantomWatch) return;
+            host.__cgoPhantomWatch = true;   // 幂等：轮询只补挂尚未挂过的容器
+            prune(host);
+            new MutationObserver(() => prune(host)).observe(host, { childList: true, subtree: true });
+        });
     }
 
     function hasData() {
@@ -4177,6 +4990,9 @@
             unmount: unmount
         });
     }
+
+    watchPhantomNodes();                    // 幽灵车站不进选择器 / 搜索候选（底图与演示态都要）
+    setInterval(watchPhantomNodes, 800);    // 两个容器可能晚于本脚本进 DOM（core 是 module）
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", register);
     else register();

@@ -46,7 +46,7 @@
 | `station-title.js` | `window.CGoStationTitle.createStationTitleNormalizer` | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈） | 侧栏站名标题归一化（站类判定、标题拼装、MutationObserver 安装与防自触发） |
 | `tip-card.js` | `window.CGoTipCard.render` | classic script（目前仅沈阳引入） | 车站信息板提示卡片 DOM（与上游官方模板结构一致） |
 | `label-active.js` | `window.CGoLabelActive`（`sync`） | classic script，目前仅沈阳在 `{city}.js` 引入 | 呼出线随站名标签同步 active 与淡化（按 `data-cgo-callout` 配对），详见 2.1 |
-| `adjacent-jump.js` + `adjacent-jump.css` | 无对外接口（自动注册 `cgo-adjacent-jump` 模块） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州未引入） | 「上一站 / 下一站」点击跳转：面板装配完成后给 `info-value` 反查目标站并绑定跳转（core 零改动），详见 2.1 |
+| `adjacent-jump.js` + `adjacent-jump.css` | 无对外接口（自动注册 `cgo-adjacent-jump` 模块） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州未引入） | 「上一站 / 下一站」点击跳转 + **已拆除站纠正**：面板装配完成后给 `info-value` 反查目标站并绑定跳转，并据 `window.CGO_RETIRED_STATIONS` 把指向已拆除站的邻站改写为沿站序向外第一座活站、滤掉接驳徽标里已拆除的对端（core 零改动），详见 2.1 |
 | `calligraphy.js` + `calligraphy.css` | `window.CGoCalligraphy.register` | classic script（目前仅沈阳引入） | 站名题字渲染机制（沈阳特色，其他城市可选用）；素材缺失时给「投稿 / 反馈」入口，详见 2.1 |
 | `facilities.js` + `facilities.css` | `window.CGoFacilities`（`register` / `registered`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 呼），须早于城市设施模块 | 车站设施板块（配置驱动，含可选的车站层级图），详见 2.1 |
 | `feedback.js` + `feedback.css` | `window.CGoFeedback`（`open` / `registerKind` / `kinds`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州未接入）（**建议**早于 `exits.js` 与 `calligraphy.js`；这两者都在**打开面板前补登记**一次自己的场景、幂等，故先后顺序并不敏感，见 `exits.js` 内注释） | 反馈面板：出入口「待补充」、题字投稿与右上角「更多」入口共用，七类场景，详见 2.1 |
@@ -57,7 +57,7 @@
 | `opening-schedule.css` | — | 由 `opening-schedule.js` 按自身 URL 注入 | 上述倒计时框的样式（同 `calligraphy.css` 的做法） |
 | `line-link.js` | `window.CGoLineLink`（`list` / `atStation` / `ofLine` / `throughPairs` / `mergeStationLines`） | classic script，**目前仅大连**在 `{city}.js` 引入，须早于 `route-data.js` | 线路接续声明解析：城市用 `lineLinks` 声明「哪两条线在哪个站接续、是否贯通运行」。声明 `through: true` 时，规划内核把经由衔接站的跨线视作同一列车（不计换乘、无换乘耗时），车站详情也把整条贯通区段合并成一条线、相邻站跨线相连 |
 | `loop-direction.js` | `window.CGoLoopDirection`（`of` / `label` / `orientation`） | classic script，按需引入（沈 / 大 / 长 / 哈 / 福 已引入；呼和浩特无环线，未引入），须早于行程规划与时刻表渲染 | 环线乘车方向的环别文案（按站序做鞋带公式判顺 / 逆），详见 2.1 |
-| `geo-estimate.js` | `window.CGoGeoEstimate`（`estimateForPair` / `applyToPanel` / `loadCoordIndex` / `ready`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长） | 站距「约X米」估算的经纬度优先实现：观察 `#info-panel`，把命中的「(约X米)」按球面距离**就地改写**（核心是 ES module、顶层函数与 `STATION_GEO_MAP` 不外泄，无法外部覆盖，故走事后改写）；同城同名歧义或球面值异常偏离时保留画布值 |
+| `geo-estimate.js` | `window.CGoGeoEstimate`（`estimateForPair` / `metersBetween` / `applyToPanel` / `loadCoordIndex` / `ready`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长） | 站距「约X米」估算的经纬度优先实现：观察 `#info-panel`，把命中的「(约X米)」按球面距离**就地改写**（核心是 ES module、顶层函数与 `STATION_GEO_MAP` 不外泄，无法外部覆盖，故走事后改写）；同城同名歧义或球面值异常偏离时保留画布值。`metersBetween(fromSid, toSid)` 是给「主动改写邻站」用的裸球面距离（无偏离窗口） |
 | `route-data.js` + `route-planner.js` + `route-panel.js` + `route-panel.css` | `window.CGoRouteData`（`build` / `amapCoordIndex` / `collectVirtualTransfers` / `hourSlots`）、`window.CGoRoutePlanner`、`window.CGoRoutePanel` | classic script，六城在 `{city}.js` **按 data → planner → panel 的顺序**引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 行程规划：网络构建 / 多目标 Dijkstra / 票价结算 / 结果面板（**须按 data → planner → panel 的顺序引入**），详见 2.1 |
 | `nearest-station.js` + `nearest-station.css` | 无对外接口（自动接管 `#locate-btn`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 跨城市「查找最近车站」：在 `#locate-btn` 上以**捕获阶段**扣下核心 `findNearestStation` 的点击，本模块自足地定位、换算 GCJ-02、比对全城站点后，改用 `cgo-modal` 三选一（切换到更近的城市 / 查看当前城市最近车站 / 取消），替掉核心那个同步 `confirm`；样式表由脚本按自身 URL 注入 |
 | `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
@@ -65,7 +65,8 @@
 | `sheet-drag.js` | `window.CGoSheetDrag`（`create`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），**须早于 `route-panel.js` 与 `panel-sheet-gesture.js`** | 移动端抽屉手势引擎：头部/把手拖拽 + 内容区跟手仲裁 + 半屏滚动锁；与面板解耦，由适配器接入车站详情 / 行程规划 / 路线结果三个面板，详见 2.1 |
 | `panel-sheet-gesture.js` + `panel-sheet-gesture.css` | `window.CGoPanelSheetGesture`（`refresh`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），**须晚于 `sheet-drag.js` 与 `viewport-inset.js`** | 车站详情抽屉的适配器：把引擎接到 `top` 空间 + body 档位类上，并卸掉 core 的移动端拖拽，详见 2.1 |
 | `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close` / `registerTool(def)`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
-| `opening-history.js` + `opening-history.css` | 经 `window.CGoMapTools.registerTool` 注册成**免选站工具**（`window.CGoOpeningHistory` 只暴露 `hasData` / `mount` / `unmount` / `open`） | classic script，**目前仅沈阳**在 `{city}.js` 引入（须晚于 `map-tools.js` 与城市 `data_opening_history.js`） | 线网发展史动态演示：按开通沿革把线网逐段「长」出来（区段沿真实走向生长 → 新开车站脉冲 → 段间跳视口 → 播放 / 暂停 / 重播 / 倍速 / 跳年份），并可把选定区间导出为 **1280×720@30fps 的 MP4**（WebCodecs `VideoEncoder` + mp4-muxer，按需注入），详见 2.1 |
+| `opening-history.js` + `opening-history.css` | 经 `window.CGoMapTools.registerTool` 注册成**免选站工具**（`window.CGoOpeningHistory` 只暴露 `hasData` / `mount` / `unmount` / `open`）；另把沿革里已拆除的站暴露成 `window.CGO_RETIRED_STATIONS`（供 `adjacent-jump.js` 等后处理读取） | classic script，五城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼）（须晚于 `map-tools.js` 与城市 `data_opening_history.js`） | 线网发展史动态演示：按开通沿革把线网逐段「长」出来（区段沿真实走向生长 → 新开车站脉冲 → 段间跳视口 → 播放 / 暂停 / 重播 / 倍速 / 跳年份），并可把选定区间导出为 **1280×720@30fps 的 MP4**（WebCodecs `VideoEncoder` + mp4-muxer，按需注入），详见 2.1 |
+| `rdot-label.js` | `window.CGoRdotLabel`（`apply` / `hasRailLink` / `peersOf` / `transferTables` / `stationTable`） | classic script，由 **main.html 在全部数据脚本之后全局引入**（各城零配置；core 是 module、最后执行，故治理必然先于渲染） | 国铁散点（`type: "rdot"`）站名标签：无轨交接驳时**强制显示**、有接驳后**隐藏**（由同名轨交站名承担识别）；底图按终态接驳隐藏、演示按对端入场逐帧显隐，详见 2.1 |
 
 ### 2.1 各模块要点
 
@@ -86,6 +87,8 @@
 #### adjacent-jump.js + adjacent-jump.css —— 上一站 / 下一站点击跳转
 
 车站详情「线路」页签里的「上一站 / 下一站」原本只是纯文本；本模块注册一个**空渲染**的 `cgo-adjacent-jump` 模块（`line-tab` 槽、order 21，紧跟 core 的 `adjacent-stations` 之后），借 `onMounted` 在面板装配完成后给已有的 `.info-value` 事后增强，对 core 零改动（与 `geo-estimate.js` 的「面板就地改写」同一思路）。目标站 ID 走**站名反查**：取 `info-value` 的首个非空文本子节点（其后那个 span 是距离，不参与匹配）回查 `processedStations.cn`；同城同名多站（如沈阳有轨 / 地铁两个「杨官」）按「与当前站在任一线路站序上相邻」收窄，**仍歧义就不绑**——宁可该行保持纯文本，也不跳错站；反查忠实于「显示什么跳什么」，`line-link.js` 贯通合并改写过的 prev / next 也能正确解析。绑定后补 `data-cgo-jump-sid`（CSS 可点击形态的钩子）、`role="button"` + `tabindex` + `aria-label`（Enter / 空格可触发）；点击调 `selectStation(sid)` 后再按**线路名**点选新面板里的同名页签，保住「沿线上下站连续浏览」的链路（不必复刻 core 的 `relatedLinesInfo` 排序，且天然覆盖贯通改名的线名）。样式表由脚本按自身 URL 注入。无配置项，城市引入脚本即生效，可在 `stationBoard.modules` 里以 `cgo-adjacent-jump: { enabled: false }` 关闭
+
+同一处还兼作**已拆除站纠正**：沿革数据里 `removed` 的站（如长春 3 号线原辽宁路站 0323），线路站序仍保留它以便演示还原历史形态，核心并不知道它已不存在 —— 于是非演示态下「上一站 / 下一站」会把它当活站。本模块读 `opening-history.js` 暴露的 `window.CGO_RETIRED_STATIONS`（收集 `station-state` / `line-state` 的 removed，含停运段上站级豁免 `except: [{ state: "removed" }]` 的站），把指向这些站的邻站改写为**沿站序向外第一座活站**（分支线按 way、环线首尾相接），距离用 `CGoGeoEstimate.metersBetween` 按经纬度重估（取不到就只留站名）；「可接驳或付费换乘至 / 电子客票可免费站外换乘」行里对端已被拆除的徽标也一并滤掉（滤空则整块移除）。演示（`#map-content` 挂 `cgo-oh-stage`）进行中不干预 —— 拆除 / 幽灵站的显隐由演示层按时间轴自行呈现
 
 #### calligraphy.js + calligraphy.css —— 站名题字
 
@@ -174,11 +177,45 @@ core 的 `initMobileSheetDrag()` 写死在 `#info-panel` 上（内容区按下�
 
 **站点形态按时间推进**：换乘站在**只通了一条线**时先按普通站（`cgo-oh-dot`：图元画成 dot，环色取**首条开通线路**的颜色 —— 不是 `linesData` 里排第一的那条）入场，等第二条线开通、镜头运到该站时才摘掉这个类转成 tsf —— 这正是「换乘站是长出来的」；**暂缓开通**的车站同理，所属线路开通时先以 dot 出现（`station-state{open}` 事件把补开日期记进 `delayed` 表），到自己的补开事件再转正式形态。**更名过的车站**在更名日期之前一律用**旧名**入场（就地改写 `#label_<sid> .stacn`，原文记在 `state.renamed` 里），到 `rename` 事件播放时淡出换字再淡入；跳转（非播放）则直接落成新名。这些「入场 / 升级」两笔账分开计：清单上分别显示 `add` 图标 + N（新开站）与 `transfer` 图标 + N（转为换乘站，CGoUI 没有上箭头，用换乘图标语义更准），面板说明里也分别写出。**站内换乘启用晚于两条线开通**的站（长春站：3 号线地面站与 1 号线地下站先后投用，2019-01-26 起两个站台都在用，却要出站再进站，直到 2021-12-31 三号线东延入地才站内连通）用 `station-state{interchange}` 记启用日，此前一律按单线普通站渲染。**闭站 / 拆除**用 `station-state` 的 `suspended` / `removed`：闭站（长春芙蓉桥、西安桥）先转「未开通」图元，恢复日再用一条 `station-state{open}` 转回去，**整段停运**则写成一条 `line-state{suspended}` 由共享层按站序展开（长春 2021-11-28 的长春站—湖西桥段）；`state: "removed"` 的拆除（长春 3 号线原辽宁路站）则**把图元、站名与引线一并抹掉**（`cgo-oh-gone`），重放 / 回拖时随 `clearMarks` 一起还原。拆除的站在**当前线网图上也不该存在**，故模块按沿革数据另注入一条只对非演示态生效的规则（`:not(.cgo-oh-stage)`）把它从底图上隐去 —— 选择器按站点 ID 直指节点，核心重建节点后依然命中。
 
+**站台级「幽灵点」**（`window.CGO_OFFSTATION_PLATFORMS`，城市沿革数据文件里的顶层 `const`）：同一座车站两条线各有站台、却只能付费站外换乘的那段时期，**每座车站、每条线各一个**（如长春站既有 3 号线侧也有 1 号线侧），两座站台各自成点、以一条虚线相连（`id` 幽灵点、`of` 主点、`line` 决定标志色与所属线；幽灵点不进任何线路站序，底图上由共享层隐藏、演示中带站名 —— 所以**数据里不要给幽灵点写 `hideLabel`**，否则 core 不渲染标签节点、演示中就是个没名字的孤点）。
+
+出现 / 消失时刻都由已有事件自动推导，不必另写日期：
+- **出现 = 三者较晚** —— 该站首次出现在画布上（先到线到达）· **本幽灵点所属线到站** · 该站**本线**首次投用（`station-state{open}`，闭站恢复不算）。于是长春站 3 号线侧 2002-10-30 就出现、1 号线侧要等 2019-01-26 站台投用。
+  ⚠️ 「本线到站」不能用「该线**全线首通**」（3、4 号线都分两期，卫星广场在二期、长春站北在地下段），也不能用「那一步的 `stations` 里有没有本站」（车站早已在线网上时 collect 按「形态没变」提前返回、根本不登记它，会把「开通站内换乘」那拍误当成到站）—— 正解是看该线那些 `line-state{open}` 拍里，**哪一拍的生长区段站序范围盖住了本站**。
+- **消失 = 主点开通站内换乘**（`station-state{interchange}`）那一步，或配置里的 `until`。
+  ⚠️ **`until` 是「动作引用」** `{ date, kind, state?, lineId? }`（在展开后的操作流里唯一命中才生效；命中数 ≠ 1 时跳过该幽灵点并 `console.warn`，不猜、不取第一拍）**而不是日期字符串** —— 一切「切画法」的阈值都必须绑**动作**：一天可能有好几拍（2019-05-30 先开站内换乘、再演 17 站更名），按日期找只会命中当天第一拍，对应动作还没开演、画法就先改了。数据侧的歧义由 selfcheck「幽灵点 until 动作引用唯一命中」拦截。
+
+**出站换乘期主点让位**：主点（两条线共用的那个 ID）的坐标落在**线路交叉点**上，而这段时期的两个站台实际是分开的 —— 画在交叉点上是错的。故只要该站还有一座站台的幽灵点在场上，主点的图元 / 站名 / 引线就整体隐去（`cgo-oh-host-off` 取各组幽灵点区间的**并集**，与「拆除」同一套挂类 / 还原机制，导出时随样式内联），该站这时的呈现**只有幽灵点**。
+`build` 侧的 `offPairs` 用具名字段记三件事（各是各的步号，早先用数组存会把它们混为一谈）：
+- `ghostIn` / `ghostOut` —— 该幽灵点的进场 / 移出步（主点让位区间即各组并集）；
+- `freeFrom` —— 两端转为**免费**换乘那一步（主点开通站内换乘），此前连线用付费画法、此后换免费画法。
+  ⚠️ 它与 `ghostOut` **常常不是同一步**：卫星路 / 临河街（0343）2012-09-22 就开通了站内换乘（切免费），但两边站名到 2019-05-30 才统一（幽灵点那时才撤）。早先把两者当同一个，0343 那组就会出现主点提前归位、与幽灵点并存的「重影」。
+- `peer` —— 同组另一个幽灵点（连线画在**两个幽灵点之间**；只配了一个点的车站回落主点）。
+
+**点幽灵点 = 跳真实车站**：幽灵点只存在于演示里（不在任何线路站序、面板拿不到线路信息），用户点它想看的是**那座真实车站**（今天的名字可能已经不同 —— 4 号线侧的「卫星路」今天叫「职业技术大学」）。故 `onPhantomClick` 在 `#map-content` 上用**捕获阶段**拦下点击，改选 `of` 指向的主点。同理，点站名弹出的**选择器**（core 的 `#selector-layer`）里也要过滤幽灵点 —— 否则同名列表会混进 0125A / 0125B，让人以为有好几座同名站（脚本用 MutationObserver 就地摘掉）。
+
+**图元挪了，线也跟着挪**：让位期间主点被隐藏，线路端点与站外连通线就不能再钉在（看不见的）主点坐标上 ——
+- **核心画的站外连通线**（`.virtual-connectors`，国铁站 ⇄ 轨交站那类）核心生成的是**直线**（`M x y L x y`），演示里按「此刻可见的图元」直接重写 `d` 即可（`syncConnectorEnds`，逐帧、只做几十次属性比对）；
+- **演示自画的线路段落**（live 层的生长段 + done 层的已画段）在生成 path 时就把**首尾点**对齐到幽灵点（`alignEndsToVisible`）；已归档段落再**逐帧**按留存的原折线重算 `d`（`realignArchivedPaths`，内部先比对、只在真的不同才写属性）—— 早先用「让位集合签名」当闸门，跳转 / 回拖时可能错过那一帧的重写。
+- ⚠️ 只动**首尾**、且只认「贴着某个让位站」的端点（4px 容差）—— 中间折点与形态转换注册表（`segPieces`）都不碰，形态转换的切片不会因此错位。
+
+**事件清单按「事件」列**：同一事件的多拍（2021-12-31 的恢复运营 → 站内换乘 → 东延通车）合并成**一条**，点击跳到该事件的**末拍** —— 时间线上它连着演完，落在末拍即「该事件完成后」的静态形态，不会停在半成品画面。标题用**事件级**标题（步上的 `evTitle`，由 `eventOps` 单独留一份、不掺各拍的操作标题），计数取各拍之和，高亮按 `evIdx` 匹配。⚠️ 早先每拍一行（怕 rename 拍的内容隐形），同一事件被拆成几个可点项，点中间那拍会看到演了一半的图。
+
+**幽灵点的形态跟着它所属那条线**：该线在本站停运（甩站改造 / 整段停运）→ 幽灵点转「未开通」圈，恢复运营 → 转回普通站（`syncGhostForms`，用 build 预计算的「本线停运区间」`downSpans`）。解放桥 3 号线侧 2019-06-01 封闭改造即此例 —— 此时**两座站台之间的付费换乘线仍然留着**（站台还在、只是列车不停）。
+
+**同名幽灵点只留一个站名**：同一站的两个站台点带着同一个站名（长春站 / 长春站北…），两个都入场后只显示先入场那个的标签（`syncGhostLabels` + `.cgo-oh-dup-label`），免得图上并排出现两个一模一样的名字。
+
+⚠️ 连线（`.cgo-oh-offlink`）由本模块自画、跟着幽灵点进出走，**不能**写进 `data_virtual_transfers.js` 的 `VIRTUAL_CONNECT_LINES`：那张表是「当前线网的站外连通」，核心会常驻画在底图上，而幽灵点在底图是隐藏的（会多出一条连到「看不见的点」的线），且它还会被行程规划当站外换乘边消费，而幽灵点并不是可规划车站。
+
 **时间轴（唯一时钟）**：`buildTimeline(from, to)` 把这段演示摊成绝对时刻表 —— 每步四拍「起笔运镜 → 生长（含更名换字）→ 收笔运镜 → 停顿」，末尾再接「缩到全图 + 长停」；`applyFrame(t)` 是**幂等**的帧应用函数，把 t 时刻的画面（相机、描边偏移、站点弹出、涟漪、更名、面板）一次落到 DOM。播放就是 `tick` 里推进 t 之后调它 —— **导出视频将来也走同一个函数取帧**，所以这里必须是「任意 t 都能重算」，不能靠增量。
 
 ⚠️ 原先这里是三套时钟并存（WAAPI 描边偏移 + CSS 动画 + rAF 补间），时间只活在 `setTimeout` 里、取不回来，导出就没法逐帧出图。现在 **CSS 侧不挂任何动画**：弹出进度一律写成 CSS 变量（`--cgo-oh-pop-alpha` / `-scale` / `-blur`）由 `applyFrame` 写值，缓动用同一条贝塞尔的 JS 求值（`EASE` / `EASE_OUT` / `EASE_POP`）。两处踩坑记下来：① 站点图元有一半形态在 `::before` 伪元素上，**内联样式够不着**，所以弹出进度必须走变量；② 无走向的步骤（单站开通、纯更名）**生长时长必须为 0** —— 否则会被 `growDuration` 的最小值撑出一段空生长，还会把 `null` 的折线点喂给路径构造（实测就是在这里崩的）。另外 `tick` 外面包了 try/catch：某帧一抛异常 rAF 链就断，而 `playing` 仍是 true，按钮会卡在「暂停」、时间轴永远不再推进。
 
 **运镜**：`运镜速度` 是**画笔沿画布前进的像素/秒**（60–300，默认 150；上限压到 300 是因为再快就成了「一闪而过」，站名来不及看），每段生长时长 = 该段画布像素长度 ÷ 速度，段间停顿也按它反比缩放。**进场动画（站点弹出、站名淡入、涟漪）的时长按「画面上的推进速度」反比缩放**，也就是 `运镜速度 × 特写倍数` **两个因子都要算**：车头固定在可见区中心，已弹出的站名是以这个速度**向画外退去**的，故倍数越高越要弹得快；只按运镜速度缩的话，特写推到 4~6 倍时站点会明显跟不上镜头。取景分三种：起笔时用 `特写` 倍数推近到段起点，生长期间逐帧把画笔摆到可见区中心，**收笔时缩到能看该段全貌**（长段自动缩小、短段不超过特写倍数）；**全片播完再缩到全图**并多停一会儿。`特写` 是**固定放大倍数**（1–6×，默认 2.6×；这类镜头只取「车站」那一级的景，故上限高于城市默认的 `maxScale` 3.0）。演示期间城市的缩放范围会被临时放宽（上限抬到 6、下限压到 0.2，全图取景比默认下限还小），退出时还原。**改速度或倍数会重建时间线**（各段时长与取景都是建表时算死的），并按「当前步 + 步内进度」落到等价位置，画面不跳。
+
+**多站操作逐站巡览**：一拍里动多个站（`station-state` 的 `stations[]`、`rename` 的 `renames[]`）时**不再同时动作** —— `stepStops` 把它们按站归一成一串「停留点」（同站同拍的动作并到一个停留窗），镜头**每站停留 `STOP_HOLD`（900ms，本站动作在停留窗开头演完）再平移（`glideMs`）到下一站**（hop ≈ 1280ms）；多站更名的换字逐对落在各自的停留窗里（多对时单字动画归零、只有一对时保持 500ms 淡出换字）。无走向的拍（单站开通、纯更名）此前镜头定格不动，就是靠这组停留点走位的。
+
+**段形态转换的动效**（`line-state` 的停运 / 恢复 / 移除那几拍）：`convertRange` 只做结构拆分（与生长切片同源 `slicePath`，几何零误差，左右保原样式），补间交给 `applyPieceProgress` 逐帧写 dash、自己收口落定 —— **solid → hollow** 彩色不动、镂空盖面自**收笔端**长出（观感「实线自尾端起逐渐变镂空」）；**hollow → solid** 盖面自**起笔端**退去（实线自头端长出，与生长同向）；**→ hidden** 整段自**收笔端反向擦除**（语义「撤回」，与生长对偶）。转换窗不足 `CONV_MIN`（800ms）时顶到下限再播；`hidden` 落定用 `display: none`，回拖进度条（e ≤ 0 落定回 from）照常还原。中间态按「原样式」记账，同一段的第二次转换才认得出从哪儿转到哪儿。
 
 取景一律以**真正看得见的那块地**为基准：侧栏固定时 `#map-container` 本身已经让开了侧栏，所以量的是 `#legend-overlay .legend-modal` 与地图容器**在同一坐标系下的右边界**（`modalRect.right - hostRect.left`），而不是侧栏自身宽度 —— 后者会把侧栏重复扣一次，镜头整体偏左（「侧栏态特写中心偏移」就是这么来的）。**底部还要再扣掉浮层遮挡，但只在窄屏口径下（`innerWidth <= 640`）**：读共享层 `window.CGoViewportInsets.bottom`（由 `viewport-inset.js` 从浮层的 `data-cgo-inset` 汇总，地图小工具面板本尊就在其中）—— 窄屏下它是横跨整屏的贴底抽屉，取景中心会整个落在面板底下（画面看着整体偏下）；桌面端同一块面板是贴在右下角的浮岛，只占一角，扣了反而把整幅构图无谓上推、收笔取景还白缩小一圈。横向同理不扣：左侧缩放条与右下角浮岛都只占角落。
 
@@ -203,6 +240,16 @@ core 的 `initMobileSheetDrag()` 写死在 `#info-panel` 上（内容区按下�
 **角落水印**：视频右下/左下角一行 `CGo OpenMap · {城市} 开放地图`（AGPLv3 / ODbL 双轨下出片同样要署名），左侧的 CGo 小图标由 `prepareMark()` 把 `cgo-icon[name="cgo"]` 的 shadow SVG 取出来、栅格化一次（取不到就退化成纯文字）；图标取色由 `MARK_COLOR_MODE` 决定 —— `'brand'` 走 CGoUI 品牌渐变（`<linearGradient>` 的两个 stop 与 `--icon-clr` 都得在根上补成具体值，隔离的 data URL 里没有页面的 CSS 变量，否则渐变那几笔会解析不出来），`'mono'` 则跟随文字色。位置与进度卡**自动分居左右下角**（卡在右下→水印左下；卡在左下→水印右下；卡在上半屏或关掉→固定右下），两者永不重叠；文字先按 `--map-bg` 描一圈底衬，压在线上也看得清。
 
 ⚠️ **站名渲染**：克隆里**只藏文字**（`#labels-layer .stacn` / `.staen`），**不藏整个站名层** —— 沈阳呼出框的「文本框底部描边」是 `.label-group.label-callout` 上的 `border-bottom`，整层藏掉会连框一起丢；文字仍由 canvas `fillText` 画（SVG 里没有页面已加载的 webfont，留下会用回退字体）。淡入时按页面口径补 `blur`（`4px × (1 − alpha) × s`，`s` 为导出比例）：canvas 的 `filter: blur` 半径是**输出像素**、不受当前 CTM 缩放影响（实测：1× 与 4× 下的扩张量相同），所以必须手乘 `s` 才与页面观感一致。
+
+#### rdot-label.js —— 国铁散点站名标签（无接驳强制显示）
+
+国铁散点（`type: "rdot"`）的站名标签是静态 `hideLabel` 管不了的：语义为「**无轨交接驳时强制显示、有接驳后隐藏**」（接驳后由同名轨交站名承担识别）。core 对 `hideLabel: true` 的站**根本不渲染标签节点**，所以治理必须发生在 core 渲染之前 —— 本模块由 main.html 在**全部数据脚本之后**全局引入（core 是 module、最后执行），把 rdot 的 `hideLabel` 摘掉并打意图标记 `_rdotHideAfterLink`（只为让 core 把节点渲染出来）；**底图（非演示）由脚本注入的 `:not(.cgo-oh-stage)` CSS 一律隐藏**（与数据原意一致 —— 「接驳前显示」是演练叙事，不该外溢到日常浏览），演示则由 `opening-history.js` 的 `syncRdotLabels()` 按「接驳对端是否已入场」逐帧显隐（对端不论 dot / tsf / 连在建的 `no` 都算）。各城零配置，加新城市不需要写任何东西。
+
+两处曾经的坑（都表现为「页面上看不出异常」，只在新城上静默失效）：
+1. **数据读取** —— 经典脚本顶层的 `stationsData` **不挂 window**（哈尔滨 / 呼和浩特的 `data_stations.js` 只有 `const stationsData = {…}` 一句），而本模块在 core 之前执行、`window.processedStations` 也还不存在；只认 window 上的名字会让整条机制在这些城市直接 `return false`。故按名直读全局词法变量（`typeof` 守卫），与 `VIRTUAL_*` 的读法同源。
+2. **判定源** —— 对端集合要读**三张**换乘登记表：`VIRTUAL_FREE_TRANSFER_MAP`（免费）、`VIRTUAL_TRANSFER_MAP`（付费）、`VIRTUAL_CONNECT_LINES`（站外连线）。坐标完全重合的城市（哈尔滨 / 呼和浩特、大连北站）只在付费映射里配对、**不画连线**，只读免费映射 + 连线会把它们漏得一干二净 —— 演示里那些站的国铁标签就永远不会收起。
+
+对外接口：`window.CGoRdotLabel = { apply, hasRailLink, peersOf, transferTables, stationTable }` —— `opening-history.js` 的演示态显隐复用 `peersOf` / `transferTables` 取对端集合，再按「对端是否已入场」判定；`hasRailLink` 是**终态口径**的通用判定（底图已不依赖它）。`apply()` 幂等，接驳关系更新后可重跑。
 
 ### 2.2 模块依赖关系
 
@@ -328,6 +375,7 @@ needs: {
 | 站名题字 | 沈阳专属，其他城市可选用 | `shared/station/calligraphy.js`、`city/shenyang/modules/shenyang_calligraphy.js` |
 | **呼出线随标签进入 active** | 沈阳已接入（换乘站的呼出框 + 引线，标签被选中 / 成为路线起终点时引线一同转红，标签被淡化时引线一同淡出）；其他城市给引线元素打 `data-cgo-callout="<车站 ID>"`、给引线层打 `data-cgo-callout-layer`，并在样式表里写 `cgo-callout-active` 的观感即可接入 | `shared/base/label-active.js`、`city/shenyang/modules/shenyang_map.js`、`city/shenyang/style.css` |
 | **上一站 / 下一站点击跳转** | 沈阳、大连、长春、哈尔滨、呼和浩特已接入（点上一站 / 下一站的站名即跳到该站详情并停在同一线路页签，站名反查歧义时保持纯文本不可点）；其他城市在 `{city}.js` 的 `document.write` 列表里加一行 `shared/station/adjacent-jump.js` 即接入，无需任何配置 | `shared/station/adjacent-jump.js`、各城 `{city}.js` 引入行 |
+| **国铁散点标签（演示态·无接驳强制显示）** | 五城（沈 / 大 / 长 / 哈 / 呼）已接入且**零配置**：**演示播放中** rdot 站无轨交接驳时强制显示站名、接驳后隐藏（对端只要未入场即算未接驳；对端集合读三张换乘登记表：免费 / 付费 / 站外连线）；**非演示态一律按数据原意隐藏**（`hideLabel: true` 的站底图上看不到标签）。国铁站按「晚于本城线网首通才登记」的沿革口径入场（大连北站 2012-12-01、哈尔滨北站 2015-08-17、长春西站 2012-12-01 等） | `shared/base/rdot-label.js`（main.html 在数据区之后全局引入）、`shared/tools/opening-history.js` 的 `syncRdotLabels()` |
 | **开通时刻** | 长春已接入（5 号线一期），沈阳、大连为空表待用 | `shared/station/opening-schedule.js`、各城 `data_opening.js` |
 | **行程规划** | 沈阳、大连、长春、哈尔滨、呼和浩特、福州已接入：共享层出算法、面板与坐标索引，城市只写 `reader` 取数 + `fareSystems` / `fare` 票价 | `shared/route/route-data.js`、`shared/route/route-planner.js`、`shared/route/route-panel.js`、各城 `{city}.js` 的 `CGO_ROUTE_CONFIG` |
 | **贯通运行（线路接续）** | 大连已接入（3 号线支线 ⇄ 13 号线在九里接续跑同一趟车）；其他城市按同一份 `lineLinks` 声明即可接入 | `shared/station/line-link.js`、`city/dalian/dalian.js` 的 `lineLinks` |

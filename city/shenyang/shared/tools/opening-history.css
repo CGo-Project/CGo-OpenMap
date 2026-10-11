@@ -179,6 +179,23 @@
     display: none !important;
 }
 
+/* ── 出站换乘期：主点让位给幽灵点 ────────────────────────────────────
+   同一座车站的两条线各有站台、只能出站换乘的那段时期，交叉点上的**共用图元**
+   （图元 / 站名 / 引线）整体隐去 —— 该站这时的呈现就是幽灵点，它停在各自线路的
+   走向上、避开交叉点，两座站台之间那条虚线由相邻的 .cgo-oh-offlink 图层负责。
+   与「拆除」同款：applyFrame 按幽灵点的进出步挂 / 摘类（见 syncPhantomHosts），
+   同样必须 !important（核心的 .station 是 display:flex），导出时随样式内联。 */
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-host-off,
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-host-off,
+#map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-host-off {
+    display: none !important;
+}
+
+/* 同一站的两个站台幽灵点共用一个站名：只留先入场的那个标签，免得出现两个一模一样的名字 */
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-dup-label {
+    display: none !important;
+}
+
 /* 虚拟换乘（站外连通）连线：两端车站都还没出现在画布上时先不画。
    本体是核心画在 #lines-layer 里的 .virtual-connectors，脚本按条目顺序逐条开关。
    默认全收、由脚本显式放行（而不是默认显示、由脚本去关）—— 后者在接管的那一帧会漏出来。 */
@@ -362,6 +379,13 @@
     flex: 1 1 auto;
     padding: 7px 4px;
     font-variant-numeric: tabular-nums;
+}
+
+/* 播放期间锁住这两枚按钮（时间线正在跑，改步长/取景要重建，见 syncPlayBtn） */
+.cgo-oh-actions .cgo-oh-set-btn:disabled,
+.cgo-oh-actions .cgo-oh-set-btn.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 /* 设置区：由那两枚按钮开关，默认收起 */
@@ -655,3 +679,46 @@
     color: #d33;
     opacity: 1;
 }
+
+/* ---- 导出进度浮层：外壳用 CGoUI 的 <cgo-modal>，这里只给 slot 内容排版 ---- */
+.cgo-oh-exp-meta {
+    display: grid;
+    gap: 4px;
+    margin: 0 0 10px;
+    font-size: 13px;
+}
+
+.cgo-oh-exp-meta > div {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    min-width: 0;   /* ⚠️ grid 子项默认 min-width:auto，长事件名会顶破卡片（用户验收反馈） */
+}
+
+.cgo-oh-exp-meta dt {
+    flex: 0 0 62px;
+    opacity: .6;
+}
+
+.cgo-oh-exp-meta dd {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.cgo-oh-exp-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.cgo-oh-exp-modal-actions .cgo-mt-quick {
+    padding: 7px 14px;
+}
+
+/* rdot 国铁标签「接驳后藏」：类只在演示态生效（底图由 rdot-label.js 的 :not(.cgo-oh-stage) 规则管），退出演示自动还原 */
+.cgo-oh-stage .cgo-oh-rdot-hidden { display: none !important; }
