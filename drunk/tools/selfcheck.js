@@ -411,7 +411,10 @@ section('车站图元 (core/station-icons.js)');
 //   7. line-state 三态白名单 open/suspended/removed（缺省 open）：suspended = 未开通镂空、
 //      removed = 空白，只校验端点、**不参与「拼满」**（开通的对偶，收缩侧）；
 //   8. except 逐站豁免：sid 必须落在该操作覆盖的车站内，state ∈ open/suspended/removed、tsf 为布尔；
-//   9. 事件外壳：写了 ops 的事件不得再带顶层 kind（操作只能活在 ops 里）。
+//   9. 事件外壳：写了 ops 的事件不得再带顶层 kind（操作只能活在 ops 里）；
+//  10. 站台级幽灵点（CGO_OFFSTATION_PLATFORMS）：id / of 存在、幽灵点不进任何线路站序；
+//      until 必须是**动作引用** `{date, kind, state?}` 且唯一命中某个操作 —— 按日期写死
+//      会在当天第一拍、对应动作还没开演时就先改画法（一天可以有多个操作），一律拦下。
 section('开通沿革时间线');
 {
     let withHistory = 0;
@@ -627,6 +630,29 @@ section('开通沿革时间线');
             const hitClosed = allIds.filter(sid => byLine[lineId].has(sid) && ends.has(sid)
                 && stations[sid] && stations[sid].type === 'no');
             if (hitClosed.length) bad.push(`${lineId} 区段端点落在未开通站上：${hitClosed.join(',')}`);
+        });
+
+        // 站台级幽灵点（CGO_OFFSTATION_PLATFORMS）：until 的动作引用必须唯一命中某个操作，
+        // 与共享层 findOpIndex() 同口径。数据侧拼错（按日期写死 / 命中多拍）必须当错误拦下。
+        const offPlats = evalData(fs.readFileSync(p, 'utf8'), 'CGO_OFFSTATION_PLATFORMS') || [];
+        offPlats.forEach((pf, i) => {
+            const where = `幽灵点#${i + 1} ${(pf && pf.id) || '?'}`;
+            if (!pf || !pf.id || !pf.of) { bad.push(`${where} 缺少 id / of`); return; }
+            if (!stations[pf.id]) bad.push(`${where} 幽灵点车站 ${pf.id} 不存在`);
+            if (!stations[pf.of]) bad.push(`${where} 主点车站 ${pf.of} 不存在`);
+            if (lines.some(l => IO.lineAllStationIds(l).includes(pf.id))) {
+                bad.push(`${where} 幽灵点 ${pf.id} 不应出现在任何线路站序里`);
+            }
+            if (pf.until == null) return;   // 不写 = 到主点开通站内换乘那一步（引擎自动取动作）
+            if (typeof pf.until !== 'object' || !pf.until.date || !pf.until.kind) {
+                bad.push(`${where} until 须为动作引用 {date, kind, state?}，不能按日期写死`);
+                return;
+            }
+            const hits = events.filter(ev => !ev.__shape
+                && ev.date === pf.until.date && ev.kind === pf.until.kind
+                && (pf.until.state === undefined || ev.state === pf.until.state)
+                && (pf.until.lineId === undefined || ev.lineId === pf.until.lineId));
+            if (hits.length !== 1) bad.push(`${where} until 动作引用命中 ${hits.length} 个操作（须唯一）`);
         });
 
         check(bad.length === 0, `${city}: ${rawEvents.length} 条事件 · ${events.length} 个操作 · ${Object.keys(byLine).length} 条线路 `

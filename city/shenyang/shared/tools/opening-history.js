@@ -55,6 +55,10 @@
     const ZOOM = { min: 1, max: 6, step: 0.1, def: 2.6 };
     /** 进场动画基准时长（ms）与时长上限 —— 实际时长按运镜速度反比缩放 */
     const POP_BASE = 300;
+    /** 多站巡览：镜头在每站的停留（ms）与站间平移（ms）——「停一下、直接平移到下一站」 */
+    const STOP_HOLD = 900;
+    /** 段形态转换补间的最小窗口（ms）：纯转换拍没有站可巡时也得看得见擦除 */
+    const CONV_MIN = 800;
     /** 取景移动/段落停顿（ms） */
     const T = { glide: 380, holdBase: 900, tailHold: 1600 };
     /** 演示期间临时放宽的缩放范围：全图取景比城市默认下限还小 */
@@ -176,12 +180,11 @@
         cardPos: "br",      // 导出进度卡的角落：tl / tr / bl / br / off
         shown: new Map(),   // sid → form：已经出现在画布上的车站（引线重建后据此补状态）
         segPieces: [],      // 已画段落注册表 [{ lineId, s0, s1, pts, style, color, nodes }]：段形态转换的唯一对象
-        convDone: new Set(), // 已应用过形态转换的步号（段转换只做一次）
         dotColors: new Map(), // sid → dot 形态的环色（首条开通线路的颜色）
         alwaysOn: new Set(), // 全程固定显示的车站（国铁散点等，不参与逐个弹出）
         railStations: new Set(), // 国铁散点（type "rdot"）：按时间入场，但不参与全览取景
         demoOnly: new Set(),    // 演示专用车站（站台级幽灵点）：不计入站数统计、也不进全览取景
-        offPairs: [],           // 站外换乘对 [主点 sid, 幽灵点 sid]：渲染层据此画那条虚线
+        offPairs: [],           // 站外换乘对 [主点 sid, 幽灵点 sid, 切免费画法的动作步号]：渲染层据此画那条虚线
         renamed: new Map(), // sid → 原文：被本模块改成旧名的标签，退出时还原
         renameMap: new Map(), // sid → [{ from, to, …, i }]：更名链（mount 时按数据重建，升序）
         scaleCity: null,    // 被临时放宽缩放范围的城市
@@ -445,6 +448,27 @@
         return out;
     }
 
+    /**
+     * `until` 动作引用 → **操作下标**（eventOps 展开后的操作流里）：
+     * `{ date, kind, state?, lineId? }` 精确定位到某一个操作。
+     *
+     * ⚠️ 一切「切画法」的阈值都必须绑**动作**、严禁绑日期：一条事件可以有好几拍
+     * （2019-05-30 先开站内换乘、再演 17 站更名），按日期找只会命中当天第一拍 ——
+     * 对应动作还没开演，画法就先改了。命中数 ≠ 1 时返回 -1（不猜、不取第一拍），
+     * 由 selfcheck「幽灵点 until 动作引用唯一命中」拦截数据侧的歧义。
+     */
+    function findOpIndex(ops, ref) {
+        if (!ref || typeof ref !== "object") return -1;
+        let hit = -1, n = 0;
+        ops.forEach((ev, k) => {
+            if (ev.date !== ref.date || ev.kind !== ref.kind) return;
+            if (ref.state !== undefined && ev.state !== ref.state) return;
+            if (ref.lineId !== undefined && ev.lineId !== ref.lineId) return;
+            hit = k; n++;
+        });
+        return n === 1 ? hit : -1;
+    }
+
     /** 该站是否**只**在这一条线上（线级移除时判定独占站；共站站要留着，另一条线还在跑） */
     function soleOnLine(sid, lineId) {
         const arr = Array.isArray(window.linesData) ? window.linesData : [];
@@ -497,25 +521,30 @@
             return null;
         };
         /**
-         * 站台级幽灵点的**日期区间**（先于步骤算好，wantForm 要用）：
-         * 出现 =「主点在该线首次通车」与「主点自己的、属于该线的 `station-state/open`（站台投用）」里较晚的日期；
-         * 消失 = 配置的 `until`，没写就取主点开通站内换乘（`station-state/interchange`）的日期。
+         * 站台级幽灵点的**存续区间**（先于步骤算好，wantForm 要用）——按**操作下标**计、
+         * 不按日期：同一天可以有好几拍，按日期判会在当天第一拍就把画法改了。
+         * 出现 =「主点在该线首次通车」与「主点自己的、属于该线的 `station-state/open`（站台投用）」
+         *       两个操作里较晚的那一个；
+         * 消失 = 配置的 `until` 动作引用（见 findOpIndex），没写就取主点开通站内换乘
+         *       （`station-state/interchange`）那一个操作。
          * 配对存在期间主点**不升换乘图元** —— 两座站台各自成点、之间靠连线表达换乘：
          * 临河街/卫星路、解放桥、长春站南站都是这种「同站不同台」，物理上本就是两座站。
          */
-        const phantomRange = new Map();   // 主点 sid → [{ from, to }]
+        const phantomRange = new Map();   // 主点 sid → [{ fromOp, toOp }]（操作下标，左闭右开）
         (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
             if (!pf || !pf.of) return;
-            const lineOpen = events.find((ev) => ev.kind === "line-state" && ev.state === "open" && ev.lineId === pf.line);
-            const platOpen = events.find((ev) => ev.kind === "station-state" && ev.state === "open"
+            const lineOpen = events.findIndex((ev) => ev.kind === "line-state" && ev.state === "open" && ev.lineId === pf.line);
+            const platOpen = events.findIndex((ev) => ev.kind === "station-state" && ev.state === "open"
                 && ev.lineId === pf.line && (ev.stations || []).indexOf(pf.of) >= 0);
-            const from = [lineOpen, platOpen].filter(Boolean).map((ev) => ev.date).sort().pop();
-            const transfer = events.find((ev) => ev.kind === "station-state" && ev.state === "interchange"
+            const cand = [lineOpen, platOpen].filter((i) => i >= 0);
+            if (!cand.length) return;
+            const fromOp = Math.max.apply(null, cand);
+            const transfer = events.findIndex((ev) => ev.kind === "station-state" && ev.state === "interchange"
                 && (ev.stations || []).indexOf(pf.of) >= 0);
-            const to = pf.until || (transfer ? transfer.date : null);
-            if (!from || !to || to <= from) return;
+            const toOp = pf.until ? findOpIndex(events, pf.until) : transfer;
+            if (toOp < 0 || toOp <= fromOp) return;
             const list = phantomRange.get(pf.of) || [];
-            list.push({ from: from, to: to });
+            list.push({ fromOp: fromOp, toOp: toOp });
             phantomRange.set(pf.of, list);
         });
         /**
@@ -627,7 +656,7 @@
             const l = byId[alive[0]];
             return l ? l.color : null;
         };
-        const wantForm = (sid, date) => {
+        const wantForm = (sid, date, opIdx) => {
             const s = st[sid];
             if (!s) return "real";
             // 闭站**按线路**判：全线停用才画「未开通」；只剩一条线在跑时，本站就是那条线的普通站，
@@ -663,7 +692,9 @@
             // 站台级幽灵点存续期间，主点保持**单线普通站**形态：两座站台各自成点、以连线表达换乘，
             // 不能提前合成换乘图元（临河街/卫星路、解放桥都是这种）。
             const ph = phantomRange.get(sid);
-            if (ph && ph.some((r) => date >= r.from && date < r.to)) return "dot";
+            // 存续区间按**操作下标**判（左闭右开）：与幽灵点的移出同一拍收掉，
+            // 不给「事件第一拍先改了、对应动作还没开演」留口子
+            if (opIdx != null && ph && ph.some((r) => opIdx >= r.fromOp && opIdx < r.toOp)) return "dot";
             const tr = transferAt.get(sid);
             if (tr && tr > date && s.type === "tsf") return "dot";
             const n = alive.length;   // 仍**在服务**的线路数（有线路停运时把那条线排除）
@@ -744,7 +775,7 @@
                         if (shown.has(sid)) return;
                         want = "no";
                     } else {
-                        want = wantForm(sid, ev.date);
+                        want = wantForm(sid, ev.date, evIdx);
                         if (e && e.tsf === false && want === "real" && s.type === "tsf") want = "dot";
                     }
                     const cur = formOf.get(sid);
@@ -930,7 +961,7 @@
                     // （共站换乘站的另一条线还在跑，站照常保留，见长春站 / 解放桥）。
                     const gone = (e && e.state === "removed")
                         || (ev.state === "removed" && (ev.kind === "station-state" || !aliveLinesAt(sid, ev.date).length));
-                    const want = gone ? "gone" : wantForm(sid, ev.date);
+                    const want = gone ? "gone" : wantForm(sid, ev.date, evIdx);
                     formOf.set(sid, want);
                     if (gone) shown.delete(sid);   // 重新开通时按「再次入场」处理（回放计数也才对）
                     const first = byId[firstLineOf.get(sid)];
@@ -981,7 +1012,7 @@
         (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
             const s = pf && pf.id ? st[pf.id] : null;
             if (!pf || !s || !Number.isFinite(s.x)) return;
-            let arr = -1, open = -1, end = -1;
+            let arr = -1, open = -1, end = -1, endOp = -1;
             // ⚠️ 不能用「某一步的 stations 里有没有 of」来判该线何时到站：车站早已在线网上时，
             //    collect 会按「形态没变」提前返回、那一步的 stations 里根本没有它。
             //    改用「该线首次通车」那一步 —— 幽灵点对应的站台都在各自线路的首通段上。
@@ -994,17 +1025,25 @@
                 if (open < 0 && ev.kind === "station-state" && ev.state === "open"
                     && (ev.stations || []).indexOf(pf.of) >= 0) open = si;
                 if (end < 0 && ev.kind === "station-state" && ev.state === "interchange"
-                    && (ev.stations || []).indexOf(pf.of) >= 0) end = si;
+                    && (ev.stations || []).indexOf(pf.of) >= 0) { end = si; endOp = k; }
             });
             const birth = Math.max(arr, open);
             // 幽灵点的「移出」时刻：默认是主点开通站内换乘那一步；配置里给了 `until`
             // （如 3、4 号线站名统一那天，或主点所属那条线自己被停运那天）就以 until 为准 ——
             // 站名已统一、或那条线已不在这座站，就没有「两个同名站台相望」这回事了。
+            // ⚠️ until 是**动作引用**（`{ date, kind, state? }`，见 findOpIndex），绑操作步号、
+            //    严禁按日期找步：2019-05-30 一条事件有「开站内换乘」「17 站更名」两拍，
+            //    按日期只会命中当天第一拍 —— 更名还没开演，两个站台就先合成一个了。
             let endStep = end;
             if (pf.until) {
-                for (let k = birth + 1; k < steps.length; k++) {
-                    if (steps[k].date >= pf.until) { endStep = k; break; }
+                const opIdx = findOpIndex(events, pf.until);
+                const si = opIdx >= 0 ? stepOfEvent[opIdx] : undefined;
+                if (si === undefined) {
+                    console.warn("[线网发展史] 幽灵点 " + pf.id + " 的 until 未唯一命中任何操作，已跳过该点");
+                    return;
                 }
+                endStep = si;
+                endOp = opIdx;
             }
             if (birth < 0 || endStep <= birth) return;   // 没有「站外换乘」这一段的车站不必插点
             const dotColor = byId[pf.line] ? byId[pf.line].color : null;
@@ -1014,11 +1053,33 @@
             const mainPop = bStep.stations.find((q) => q.sid === pf.of);
             let popT = mainPop ? mainPop.t : tOnStep(bStep, s);
             if (popT === null || popT === undefined) popT = 0.5;
-            steps[birth].stations.push({ sid: pf.id, x: s.x, y: s.y, t: popT, form: "dot", mode: "enter", dotColor: dotColor });
-            steps[endStep].stations.push({ sid: pf.id, x: s.x, y: s.y, t: 0, form: "dot", mode: "leave", dotColor: dotColor });
+            steps[birth].stations.push({ sid: pf.id, x: s.x, y: s.y, t: popT, form: "dot", mode: "enter", dotColor: dotColor, grp: pf.of });
+            steps[endStep].stations.push({ sid: pf.id, x: s.x, y: s.y, t: 0, form: "dot", mode: "leave", dotColor: dotColor, grp: pf.of });
+            // 幽灵点移出的同一拍，主点要按「配对已结束」重判形态：rename 拍不 collect 车站，
+            // 不补这一下，站名合并后主点会永远停在普通站形态（临河街/卫星路 → 职业学院即此例）。
+            // 幂等比较的基准是「回放到本拍为止该站的形态记录」——不能拿 formOf 的最终值比，
+            // 后面的拍还可能再改它（0125 在 2021-12-31 又升回换乘），本拍 collect 动过的也不能重复登记。
+            const mainS = st[pf.of];
+            if (mainS && Number.isFinite(mainS.x) && shown.has(pf.of)) {
+                let curMain;
+                for (let k = 0; k <= endStep; k++) {
+                    steps[k].stations.forEach((q) => { if (q.sid === pf.of) curMain = q.form; });
+                }
+                const wantMain = wantForm(pf.of, steps[endStep].date, endOp);
+                if (wantMain !== curMain) {
+                    formOf.set(pf.of, wantMain);
+                    const firstLine = byId[firstLineOf.get(pf.of)];
+                    steps[endStep].stations.push({
+                        sid: pf.of, x: mainS.x, y: mainS.y, t: 0,
+                        form: wantMain, mode: "upgrade", grp: pf.of,
+                        dotColor: aliveColorOf(pf.of, steps[endStep].date) || (firstLine ? firstLine.color : dotColor)
+                    });
+                }
+            }
             demoOnly.add(pf.id);
-            // 第三项 =「主点开通站内换乘」那一步：此前两端是**付费出站**换乘（连线用付费画法），
-            // 此后是**免费**换乘（连线换成免费画法）。两套画法见 syncOffStationLinks。
+            // 第三项 =「主点开通站内换乘」**动作**的步号（绑动作不绑日期，同 until 的口径）：
+            // 此前两端是**付费出站**换乘（连线用付费画法），此后是**免费**换乘（连线换成免费画法）。
+            // 两套画法见 syncOffStationLinks。找不到该动作时留 -1，连线一直按付费画。
             offPairs.push([pf.of, pf.id, end]);
         });
         state.demoOnly = demoOnly;
@@ -1401,8 +1462,10 @@
         // 付费出站连通三层（底色 3.25 → #78848b 2.25 → 底色 0.85），
         // 免费换乘两层（底色 2.75 → #78848b 1.5）—— 见 core/script.js 的
         // VIRTUAL_CONNECT_LINES / VIRTUAL_FREE_CONNECT_LINES。
+        // ⚠️ 切画法的阈值 = 开通站内换乘那个**动作**的步号（p[2]），不是日期 ——
+        //    一条事件有多拍时按日期会在当天第一拍、对应动作还没开演就先改了。
         const idx = state.index == null ? -1 : state.index;
-        const free = pairs.map((p) => p[2] != null && idx >= p[2]);
+        const free = pairs.map((p) => p[2] != null && p[2] >= 0 && idx >= p[2]);
         const sig = free.join(",");
         if (group.__sig !== sig) {
             group.__sig = sig;
@@ -1489,7 +1552,6 @@
         doneGroup()?.replaceChildren();
         liveGroup()?.replaceChildren();
         state.segPieces = [];
-        state.convDone = new Set();
         // ⚠️ 只清子节点不够：生长组的「当前画到第几步」记在 dataset.no、段节点引用在 __segs 上。
         //    留着它们，下一次 ensureGrowPath 会以为这一步的组还在，于是复用一组**已脱离文档**的
         //    path 节点 —— 描边偏移设在这些死节点上，那条线路整段不出现。
@@ -1857,6 +1919,35 @@
     /* ---- 时间线 ---- */
 
     /**
+     * 无走向步骤的**巡览站点**：动作对象归一成「站」——站点弹出/形态转换（step.stations）
+     * 与更名换字（step.renames）按 `grp`（缺省 sid）并站。一批动作于是**逐站**演：
+     * 镜头在每站停一下，本站的弹出 / 形态转换 / 换字都在停留窗开头，再平移去下一站。
+     * 站台级幽灵点的移出与主点合并是同一站区的事，幽灵点段给两条记录写了同一个 grp，
+     * 于是在同一站同一拍演完，镜头不必在同一点上多停一回。
+     */
+    function stepStops(step) {
+        const stops = [], at = new Map();
+        const add = (key, x, y) => {
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !key) return -1;
+            if (at.has(key)) return at.get(key);
+            at.set(key, stops.length);
+            stops.push({ x: x, y: y, pops: [], renames: [] });
+            return stops.length - 1;
+        };
+        (step.stations || []).forEach((x) => {
+            const k = add(x.grp || x.sid, x.x, x.y);
+            if (k >= 0) stops[k].pops.push(x);
+        });
+        (step.renames || []).forEach((rn) => {
+            const s = stationMap()[rn.sid];
+            if (!s || !Number.isFinite(s.x)) return;
+            const k = add(rn.sid, s.x, s.y);
+            if (k >= 0) stops[k].renames.push(rn);
+        });
+        return stops;
+    }
+
+    /**
      * 把 [from, to] 摊成绝对时刻表。每步四拍：
      * 起笔运镜（顺带把日期与进度条从上一事件收口到本事件）→ 生长（含更名换字）
      * → 收笔运镜 → 停顿；末尾再接「缩到全图 + 长停」一段。
@@ -1876,46 +1967,70 @@
             const hasPath = !!(step.pts && step.pts.length > 1);
             // 多段步骤：绘制时长按总长算（笔速与单段一致），段间再插运镜，故生长总时长更长
             const phases = hasPath ? growthPhases(step, growDuration(step)) : [];
-            // 没有走向的**多站**事件（如一次恢复 5 座站、一批站台投用）：借同一段「生长」窗口
-            // 把镜头从第一站平移到最后一站 —— 一路巡过去，而不是整步都停在同一站上。
-            // 每跳 900ms，与线网多段之间那段运镜同一节奏。
-            const panPts = (!hasPath && step.stations.length > 1) ? step.stations : null;
-            const panDur = panPts ? (panPts.length - 1) * 900 : 0;
+            // 没有走向的**多站**事件（一次恢复几座站、一批站台投用、批量改名）：逐站
+            // 「停留 → 平移」巡览 —— 镜头在每站停 STOP_HOLD（本站的动作在停留窗开头演），
+            // 再直接平移到下一站，而不是连续匀速扫过、更不是整步定格在第一站上。
+            const stops = hasPath ? [] : stepStops(step);
+            const multi = stops.length > 1;
+            const hop = STOP_HOLD + glideMs();
+            const panDur = multi ? stops.length * STOP_HOLD + (stops.length - 1) * glideMs() : 0;
             const growDur = phases.length ? phases[phases.length - 1].t1 : panDur;
-            const renameMs = step.rename ? 500 : 0;
+            // 段形态转换（实线⇄镂空⇄空白）占满本拍的生长窗逐帧补间，与站巡览并行；
+            // 纯转换拍没有站可巡（growDur 为 0）时给一个最小窗，免得瞬变没得看。
+            const convAnims = (step.segConv && step.segConv.length)
+                ? step.segConv.map((c) => ({ s0: c.s0, s1: c.s1, style: c.style })) : null;   // 拷贝：touched 挂在副本上，不污染 step
+            const growDur2 = (convAnims && growDur < CONV_MIN) ? CONV_MIN : growDur;
+            // 多站更名的换字逐站落在各停留窗里（500ms < STOP_HOLD），拍尾不再单开换字段；
+            // 单对更名保持原节奏：生长后 500ms 淡出换字。
+            const renameMs = (step.rename && !multi) ? 500 : 0;
             const rec = {
                 i: i, step: step,
                 from: t,
                 headEnd: t + head,
                 growT0: t + head,
-                growEnd: t + head + growDur,
-                renameEnd: t + head + growDur + renameMs,
-                tailEnd: t + head + growDur + renameMs + head,
-                end: t + head + growDur + renameMs + head + hold,
-                growDur: growDur,
+                growEnd: t + head + growDur2,
+                renameEnd: t + head + growDur2 + renameMs,
+                tailEnd: t + head + growDur2 + renameMs + head,
+                end: t + head + growDur2 + renameMs + head + hold,
+                growDur: growDur2,
                 phases: phases,
+                stops: multi ? stops : null,
+                hop: hop,
+                convAnims: convAnims,
+                convDur: growDur2,
                 // ⚠️ 纯形态转换 / 多站巡览的步骤没有 phases（growDur 可能仍 > 0），
                 //    progAtDt 对空表会取到 undefined 的阶段直接抛错（面板滚数即中招），
                 //    故回落成「按拍内时间线性推进」。
                 progAt: (dt) => (phases.length ? progAtDt(phases, dt)
-                    : (growDur > 0 ? Math.max(0, Math.min(1, dt / growDur)) : 1)),
+                    : (growDur2 > 0 ? Math.max(0, Math.min(1, dt / growDur2)) : 1)),
                 camFrom: prevCam,
                 camHead: camForPoint(brushAt(step, 0), state.zoom),
-                camGrowEnd: camForPoint(panPts ? panPts[panPts.length - 1] : brushAt(step, 1), state.zoom),
+                camGrowEnd: camForPoint(multi ? stops[stops.length - 1] : brushAt(step, 1), state.zoom),
                 camTail: camTailOf(step)
             };
             // 站点弹出时刻：有画笔推进的「笔到人到」（末尾留 30ms，别让最后一个站压着收笔）；
-            // 无走向的**多站**步骤按到站顺序逐个弹出（idx × 900ms，与镜头逐站平移同一节奏），
-            // 不再整批同拍炸出；单站步骤就在本拍起点弹出。
-            rec.pops = step.stations
-                .map((x, idx) => ({
-                    x: x, step: step,
-                    t: rec.growT0 + (growDur <= 0 ? 0
-                        : phases.length
-                            ? Math.max(0, Math.min(growDur - 30, timeOfProg(phases, x.t)))
-                            : Math.min(growDur - 30, idx * 900))
-                }))
-                .sort((a, b) => a.t - b.t);
+            // 无走向的多站步骤按「停留 → 平移」逐站弹出（idx × hop），单站步骤就在本拍起点弹出。
+            rec.pops = [];
+            if (phases.length) {
+                rec.pops = step.stations
+                    .map((x) => ({
+                        x: x, step: step,
+                        t: rec.growT0 + Math.max(0, Math.min(growDur2 - 30, timeOfProg(phases, x.t)))
+                    }))
+                    .sort((a, b) => a.t - b.t);
+            } else {
+                stops.forEach((st2, idx) => {
+                    const at = multi ? idx * hop : 0;
+                    st2.pops.forEach((x) => rec.pops.push({ x: x, step: step, t: rec.growT0 + at }));
+                });
+                rec.pops.sort((a, b) => a.t - b.t);
+            }
+            // 更名换字逐站挂到各停留窗开头（多站）/ 本拍开头（单对），由 applyRenameAt 逐帧演
+            rec.renameStops = [];
+            stops.forEach((st2, idx) => {
+                const at = multi ? idx * hop : 0;
+                st2.renames.forEach((rn) => rec.renameStops.push({ rn: rn, t0: rec.growT0 + at }));
+            });
             list.push(rec);
             prevCam = rec.camTail;
             t = rec.end;
@@ -1949,6 +2064,17 @@
         if (t < r.headEnd) return camLerp(r.camFrom, r.camHead, head ? EASE((t - r.from) / head) : 1);
         if (t < r.growEnd) {
             const dt = t - r.growT0;
+            // 多站巡览：停留窗定格在本站，窗尾直接平移到下一站（「停一下 → 平移」）
+            if (r.stops && r.stops.length > 1) {
+                const move = glideMs();
+                const hop2 = r.hop || (STOP_HOLD + move);
+                const k = Math.min(r.stops.length - 1, Math.floor(dt / hop2));
+                const off = dt - k * hop2;
+                const here = camForPoint(r.stops[k], state.zoom);
+                if (off < STOP_HOLD || k >= r.stops.length - 1 || !(move > 0)) return here || r.camHead;
+                const next = camForPoint(r.stops[k + 1], state.zoom);
+                return camLerp(here, next, EASE((off - STOP_HOLD) / move)) || here || r.camHead;
+            }
             const ph = (r.phases && r.phases.length) ? phaseAtDt(r.phases, dt) : null;
             // 段间运镜：笔停着不动，镜头从上一段收笔点平移到下一段起笔点
             if (ph && ph.kind === "glide" && r.step.segs && r.step.segs.length > 1) {
@@ -2157,8 +2283,11 @@
         //    核心重建过标签节点都要能还原），当前正在演换字的那个站交给 applyRenameAt ──
         syncRenameNames(rec);
 
-        // ── 更名：生长之后的那 500ms 里淡出换字 ──
-        tl.list.forEach((r) => { if (r.step.rename) applyRenameAt(r, t); });
+        // ── 段形态转换：按帧补间（实线⇄镂空⇄空白，自收笔端撤回 / 自起笔端长回）──
+        tl.list.forEach((r) => { if (r.convAnims && r.convAnims.length) applyConvs(r, t); });
+
+        // ── 更名：各站的停留窗里逐站淡出换字 ──
+        tl.list.forEach((r) => { if (r.renameStops && r.renameStops.length) applyRenameAt(r, t); });
 
         // ── 面板 ──
         applyPanel(t, rec);
@@ -2185,15 +2314,14 @@
         });
     }
 
-    /** 更名的换字动画：0~180ms 淡出旧名 → 换字 → 180~500ms 淡入新名 */
+    /** 更名的换字动画：0~180ms 淡出旧名 → 换字 → 180~500ms 淡入新名（各站按自己的停留窗逐站换） */
     function applyRenameAt(rec, t) {
-        // 一步可以带**多站**更名（`step.renames`）：同日同批的更名在同一拍演完，
-        // 各站的换字互不相干，逐个走一遍即可。
-        const list = (rec.step.renames && rec.step.renames.length)
-            ? rec.step.renames
-            : (rec.step.rename ? [rec.step.rename] : []);
-        const p = (t - rec.growEnd) / 500;
-        list.forEach((rn) => {
+        // 一步可以带**多站**更名（`step.renames`）：逐站挂在各自的停留窗上（rec.renameStops），
+        // 镜头走到哪站就换哪站的字，不再整批同拍换完。
+        const list = rec.renameStops || [];
+        list.forEach((item) => {
+            const rn = item.rn;
+            const p = (t - item.t0) / 500;
             const cn = cnSpanOf(rn.sid), en = enSpanOf(rn.sid), alt = altSpanOf(rn.sid);
             // 没到换字时刻（含回拖到更名前）就把 inline opacity 清掉：它是换字动画的临时值，
             // 留着会让站名一直半透明（导出中途取消、拖着进度条来回走都会踩到）。
@@ -2256,8 +2384,17 @@
         return { lineId: lineId, s0: s0, s1: s1, pts: pts, style: style, color: color, nodes: nodes };
     }
 
-    /** 单段样式转换：solid 摘盖面 / hollow 加盖面 / hidden 连节点一起摘掉（空白） */
+    /**
+     * 单段样式**落定**：solid 摘盖面 / hollow 加盖面 / hidden 整段隐去（空白 = 从未画过，
+     * 再开通由生长重新画）。转换动画播完由这里收口，顺手把补间的 dash 影子清干净。
+     * ⚠️ hidden 用 display 隐去而不是摘节点 —— 回拖进度条要能还原（随机访问幂等）。
+     */
     function applyPieceStyle(pc, style) {
+        pc.nodes.forEach((n) => {
+            n.style.removeProperty("stroke-dasharray");
+            n.style.removeProperty("stroke-dashoffset");
+            n.style.removeProperty("display");
+        });
         if (style === "hollow") {
             if (!pc.nodes[1]) {
                 const mask = makeHollowMask(pc.pts);
@@ -2269,18 +2406,68 @@
             if (pc.nodes[1]) { pc.nodes[1].remove(); pc.nodes.pop(); }
             pc.style = "solid";
         } else {
-            pc.nodes.forEach((n) => n.remove());
+            pc.nodes.forEach((n) => { n.style.display = "none"; });
             pc.style = "hidden";
         }
     }
 
+    /** 段的弧长（画布像素）：转换补间的 dash 长度 */
+    function pieceLen(pc) {
+        if (Number.isFinite(pc.len) && pc.len > 0) return pc.len;
+        let l = 0;
+        try { l = pc.nodes[0].getTotalLength(); } catch (e) { l = 0; }
+        pc.len = l > 0 ? l : (segLength(pc.pts) || 1);
+        return pc.len;
+    }
+
     /**
-     * 段形态转换：把已画区间 [s0, s1] 转成 solid（实线）/ hollow（未开通镂空）/ hidden（空白）。
-     * 被切中的段落按弧长坐标拆成 1~3 份（左右保原样式），拆分与生长切片同源（slicePath），
-     * 几何零误差；hidden 摘掉节点（空白 = 从未画过，再开通由生长重新画）。
+     * 单段样式转换的**逐帧进度**（e: 0 原样式 from → 1 目标样式 to）——与生长同一套
+     * stroke-dash 补间（导出逐帧出图要求 applyFrame(t) 幂等可随机访问，不能用 WAAPI /
+     * CSS 动画）：
+     *   solid → hollow  彩色不动，盖面从**收笔端**长出 —— 观感即「实线自尾端起逐渐变镂空」；
+     *   hollow → solid  盖面从**起笔端**退去 —— 实线自头端长出，与生长同向；
+     *   *    → hidden  整段自**收笔端**反向擦除 —— 语义「撤回」，与生长对偶。
+     * e ≥ 1 落定 to；e ≤ 0 落定回 from（回拖进度条也能还原）。同一 t 写多少次都一样。
+     */
+    function applyPieceProgress(pc, from, to, e) {
+        const p = Math.max(0, Math.min(1, e));
+        const L = pieceLen(pc);
+        const dash = (node, off) => {
+            node.style.strokeDasharray = `${L} ${L}`;
+            node.style.strokeDashoffset = String(off);
+        };
+        const clear = (node) => {
+            node.style.removeProperty("stroke-dasharray");
+            node.style.removeProperty("stroke-dashoffset");
+        };
+        if (p >= 1) { applyPieceStyle(pc, to); return; }
+        if (p <= 0) { applyPieceStyle(pc, from); return; }
+        if (from === "solid" && to === "hollow") {
+            let mask = pc.nodes[1];
+            if (!mask) { mask = makeHollowMask(pc.pts); pc.nodes[0].after(mask); pc.nodes.push(mask); }
+            clear(pc.nodes[0]);
+            dash(mask, -L * (1 - p));   // 盖面自收笔端长出
+        } else if (from === "hollow" && to === "solid") {
+            clear(pc.nodes[0]);
+            if (pc.nodes[1]) dash(pc.nodes[1], L * p);   // 盖面自起笔端退去
+        } else {
+            // → hidden（以及其它收缩）：整段自收笔端反向擦除
+            dash(pc.nodes[0], L * p);
+            if (pc.nodes[1]) dash(pc.nodes[1], L * p);
+        }
+        // 中间态一律按「原样式」记账（落定才改），第二次转换才认得出从哪儿转到哪儿
+        pc.style = from;
+    }
+
+    /**
+     * 段形态转换的**结构拆分**：把已画区间 [s0, s1] 从注册表里切出来（左右保原样式，
+     * 拆分与生长切片同源 slicePath，几何零误差），返回被切中的段落 [{ pc, from, to }]。
+     * 只动结构、**不动样式** —— 补间交给 applyPieceProgress 按帧写、它自己收口落定，
+     * 于是「实线→镂空/空白」能演成反向擦除，回拖进度条也能还原。
      */
     function convertRange(lineId, s0, s1, style) {
         const list = state.segPieces;
+        const touched = [];
         for (let k = list.length - 1; k >= 0; k--) {
             const pc = list[k];
             if (pc.lineId !== lineId || pc.style === "hidden") continue;
@@ -2288,8 +2475,7 @@
             const a = Math.max(pc.s0, s0), b = Math.min(pc.s1, s1);
             const whole = a <= pc.s0 + 0.05 && b >= pc.s1 - 0.05;
             if (whole) {
-                applyPieceStyle(pc, style);
-                if (style === "hidden") list.splice(k, 1);
+                touched.push({ pc: pc, from: pc.style, to: style });
                 continue;
             }
             const proto = pc.nodes[0];
@@ -2298,8 +2484,8 @@
             const made = [];
             if (a > pc.s0 + 0.05) made.push(cut(pc.s0, a));
             const mid = makeSegPiece(lineId, a, b, slicePath(pc.pts, a - pc.s0, b - pc.s0), pc.style, pc.color, proto);
-            applyPieceStyle(mid, style);
-            if (style !== "hidden") made.push(mid);
+            touched.push({ pc: mid, from: pc.style, to: style });
+            made.push(mid);
             if (b < pc.s1 - 0.05) made.push(cut(b, pc.s1));
             // 换节点时保持原图层位置（跨线遮挡关系不乱）
             const frag = document.createDocumentFragment();
@@ -2308,17 +2494,34 @@
             pc.nodes.forEach((n) => n.remove());
             list.splice(k, 1, ...made);
         }
+        return touched;
     }
 
-    /** 播完的段落归档进「已开通」层，留在线网上才能看出线网在长大（站点由时间轴负责） */
+    /**
+     * 段形态转换的逐帧驱动：结构拆分每步只做一次（`__convBuilt`，视觉无损、可重复进入），
+     * 样式按「本拍生长窗」的进度补间 —— 与站巡览并行，镜头逐站停的同时线自收笔端撤回。
+     */
+    function applyConvs(rec, t) {
+        const anims = rec.convAnims;
+        if (!anims || !anims.length) return;
+        const e = rec.convDur > 0 ? (t - rec.growT0) / rec.convDur : 1;
+        if (!rec.__convBuilt && e > 0) {
+            rec.__convBuilt = true;
+            anims.forEach((c) => {
+                c.touched = convertRange(rec.step.lineId, c.s0, c.s1, c.style);
+            });
+        }
+        if (!rec.__convBuilt) return;
+        anims.forEach((c) => {
+            (c.touched || []).forEach((tc) => applyPieceProgress(tc.pc, tc.from, tc.to, e));
+        });
+    }
+
+    /** 播完的段落归档进「已开通」层，留在线网上才能看出线网在长大（站点由时间轴负责）。
+     *  段形态转换（镂空 / 空白 / 恢复实线）不在这里 —— 它由 applyConvs 按帧补间（见上）。 */
     function commitPath(step) {
         const group = doneGroup();
         if (!group) return;
-        // 段形态转换（镂空 / 空白 / 恢复实线）：每步只应用一次
-        if (step.segConv && step.segConv.length && !state.convDone.has(step.no)) {
-            state.convDone.add(step.no);
-            step.segConv.forEach((c) => convertRange(step.lineId, c.s0, c.s1, c.style));
-        }
         const segs = Array.isArray(step.segs)
             ? (step.segs.length ? step.segs : null)
             : (step.pts && step.pts.length > 1 ? [{ pts: step.pts }] : null);
