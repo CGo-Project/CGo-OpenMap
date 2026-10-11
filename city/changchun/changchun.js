@@ -464,7 +464,11 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261011.1154";
+        const version = "261011.2406";
+        // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
+        document.write(`<script src="./city/changchun/data_opening_history.js?v=${version}"><\/script>`);
+        // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
@@ -481,6 +485,8 @@
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/station/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_opening.js?v=${version}"><\/script>`);
+        // 国铁散点标签机制（rdot-label.js）已移至 main.html 数据区之后统一引入 ——
+        // 放这里会在 data_stations.js 之前执行，apply() 拿不到数据直接失效
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-planner.js?v=${version}"><\/script>`);

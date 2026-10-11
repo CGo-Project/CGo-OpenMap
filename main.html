@@ -329,7 +329,7 @@
             var city = window.CityDataManager ? window.CityDataManager.getCurrentCity() : null;
             var folder = (city && city.folder) ? city.folder : "./city/beijing";
             var cityId = (city && city.id) ? city.id : "beijing";
-            var v = "261011.1154";
+            var v = "261011.2406";
             // 供城市脚本追加同版本号（如 city/<id>/style.css），避免样式表被浏览器长期缓存
             window.CGO_ASSET_VERSION = v;
 
@@ -356,6 +356,9 @@
             document.write('<script src="' + folder + '/data_legend.js?v=' + v + '"><\/script>');
             document.write('<script src="' + folder + '/data_timetable.js?v=' + v + '"><\/script>');
             document.write('<script src="' + folder + '/data_notopen.js?v=' + v + '"><\/script>');
+            // 国铁散点标签机制（共享层通用）：须在**全部数据脚本之后**引入（要读
+            // stationsData 与 VIRTUAL_*），且早于 core 渲染（core 是 module、最后执行）
+            document.write('<script src="./city/shenyang/shared/base/rdot-label.js?v=' + v + '"><\/script>');
         })();
     </script>
     <!-- 核心地图渲染引擎 -->
