@@ -50,17 +50,17 @@
 
 const CGO_OPENING_HISTORY = [
     // ── 1 号线 ──────────────────────────────────────────────────────────
-    { date: "2013-09-26", lineId: "HBM01", kind: "line-open", from: "HEBN", to: "HEBD",
+    { date: "2013-09-26", lineId: "HBM01", kind: "line-state", from: "HEBN", to: "HEBD",
         title: "1号线一、二期：哈尔滨南站 ⇄ 哈尔滨东站" },
-    { date: "2019-04-10", lineId: "HBM01", kind: "line-open", from: "XJD", to: "HEBN",
+    { date: "2019-04-10", lineId: "HBM01", kind: "line-state", from: "XJD", to: "HEBN",
         title: "1号线三期：新疆大街 ⇄ 哈尔滨南站", desc: "只画新开的那一段，哈尔滨南站是一、二期的端点" },
 
     // ── 2 号线 ──────────────────────────────────────────────────────────
-    { date: "2021-09-19", lineId: "HBM02", kind: "line-open", from: "JBDXC", to: "QXT",
+    { date: "2021-09-19", lineId: "HBM02", kind: "line-state", from: "JBDXC", to: "QXT",
         title: "2号线一期：江北大学城 ⇄ 气象台" },
 
     // ── 3 号线（环线，站序 0~35：珠江路 … 公滨路）────────────────────────
-    { date: "2017-01-26", lineId: "HBM03", kind: "line-open", from: "CXL", to: "YDEY",
+    { date: "2017-01-26", lineId: "HBM03", kind: "line-state", from: "CXL", to: "YDEY",
         title: "3号线一期：城乡路 ⇄ 医大二院", desc: "城乡路、哈尔滨大街两站暂缓开通" },
     { date: "2017-06-16", lineId: "HBM03", kind: "station-state", state: "open", stations: ["KSYGC"],
         title: "哈尔滨大街站补开", desc: "开通时即此站名；2018 年末更名凯盛源广场" },
@@ -68,15 +68,15 @@ const CGO_OPENING_HISTORY = [
     // 城乡路 → 体育公园（反向取弧）
     { date: "2021-11-26", lineId: "HBM03", kind: "station-state", state: "open", stations: ["CXL"],
         title: "城乡路站补开", desc: "一期开通时暂缓，与东南半环同步投用" },
-    { date: "2021-11-26", lineId: "HBM03", kind: "line-open",
+    { date: "2021-11-26", lineId: "HBM03", kind: "line-state",
         segments: [{ from: "YDEY", to: "TPQ" }, { from: "CXL", to: "TYGY" }],
         title: "3号线二期东南半环：医大二院 → 太平桥、城乡路 → 体育公园" },
     // 区段两端都写到**与之接轨的已开通站**为止（与沈阳「黎明广场 → 双马」同口径）：
     // 若只写到新开的那几站，新段与既有线网之间那一节轨道就没人落笔，生长动画里看上去
     // 像是一段浮在网外的孤线（哈尔滨的西北半环道外段、道里段都踩过这个坑）。
-    { date: "2023-09-28", lineId: "HBM03", kind: "line-open", from: "TPQ", to: "BML",
+    { date: "2023-09-28", lineId: "HBM03", kind: "line-state", from: "TPQ", to: "BML",
         title: "3号线二期西北半环道外段：太平桥 → 北马路", desc: "太平桥为东南半环已开通的接轨站，只画新开的那一段" },
-    { date: "2024-11-26", lineId: "HBM03", kind: "line-open", from: "BML", to: "TYGY",
+    { date: "2024-11-26", lineId: "HBM03", kind: "line-state", from: "BML", to: "TYGY",
         title: "3号线二期西北半环道里段：北马路 → 体育公园", desc: "两端接已开通的道外段与东南半环，环线至此闭合" },
 
     // ── 车站更名 ────────────────────────────────────────────────────────

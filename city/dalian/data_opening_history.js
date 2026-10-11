@@ -47,56 +47,56 @@
 
 const CGO_OPENING_HISTORY = [
     // ── 3 号线（大连站 ⇄ 金石滩，站序 0301…0311）───────────────────────
-    { date: "2002-11-08", lineId: "DLM03", kind: "line-open", from: "0302", to: "0311",
+    { date: "2002-11-08", lineId: "DLM03", kind: "line-state", from: "0302", to: "0311",
         title: "快轨3号线一期：香炉礁 ⇄ 金石滩", desc: "2002-10-01 试运行，2003-05-01 转正式运营；当时称「快轨 3 号线」，后统一为「地铁 3 号线」" },
-    { date: "2004-09-29", lineId: "DLM03", kind: "line-open", from: "0302", to: "0301",
+    { date: "2004-09-29", lineId: "DLM03", kind: "line-state", from: "0302", to: "0301",
         title: "快轨3号线二期：香炉礁 ⇄ 大连站", desc: "由香炉礁向市区延长一站" },
     { date: "2006-12-18", lineId: "DLM03", kind: "station-state", state: "open", stations: ["0313"],
         title: "小窑湾站建成投用", desc: "在已开通区间内中途新增" },
 
     // ── 3 号线九里支线（开发区 ⇄ 九里）────────────────────────────────
-    { date: "2008-12-28", lineId: "DLM99", kind: "line-open", from: "0308", to: "0320",
+    { date: "2008-12-28", lineId: "DLM99", kind: "line-state", from: "0308", to: "0320",
         title: "快轨3号线九里支线：开发区 ⇄ 九里", desc: "2008-07-07 试运营，当年 12-28 转正式运营" },
 
     // ── 12 号线（河口 ⇄ 旅顺新港）────────────────────────────────────
-    { date: "2014-05-01", lineId: "DLM12", kind: "line-open", from: "0802", to: "0808",
+    { date: "2014-05-01", lineId: "DLM12", kind: "line-state", from: "0802", to: "0808",
         title: "202路轨道延伸线（今12号线）：蔡大岭 ⇄ 旅顺新港" },
 
     // ── 2 号线（海之韵 ⇄ 大连北站）────────────────────────────────────
-    { date: "2015-05-22", lineId: "DLM02", kind: "line-open", from: "0219", to: "0204",
+    { date: "2015-05-22", lineId: "DLM02", kind: "line-state", from: "0219", to: "0204",
         title: "2号线一期：机场 ⇄ 会议中心", desc: "本城第一条地铁线" },
 
     // ── 1 号线（姚家 ⇄ 河口）──────────────────────────────────────────
-    { date: "2015-10-30", lineId: "DLM01", kind: "line-open", from: "0101", to: "0114",
+    { date: "2015-10-30", lineId: "DLM01", kind: "line-state", from: "0101", to: "0114",
         title: "1号线一期：姚家 ⇄ 富国街", desc: "华南北站暂缓开通" },
-    { date: "2016-01-29", lineId: "DLM01", kind: "line-open", from: "0114", to: "0115",
+    { date: "2016-01-29", lineId: "DLM01", kind: "line-state", from: "0114", to: "0115",
         title: "1号线由富国街延长一站至会展中心" },
 
     // ── 2017-06-07：三段工程同日通车 + 一处更名 ───────────────────────
     { date: "2017-06-01", lineId: "DLM01", kind: "station-state", state: "open", stations: ["0104"],
         title: "华南北站补开", desc: "一期开通时暂缓开通" },
-    { date: "2017-06-07", lineId: "DLM01", kind: "line-open", from: "0115", to: "0801",
+    { date: "2017-06-07", lineId: "DLM01", kind: "line-state", from: "0115", to: "0801",
         title: "1号线二期：会展中心 ⇄ 河口", desc: "星海广场 … 七贤岭 7 站" },
-    { date: "2017-06-07", lineId: "DLM02", kind: "line-open", from: "0204", to: "0201",
+    { date: "2017-06-07", lineId: "DLM02", kind: "line-state", from: "0204", to: "0201",
         title: "2号线二期东段：会议中心 ⇄ 海之韵", desc: "东港、东海、海之韵" },
-    { date: "2017-06-07", lineId: "DLM12", kind: "line-open", from: "0802", to: "0801",
+    { date: "2017-06-07", lineId: "DLM12", kind: "line-state", from: "0802", to: "0801",
         title: "12号线延一站接入 1 号线河口站", desc: "蔡大岭 ⇄ 河口" },
     { date: "2017-06-07", lineId: "DLM02", kind: "rename",
         from: "辽师", to: "辽师大", fromEn: "Liaoning Normal University",
         title: "2号线辽师站更名辽师大站", desc: "随二期东段开通同步更名" },
 
     // ── 2 号线北段与辛寨子补开 ────────────────────────────────────────
-    { date: "2018-06-28", lineId: "DLM02", kind: "line-open", from: "0219", to: "0220",
+    { date: "2018-06-28", lineId: "DLM02", kind: "line-state", from: "0219", to: "0220",
         title: "2号线由机场延长一站至辛寨子" },
-    { date: "2022-09-30", lineId: "DLM02", kind: "line-open", from: "0220", to: "0102",
+    { date: "2022-09-30", lineId: "DLM02", kind: "line-state", from: "0220", to: "0102",
         title: "2号线二期北段：辛寨子 ⇄ 大连北站", desc: "前革 … 南关岭 8 站" },
 
     // ── 13 号线（九里 ⇄ 普兰店振兴街）────────────────────────────────
-    { date: "2021-12-28", lineId: "DLM13", kind: "line-open", from: "0320", to: "1336",
+    { date: "2021-12-28", lineId: "DLM13", kind: "line-state", from: "0320", to: "1336",
         title: "13号线一期：九里 ⇄ 普兰店振兴街", desc: "与 3 号线九里支线共用九里站" },
 
     // ── 5 号线（虎滩新区 ⇄ 后关）──────────────────────────────────────
-    { date: "2023-03-17", lineId: "DLM05", kind: "line-open", from: "0501", to: "0518",
+    { date: "2023-03-17", lineId: "DLM05", kind: "line-state", from: "0501", to: "0518",
         title: "5号线：虎滩新区 ⇄ 后关", desc: "东北首条跨海地铁，18 站" },
 ];
 

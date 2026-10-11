@@ -160,7 +160,7 @@ core 的 `initMobileSheetDrag()` 写死在 `#info-panel` 上（内容区按下�
 
 按城市的**开通沿革**（`city/{city}/data_opening_history.js` 的 `CGO_OPENING_HISTORY`）把线网从**空白画布**上逐段「画」出来：镜头跟着画笔走，笔到之处线路延伸、车站与站名弹出。分三层，互不越界：
 
-- **数据层**（城市数据文件）只写端点：`line-open` 写该段两端站点 ID（中间站由 `data_lines.js` 的 `stationIds` 顺序自动切），`rename` 写旧名 → 新名（**同一站可以多次更名、串成链**：事件用 `sid` 指定车站、链中间的英文名用 `toEn`，一条都还没播到时显示链首的旧名。线路本身改名不入事件 —— 直接在标题里写当时的线路名即可）。**状态类事件归一成两个 `*-state`**：`station-state` 配 `state` 取 `open`（投用 / 补开 / 恢复）、`suspended`（闭站）、`removed`（拆除，图元直接消失）、`interchange`（站内换乘启用），`stations` 给车站 ID 数组；`line-state` 配 `state` 取 `suspended`（区段停运）或 `removed`（区段移除），`from`/`to` 或 `segments` 给范围 —— 「线上的事」由共享层按站序展开成逐站的账，判定路径与站级完全一致（共站换乘站的另一条线照常运营）。数据文件按线路分组书写便于维护，**播放顺序在这里归一成日期全局升序**（同日期保持文件内顺序）。
+- **数据层**（城市数据文件）：一条**事件** = `date` + `title`/`desc` + `ops` 里 1~N 个**操作**，每个操作各成一步、各演一拍、各自取景（不写 `ops` 时事件本身即单个操作的简写，操作可自带 `title`/`desc` 覆盖事件级说明）。操作 kind 三种：**`line-state`**（`lineId` + `from`/`to` 或 `segments`，`state` 三态 **`open` 开通（缺省，实线）/ `suspended` 停运（未开通镂空双线）/ `removed` 移除（空白）**，可带逐站豁免 `except: [{ sid, state?, tsf? }]` 表达「通过不停车」的暂缓站与「换乘通道未通」的 tsf 压制）；**`station-state`**（`stations` + `state` 必填：`open` / `suspended` / `removed` / `interchange`，interchange = 站内换乘启用日，此前压住 tsf 形态）；**`rename`**（`from`/`to` 单对或 `renames[]` 多对，同一站可多次更名串成链：事件用 `sid` 指定车站、链中间的英文名用 `toEn`，一条都还没播到时显示链首的旧名；线路本身改名不入操作 —— 直接在标题里写当时的线路名即可）。沿线站的形态由共享层自动推导（第二条线到达自动升 tsf、独占站随段停运转未开通圈 / 随段移除消失、共站按另一条线形态保留），数据只写端点与例外。数据文件按线路分组书写便于维护，**播放顺序在这里归一成日期全局升序**（同日期按 `ops` 数组顺序）。
 - **时钟层**（本模块的 `state.index` / `state.playing`）是全局唯一的播放进度；`state.token` 每停一次就 +1，在飞的异步链路据此自行作废（切年份、暂停、关面板都不需要额外的取消机制）。
 - **表现层**（`growSegment` / `popStation` / `commitSegment`）无状态，按当前进度推导画面。
 

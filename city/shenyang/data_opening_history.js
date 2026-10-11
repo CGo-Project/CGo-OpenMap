@@ -4,42 +4,51 @@
  * 记录沈阳地铁线网逐段开通、单站补开与更名的时间线，供「发展史动态演示」消费。
  * 属线网原始数据（开通日期 + 开通范围），不涉及出行规划，归 OpenMap 侧。
  *
- * 事件类型（kind）共四种 —— 几何 / 标签类有专属 kind，状态类归一成两个 `*-state`：
- * - "line-open"     区段开通：只写该段两端站点 ID，中间站由 data_lines.js 的
- *                   stationIds 顺序自动补齐（含端点）。接点站与既有区段重叠是正常的，
- *                   例如「黎明广场 → 双马」的黎明广场早在一期就已开通。
- * - "line-state"    区段状态（`state` 必填）：
- *                     suspended 区段停运 —— 图元转未开通圈，可用 line-open（整段恢复）或
- *                               station-state{open}（单站恢复）拉回；
- *                     removed   区段移除 —— 图元、站名与引线一并消失（终态）。
- *                   范围写 from/to 或 segments；共享层按站序把它展开成逐站的账，
- *                   判定路径与站级完全一致（共站换乘站的另一条线照常运营，见长春）。
+ * 事件契约（各城一致，本文件头为标准位）：
+ *   一条**事件** = date + title / desc + `ops` 里 1~N 个**操作**；每个操作各成一步、
+ *   各演一拍、各自取景（不写 `ops` 时事件本身即单个操作的简写）。操作可自带
+ *   title / desc 覆盖事件级说明。操作 kind 三种：
+ *
+ * - "line-state"    区段状态（`lineId` + `from`/`to` 或多段 `segments`）：
+ *                     open      开通 / 恢复通车（**缺省**，可省略 state）—— 区段画实线，
+ *                               沿线站自动推导（入场为已开通；已开通的站自动升 tsf）；
+ *                     suspended 停运 —— 区段转**未开通镂空双线**（不是「实线+虚站圈」，
+ *                               那是「列车通过不停车」的暂缓画法），无其他已开通线的站转
+ *                               未开通圈，共站按另一条线形态保留；
+ *                     removed   移除 —— 区段转**空白**（从图上消失），无其他已开通线的
+ *                               独占站随之移除（终态，永不复活）。
+ *                   逐站豁免 `except: [{ sid, state?, tsf? }]`：覆盖该站的自动推导 ——
+ *                     state "suspended" 暂缓站（通过不停车，入场即未开通圈，不记服务账）；
+ *                     state "removed" 该站随段移除；state "open" 照常开通；
+ *                     tsf: false 压住本拍的自动升换乘（换乘通道未通，等 station-state{interchange}）。
  * - "station-state" 车站状态（`stations` + `state` 必填）：
- *                     open         单站开通 / 补开 / 恢复运营。两种用法 ——「暂缓开通」的
- *                                  车站后续补开（如 9 号线皇姑屯站），以及国铁车站晚于线网才
- *                                  投用的情形（如沈阳南站）。早于线网的既有国铁站（沈阳站、
- *                                  沈阳北站）不必登记，共享层会把「没有任何开通记录的国铁
- *                                  散点」当作既有设施全程显示；
- *                     suspended    闭站（图元转未开通圈）；
- *                     removed      拆除（图元、站名与引线一并消失）；
+ *                     open         单站开通 / 补开 / 恢复停靠。两种用法 ——「暂缓开通」的车站
+ *                                  后续补开（如 9 号线皇姑屯站），以及国铁车站晚于线网才投用的
+ *                                  情形（如沈阳南站）。早于线网的既有国铁站（沈阳站、沈阳北站）
+ *                                  不必登记，共享层会把「没有任何开通记录的国铁散点」当作既有
+ *                                  设施全程显示；
+ *                     suspended    未开通（图元转未开通圈；列车通过不停车即「实线+虚站圈」）；
+ *                     removed      拆除（图元、站名与引线一并消失，终态）；
  *                     interchange  站内换乘启用 —— 在此日期之前，即便两条线的站台都已投用，
  *                                  本站仍按「单线普通站」渲染（站内还不连通）。
- * - "rename"        更名：写旧名 from 与新名 to（新名须能在车站数据的 cn 中命中，
- *                   旧名须已登记在该站的 aliases 检索库中）。
+ * - "rename"        更名：`from`/`to` 单对（新名须能在车站数据的 cn 中命中，旧名须已登记在
+ *                   该站的 aliases 检索库中），或 `renames: [{sid, from, to, fromEn?, toEn?}, …]`
+ *                   多对（同日同批合成一个操作、一拍演完）。
  *
  * 字段：
  * - date     开通 / 更名日期，YYYY-MM-DD
- * - lineId   线路 ID，对应 data_lines.js（如 "SYM01"、"SYM02"）
- * - kind / state  事件类型与状态取值，见上（state 有取值白名单，拼错会被自检拦下）
- * - from/to  仅 line-open / line-state：线路两端站点 ID
- * - segments 仅 line-open / line-state（可选）：一条事件覆盖多段区间时写成 `[{from, to}, …]`，
+ * - lineId   线路 ID，对应 data_lines.js（如 "SYM01"、"SYM02"），写在各操作上
+ * - kind / state  操作类型与状态取值，见上（state 有取值白名单，拼错会被自检拦下）
+ * - from/to  仅 line-state：线路两端站点 ID
+ * - segments 仅 line-state（可选）：一条操作覆盖多段区间时写成 `[{from, to}, …]`，
  *            各段按声明方向依次画出，段与段之间自动插一段「把镜头挪到下一段起点」的
  *            运镜（否则笔尖会瞬移）。环线同一天开通的两段弧（如哈尔滨 3 号线东南半环：
- *            医大二院→太平桥、城乡路→体育公园）用它合成一条事件。
+ *            医大二院→太平桥、城乡路→体育公园）用它合成一条操作。
+ * - except   仅 line-state（可选）：逐站豁免，见上
  * - stations 仅 station-state：车站 ID 数组
  * - from/to  仅 rename：旧名 → 新名（字符串站名，非 ID）
  * - fromEn   仅 rename：旧英文名（可选）。有它时，更名之前站名的英文也按旧名显示
- * - title / desc  事件标题与一句补充，由数据显式给出，界面按块显示
+ * - title / desc  事件标题与一句补充（操作级可覆盖），由数据显式给出，界面按块显示
  *
  * ⚠️ 区段两端请写到**与之接轨的已开通站**为止（接点站与既有区段重叠是正常的，
  *    如沈阳「1 号线东延线：黎明广场 → 双马」的黎明广场早在一期就已开通）；
@@ -54,35 +63,35 @@
 
 const CGO_OPENING_HISTORY = [
     // ── 1 号线 ──────────────────────────────────────────────────────────
-    { date: "2010-09-27", lineId: "SYM01", kind: "line-open", from: "0101", to: "0122",
+    { date: "2010-09-27", lineId: "SYM01", kind: "line-state", from: "0101", to: "0122",
         title: "1号线一期：十三号街 ⇄ 黎明广场" },
-    { date: "2025-06-30", lineId: "SYM01", kind: "line-open", from: "0122", to: "0132",
+    { date: "2025-06-30", lineId: "SYM01", kind: "line-state", from: "0122", to: "0132",
         title: "1号线东延线：黎明广场 → 双马" },
 
     // ── 2 号线 ──────────────────────────────────────────────────────────
-    { date: "2011-12-30", lineId: "SYM02", kind: "line-open", from: "0201", to: "0219",
+    { date: "2011-12-30", lineId: "SYM02", kind: "line-state", from: "0201", to: "0219",
         title: "2号线一期：三台子 ⇄ 全运路" },
-    { date: "2013-12-30", lineId: "SYM02", kind: "line-open", from: "0201", to: "0253",
+    { date: "2013-12-30", lineId: "SYM02", kind: "line-state", from: "0201", to: "0253",
         title: "2号线北延线一期：三台子 → 航空航天大学" },
-    { date: "2018-04-08", lineId: "SYM02", kind: "line-open", from: "0253", to: "0257",
+    { date: "2018-04-08", lineId: "SYM02", kind: "line-state", from: "0253", to: "0257",
         title: "2号线北延线二期：航空航天大学 → 蒲田路" },
-    { date: "2023-09-29", lineId: "SYM02", kind: "line-open", from: "0219", to: "0226",
+    { date: "2023-09-29", lineId: "SYM02", kind: "line-state", from: "0219", to: "0226",
         title: "2号线南延线：全运路 → 桃仙机场" },
     { date: "2024-12-30", lineId: "SYM02", kind: "rename", from: "市府广场", to: "人民广场",
         fromEn: "SHIFUGUANGCHANG" },
 
     // ── 3 号线 ──────────────────────────────────────────────────────────
-    { date: "2024-12-30", lineId: "SYM03", kind: "line-open", from: "0301", to: "0314",
+    { date: "2024-12-30", lineId: "SYM03", kind: "line-state", from: "0301", to: "0314",
         title: "3号线西段：李达 ⇄ 南李官" },
-    { date: "2026-06-30", lineId: "SYM03", kind: "line-open", from: "0314", to: "0327",
+    { date: "2026-06-30", lineId: "SYM03", kind: "line-state", from: "0314", to: "0327",
         title: "3号线东段：南李官 ⇄ 方家栏" },
 
     // ── 4 号线 ──────────────────────────────────────────────────────────
-    { date: "2023-09-29", lineId: "SYM04", kind: "line-open", from: "0401", to: "0423",
+    { date: "2023-09-29", lineId: "SYM04", kind: "line-state", from: "0401", to: "0423",
         title: "4号线一期：正新路 ⇄ 创新路" },
 
     // ── 9 号线 ──────────────────────────────────────────────────────────
-    { date: "2019-05-25", lineId: "SYM09", kind: "line-open", from: "0901", to: "0923",
+    { date: "2019-05-25", lineId: "SYM09", kind: "line-state", from: "0901", to: "0923",
         title: "9号线一期：怒江公园 ⇄ 建筑大学" },
     { date: "2021-03-30", lineId: "SYM09", kind: "station-state", state: "open", stations: ["0903"],
         title: "皇姑屯站补开", desc: "开通初期暂缓开通" },
@@ -95,7 +104,7 @@ const CGO_OPENING_HISTORY = [
         title: "沈阳南站启用", desc: "随沈丹高铁同步开通，晚于地铁 1、2 号线" },
 
     // ── 10 号线 ─────────────────────────────────────────────────────────
-    { date: "2020-04-29", lineId: "SYM10", kind: "line-open", from: "1001", to: "1021",
+    { date: "2020-04-29", lineId: "SYM10", kind: "line-state", from: "1001", to: "1021",
         title: "10号线一期：丁香湖 ⇄ 张沙布" },
 ];
 

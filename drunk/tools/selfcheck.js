@@ -402,15 +402,16 @@ section('车站图元 (core/station-icons.js)');
 // 少一段或多一段都不报错，只会在动画上表现为「某段凭空长出来」或「某段永远
 // 长不出来」。这里把几条硬约束钉死：
 //   1. 端点必须真实存在于该线站序中，区段在该线站序里必须连续；
-//   2. 同一线路所有 line-open 区段的并集必须构成**连续段**——地铁不会跳站开通，
-//      暂缓开通的单站用 station-state{open} 表达，不加这条就查不出「中间漏了一段」；
+//   2. 同一线路所有 line-state{open} 区段的并集必须构成**连续段**——地铁不会跳站开通，
+//      暂缓开通的单站用 station-state{open} 或 line-state 的 except 豁免表达，不加这条就查不出「中间漏了一段」；
 //   3. 该线全部已开通车站（type !== "no"）必须被覆盖，未开通站不得被覆盖；
 //   4. station-state{open} 的车站必须在站序内，且不能仍是 type "no"；
 //   5. rename 的旧名必须已登记为目标站的别名（检索库），否则搜索会失配；
-//   6. station-state{suspended|removed} 的车站必须在站序内（interchange 还须是 tsf 换乘站）；
-//   7. line-state 的端点必须在站序内（区段收缩侧只校验端点，不参与「拼满」判定）；
-//   8. 状态取值白名单：station-state ∈ open/suspended/removed/interchange、
-//      line-state ∈ suspended/removed —— 拼错一个值会静默失效，必须当错误拦下。
+//   6. station-state 状态白名单 open/suspended/removed/interchange（interchange 站还须是 tsf 换乘站）；
+//   7. line-state 三态白名单 open/suspended/removed（缺省 open）：suspended = 未开通镂空、
+//      removed = 空白，只校验端点、**不参与「拼满」**（开通的对偶，收缩侧）；
+//   8. except 逐站豁免：sid 必须落在该操作覆盖的车站内，state ∈ open/suspended/removed、tsf 为布尔；
+//   9. 事件外壳：写了 ops 的事件不得再带顶层 kind（操作只能活在 ops 里）。
 section('开通沿革时间线');
 {
     let withHistory = 0;
@@ -419,7 +420,25 @@ section('开通沿革时间线');
         if (!fs.existsSync(p)) continue;
         withHistory++;
 
-        const events = evalData(fs.readFileSync(p, 'utf8'), 'CGO_OPENING_HISTORY');
+        // 事件 → 操作流展开（与共享层 eventOps() 同口径）：一条事件可带 ops 里 1~N 个操作，
+        // 各成一步；不写 ops 时事件本身即单个操作（简写）。事件外壳的 date / title / desc 下传。
+        const rawEvents = evalData(fs.readFileSync(p, 'utf8'), 'CGO_OPENING_HISTORY');
+        const events = [];
+        rawEvents.forEach((ev, evIdx) => {
+            const list = (Array.isArray(ev.ops) && ev.ops.length) ? ev.ops : [ev];
+            if (Array.isArray(ev.ops) && ev.ops.length && ev.kind) {
+                events.push({ __shape: `事件 #${evIdx + 1} 同时带 ops 与顶层 kind，语义含混（操作请写进 ops）` });
+            }
+            list.forEach((op, opIdx) => {
+                if (!op || !op.kind) {
+                    events.push({ __shape: `事件 #${evIdx + 1} 的操作 #${opIdx + 1} 缺少 kind` });
+                    return;
+                }
+                events.push(Object.assign({}, op, {
+                    date: ev.date, title: ev.title || "", desc: ev.desc || "", evIdx: evIdx, opIdx: opIdx
+                }));
+            });
+        });
         const stations = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
         const lines = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_lines.js'), 'utf8'), 'linesData');
         const lineById = {};
@@ -452,12 +471,14 @@ section('开通沿革时间线');
             return out;
         };
 
-        // 事件契约：几何 / 标签类专属 kind，状态类归一成两个 `*-state`（取值白名单在此把关，
-        // 数据侧拼错一个 state 会静默失效，必须当错误拦下）。见共享层 README「线网发展史」一节。
+        // 事件契约：kind 只有三种（line-state / station-state / rename），状态取值白名单在此把关，
+        // 数据侧拼错一个 state 会静默失效，必须当错误拦下。见共享层 README「线网发展史」一节。
         const STATION_STATES = ['open', 'suspended', 'removed', 'interchange'];
-        const LINE_STATES = ['suspended', 'removed'];
+        const LINE_STATES = ['open', 'suspended', 'removed'];   // open 缺省；removed = 空白
+        const EXCEPT_STATES = ['open', 'suspended', 'removed']; // line-state 逐站豁免可写的转换
 
         events.forEach((ev, k) => {
+            if (ev.__shape) { bad.push(ev.__shape); return; }
             const where = `#${k + 1} ${ev.date} ${ev.lineId}`;
             if (!/^\d{4}-\d{2}-\d{2}$/.test(ev.date || '')) { bad.push(`${where} 日期格式非法`); return; }
             const line = lineById[ev.lineId];
@@ -465,33 +486,45 @@ section('开通沿革时间线');
             const ids = IO.lineAllStationIds(line);
 
             if (ev.kind === 'line-open') {
-                // 一条事件可带多段（ev.segments: [{from,to}, …]）：环线同一天开通的两段弧、
-                // 或一条线一周内补全的几处区间，共用一条事件、同一开通日期
+                bad.push(`${where} line-open 已并入 line-state（缺省 state 即开通）`);
+                return;
+            }
+            if (ev.kind === 'line-state') {
+                // 三态：open 开通（实线，计入「拼满」）/ suspended 未开通（镂空）/ removed 空白（消失）。
+                // 一条操作可带多段（segments: [{from,to}, …]）：环线同一天开通的两段弧、
+                // 或一条线一周内补全的几处区间，共用一条操作、同一日期。
+                const state = ev.state || 'open';
+                if (!LINE_STATES.includes(state)) { bad.push(`${where} 未知线路状态 ${ev.state}`); return; }
                 const spec = (Array.isArray(ev.segments) && ev.segments.length)
                     ? ev.segments : [{ from: ev.from, to: ev.to }];
                 const cover = new Set();
-                const ends = endsByLine[ev.lineId] = endsByLine[ev.lineId] || new Set();
-                let ok = true;
                 spec.forEach(sp => {
-                    ends.add(sp.from); ends.add(sp.to);
                     const hit = coverOf(line, ids, sp.from, sp.to);
-                    if (!hit) { bad.push(`${where} 端点 ${sp.from}/${sp.to} 不在站序中`); ok = false; return; }
+                    if (!hit) { bad.push(`${where} 端点 ${sp.from}/${sp.to} 不在站序中`); return; }
                     hit.forEach(sid => cover.add(sid));
                 });
-                if (!ok) return;
-                byLine[ev.lineId] = byLine[ev.lineId] || new Set();
-                cover.forEach(sid => {
-                    byLine[ev.lineId].add(sid);
-                    if (!opened[sid] || ev.date < opened[sid]) opened[sid] = ev.date;
-                });
-            } else if (ev.kind === 'line-state') {
-                // 区段状态（停运 / 移除）：端点必须落在站序里，但**不计入「已开通区段拼满」**
-                // —— 它是开通的对偶（收缩侧），只会把已开通的段收回去，不会让线网多出一段。
-                if (!LINE_STATES.includes(ev.state)) { bad.push(`${where} 未知线路状态 ${ev.state}`); return; }
-                const spec = (Array.isArray(ev.segments) && ev.segments.length)
-                    ? ev.segments : [{ from: ev.from, to: ev.to }];
-                spec.forEach(sp => {
-                    if (!coverOf(line, ids, sp.from, sp.to)) bad.push(`${where} 端点 ${sp.from}/${sp.to} 不在站序中`);
+                if (state === 'open') {
+                    // 开通侧登记覆盖，供下方「区段并集连续且拼满」统一判定
+                    const ends = endsByLine[ev.lineId] = endsByLine[ev.lineId] || new Set();
+                    spec.forEach(sp => { ends.add(sp.from); ends.add(sp.to); });
+                    byLine[ev.lineId] = byLine[ev.lineId] || new Set();
+                    cover.forEach(sid => {
+                        byLine[ev.lineId].add(sid);
+                        if (!opened[sid] || ev.date < opened[sid]) opened[sid] = ev.date;
+                    });
+                }
+                // 逐站豁免：sid 必须落在本操作覆盖的车站里；state / tsf 取值把关
+                (Array.isArray(ev.except) ? ev.except : []).forEach((e, xi) => {
+                    const xwhere = `${where} 豁免#${xi + 1}`;
+                    if (!e || !e.sid) { bad.push(`${xwhere} 缺少 sid`); return; }
+                    if (!cover.has(e.sid)) bad.push(`${xwhere} ${e.sid} 不在本操作覆盖的车站内`);
+                    if (!stations[e.sid]) bad.push(`${xwhere} 车站 ${e.sid} 不存在`);
+                    if (e.state !== undefined && !EXCEPT_STATES.includes(e.state)) {
+                        bad.push(`${xwhere} 未知豁免状态 ${e.state}`);
+                    }
+                    if (e.tsf !== undefined && typeof e.tsf !== 'boolean') {
+                        bad.push(`${xwhere} tsf 只接受布尔值`);
+                    }
                 });
             } else if (ev.kind === 'station-state') {
                 if (!STATION_STATES.includes(ev.state)) { bad.push(`${where} 未知车站状态 ${ev.state}`); return; }
@@ -596,7 +629,7 @@ section('开通沿革时间线');
             if (hitClosed.length) bad.push(`${lineId} 区段端点落在未开通站上：${hitClosed.join(',')}`);
         });
 
-        check(bad.length === 0, `${city}: ${events.length} 条沿革 · ${Object.keys(byLine).length} 条线路 `
+        check(bad.length === 0, `${city}: ${rawEvents.length} 条事件 · ${events.length} 个操作 · ${Object.keys(byLine).length} 条线路 `
             + `覆盖 ${Object.keys(opened).length} 座车站，区段连续且拼满`);
         bad.forEach(msg => check(false, `${city}: ${msg}`));
     }

@@ -66,19 +66,19 @@
      * 类型徽标：几何 / 标签类按 `kind`，状态类按 `state`（两类 `*-state` 各自的取值表）。
      * 事件契约见各城 data_opening_history.js 文件头 —— 新增一种状态只在下表加一行。
      */
-    const KIND_LABEL = { "line-open": "区段开通", rename: "车站更名" };
+    const KIND_LABEL = { rename: "车站更名" };
     const STATE_LABEL = {
-        station: { open: "车站开通", suspended: "车站停运", removed: "车站拆除", interchange: "站内换乘启用" },
-        line: { suspended: "区段停运", removed: "区段移除" }
+        station: { open: "车站开通", suspended: "车站未开通", removed: "车站移除", interchange: "站内换乘启用" },
+        line: { open: "区段开通", suspended: "区段停运", removed: "区段移除" }
     };
     const badgeOf = (step) => {
         if (step.kind === "station-state") return STATE_LABEL.station[step.state] || step.state || step.kind;
         if (step.kind === "line-state") return STATE_LABEL.line[step.state] || step.state || step.kind;
         return KIND_LABEL[step.kind] || step.kind;
     };
-    /** 撤站类步骤（停运 / 拆除 / 区段移除）：既不是「新增」也不是「转乘」，两笔账都不动 */
-    const isWithdrawal = (step) => step.kind === "line-state"
-        || (step.kind === "station-state" && (step.state === "suspended" || step.state === "removed"));
+    /** 撤站类步骤（车站停运 / 拆除、区段停运 / 移除）：既不是「新增」也不是「转乘」，两笔账都不动 */
+    const isWithdrawal = (step) => (step.kind === "station-state" || step.kind === "line-state")
+        && (step.state === "suspended" || step.state === "removed");
 
     const REDUCE = typeof window.matchMedia === "function"
         && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -117,13 +117,14 @@
     (function hideRetiredStations() {
         const ids = [];
         const pushIds = (list) => (list || []).forEach((sid) => { if (ids.indexOf(sid) < 0) ids.push(sid); });
-        (window.CGO_OPENING_HISTORY || []).forEach((ev) => {
+        eventOps().forEach((ev) => {
             if (ev.kind === "station-state" && ev.state === "removed") { pushIds(ev.stations); return; }
-            // 线路级移除：按站序展开出该区段内的车站（此处尚未进演示流程，站点数据若未就绪则跳过）
+            // 线路级移除：按站序展开出该区段的**独占**车站（共站站名要留着，另一条线还在跑）；
+            // 此处尚未进演示流程，站点数据若未就绪则跳过
             if (ev.kind === "line-state" && ev.state === "removed") {
                 const line = byLineId(ev.lineId);
                 if (!line) return;
-                pushIds(stationRangeOf(line, lineStations(line), ev));
+                pushIds(stationRangeOf(line, lineStations(line), ev).filter((sid) => soleOnLine(sid, ev.lineId)));
             }
         });
         (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
@@ -174,6 +175,8 @@
         exportCardRect: null, // 导出用：上一帧进度卡的矩形（画面让位、裁掉落进卡里的站名）
         cardPos: "br",      // 导出进度卡的角落：tl / tr / bl / br / off
         shown: new Map(),   // sid → form：已经出现在画布上的车站（引线重建后据此补状态）
+        segPieces: [],      // 已画段落注册表 [{ lineId, s0, s1, pts, style, color, nodes }]：段形态转换的唯一对象
+        convDone: new Set(), // 已应用过形态转换的步号（段转换只做一次）
         dotColors: new Map(), // sid → dot 形态的环色（首条开通线路的颜色）
         alwaysOn: new Set(), // 全程固定显示的车站（国铁散点等，不参与逐个弹出）
         railStations: new Set(), // 国铁散点（type "rdot"）：按时间入场，但不参与全览取景
@@ -394,27 +397,66 @@
         return out;
     }
 
+    /** 事件 → 操作流展开（load 期与 build 期共用同一口径）：`ops` 优先，未写 ops 则事件本身即单个操作 */
+    function eventOps() {
+        const out = [];
+        (window.CGO_OPENING_HISTORY || []).slice()
+            .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+            .forEach((ev, evIdx) => {
+                const list = (Array.isArray(ev.ops) && ev.ops.length) ? ev.ops : [ev];
+                list.forEach((op, opIdx) => {
+                    if (!op || !op.kind) return;
+                    const rec = Object.assign({}, op, {
+                        date: ev.date,
+                        // 操作可自带 title / desc 覆盖事件级说明（同一事件各拍说各拍的事）
+                        title: op.title || ev.title || "",
+                        desc: op.desc || ev.desc || "",
+                        evIdx: evIdx,
+                        opIdx: opIdx
+                    });
+                    if (rec.kind === "line-state" && !rec.state) rec.state = "open";   // 缺省 = 开通
+                    out.push(rec);
+                });
+            });
+        return out;
+    }
+
+    /** 该站是否**只**在这一条线上（线级移除时判定独占站；共站站要留着，另一条线还在跑） */
+    function soleOnLine(sid, lineId) {
+        const arr = Array.isArray(window.linesData) ? window.linesData : [];
+        for (let k = 0; k < arr.length; k++) {
+            const l = arr[k];
+            if (!l || l.id === lineId) continue;
+            if (lineStations(l).indexOf(sid) >= 0) return false;
+        }
+        return true;
+    }
+
     /**
      * 把沿革事件解析成可播放的步骤。
      *
      * 播放顺序按日期全局升序（数据文件按线路分组书写便于维护，顺序在这里归一）。
+     * **事件 → 操作**先在此展开：一条事件（date / title / desc）可带 `ops` 里 1~N 个操作，
+     * 每个操作各成一步、各演一拍、各自取景；不写 `ops` 时事件本身就是单个操作（简写）。
+     * 下游一律按「操作流」处理，不需要知道来源是哪种写法。
+     *
      * 几处按时间推进的判定都在这里一次算完，播放时只读不算：
      *   · 延伸方向：从**已开通的那一端**起笔（如 2 号线北延二期由航空航天大学往蒲田路画）；
      *   · 站点形态：换乘站在只通了一条线时先按普通站（dot）入场，第二条线开通时才转 tsf；
-     *     暂缓开通的车站也在所属线路开通时先以 dot 出现，到自己的补开事件再转正式形态；
+     *     暂缓开通的车站也在所属线路开通时先以未开通圈出现，到自己的补开事件再转正式形态；
      *   · 更名：有更名记录的车站在更名日期之前一律用旧名入场；
-     *   · 里程：逐段累加已开通区间的站距，供面板显示当前运营里程。
+     *   · 里程：逐段累加已开通区间的站距，供面板显示当前运营里程（停运 / 移除为负）。
      */
     function build() {
         const st = stationMap();
         const byId = {};
         linesData().forEach((l) => { byId[l.id] = l; });
-        const events = (window.CGO_OPENING_HISTORY || []).slice()
-            .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+        const events = eventOps();   // 事件已按日期归一、展开成操作流
 
         const delayed = new Map();   // 暂缓开通站 → 补开日期（该站最后一次补开日，供 closedAt 判恢复）
         const delayedBy = new Map(); // sid → Map(lineId → 该线在本站的补开日)：判暂缓要按线路粒度看
         const closed = new Map();    // sid → [{ date, permanent }]（闭站 / 拆除，升序）
+        const goneForever = new Set();   // 拆除终态的站（permanent 闭站）：永不复活
         const transferAt = new Map(); // sid → 站内换乘启用日（此前维持单线普通站形态）
         /**
          * 更名事件指向的车站：优先用事件里显式写的 `sid`，没写时按「现名或曾用名」反查
@@ -440,7 +482,7 @@
         const phantomRange = new Map();   // 主点 sid → [{ from, to }]
         (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
             if (!pf || !pf.of) return;
-            const lineOpen = events.find((ev) => ev.kind === "line-open" && ev.lineId === pf.line);
+            const lineOpen = events.find((ev) => ev.kind === "line-state" && ev.state === "open" && ev.lineId === pf.line);
             const platOpen = events.find((ev) => ev.kind === "station-state" && ev.state === "open"
                 && ev.lineId === pf.line && (ev.stations || []).indexOf(pf.of) >= 0);
             const from = [lineOpen, platOpen].filter(Boolean).map((ev) => ev.date).sort().pop();
@@ -462,6 +504,7 @@
         const markClosed = (sid, ev, permanent) => {
             if (!closed.has(sid)) closed.set(sid, []);
             closed.get(sid).push({ date: ev.date, permanent: !!permanent, lineId: ev.lineId });
+            if (permanent) goneForever.add(sid);   // 拆除是终态：之后任何操作都不许让它复活
         };
         events.forEach((ev) => {
             if (ev.kind === "station-state") {
@@ -600,7 +643,9 @@
             return (s.type === "tsf" && n < 2) ? "dot" : "real";
         };
 
-        const stepOfEvent = [];   // 事件下标 → 步骤下标（有的事件不产生步骤，如无走向的 line-open）
+        const stepOfEvent = [];   // 操作下标 → 步骤下标（有的操作不产生步骤，如无走向的 line-state）
+        /** 各线「已画区间」（含镂空态）：line-state{open} 据此判「生长」还是「形态转换」 */
+        const buildDrawn = new Map();   // lineId → [{ s0, s1 }]（采样路径弧长坐标）
         events.forEach((ev, evIdx) => {
             const line = byId[ev.lineId];
             if (!line) return;
@@ -608,8 +653,9 @@
             const step = {
                 date: ev.date,
                 kind: ev.kind,
-                state: ev.state,   // 状态类（station-state / line-state）的取值，几何类为 undefined
-                // 说明分两块：title（事件本身）/ desc（一句补充），都由数据显式给出
+                state: ev.state,   // 状态类（station-state / line-state）的取值，rename 为 undefined
+                evIdx: ev.evIdx,
+                // 说明分两块挂在**事件**上（title / desc），同一事件的各拍共享
                 title: ev.title || "",
                 desc: ev.desc || "",
                 lineId: ev.lineId,
@@ -620,35 +666,70 @@
                 stations: [],
                 focus: null,
                 rename: null,
+                segConv: [],   // 段形态转换 [{ s0, s1, style }]：solid 实线 / hollow 镂空 / hidden 空白
                 addedMileage: 0
             };
+            /** line-state 的逐站豁免表：sid → { state?, tsf? } */
+            const ex = {};
+            (Array.isArray(ev.except) ? ev.except : []).forEach((e) => {
+                if (e && e.sid) ex[e.sid] = e;
+            });
 
             /**
              * 段内每站登记一次「该线已开通」，再逐个决定是否入场 / 是否换形态。
-             * 一条事件可能带**多段**（`ev.segments`），各段共用一步；站的弹出时刻要按**整步**
+             * 一条操作可能带**多段**（`segments`），各段共用一步；站的弹出时刻要按**整步**
              * 归一化，故额外收 `base`（本段在整步已画长度里的起点）与 `total`（整步总长）。
+             *
+             * `ex` 是 line-state 的逐站豁免：`{ sid, state: "suspended"|"removed"|"open", tsf: false }`
+             *   · state "suspended"：该站**不随段开通**（列车通过不停车），不记服务账；
+             *     从未入场则以「未开通圈」直接入场（暂缓站，不播「开通再倒回」）；
+             *   · state "removed"：该站随段移除；
+             *   · tsf: false：照常记服务账，但压住本拍的自动升换乘（换乘通道未通）。
              */
-            const collect = (segIds, path, s0, s1, reversed, base, total) => {
+            const collect = (segIds, path, s0, s1, reversed, base, total, exMap) => {
                 segIds.forEach((sid) => {
+                    if (goneForever.has(sid)) return;   // 拆除终态：不复活、不记服务账
+                    const e = exMap && exMap[sid];
+                    if (e && (e.state === "suspended" || e.state === "removed")) return;   // 豁免：不记服务账
                     if (!lineIdsAt.has(sid)) {
                         lineIdsAt.set(sid, new Set());
                         firstLineOf.set(sid, ev.lineId);   // 首条开通的线路（dot 形态用它上色）
                     }
                     lineIdsAt.get(sid).add(ev.lineId);
+                    // 记「该线到本站的日期」：暂缓判定与线路闭站恢复共用这一张账
+                    const per = delayedBy.get(sid) || new Map();
+                    per.set(ev.lineId, ev.date);
+                    delayedBy.set(sid, per);
                 });
                 segIds.forEach((sid) => {
+                    if (goneForever.has(sid)) return;   // 拆除终态：不复活
                     const s = st[sid];
                     if (!s || !Number.isFinite(s.x)) return;
-                    const want = wantForm(sid, ev.date);
+                    const e = exMap && exMap[sid];
+                    let want, forceLeave = false;
+                    if (e && e.state === "removed") {
+                        forceLeave = true; want = "gone";
+                    } else if (e && e.state === "suspended") {
+                        // 通过不停车：从未入场 → 以未开通圈入场；已入场 → 保持原形态不转换
+                        if (shown.has(sid)) return;
+                        want = "no";
+                    } else {
+                        want = wantForm(sid, ev.date);
+                        if (e && e.tsf === false && want === "real" && s.type === "tsf") want = "dot";
+                    }
                     const cur = formOf.get(sid);
                     let mode;
                     if (!shown.has(sid)) {
+                        if (forceLeave) return;   // 没入场过就谈不上移除
                         shown.add(sid);
                         formOf.set(sid, want);
                         mode = "enter";
+                    } else if (forceLeave) {
+                        formOf.set(sid, want);
+                        mode = "leave";
                     } else if (cur !== want) {
                         formOf.set(sid, want);
-                        mode = "upgrade";   // 已在线网上，这次是「从普通站变成换乘站」
+                        mode = "upgrade";   // 已在线网上，这次是「从普通站变成换乘站」等形态转换
                     } else {
                         return;   // 已在画布上、形态也没变：无事发生
                     }
@@ -675,10 +756,10 @@
                 step.stations.sort((a, b) => a.t - b.t);
             };
 
-            if (ev.kind === "line-open") {
-                // 一条事件可带**多段**（`ev.segments: [{from,to}, …]`）：环线同一天开通的几段弧、
-                // 或一条线分几处补全。多段**共用一步**，各段按声明方向依次画出；段与段之间由
-                // 时间线插一段「把镜头挪到下一段起点」的运镜（见 buildTimeline.growthPhases）。
+            if (ev.kind === "line-state" && ev.state === "open") {
+                // 区段开通 / 恢复（state 缺省即 open）。一条操作可带**多段**（`segments: [{from,to}, …]`）：
+                // 环线同一天开通的几段弧、或一条线分几处补全。多段**共用一步**，各段按声明方向依次画出；
+                // 段与段之间由时间线插一段「把镜头挪到下一段起点」的运镜（见 buildTimeline.growthPhases）。
                 const spec = (Array.isArray(ev.segments) && ev.segments.length)
                     ? ev.segments : [{ from: ev.from, to: ev.to }];
                 const path = sampleCorePath(ev.lineId)
@@ -728,14 +809,31 @@
                     });
                 });
                 if (!segs.length) return;
-                let total = 0;
-                segs.forEach((sg) => { sg.base = total; total += sg.len; });
 
-                step.segs = segs;
-                step.pts = segs.reduce((acc, sg) => acc.concat(sg.pts), []);   // 仅供包围盒 / 有无走向判断
+                // 生长 vs 形态转换：**已画过的区间**（实线或镂空）不再重画，只把样式转回实线
+                // （停运段恢复运营即此例，重播生长像「线又长了一遍」）；没画过的才真生长。
+                // 移除过的区间已从已画账里销掉（空白 = 从未画过），再开通时照常重新生长。
+                const drawn = buildDrawn.get(ev.lineId) || [];
+                const grow = [], conv = [];
+                segs.forEach((sg) => {
+                    const covered = drawn.some((iv) => iv.s0 <= sg.s0 + 0.01 && sg.s1 - 0.01 <= iv.s1);
+                    if (covered) conv.push(sg);
+                    else grow.push(sg);
+                });
+                step.segConv = conv.map((sg) => ({ s0: sg.s0, s1: sg.s1, style: "solid" }));
+                let total = 0;
+                grow.forEach((sg) => { sg.base = total; total += sg.len; });
+                step.segs = grow;
+                step.pts = grow.length ? grow.reduce((acc, sg) => acc.concat(sg.pts), []) : null;   // 仅供包围盒 / 有无走向判断
                 step.lengthPx = total;
-                step.focus = pointAtMulti(segs, total / 2);
-                segs.forEach((sg) => collect(ids.slice(sg.lo, sg.hi + 1), path, sg.s0, sg.s1, sg.flip, sg.base, total));
+                if (grow.length) step.focus = pointAtMulti(grow, total / 2);
+                else if (conv.length) step.focus = pointAt(conv[0].pts, segLength(conv[0].pts) / 2);
+                // 本步之后整段都在画布上（镂空也算画过）：记进已画账
+                segs.forEach((sg) => {
+                    drawn.push({ s0: Math.min(sg.s0, sg.s1), s1: Math.max(sg.s0, sg.s1) });
+                });
+                buildDrawn.set(ev.lineId, drawn);
+                segs.forEach((sg) => collect(ids.slice(sg.lo, sg.hi + 1), path, sg.s0, sg.s1, sg.flip, sg.base, total, ex));
             } else if (ev.kind === "station-state"
                 && (ev.state === "open" || ev.state === "interchange")) {
                 // open = 投用 / 补开 / 恢复运营（暂缓站与闭站复开都走这里，collect 负责入场或转形态）；
@@ -749,17 +847,62 @@
                     step.focus = { x: st[targets[0]].x, y: st[targets[0]].y };
                 }
             } else if (ev.kind === "line-state" || ev.kind === "station-state") {
-                // 撤站（suspended 停运 / removed 拆除）：本站由「已开通」转成未开通图元；removed
-                // 则由渲染层**直接把图元与站名抹掉**（mode: "leave"），而不是留一个未开通圈。
+                // 撤站：suspended = 该段 / 该站**不通车**（未开通圈，线路段转镂空双线）；
+                // removed = 移除（图元、站名与引线一并抹掉，mode: "leave"；线路段转空白）。
                 // 只对**已经出现在画布上**的站生效 —— 尚未入场的规划站没有「关」这一说。
                 // `line-state` 是「区段」级的事，先按站序展开成站，判定路径与站级完全一致。
+                if (ev.kind === "line-state") {
+                    // 段的形态转换：suspended → 未开通镂空；removed → 空白（从已画账销掉，
+                    // 将来重新开通时重新生长）。停运 / 移除的里程同步倒扣。
+                    const path = sampleCorePath(ev.lineId)
+                        || (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2 ? line.pathPoints : null)
+                        || ids.map((sid) => st[sid]).filter((s) => s && Number.isFinite(s.x));
+                    const dists = Array.isArray(line.distances) ? line.distances : [];
+                    const spec = (Array.isArray(ev.segments) && ev.segments.length)
+                        ? ev.segments : [{ from: ev.from, to: ev.to }];
+                    const style = ev.state === "removed" ? "hidden" : "hollow";
+                    spec.forEach((sp) => {
+                        const i = ids.indexOf(sp.from), j = ids.indexOf(sp.to);
+                        if (i < 0 || j < 0) return;
+                        const arc = path && path.length >= 2 ? arcOf(path, ids, st, line, i, j) : null;
+                        if (!arc) return;
+                        arc.edges.forEach((e) => {
+                            const d = Number(dists[e]);
+                            if (Number.isFinite(d)) step.addedMileage -= d;
+                        });
+                        arc.pieces.forEach((pc) => {
+                            const s0 = Math.min(pc[2], pc[3]), s1 = Math.max(pc[2], pc[3]);
+                            if (!(Number.isFinite(s0) && Number.isFinite(s1) && s1 > s0)) return;
+                            step.segConv.push({ s0: s0, s1: s1, style: style });
+                        });
+                    });
+                    if (style === "hidden" && step.segConv.length) {
+                        // 空白 = 从未画过：整段从已画账销掉，再开通照常重新生长
+                        const keep = (buildDrawn.get(ev.lineId) || []).filter((iv) =>
+                            !step.segConv.some((c) => iv.s0 >= c.s0 - 0.01 && iv.s1 <= c.s1 + 0.01));
+                        buildDrawn.set(ev.lineId, keep);
+                    }
+                    if (step.segConv.length && path && path.length >= 2) {
+                        const mid = step.segConv[0];
+                        step.focus = pointAt(path, (mid.s0 + mid.s1) / 2);
+                    }
+                }
                 const range = ev.kind === "line-state" ? stationRangeOf(line, ids, ev) : (ev.stations || []);
-                const gone = ev.state === "removed";
                 range.forEach((sid) => {
+                    const e = ex[sid];
+                    if (e && e.state === "open") {
+                        collect([sid], null, NaN, NaN, false, NaN, 0, null);   // 豁免：该站照常开通 / 维持
+                        return;
+                    }
                     const s = st[sid];
                     if (!s || !Number.isFinite(s.x) || !shown.has(sid)) return;
-                    const want = wantForm(sid, ev.date);
+                    // removed：站级 = 整站拆除；线级 = 只移除**未连接任何已开通线路**的独占站
+                    // （共站换乘站的另一条线还在跑，站照常保留，见长春站 / 解放桥）。
+                    const gone = (e && e.state === "removed")
+                        || (ev.state === "removed" && (ev.kind === "station-state" || !aliveLinesAt(sid, ev.date).length));
+                    const want = gone ? "gone" : wantForm(sid, ev.date);
                     formOf.set(sid, want);
+                    if (gone) shown.delete(sid);   // 重新开通时按「再次入场」处理（回放计数也才对）
                     const first = byId[firstLineOf.get(sid)];
                     step.stations.push({
                         sid: sid, x: s.x, y: s.y, t: 0, form: want,
@@ -813,7 +956,7 @@
             //    collect 会按「形态没变」提前返回、那一步的 stations 里根本没有它。
             //    改用「该线首次通车」那一步 —— 幽灵点对应的站台都在各自线路的首通段上。
             for (let k = 0; k < steps.length; k++) {
-                if (steps[k].kind === "line-open" && steps[k].lineId === pf.line) { arr = k; break; }
+                if (steps[k].kind === "line-state" && steps[k].state === "open" && steps[k].lineId === pf.line) { arr = k; break; }
             }
             events.forEach((ev, k) => {
                 const si = stepOfEvent[k];
@@ -859,7 +1002,7 @@
         });
         state.railStations = railStations;
         steps.forEach((s, i) => {
-            if (s.kind === "line-open") lineSet.add(s.lineId);
+            if (s.kind === "line-state" && s.state === "open") lineSet.add(s.lineId);
             let added = 0, counted = 0;
             // 撤站（停运 / 拆除 / 区段移除）既不是「新增」也不是「转乘」——它是把站从图上撤下，两笔账都不该动
             const withdraw = isWithdrawal(s);
@@ -1309,6 +1452,8 @@
     function clearCanvas() {
         doneGroup()?.replaceChildren();
         liveGroup()?.replaceChildren();
+        state.segPieces = [];
+        state.convDone = new Set();
         // ⚠️ 只清子节点不够：生长组的「当前画到第几步」记在 dataset.no、段节点引用在 __segs 上。
         //    留着它们，下一次 ensureGrowPath 会以为这一步的组还在，于是复用一组**已脱离文档**的
         //    path 节点 —— 描边偏移设在这些死节点上，那条线路整段不出现。
@@ -1856,8 +2001,9 @@
      * 进度按「整步已画长度」分配到各段 —— 段与段首尾相接时看上去就是连续的一笔。
      */
     function ensureGrowPath(step) {
-        const segs = (step.segs && step.segs.length)
-            ? step.segs
+        // ⚠️ step.segs 是权威：空数组就是「这一步不画」（纯形态转换步），不能回退去画 step.pts
+        const segs = Array.isArray(step.segs)
+            ? (step.segs.length ? step.segs : null)
             : (step.pts && step.pts.length > 1 ? [{ pts: step.pts, len: step.lengthPx }] : null);
         if (!segs) return null;   // 无走向的步骤没有可画的折线
         const group = liveGroup();
@@ -2032,15 +2178,111 @@
         });
     }
 
+    /**
+     * 未开通镂空的盖面：彩色 5.4 之上盖一条 `--map-bg` 3.4，露出两条细边 —— 与核心
+     * `renderNotOpenLines`（NOT_OPEN_LINES）同款画法，观感与底图在建虚线一致。
+     */
+    function makeHollowMask(pts) {
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", toD(pts));
+        p.setAttribute("stroke", "var(--map-bg)");
+        p.setAttribute("stroke-width", "3.4");
+        p.setAttribute("fill", "none");
+        p.setAttribute("stroke-linecap", "round");
+        p.setAttribute("stroke-linejoin", "round");
+        p.setAttribute("vector-effect", "non-scaling-stroke");
+        return p;
+    }
+
+    /** 造一段「已画段落」的节点组（彩色实线，hollow 另带盖面），返回注册表条目 */
+    function makeSegPiece(lineId, s0, s1, pts, style, color, proto) {
+        const base = document.createElementNS(NS, "path");
+        base.setAttribute("d", toD(pts));
+        base.setAttribute("stroke", color);
+        base.setAttribute("stroke-width", "5.4");
+        base.setAttribute("fill", "none");
+        base.setAttribute("vector-effect", "non-scaling-stroke");
+        if (proto) {   // 拆分而来：沿用原段的 data-no / data-line 标记
+            ["data-no", "data-line"].forEach((a) => {
+                const v = proto.getAttribute(a);
+                if (v !== null) base.setAttribute(a, v);
+            });
+        }
+        const nodes = [base];
+        if (style === "hollow") nodes.push(makeHollowMask(pts));
+        return { lineId: lineId, s0: s0, s1: s1, pts: pts, style: style, color: color, nodes: nodes };
+    }
+
+    /** 单段样式转换：solid 摘盖面 / hollow 加盖面 / hidden 连节点一起摘掉（空白） */
+    function applyPieceStyle(pc, style) {
+        if (style === "hollow") {
+            if (!pc.nodes[1]) {
+                const mask = makeHollowMask(pc.pts);
+                pc.nodes[0].after(mask);
+                pc.nodes.push(mask);
+            }
+            pc.style = "hollow";
+        } else if (style === "solid") {
+            if (pc.nodes[1]) { pc.nodes[1].remove(); pc.nodes.pop(); }
+            pc.style = "solid";
+        } else {
+            pc.nodes.forEach((n) => n.remove());
+            pc.style = "hidden";
+        }
+    }
+
+    /**
+     * 段形态转换：把已画区间 [s0, s1] 转成 solid（实线）/ hollow（未开通镂空）/ hidden（空白）。
+     * 被切中的段落按弧长坐标拆成 1~3 份（左右保原样式），拆分与生长切片同源（slicePath），
+     * 几何零误差；hidden 摘掉节点（空白 = 从未画过，再开通由生长重新画）。
+     */
+    function convertRange(lineId, s0, s1, style) {
+        const list = state.segPieces;
+        for (let k = list.length - 1; k >= 0; k--) {
+            const pc = list[k];
+            if (pc.lineId !== lineId || pc.style === "hidden") continue;
+            if (pc.s1 <= s0 + 0.05 || pc.s0 >= s1 - 0.05) continue;   // 不相交
+            const a = Math.max(pc.s0, s0), b = Math.min(pc.s1, s1);
+            const whole = a <= pc.s0 + 0.05 && b >= pc.s1 - 0.05;
+            if (whole) {
+                applyPieceStyle(pc, style);
+                if (style === "hidden") list.splice(k, 1);
+                continue;
+            }
+            const proto = pc.nodes[0];
+            const cut = (x0, x1) => makeSegPiece(lineId, x0, x1,
+                slicePath(pc.pts, x0 - pc.s0, x1 - pc.s0), pc.style, pc.color, proto);
+            const made = [];
+            if (a > pc.s0 + 0.05) made.push(cut(pc.s0, a));
+            const mid = makeSegPiece(lineId, a, b, slicePath(pc.pts, a - pc.s0, b - pc.s0), pc.style, pc.color, proto);
+            applyPieceStyle(mid, style);
+            if (style !== "hidden") made.push(mid);
+            if (b < pc.s1 - 0.05) made.push(cut(b, pc.s1));
+            // 换节点时保持原图层位置（跨线遮挡关系不乱）
+            const frag = document.createDocumentFragment();
+            made.forEach((mp) => mp.nodes.forEach((n) => frag.appendChild(n)));
+            proto.parentNode.insertBefore(frag, proto);
+            pc.nodes.forEach((n) => n.remove());
+            list.splice(k, 1, ...made);
+        }
+    }
+
     /** 播完的段落归档进「已开通」层，留在线网上才能看出线网在长大（站点由时间轴负责） */
     function commitPath(step) {
         const group = doneGroup();
-        const segs = (step.segs && step.segs.length)
-            ? step.segs
+        if (!group) return;
+        // 段形态转换（镂空 / 空白 / 恢复实线）：每步只应用一次
+        if (step.segConv && step.segConv.length && !state.convDone.has(step.no)) {
+            state.convDone.add(step.no);
+            step.segConv.forEach((c) => convertRange(step.lineId, c.s0, c.s1, c.style));
+        }
+        const segs = Array.isArray(step.segs)
+            ? (step.segs.length ? step.segs : null)
             : (step.pts && step.pts.length > 1 ? [{ pts: step.pts }] : null);
-        if (!group || !segs) return;
+        if (!segs) return;
         if (group.querySelector(`[data-no="${step.no}"]`)) return;   // 同一步的多段只归档一次
         segs.forEach((sg, k) => {
+            if (!sg.pts || sg.pts.length < 2) return;
             const p = document.createElementNS(NS, "path");
             p.setAttribute("data-no", String(step.no));
             p.setAttribute("data-line", String(step.lineId));   // 供「画布上正在展示的线路数」统计
@@ -2048,8 +2290,19 @@
             p.setAttribute("d", toD(sg.pts));
             p.setAttribute("stroke", step.color);
             p.setAttribute("stroke-width", "5.4");
+            p.setAttribute("fill", "none");
             p.setAttribute("vector-effect", "non-scaling-stroke");
             group.appendChild(p);
+            if (Number.isFinite(sg.s0) && Number.isFinite(sg.s1)) {
+                // 注册表按全局弧长正向存（flip 的段翻回来），形态转换的切片才对得上；
+                // 节点就是刚画的这条 path 本尊（形态转换直接动它）
+                state.segPieces.push({
+                    lineId: step.lineId,
+                    s0: Math.min(sg.s0, sg.s1), s1: Math.max(sg.s0, sg.s1),
+                    pts: sg.flip ? sg.pts.slice().reverse() : sg.pts,
+                    style: "solid", color: step.color, nodes: [p]
+                });
+            }
         });
     }
 
@@ -2264,12 +2517,11 @@
     }
 
     function renderList() {
-        // 同一天、同一条线的多条事件算**同一批**（如 2021-12-31 的东延通车 / 站台恢复 / 站内换乘，
-        // 以及 2006-12-26 的轻轨二期通车 + 前进站更名）——时间轴上仍是各自的拍，
-        // 但清单里只列第一条，免得同批动作被拆成好几行。点击仍跳到该批第一步。
+        // 同一**事件**的多个操作在清单里只列一行（如 2021-12-31 的恢复运营 / 换乘启用 / 东延
+        // 通车是同一次开通动作的三拍）——时间轴上仍是各自的拍，点击跳到该事件第一拍。
         const seen = new Set();
         const rows = state.steps.filter((s) => {
-            const key = s.date + "|" + s.lineId;
+            const key = String(s.evIdx);
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
