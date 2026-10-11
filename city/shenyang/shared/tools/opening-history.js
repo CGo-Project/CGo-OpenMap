@@ -329,6 +329,30 @@
         return pointAt(segs[0].pts, 0);
     }
 
+    /**
+     * 该点落在某步生长路径上的进度 t（0~1）——站外换乘幽灵点「笔到人到」的弹出时刻要用：
+     * 幽灵点不属于任何线路站序（不在 stationIds 里），collect 的沿线定位够不着它，
+     * 这里按它到生长折线的最近投影补算。
+     */
+    function tOnStep(step, s) {
+        const segs = step && step.segs;
+        if (!segs || !segs.length) return null;
+        let total = 0;
+        segs.forEach((sg) => { total += sg.len || segLength(sg.pts); });
+        if (!(total > 0)) return null;
+        let acc = 0, bestAt = null, bestD = Infinity;
+        segs.forEach((sg) => {
+            const len = sg.len || segLength(sg.pts);
+            const at = projectOnPath(sg.pts, s);
+            if (at !== null) {
+                const d = dist(pointAt(sg.pts, at), s);
+                if (d < bestD) { bestD = d; bestAt = acc + at; }
+            }
+            acc += len;
+        });
+        return bestAt === null ? null : Math.max(0, Math.min(1, bestAt / total));
+    }
+
     function bboxOf(pts) {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         pts.forEach((p) => {
@@ -524,6 +548,9 @@
                     (ev.stations || []).forEach((sid) => markClosed(sid, ev, ev.state === "removed"));
                 }
             } else if (ev.kind === "line-state") {
+                // ⚠️ 只有**收缩侧**（suspended / removed）才是闭站账；open 是开通，
+                //    记进去会让全网的站在开通当天就被判成「闭站」（图元全变未开通圈）。
+                if (ev.state === "open") return;
                 const line = byId[ev.lineId];
                 if (!line) return;
                 const ids = lineStations(line);
@@ -696,9 +723,12 @@
                         firstLineOf.set(sid, ev.lineId);   // 首条开通的线路（dot 形态用它上色）
                     }
                     lineIdsAt.get(sid).add(ev.lineId);
-                    // 记「该线到本站的日期」：暂缓判定与线路闭站恢复共用这一张账
+                    // 记「该线到本站的日期」：暂缓判定与线路闭站恢复共用这一张账。
+                    // 取**较晚**的那次：区段延伸重新经过本站时不能把「本站自己的补开日」
+                    // 顶回去（暂缓站一被延伸段扫过就提前开通），闭站恢复也以最近一次为准。
                     const per = delayedBy.get(sid) || new Map();
-                    per.set(ev.lineId, ev.date);
+                    const prev = per.get(ev.lineId);
+                    if (!(prev && prev > ev.date)) per.set(ev.lineId, ev.date);
                     delayedBy.set(sid, per);
                 });
                 segIds.forEach((sid) => {
@@ -978,7 +1008,13 @@
             }
             if (birth < 0 || endStep <= birth) return;   // 没有「站外换乘」这一段的车站不必插点
             const dotColor = byId[pf.line] ? byId[pf.line].color : null;
-            steps[birth].stations.push({ sid: pf.id, x: s.x, y: s.y, t: 0, form: "dot", mode: "enter", dotColor: dotColor });
+            // 「笔到人到」：幽灵点跟着主点 / 沿线位置弹出（优先取主点在本步的 t，
+            // 其次按到生长折线的最近投影补算），而不是在生长一开始就冒出来
+            const bStep = steps[birth];
+            const mainPop = bStep.stations.find((q) => q.sid === pf.of);
+            let popT = mainPop ? mainPop.t : tOnStep(bStep, s);
+            if (popT === null || popT === undefined) popT = 0.5;
+            steps[birth].stations.push({ sid: pf.id, x: s.x, y: s.y, t: popT, form: "dot", mode: "enter", dotColor: dotColor });
             steps[endStep].stations.push({ sid: pf.id, x: s.x, y: s.y, t: 0, form: "dot", mode: "leave", dotColor: dotColor });
             demoOnly.add(pf.id);
             // 第三项 =「主点开通站内换乘」那一步：此前两端是**付费出站**换乘（连线用付费画法），
@@ -1858,19 +1894,26 @@
                 end: t + head + growDur + renameMs + head + hold,
                 growDur: growDur,
                 phases: phases,
-                progAt: (dt) => progAtDt(phases, dt),
+                // ⚠️ 纯形态转换 / 多站巡览的步骤没有 phases（growDur 可能仍 > 0），
+                //    progAtDt 对空表会取到 undefined 的阶段直接抛错（面板滚数即中招），
+                //    故回落成「按拍内时间线性推进」。
+                progAt: (dt) => (phases.length ? progAtDt(phases, dt)
+                    : (growDur > 0 ? Math.max(0, Math.min(1, dt / growDur)) : 1)),
                 camFrom: prevCam,
                 camHead: camForPoint(brushAt(step, 0), state.zoom),
                 camGrowEnd: camForPoint(panPts ? panPts[panPts.length - 1] : brushAt(step, 1), state.zoom),
                 camTail: camTailOf(step)
             };
-            // 站点弹出时刻：笔到人到（末尾留 30ms，别让最后一个站压着收笔）；
-            // 无走向的步骤没有「画笔推进」，全部在本拍起点弹出
+            // 站点弹出时刻：有画笔推进的「笔到人到」（末尾留 30ms，别让最后一个站压着收笔）；
+            // 无走向的**多站**步骤按到站顺序逐个弹出（idx × 900ms，与镜头逐站平移同一节奏），
+            // 不再整批同拍炸出；单站步骤就在本拍起点弹出。
             rec.pops = step.stations
-                .map((x) => ({
+                .map((x, idx) => ({
                     x: x, step: step,
-                    t: rec.growT0 + (growDur > 0
-                        ? Math.max(0, Math.min(growDur - 30, timeOfProg(phases, x.t))) : 0)
+                    t: rec.growT0 + (growDur <= 0 ? 0
+                        : phases.length
+                            ? Math.max(0, Math.min(growDur - 30, timeOfProg(phases, x.t)))
+                            : Math.min(growDur - 30, idx * 900))
                 }))
                 .sort((a, b) => a.t - b.t);
             list.push(rec);
