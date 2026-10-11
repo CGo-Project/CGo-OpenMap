@@ -72,13 +72,13 @@ const CGO_OPENING_HISTORY = [
     { date: "2011-12-30", lineId: "SYM02", kind: "line-state", from: "0201", to: "0219",
         title: "2号线一期：三台子 ⇄ 全运路" },
     { date: "2013-12-30", lineId: "SYM02", kind: "line-state", from: "0201", to: "0253",
-        title: "2号线北延线一期：三台子 → 航空航天大学" },
+        title: "2号线北延线一期：三台子 → 航空航天大学", desc: "新增医学院、师范大学、航空航天大学 3 站" },
     { date: "2018-04-08", lineId: "SYM02", kind: "line-state", from: "0253", to: "0257",
         title: "2号线北延线二期：航空航天大学 → 蒲田路" },
     { date: "2023-09-29", lineId: "SYM02", kind: "line-state", from: "0219", to: "0226",
         title: "2号线南延线：全运路 → 桃仙机场" },
     { date: "2024-12-30", lineId: "SYM02", kind: "rename", from: "市府广场", to: "人民广场",
-        fromEn: "SHIFUGUANGCHANG" },
+        fromEn: "SHIFUGUANGCHANG", desc: "市民政局 2024-12-26 更名公告，站内导视同月起陆续更换" },
 
     // ── 3 号线 ──────────────────────────────────────────────────────────
     { date: "2024-12-30", lineId: "SYM03", kind: "line-state", from: "0301", to: "0314",

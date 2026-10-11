@@ -2,13 +2,13 @@
  * CGo OpenMap - 呼和浩特开通沿革（city/hohhot/data_opening_history.js）
  *
  * 记录呼和浩特地铁线网逐段开通与单站补开的时间线，供「发展史动态演示」消费。
- * 字段与四种事件（line-open / line-state / station-state / rename）的含义见
+ * 字段与三种事件（line-state / station-state / rename）的含义见
  * city/shenyang/data_opening_history.js 的文件头与 city/shenyang/shared/README.md。
  *
  * 本城口径
  * --------
  * - 1、2 号线都是**一次成网开通**，没有分段开通、也没有暂缓开通的车站，
- *   故各线一条 line-open 即覆盖全线，不需要 station-state{open}。
+ *   故各线一条 line-state 即覆盖全线，不需要 station-state{open}。
  * - 换乘：1、2 号线在新华广场站（M108）换乘。该站随 1 号线（2019-12-29）先以
  *   **普通站**入场，2 号线（2020-10-01）开通时才转为换乘站 —— 由共享层按
  *   「第二条线到达才转 tsf」自动处理，数据不必额外声明。
@@ -47,22 +47,18 @@ const CGO_OPENING_HISTORY = [
     { date: "2020-10-01", lineId: "M2", kind: "line-state", from: "M201", to: "M223",
         title: "2号线一期：塔利东路 ⇄ 阿尔山路，全线 24 站一次开通" },
 
-    // ── 车站更名（3 处均为开通后更名）──────────────────────────────────
+    // ── 车站更名（3 处均为开通后更名，同批一次演完）────────────────────
     { date: "2023-11-01", lineId: "M1", kind: "rename",
-        from: "呼钢东路", to: "呼钢南路",
-        fromEn: "HUGANGDONGLU",
-        fromMn: "ᠬᠥᠬᠡᠬᠣᠲᠠ ᠶᠢᠨ ᠪᠣᠯᠣᠳ ᠲᠡᠮᠦᠷ ᠦ᠋ᠨ ᠵᠡᠭᠦᠨ ᠵᠠᠮ",
-        title: "1号线呼钢东路站更名呼钢南路站", desc: "地铁集团 2023-10-25 公告，2023-11-01 生效" },
-    { date: "2023-11-01", lineId: "M2", kind: "rename",
-        from: "新城图书馆", to: "北山公园",
-        fromEn: "XINCHENG Library",
-        fromMn: "ᠰᠢᠨ᠎ᠡ ᠬᠣᠲᠠ ᠶᠢᠨ ᠨᠣᠮ ᠤᠨ ᠰᠠᠩ",
-        title: "2号线新城图书馆站更名北山公园站", desc: "同上；工程名妇幼保健院" },
-    { date: "2023-11-01", lineId: "M2", kind: "rename",
-        from: "东二环路", to: "丝绸之路大道",
-        fromEn: "DONG'ERHUANLU",
-        fromMn: "ᠵᠡᠭᠦᠨ ᠬᠣᠶᠠᠳᠤᠭᠠᠷ ᠲᠣᠭᠣᠷᠢᠭ ᠵᠠᠮ",
-        title: "2号线东二环路站更名丝绸之路大道站", desc: "同上" },
+        title: "3 座车站更名",
+        desc: "地铁集团 2023-10-25 公告，2023-11-01 生效；新城图书馆站工程名「妇幼保健院」，旧英文 / 旧蒙文名为工程期用名（未能核验）",
+        renames: [
+            { from: "呼钢东路", to: "呼钢南路", fromEn: "HUGANGDONGLU",
+                fromMn: "ᠬᠥᠬᠡᠬᠣᠲᠠ ᠶᠢᠨ ᠪᠣᠯᠣᠳ ᠲᠡᠮᠦᠷ ᠦ᠋ᠨ ᠵᠡᠭᠦᠨ ᠵᠠᠮ" },
+            { from: "新城图书馆", to: "北山公园", fromEn: "XINCHENG Library",
+                fromMn: "ᠰᠢᠨ᠎ᠡ ᠬᠣᠲᠠ ᠶᠢᠨ ᠨᠣᠮ ᠤᠨ ᠰᠠᠩ" },
+            { from: "东二环路", to: "丝绸之路大道", fromEn: "DONG'ERHUANLU",
+                fromMn: "ᠵᠡᠭᠦᠨ ᠬᠣᠶᠠᠳᠤᠭᠠᠷ ᠲᠣᠭᠣᠷᠢᠭ ᠵᠠᠮ" }
+        ] },
 ];
 
 if (typeof window !== "undefined") {
