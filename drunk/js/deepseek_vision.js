@@ -667,12 +667,19 @@ window.DeepSeekVision = (function () {
                     err = j.error?.message || err;
                 } catch (_) {}
                 if (statusMsg) {
-                    statusMsg.innerHTML = `<span style="color: #f85149;">❌ 连接失败 [HTTP ${res.status}]: ${err}</span>`;
+                    // 接口返回的错误文本来自用户自填的第三方 API Base，按纯文本写入
+                    const span = document.createElement('span');
+                    span.style.color = '#f85149';
+                    span.textContent = `❌ 连接失败 [HTTP ${res.status}]: ${err}`;
+                    statusMsg.replaceChildren(span);
                 }
             }
         } catch (e) {
             if (statusMsg) {
-                statusMsg.innerHTML = `<span style="color: #f85149;">❌ 网络连接异常: ${e.message}</span>`;
+                const span = document.createElement('span');
+                span.style.color = '#f85149';
+                span.textContent = `❌ 网络连接异常: ${e.message}`;
+                statusMsg.replaceChildren(span);
             }
         }
     }

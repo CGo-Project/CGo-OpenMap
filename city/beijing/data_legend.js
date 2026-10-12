@@ -62,6 +62,7 @@ const LEGEND_CONFIG = [
             { targets: ['M17'], name: '17号线' },
             { targets: ['M18'], name: '18号线' },
             { targets: ['M19'], name: '19号线' },
+            { targets: ['M22'], name: '22号线' },
             { targets: ['M24'], name: '昌平线' },
             { targets: ['M25'], name: '亦庄线' },
             { targets: ['M25W'], name: '房山线' },

@@ -1,0 +1,616 @@
+/**
+ * CGo OpenMap - 线网发展史样式（city/shenyang/shared/tools/opening-history.css）
+ *
+ * 由 opening-history.js 按脚本自身 URL 自动注入，调用方无需手工引用。
+ * 面板外壳（.cgo-mt-panel 系列）复用地图小工具那一套，这里只管发展史自己的正文。
+ */
+
+/* ── 地图叠加层 ──────────────────────────────────────────────────────
+   1×1 视口 + overflow visible：子元素直接用画布绝对坐标，无需知道画布尺寸。
+   本层由脚本插到 #stations-layer **之前**，于是线条天然压在站点图元与站名之下
+   （与核心把 #lines-layer 排在站点层之前同一个道理），不必抬 z-index。 */
+#cgo-oh-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.cgo-oh-grow,
+.cgo-oh-done path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* 站点涟漪：以圆心为基准放大淡出。
+   缩放与透明度由 applyFrame 按 t 逐帧写，所以这里只留框与原点，不挂 CSS 动画
+   （CSS 动画没法定位到任意 t，导出就取不回画面）。 */
+.cgo-oh-pulse {
+    fill: none;
+    stroke-width: 2.2;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+/* 取景过渡不再用 CSS transition —— 相机由 applyFrame 每帧调 setMapView 落位 */
+
+/* ── 播放期间：底图交给发展史接管 ──────────────────────────────────
+   要的是「从空白画布上把地图画出来」，所以核心的线网本体整个藏掉，
+   站点与站名也先藏起来，由画笔经过时逐个弹出（.cgo-oh-pop）。
+
+   ⚠️ 只藏 .line-visual-group（线路本体），**不能**藏整个 #lines-layer ——
+   沈阳的呼出线（换乘站标签的引线）就画在那一层里的，整层藏掉引线会一起消失。 */
+#map-content.cgo-oh-stage #lines-layer .line-visual-group,
+#map-content.cgo-oh-stage #not-open-layer {
+    display: none;
+}
+
+/* 站点 / 站名的「还没弹出来」与「弹到几成」都由 applyFrame 写的 CSS 变量决定：
+   站点图元 = 透明度 + 缩放；站名 = 透明度 + 模糊。
+   ⚠️ 用变量而不是内联样式：站点图元有一半形态在 `::before` 伪元素上（内联够不着），
+   而核心自己也会往标签上写内联 opacity，变量既能盖住又能在退出时一撤复原。 */
+#map-content.cgo-oh-stage #stations-layer .station > svg {
+    opacity: var(--cgo-oh-pop-alpha, 0);
+    transform: scale(var(--cgo-oh-pop-scale, 0.35));
+}
+
+#map-content.cgo-oh-stage #labels-layer .label-group {
+    opacity: var(--cgo-oh-pop-alpha, 0);
+    filter: blur(var(--cgo-oh-pop-blur, 4px));
+}
+
+/* 还没轮到的车站不该能点：看不见的东西弹出车站详情最让人迷惑 */
+#map-content.cgo-oh-stage #stations-layer .station:not(.cgo-oh-pop),
+#map-content.cgo-oh-stage #labels-layer .label-group:not(.cgo-oh-pop) {
+    pointer-events: none;
+}
+
+/* ── 既有设施（没有开通记录的国铁站）：全程固定显示 ──────────────────
+   沈阳站 1899、沈阳北站 1990 这类早于本城线网的车站由脚本挂上这个类；
+   而有开通记录的国铁站（沈阳南站 2015-09-01）不挂，照常按时间入场。
+   这些站从不「弹出」，所以直接把两个变量钉成终值。 */
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-always {
+    --cgo-oh-pop-alpha: 1;
+    --cgo-oh-pop-scale: 1;
+}
+
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-always {
+    --cgo-oh-pop-alpha: 1;
+    --cgo-oh-pop-blur: 0px;
+}
+
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-always,
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-always {
+    pointer-events: auto;
+}
+
+#map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-always {
+    display: block;
+}
+
+/* ── 换乘站的「以普通站入场」─────────────────────────────────────────
+   该站此刻只通了一条线，还不是换乘站：图元按普通 dot 画（环色取**首条开通线路**
+   的颜色）。标签与呼出线照旧 —— 呼出框是这套图的标签体系，不该因为线路数而跳变。 */
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot > svg {
+    display: none;
+}
+
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    box-sizing: border-box;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border: 1.6px solid var(--cgo-oh-dot, var(--station-stroke, #666));
+    border-radius: 50%;
+    background: var(--map-bg);
+    opacity: var(--cgo-oh-pop-alpha, 0);
+    transform: scale(var(--cgo-oh-pop-scale, 0.35));
+}
+
+/* ── 暂缓开通站：以「未开通」图元入场 ────────────────────────────────
+   线路通了但本站暂缓：图元盖一层核心的未开通模板（齿轮环，`SVGTemplates.no`），
+   站名转「未开通」文字色；到它自己的补开事件时这一层被摘掉，露出原生图元（dot / tsf）。 */
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-no-shape > svg {
+    visibility: hidden;
+}
+
+#map-content.cgo-oh-stage #stations-layer .station .cgo-oh-noicon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    pointer-events: none;
+    opacity: var(--cgo-oh-pop-alpha, 0);
+    transform: scale(var(--cgo-oh-pop-scale, 0.35));
+}
+
+#map-content.cgo-oh-stage #stations-layer .station .cgo-oh-noicon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* ⚠️ 站名的基础色是 `color: var(--text-main) !important`，这里必须同级对抗才盖得住 */
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-no .stacn,
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-no .staen {
+    color: var(--not-open-text) !important;
+}
+
+/* 呼出线：未弹出的站收起，弹出的站显示。
+   引线在 #lines-layer 内、与标签没有 DOM 关系，靠 data-cgo-callout 配对（同共享层约定）。
+   ⚠️ 别按「是否换乘站」去收它 —— 引线会随视口被整层重画，重画后类全丢，收不收都不稳。 */
+#map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout] {
+    display: none;
+}
+
+#map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-pop {
+    display: block;
+    opacity: var(--cgo-oh-pop-alpha, 1);
+}
+
+/* 虚拟换乘（站外连通）连线：两端车站都还没出现在画布上时先不画。
+   本体是核心画在 #lines-layer 里的 .virtual-connectors，脚本按条目顺序逐条开关。
+   默认全收、由脚本显式放行（而不是默认显示、由脚本去关）—— 后者在接管的那一帧会漏出来。 */
+#map-content.cgo-oh-stage #lines-layer .virtual-connectors path {
+    display: none;
+}
+
+#map-content.cgo-oh-stage #lines-layer .virtual-connectors path.cgo-oh-on {
+    display: block;
+}
+
+/* 更名的换字淡出淡入由 applyRenameAt 按 t 直接写透明度，这里没有 CSS 动画可挂 */
+
+/* ── 面板正文 ────────────────────────────────────────────────────────
+   固定区（当前事件 / 说明 / 统计 / 进度 / 操作 / 折叠的设置）不滚动，
+   只让事件清单滚 —— 避免「外层再套一层滚动条」。 */
+.cgo-oh {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+}
+
+/* 挂到 .cgo-mt-body 上：交给本模块的 flex 布局自己管滚动。
+   要压过地图小工具自己的两条 overflow-y: auto（浮层形态一条、侧栏形态那条特异性更高），
+   否则会嵌出两层滚动条。max-height 是**固定区能真固定**的前提：侧栏里的区块本身是
+   内容高度，不给面板一个上限，flex 就无从分配，整块面板会一路长下去。 */
+.cgo-mt-body.cgo-oh-body,
+.cgo-mt-panel.cgo-mt-in-section .cgo-mt-body.cgo-oh-body {
+    overflow: hidden;
+    max-height: min(56vh, 520px);
+}
+
+/* ── 矮视口：面板别占掉大半屏 ────────────────────────────────────────
+   这个功能本来就是看地图的。435px 高的视口下 56vh 会让面板吃掉 64%（只剩一条缝
+   给地图），故「窄」（移动端）与「矮」（被压扁的桌面窗口）两种情形都收到 44vh；
+   再靠「信息区 / 事件清单」二选一，信息态通常只用到内容高度，实际占屏更小。 */
+@media (max-width: 640px), (max-height: 560px) {
+    .cgo-mt-body.cgo-oh-body,
+    .cgo-mt-panel.cgo-mt-in-section .cgo-mt-body.cgo-oh-body {
+        max-height: min(44vh, 440px);
+    }
+}
+
+/* 正文吃掉面板给的高度，让只有事件清单那一块滚 */
+.cgo-mt-body.cgo-oh-body > .cgo-oh {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* 地图小工具注入的那枚「返回工具列表」收起来：本模块的操作行里另有一枚纯图标的 */
+.cgo-mt-body.cgo-oh-body .cgo-mt-back {
+    display: none;
+}
+
+.cgo-oh-fixed {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 正文两态：**信息区**（默认）与**事件清单**，由操作行那枚 view-list 按钮二选一。
+   互斥也顺手把面板高度压下来了 —— 矮屏上不必让「当前事件 + 规模 + 进度」与「事件清单」
+   挤在同一屏里抢高度。操作行与设置滑条两态都留着：点开的滑条若被一起藏掉，
+   就再也调不出速度 / 倍数了。 */
+.cgo-oh-list,
+.cgo-oh-note {
+    display: none;
+}
+
+.cgo-oh.is-list .cgo-oh-list,
+.cgo-oh.is-list .cgo-oh-note {
+    display: block;
+}
+
+.cgo-oh.is-list .cgo-oh-fixed > :not(.cgo-oh-actions):not(.cgo-oh-set) {
+    display: none;
+}
+
+.cgo-oh-now {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.cgo-oh-date {
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-main);
+}
+
+.cgo-oh-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    border-radius: 999px;
+}
+
+.cgo-oh-desc {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text-main);
+    opacity: 0.72;
+}
+
+/* 统计：摆在进度条上方，先看规模再看进度 */
+.cgo-oh-sum {
+    display: flex;
+    gap: 10px;
+    font-size: 12px;
+    opacity: 0.62;
+    font-variant-numeric: tabular-nums;
+}
+
+.cgo-oh-sum b {
+    font-weight: 700;
+}
+
+.cgo-oh-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--btn-info-bg);
+    overflow: hidden;
+}
+
+.cgo-oh-bar {
+    height: 100%;
+    width: 0;
+    background: var(--primary-color, #00263b);
+    transition: width 0.25s ease;
+}
+
+/* ── 操作行：图标按钮 + 两枚显示当前取值的设置按钮 ────────────────────
+   6 枚按钮要挤进 320px 的面板，故图标按钮定宽、设置按钮吃剩余宽度 */
+.cgo-oh-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.cgo-oh-actions .cgo-mt-quick {
+    flex: 0 0 auto;
+    padding: 7px 0;
+    font-size: 11px;
+}
+
+.cgo-oh-actions .cgo-oh-icon-btn {
+    width: 30px;
+}
+
+/* 切到清单态时给按钮一个明确的「按下去了」的样子 —— 两态互斥，
+   光看正文有时分不清是「清单空了」还是「还在信息区」 */
+.cgo-oh-actions .cgo-oh-icon-btn.is-on {
+    color: #fff;
+    background: var(--primary-color, #00263b);
+}
+
+.cgo-oh-actions .cgo-oh-set-btn {
+    flex: 1 1 auto;
+    padding: 7px 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 设置区：由那两枚按钮开关，默认收起 */
+.cgo-oh-set {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cgo-oh-set[hidden] {
+    display: none;
+}
+
+/* ── 滑条（运镜速度 / 特写倍数）────────────────────────────────────── */
+/* 可点区高 20px、轨道只画中间 4px —— 4px 的通条实际很难点中（触屏更甚） */
+.cgo-oh-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.cgo-oh-field label {
+    flex: none;
+    opacity: 0.7;
+}
+
+.cgo-oh-field output {
+    flex: none;
+    min-width: 62px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.cgo-oh-field input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    height: 20px;
+    margin: 0;
+    background: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.cgo-oh-field input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--btn-info-bg);
+}
+
+.cgo-oh-field input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    margin-top: -4.5px;   /* 把滑柄摆回轨道中线 */
+    border: 0;
+    border-radius: 50%;
+    background: var(--primary-color, #00263b);
+}
+
+.cgo-oh-field input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--btn-info-bg);
+}
+
+.cgo-oh-field input[type="range"]::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--primary-color, #00263b);
+}
+
+/* 覆盖范围说明：一行小字，说清「哪些线路在演示里、底图为何不见了」 */
+.cgo-oh-note {
+    flex: none;
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.5;
+    opacity: 0.55;
+}
+
+/* ── 事件清单（唯一的滚动区，但不显示滚动条）────────────────────── */
+.cgo-oh-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 40vh;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+    scrollbar-width: none;        /* Firefox */
+    border-top: 1px solid var(--border-color);
+}
+
+.cgo-oh-list::-webkit-scrollbar {
+    display: none;
+}
+
+.cgo-oh-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 4px;
+    font-size: 12px;
+    line-height: 1.4;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    opacity: 0.55;
+}
+
+.cgo-oh-item:hover {
+    background: var(--btn-info-bg);
+}
+
+.cgo-oh-item.is-done {
+    opacity: 0.85;
+}
+
+.cgo-oh-item.is-active {
+    opacity: 1;
+    background: var(--btn-info-bg);
+}
+
+.cgo-oh-item-date {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+}
+
+.cgo-oh-item-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.cgo-oh-item-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cgo-oh-item-add {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.65;
+}
+
+/* 紧随其后的那枚是「转为换乘站」的计数，给点颜色与新增区分开 */
+.cgo-oh-item-add + .cgo-oh-item-add {
+    color: var(--primary-color, #00263b);
+    opacity: 1;
+}
+
+/* 「减少动态效果」不再需要在这里压 CSS 动画 —— 弹出、涟漪、换字都改由 applyFrame
+   按 t 逐帧应用，脚本里 `applyAnimDurations` 会把时长直接归零。 */
+
+/* ── 导出视频区 ──────────────────────────────────────────────────────
+   与两条设置滑条同一套折叠逻辑（三块互斥），额外放两个事件下拉、一枚主按钮、
+   一条进度与状态行。导出期间本区常驻：主按钮换成「取消」，进度条跑起来；
+   操作行的其它按钮由 syncExportUI 统一禁用，免得抢走同一条时间线。 */
+.cgo-oh-actions button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.cgo-oh-actions button:disabled:hover {
+    background: var(--btn-info-bg);
+}
+
+/* 展开导出区时，「当前事件 / 说明 / 规模 / 进度条」四块先收起来：
+   它们已经合成进导出画面里的进度卡（右下角），面板上再放一份既重复又占高度。
+   与「清单态」互不干扰 —— 两者都只是把这几块 display:none。 */
+.cgo-oh.is-export .cgo-oh-now,
+.cgo-oh.is-export .cgo-oh-desc,
+.cgo-oh.is-export .cgo-oh-sum,
+.cgo-oh.is-export .cgo-oh-track {
+    display: none;
+}
+
+/* 起止事件：用 CGoUI 的 <cgo-toolbar-select>（内容在 shadow DOM 里，这里只让它撑满剩余宽度） */
+.cgo-oh-export .cgo-oh-field cgo-toolbar-select {
+    flex: 1;
+    min-width: 0;
+}
+
+.cgo-oh-export .cgo-oh-field label {
+    min-width: 32px;
+}
+
+/* 进度卡位置：分段控件（观感对齐 route-panel 的 .cgo-rt-need-opts / .cgo-rt-need-opt）。
+   这里复刻一份是为了本模块自足，并把段内边距收紧，好让 5 段塞进 320px 的面板。 */
+.cgo-oh-export .cgo-rt-need-opts {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--btn-info-bg);
+    border-radius: 999px;
+}
+
+.cgo-oh-export .cgo-rt-need-opt {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 2px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600 !important;   /* 同 route-panel：覆盖全局表单重置 */
+    white-space: nowrap;
+    color: var(--text-main);
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.cgo-oh-export .cgo-rt-need-opt.is-on {
+    background: var(--card-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.cgo-oh-export .cgo-rt-need-opt:hover:not(.is-on) {
+    background: var(--border-color);
+}
+
+.cgo-oh-export .cgo-rt-need-opt:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.cgo-oh-exp-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.cgo-oh-exp-actions .cgo-mt-launch {
+    flex: 1 1 auto;
+    justify-content: center;
+}
+
+.cgo-oh-exp-actions .cgo-mt-quick {
+    flex: 0 0 auto;
+    padding: 7px 12px;
+}
+
+.cgo-oh-exp-actions [hidden] {
+    display: none;
+}
+
+.cgo-oh-exp-track {
+    height: 4px;
+    margin-top: 6px;
+    border-radius: 2px;
+    background: var(--btn-info-bg);
+    overflow: hidden;
+}
+
+.cgo-oh-exp-bar {
+    height: 100%;
+    width: 0;
+    background: var(--primary-color, #00263b);
+}
+
+.cgo-oh-exp-status {
+    margin: 0;
+    min-height: 1.1em;
+    font-size: 11px;
+    line-height: 1.5;
+    opacity: 0.62;
+    font-variant-numeric: tabular-nums;
+}
+
+.cgo-oh-exp-status.is-error {
+    color: #d33;
+    opacity: 1;
+}

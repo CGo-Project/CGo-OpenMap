@@ -80,20 +80,7 @@ const stationsData = {
         }
     },
     "0127": {
-        "type": "dot",
-        "x": 1080,
-        "y": 752,
-        "cn": "人民广场",
-        "en": "Renmin Guangchang",
-        "align": "bottom-right",
-        "offset": {
-            "x": 6,
-            "y": 4
-        }
-    },
-    "0127-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 1080,
         "y": 752,
         "cn": "人民广场",
@@ -417,20 +404,7 @@ const stationsData = {
         }
     },
     "0233": {
-        "type": "dot",
-        "x": 982,
-        "y": 864,
-        "cn": "文化广场",
-        "en": "Wenhua Guangchang",
-        "align": "bottom-left",
-        "offset": {
-            "x": -6,
-            "y": 4
-        }
-    },
-    "0233-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 982,
         "y": 864,
         "cn": "文化广场",
@@ -730,20 +704,7 @@ const stationsData = {
         }
     },
     "0335": {
-        "type": "dot",
-        "x": 798,
-        "y": 1204,
-        "cn": "电台街",
-        "en": "Diantai Jie",
-        "align": "right",
-        "offset": {
-            "x": 10,
-            "y": 0
-        }
-    },
-    "0335-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 798,
         "y": 1204,
         "cn": "电台街",
@@ -1271,20 +1232,7 @@ const stationsData = {
         }
     },
     "0628": {
-        "type": "dot",
-        "x": 716,
-        "y": 1286,
-        "cn": "硅谷广场(吉大中心校区)",
-        "en": "Guigu Guangchang(Jida Zhongxin Xiaoqu)",
-        "align": "left",
-        "offset": {
-            "x": -10,
-            "y": 0
-        }
-    },
-    "0628-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 716,
         "y": 1286,
         "cn": "硅谷广场(吉大中心校区)",
@@ -1488,20 +1436,7 @@ const stationsData = {
         }
     },
     "0729": {
-        "type": "dot",
-        "x": 915,
-        "y": 1088,
-        "cn": "南湖广场(吉大南湖校区)",
-        "en": "Nanhu Guangchang(Jida Nanhu Xiaoqu)",
-        "align": "bottom-right",
-        "offset": {
-            "x": 6,
-            "y": 4
-        }
-    },
-    "0729-1": {
-        "type": "no",
-        "hideLabel": true,
+        "type": "tsf",
         "x": 915,
         "y": 1088,
         "cn": "南湖广场(吉大南湖校区)",
@@ -1729,7 +1664,7 @@ const stationsData = {
         }
     },
     "0501": {
-        "type": "no",
+        "type": "dot",
         "hideLabel": true,
         "x": 1288,
         "y": 624,
@@ -1742,7 +1677,7 @@ const stationsData = {
         }
     },
     "0502": {
-        type: "no",
+        type: "dot",
         "x": 1238,
         "y": 674,
         "cn": "省妇儿中心",
@@ -1754,7 +1689,7 @@ const stationsData = {
         }
     },
     "0503": {
-        type: "no",
+        type: "dot",
         "x": 1178,
         "y": 734,
         "cn": "大经路",
@@ -1766,7 +1701,7 @@ const stationsData = {
         }
     },
     "0505": {
-        type: "no",
+        type: "dot",
         "x": 982,
         "y": 780,
         "cn": "同志街",
@@ -1778,7 +1713,7 @@ const stationsData = {
         }
     },
     "0507": {
-        type: "no",
+        type: "dot",
         "x": 982,
         "y": 930,
         "cn": "红旗街",
@@ -1802,7 +1737,7 @@ const stationsData = {
         }
     },
     "0510": {
-        type: "no",
+        type: "dot",
         "x": 862,
         "y": 1141,
         "cn": "省委党校",
@@ -1814,7 +1749,7 @@ const stationsData = {
         }
     },
     "0513": {
-        type: "no",
+        type: "dot",
         "x": 672,
         "y": 1332,
         "cn": "蔚山路",
@@ -1826,7 +1761,7 @@ const stationsData = {
         }
     },
     "0514": {
-        type: "no",
+        type: "dot",
         "x": 622,
         "y": 1382,
         "cn": "安新路",
@@ -1838,7 +1773,7 @@ const stationsData = {
         }
     },
     "0515": {
-        type: "no",
+        type: "dot",
         "x": 572,
         "y": 1432,
         "cn": "越达路",
@@ -1850,7 +1785,7 @@ const stationsData = {
         }
     },
     "0516": {
-        type: "no",
+        type: "dot",
         "x": 522,
         "y": 1482,
         "cn": "顺达路",
@@ -1862,7 +1797,7 @@ const stationsData = {
         }
     },
     "0517": {
-        type: "no",
+        type: "dot",
         "x": 472,
         "y": 1532,
         "cn": "市委党校",
@@ -1874,7 +1809,7 @@ const stationsData = {
         }
     },
     "0518": {
-        type: "no",
+        type: "dot",
         "x": 422,
         "y": 1582,
         "cn": "卓越大街",
@@ -2237,6 +2172,143 @@ const stationsData = {
             "y": -8
         }
     },
+    // —— 9 号线一期（空港线，在建）：站名取 2026-04-30 长春轨道交通集团《车站命名征求意见稿》 ——
+    // 起点 0900 = 0247 雾开河大街的在建侧分站（同坐标叠放）。该站工程名/旧名「赵家岗东」
+    // 见 2021 年省发改委批复「起点位于东吉林大路与雾开河大街交汇处的赵家岗东站、与 2 号线
+    // 东延同台换乘」及东延招标文件；2023 年 2 号线东延车站命名后现名为雾开河大街——
+    // 站名一律用现名，旧名进 staname.csv 搜索库，两侧不建虚拟换乘。
+    // 走向 = 20px 正东引线 → 45° 东北斜段（真实首段方位角 44°）→ (2362,694) 135° 拐点 → 水平东段。
+    "0901": {
+        "type": "no",
+        "x": 2234,
+        "y": 822,
+        "cn": "莲花山东",
+        "en": "Lianhuashan Dong",
+        "align": "bottom-right",
+        "offset": {
+            "x": 0,
+            "y": 0
+        }
+    },
+    "0902": {
+        "type": "no",
+        "x": 2277,
+        "y": 779,
+        "cn": "东湖",
+        "en": "Donghu",
+        "align": "bottom-right",
+        "offset": {
+            "x": 0,
+            "y": 0
+        }
+    },
+    "0903": {
+        "type": "no",
+        "x": 2319,
+        "y": 737,
+        "cn": "龙嘉机场T3",
+        "en": "Longjia Jichang T3",
+        "align": "bottom-right",
+        "offset": {
+            "x": 0,
+            "y": 0
+        }
+    },
+    "0904": {
+        "type": "no",
+        "x": 2422,
+        "y": 694,
+        "cn": "清水河街",
+        "en": "Qingshuihe Jie",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": -4
+        }
+    },
+    "0905": {
+        "type": "no",
+        "x": 2482,
+        "y": 694,
+        "cn": "金港大街",
+        "en": "Jingang Dajie",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 4
+        }
+    },
+    "0906": {
+        "type": "no",
+        "x": 2542,
+        "y": 694,
+        "cn": "建兰街",
+        "en": "Jianlan Jie",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": -4
+        }
+    },
+    "0907": {
+        "type": "no",
+        "x": 2602,
+        "y": 694,
+        "cn": "九台南站",
+        "en": "Jiutainan Zhan",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 4
+        }
+    },
+    // —— 9 号线起点 + 国铁徽标 ——
+    // 0900 = 雾开河大街站的 9 号线（在建）侧分站记录；「赵家岗东」是该站的工程名/旧名
+    // （2021 批复与东延招标均称赵家岗东站，2023 年 2 号线东延命名后现名雾开河大街），
+    // 故 cn 用现名、标签随 0247 只显一次（hideLabel），旧名进 staname.csv 搜索库。
+    "0900": {
+        "type": "no",
+        "x": 2172,
+        "y": 864,
+        "cn": "雾开河大街",
+        "en": "Wukaihe Dajie",
+        "align": "bottom",
+        "hideLabel": true,
+        "offset": {
+            "x": 0,
+            "y": 4
+        }
+    },
+    // UJL 龙嘉站（国铁，长吉城际）：rdot 自动渲染为文字色底板的铁路徽标，
+    // 与 0903 龙嘉机场T3 建付费虚拟换乘并画连线（见 data_virtual_transfers.js）。
+    "UJL": {
+        "type": "rdot",
+        "x": 2305,
+        "y": 720,
+        "cn": "龙嘉站",
+        "en": "Longjia Railway Station",
+        "align": "top-left",
+        "hideLabel": true,
+        "offset": {
+            "x": 0,
+            "y": 0
+        }
+    },
+    // 龙嘉机场装饰徽标已迁至 data_scattered.js（不再作为车站记录）。
+    // JNL 九台南站（国铁，长珲城际）：与 0907 地铁九台南站建付费虚拟换乘并画连线。
+    "JNL": {
+        "type": "rdot",
+        "x": 2602,
+        "y": 675,
+        "cn": "九台南站",
+        "en": "Jiutainan Railway Station",
+        "align": "top-left",
+        "hideLabel": true,
+        "offset": {
+            "x": 0,
+            "y": 0
+        }
+    }
 };
 
 if (typeof window !== 'undefined') {

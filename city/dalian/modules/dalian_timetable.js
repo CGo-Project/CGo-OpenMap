@@ -3,7 +3,7 @@
  *
  * 取数逻辑（贯通区段合并、九里开发方向合并、推算标记、调休日历）留在本模块；
  * 「归一化行 → HTML」「日期类型判定」「标签差异判定」交由共享渲染层处理
- * （city/shenyang/shared/timetable-renderer.js）。
+ * （city/shenyang/shared/station/timetable-renderer.js）。
  *
  * @event cgo:city-module-ready
  * @property {{ cityId: string, moduleId: string }} detail

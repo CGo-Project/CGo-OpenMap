@@ -38,10 +38,10 @@ document.addEventListener('DOMContentLoaded', function () {
     `).join('');
 
     overlay.innerHTML = `
-        <div class="settings-modal">
+        <div class="settings-modal" role="dialog" aria-labelledby="settings-modal-title">
             <div class="settings-header">
-                <h3>偏好设置</h3>
-                <button class="settings-close-btn" title="关闭">
+                <h3 id="settings-modal-title" tabindex="-1">偏好设置</h3>
+                <button class="settings-close-btn" title="关闭" aria-label="关闭偏好设置">
                     <cgo-icon name="close" size="20"></cgo-icon>
                 </button>
             </div>
@@ -191,8 +191,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 legendOverlay.style.display = 'none';
             }
         }
+        // 关闭前记下焦点是否在浮层内：是则归还给顶栏「更多」按钮（设置入口所在的菜单此时已收起）
+        const focusWasInside = !open && overlay.contains(document.activeElement);
         overlay.style.display = open ? 'block' : 'none';
         document.body.style.overflow = open ? 'hidden' : '';
+        const focusTarget = open
+            ? overlay.querySelector('#settings-modal-title')
+            : (focusWasInside ? document.getElementById('options-btn') : null);
+        if (focusTarget) {
+            try { focusTarget.focus({ preventScroll: true }); } catch (_) { focusTarget.focus(); }
+        }
     };
 
     btn.addEventListener('click', (e) => {
@@ -203,5 +211,11 @@ document.addEventListener('DOMContentLoaded', function () {
     overlay.querySelector('.settings-close-btn')?.addEventListener('click', () => toggleSettings(false));
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) toggleSettings(false);
+    });
+    // Esc 关闭：监听挂在浮层自身，只有焦点位于其内时才会触发
+    overlay.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || e.defaultPrevented) return;
+        e.stopPropagation();
+        toggleSettings(false);
     });
 });

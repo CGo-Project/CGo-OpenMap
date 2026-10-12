@@ -37,3 +37,561 @@
     text-align: left !important;
     margin-left: 23px;
 }
+
+
+/* ── 专题应用：区间用时 ─────────────────────────────────────────────── */
+/* 挂载在 #map-content 内，跟随核心 transform 一起拖动/缩放；完全不接管交互。 */
+.map-qingdao #qd-interval-time-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    z-index: 18;
+    pointer-events: none !important;
+    opacity: 0;
+    transition: opacity 320ms ease-in-out;
+}
+
+.map-qingdao #qd-interval-time-layer.show {
+    opacity: 1;
+}
+
+.map-qingdao #qd-interval-time-layer *,
+.map-qingdao .qd-interval-time-badge {
+    pointer-events: none !important;
+}
+
+.map-qingdao .qd-interval-time-badge text {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* 与香港城市侧扩展按钮相同：专题按钮仍放在核心缩放栏内，但逻辑完全留在青岛目录。 */
+.map-qingdao #modern-zoom-control .qd-topic-separator {
+    width: 20px;
+    height: 1px;
+    flex: 0 0 1px;
+    background-color: var(--border-color, #e0e0e0);
+    margin: 4px 0;
+    pointer-events: none;
+}
+
+.map-qingdao #modern-zoom-control button#qd-interval-time-btn.on {
+    background-color: var(--primary-color) !important;
+    color: var(--btn-text, #fff) !important;
+}
+
+/* 区间用时开启提示：右下角轻提示，不阻挡地图操作。 */
+.map-qingdao #qd-interval-time-hint {
+    position: fixed;
+    right: 22px;
+    bottom: 24px;
+    z-index: 10020;
+    max-width: min(340px, calc(100vw - 44px));
+    padding: 9px 13px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #333;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    line-height: 1.45;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+
+/* 提示框中的实际带圈数字示例：结构与地图标记一致，不使用 border/stroke。 */
+.map-qingdao #qd-interval-time-hint .qd-interval-time-hint-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    border-radius: 50%;
+    background: var(--qd-interval-hint-color, currentColor);
+    color: var(--qd-interval-hint-color, currentColor);
+    font-family: Arial, "Helvetica Neue", sans-serif;
+    font-size: 8.4px;
+    font-weight: 700;
+    line-height: 12px;
+}
+
+.map-qingdao #qd-interval-time-hint .qd-interval-time-hint-badge::before {
+    content: "";
+    position: absolute;
+    inset: 1.35px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.map-qingdao #qd-interval-time-hint .qd-interval-time-hint-badge > span {
+    position: relative;
+    z-index: 1;
+    line-height: 1;
+}
+
+.map-qingdao #qd-interval-time-hint .qd-interval-time-hint-text {
+    min-width: 0;
+}
+
+.map-qingdao #qd-interval-time-hint.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+html[data-theme="dark"].map-qingdao #qd-interval-time-hint,
+html[data-theme="dark"] .map-qingdao #qd-interval-time-hint {
+    background: rgba(35, 35, 35, 0.94);
+    color: #f3f3f3;
+}
+
+@media (max-width: 600px) {
+    .map-qingdao #qd-interval-time-hint {
+        right: 14px;
+        bottom: 18px;
+        max-width: calc(100vw - 28px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .map-qingdao #qd-interval-time-layer {
+        transition: none;
+    }
+}
+
+/* ── 专题应用：建设进度示意 ───────────────────── */
+/* 专题 SVG 挂在 #map-content 内，随地图一起平移/缩放，不截获任何指针事件。 */
+.map-qingdao #qd-construction-progress-layer {
+    position: absolute;
+    overflow: visible;
+    z-index: 41;
+    pointer-events: none !important;
+}
+
+/* 蒙版与建设进度分开渐入/渐出。进度层淡入稍晚一点，关闭时二者同时渐出。 */
+.map-qingdao #qd-construction-progress-layer .qd-construction-mask-group,
+.map-qingdao #qd-construction-progress-layer .qd-construction-progress-group {
+    opacity: 0;
+    transition: opacity 320ms ease-in-out;
+}
+
+.map-qingdao #qd-construction-progress-layer.show .qd-construction-mask-group {
+    opacity: 1;
+}
+
+.map-qingdao #qd-construction-progress-layer.show .qd-construction-progress-group {
+    opacity: 1;
+    transition-delay: 40ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .map-qingdao #qd-construction-progress-layer .qd-construction-mask-group,
+    .map-qingdao #qd-construction-progress-layer .qd-construction-progress-group {
+        transition: none;
+    }
+}
+
+.map-qingdao #qd-construction-progress-layer *,
+.map-qingdao .qd-construction-track,
+.map-qingdao .qd-construction-station {
+    pointer-events: none !important;
+}
+
+.map-qingdao #qd-construction-progress-layer .qd-construction-segment-hit {
+    pointer-events: stroke !important;
+    cursor: pointer;
+    outline: none !important;
+}
+
+.map-qingdao #modern-zoom-control button#qd-construction-progress-btn.on {
+    background-color: var(--primary-color) !important;
+    color: var(--btn-text, #fff) !important;
+}
+
+
+/* ── 建设进度专题站名层 ───────────────────────────────────────────── */
+/*
+ * 原站名仍由 core 负责生成；进度模式仅克隆实际参与专题绘制的车站站名，
+ * 保留原有换行、textScale、特殊 offset，再沿站名方位额外外推 5.5px。
+ */
+.map-qingdao #qd-construction-label-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    z-index: 42;
+    pointer-events: none !important;
+    opacity: 0;
+    transition: opacity 320ms ease-in-out;
+}
+
+.map-qingdao #qd-construction-label-layer.show {
+    opacity: 1;
+}
+
+.map-qingdao #qd-construction-label-layer .qd-construction-label {
+    pointer-events: none !important;
+    cursor: default !important;
+}
+
+/* 建设进度模式专题站名：不使用描边。 */
+.map-qingdao #qd-construction-label-layer .qd-construction-label .stacn,
+.map-qingdao #qd-construction-label-layer .qd-construction-label .staen {
+    color: #000 !important;
+    -webkit-text-stroke: 0 !important;
+    text-shadow: none !important;
+}
+
+html[data-theme="dark"].map-qingdao #qd-construction-label-layer .qd-construction-label .stacn,
+html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-construction-label .stacn,
+html[data-theme="dark"].map-qingdao #qd-construction-label-layer .qd-construction-label .staen,
+html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-construction-label .staen {
+    color: #fff !important;
+}
+
+.map-qingdao #labels-layer .qd-construction-source-label-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.map-qingdao #qd-construction-badge-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    z-index: 43;
+    pointer-events: none !important;
+    opacity: 0;
+    transition: opacity 320ms ease-in-out;
+}
+
+.map-qingdao #qd-construction-badge-layer.show {
+    opacity: 1;
+}
+
+.map-qingdao #qd-construction-badge-layer .qingdao-map-line-badge,
+.map-qingdao #qd-construction-badge-layer .qd-construction-line-badge {
+    pointer-events: none !important;
+}
+
+.map-qingdao #qingdao-map-line-badges-layer .qd-construction-source-badge-hidden {
+    opacity: 0 !important;
+}
+
+#qd-construction-legend {
+    position: fixed;
+    right: 22px;
+    bottom: 24px;
+    z-index: 10021;
+    width: fit-content;
+    max-width: min(660px, calc(100vw - 44px));
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.92);
+    color: #191919;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 320ms ease-in-out, transform 320ms ease-in-out;
+    pointer-events: none;
+    backdrop-filter: blur(2px);
+}
+
+#qd-construction-legend.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#qd-construction-legend .qd-construction-legend-title {
+    margin: 0 0 10px;
+    font-size: 16px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+#qd-construction-legend .qd-construction-legend-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(135px, max-content));
+    column-gap: 22px;
+    row-gap: 12px;
+}
+
+#qd-construction-legend .qd-construction-legend-item {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+#qd-construction-legend .qd-construction-legend-text {
+    font-size: 15px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: inherit;
+    white-space: nowrap;
+}
+
+#qd-construction-legend .qd-construction-legend-station {
+    position: relative;
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    margin-right: 12px;
+    flex: 0 0 22px;
+    background: #fff;
+}
+
+#qd-construction-legend .qd-construction-legend-station-not-started::before,
+#qd-construction-legend .qd-construction-legend-station-building::before,
+#qd-construction-legend .qd-construction-legend-station-topped::before {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+}
+
+#qd-construction-legend .qd-construction-legend-station-not-started::before {
+    background: #7d7d7d;
+}
+
+#qd-construction-legend .qd-construction-legend-station-building {
+    background: #b224b2;
+}
+
+#qd-construction-legend .qd-construction-legend-station-building::before {
+    background: #fff;
+}
+
+#qd-construction-legend .qd-construction-legend-station-topped::before {
+    background: #b224b2;
+}
+
+#qd-construction-legend .qd-construction-legend-track {
+    position: relative;
+    display: inline-block;
+    width: 18px;
+    height: 36px;
+    margin-right: 12px;
+    flex: 0 0 18px;
+}
+
+#qd-construction-legend .qd-construction-legend-track::before,
+#qd-construction-legend .qd-construction-legend-track::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+}
+
+#qd-construction-legend .qd-construction-legend-track::before { left: 2px; }
+#qd-construction-legend .qd-construction-legend-track::after { right: 2px; }
+
+#qd-construction-legend .qd-construction-legend-track-not-started::before,
+#qd-construction-legend .qd-construction-legend-track-not-started::after {
+    background: #7d7d7d;
+}
+
+#qd-construction-legend .qd-construction-legend-track-complete::before,
+#qd-construction-legend .qd-construction-legend-track-complete::after {
+    background: #b224b2;
+}
+
+#qd-construction-legend .qd-construction-legend-track-progress::before,
+#qd-construction-legend .qd-construction-legend-track-progress::after {
+    background: #b224b2;
+}
+
+#qd-construction-legend .qd-construction-legend-track-progress > span,
+#qd-construction-legend .qd-construction-legend-track-progress::marker { display:none; }
+#qd-construction-legend .qd-construction-legend-track-progress i { display:none; }
+#qd-construction-legend .qd-construction-legend-track-progress::selection { background: transparent; }
+#qd-construction-legend .qd-construction-legend-track-progress::before,
+#qd-construction-legend .qd-construction-legend-track-progress::after { box-sizing: border-box; }
+#qd-construction-legend .qd-construction-legend-track-progress::after { }
+#qd-construction-legend .qd-construction-legend-track-progress em { display:none; }
+#qd-construction-legend .qd-construction-legend-track-progress b { display:none; }
+#qd-construction-legend .qd-construction-legend-track-progress::after { }
+#qd-construction-legend .qd-construction-legend-track-progress::before { }
+#qd-construction-legend .qd-construction-legend-track-progress::before,
+#qd-construction-legend .qd-construction-legend-track-progress::after {
+    background-image: linear-gradient(to right, transparent 0, transparent 1.5px, #fff 1.5px, #fff 4.5px, transparent 4.5px);
+    background-color: #b224b2;
+    background-repeat: no-repeat;
+}
+
+html[data-theme="dark"] #qd-construction-legend,
+html[data-theme="dark"].map-qingdao #qd-construction-legend,
+html[data-theme="dark"] .map-qingdao #qd-construction-legend {
+    background: rgba(35,35,35,0.94);
+    color: #f3f3f3;
+}
+
+@media (max-width: 900px) {
+    #qd-construction-legend {
+        right: 14px;
+        bottom: 18px;
+        width: auto;
+        max-width: calc(100vw - 28px);
+        padding: 12px 14px;
+    }
+    #qd-construction-legend .qd-construction-legend-grid {
+        grid-template-columns: 1fr;
+        row-gap: 10px;
+        column-gap: 0;
+    }
+    #qd-construction-legend .qd-construction-legend-text {
+        font-size: 14px;
+    }
+}
+
+
+/* ── 建设进度区间弹窗 ───────────────────────────────────────────── */
+/* 建设进度区间信息卡：直接沿用 StationBoard 的 panel-header / panel-body 结构。 */
+#qd-construction-segment-popup {
+    width: 360px;
+    max-width: calc(100vw - 20px);
+    padding: 0;
+    background: var(--card-bg) !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: fixed;
+    z-index: 10030;
+    font-weight: 400;
+    max-height: 80vh;
+    opacity: 0;
+    transform: translateY(5px) scale(0.99);
+    transition: opacity 160ms ease, transform 160ms ease;
+}
+
+#qd-construction-segment-popup.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+#qd-construction-segment-popup .panel-header {
+    min-height: 0;
+}
+
+#qd-construction-segment-popup .panel-body {
+    overflow-y: auto;
+    min-height: 0;
+}
+
+#qd-construction-segment-popup .qd-construction-segment-card-slot {
+    width: 100%;
+}
+
+@media (max-width: 600px) {
+    #qd-construction-segment-popup {
+        width: min(360px, calc(100vw - 20px));
+    }
+}
+
+
+
+/* 进度模式仍允许点击车站打开信息卡，但不显示核心的线路高亮视觉。 */
+.map-qingdao body.qd-construction-progress-on #highlight-layer {
+    display: none !important;
+}
+
+.map-qingdao body.qd-construction-progress-on #lines-layer .line-visual-group.active .line-visual-outer {
+    filter: none !important;
+}
+
+.map-qingdao body.qd-construction-progress-on #lines-layer .line-visual-group.active .line-visual-inner {
+    stroke-width: 5.4px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .map-qingdao #qd-construction-label-layer,
+    .map-qingdao #qd-construction-badge-layer,
+    #qd-construction-legend {
+        transition: none;
+    }
+}
+
+/* ── 建设进度专题：最新进度标记原型 ───────────────────────────── */
+.map-qingdao #qd-construction-latest-marker-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    z-index: 44;
+    pointer-events: none !important;
+    opacity: 0;
+    transition: opacity 320ms ease-in-out;
+}
+
+.map-qingdao #qd-construction-latest-marker-layer.show {
+    opacity: 1;
+}
+
+.map-qingdao .qd-construction-latest-marker {
+    position: absolute;
+    /*
+     * star path 的面积重心约为 (12.00, 12.95)，而 viewBox 几何中心为 (12, 12)。
+     * 整体上移 0.95 / 24 ≈ 3.96%，让地图定位点对应五角星的视觉重心。
+     */
+    transform: translate(-50%, -50%) translateY(-3.96%);
+    pointer-events: none !important;
+}
+
+.map-qingdao .qd-construction-latest-marker-icon {
+    position: relative;
+    display: inline-flex;
+    width: 22px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-qingdao .qd-construction-latest-marker-star {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: block;
+    transform: translate(-50%, -50%);
+    overflow: visible;
+}
+
+.map-qingdao .qd-construction-latest-marker-star path {
+    fill: #e98913;
+    stroke: none;
+}
+
+.map-qingdao .qd-construction-latest-marker-char {
+    position: absolute;
+    left: 50%;
+    top: 57%;
+    transform: translate(-50%, -50%) translateY(-0.2px);
+    font-size: 7px;
+    line-height: 1;
+    font-weight: 500;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.map-qingdao .qd-construction-latest-marker.is-solid .qd-construction-latest-marker-char {
+    color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .map-qingdao #qd-construction-latest-marker-layer {
+        transition: none;
+    }
+}
+
+

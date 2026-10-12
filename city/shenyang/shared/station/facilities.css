@@ -1,0 +1,137 @@
+/* CGo OpenMap - 车站设施共享层样式（各城共用，由 facilities.js 按自身 URL 注入）
+   板块 = 可选的车站层级图 + 一行一处设施；左侧「图标 + 名称」，右侧位置条数与开合按钮。 */
+
+.cgo-fac-section {
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.cgo-fac-title {
+    margin-bottom: 6px;
+}
+
+/* 行内左侧有图标，基线对齐会让图标悬空，改用居中；
+   整组左缩进 + 收紧行距，与相邻模块的普通信息行区分开 */
+.cgo-fac-row {
+    align-items: center;
+    margin-bottom: 6px;
+    padding-left: 10px;
+}
+
+.cgo-fac-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.cgo-fac-name cgo-icon {
+    flex: none;
+    color: var(--primary-color);
+}
+
+/* 开合按钮：无边框、继承字色，与「站名题写者」的同类按钮保持一致 */
+.cgo-fac-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+.cgo-fac-toggle:hover,
+.cgo-fac-toggle:focus-visible {
+    color: var(--primary-color, #1a73e8);
+}
+
+/* 类型带 tone 时整行强调：长春的 AED 用 alert——图标与开合按钮文字转红，提示它是急救设备 */
+.cgo-fac-row--alert .cgo-fac-name cgo-icon,
+.cgo-fac-row--alert .cgo-fac-toggle {
+    color: var(--danger-color, #ea4335);
+}
+
+.cgo-fac-row--alert .cgo-fac-toggle:hover,
+.cgo-fac-row--alert .cgo-fac-toggle:focus-visible {
+    color: var(--danger-hover, #b3261e);
+}
+
+/* 「详情 / 收起」用常规字重：它继承 .info-value 的加粗，需显式压回去，
+   与加粗的位置条数形成层级 */
+.cgo-fac-more {
+    font-weight: 400;
+}
+
+/* 展开区：小一号的浅色正文，与折叠态的设施名拉开层次；左缩进与上面的设施行对齐 */
+.cgo-fac-detail {
+    margin: -2px 0 6px;
+    padding-left: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-light);
+}
+
+.cgo-fac-detail[hidden] {
+    display: none;
+}
+
+/* 换乘站的位置段前缀：标明该段属于哪条线，比位置原文略重、但不用主题色抢眼 */
+.cgo-fac-line {
+    margin-right: 4px;
+    color: var(--text-main);
+}
+
+/* 车站层级图的展开区：与设施行同样的左缩进 */
+.cgo-fac-map-detail {
+    margin: -2px 0 6px;
+    padding-left: 10px;
+}
+
+.cgo-fac-map-detail[hidden] {
+    display: none;
+}
+
+/* 数据来源标注：官网数据非实时同步，展示时注明出处；左缩进与上面的设施行对齐 */
+.cgo-fac-source {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding-left: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-light);
+}
+
+.cgo-fac-source cgo-icon {
+    flex: none;
+    margin-top: 2px;
+}
+
+/* ── 车站层级图（官网剖面图）──────────────────────────────────────────────
+   整宽缩略图，点击在新标签页打开官网原图；图片热链官网，不落本地仓库。
+
+   配色刻意固定为白底浅色方案、不随亮暗主题切换：官网图本身是白底 PNG，
+   若跟随暗色主题变暗，白图与深色卡底之间会出现明显割裂，故只用固定色值。
+   外层不加阴影、上方不加标题条——图名由折叠行给出，避免同一板块里重复。 */
+.cgo-fac-map {
+    display: block;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #ffffff;
+    color: #00263b;
+    text-decoration: none;
+}
+
+.cgo-fac-map:focus-visible {
+    outline: none;
+}
+
+.cgo-fac-map-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #ffffff;
+}

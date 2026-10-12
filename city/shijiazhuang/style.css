@@ -1,0 +1,338 @@
+/**
+ * CGo OpenMap - 石家庄城市专属样式 (city/shijiazhuang/style.css)
+ * ==============================================================================
+ * 区间信息气泡：挂在 #map-content 内，随地图缩放平移
+ * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ */
+
+
+
+/**
+ * CGo OpenMap - 石家庄城市专属样式 (city/shijiazhuang/style.css)
+ */
+
+/* ── 三层玻璃卡：渐变底 + 模糊中层 + 内容顶层 ── */
+.cgo-glass-card {
+    position: fixed;
+    left: 50%;
+    bottom: 40px;
+    transform: translateX(-50%);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3c9726 0%, #79d064 25%, #317a1f 50%, #63d846 75%, #3c9726 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,.25);
+    overflow: hidden;
+    color: #fff;
+    z-index: 9999;
+    min-width: 340px;
+    max-width: 540px;
+}
+.cgo-glass-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,.08);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    z-index: 1;
+    pointer-events: none;
+}
+.cgo-glass-card > * { position: relative; z-index: 2; }
+
+/* ── 虚拟终点站卡 ── */
+.line-info-card { padding: 16px 20px; }
+.tc-row1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+.tc-line {
+    flex: 1;
+    height: 1.5px;
+    background: rgba(255,255,255,.6);
+}
+.tc-icon {
+    width: 23px; height: 23px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+}
+.tc-text { font-size: 15px; font-weight: 700; }
+.tc-body { margin-top: 30px; }
+.tc-dir { font-size: 15px; font-weight: 600; }
+.tc-train { display: flex; gap: 24px; margin-top: 6px; }
+.tc-train b { font-size: 22px; font-weight: 700; }
+.tc-other {
+    margin-top: 14px;
+    padding: 8px 12px;
+    background: #1A3A6B;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* ── 景区卡 ── */
+.scenery-card {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+.sc-header {
+    position: relative;
+    height: 30px;
+    margin-top: 10px;
+}
+
+.sc-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 3.8px;
+    background: rgba(255,255,255,.6);
+    transform: translateY(-50%);
+}
+
+.sc-capsule {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 30px;
+    padding: 0 12px;
+    background: #79D064;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #fff;
+    z-index: 1;
+}
+
+.sc-capsule-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+.sc-body {
+    background: rgba(0,0,0,.7);
+    padding: 16px 12px;
+    margin-top: 15px;
+}
+.sc-title-row { display: flex; align-items: center; gap: 8px; }
+.sc-title { font-size: 15px; font-weight: 700; }
+.sc-tri {
+    width: 0; height: 0;
+    border-top: 7.5px solid transparent;
+    border-bottom: 7.5px solid transparent;
+    border-left: 15px solid #fff;
+}
+.sc-sub-line {
+    flex: 1;
+    height: 1.9px;
+    background: rgba(255,255,255,.8);
+    position: relative;
+}
+.sc-sub-line .sc-en {
+    position: absolute;
+    bottom: 2px; left: 0;
+    font-size: 11px;
+}
+.sc-intro-title { font-size: 15px; font-weight: 700; margin-top: 12px; }
+.sc-text {
+    font-size: 13px;
+    margin-top: 6px;
+    font-family: "Songti SC", "SimSun", serif;
+    line-height: 1.7;
+    text-align: left;
+    text-indent: 2em;
+}
+.sc-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 6px 24px;
+    background: #1A3A6B;
+    color: #fff;
+    font-size: 15px;
+    text-decoration: none;
+    border-radius: 3px;
+}
+
+/* ── 国铁卡 ── 下次更新*/
+.rail-card {
+    display: flex;
+    align-items: stretch;
+    padding: 0;
+}
+.rail-left { width: 5.7px; background: rgba(255,255,255,.6); }
+.rail-right { width: 19px; background: rgba(255,255,255,.6); }
+.rail-mid { flex: 1; padding: 14px 12px; }
+.rail-row1 { display: flex; align-items: center; gap: 8px; }
+.rail-circle {
+    width: 23px; height: 23px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+}
+.rail-bold { font-size: 17px; font-weight: 700; }
+.rail-row2 { font-size: 13px; margin-top: 6px; opacity: .9; }
+.rail-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 6px 24px;
+    background: #c8161d;
+    color: #fff;
+    font-size: 15px;
+    text-decoration: none;
+    border-radius: 3px;
+}
+
+/* ── 区间卡 ── */
+.segment-card {
+    position: absolute;
+    left: 0; top: 0;
+    transform: translate(-50%, -50%);
+    min-width: 200px;
+    max-width: 260px;
+    padding: 0;
+    z-index: 9999;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #3c9726 0%, #79d064 25%, #317a1f 50%, #63d846 75%, #3c9726 100%);
+    box-shadow: 0 8px 32px rgba(0,0,0,.25);
+    color: #fff;
+}
+.seg-bar {
+    height: 9.5px;
+    background: rgba(255,255,255,.9);
+}
+.seg-body {
+    padding: 12px 14px;
+    background: rgba(0,0,0,.5);
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+.seg-station { font-size: 18px; font-weight: 700; }
+.seg-station-en { font-size: 13px; opacity: .85; }
+.seg-arrow { text-align: center; margin: 4px 0; font-size: 16px; }
+.seg-time {
+    margin-top: 8px;
+    font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+}
+.seg-time b { font-size: 22px; }
+
+/* ── 可点击图元指针提示 ── */
+.station.scenery, .station.rdot, .station.railcity, .station.terminus { cursor: pointer; }
+
+/* ── 景区连线宽 10px ── */
+.line-visual-group[data-visual-id^="SC_"] .line-visual-inner,
+.line-visual-group[data-visual-id^="SC_"] .line-visual-outer {
+    stroke-width: 10px !important;
+    stroke-linecap: round;
+}
+
+/* ── 虚拟站文字颜色与线路一致 ── */
+.station.terminus[data-sid="M100"] .stacn,
+.station.terminus[data-sid="M100"] .staen,
+.station.terminus[data-sid="M1000"] .stacn,
+.station.terminus[data-sid="M1000"] .staen { color: #E4002B !important; }
+.station.terminus[data-sid="M200"] .stacn,
+.station.terminus[data-sid="M200"] .staen,
+.station.terminus[data-sid="M2000"] .stacn,
+.station.terminus[data-sid="M2000"] .staen { color: #C4A35A !important; }
+.station.terminus[data-sid="M300"] .stacn,
+.station.terminus[data-sid="M300"] .staen,
+.station.terminus[data-sid="M3000"] .stacn,
+.station.terminus[data-sid="M3000"] .staen { color: #4A90D9 !important; }
+
+/* ── 左下角景区提示 ── */
+.sjz-scenery-hint {
+    position: absolute;
+    left: 20px;
+    bottom: 20px;
+    z-index: 50;
+    background: rgba(82, 196, 26, 0.95);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 3px;
+    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2);
+    pointer-events: none;
+    white-space: nowrap;
+}
+/* ── 换乘城市卡 ── */
+.railcity-card {
+    padding: 0;
+}
+
+.rc-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px 10px;
+}
+.rc-bar {
+    width: 1.5px;
+    height: 20px;
+    background: rgba(255,255,255,.7);
+}
+.rc-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+}
+.rc-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.rc-body {
+    padding: 0 20px 12px;
+}
+.rc-sub {
+    font-size: 13px;
+    opacity: .85;
+    margin-bottom: 6px;
+}
+.rc-intro {
+    font-size: 14px;
+    line-height: 1.6;
+    opacity: .95;
+}
+
+.rc-action {
+    padding: 0 20px 16px;
+    text-align: right;
+}
+.rc-btn {
+    display: inline-block;
+    background: #1A3A6B;
+    color: #fff;
+    padding: 8px 28px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+}
+.rc-btn:hover {
+    background: #142c50;
+}

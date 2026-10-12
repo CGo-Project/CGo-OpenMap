@@ -2,7 +2,7 @@
  * CGo OpenMap - 沈阳侧栏站名标题归一化 (city/shenyang/modules/shenyang_station_title.js)
  *
  * 机制（MutationObserver 安装、rAF 节流、防重复安装、防自触发写入）与站类判定、
- * 标题拼装的通用规则均在共享层 `city/shenyang/shared/station-title.js`，
+ * 标题拼装的通用规则均在共享层 `city/shenyang/shared/base/station-title.js`，
  * 本文件只写沈阳的文案规则。
  *
  * 本模块原先内嵌于 shenyang_station_board.js，与「紧凑线路徽标同步」共用同一个

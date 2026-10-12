@@ -6,6 +6,11 @@
     if (!window.StationBoard || typeof window.StationBoard.registerModule !== "function") return;
 
     function getEntry(lineId, stationId) {
+        // 页面可能跨过调图生效时间仍未刷新，每次查看车站时重新确认运行图。
+        if (typeof resolveQingdaoTimetableVersions === "function" && typeof applyQingdaoTimetableVersions === "function") {
+            const activeId = resolveQingdaoTimetableVersions().at(-1)?.id || "base";
+            if (window.QINGDAO_TIMETABLE_STATE?.id !== activeId) applyQingdaoTimetableVersions();
+        }
         if (typeof GLOBAL_SCHEDULE_DATA === "undefined" || !GLOBAL_SCHEDULE_DATA) return null;
         return GLOBAL_SCHEDULE_DATA[lineId]?.[stationId] || null;
     }

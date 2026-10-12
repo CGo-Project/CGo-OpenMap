@@ -3,12 +3,12 @@
  *
  * 读取高德坐标数据，在车站详情中渲染可缩放的周边地图。
  * 运营信息由 modules/shenyang_service_info.js 负责，本模块只渲染地图卡片。
- * 渲染逻辑位于三城共享引擎（临时位置 city/shenyang/shared/stacard-engine.js，
+ * 渲染逻辑位于三城共享引擎（临时位置 city/shenyang/shared/station/stacard-engine.js，
  * 计划在开发团队确认后迁入 core/，详见 docs/STACARD_TIMETABLE_UNIFICATION.md）。
  */
 
 import "./data.js";
-import { createStaCard } from "../shared/stacard-engine.js";
+import { createStaCard } from "../shared/station/stacard-engine.js";
 
 const ShenyangStaCard = createStaCard({
     cityName: "沈阳",

@@ -14,7 +14,12 @@
  * lines 记下该站所属的全部线路。
  *
  * 图片是官网 CDN 外链（单张 0.3~3.5 MB，共 102 张），不随仓库分发，需联网加载；
+ * 注意：官网「空间示意图」字段存在两种 URL 形态 —— resources/image/YYYY/MM/DD/<文件ID>.jpg 与
+ * metroSite/<站点ID>/desigDrawing/NN站名.jpg。这是原网站命名不一致造成的，一律按官网原样保留，
+ * 不要改写或统一成某一种（改名即 404）。
  * 出入口为实体设施，优先取该站有登记的那条线路（exitsLine 记录来源线路）。
+ * 注意：官网个别车站的「出入口」字段是「进出口信息 / A出入口 / 位置…」这样的结构化块，
+ * 只有形如「A出入口:位置」的条目才是有效出入口（苏洋只有标题、三叉街曾混入标题与位置行，均已清理）。
  */
 
 const FUZHOU_SITE_SPACE_DATA = {
@@ -349,10 +354,8 @@ const FUZHOU_SITE_SPACE_DATA = {
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754982947168325.jpg",
         sourceLine: "M2",
         lines: ["M2"],
-        exits: [
-            "进出口信息"
-        ],
-        exitsLine: "M2",
+        exits: [],
+        exitsLine: "",
         updatedAt: "2026-09-11 18:16:16"
     },
     "M202": {

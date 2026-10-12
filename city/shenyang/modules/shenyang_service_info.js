@@ -3,7 +3,7 @@
  *
  * 取数逻辑（有轨端点表、季节阈值、位置与出入口）留在本模块；
  * 「归一化行 → HTML」「终点站代号解析」「季节标签差异判定」交由共享渲染层处理
- * （city/shenyang/shared/timetable-renderer.js）。
+ * （city/shenyang/shared/station/timetable-renderer.js）。
  *
  * 本模块同时渲染「位置」「首末班车」「出入口」三行，故用 renderCardShell +
  * renderInfoRow 自行组合，而非直接调用 renderCard。

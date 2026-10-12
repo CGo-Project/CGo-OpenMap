@@ -347,14 +347,18 @@
     };
 
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        document.write('<scr' + 'ipt src="./city/qingdao/data_station_names.js?v=' + Date.now() + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_station_name_history.js?v=' + Date.now() + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_travel_guide.js?v=' + Date.now() + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/data_construction.js?v=' + Date.now() + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_engineering_name_notice.js?v=' + Date.now() + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_timetable.js?v=' + Date.now() + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_construction.js?v=' + Date.now() + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_line_badges.js?v=' + Date.now() + '"><\/scr' + 'ipt>');
+        const qingdaoResourceVersion = "261008.220300";
+        document.write('<scr' + 'ipt src="./city/qingdao/data_station_names.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/data_interval_times.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_interval_times.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_station_name_history.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_travel_guide.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/data_construction.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_construction_progress_map.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_engineering_name_notice.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_timetable.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_construction.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_line_badges.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
     }
 
     window.QINGDAO_CITY = QingdaoCity;

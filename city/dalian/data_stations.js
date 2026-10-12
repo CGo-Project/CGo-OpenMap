@@ -338,13 +338,13 @@ const stationsData = {
     "0303": {
         "type": "dot",
         "x": 1021,
-        "y": 605,
+        "y": 603,
         "cn": "金家街",
         "en": "Jinjia Street",
-        "align": "right",
+        "align": "top-right",
         "offset": {
             "x": 6,
-            "y": 0
+            "y": -6
         },
         "textScale": {
             "cn": 1,
@@ -689,7 +689,7 @@ const stationsData = {
     },
     "0213": {
         "type": "dot",
-        "x": 800,
+        "x": 799,
         "y": 796,
         "cn": "辽师大",
         "en": "Liaoning Normal<br> University",
@@ -705,7 +705,7 @@ const stationsData = {
     },
     "0214": {
         "type": "dot",
-        "x": 760,
+        "x": 757,
         "y": 796,
         "cn": "马栏广场",
         "en": "Malan Square",
@@ -721,7 +721,7 @@ const stationsData = {
     },
     "0215": {
         "type": "dot",
-        "x": 720,
+        "x": 716,
         "y": 796,
         "cn": "湾家",
         "en": "Wanjia",
@@ -737,7 +737,7 @@ const stationsData = {
     },
     "0216": {
         "type": "dot",
-        "x": 680    ,
+        "x": 674,
         "y": 796,
         "cn": "红旗西路",
         "en": "Hongqi West Road",
@@ -754,7 +754,7 @@ const stationsData = {
     "0217": {
         "type": "dot",
         "x": 633,
-        "y": 753,
+        "y": 748,
         "cn": "虹锦路",
         "en": "Hongjin Road",
         "align": "right",
@@ -770,7 +770,7 @@ const stationsData = {
     "0218": {
         "type": "dot",
         "x": 633,
-        "y": 715,
+        "y": 700,
         "cn": "虹港路",
         "en": "Honggang Road",
         "align": "right",
@@ -786,7 +786,7 @@ const stationsData = {
     "0219": {
         "type": "dot",
         "x": 633,
-        "y": 668,
+        "y": 651,
         "cn": "机场",
         "en": "Airport",
         "labelIcon": {
@@ -806,13 +806,13 @@ const stationsData = {
     "0220": {
         "type": "dot",
         "x": 633,
-        "y": 632,
+        "y": 603,
         "cn": "辛寨子",
         "en": "Xinzhaizi",
-        "align": "right",
+        "align": "bottom-left",
         "offset": {
-            "x": 6,
-            "y": 0
+            "x": -10,
+            "y": 4
         },
         "textScale": {
             "cn": 1,
@@ -822,7 +822,7 @@ const stationsData = {
     "0221": {
         "type": "dot",
         "x": 633,
-        "y": 593,
+        "y": 566,
         "cn": "前革",
         "en": "Qian'ge",
         "align": "right",
@@ -838,7 +838,7 @@ const stationsData = {
     "0222": {
         "type": "dot",
         "x": 633,
-        "y": 546,
+        "y": 530,
         "cn": "中革",
         "en": "Zhongge",
         "align": "right",
@@ -854,7 +854,7 @@ const stationsData = {
     "0223": {
         "type": "dot",
         "x": 633,
-        "y": 508,
+        "y": 493,
         "cn": "革镇堡",
         "en": "Gezhenpu",
         "align": "right",
@@ -869,7 +869,7 @@ const stationsData = {
     },
     "0224": {
         "type": "dot",
-        "x": 687,
+        "x": 691,
         "y": 456,
         "cn": "后革",
         "en": "Houge",
@@ -1037,9 +1037,9 @@ const stationsData = {
         "y": 603,
         "cn": "松江路",
         "en": "Songjiang Road",
-        "align": "right",
+        "align": "top-left",
         "offset": {
-            "x": 6,
+            "x": -6,
             "y": 0
         },
         "textScale": {
@@ -1053,9 +1053,9 @@ const stationsData = {
         "y": 632,
         "cn": "东纬路",
         "en": "Dongwei Road",
-        "align": "right",
+        "align": "left",
         "offset": {
-            "x": 6,
+            "x": -6,
             "y": 0
         },
         "textScale": {
@@ -1501,9 +1501,9 @@ const stationsData = {
         "y": 652,
         "cn": "梭鱼湾南",
         "en": "Suoyuwan South",
-        "align": "right",
+        "align": "left",
         "offset": {
-            "x": 6,
+            "x": -6,
             "y": 0
         },
         "textScale": {
@@ -1517,10 +1517,10 @@ const stationsData = {
         "y": 625,
         "cn": "梭鱼湾",
         "en": "Suoyuwan",
-        "align": "right",
+        "align": "bottom-right",
         "offset": {
             "x": 6,
-            "y": 0
+            "y": 4
         },
         "textScale": {
             "cn": 1,
@@ -2306,7 +2306,234 @@ const stationsData = {
         "textScale": {
             "cn": 0.9,
         }
-     }
+     },
+    // —— 4 号线（在建，站序：梭鱼湾东→营城子；线注册与未开通登记后续补）——
+    // y603 走廊：梭鱼湾东/东方路 走梭鱼湾→金家街的「水平+45°斜+水平」夹心段，
+    // 金三角居金家街与松江路中点，松江路→辛寨子四站均分，辛寨子以西按 X 步进 -40。
+    "0401": {
+        "type": "no",
+        "x": 1155,
+        "y": 625,
+        "cn": "梭鱼湾东",
+        "en": "Suoyuwan East",
+        "align": "right",
+        "offset": {
+            "x": 10,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0402": {
+        "type": "no",
+        "x": 1089,
+        "y": 614,
+        "cn": "东方路",
+        "en": "Dongfang Road",
+        "align": "bottom-left",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0403": {
+        "type": "no",
+        "x": 971,
+        "y": 603,
+        "cn": "金三角",
+        "en": "Jinsanjiao",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0404": {
+        "type": "no",
+        "x": 864,
+        "y": 603,
+        "cn": "西北路",
+        "en": "Xibei Road",
+        "align": "top",
+        "offset": {
+            "x": -30,
+            "y": -4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0405": {
+        "type": "no",
+        "x": 806,
+        "y": 603,
+        "cn": "新达街",
+        "en": "Xinda Street",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0406": {
+        "type": "no",
+        "x": 749,
+        "y": 603,
+        "cn": "泽龙湖",
+        "en": "Zelong Lake",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": -4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0407": {
+        "type": "no",
+        "x": 691,
+        "y": 603,
+        "cn": "工业大学",
+        "en": "Industrial University",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 8
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0408": {
+        "type": "no",
+        "x": 593,
+        "y": 603,
+        "cn": "辛萍街",
+        "en": "Xinping Street",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": -4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0409": {
+        "type": "no",
+        "x": 553,
+        "y": 603,
+        "cn": "银杏大道",
+        "en": "Yinxing Avenue",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0410": {
+        "type": "no",
+        "x": 513,
+        "y": 603,
+        "cn": "周家",
+        "en": "Zhoujia",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": -4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0411": {
+        "type": "no",
+        "x": 473,
+        "y": 603,
+        "cn": "东南山",
+        "en": "Dongnanshan",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0412": {
+        "type": "no",
+        "x": 433,
+        "y": 603,
+        "cn": "前牧",
+        "en": "Qianmu",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": -4
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0413": {
+        "type": "no",
+        "x": 393,
+        "y": 623,
+        "cn": "幸福",
+        "en": "Xingfu",
+        "align": "bottom-right",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    },
+    "0414": {
+        "type": "no",
+        "x": 365,
+        "y": 651,
+        "cn": "营城子",
+        "en": "Yingchengzi",
+        "align": "bottom-right",
+        "offset": {
+            "x": 0,
+            "y": 0
+        },
+        "textScale": {
+            "cn": 1,
+            "en": 1
+        }
+    }
 };
 
 if (typeof window !== "undefined") window.stationsData = stationsData;

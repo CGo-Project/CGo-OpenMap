@@ -2,7 +2,7 @@
  * CGo OpenMap - 哈尔滨侧栏站名标题归一化 (city/harbin/modules/harbin_station_title.js)
  *
  * 机制（MutationObserver 安装、rAF 节流、防重复安装、防自触发写入）与站类判定、
- * 标题拼装的通用规则均在共享层 `city/shenyang/shared/station-title.js`，
+ * 标题拼装的通用规则均在共享层 `city/shenyang/shared/base/station-title.js`，
  * 本文件只写哈尔滨的文案规则。
  *
  * ==============================================================================

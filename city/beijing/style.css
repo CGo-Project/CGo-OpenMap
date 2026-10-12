@@ -1,0 +1,30 @@
+/**
+ * CGo OpenMap - 北京城市专属样式 (city/beijing/style.css)
+ * ==============================================================================
+ * 亦庄T1线（路面有轨电车）车站在 Map2 中采用紧凑小字号，此处在城市层统一样式：
+ * 中文字号 7.5px (行高 9px)，英文字号 4.65px (行高 4.42px)
+ * ==============================================================================
+ */
+
+.label-group[data-sid^="T1"] .stacn,
+.label-group[id^="label_T1"] .stacn {
+    font-size: 7.5px;
+    line-height: 9px;
+}
+
+.label-group[data-sid^="T1"] .staen,
+.label-group[id^="label_T1"] .staen {
+    font-size: 4.65px;
+    line-height: 4.42px;
+}
+
+/* 选中高亮态等比放大 */
+.label-group[data-sid^="T1"].active .stacn {
+    font-size: 9.8px;
+    line-height: 10px;
+}
+
+.label-group[data-sid^="T1"].active .staen {
+    font-size: 6px;
+    line-height: 6px;
+}

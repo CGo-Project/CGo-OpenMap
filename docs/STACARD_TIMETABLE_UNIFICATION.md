@@ -34,12 +34,12 @@
 ### 2.1 目录与文件
 
 ```
-city/shenyang/shared/stacard-engine.js       # ES module，export createStaCard
-city/shenyang/shared/timetable-renderer.js   # classic script，挂 CGoTimetable / CGoDayType
-city/shenyang/shared/station-title.js        # classic script，挂 CGoStationTitle
-city/shenyang/shared/tip-card.js             # classic script，挂 CGoTipCard
-city/shenyang/shared/calligraphy.js          # classic script，挂 CGoCalligraphy（站名题字共享层）
-city/shenyang/shared/calligraphy.css         # 题字样式，由 calligraphy.js 按自身 URL 推导路径注入
+city/shenyang/shared/station/stacard-engine.js       # ES module，export createStaCard
+city/shenyang/shared/station/timetable-renderer.js   # classic script，挂 CGoTimetable / CGoDayType
+city/shenyang/shared/base/station-title.js        # classic script，挂 CGoStationTitle
+city/shenyang/shared/station/tip-card.js             # classic script，挂 CGoTipCard
+city/shenyang/shared/station/calligraphy.js          # classic script，挂 CGoCalligraphy（站名题字共享层）
+city/shenyang/shared/station/calligraphy.css         # 题字样式，由 calligraphy.js 按自身 URL 推导路径注入
 ```
 
 六个文件顶部均写明「临时共享位置 + 计划迁入 `core/`」，便于评审时一眼看清意图，也避免后续维护者误以为是沈阳专属逻辑。
@@ -48,8 +48,8 @@ city/shenyang/shared/calligraphy.css         # 题字样式，由 calligraphy.js
 
 | 使用方 | 引用写法 |
 |---|---|
-| 沈阳 stacard | `import { createStaCard } from "../shared/stacard-engine.js"` |
-| 大连 / 长春 stacard | `import { createStaCard } from "../../shenyang/shared/stacard-engine.js"` |
+| 沈阳 stacard | `import { createStaCard } from "../shared/station/stacard-engine.js"` |
+| 大连 / 长春 stacard | `import { createStaCard } from "../../shenyang/shared/station/stacard-engine.js"` |
 | 三城 timetable / station-title | `document.write('<script src="./city/shenyang/shared/{文件}?v=' + version + '"><\/script>')` |
 | 沈阳 tip-card | 同上 |
 | 各城 calligraphy | 同上（题字样式表不必登记，由 calligraphy.js 按自身 `currentScript.src` 同目录推导并注入 `<link>`） |
@@ -68,12 +68,12 @@ timetable 的路径相对页面而非相对城市目录，故三城写法完全�
 
 ### 2.4 迁移到 core/ 的路径
 
-1. `git mv city/shenyang/shared/stacard-engine.js core/stacard-engine.js`
-2. `git mv city/shenyang/shared/timetable-renderer.js core/timetable-renderer.js`
-3. `git mv city/shenyang/shared/station-title.js core/station-title.js`
-4. `git mv city/shenyang/shared/tip-card.js core/tip-card.js`
-5. `git mv city/shenyang/shared/calligraphy.js core/calligraphy.js`
-6. `git mv city/shenyang/shared/calligraphy.css core/calligraphy.css`（**必须与 calligraphy.js 同目录**，样式表路径由 `currentScript.src` 同目录推导）
+1. `git mv city/shenyang/shared/station/stacard-engine.js core/stacard-engine.js`
+2. `git mv city/shenyang/shared/station/timetable-renderer.js core/timetable-renderer.js`
+3. `git mv city/shenyang/shared/base/station-title.js core/station-title.js`
+4. `git mv city/shenyang/shared/station/tip-card.js core/tip-card.js`
+5. `git mv city/shenyang/shared/station/calligraphy.js core/calligraphy.js`
+6. `git mv city/shenyang/shared/station/calligraphy.css core/calligraphy.css`（**必须与 calligraphy.js 同目录**，样式表路径由 `currentScript.src` 同目录推导）
 7. 改 3 处 stacard 的 `import` 路径 + 3 处 `{city}.js` 的 `document.write` 路径
 8. 更新 `sw.js` 的 `ASSETS_TO_CACHE`
 9. **零逻辑改动** —— 这正是选「共享文件」而非「三份复制」的主要理由

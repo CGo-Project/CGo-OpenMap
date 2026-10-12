@@ -3,11 +3,11 @@
  *
  * 使用高德地铁图接口返回的 GCJ-02 坐标，在车站详情面板中渲染可缩放的
  * 高德地图切片。卡片只处理地图展示，不写入线路或站点排版数据。
- * 渲染逻辑位于三城共享引擎（临时位置 city/shenyang/shared/stacard-engine.js，
+ * 渲染逻辑位于三城共享引擎（临时位置 city/shenyang/shared/station/stacard-engine.js，
  * 计划在开发团队确认后迁入 core/，详见 docs/STACARD_TIMETABLE_UNIFICATION.md）。
  */
 
-import { createStaCard } from "../../shenyang/shared/stacard-engine.js";
+import { createStaCard } from "../../shenyang/shared/station/stacard-engine.js";
 
 const ChangchunStaCard = createStaCard({
     cityName: "长春",

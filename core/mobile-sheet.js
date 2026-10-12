@@ -141,7 +141,7 @@
                     if (Math.abs(dy) <= Math.abs(dx) * 1.15) { candidate = null; return; }
                     candidate.vertical = true;
                 }
-                if (!(dy < 0 ? stage() === 'half' : (scroller?.scrollTop || 0) <= 1)) return;
+                if (!(dy < 0 ? stage() === 'half' && options.lockHalfScroll !== false : (scroller?.scrollTop || 0) <= 1)) return;
                 // 原生滚动已经不可取消时留给浏览器，避免回弹与面板同时移动。
                 if (!e.cancelable) return;
                 const consumed = Math.min(Math.abs(dy), Math.abs((scroller?.scrollTop || 0) - candidate.scrollTop));
@@ -221,7 +221,7 @@
         observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
         observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
         configure();
-        return () => {
+        const cleanup = () => {
             observer.disconnect();
             panel.removeEventListener('pointerdown', down);
             panel.removeEventListener('pointermove', pointerMove);
@@ -236,6 +236,8 @@
             window.visualViewport?.removeEventListener('resize', configure);
             disable();
         };
+        cleanup.refresh = refresh;
+        return cleanup;
     }
     window.CGoMobileSheet = { attach, rubberBand };
 }());

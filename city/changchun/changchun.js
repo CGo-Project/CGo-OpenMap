@@ -71,10 +71,10 @@
         searchCity: "长春",
         center: { x: 1150, y: 950 },
         defaultScale: 0.7,
-        mapSize: { width: 2300, height: 2100 },
+        mapSize: { width: 2650, height: 2100 },
         officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
         LINE_META: {},
-        LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM05", "CCM06", "CCM07", "CCM08"],
+        LINE_SORT_ORDER: ["CCM01", "CCM02", "CCM03", "CCM04", "CCM05", "CCM06", "CCM07", "CCM08", "CCM09"],
         LINE_SYNC_GROUPS: [],
         SUBURBAN_LINES: ["Rwy"],
         /**
@@ -94,7 +94,8 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         dataFiles: {
-            amapDataUrl: "./city/changchun/amap_data.json"
+            amapDataUrl: "./city/changchun/amap_data.json",
+            stanameCsvUrl: "./city/changchun/staname.csv"
         },
         /**
          * 城市级站点图元接管（core/ 保持城市无关，长春专属画法只放本目录）：
@@ -177,11 +178,54 @@
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
         },
         stationBoard: {
-            scripts: ["modules/changchun_service_info.js", "modules/changchun_station_title.js"],
+            scripts: [
+                "modules/changchun_service_info.js",
+                "modules/changchun_station_title.js",
+                "modules/changchun_facilities.js",
+                "modules/changchun_exits.js"
+            ],
+            // 出入口独立页签（自定义 tab），渲染在「车站信息」之前
+            tabs: [
+                { id: "changchun-exits", title: "出入口", icon: "gate" }
+            ],
             modules: {
                 "stacard": { enabled: true, order: 10, targetTab: "line-tab" },
-                "changchun-timetable": { enabled: true, order: 15, targetTab: "line-tab" }
+                "changchun-timetable": { enabled: true, order: 15, targetTab: "line-tab" },
+                // 官方公众号表格里的设施位置（卫生间 / 母婴室 / 无障碍电梯 / 升降平台 /
+                // 售卖机 / 充电宝 / AED / 自助照相机）：配置驱动，与沈阳、大连同用共享层
+                "changchun-facilities": { enabled: true, targetTab: "station-info", order: 6 },
+                // 出入口页签（自定义 tab，见上方 tabs）
+                "changchun-exits": { enabled: true, targetTab: "changchun-exits", order: 10 }
             }
+        }
+    };
+
+    /**
+     * 出入口清单的筛选模式（共享层 exits.js 读取）
+     * 长春官方表格里的无障碍设施有「无障碍电梯」与「升降平台」两类，故无障碍模式取两者。
+     * 官方未提供扶梯数据，故没有「携带行李」模式。
+     */
+    window.CGO_EXIT_FILTERS = [
+        { id: "accessible", name: "无障碍", icon: "vi-stn", types: ["elevator", "a11yplatform"] }
+    ];
+
+    /**
+     * 出口垂直交通的搬迁声明（共享层 shared/station/exit-vertical.js 读取）
+     *
+     * 长春设施表里「无障碍电梯 / 升降平台」的位置大多**直接以出口编号开头**
+     * （「D口」「B口」「A、C口通道」「A2口升降平台」「DC口(升降平台)」），另有「站外C口」
+     * 以「站外」开头——这些出口本身就是设施的落点，故按「出口编号开头 / 站外开头」两条前缀搬走；
+     * 不以出口开头的位置（「换乘通道，站厅层中部」「站台层北侧」「站厅近B口处」「站内A口」）
+     * 属于站内垂直交通、或只是位置靠近出口，一律留在车站设施板块不动。
+     */
+    window.CGO_EXIT_VERTICAL = {
+        patterns: [
+            /^[A-Za-z]{1,2}\d{0,2}(?:\s*[、,，和及]\s*[A-Za-z]{1,2}\d{0,2})*\s*口/,
+            /^站外/
+        ],
+        types: {
+            elevator: { name: "无障碍电梯", icon: "elevator" },
+            a11yplatform: { name: "升降平台", icon: "a11yplatform" }
         }
     };
 
@@ -189,7 +233,9 @@
      * 行程规划的城市侧配置
      *
      * 共享层负责算法、面板、坐标索引与站外换乘收集，本城只描述「数据长什么样」：
-     * - coords：坐标兜底数据源（地铁各线站距已按官方行程查询接口的站间里程写入 distances）
+     * - coords：坐标兜底数据源 —— 里程以 data_lines.js 的 distances 为准（地铁取自长春
+     *   轨道交通官网「行程查询」接口的实测站间距；有轨 G54/G55 为 OSM 走向实测），
+     *   仅未开通段（"?"）回退坐标估算
      * - reader：把抄录的时刻摊平成构建器要的时间条目（dest / period / label / time）
      * - fareSystems / fare：计费系统划分与票价规则（地铁轻轨并网，有轨各线单独购票）
      * 上述配置都在实际规划时才被读取，故不必担心此刻共享层尚未加载。
@@ -218,6 +264,14 @@
          *   2 元起步可乘 7 公里，3~6 元的分界里程依次为 7 / 13 / 19 / 27 / 35 公里，
          *   35 公里以上每 1 元可乘 10 公里
          * - tram-54 / tram-55：单一票价 2 元（长春公交官网口径）
+         *
+         * ⚠️ 计价口径的已知偏差：本表按**站距**（data_lines.js 的 distances）套费率，
+         * 而票价实际按**计价里程**分档结算 —— 两者不是同一套数，**档位分界点附近的站对
+         * 可能错一档**（同一段路在临界处差 1 元）。本城站距取自长春轨道交通官网「行程
+         * 查询」接口下发的实测站间距，来源较可靠；仅 1 号线南延、3 号线南延等未开通段
+         * 为 "?" 占位（该段走坐标兜底）。福州已改用官网抓取的站间票价表
+         * （city/fuzhou/data_official_fare.js，10302 组）消除该误差，本城暂维持按费率
+         * 推算。若要完全对齐，需拿到本城官网的分站票价表。
          */
         fare: {
             metro(km) {
@@ -236,6 +290,165 @@
             }
         },
         /**
+         * 站外换乘的步行时间（分钟）。键为 `起点ID|终点ID`，逐对覆盖共享层的 6 分钟
+         * 默认值（机制见 shared/route/route-data.js）。
+         *
+         * 口径为「出站 → 步行 → 进站 → 到站台」的总时间。2026-10-06 起并入高德地图
+         * 步行路径规划：取「出站口 POI → 对方站点」的步行距离 ÷ 60 米/分钟 + 3 分钟
+         * （进出站安检与上下站台）。国铁站一律以出站口为起点 —— 长春站有南北两个出站口，
+         * 走哪个差一倍以上，故按配对分别取北 / 南出站口（见下方逐条注释）。
+         *
+         * 本城 `data_virtual_transfers.js` 登记了 9 组站外配对，已录入 8 组；
+         * 仅东大桥（4 号线 0424 ⇄ 5 号线 0501）留空 —— 两线站厅不连通、须出站换乘
+         * （维基「东大桥站」条目 interchange 直书「出站换乘」），而 amap_data.json 里
+         * 两站坐标完全相同，高德步行结果恒为 0 米，无法作为口径；待现场实测或官方
+         * 出站换乘指引补录（未录时回落共享层 6 分钟默认值）。
+         *
+         * 两个方向写同一分钟数 —— 步行时间与方向无关。
+         */
+        walkMinutes: {
+            // 国铁长春站（北出站口）⇄ 长春站北（1/4 号线，北广场）：高德 357 米 → 9 分钟。
+            "CCT|0124": 9, "0124|CCT": 9,
+            // 国铁长春站（南出站口）⇄ 长春站（1/3 号线，南广场换乘中心）：高德 193 米 → 6 分钟。
+            "CCT|0125": 6, "0125|CCT": 6,
+            // 国铁长春西站（南 1 出站口）⇄ 长春西站（2/6 号线）：高德 325 米 → 8 分钟
+            // （本地宝载「长春西站换乘地铁不需要出站」，与二者同处站前换乘区一致）。
+            "CRT|0225": 8, "0225|CRT": 8,
+            // 国铁长春西站（南 1 出站口）⇄ 有轨 55 路长春西站：高德 231 米 → 7 分钟
+            // （55 路站点表载该站位于国铁长春西站东北出口）。
+            "CRT|G5519": 7, "G5519|CRT": 7,
+            // 长春西站（2/6 号线）⇄ 有轨 55 路长春西站：高德 252 米 → 7 分钟。
+            "0225|G5519": 7, "G5519|0225": 7,
+            // 有轨 54 路宽平大桥 ⇄ 宽平桥（3 号线）：高德 138 米 → 5 分钟。
+            "G5406|0331": 5, "0331|G5406": 5,
+            // 有轨 54 路景阳大路 ⇄ 万福街（2 号线）：高德 333 米 → 9 分钟。
+            "G5412|0229": 9, "0229|G5412": 9,
+            // 有轨 54/55 路工农大路 ⇄ 红旗街（5 号线）：高德 61 米 → 4 分钟。
+            "G5401|0507": 4, "0507|G5401": 4
+        },
+        /**
+         * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route/route-data.js
+         * 的 transferAt。未列出的换乘站用共享层默认值（2 分钟）。
+         *
+         * 换乘方式有三个来源，逐站交叉核对：
+         *   1) 百科「长春轨道交通」条目的换乘站点表（1/2/3/4/6/8 号线的换乘方式）；
+         *   2) **维基百科各车站条目的 interchange 字段与「车站结构」正文** —— 后者往往
+         *      直接写明「两线采用 XX 换乘形式」并给出换乘节点连接的两侧站台，是本站
+         *      最主要的方式来源（7 号线 6 站、5 号线 5 站、双丰、职业技术大学均取自此处）；
+         *   3) 官方开通报道（如 6 号线「地下车站与高架车站换乘增设垂梯」）。
+         * **未查到逐站实测耗时的，按其换乘方式档位取中值**（节点换乘 1 分钟、
+         * 站厅换乘 2 分钟、站厅通道换乘 3 分钟、通道换乘 4 分钟）——这是「按方式定档」
+         * 的约定口径，不是实测值，取得实测后应逐站替换。
+         *
+         * 本表已覆盖全图 **25 座换乘站**：含 5 号线一期开通后新成为换乘站的人民广场、
+         * 文化广场、电台街、硅谷广场、南湖广场，以及 7 号线一期的 6 座换乘站。
+         * 东大桥（0501 与 4 号线 0424）不在此列 —— 两站厅并不连通、属付费出站换乘，
+         * 登记在 data_virtual_transfers.js。
+         */
+        transferAt: {
+            // 解放大路 1号线 ⇄ 2号线：百科换乘站点表列为「通道换乘」。1 号线站厅层与
+            // 2 号线站台层以 4 个弧形换乘通道平层交替换乘，1 号线站台层与 2 号线站厅层
+            // 以 4 个楼梯步道双层换乘（长春日报 2018-08-30 2 号线通车试运营报道）；
+            // 长春轨道交通集团 2025-12 又开通了连接 1、2 号线的单行节点楼梯，
+            // 「2 号线换乘 1 号线走节点楼梯超近，1 号线换乘 2 号线仍需走站厅层」。
+            // 方向不对称且以线路对区分，未用 sameDir；取通道换乘档 4 分钟（保守值，
+            // 走节点楼梯时实际更短）。
+            "0128": { mode: "通道换乘", minutes: 4 },
+            // 长春站 1号线 ⇄ 3号线：百科列为「站厅换乘」。2019 年时 3 号线长春站为地面站、
+            // 1 号线在地下，须出站再进站；3 号线东延伸线（2021-12 通车）将西安桥至长春站
+            // 区段改为地下，此后与 1 号线、4 号线实现站内换乘（长春本地宝 2019-05-27）。
+            "0125": { mode: "站厅换乘", minutes: 2 },
+            // 长春站北 1号线 ⇄ 4号线：百科列为「站厅换乘」。两站均位于长春站北站房
+            // 换乘中心内，建设时即做了换乘预留，2019-05-30 起站内一票换乘
+            // （长春本地宝 2019-05-27、中国吉林网 2019-05-29）。
+            "0124": { mode: "站厅换乘", minutes: 2 },
+            // 卫星广场 1号线 ⇄ 3号线：百科列为「站厅通道换乘」。1 号线与轻轨 3 号线的
+            // 换乘通道于 2019-05-30 投用，实现站内换乘（长春本地宝 2019-05-27）。
+            "0132": { mode: "站厅换乘", minutes: 3 },
+            // 华庆路 1号线 ⇄ 6号线：百科列为「节点换乘、站厅通道换乘」（两种方式并存），
+            // 按站厅通道口径取中值。
+            "0134": { mode: "站厅换乘", minutes: 3 },
+            // 北环城路 1号线 ⇄ 8号线：百科列为「站厅通道换乘」，2019-05-30 前即已实现
+            // 站内换乘（长春本地宝 2019-05-27）。
+            "0121": { mode: "站厅换乘", minutes: 3 },
+            // 吉林大路 2号线 ⇄ 4号线：全城首座地铁与轻轨室内一票式换乘车站，
+            // 出站厅经换乘大厅及换乘通道即可换乘，2019-05-30 投用（中国吉林网 2019-05-29）。
+            "0237": { mode: "站厅换乘", minutes: 2 },
+            // 解放桥 2号线 ⇄ 3号线：2 号线在地下、3 号线在地面/高架，属「天地换乘」；
+            // 2019 年时换乘通道未完工，需出站步行上解放桥再下桥、约 500 米
+            // （长春本地宝 2019-05-27），此后站内换乘通道建成（轨道交通爱好者换乘实录，
+            // 标题即「鸽了两年的站内天地换乘」）。按通道换乘档取 4 分钟。
+            "0231": { mode: "通道换乘", minutes: 4 },
+            // 福祉大路 4号线 ⇄ 6号线：4 号线在地面/高架、6 号线在地下，属「天地换乘」；
+            // 官方开通报道明确「以福祉大路站、长影世纪城站为例，地下车站与高架车站换乘
+            // 增设垂梯，实现了无障碍换乘」（城市晚报 / 吉林日报 2024-03-27 引长春轨道
+            // 交通集团）。按通道换乘档取 4 分钟。
+            "0437": { mode: "通道换乘", minutes: 4 },
+            // 长春西站 2号线 ⇄ 6号线：百科换乘站点表列为「站厅换乘」。6 号线开通报道
+            // 亦确认本站为与既有线路的换乘站之一（新华网 2024-03-28）。
+            "0225": { mode: "站厅换乘", minutes: 2 },
+            // 伪满皇宫 3号线 ⇄ 4号线：百科换乘站点表列为「**同台同向换乘**、站厅换乘」，
+            // 即同向的那一对列车同台换乘、反向需经站厅。
+            // ⚠️ 未启用 sameDir：本站是 3 号线起点站（站序索引 0），共享层的同向几何判定
+            // 在端头站取不到位移向量（headingVector 会返回 null），若配 sameDirMinutes
+            // 会出现「同一对方向在不同 from/to 顺序下结果不一致」；而公开资料未给出
+            // 「哪一对方向同台」的具体对应，故按两条路径中值取 2 分钟（同台约 1 分、
+            // 站厅约 3 分），待拿到站台布置资料后可用 sameDir 显式点明。
+            "0321": { mode: "同台换乘", minutes: 2 },
+            // 长影世纪城 3号线 ⇄ 6号线：3 号线为高架、6 号线为地下，同属官方口径的
+            // 「地下车站与高架车站换乘」并增设垂梯（同上 2024-03-27 报道，与福祉大路
+            // 并列举例）。按通道换乘档取 4 分钟。
+            "0355": { mode: "通道换乘", minutes: 4 },
+            /* ── 以下 13 站依据维基百科各站条目的 `interchange` 字段与「车站结构」正文 ----
+             * （条目同时给出两线的楼层与走向，可与下述换乘形式互相印证）：
+             */
+            // 人民广场 1号线 ⇄ 5号线：两线采用通道换乘，换乘通道连接 1 号线站厅南侧与
+            // 5 号线站厅西侧（1 号线地下二层、沿人民大街南北向；5 号线地下三层、
+            // 沿长春大街东西向）。
+            "0127": { mode: "通道换乘", minutes: 4 },
+            // 双丰 2号线 ⇄ 6号线：interchange 直书「通道换乘」。两站沿站前街**平行**设置
+            // （2 号线在西、6 号线在东），通道连接 2 号线站厅东侧与 6 号线站厅西侧。
+            "0224": { mode: "通道换乘", minutes: 4 },
+            // 文化广场 2号线 ⇄ 5号线：两线采用 L 型节点换乘，换乘节点连接 2 号线站台东侧
+            // 与 5 号线站台南侧（2 号线地下二层、沿解放大路东西向；5 号线地下三层）。
+            "0233": { mode: "L型节点换乘", minutes: 1 },
+            // 电台街 3号线 ⇄ 5号线：interchange 直书「通道换乘」。交叉口东北侧建有换乘站厅，
+            // 连接 5 号线站厅东侧与 3 号线两站台中部（3 号线为半地下敞开式侧式站台、
+            // 5 号线为地下二层岛式）。
+            "0335": { mode: "通道换乘", minutes: 4 },
+            // 硅谷广场（吉大中心校区） 5号线 ⇄ 6号线：interchange 记「节点换乘、站厅换乘」，
+            // 正文写明为 T 型节点换乘——换乘节点连接 5 号线站台中部与 6 号线站台南侧，
+            // 也可利用地下一层站厅换乘。
+            "0628": { mode: "T型节点换乘", minutes: 1 },
+            // 南湖广场（吉大南湖校区） 5号线 ⇄ 7号线：两线采用 L 型节点换乘，换乘节点连接
+            // 5 号线站台北侧与 7 号线站台西侧（7 号线地下二层、5 号线地下三层），
+            // 也可利用地下一层站厅换乘。
+            "0729": { mode: "L型节点换乘", minutes: 1 },
+            // 工农广场 1号线 ⇄ 7号线：interchange 直书「通道换乘」（7 号线车站为地下三层
+            // 暗挖车站，1 号线在其上方，见城市晚报 2020-06-09 施工报道）。
+            "0130": { mode: "通道换乘", minutes: 4 },
+            // 汽车公园 2号线 ⇄ 7号线：interchange 记「节点换乘、站厅换乘」，正文写明为
+            // L 型节点换乘——换乘节点连接 2 号线站台南侧与 7 号线站台东侧（2 号线地下二层、
+            // 7 号线地下三层），也可利用地下一层站厅换乘。
+            "0221": { mode: "L型节点换乘", minutes: 1 },
+            // 东环城路 2号线 ⇄ 7号线：interchange 直书「站厅换乘」。两线地下一层均为站厅、
+            // 2 号线地下二层站台（东西向）、7 号线地下三层站台（南北向）。
+            "0239": { mode: "站厅换乘", minutes: 2 },
+            // 孟家屯 3号线 ⇄ 7号线：两线采用通道换乘，换乘通道连接 3 号线两站台南侧与
+            // 7 号线站厅北侧（3 号线为高架两层侧式站台、7 号线为地下两层岛式）。
+            "0333": { mode: "通道换乘", minutes: 4 },
+            // 威海路 4号线 ⇄ 7号线：interchange 直书「通道换乘」。换乘通道连接 4 号线
+            // 车站东侧（高架两层侧式站台）与 7 号线站厅南侧（地下两层岛式）。
+            "0430": { mode: "通道换乘", minutes: 4 },
+            // 飞跃广场 6号线 ⇄ 7号线：两线采用 T 型节点换乘，换乘节点连接 6 号线站台中部
+            // 与 7 号线站台西侧（6 号线地下二层、7 号线地下三层），也可利用地下一层站厅换乘。
+            "0625": { mode: "T型节点换乘", minutes: 1 },
+            // 职业技术大学 3号线 ⇄ 4号线：interchange 直书「通道换乘」。本站即 2019 年
+            // 由 3 号线临河街、4 号线卫星路统一更名的「职业学院」站，位于卫星路与
+            // 临河街交叉口，两线均为高架侧式站台（站名对应关系经维基条目 former 字段确认）。
+            "0343": { mode: "通道换乘", minutes: 4 }
+        },
+        /**
          * 抄录数据按 [线路][车站] 存放，每站两条（首班方向与末班方向各一条），
          * 每条含首班（工作日/周末）与夏、冬两季末班，故拆成四条独立的链。
          */
@@ -251,27 +464,54 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261001.1719";
+        const version = "261010.1537";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
-        document.write(`<script src="./city/shenyang/shared/loop-direction.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/timetable-renderer.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/station-title.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
+        // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
+        document.write(`<script src="./city/shenyang/shared/base/geo-estimate.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
-        document.write(`<script src="./city/shenyang/shared/viewport-inset.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/viewport-inset.js?v=${version}"><\/script>`);
+        // 移动端抽屉手势仲裁：内容区优先滚动、半屏上滑优先展开（core 零改动，见 shared/base/panel-sheet-gesture.js）
+        document.write(`<script src="./city/shenyang/shared/base/panel-sheet-gesture.js?v=${version}"><\/script>`);
+        // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
+        document.write(`<script src="./city/shenyang/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
-        document.write(`<script src="./city/shenyang/shared/opening-schedule.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_opening.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
-        document.write(`<script src="./city/shenyang/shared/route-data.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/route-planner.js?v=${version}"><\/script>`);
-        document.write(`<script src="./city/shenyang/shared/route-panel.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-data.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-planner.js?v=${version}"><\/script>`);
+        // 移动端抽屉手势引擎（车站详情与行程/结果面板共用；须早于两个消费方）
+        document.write(`<script src="./city/shenyang/shared/base/sheet-drag.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
-        document.write(`<script src="./city/shenyang/shared/nearest-station.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/station/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
-        document.write(`<script src="./city/shenyang/shared/sidebar-refit.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/sidebar-refit.js?v=${version}"><\/script>`);
         // 地图小工具（票价图 / 等时圈）：入口在「查找最近车站」按钮下方
-        document.write(`<script src="./city/shenyang/shared/map-tools.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/map-tools-color.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/map-tools.js?v=${version}"><\/script>`);
+        // 城市私有数据与车站设施（须早于依赖它的模块加载）
+        document.write(`<script src="./city/changchun/data_facilities.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/changchun/data_exits.js?v=${version}"><\/script>`);
+        // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
+        document.write(`<script src="./city/changchun/data_hotspots.js?v=${version}"><\/script>`);
+        // 出入口垂直交通搬迁：把设施表里以出口开头的「无障碍电梯 / 升降平台」段搬到出口页签下
+        // （须早于 facilities.js 与 exits.js，两者都调用它）
+        document.write(`<script src="./city/shenyang/shared/station/exit-vertical.js?v=${version}"><\/script>`);
+        // 车站设施（配置驱动，共享层位于沈阳目录下）
+        document.write(`<script src="./city/shenyang/shared/station/facilities.js?v=${version}"><\/script>`);
+        // 反馈面板（出入口「待补充」与右上角「更多」入口共用；须早于 exits.js）
+        document.write(`<script src="./city/shenyang/shared/feedback/feedback.js?v=${version}"><\/script>`);
+        // 车站出入口独立页签：配置驱动，与沈阳、大连同用共享层
+        document.write(`<script src="./city/shenyang/shared/station/exits.js?v=${version}"><\/script>`);
+        // 出入口检索：全局搜索栏与行程规划起终点的出入口命中（须在 exits.js 之后）
+        document.write(`<script src="./city/shenyang/shared/station/exit-search.js?v=${version}"><\/script>`);
         (ChangchunCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/changchun/${scriptPath}?v=${version}"><\/script>`);
         });
@@ -301,4 +541,49 @@
         isDefault: false,
         ...ChangchunCity
     });
+
+    // ── 画布尺寸对齐 ────────────────────────────────────────────────────────────
+    // 引擎只按 city.mapSize 计算平移 / 居中边界，DOM 上的 #map-content 仍是
+    // css/style.css 里的默认尺寸（1850×1300），必须在这里把它对齐到本市实际画布，
+    // 否则画布与边界对不上：本城内容外接盒约 2072×1900，大于 1850×1300，会溢出。
+    // 口径与大连 modules/dalian_map.js、哈尔滨 modules/harbin_map.js 里的
+    // installMapCanvas 一致。
+    (function installMapCanvas() {
+        const apply = () => {
+            const mapContent = document.getElementById("map-content");
+            const size = ChangchunCity.mapSize;
+            if (!mapContent || !size) return;
+            mapContent.style.setProperty("width", `${size.width}px`, "important");
+            mapContent.style.setProperty("height", `${size.height}px`, "important");
+        };
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", apply, { once: true });
+        } else {
+            apply();
+        }
+    })();
+
+    /**
+     * 龙嘉机场徽标（散布层）的着色样式：底板吃文字色、飞机镂空露地图底色。
+     * 散布层是 <img> 直出 SVG，处于独立文档拿不到页面 CSS 变量（同 RAILWAY_ICON 内联的
+     * 理由），故改为「外层容器吃变量 + SVG 当蒙版」：assets/airport.svg 已重绘为
+     * 「底板挖飞机」的 evenodd 轮廓，容器背景 var(--text-color) 被蒙版裁出底板形状，
+     * 飞机镂空处透明直接露出地图底色——亮暗主题自动跟随。:has 选择器按图片路径精准命中本条目。
+     */
+    (function installAirportBadgeStyle() {
+        if (typeof document === 'undefined' || document.getElementById('cc-airport-badge-style')) return;
+        const style = document.createElement('style');
+        style.id = 'cc-airport-badge-style';
+        style.textContent = [
+            '.scattered-item:has(> img[src*="changchun/assets/airport.svg"]) {',
+            '    background-color: var(--text-color, #00263b);',
+            '    -webkit-mask: url("./city/changchun/assets/airport.svg") center / contain no-repeat;',
+            '    mask: url("./city/changchun/assets/airport.svg") center / contain no-repeat;',
+            '}',
+            '.scattered-item:has(> img[src*="changchun/assets/airport.svg"]) > img {',
+            '    visibility: hidden;',
+            '}'
+        ].join('\n');
+        document.head.appendChild(style);
+    })();
 })();
