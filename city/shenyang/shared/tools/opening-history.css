@@ -353,9 +353,15 @@
 
 /* ── 操作行：图标按钮 + 两枚显示当前取值的设置按钮 ────────────────────
    6 枚按钮要挤进 320px 的面板，故图标按钮定宽、设置按钮吃剩余宽度 */
-.cgo-oh-actions {
+/* ⚠️ 选择器必须带上 `.cgo-mt-actions`：map-tools.css 里 `.cgo-mt-actions { gap: 8px }` 与本规则同为
+   0,1,0 且**加载更晚**，会把间距覆盖掉（实测一直生效的是 8px）。提到 0,2,0 才压得住。 */
+.cgo-oh-actions.cgo-mt-actions {
     display: flex;
     gap: 6px;
+    /* ⚠️ 允许换行：这一行有 7 枚按钮（5 枚定宽图标 + 2 枚取值按钮），320px 面板里勉强排下，
+       但**侧栏（尤其窄屏侧栏）比它更窄** → 不换行就横向溢出，还会把下面的清单挤变形
+       （用户实测反馈：「控制按钮在侧栏模式下多到溢出，列表高度也跟着算错」）。 */
+    flex-wrap: wrap;
 }
 
 .cgo-oh-actions .cgo-mt-quick {
@@ -366,6 +372,14 @@
 
 .cgo-oh-actions .cgo-oh-icon-btn {
     width: 30px;
+}
+
+/* 侧栏 / 窄窗态：面板被压窄后这一行本就吃紧（7 枚按钮），把间距收一档，
+   换行位置更早、不至于挤成一团（用户验收反馈）。 */
+@media (max-width: 1080px) {
+    .cgo-oh-actions.cgo-mt-actions {
+        gap: 4px;
+    }
 }
 
 /* 切到清单态时给按钮一个明确的「按下去了」的样子 —— 两态互斥，
@@ -397,6 +411,20 @@
 .cgo-oh-card-btn.is-on {
     color: #fff;
     background: var(--primary-color, #00263b);
+}
+
+/* ⚠️ 激活态悬停必须显式写：该按钮同时带 `cgo-mt-quick`，悬停会落到那套通用样式上
+   （背景换掉 → 主题色被冲掉），早先看着「悬停态背景不对」就是这个。这里保持主题色、
+   只压深一点给反馈。 */
+.cgo-oh-card-btn.is-on:hover {
+    color: #fff;
+    background: var(--primary-color, #00263b);
+    filter: brightness(1.12);
+}
+
+/* 未激活悬停：给一层浅底反馈（与位置分段控件的 hover 同一档） */
+.cgo-oh-card-btn:hover:not(.is-on) {
+    background: var(--btn-info-bg);
 }
 
 .cgo-oh-actions .cgo-oh-set-btn {
