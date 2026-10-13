@@ -896,7 +896,7 @@
      *    「看不见的点」的线；它还会被行程规划当作站外换乘边消费，而幽灵点并不是可规划车站。
      *    所以这条线只能由演示层自画、跟着幽灵点的进出走。
      */
-    function syncOffStationLinks(stepIdx, tNow) {
+    function syncOffStationLinks(stepIdx, tNow, settled) {
         const group = layer()?.querySelector(".cgo-oh-offlink");
         if (!group) return;
         const pairs = state.offPairs || [];
@@ -924,10 +924,15 @@
             if (stepIdx !== p.freeFrom) return stepIdx > p.freeFrom;
             // 同一拍内：镜头到位（headEnd）后**再停一小段**才切 —— 旧状态先停住让人看清，
             // 再收紧成新画法（用户验收反馈：「镜头移到位后在旧状态停住一小段再变新状态」）。
+            // ⚠️ 但**跳转 / 落定**（settle）时必须直接切到该步的最终画法：跳转落在 `growEnd`，
+            //    而纯形态步没有生长几何（growEnd ≈ headEnd），永远达不到 +FREE_SWITCH_HOLD 的门槛。
+            if (settled) return true;
             return rec ? tNow >= rec.headEnd + FREE_SWITCH_HOLD : true;
         });
         const sig = free.join(",");
-        if (group.__sig !== sig) {
+        // 除 sig 之外还要比对子节点数：clearMarks / 换城市等路径可能只清了 DOM 而没清缓存，
+        // 只比 sig 会把「已清空但缓存还在」误判成「不用重建」（表现：连线全都不见）。
+        if (group.__sig !== sig || !group.__links || group.childNodes.length !== group.__links.length) {
             group.__sig = sig;
             const st = stationMap();
             const links = [];
@@ -998,10 +1003,23 @@
      * → 转「未开通」圈，恢复运营 → 转回普通站。两座站台之间的付费换乘线**不受影响**
      * （站台还在、只是列车不停，见 syncOffStationLinks）。解放桥 3 号线侧 2019-06-01 即此例。
      */
-    function syncGhostForms(stepIdx) {
+    function syncGhostForms(stepIdx, tNow, settled) {
+        // ⚠️ 同一拍内要**等镜头到位、再停一小段**才切形态（与 syncOffStationLinks 的免费切换同一手法）：
+        //    该拍的起笔运镜把镜头移到这座站之前，先让人看清「旧状态」（站台照常），
+        //    镜头落定后再转成未开通圈 —— 否则镜头还在飞、站台已经变了。
+        const rec = ((state.timeline && state.timeline.list) || []).find((r) => r.i === stepIdx);
+        /** 某个停运区间的**起点步**是否已「到位」：过了该步直接算到位；同一步则等 headEnd + 停顿 */
+        const arrived = (startIdx) => {
+            if (stepIdx > startIdx) return true;
+            if (stepIdx < startIdx) return false;
+            // ⚠️ 跳转 / 落定必须直接算到位：跳转落在 `growEnd`，纯形态步（无生长几何）时
+            //    growEnd ≈ headEnd，够不到 +FREE_SWITCH_HOLD —— 否则跳过去永远停在旧形态
+            if (settled) return true;
+            return rec ? tNow >= rec.headEnd + FREE_SWITCH_HOLD : true;
+        };
         (state.offPairs || []).forEach((p) => {
             if (!isOnCanvas(p.ghost)) return;
-            const down = (p.downSpans || []).some((sp) => stepIdx >= sp[0] && stepIdx < sp[1]);
+            const down = (p.downSpans || []).some((sp) => arrived(sp[0]) && stepIdx < sp[1]);
             const form = down ? "no" : "dot";
             if (p.__form === form) return;
             p.__form = form;
@@ -1213,8 +1231,18 @@
         host?.querySelectorAll("." + NO_ICON_CLASS + ", ." + DOT_ICON_CLASS).forEach((el) => el.remove());
         host?.querySelectorAll("#lines-layer .virtual-connectors ." + ON_CLASS)
             .forEach((el) => el.classList.remove(ON_CLASS));
-        // 站外换乘虚线也一并撤掉（退出演示后底图上不该残留）
-        layer()?.querySelector(".cgo-oh-offlink")?.replaceChildren();
+        // 站外换乘虚线也一并撤掉（退出演示后底图上不该残留）。
+        // ⚠️ 必须**连缓存一起清**：连线组靠 `__sig` / `__links` 做增量更新，只清 DOM 的话，
+        //    快进 / 回溯（jumpTo → clearMarks）后 sig 没变 → syncOffStationLinks 以为「不用重建」，
+        //    可子节点实际已被清空、`__links` 指向的也是脱离文档的死节点 —— 连线于是全部消失，
+        //    直到下一次涉及幽灵站 / 连线的操作把 sig 改掉才恢复。
+        const offG = layer()?.querySelector(".cgo-oh-offlink");
+        if (offG) { offG.replaceChildren(); offG.__sig = ""; offG.__links = null; }
+        // 幽灵点（站台级）的**形态缓存**同理必须失效：上面刚把节点上的形态类摘掉，
+        // 缓存还记着旧形态 → syncGhostForms 判「形态没变」而跳过重刷，节点就再也补不回来。
+        // 表现：从较晚的状态（幽灵点已移出）回跳到停运期，幽灵点不再回到「未开通圈」
+        // （实测 2020-09-06 → 2019-06-01 复现；从更早的步回跳时缓存是 dot、与 no 不同，才没暴露）。
+        (state.offPairs || []).forEach((p) => { p.__form = null; });
         // ⚠️ 弹出进度现在是 CSS 变量写的（站点图元一半形态在 ::before 上，内联够不着），
         //    撤类名**不足以**把站藏回去 —— 变量不清掉，站就停在最后一次的透明度上。
         //    这正是「暂停后点已播完的事件：线藏了、站没藏」的根因。
@@ -1518,6 +1546,15 @@
                 return camForBox(
                     expandBoxByLabels(bboxOf(step.stations), step.stations.map((x) => x.sid)),
                     0.94, state.zoom);
+            }
+            // ⚠️ 批量更名（`renames` 多对）的站**不在** `stations` 里，早先于是掉到下面的
+            //    `camForPoint(step.focus)`（只框一站）—— 收笔只取到第一座更名站
+            //    （长春「1号线5站更名」就只取了北环城路一脚），演出末站反而在画外。
+            const rnIds = (step.renames || []).map((rn) => rn.sid).filter(Boolean);
+            if (rnIds.length > 1) {
+                const st = stationMap();
+                const list = rnIds.map((sid) => st[sid]).filter((s) => s && Number.isFinite(s.x));
+                if (list.length > 1) return camForBox(expandBoxByLabels(bboxOf(list), rnIds), 0.94, state.zoom);
             }
             return camForPoint(step.focus, state.zoom);
         }
@@ -2054,9 +2091,9 @@
         }
 
         // ── 站外换乘：连线两端都在画布上才画；主点在换乘期让位给幽灵点 ──
-        syncOffStationLinks(rec.i, t);
+        syncOffStationLinks(rec.i, t, settle);   // 连线画法（付费/免费）：跳转时直接按最终画法
         syncPhantomHosts(rec.i);
-        syncGhostForms(rec.i);   // 幽灵点形态（本线停运 → 未开通圈）
+        syncGhostForms(rec.i, t, settle);   // 幽灵点形态（本线停运 → 未开通圈；播放时等镜头到位 + 停一小段）
         syncGhostLabels();       // 同站同名幽灵点：只留一个站名标签
         // ── 底图的「站外连通」连线（核心画在 #lines-layer .virtual-connectors 里的那批）：
         //    两端车站都入场了才画。⚠️ 必须**逐帧**算 —— jumpTo / replay 走 clearMarks 时会把这些
