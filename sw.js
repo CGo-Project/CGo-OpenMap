@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261013.1824';
+const CACHE_NAME = 'cgo-openmap-v261014.0100';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -150,6 +150,10 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/base/rdot-label.js',
     './city/shenyang/shared/base/viewport-inset.js',
     './city/shenyang/shared/base/panel-tab-swipe-relay.js',
+    // 分享卡（车站卡 / 行程卡）：DOM → canvas 海报 + 弹窗三动作，六城共用
+    './city/shenyang/shared/base/poster.js',
+    './city/shenyang/shared/base/share-card.js',
+    './city/shenyang/shared/base/share-card.css',
     './city/shenyang/shared/station/tip-card.js',
     './city/shenyang/shared/base/label-active.js',
     './city/shenyang/shared/station/adjacent-jump.js',
@@ -194,6 +198,8 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/tools/opening-history.css',
     // 第三方（非本仓编写）：MP4 封装器，仅「导出视频」时按需注入；MIT，版权与许可见同目录 LICENSE 文本
     './city/shenyang/shared/tools/vendor/mp4-muxer.min.js',
+    // 第三方（非本仓编写）：二维码生成，仅打开分享卡时按需注入；MIT，见同目录 qrcode-generator.LICENSE.txt
+    './city/shenyang/shared/tools/vendor/qrcode-generator.js',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
@@ -448,6 +454,7 @@ const ASSETS_TO_CACHE = [
 
     // 城市配置与业务数据 (哈尔滨)
     './city/harbin/harbin.js',
+    './city/harbin/modules/harbin_line_badges.js',
     './city/harbin/modules/harbin_map.js',
     './city/harbin/modules/harbin_station_title.js',
     './city/harbin/modules/harbin_exits.js',

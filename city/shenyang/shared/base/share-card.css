@@ -1,0 +1,227 @@
+/**
+ * CGo OpenMap - 共享层：分享卡弹窗与卡片样式
+ * (shared/base/share-card.css)
+ *
+ * 由同目录 share-card.js 按自身 URL 注入（与 route-panel.css、calligraphy.css 同一做法），
+ * 调用方无需手工引用。
+ *
+ * ⚠️ 两条硬约定（详见 share-card.js 文件头）：
+ *   1. **卡片内不允许出现 `<cgo-icon>`**——海报走 foreignObject，shadow DOM 克隆进去是空白，
+ *      卡片里的图形一律是内联 `<svg>`（脚本用 `window.CGO.icon()` 生成）；
+ *   2. 卡片**不做尺寸上限**：路由卡的步骤可以很长，预览区由 `.cgo-share-stage` 负责滚动，
+ *      出图时则挂到屏幕外按自然高度整张栅格化（所以这里不要给卡片加 max-height / overflow）。
+ */
+
+.cgo-share {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+/* ── 预览区：卡片可能很长，超出即在弹窗内滚动（出图不受影响） ─────────────── */
+.cgo-share-stage {
+    display: flex;
+    justify-content: center;
+    /* ⚠️ 必须 flex-start：默认的 stretch 会把卡片拉到 stage 的 max-height 上，
+       而卡片自己是 flex 列 —— 高度被压短后它的内容会**溢出卡片边框**（标题/正文还在框里、
+       footer 却跑到框下面去了，实测踩过）。对齐到顶部，卡片保持自然高度，超出交给 stage 滚动。 */
+    align-items: flex-start;
+    max-height: min(56vh, 520px);
+    overflow: auto;
+    padding: 2px;
+    overscroll-behavior: contain;
+}
+
+/* ── 卡片本体（预览与出图共用同一份 DOM） ───────────────────────────────── */
+.cgo-share-card {
+    box-sizing: border-box;
+    width: min(420px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    background: var(--card-bg, #fff);
+    color: var(--text-main, #00263b);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 16px;
+    /* ⚠️ 这里**不能写 `font-family: inherit`** —— 卡片要被 poster.js 克隆进 SVG 的
+       `foreignObject` 栅格化，而 foreignObject 是一份 XML 文档：`inherit` 在那边只会继承到
+       foreignObject 默认的 serif（页面 style.css 的字体栈在那边根本不存在）。于是
+       「字体内联成功时用 webfont」，但**一旦失败**（CDN 不给 CORS / 离线 / 字体过大被
+       poster.js 的兜底摘掉），文字就掉进衬线字体，与页面观感完全割裂。故照 style.css 的
+       栈**显式写死**：内联成功时 Arimo / Noto Sans SC 优先，失败时逐级落到浏览器可用的
+       sans-serif，两头都是无衬线。
+       栈与 style.css 的 html,body 保持同一顺序，预览与出图不会有差异。 */
+    font-family: "Arimo", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+        "Microsoft YaHei", sans-serif;
+}
+
+/* 品牌行只在**出图**时出现（预览区不显示；出图时脚本会给克隆加 .is-poster） */
+.cgo-share-card .cgo-share-brand { display: none; }
+.cgo-share-card.is-poster .cgo-share-brand { display: flex; }
+
+/* 品牌行：**上下结构** —— 文字一行、logo 放大后单独一行放在最末（车站卡）；
+   行程卡那边只有一枚 logo，同样的列布局也成立。 */
+.cgo-share-brand {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-light, #636f75);
+    text-align: center;
+}
+.cgo-share-brand img { display: block; border-radius: 6px; }
+
+/* 内联 svg 图标（由 cgo-icon 换来的） */
+.cgo-share-icon { display: block; flex: none; }
+
+/* ── 二维码：白底以便在深色卡上仍可扫 ─────────────────────────────────── */
+.cgo-share-qr {
+    box-sizing: border-box;
+    align-self: center;
+    padding: 6px;
+    background: #fff;
+    border-radius: 10px;
+}
+.cgo-share-qr:empty { background: var(--tab-bg, #f8f9fa); }
+.cgo-share-qr svg { display: block; width: 100%; height: 100%; }
+.cgo-share-card--station .cgo-share-qr { width: 132px; height: 132px; }
+.cgo-share-card--route .cgo-share-qr { width: 88px; height: 88px; }
+
+/* ── 车站卡 ───────────────────────────────────────────────────────────── */
+.cgo-share-card--station { align-items: center; text-align: center; }
+.cgo-share-sta-name {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.25;
+    word-break: break-word;
+}
+.cgo-share-sta-en {
+    font-size: 13px;
+    color: var(--text-light, #636f75);
+    word-break: break-word;
+}
+.cgo-share-sta-lines { display: flex; justify-content: center; }
+/* ⚠️ 选择器要压过 style.css 那条移动端规则 `body.panel-sheet-collapsed .panel-badges { margin-right: 44px }`
+   （特异性 0,2,1）——它是给面板标题栏留关闭按钮用的，套到卡片上会把徽标整体推左、看着不居中。
+   这里用 0,3,0 的写法盖住它（比加 !important 干净），margin 一并清零。 */
+.cgo-share-card .cgo-share-sta-lines > .panel-badges {
+    margin: 0;
+    justify-content: center;
+}
+.cgo-share-hint { font-size: 12px; color: var(--text-light, #636f75); }
+
+/* ── 行程卡 ───────────────────────────────────────────────────────────── */
+.cgo-share-card--route { padding: 16px; gap: 12px; }
+.cgo-share-rt-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+    font-size: 15px;
+}
+.cgo-share-need {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: none;
+    padding: 2px 7px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary-color, #00263b);
+    background: var(--tab-bg, #f8f9fa);
+    border-radius: 999px;
+}
+.cgo-share-od {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+.cgo-share-od b { font-weight: 700; word-break: break-word; }
+.cgo-share-od-arrow { display: inline-flex; color: var(--text-light, #636f75); }
+
+/* 结果正文：克隆自结果面板，靠 route-panel.css 的 .cgo-rt-* 规则成型；
+   这里只把面板自身的容器样式（内边距 / 底色 / 自身滚动）抹平，交给卡片统一排版。 */
+.cgo-share-rt-body .panel-body {
+    padding: 0;
+    background: transparent !important;
+    overflow: visible;
+    flex: none;
+    min-height: 0;
+}
+
+/* footer 横向：二维码在左、说明文字在右、品牌图标收尾（出图时品牌才显示） */
+.cgo-share-rt-foot {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color, #dee2e6);
+}
+/* 引导文字分两行：主句大而粗（与标题同档），副句作解释性小字。
+   `flex: 1 1 auto` 让它**撑满可用宽度**（左右两端的二维码与品牌图标各按自身宽度收边），
+   撑满后长文本才不折行，副句的「地图名称」也有了贴右的余地。 */
+.cgo-share-rt-tip {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    gap: 4px;
+    min-width: 0;
+    text-align: left;
+}
+.cgo-share-rt-tip b {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text-main, #00263b);
+    word-break: break-word;
+}
+.cgo-share-rt-tip span {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text-light, #636f75);
+}
+
+/* ── 三个动作 ─────────────────────────────────────────────────────────── */
+.cgo-share-actions {
+    display: flex;
+    gap: 8px;
+}
+.cgo-share-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 8px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-main, #00263b);
+    background: var(--btn-info-bg, #e9ecef);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.18s, opacity 0.18s;
+}
+.cgo-share-btn:hover { background: var(--btn-info-hover, #dee2e6); }
+.cgo-share-btn.primary {
+    color: var(--btn-text, #fff);
+    background: var(--primary-color, #00263b);
+}
+.cgo-share-btn.primary:hover { background: var(--primary-hover, #004060); }
+.cgo-share-btn:disabled { opacity: 0.55; cursor: default; }
+.cgo-share-btn span { white-space: nowrap; }
+
+@media (max-width: 380px) {
+    .cgo-share-btn span { display: none; }   /* 窄屏只留图标，三个动作仍在一行 */
+    .cgo-share-btn { padding: 10px; }
+}

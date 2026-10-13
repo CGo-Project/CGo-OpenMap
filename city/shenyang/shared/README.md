@@ -1,7 +1,7 @@
 # 多城共享层（city/shenyang/shared/）
 
 > ⚠️ **临时共享位置**
-> 本目录挂在沈阳城市目录下，实际由 **沈阳、大连、长春、哈尔滨、呼和浩特** 五城共用；另有福州接入其中的行程规划链、最近车站、侧栏形态与地图小工具（见第三节）。
+> 本目录挂在沈阳城市目录下，实际由 **沈阳、大连、长春、哈尔滨、呼和浩特** 五城共用；另有福州接入其中的行程规划链、最近车站、分享卡、侧栏形态与地图小工具（见第三节）。
 > 计划在开发团队确认共享位置后整体迁入 `core/`，届时只需 `git mv` 并改动各城
 > `{city}.js` 里的引用路径与 5 处 stacard import（沈 / 大 / 长 / 哈 / 呼 的 `stacard/script.js`），**零逻辑改动**。
 > 迁移步骤见 [docs/STACARD_TIMETABLE_UNIFICATION.md](../../../docs/STACARD_TIMETABLE_UNIFICATION.md) 第 2.4 节（该文 4.4 节讲的是同名站索引）。
@@ -12,7 +12,7 @@
 
 | 目录 | 放什么 |
 | :--- | :--- |
-| `base/` | 通用基建：侧栏（sidebar-refit / viewport-inset）、站名标题、标签高亮、站距估算（移动抽屉自上游合并 `core/mobile-sheet.js` 后已移交核心，见 2.1） |
+| `base/` | 通用基建：侧栏（sidebar-refit / viewport-inset）、站名标题、标签高亮、站距估算、海报栅格化与分享卡（移动抽屉自上游合并 `core/mobile-sheet.js` 后已移交核心，见 2.1） |
 | `route/` | 行程规划链：数据构建 → 内核 → 面板（route-data / route-planner / route-panel / loop-direction） |
 | `station/` | 车站详情相关：卡片引擎、时刻表渲染、开通时刻、出入口与设施、题字、提示卡、最近车站、邻站跳转 |
 | `tools/` | 地图小工具（map-tools） |
@@ -63,6 +63,8 @@
 | `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
 | `viewport-inset.js` | 载体 `window.CGoViewportInsets`（`{left, right, bottom}`，px）、接口 `window.CGoViewportInset`（`refresh` / `compute` / `fit`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 浮层遮挡上报：把「哪一侧被遮多少」写回引擎，详见 2.1 |
 | `panel-tab-swipe-relay.js` | 无对外接口（脚本存在即生效，自动接管 `#info-panel` 的 `.panel-body`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `viewport-inset.js`） | 车站信息板横滑切页的**补充通道**：核心 `panel-tab-swipe.js` 会跳过「交互元素」与「地图卡片」两类起手区域，于是「在整宽链接 / 成排按钮 / 迷你地图上左右滑」都没反应；本模块只补这两类，详见 2.1 |
+| `poster.js` | `window.CGoPoster`（`render` / `loadCss` / `toDataUrl` / `inlineImages`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须早于 `share-card.js`** | DOM 海报栅格化（克隆 → 搬自定义属性 → 内联同源位图 → `foreignObject` → canvas）：分享卡的一次性成像基建。**与 `tools/opening-history.export.js` 那份刻意各自自包含、不抽公共件**，详见 2.1 |
+| `share-card.js` + `share-card.css` | `window.CGoShareCard`（`open`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须晚于 `route-panel.js` 与 `poster.js`** | 车站卡 / 行程卡分享弹窗：卡片预览 + 下载图片 / 复制链接 / 分享链接。在 **document 捕获阶段**扣下两个 `.panel-share-btn`（core 零改动），深链 `?city=&from=&to=[&need=]`，详见 2.1 |
 | `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close` / `registerTool(def)`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
 | `opening-history.js` + `opening-history.css` | 经 `window.CGoMapTools.registerTool` 注册成**免选站工具**（`window.CGoOpeningHistory` 只暴露 `hasData` / `mount` / `unmount` / `open`）；另把沿革里已拆除的站暴露成 `window.CGO_RETIRED_STATIONS`（供 `adjacent-jump.js` 等后处理读取） | classic script，五城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼）（须晚于 `map-tools.js` 与城市 `data_opening_history.js`） | 线网发展史动态演示：按开通沿革把线网逐段「长」出来（区段沿真实走向生长 → 新开车站脉冲 → 段间跳视口 → 播放 / 暂停 / 重播 / 倍速 / 跳年份），并可把选定区间导出为 **1280×720@30fps 的 MP4**（WebCodecs `VideoEncoder` + mp4-muxer，按需注入），详见 2.1 |
 | `rdot-label.js` | `window.CGoRdotLabel`（`apply` / `hasRailLink` / `peersOf` / `transferTables` / `stationTable`） | classic script，由 **main.html 在全部数据脚本之后全局引入**（各城零配置；core 是 module、最后执行，故治理必然先于渲染） | 国铁散点（`type: "rdot"`）站名标签：无轨交接驳时**强制显示**、有接驳后**隐藏**（由同名轨交站名承担识别）；底图按终态接驳隐藏、演示按对端入场逐帧显隐，详见 2.1 |
@@ -178,6 +180,63 @@
 > `container.querySelector(".panel-footer …")` 在移动端必然落空 → 模块静默早退（症状：本行按钮没绑上事件、
 > 核心默认那行也没被隐藏，两行同时显示）。`route-panel.js` 的 `cgo-route-entry` 模块因此改为
 > 「面板内找不到就在 `.cgo-mobile-sheet-dock` 里再找一次本行、再由 `row.closest(".panel-footer")` 反查底栏」。
+
+#### poster.js —— 一次成像的海报栅格化（分享卡共用）
+
+把一块**已挂进文档**的 DOM 克隆进 `foreignObject` 再画到 canvas：`render(el, { width, scale, background, fonts })`。关键几步：克隆后把 `document.documentElement` / `body` 上的 `--变量` **逐个搬到克隆根**（`foreignObject` 里没有 `:root`，不搬则海报全丢主题色）；再用 `loadCss()` 把**同源**样式表的 `cssRules` 内联进 `<style><![CDATA[…]]></style>`（跨域表读 `cssRules` 会抛，跳过）；同源位图抓成 data URL 内联（**外域一律不抓**——抓了只会污染画布，让 `toBlob` 抛 `SecurityError`；车站卡里那张高德瓦片正是这种），抓不到就摘掉节点、免得留下破图；序列化前清掉 XML 非法控制字符，CDATA 里的 `]]>` 也要转义（否则提前闭合、把后面的标签名当文本，整份 SVG 解析失败）；最后等 `document.fonts.ready` 再画（不等会用回退字体）。
+
+**webfont 内联（`inlineFonts`）**：SVG 图片文档取不到外部资源，页面用的 `@font-face`（Arimo / Noto Sans SC，均由 `fonts.loli.net` 跨域引入）在导出图里本不会生效、还会因行高变小多出一条透明空白带（下面单独说）。故出图前把 `@font-face` **内联进去**：收集页面所有 `@font-face` 声明 → 只保留海报上**真出现过的字符**命中的 `unicode-range` 分片（Noto Sans SC 被拆成上百片，全量内联要好几 MB，实测一张行程卡只捞到 13 片 / 672 KB）→ 跨域字体按 `{ crossOrigin: true }` 抓成 data URL（`toDataUrl` 默认不抓外域，字体例外：它不进画布像素、不污染画布，`fonts.loli.net` 与 `gstatic.loli.net` 都带 `Access-Control-Allow-Origin: *`）→ 按文件归组、多字重合并成一个 `font-weight: 400 700` 区间（CDN 对多字重请求返回的是**一份可变字体**，三条声明指向同一 URL，逐条写会把 data URL 重复三遍）。
+
+⚠️ **兜底两道，与海报根的字体栈配合**（缺一不可）：① `render()` 增加 `heightPad` 余量 + 出图后 `trim()` 兜住「量高时字体 ≠ 栅格化时字体」造成的透明空白带（在深色聊天窗里看着就是黑边）；② **`inlineFonts` 失败时（CDN 不给 CORS / 离线 / 字体过大被解码兜底摘掉），`render()` 会显式 `removeProperty("font-family")`** —— 否则海报里的 webfont 引用成了指向不存在字体的字体名，浏览器直接回落到 `font-family` 兜底，而海报根若写 `font-family: inherit`，那份 inherit 在 foreignObject 里只会继承到它默认的 **serif**，导出图就与页面的无衬线观感割裂。使用方（如 `share-card.js`）的卡片应**照 `style.css` 的栈显式写死** `font-family: "Arimo", "Noto Sans SC", …, sans-serif`：内联成功时 webfont 优先，失败时末位 `sans-serif` 生效，两头都是无衬线（见 `share-card.css` 的 `.cgo-share-card`）。另外 SVG 若因字体过大解不开，自动**退回不带 webfont 再出一张**（少字体也别出不了图）。
+
+⚠️ **海报 DOM 里不能用 `<cgo-icon>`**：它是 shadow DOM 组件（Lit + `attachShadow`），`cloneNode` 拿不到影子里的 svg，进 `foreignObject` 渲染成**空白**。海报里的图形一律**内联 `<svg>`**：线路徽标直接克隆车站面板里已注入好的那份（core 的 `.svg-icon-placeholder` → 内联 svg），其余图标用官方全局垫片 `window.CGO.icon(name, { size })` 现场生成。沿革视频导出当年就踩过这个坑，它改为把图标预加载成图片再 `drawImage`。
+
+⚠️ **要出图的 DOM 不能带「挪到屏幕外」的定位**：`render(el)` 会把 `el` 的内联样式一并序列化进导出的 SVG —— 若把 `position: fixed; left: -10000px` 写在这块 DOM **自己的内联样式**上，它在栅格化文档里会被**同样摆到画布外 10000px 处**，于是「画布尺寸对、内容全空」（实测：两张分享卡导出都是全白图）。屏幕外定位要加在**外层容器**上，卡片自身保持静态定位（见 `share-card.js` 的 `renderPoster`）。
+
+⚠️ **页面的 webfont 必须内联，否则字不一样、图还会多一条透明边**：SVG 以 `<img>` 载入后是**独立文档**，外部资源一律不加载 —— `@font-face` 链接全部失效，页面上的 Arimo / Noto Sans SC 都不会生效。两层后果：① 观感与页面不一致；② 回退字体的行高与页面字体不同，卡片栅格化后比「量高时」矮一截，导出图底部多出一条**透明空白带**（在深色聊天窗里看着就是黑边）。做法（`inlineFonts`）：把用得到的 `@font-face` 源文件抓成 data URL 内联。三个要点：
+
+- 取源有两处 —— 同源样式表直读 `cssRules`；**跨域表（`fonts.loli.net` 这类 CDN）读 `cssRules` 会抛**，改按 `<link>` 的 href 直接 `fetch` 一份 CSS 文本再解析（该域名带 `Access-Control-Allow-Origin: *`，字体文件同）；
+- **按字符筛分片**：Noto Sans SC 被 Google 拆成上百个 `unicode-range` 分片（本城是 101 片 × 3 字重），全量内联好几 MB；只内联**卡片上真出现过的字符**命中的那几片，实测 13 片 / 672 KB（base64 后约 900 KB）；
+- **按文件归组**：对多字重请求，CDN 返回的是**一份可变字体**（400/500/700 三条声明指向同一个 URL）。逐条声明会把这串 data URL 重复三遍，归组后写成一个字重区间 `font-weight: 400 700`，语义与页面完全一致。
+- 兜底两道：① `heightPad`（量高后多留 24px）+ 出图后的 `trim()` 双向兜住「量高 ≠ 栅格化高」（字体没内联上、CDN 取不到、分辨率取整都可能差几 px）；② SVG 若因字体过大解不开，自动退回**不带 webfont** 再出一张（少字体也别出不了图）。
+- 传输改走 **base64**（`btoa`，与沿革导出同源做法）：中文与字体经 `encodeURIComponent` 会膨胀得厉害，base64 小得多。
+
+⚠️ **与 `tools/opening-history.export.js` 的 `paintFrame` 刻意分开、长期保持两份**：那份耦合了相机矩阵、逐帧背压、站名 canvas 缓存、机场徽标重着色与主题切换，是为视频服务的。两者只共享约 30 行同源逻辑（搬 `--变量`、`sanitizeXml`），**不抽公共件** —— 沿革导出是会被上游合并的产物，一旦它依赖本文件，本文件就成了上游必须同时收的硬依赖（上游单独合 `export.js` 而不带本文件 → 线上缺依赖）。等上游自己重构出公共栅格化再跟随；改动其中一份时顺手看一眼另一份。
+
+#### share-card.js + share-card.css —— 车站卡 / 行程卡分享弹窗
+
+把车站信息板与行程结果面板上的分享按钮改成 `cgo-modal` 弹窗：**卡片预览** + `[下载图片] [复制链接] [分享链接]` 三个动作（顺序即此）。
+
+**接管方式**：车站面板那个 `.panel-share-btn` 由 `core/script.js` 直接绑 click、行程结果面板那个 `.panel-share-btn[data-share="route"]` 由 `route-panel.js` 绑 click，两者类名相同。本模块在 **document 捕获阶段**一并扣下（`stopPropagation` 让事件到不了目标节点，原监听器自然不触发），按 `data-share` 与所在容器分流，余下的（如路线栏的「查看全程」）放行 —— 与 `nearest-station.js` 接管 `#locate-btn` 是同一手法，**core 与 `route-panel.js` 都不知道本模块存在**。
+
+**卡片内容**
+- **车站卡**：站名 → 英文名 → 线路徽标（克隆车站面板 `.panel-badges`，那份已是内联 svg）→ 二维码 → 「扫码查看车站详细信息」；**仅出图**再补一行「CGo OpenMap · `.title-full` 文本」+ `assets/icons/mapicon.png`。
+- **行程卡**：标题（需求徽记 + 需求名 + `起点 → 终点`，不带线路徽标）→ **处理过的**结果正文 → footer（二维码 + 「扫码查看行程 / 使用`.title-full` 文本继续」双行引导 + 品牌图标）；**仅出图**才显示那枚品牌图标。
+- 品牌行的有无靠 `.is-poster` 类控制：出图时把卡片克隆一份、挂到屏幕外并加上该类，`poster.js` 渲染完即摘 —— 预览与图片因此共用同一份 DOM，不必写两套。
+- **行程卡 footer 横向**：二维码在左（88px）、引导文字在右分两行 —— 主句「扫码查看行程」16px 加粗、副句「使用〈城市〉开放地图继续」12px 辅助色，行末是品牌图标；二维码印在卡片图上是要被扫的，引导字太小读不清。
+- **需求也写进标题**：`CGo_EXIT_FILTERS` 给出的需求名（「携带行李」「无障碍」）与徽记一起排成小胶囊。只画图标的话，分享出去谁也认不出那个小图标是什么 —— 而需求正是这张卡的卖点之一。
+- **下载文件名带起讫站**：`CGo OpenMap-十三号街→张士（携带行李）.png`；车站卡是 `CGo OpenMap-十三号街站.png`。早先行程卡固定叫「CGo OpenMap-行程.png」，连着导出几张会互相覆盖（用户反馈）。文件名统一过一遍 `safeFileName()`（站名 / 需求名都是城市给的自由文本，`\ / : * ? " < > |` 会被系统拒收）。
+
+> ⚠️ **预览区的 `align-items` 必须是 `flex-start`**：`.cgo-share-stage` 是带 `max-height` 的 flex 容器，默认的 `stretch` 会把卡片**拉伸到该高度**上；而卡片自己是 flex 列，被压短后内容就从卡片边框里溢出去 —— 症状是「正文还在框内、footer 已跑到框下面」（用户验收反馈）。对齐到顶部，卡片保持自然高度，超出交给 stage 滚动。
+
+> ⚠️ **线路徽标要按「原形」重画**：面板里那份徽标可能是**为染色 header 特化**过的渲染结果 —— 沈阳的题字（calligraphy）给 `.panel-header` 染上线路色后，同线路的徽标会**反色**（圆底/数字对调防融合）。克隆进卡片后卡片里并没有染色 header，那份反色就成了无源之水。故卡片挂进文档后回调**可选城市钩子** `window.CGO_SHARE_BADGES(container)`，由城市按无染色上下文重画（沈阳在 `modules/shenyang_station_board.js` 注册：复用 `getBadgeLines` + `renderCompactLineBadge`，`getHeaderTintForBadge()` 在卡片里找不到 `.sy-calligraphy-header`，重画即回到常规配色）。钩子画出的图形必须是**内联 `<svg>`**；未声明该钩子的城市（用 core 的 `icon@NN` 徽标，本就与 header 染色无关）无需任何处理。
+
+> ⚠️ **徽标居中还要盖掉一条移动端规则**：`css/style.css` 有 `body.mobile-split-active .panel-badges, body.mobile-panel-expanded .panel-badges, body.panel-sheet-collapsed .panel-badges { margin-right: 44px }`（给面板标题栏留关闭按钮的位置，特异性 0,2,1）。它是**面板标题栏语境**的规则，克隆进卡片后会把徽标整体推左 22px、看着不居中。卡片用 `.cgo-share-card .cgo-share-sta-lines > .panel-badges`（0,3,0）压过它（比加 `!important` 干净）。
+
+**结果正文的三道后处理**（都在克隆上做，不碰活面板）：① 删 `[data-role="fac"]`（纯设施行）；② 展开区一律折起（`[data-list]` / `.cgo-fac-detail` 置 `hidden` 并写死 `display:none`，以防 UA 的 `[hidden]` 规则不随 `loadCss()` 进 `foreignObject`）；③ 摘掉展开箭头 `.cgo-rt-expand-caret`。之后把残余 `<cgo-icon>` 换成内联 svg，并清掉 `data-jump` / `data-expand` / `tabindex` 等交互残留。折叠后**不必**动 `.cgo-rt-expandable` 类：它预留的 `margin-left:16 + padding-left:14 = 30px` 与 `.cgo-rt-leg-line` 的基础 `padding-left:30px` 完全一致，箭头摘掉后文字仍与其他行对齐、左侧粗线也留在原位。
+
+> ⚠️ **行级语义标记 `data-role` 由 `route-panel.js` 产出**：腿级形态类（`exitgate` / `ride` / `xfer` / `walk` / `arrive` / `note`）挂在 `<li class="cgo-rt-leg">` 上，而行级 `cgo-rt-leg-line` 只有 `muted` / `cgo-rt-warn` / `cgo-rt-expandable` 这类**样式类**、没有语义。于是 `renderLegs` 处补齐了 `fac`（纯设施行）/ `gate` / `xfer` / `ride` / `walk` / `note` 六种标记，**分享卡只删 `fac`**。改动词法时请一并维护该标记，别让分享卡回头靠类名猜。
+
+**链接**：车站卡**沿用 core 现有的 `?=nmlsta&{lineId}&{sid}tab{n}` 格式**（本模块按 DOM 复算，不改 core 的 `handleShare`，避免破坏既有分享）；行程卡新增 `?city=&from=&to=[&need=luggage|accessible]`（缺省步行**不写参数**，另接受 `accessible=true` 归一到 `need=accessible`；**不接** /map 的 `miss_train` / `restroom` / `lost_direction` 等语义 —— 那只属于母产品的区隔区）。「复制链接」：车站卡即链接本身；行程卡是 `CGoRoutePanel.shareText()` 的**原文案（与「分享路线信息」按钮同源、`route-panel.js` 单一真源）** + 「请参考：〈链接〉」。「分享链接」走 `navigator.share` 且**只分享链接本身**，不可用时退化为复制。
+
+**深链落地**：本模块自己读 `location.search`（**不碰 core 的 `handleUrlParams`** —— 它只认 `?=nmlsta` 前缀，两者不冲突），`from` / `to` 齐备且两站都在 `stationsData` 里才落地。落地全部走**与用户操作等价的 DOM 点击**，故 `route-panel.js` 无需为此新增接口：`CGoRoutePanel.open({ from, to })` → 点一下对应的 `.cgo-rt-need-opt`（需要求时）→ 点一下 `.cgo-rt-go`「查询路线」。⚠️ 两处时序坑都踩过、已修：
+
+1. `openPlan` 只把起终点填好、清空旧结果（`refreshResult()` **自己不发起规划**），不补那一下「查询路线」，落地就只剩一张空面板；
+2. `open()` 返回时面板虽已在文档里，**但它底部的操作行还不在** —— 核心的移动端停靠栏 / 底栏模块会先把 `.panel-footer`（含「查询路线」与状态行）摘出去、过一拍才挂回停靠栏（实测 `.cgo-rt-go` 要 ~150ms 后才取得到），故必须**轮询到按钮真的可取再点**；`.cgo-rt-go` 在移动端会落在面板之外，所以取用要先面板内找、再全局兜一次（`.cgo-rt-go` 全文档唯一；`.cgo-rt-need-opt` 被出入口页签复用，**不能**全局兜底）。
+
+出结果依赖异步建图，万一那一下赶上未就绪，`runPlan` 只会写一句状态、既不报错也不出结果，故未出结果前还会有限次再点（最多 3 次）。数据脚本晚于 `{city}.js` 执行，故按 `DOMContentLoaded` + 轮询等 `stationsData` 就绪（约 10s 超时）。
+
+**二维码**用 `tools/vendor/qrcode-generator.js`（MIT，版权与来源见同目录 `qrcode-generator.LICENSE.txt`），**首次打开分享卡时才注入**（同 mp4-muxer 的按需注入做法，不给常规访问加 56 KB）。该版本**不做自动选型**（`typeNumber` 传 0 会算出非法模块数），故从 2 号起逐级试到能装下为止、纠错等级取 M；`createSvgTag({ scalable: true })` 不写死宽高，尺寸交给 CSS，自带白底以便在深色卡上仍可扫。
 
 #### map-tools.js + map-tools.css —— 地图小工具
 

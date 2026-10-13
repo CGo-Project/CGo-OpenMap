@@ -573,7 +573,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261013.1824";
+        const version = "261014.0100";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -584,6 +584,9 @@
         document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
+        // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
+        document.write(`<script src="./city/shenyang/shared/base/poster.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/share-card.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         document.write(`<script src="./city/shenyang/shared/station/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
