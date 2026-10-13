@@ -62,7 +62,7 @@
 | `nearest-station.js` + `nearest-station.css` | 无对外接口（自动接管 `#locate-btn`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 跨城市「查找最近车站」：在 `#locate-btn` 上以**捕获阶段**扣下核心 `findNearestStation` 的点击，本模块自足地定位、换算 GCJ-02、比对全城站点后，改用 `cgo-modal` 三选一（切换到更近的城市 / 查看当前城市最近车站 / 取消），替掉核心那个同步 `confirm`；样式表由脚本按自身 URL 注入 |
 | `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
 | `viewport-inset.js` | 载体 `window.CGoViewportInsets`（`{left, right, bottom}`，px）、接口 `window.CGoViewportInset`（`refresh` / `compute` / `fit`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 浮层遮挡上报：把「哪一侧被遮多少」写回引擎，详见 2.1 |
-| `panel-tab-swipe-relay.js` | 无对外接口（脚本存在即生效，自动接管 `#info-panel` 的 `.panel-body`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `viewport-inset.js`） | 车站信息板横滑切页的**补充通道**：核心 `panel-tab-swipe.js` 会跳过 `a` / `button` 等交互元素（保护点击），于是「在整宽链接、成排按钮上左右滑」没反应；本模块只补这一类目标，详见 2.1 |
+| `panel-tab-swipe-relay.js` | 无对外接口（脚本存在即生效，自动接管 `#info-panel` 的 `.panel-body`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `viewport-inset.js`） | 车站信息板横滑切页的**补充通道**：核心 `panel-tab-swipe.js` 会跳过「交互元素」与「地图卡片」两类起手区域，于是「在整宽链接 / 成排按钮 / 迷你地图上左右滑」都没反应；本模块只补这两类，详见 2.1 |
 | `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close` / `registerTool(def)`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
 | `opening-history.js` + `opening-history.css` | 经 `window.CGoMapTools.registerTool` 注册成**免选站工具**（`window.CGoOpeningHistory` 只暴露 `hasData` / `mount` / `unmount` / `open`）；另把沿革里已拆除的站暴露成 `window.CGO_RETIRED_STATIONS`（供 `adjacent-jump.js` 等后处理读取） | classic script，五城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼）（须晚于 `map-tools.js` 与城市 `data_opening_history.js`） | 线网发展史动态演示：按开通沿革把线网逐段「长」出来（区段沿真实走向生长 → 新开车站脉冲 → 段间跳视口 → 播放 / 暂停 / 重播 / 倍速 / 跳年份），并可把选定区间导出为 **1280×720@30fps 的 MP4**（WebCodecs `VideoEncoder` + mp4-muxer，按需注入），详见 2.1 |
 | `rdot-label.js` | `window.CGoRdotLabel`（`apply` / `hasRailLink` / `peersOf` / `transferTables` / `stationTable`） | classic script，由 **main.html 在全部数据脚本之后全局引入**（各城零配置；core 是 module、最后执行，故治理必然先于渲染） | 国铁散点（`type: "rdot"`）站名标签：无轨交接驳时**强制显示**、有接驳后**隐藏**（由同名轨交站名承担识别）；底图按终态接驳隐藏、演示按对端入场逐帧显隐，详见 2.1 |
@@ -149,16 +149,18 @@
 > 已随文件删除，故页签条溢出时不能靠触摸拖动（仍可用正文横滑切页，核心会把选中页签 `scrollIntoView` 带进视野）。
 > 实测沈阳站 3 个页签不溢出、未观测到影响；若日后有城市页签多到溢出且被反馈，再单独补一条 `pan-x` 规则即可。
 
-#### panel-tab-swipe-relay.js —— 交互元素上的横滑切页（补充通道）
+#### panel-tab-swipe-relay.js —— 横滑切页的补充通道
 
-核心的横滑引擎在起手目标是 `button` / `a` 等交互元素时**直接放弃**（保护点击，历史上出过「手势接管后按钮点不动」）。
-但车站信息板里**整宽 `<a>`**（车站层级图、卡片标题行）与成排按钮占了大半可视面积，于是「在它们上面左右滑」完全没反应。
-本模块只补这一种缺口，**不接管核心已处理的普通区域**：
+核心的横滑引擎对两类起手区域**直接放弃**，本模块只补这两处缺口，**不接管核心已处理的普通区域**：
 
-- 仅在起手目标命中 `a` / `button` / `[role=button]` / `[role=tab]` 时动作；
-- 横向位移 > 10px 且大于纵向位移 ×1.15 才认作切页手势；**未达阈值一律不 `preventDefault`、不拦点击**；
-- 真表单控件、可横向滚动的容器、地图卡片 / 画布 / iframe 仍让路（与核心同口径）；
-- 命中后点下一枚 / 上一枚页签并 `scrollIntoView`（复用核心的激活事件）；**纵向手势完全不拦**，原生滚动照旧。
+| 核心跳过的区域 | 为什么跳 | 为什么仍要补 |
+| :--- | :--- | :--- |
+| 交互元素 `button` / `a` / `[role=button]` / `[role=tab]` | 保护点击（历史上出过「手势接管后按钮点不动」） | 车站信息板里**整宽 `<a>`**（车站层级图、卡片标题行）与成排按钮占了大半面积，「在它们上面左右滑」完全没反应 |
+| 地图卡片 `[data-card-type="map"]` / `.stacard-minimap-viewport` | 视为「地图自管手势」 | 车站卡片的迷你地图**只实现了缩放**（按钮 / 滚轮）、没有平移手势，横向拖动本就无归属；而它在 21:9 这类窄长屏上常占可视内容高度一半以上，白吃掉一半切页区域 |
+
+保守之处：横向位移 > 10px 且大于纵向位移 ×1.15 才认作切页手势，**未达阈值一律不 `preventDefault`、不拦点击**；
+真表单控件、可横向滚动的容器、`canvas` / `iframe` 仍让路；命中后点下一枚 / 上一枚页签并 `scrollIntoView`
+（复用核心的激活事件）；**纵向手势完全不拦**，原生滚动照旧。
 
 > ⚠️ **仍未补**：从按钮 / 链接起手**纵向拖动换档**。核心把抽屉位置写在内联 `transform`、档位由闭包里的
 > `getDetents()` 决定，外部无接口；要补就得复刻整套跟手与弹簧，与「上游有重叠实现一律以上游为准」相冲，

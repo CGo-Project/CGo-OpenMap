@@ -1,19 +1,21 @@
 /**
- * CGo OpenMap - 共享层：车站信息板「在交互元素上的横滑切页」补充通道
+ * CGo OpenMap - 共享层：车站信息板「横滑切页」的补充通道
  * (shared/base/panel-tab-swipe-relay.js)
  *
- * 核心的 core/panel-tab-swipe.js 在起手目标命中 `button` / `a` 等交互元素时**直接放弃**，
- * 用意是保护点击（历史上出过「手势接管之后按钮点不动」）。但车站信息板里**整宽 `<a>`**
- * （车站层级图、卡片标题行）与成排按钮占了大半可视面积，于是「在它们上面左右滑」
- * 完全没反应，且没有别的手势可以替代。
+ * 核心的 core/panel-tab-swipe.js 有两类起手目标是**直接放弃**的，本模块只补这两处缺口：
+ *   · **交互元素**（`button` / `a` / `[role=button]` / `[role=tab]`）：核心为保护点击而跳过
+ *     （历史上出过「手势接管之后按钮点不动」）。可车站信息板里**整宽 `<a>`**（车站层级图、
+ *     卡片标题行）与成排按钮占了大半可视面积，于是「在它们上面左右滑」完全没反应；
+ *   · **地图卡片**（`[data-card-type="map"]` / `.stacard-minimap-viewport`）：核心按「地图自管
+ *     手势」跳过；但车站卡片的迷你地图**只实现了缩放**（按钮 / 滚轮）、没有平移手势，横向
+ *     拖动本就无归属，而它在 21:9 这类窄长屏上常占可视内容高度一半以上，白吃掉一半切页区域。
  *
- * 本模块只补这一种缺口，做法刻意保守：
- *   · 仅在起手目标命中 `a` / `button` / `[role=button]` / `[role=tab]` 时动作
- *     （核心已处理的普通区域一律不碰，两套引擎不会重复切页）；
+ * 做法刻意保守：
+ *   · 只在上面这两类区域起手时动作（核心已处理的普通区域一律不碰，两套引擎不会重复切页）；
  *   · **横向**位移超过 10px 且大于纵向位移的 1.15 倍，才认作切页手势；未达阈值
  *     一律不 preventDefault、不拦点击 —— 点击因此完全不受影响（正是核心当年担心之处）；
- *   · 真表单控件（input / textarea / select / label）、可横向滚动的容器、
- *     地图卡片 / 画布 / iframe 仍然让路（与核心同口径）；
+ *   · 真表单控件（input / textarea / select / label）、可横向滚动的容器、`canvas` / `iframe`
+ *     仍然让路；
  *   · 命中后与核心同做法：点下一枚 / 上一枚页签（复用核心的激活事件），并把选中页签
  *     带进视野。**纵向手势完全不拦**，原生滚动照旧。
  *
@@ -31,12 +33,19 @@
     const MOBILE_MAX = 640;
     const MOVE_THRESHOLD = 10;    // px：与核心同口径
     const DIR_RATIO = 1.15;       // 横向须明显大于纵向，才认作切页
-    /** 只接管核心放弃的交互元素 */
-    const RELAY_TARGET = "a, button, [role='button'], [role='tab']";
-    /** 这些上起手仍让路：真表单控件（文本选择等原生行为）+ 核心约定的忽略标记 */
+    /**
+     * 本模块接管的起手区域 —— 即**核心会跳过、因而留下缺口的那些**：
+     *   · 交互元素（`a` / `button` / …）：核心为保护点击一律跳过；
+     *   · 地图卡片：核心按「地图自管手势」跳过，但车站卡片的迷你地图**只实现了缩放**
+     *     （按钮 / 滚轮），没有平移手势，横向拖动本就没有归属；而在 21:9 这类窄长屏上
+     *     它常占到可视内容高度一半以上，白吃掉一半的切页区域，故一并接管（仍限横向 + 过阈值）。
+     */
+    const RELAY_ZONE = "a, button, [role='button'], [role='tab'],"
+        + " [data-card-type='map'], .stacard-minimap-viewport";
+    /** 仍让路：真表单控件（文本选择等原生行为）+ 核心约定的忽略标记 */
     const SKIP_SELECTOR = "input, select, textarea, label, [data-panel-swipe-ignore]";
-    /** 自管手势的区域（地图卡片 / 画布 / 内嵌页），不参与切页 */
-    const IGNORE_ZONE = "[data-card-type='map'], .stacard-minimap-viewport, canvas, iframe";
+    /** 自管手势的画布与内嵌页：不参与切页 */
+    const IGNORE_ZONE = "canvas, iframe";
 
     const isMobile = () => window.innerWidth <= MOBILE_MAX;
 
@@ -58,9 +67,8 @@
             if (!isMobile() || e.touches.length !== 1) return;
             const target = e.target instanceof Element ? e.target : null;
             if (!target) return;
-            // 只补核心跳过的那类目标；普通区域交给核心自己的引擎
-            if (!target.closest(RELAY_TARGET) || target.closest(SKIP_SELECTOR)) return;
-            if (target.closest(IGNORE_ZONE)) return;
+            // 只补核心跳过的那类区域；普通区域交给核心自己的引擎
+            if (!target.closest(RELAY_ZONE) || target.closest(SKIP_SELECTOR) || target.closest(IGNORE_ZONE)) return;
             // 自身可横向滚动的容器（表格、时刻表等）保留自己的手势
             for (let node = target; node && node !== body; node = node.parentElement) {
                 const style = getComputedStyle(node);
