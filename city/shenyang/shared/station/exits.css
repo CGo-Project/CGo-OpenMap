@@ -106,30 +106,10 @@
 }
 
 /* 筛选模式（携带行李 / 无障碍）：点了只留下配有相应设施的出口 */
+/* 筛选行：**复用行程规划「需求」分段控件**那套 .cgo-rt-need-opts / .cgo-rt-need-opt
+   （样式在 route-panel.css，激活态是 .is-on），这里只留本页签自己的外边距 */
 .cgo-exit-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
     margin-bottom: 8px;
-}
-
-.cgo-exit-filter {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 9px;
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
-    border-radius: 999px;
-    background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.03));
-    font-size: 12px;
-    color: var(--text-light);
-    cursor: pointer;
-}
-
-.cgo-exit-filter[aria-pressed="true"] {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: transparent;
 }
 
 /* 一条出口：不再是独立小卡片，改用虚线底线分隔，视觉上更像一张清单 */

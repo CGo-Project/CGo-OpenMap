@@ -375,6 +375,30 @@
     background: var(--primary-color, #00263b);
 }
 
+/* ── 导出区「卡面」的两个开关：图标 + 文字 + 激活态，均分该行剩余宽度 ── */
+.cgo-oh-card-modes {
+    flex: 1;
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+}
+
+.cgo-oh-card-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 8px;
+    white-space: nowrap;
+}
+
+.cgo-oh-card-btn.is-on {
+    color: #fff;
+    background: var(--primary-color, #00263b);
+}
+
 .cgo-oh-actions .cgo-oh-set-btn {
     flex: 1 1 auto;
     padding: 7px 4px;

@@ -1308,11 +1308,13 @@
             // ⚠️ 让位必须做在**取景**这一层（camForPoint / camForBox 都读这里）。早先在画帧时把画面
             //    整体平移，等于把算好的构图推出画外，右侧站名就被裁了（收笔取景与全览都中招）。
             // 卡宽是输出像素，除以 k 换回视口像素。
-            const pos = state.cardPos;
+            const pos = (SHARED.export && SHARED.export.cardPos) ? SHARED.export.cardPos() : state.cardPos;
             if (pos && pos !== "off" && state.cardReserve !== false) {
+                // 列表卡面时卡片纵向撑满、贴左或贴右，让位就是「扣掉一条卡宽」（onRight 含列表态的 right）
+                const onRight = pos === "tr" || pos === "br" || pos === "right";
                 const gap = Math.max(0, SHARED.export.CARD.w / k + 4);
                 vw = Math.max(120, vw - gap);
-                left += (pos === "tr" || pos === "br") ? 0 : gap;
+                left += onRight ? 0 : gap;
             }
             // 角落水印（署名）同样是每帧都画的常驻浮层，底部给它留一条：内容整体上移一点，
             // 免得站名压在水印上（46px 是水印那一行在输出里的高度，图标 30px + 文字余量）。
@@ -2433,9 +2435,13 @@
             // 状态则单列：本次新增与转乘的站数（更名不是「新增」）。
             title: step.title || stepLabel(step),
             desc: step.desc || "",
-            addCount: isRename ? 0
-                : (step.enterCount != null ? step.enterCount : (step.stations ? step.stations.length : 0)),
-            upgradeCount: isRename ? 0 : (step.upgradeCount || 0)
+            // 四笔计数（两两相对）：新增 ↔ 拆除、升级 ↔ 降级 —— 面板状态行与导出进度卡同源
+            counts: isRename ? {} : {
+                enter: step.enterCount != null ? step.enterCount : (step.stations ? step.stations.length : 0),
+                remove: step.removeCount || 0,
+                up: step.upgradeCount || 0,
+                down: step.downgradeCount || 0
+            }
         };
     }
 
@@ -2451,6 +2457,7 @@
 
         if (state.lastPanelI !== m.i) {
             state.lastPanelI = m.i;
+            state.listFollow = true;   // 事件一换，重新开启清单跟随（此前若被手动滚动关掉）
             syncNow(m.i);
             // 清单按**事件**列：高亮当前拍所属的那一条（同一事件的各拍都点亮它）
             const curEv = state.steps[m.i] ? state.steps[m.i].evIdx : -1;
@@ -2458,26 +2465,40 @@
                 li.classList.toggle("is-active", Number(li.dataset.ev) === curEv);
                 li.classList.toggle("is-done", Number(li.dataset.go) <= m.i + 1);
             });
-            // 正在播放的这一行自己滚进可视区（只滚清单自身，不牵动面板与页面）
-            scrollListToActive();
+            // 正在播放的这一行自己滚进可视区（只滚清单自身，不牵动面板与页面）；
+            // 用户手动滚动清单期间暂停跟随（见 list 的 scroll 监听）
+            if (state.listFollow !== false) scrollListToActive(true);
         }
     }
 
     /**
-     * 让清单里 `.is-active` 的那一行保持可见。
+     * 把清单里 `.is-active` 的那一行摆到**可视区中下 1/3**（约 62% 高度处），并平滑滚过去。
+     * 这样它下方自然留住 1~2 行「还没发生」的事件 —— 看得出后面还有戏，而不是贴着底边一格一格蹭。
+     * 首尾处由浏览器自动夹住滚动量（`scrollTop` 越界会被 clamp）。
      * 用两端的 `getBoundingClientRect` 算相对偏移，**不用 offsetTop** —— 后者的参照是
      * offsetParent（面板里那层定位祖先），拿它跟 `list.scrollTop` 直接比会算错。
      * 清单没露出高度时（面板停在信息区那一态）直接跳过。
+     * `smooth` 走平滑滚动（播放跟随），并记一个时间窗把随之而来的 scroll 事件挡掉 ——
+     * 否则程序自己的滚动会被当成「用户手动滚动」，把跟随关掉。
      */
-    function scrollListToActive() {
+    function scrollListToActive(smooth) {
         const list = state.els && state.els.list;
         if (!list || !list.clientHeight) return;
         const li = list.querySelector(".cgo-oh-item.is-active");
         if (!li) return;
         const lr = list.getBoundingClientRect();
         const ar = li.getBoundingClientRect();
-        if (ar.top < lr.top) list.scrollTop -= (lr.top - ar.top);
-        else if (ar.bottom > lr.bottom) list.scrollTop += (ar.bottom - lr.bottom);
+        const targetY = lr.top + lr.height * 0.62;   // 中下 1/3
+        const anchor = ar.top + ar.height / 2;
+        const delta = anchor - targetY;
+        if (Math.abs(delta) < 6) return;             // 已在位（容差内）不滚，免得每拍都抖一下
+        const to = list.scrollTop + delta;
+        if (smooth) {
+            state.listAutoScrollUntil = performance.now() + 600;
+            list.scrollTo({ top: to, behavior: "smooth" });
+        } else {
+            list.scrollTop = to;
+        }
     }
 
     /* ======================================================================
@@ -2552,13 +2573,27 @@
                             <cgo-toolbar-select id="cgo-oh-exp-to" data-oh="expTo"></cgo-toolbar-select>
                         </div>
                         <div class="cgo-oh-field">
-                            <label>进度卡</label>
+                            <label>卡面</label>
+                            <div class="cgo-oh-card-modes" data-oh="expMode" role="group" aria-label="进度卡内容（两项可分别开关，都关则不显示卡片）">
+                                <button type="button" class="cgo-mt-quick cgo-oh-card-btn is-on" data-face="summary" aria-pressed="true" title="显示当前事件的摘要">
+                                    <cgo-icon name="card" size="14"></cgo-icon><span>当前事件</span>
+                                </button>
+                                <button type="button" class="cgo-mt-quick cgo-oh-card-btn" data-face="list" aria-pressed="false" title="显示事件清单（卡片纵向撑满）">
+                                    <cgo-icon name="view-list" size="14"></cgo-icon><span>事件列表</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="cgo-oh-field" data-oh="expCardField">
+                            <label>位置</label>
                             <div class="cgo-rt-need-opts" data-oh="expCard" role="group" aria-label="进度卡位置">
-                                <button type="button" class="cgo-rt-need-opt is-on" data-card="br">右下</button>
-                                <button type="button" class="cgo-rt-need-opt" data-card="bl">左下</button>
-                                <button type="button" class="cgo-rt-need-opt" data-card="tr">右上</button>
-                                <button type="button" class="cgo-rt-need-opt" data-card="tl">左上</button>
-                                <button type="button" class="cgo-rt-need-opt" data-card="off">关</button>
+                                <!-- 只开「当前事件」：四角；开了「事件列表」：卡片纵向撑满，只剩左右。
+                                     两个开关都关时整行隐藏（不显示卡片，位置也就无从谈起）。 -->
+                                <button type="button" class="cgo-rt-need-opt is-on" data-for="summary" data-card="br">右下</button>
+                                <button type="button" class="cgo-rt-need-opt" data-for="summary" data-card="bl">左下</button>
+                                <button type="button" class="cgo-rt-need-opt" data-for="summary" data-card="tr">右上</button>
+                                <button type="button" class="cgo-rt-need-opt" data-for="summary" data-card="tl">左上</button>
+                                <button type="button" class="cgo-rt-need-opt" data-for="list" data-card="right">右</button>
+                                <button type="button" class="cgo-rt-need-opt" data-for="list" data-card="left">左</button>
                             </div>
                         </div>
                         <div class="cgo-oh-exp-actions">
@@ -2605,39 +2640,61 @@
         if (listOn) requestAnimationFrame(scrollListToActive);
     }
 
+    /**
+     * 事件清单的分组数据（同一事件的多拍合成一条）：**面板清单与导出进度卡共用**，
+     * 保证两处的行序 / 标题 / 计数完全一致（导出层直接读 `state.listGroups`）。
+     */
+    function buildListGroups() {
+        const groups = [];
+        state.steps.forEach((s, i) => {
+            const last = groups[groups.length - 1];
+            if (last && last.evIdx === s.evIdx) {
+                last.to = i;
+                last.enter += s.enterCount || 0;
+                last.remove += s.removeCount || 0;
+                last.up += s.upgradeCount || 0;
+                last.down += s.downgradeCount || 0;
+            } else {
+                groups.push({
+                    evIdx: s.evIdx, from: i, to: i, step: s,
+                    enter: s.enterCount || 0, remove: s.removeCount || 0,
+                    up: s.upgradeCount || 0, down: s.downgradeCount || 0
+                });
+            }
+        });
+        return groups;
+    }
+
+    /**
+     * 四笔计数的展示定义（**两两相对**）：新增 ↔ 拆除（站的有无）、升级 ↔ 降级（站的形态）。
+     * 清单行、信息区状态行与导出进度卡同源同序；图标一律取 CGoUI（禁用 emoji，见铁律五）。
+     */
+    const COUNT_CHIPS = [
+        { key: "enter", icon: "add", label: "新增车站" },
+        { key: "remove", icon: "zoom-out", label: "拆除车站" },
+        { key: "up", icon: "sparkle", label: "升级车站" },
+        { key: "down", icon: "reverse", label: "降级车站" }
+    ];
+
+    /** 计数 chips（按 COUNT_CHIPS 顺序；为 0 的不渲染） */
+    function chipsHTML(counts) {
+        return COUNT_CHIPS.map((c) => (counts && counts[c.key]
+            ? `<span class="cgo-oh-item-add" title="${c.label}"><cgo-icon name="${c.icon}" size="12"></cgo-icon>${counts[c.key]}</span>`
+            : "")).join("");
+    }
+
     function renderList() {
         // **每个事件一行**：同一事件的多拍（2019-05-30 先开站内换乘、再演 17 站更名；
         // 2021-12-31 恢复运营 → 站内换乘 → 东延通车）合并成一条，点击跳到该事件的**末拍** ——
         // 时间线上这些拍本来就连着演完，落在末拍即该事件完成后的静态形态，不会停在"半成品"画面。
         // ⚠️ 早先每拍一行，同一事件被拆成几个可点项（用户点到中间拍就会看到演了一半的图）；
         // 标题用**事件级**标题（`evTitle`），各拍自己的操作标题留给面板信息区。
-        const rows = state.steps;
-        const groups = [];
-        rows.forEach((s, i) => {
-            const last = groups[groups.length - 1];
-            if (last && last.evIdx === s.evIdx) {
-                last.to = i;
-                last.enter += s.enterCount || 0;
-                last.up += s.upgradeCount || 0;
-            } else {
-                groups.push({
-                    evIdx: s.evIdx, from: i, to: i, step: s,
-                    enter: s.enterCount || 0, up: s.upgradeCount || 0
-                });
-            }
-        });
-        state.els.list.innerHTML = groups.map((g) => {
-            // 计数用 CGoUI 图标而不是 +/↑ 字符：CGoUI 里没有上箭头，
-            // 「转为换乘站」用它的 transfer 图标（语义也比箭头准）。计数为该事件各拍之和。
-            const add = g.enter
-                ? `<span class="cgo-oh-item-add"><cgo-icon name="add" size="12"></cgo-icon>${g.enter}</span>` : "";
-            const up = g.up
-                ? `<span class="cgo-oh-item-add"><cgo-icon name="transfer" size="12"></cgo-icon>${g.up}</span>` : "";
+        state.els.list.innerHTML = (state.listGroups || []).map((g) => {
             const text = g.step.evTitle || stepLabel(g.step);
             return `<li class="cgo-oh-item" data-go="${g.to + 1}" data-ev="${g.evIdx}">
                 <span class="cgo-oh-item-date">${g.step.date}</span>
                 <span class="cgo-oh-item-dot" style="background:${g.step.color}"></span>
-                <span class="cgo-oh-item-text">${text}</span>${add}${up}
+                <span class="cgo-oh-item-text">${text}</span>${chipsHTML(g)}
             </li>`;
         }).join("");
     }
@@ -2674,16 +2731,16 @@
         if (state.els.desc) state.els.desc.textContent = step.desc || "";
         if (state.els.status) {
             // 与清单同一套判据：更名不是「新增」，故不报计数
-            const isRename = step.kind === "rename";
-            const add = isRename ? 0
-                : (step.enterCount != null ? step.enterCount : (step.stations ? step.stations.length : 0));
-            const up = isRename ? 0 : (step.upgradeCount || 0);
-            // 状态：直接放清单里那两颗计数块（add / transfer + 数字），样式与清单一致
-            const chips = [];
-            if (add) chips.push(`<span class="cgo-oh-item-add"><cgo-icon name="add" size="12"></cgo-icon>${add}</span>`);
-            if (up) chips.push(`<span class="cgo-oh-item-add"><cgo-icon name="transfer" size="12"></cgo-icon>${up}</span>`);
-            state.els.status.innerHTML = chips.join("");
-            state.els.status.hidden = !chips.length;
+            const counts = step.kind === "rename" ? {} : {
+                enter: step.enterCount != null ? step.enterCount : (step.stations ? step.stations.length : 0),
+                remove: step.removeCount || 0,
+                up: step.upgradeCount || 0,
+                down: step.downgradeCount || 0
+            };
+            // 状态：直接放清单里那几颗计数块（新增 / 拆除 / 升级 / 降级），样式与清单一致
+            const html = chipsHTML(counts);
+            state.els.status.innerHTML = html;
+            state.els.status.hidden = !html;
         }
     }
 
@@ -2877,6 +2934,8 @@
             replay: q('[data-oh="replay"]'),
             exportToggle: q('[data-oh="exportToggle"]'),
             exportSet: q('[data-oh="exportSet"]'),
+            expMode: q('[data-oh="expMode"]'),
+            expCardField: q('[data-oh="expCardField"]'),
             expFrom: q('[data-oh="expFrom"]'),
             expTo: q('[data-oh="expTo"]'),
             expCard: q('[data-oh="expCard"]'),
@@ -2893,6 +2952,7 @@
         };
         SHARED.export.mountModal();   // 导出浮层改挂 body + 「关闭浮层即取消」观察器（见导出层）
         state.steps = SHARED.build();
+        state.listGroups = buildListGroups();   // 事件清单分组（面板与导出进度卡共用同一份）
         // 更名链：同一站可以有多次更名（旧名 → 中间名 → … → 现名），按步号升序存成数组
         state.renameMap = new Map();
         state.steps.forEach((s, i) => {
@@ -2934,6 +2994,10 @@
         state.exporting = false;
         state.exportCancelled = false;
         state.cardPos = "br";       // 每次挂载都回到默认角落（与速度 / 倍数一样不记忆）
+        state.cardShowSummary = true;   // 卡面「当前事件」开关（默认开）
+        state.cardShowList = false;     // 卡面「事件列表」开关（默认关；开了卡片纵向撑满，位置只剩左右）
+        state.cardPosList = "right";    // 列表撑满时的位置
+        state.listFollow = true;    // 清单是否跟随当前事件自动滚动
         renderList();
         SHARED.export.renderSelects();
         SHARED.export.syncCardOpts();
@@ -2989,6 +3053,12 @@
             if (state.exporting) return;   // 导出期间跳年份会抢走同一条时间线
             pause();
             jumpTo(Number(li.dataset.go) - 1);
+        });
+        // 用户手动滚动清单 → 暂停自动跟随；下一次事件切换时自动恢复（见 applyPanel）。
+        // 程序自己的平滑滚动（scrollListToActive）不算「用户滚动」，靠时间窗挡掉。
+        state.els.list.addEventListener("scroll", () => {
+            if (performance.now() < (state.listAutoScrollUntil || 0)) return;
+            state.listFollow = false;
         });
         // 点幽灵点 → 跳它对应的真实车站（捕获阶段，见 onPhantomClick）
         state.phantomClickEl = document.getElementById("map-content");
@@ -3234,6 +3304,8 @@
         watchPhantomNodes: watchPhantomNodes,
         hasData: hasData,
         register: register,
+        // 四笔计数的展示定义（导出层的进度卡状态行与面板清单同源同序）
+        COUNT_CHIPS: COUNT_CHIPS,
     });
 
     window.CGoOpeningHistory = {

@@ -16,6 +16,7 @@
         return;
     }
     const { NS, LAYER_ID, STYLE_ID, TOOL_ID, STAGE_CLASS, POP_CLASS, DOT_CLASS, NO_CLASS, NO_SHAPE_CLASS, NO_ICON_CLASS, DOT_ICON_CLASS, ON_CLASS, ALWAYS_CLASS, GONE_CLASS, HOST_CLASS, DUP_LABEL_CLASS, BODY_CLASS, SPEED, ZOOM, POP_BASE, STOP_HOLD, STOP_STAGGER, FREE_SWITCH_HOLD, CONV_MIN, T, SCALE_FLOOR, MOBILE_MAX, KIND_LABEL, STATE_LABEL, badgeOf, isWithdrawal, REDUCE, esc, state, clearTimers, glideMs, holdMs, growDuration, dist, pathCache, sampleCorePath, segLength, pointAt, projectOnPath, slicePath, toD, arcOf, pointAtMulti, tOnStep, bboxOf, stepLabel, canExportVideo, stationMap, linesData, lineStations, byLineId, stationRangeOf, eventOps, findOpIndex, soleOnLine, pushScaleLimit, popScaleLimit, stageHost, pinnedObserver, watchPinned, unwatchPinned, resetMapSelection, enterStage, exitStage, applyAnimDurations, reseek, calloutOf, dotColorOf, themeVar, setNoIcon, applyForm, setDotIcon, popStation, calloutObserver, repaintCallouts, watchCallouts, unwatchCallouts, resyncShown, isOnCanvas, syncVirtualConnectors, syncRdotLabels, syncOffStationLinks, syncPhantomHosts, syncGhostForms, syncGhostLabels, ghostPointAt, visiblePointOf, alignEndsToVisible, trimEndToPoint, realignArchivedPaths, realignPiecePaths, realignLiveSegs, syncConnectorEnds, onPhantomClick, markAlwaysOn, clearMarks, layer, doneGroup, liveGroup, clearCanvas, viewportBox, cnSpanOf, enSpanOf, MN_LANG, altSpanOf, applyNameAt, restoreNames, applyNewName, bezier, EASE, EASE_OUT, EASE_POP, clampZoom, camForPoint, camForBox, camLerp, brushAt, expandBoxByLabels, camTailOf, camWholeOf, growthPhases, phaseAtDt, progAtDt, timeOfProg, stepStops, buildTimeline, recAt, camAt, applyPopProgress, ripple, leaveStation, showStation, ensureGrowPath, applyFrame, syncRenameNames, applyRenameAt, makeHollowMask, makeSegPiece, applyPieceStyle, pieceLen, applyPieceProgress, convertRange, applyConvs, commitPath, pad2, lerpDate, setTrack, lineCountAround, panelModel, applyPanel, scrollListToActive, renderBody, syncToggle, renderList, trackPercentAt, syncNow, syncPlayBtn, startPlayback, tick, play, pause, reset, replay, jumpTo, mount, unmount, phantomIds, watchPhantomNodes, hasData, register } = SHARED;
+    const { COUNT_CHIPS } = SHARED;   // 四笔计数的展示定义（与面板清单同源同序）
 
     /* ======================================================================
      * 导出视频：逐帧渲染（与播放共用同一条时间轴）
@@ -295,7 +296,20 @@
         pad: Math.round(16 * OVERLAY_S),
         margin: Math.round(24 * OVERLAY_S),
         radius: Math.round(12 * OVERLAY_S),
-        descMax: 3
+        descMax: 3,
+        // 列表卡面：行高与日期列宽
+        rowH: Math.round(24 * OVERLAY_S),
+        dateW: Math.round(78 * OVERLAY_S)
+    };
+
+    /**
+     * 当前生效的卡面位置：**两块都关** → `off`（整块不画）；开了「事件列表」→ 卡片纵向撑满，
+     * 位置取 `cardPosList`（左 / 右）；只开「当前事件」→ 位置取 `cardPos`（四角）。
+     */
+    const cardPos = () => {
+        if (!state.cardShowSummary && !state.cardShowList) return "off";
+        if (state.cardShowList) return state.cardPosList || "right";
+        return state.cardPos || "br";
     };
 
     /** 圆角矩形（Chrome 已支持 roundRect，留一个手写兜底） */
@@ -403,12 +417,17 @@
     }
 
     /**
-     * 把进度卡画到画面指定角落（`state.cardPos` = tl / tr / bl / br / off）。
+     * 把进度卡画到画面上。**两块内容各自独立开关**（`state.cardShowSummary` / `state.cardShowList`）：
+     * 只开概览 → 自适应高度的摘要卡（四角 / 关）；开了事件列表 → 卡片**纵向撑满**、位置只剩左右；
+     * 两块都关 → 整块不画（等价于关掉进度卡）。
      * 取值与面板**同源**（panelModel），所以视频里的数字与面板逐帧一致。
      * @param {number} k 可见视口 → 输出画面的放大系数（玻璃模糊半径按它换算）
      */
     function drawCard(ctx2d, cw, ch, t, k) {
-        const pos = state.cardPos;
+        const showSum = state.cardShowSummary !== false;
+        const showList = !!state.cardShowList;
+        if (!showSum && !showList) { state.exportCardRect = null; return; }   // 两个开关都关：整块不画
+        const pos = cardPos();
         if (!pos || pos === "off") { state.exportCardRect = null; return; }
         const fade = cardAlphaAt(t);
         if (fade <= 0.01) { state.exportCardRect = null; return; }   // 已淡尽：整块别画（也省掉玻璃那笔开销）
@@ -440,23 +459,27 @@
             if (descLines.length > CARD.descMax) descLines = descLines.slice(0, CARD.descMax);
         }
 
-        // 状态行：与清单同款 —— CGoUI 的 add / transfer 图标 + 数字（不另画「＋」，也不加底衬）
-        const chips = [];
-        if (m.addCount) chips.push({ icon: "add", n: m.addCount });
-        if (m.upgradeCount) chips.push({ icon: "transfer", n: m.upgradeCount });
+        // 状态行：与清单**同源同序**（COUNT_CHIPS：新增 / 拆除 / 升级 / 降级），CGoUI 图标 + 数字
+        const chips = COUNT_CHIPS
+            .filter((c) => m.counts && m.counts[c.key])
+            .map((c) => ({ icon: c.icon, n: m.counts[c.key] }));
         const statH = chips.length ? F(20) : 0;
 
         const titleStep = F(20) * (titleFont / F(15));   // 行距随字号等比收
         const descStep = F(19) * (descFont / F(13));
-        let H = PAD + F(26) + GAP;                        // 日期 + 类型徽标
-        H += titleLines.length * titleStep + GAP;         // 标题
-        if (descLines.length) H += descLines.length * descStep + GAP;
-        if (statH) H += statH + GAP;
-        H += F(17) + GAP;                                 // 规模行
-        H += F(5) + PAD;                                  // 进度条
+        let contentH = PAD + F(26) + GAP;                 // 日期 + 类型徽标
+        contentH += titleLines.length * titleStep + GAP;  // 标题
+        if (descLines.length) contentH += descLines.length * descStep + GAP;
+        if (statH) contentH += statH + GAP;
+        contentH += F(17) + GAP;                          // 规模行
+        contentH += F(5) + PAD;                           // 进度条
+        // 列表卡面：卡片**纵向撑满**，摘要仍在顶部，其余高度全部留给事件清单
+        const listMode = showList;
+        const H = listMode ? Math.max(contentH, ch - CARD.margin * 2) : contentH;
 
-        const x = (pos === "tr" || pos === "br") ? cw - CARD.margin - W : CARD.margin;
-        const y = (pos === "bl" || pos === "br") ? ch - CARD.margin - H : CARD.margin;
+        const onRight = pos === "tr" || pos === "br" || pos === "right";
+        const x = onRight ? cw - CARD.margin - W : CARD.margin;
+        const y = listMode ? CARD.margin : ((pos === "bl" || pos === "br") ? ch - CARD.margin - H : CARD.margin);
         // 记下本帧卡面矩形：下一帧据此裁掉落进卡里的站名（尺寸也让取景知道 —— 见 viewportBox）
         state.exportCardRect = { x: x, y: y, w: W, h: H, pos: pos };
 
@@ -468,7 +491,29 @@
         ctx2d.textBaseline = "top";
         ctx2d.globalAlpha = fade;   // 卡面已淡出多少，里面的字就跟着淡多少
 
+        // 摘要块（「概览」开关）与清单块（「事件列表」开关）各自独立：都关时整块不画（见函数开头）；
+        // 只开列表时卡片仍要纵向撑满 —— 摘要不画，清单直接自卡片顶部起排。
+        const lay = {
+            PAD: PAD, GAP: GAP, innerW: innerW,
+            titleFont: titleFont, titleStep: titleStep, titleLines: titleLines,
+            descFont: descFont, descStep: descStep, descLines: descLines,
+            chips: chips, statH: statH
+        };
         let cy = y + PAD;
+        if (showSum) cy = drawCardSummary(ctx2d, x, cy, m, fade, fam, th, lay);
+
+        // 列表卡面：摘要（含进度条）之下，把剩余高度全部铺成「事件清单」——
+        // 固定行窗 + 当前事件高亮 + 随进度滚动，与面板清单同一份数据（state.listGroups）
+        if (listMode) drawEventList(ctx2d, x, y, W, H, cy, m, fade, fam, th);
+        ctx2d.restore();
+    }
+
+    /**
+     * 画进度卡的**摘要块**（日期 + 类型徽标 / 标题 / 描述 / 计数 chips / 规模行 / 进度条），
+     * 返回画完后的 y。版式尺寸全部取调用方算好的 `lay`，本函数只负责落笔。
+     */
+    function drawCardSummary(ctx2d, x, cy, m, fade, fam, th, lay) {
+        const PAD = lay.PAD, GAP = lay.GAP, innerW = lay.innerW;
         // 日期 + 类型徽标
         ctx2d.font = "700 " + F(21) + "px " + fam;
         ctx2d.fillStyle = th.text || "#222";
@@ -484,25 +529,25 @@
         cy += F(26) + GAP;
 
         // 标题：比描述重一点即可，不用加粗到跳出来
-        ctx2d.font = "500 " + titleFont + "px " + fam;
+        ctx2d.font = "500 " + lay.titleFont + "px " + fam;
         ctx2d.fillStyle = th.text || "#222";
-        titleLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += titleStep; });
+        lay.titleLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += lay.titleStep; });
         cy += GAP;
 
         // 描述（括注）
-        if (descLines.length) {
-            ctx2d.font = "400 " + descFont + "px " + fam;
+        if (lay.descLines.length) {
+            ctx2d.font = "400 " + lay.descFont + "px " + fam;
             ctx2d.globalAlpha = 0.75 * fade;
             ctx2d.fillStyle = th.text || "#222";
-            descLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += descStep; });
+            lay.descLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += lay.descStep; });
             ctx2d.globalAlpha = fade;
             cy += GAP;
         }
 
-        // 状态：本次新增 / 转为换乘 —— 与清单同款，图标 + 数字直接并排（不画胶囊底衬）
-        if (statH) {
+        // 状态：新增 / 拆除 / 升级 / 降级 —— 与清单同源同序，图标 + 数字并排（不画胶囊底衬）
+        if (lay.statH) {
             let cxp = x + PAD;
-            chips.forEach((c) => {
+            lay.chips.forEach((c) => {
                 const img = state.cardIcons && state.cardIcons[c.icon];
                 if (img) {
                     ctx2d.drawImage(img, cxp, cy + F(3.5), F(13), F(13));
@@ -516,7 +561,7 @@
                 ctx2d.globalAlpha = fade;
                 cxp += ctx2d.measureText(txt).width + F(14);
             });
-            cy += statH + GAP;
+            cy += lay.statH + GAP;
         }
 
         // 规模行：与说明同样处理 —— 宽度不足时先缩字号（原字号 F(13)），避免顶出卡面
@@ -543,6 +588,61 @@
             roundRect(ctx2d, x + PAD, cy, Math.max(F(5), pw), F(5), F(2.5));
             ctx2d.fill();
         }
+        return cy + F(5) + GAP;
+    }
+
+    /**
+     * 列表卡面下方的事件清单：固定行窗（按卡片剩余高度算行数）+ 当前事件高亮 +
+     * 随进度滚动（当前事件居中，靠近两端时自然夹住）。数据与面板清单同源：`state.listGroups`。
+     */
+    function drawEventList(ctx2d, x, y, W, H, top, m, fade, fam, th) {
+        const groups = state.listGroups || [];
+        if (!groups.length) return;
+        const PAD = CARD.pad, rowH = CARD.rowH, innerW = W - PAD * 2;
+        const avail = (y + H - PAD) - top;
+        const rows = Math.floor(avail / rowH);
+        if (rows < 1) return;
+        // 当前事件：按步号落在哪个事件组里找
+        let cur = groups.findIndex((g) => m.i >= g.from && m.i <= g.to);
+        if (cur < 0) cur = 0;
+        const start = Math.max(0, Math.min(Math.max(0, groups.length - rows), cur - Math.floor(rows / 2)));
+
+        ctx2d.save();
+        ctx2d.beginPath();
+        ctx2d.rect(x + PAD - F(4), top, innerW + F(8), avail);
+        ctx2d.clip();
+        ctx2d.textAlign = "left";
+        ctx2d.textBaseline = "middle";
+        for (let k = 0; k < rows; k++) {
+            const g = groups[start + k];
+            if (!g) break;
+            const idx = start + k;
+            const cy = top + k * rowH + rowH / 2;
+            const on = idx === cur, done = g.to <= m.i;
+            if (on) {
+                ctx2d.globalAlpha = 0.12 * fade;
+                ctx2d.fillStyle = th.primary || "#006298";
+                roundRect(ctx2d, x + PAD - F(4), top + k * rowH + F(2), innerW + F(8), rowH - F(4), F(6));
+                ctx2d.fill();
+            }
+            // 日期
+            ctx2d.globalAlpha = (on ? 0.95 : done ? 0.72 : 0.45) * fade;
+            ctx2d.font = "500 " + F(11) + "px " + fam;
+            ctx2d.fillStyle = th.text || "#222";
+            ctx2d.fillText(g.step.date, x + PAD, cy);
+            // 标题（单行，超宽截断加省略号）
+            const dx = x + PAD + CARD.dateW;
+            const tw = innerW - CARD.dateW;
+            ctx2d.font = (on ? "600 " : "400 ") + F(12) + "px " + fam;
+            const full = g.step.evTitle || "";
+            let txt = full;
+            if (ctx2d.measureText(txt).width > tw) {
+                while (txt.length > 1 && ctx2d.measureText(txt + "…").width > tw) txt = txt.slice(0, -1);
+                txt += "…";
+            }
+            ctx2d.fillText(txt, dx, cy);
+        }
+        ctx2d.globalAlpha = fade;
         ctx2d.restore();
     }
 
@@ -559,9 +659,13 @@
         return "CGo OpenMap · " + (city ? city + " " : "") + "开放地图";
     }
 
-    /** 水印落在右侧吗：与进度卡**分居左右下角**（卡右下→水印左下；卡左下→水印右下；
-        卡在上半屏或关掉→固定右下），这样两者永不重叠 */
-    const watermarkOnRight = () => state.cardPos !== "br";
+    /** 水印是否落右：与进度卡**分居左右下角**（卡在右下 / 整条右侧 → 水印去左下；卡在左下 /
+        整条左侧 → 去右下；卡在上半屏或关掉 → 固定右下），两者永不重叠 */
+    const watermarkOnRight = () => {
+        const pos = cardPos();
+        if (pos === "br" || pos === "right") return false;
+        return true;
+    };
 
     function drawWatermark(ctx2d, cw, ch) {
         const text = watermarkText();
@@ -719,10 +823,13 @@
         labelCache = buildLabelCache();
         state.exportTheme = readThemeVars();
         state.exportMark = await prepareMark();
-        // 进度卡状态行用的两个图标（与清单里的 add / transfer 同款）
+        // 进度卡状态行用的四枚图标（新增 / 拆除 / 升级 / 降级，与面板清单的 COUNT_CHIPS 同源）
+        const iconCol = (state.exportTheme || {}).text || "#222";
         state.cardIcons = {
-            add: await prepareIcon("add", (state.exportTheme || {}).text || "#222", false),
-            transfer: await prepareIcon("transfer", (state.exportTheme || {}).text || "#222", false)
+            add: await prepareIcon("add", iconCol, false),
+            "zoom-out": await prepareIcon("zoom-out", iconCol, false),
+            sparkle: await prepareIcon("sparkle", iconCol, false),
+            reverse: await prepareIcon("reverse", iconCol, false)
         };
         state.cardReserve = true;      // 取景给卡让位（全览那一拍除外，见 buildTimeline）
         state.exportCardRect = null;   // 卡面矩形逐帧记，导出开始时清一次（首帧不让位）
@@ -742,7 +849,7 @@
     }
 
     /**
-     * 把一个 `<cgo-icon>` 栅格化成 Image（画布上画图标用）。进度卡状态行的 add / transfer
+     * 把一个 `<cgo-icon>` 栅格化成 Image（画布上画图标用）。进度卡状态行的 add / zoom-out / sparkle / reverse
      * 也走这条 —— 与面板清单里的图标同一套 CGoUI 矢量，避免在视频里另画一套「＋」。
      * 拿不到就返回 null，调用方降级为纯文字。
      */
@@ -1101,13 +1208,33 @@
         setExportStatus("");
     }
 
-    /** 进度卡位置的分段控件高亮（值存在 state.cardPos，不走 DOM 读值） */
+    /**
+     * 卡面 / 位置控件的状态同步：两个卡面按钮各自点亮（都关即不显示卡片）；
+     * 位置项按「是否开了事件列表」分两组显隐 —— 开了列表（卡片纵向撑满）只剩左右，
+     * 只开「当前事件」时是四角；**两个都关时整行位置隐藏**（卡片都不显示，位置无从谈起）。
+     */
     function syncCardOpts() {
-        const box = state.els && state.els.expCard;
-        if (!box) return;
-        box.querySelectorAll(".cgo-rt-need-opt").forEach((b) => {
-            b.classList.toggle("is-on", b.dataset.card === state.cardPos);
-        });
+        const el = state.els;
+        if (!el) return;
+        const showSum = state.cardShowSummary !== false;
+        const showList = !!state.cardShowList;
+        const pos = cardPos();
+        if (el.expMode) {
+            el.expMode.querySelectorAll("[data-face]").forEach((b) => {
+                const on = b.dataset.face === "summary" ? showSum : showList;
+                b.classList.toggle("is-on", on);
+                b.setAttribute("aria-pressed", String(on));
+            });
+        }
+        if (el.expCardField) el.expCardField.style.display = (showSum || showList) ? "" : "none";
+        if (el.expCard) {
+            el.expCard.querySelectorAll(".cgo-rt-need-opt").forEach((b) => {
+                const mine = (b.dataset.for === "list") === showList;
+                // ⚠️ 用内联 display 而不是 hidden 属性：分段控件的 display 会盖过 [hidden]
+                b.style.display = mine ? "" : "none";
+                b.classList.toggle("is-on", mine && b.dataset.card === pos);
+            });
+        }
     }
 
     /** 导出期间锁住会干扰时间线的控件，只留「取消」；同时同步导出按钮的按下态 */
@@ -1169,11 +1296,22 @@
         el.expTo.addEventListener("cgo-change", () => {
             if (Number(el.expFrom.value) > Number(el.expTo.value)) el.expFrom.value = el.expTo.value;
         });
-        // 进度卡位置：分段控件，点哪段就把 state.cardPos 切到哪
+        // 卡面：当前事件 / 事件列表两个**独立开关**（都可关；两个都关即不显示卡片）
+        if (el.expMode) el.expMode.addEventListener("click", (ev) => {
+            const b = ev.target.closest("[data-face]");
+            if (!b || state.exporting) return;
+            if (b.dataset.face === "list") state.cardShowList = !state.cardShowList;
+            else state.cardShowSummary = !state.cardShowSummary;
+            syncCardOpts();
+        });
+        // 位置：分段控件，点哪段就写到当前生效那一组对应的值上
         el.expCard.addEventListener("click", (ev) => {
             const b = ev.target.closest(".cgo-rt-need-opt");
             if (!b || state.exporting) return;
-            state.cardPos = b.dataset.card;
+            const listOn = !!state.cardShowList;
+            if ((b.dataset.for === "list") !== listOn) return;   // 只认当前生效那一组（另一组是隐着的）
+            if (listOn) state.cardPosList = b.dataset.card;
+            else state.cardPos = b.dataset.card;
             syncCardOpts();
         });
         el.expStart.addEventListener("click", () => {
@@ -1185,6 +1323,7 @@
     SHARED.export = {
         EXPORT: EXPORT,
         CARD: CARD,
+        cardPos: cardPos,
         renderSelects: renderExportSelects,
         syncCardOpts: syncCardOpts,
         syncExportUI: syncExportUI,

@@ -386,6 +386,7 @@
                     const firstLine = byId[firstLineOf.get(sid)];
                     step.stations.push({
                         sid: sid, x: s.x, y: s.y, t: t, tg: tg, convTo: convTo || null, form: want, mode: mode,
+                        prevForm: cur || null,   // 旧形态：统计「升级 / 降级」方向用
                         dotColor: aliveColorOf(sid, ev.date) || (firstLine ? firstLine.color : line.color)
                     });
                 });
@@ -540,6 +541,7 @@
                     // （共站换乘站的另一条线还在跑，站照常保留，见长春站 / 解放桥）。
                     const gone = (e && e.state === "removed")
                         || (ev.state === "removed" && (ev.kind === "station-state" || !aliveLinesAt(sid, ev.date).length));
+                    const prevF = formOf.get(sid);   // 旧形态（判「升级 / 降级」方向，formOf 随即被覆盖）
                     const want = gone ? "gone" : wantForm(sid, ev.date, evIdx);
                     formOf.set(sid, want);
                     if (gone) shown.delete(sid);   // 重新开通时按「再次入场」处理（回放计数也才对）
@@ -559,6 +561,7 @@
                         // 保持 null 走原有巡览逻辑
                         convTo: step.segConv.length ? (gone ? "hidden" : step.segConv[0].style) : null,
                         form: want,
+                        prevForm: prevF || null,
                         mode: gone ? "leave" : "upgrade",
                         dotColor: aliveColorOf(sid, ev.date) || (first ? first.color : line.color)
                     });
@@ -716,7 +719,7 @@
                     const firstLine = byId[firstLineOf.get(pf.of)];
                     steps[endStep].stations.push({
                         sid: pf.of, x: mainS.x, y: mainS.y, t: 0,
-                        form: wantMain, mode: "upgrade", grp: pf.of,
+                        form: wantMain, prevForm: curMain || null, mode: "upgrade", grp: pf.of,
                         dotColor: aliveColorOf(pf.of, steps[endStep].date) || (firstLine ? firstLine.color : dotColor)
                     });
                 }
@@ -779,17 +782,27 @@
             if (st[sid] && st[sid].type === "rdot") railStations.add(sid);
         });
         state.railStations = railStations;
+        // 形态等级：拆除 -1 < 未开通 0 < 普通站 1 < 正式站 / 换乘站 2 —— 判「升级 / 降级」方向
+        const formLevel = (f) => (f === "gone" ? -1 : f === "no" ? 0 : f === "dot" ? 1
+            : (f === "real" || f === "tsf") ? 2 : null);
         steps.forEach((s, i) => {
             if (s.kind === "line-state" && s.state === "open") lineSet.add(s.lineId);
-            let added = 0, counted = 0;
-            // 撤站（停运 / 拆除 / 区段移除）既不是「新增」也不是「转乘」——它是把站从图上撤下，两笔账都不该动
-            const withdraw = isWithdrawal(s);
+            // 两对计数：**新增 ↔ 拆除**（站的有无）、**升级 ↔ 降级**（站的形态）。
+            // 撤站步不再整步跳过 —— 其中的「转未开通 / 拆除」正是降级与拆除两笔账。
+            let added = 0, removed = 0, up = 0, down = 0;
             s.stations.forEach((x) => {
-                if (railStations.has(x.sid)) return;
-                if (demoOnly.has(x.sid)) return;   // 站台幽灵点不是「一座车站」，不计入站数
-                if (withdraw) return;
-                counted++;
-                if (x.mode === "enter") added++;
+                if (railStations.has(x.sid)) return;   // 国铁散点不是城市轨道交通车站
+                if (demoOnly.has(x.sid)) return;       // 站台幽灵点不是「一座车站」，不计入站数
+                if (x.mode === "enter") { added++; return; }
+                if (x.mode === "leave" || x.form === "gone") { removed++; return; }
+                const a = formLevel(x.prevForm), b = formLevel(x.form);
+                if (a === null || b === null) return;  // 形态不全的历史拍不计
+                if (b > a) up++;
+                else if (b < a) down++;
+                // 同级但形态不同（换乘图元增减，如 real ↔ tsf）算升级；
+                // ⚠️ 完全相同的不计 —— 撤站步会把段内**每**站都 push（哪怕形态没变，
+                //    波前擦除要靠它们驱动），那些「本来就那样」的站不能算成升级/降级。
+                else if (x.prevForm !== x.form) up++;
             });
             // 同步形态表：拆除（gone / leave）除名，其余按本步形态记账
             s.stations.forEach((x) => {
@@ -802,8 +815,10 @@
             mileage += s.addedMileage;
             s.no = i + 1;
             s.lines = lineSet.size;
-            s.enterCount = added;
-            s.upgradeCount = counted - added;
+            s.enterCount = added;         // 新增
+            s.removeCount = removed;      // 拆除
+            s.upgradeCount = up;          // 升级
+            s.downgradeCount = down;      // 降级
             s.stationCount = active;   // 「车站」= 当前在运营车站数（不含已拆除 / 全线停运 / 未开通）
             s.mileage = mileage / 1000;   // 米 → 公里
         });
