@@ -2869,12 +2869,58 @@ cgo-icon:not(:defined) {
     transform: translate(-50%, -50%) scale(0.5);
     pointer-events: none !important;
 }
+/* 通用移动抽屉：完整布局固定，拖动只改变合成层平移。
+   正文占位仅在落档时更新，底部操作栏独立停靠在屏幕底边。 */
+@media (max-width: 640px) {
+    #info-panel.cgo-mobile-sheet,
+    .cgo-rt-panel.cgo-mobile-sheet {
+        overflow: hidden !important;
+        touch-action: pan-y;
+        contain: layout style;
+        will-change: transform;
+    }
+    .cgo-mobile-sheet .panel-header { touch-action: none; }
+    .cgo-mobile-sheet .panel-body {
+        overflow-y: auto !important;
+        min-height: 0 !important;
+        touch-action: pan-y;
+        overscroll-behavior-y: contain !important;
+        -webkit-overflow-scrolling: touch;
+        overflow-anchor: none;
+    }
+    .cgo-mobile-sheet .panel-body::after {
+        content: '';
+        display: block;
+        height: var(--cgo-sheet-resting-offset, 0px);
+        min-height: var(--cgo-sheet-resting-offset, 0px);
+        flex: 0 0 var(--cgo-sheet-resting-offset, 0px);
+        pointer-events: none;
+    }
+    body.panel-sheet-collapsed #info-panel.cgo-sheet-moving .panel-body,
+    body.panel-sheet-collapsed #info-panel.cgo-sheet-moving .panel-tabs-container,
+    .cgo-mobile-sheet.cgo-sheet-moving .panel-body {
+        display: block !important;
+    }
+    .cgo-mobile-sheet-dock {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2001;
+        background: var(--theme-bg);
+    }
+    .cgo-mobile-sheet-dock[hidden] { display: none; }
+    .cgo-mobile-sheet-dock .panel-footer {
+        margin: 0 !important;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+}
 
-/* 
+/*
    =========================================
    20. 无障碍 (Accessibility)
    焦点指示、视觉隐藏、跳转链接、原生按钮外观复位、动效偏好、移动端输入框字号
-   ========================================= 
+   =========================================
 */
 
 /* 仅对读屏可见 */

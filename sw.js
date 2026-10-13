@@ -32,6 +32,8 @@ const ASSETS_TO_CACHE = [
     './',
     './index.html',
     './main.html',
+    './core/mobile-sheet.js',
+    './core/panel-tab-swipe.js',
     './readme.html',
     './privacy.html',
 
@@ -506,7 +508,7 @@ const ASSETS_TO_CACHE = [
     './city/shijiazhuang/modules/shijiazhuang_cultural.js',
     './city/shijiazhuang/stacard/script.js',
     './city/shijiazhuang/style.css',
-    
+
     // 图标与清单素材
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',

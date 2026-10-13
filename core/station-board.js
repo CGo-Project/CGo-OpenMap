@@ -513,7 +513,7 @@
                     if (targetPane) targetPane.classList.add('active');
 
                     // 联动更新底部时刻表外链按钮
-                    const footerScheduleBtn = infoPanel.querySelector('#footer-schedule-btn');
+                    const footerScheduleBtn = infoPanel.querySelector('#footer-schedule-btn') || infoPanel._cgoSheetFooter?.querySelector('#footer-schedule-btn');
                     if (footerScheduleBtn) {
                         let targetUrl = null;
                         if (targetIndex !== 'station-info') {

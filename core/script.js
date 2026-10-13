@@ -2270,7 +2270,7 @@ function renderUserModePanel(station, initialTabIndex = 0) {
             const targetPane = infoPanel.querySelector(`.tab-pane[data-tab-index="${targetIndex}"]`);
             if (targetPane) targetPane.classList.add('active');
 
-            const footerScheduleBtn = infoPanel.querySelector('#footer-schedule-btn');
+            const footerScheduleBtn = infoPanel.querySelector('#footer-schedule-btn') || infoPanel._cgoSheetFooter?.querySelector('#footer-schedule-btn');
             if (footerScheduleBtn) {
                 let targetUrl = null;
                 if (targetIndex !== 'station-info') {
@@ -2428,6 +2428,10 @@ function resetMapState() {
     // 焦点仍在信息板内时，关闭后归还给当初的触发元素；焦点已在别处（如点了地图）则不打扰
     const focusWasInPanel = Boolean(infoPanel && document.activeElement && infoPanel.contains(document.activeElement));
     pendingPanelFocus = false;
+    infoPanel?._tabSwipeCleanup?.();
+    if (infoPanel) infoPanel._tabSwipeCleanup = null;
+    infoPanel?._mobileSheetDragCleanup?.();
+    if (infoPanel) infoPanel._mobileSheetDragCleanup = null;
     if (infoPanel && (window.innerWidth <= 640 || !document.body.classList.contains('legend-pinned'))) {
         infoPanel.style.display = 'none';
     }
@@ -2461,263 +2465,41 @@ function resetMapState() {
  */
 function initMobileSheetDrag() {
     if (window.innerWidth > 640) return;
-
     const panel = document.getElementById('info-panel');
-    if (!panel) return;
-
-    // 清理旧监听（避免重复绑定）
-    if (panel._mobileSheetDragCleanup) {
-        panel._mobileSheetDragCleanup();
-    }
-
-    // ── 常量 ──────────────────────────────────────────────────────────
-    const STAGE_STEP_MIN_DISTANCE = 26;   // px：换档最小净位移
-    const STAGE_STEP_MIN_VELOCITY = 0.6;  // px/ms：换档最小速度
-    const EXTREME_FLICK_VELOCITY  = 1.8;  // px/ms：允许跨档甩动速度
-    const VELOCITY_STALE_MS       = 90;   // ms：停顿超过此值，速度归零
-    const SETTLE_OMEGA            = 14;   // rad/s：落位弹簧角频率（临界阻尼）
-    const SETTLE_MAX_DURATION     = 900;  // ms：落位动画最长时长
-    const STAGES = ['collapsed', 'half', 'full'];
-
-    // ── 档位计算 ─────────────────────────────────────────────────────
-    function getDetents() {
-        const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-        // 90px = 20px 把手感应区 + 70px panel-header min-height，与 CSS 一致
-        const COLLAPSED_EXPOSE = 90;
-        // safe-area-inset-top 无法直接通过 JS getComputedStyle 读取，
-        // 安全区高度用 env() 在 CSS 中已处理， JS 这里暗设 0
-        const safeTop = 0;
-        return {
-            full:      safeTop + 60,
-            half:      vh * 0.40,
-            // 确保 collapsed 至少在 half 档以下
-            collapsed: Math.max(vh * 0.40 + COLLAPSED_EXPOSE, vh - COLLAPSED_EXPOSE)
-        };
-    }
-
-    function getCurrentStage() {
-        if (document.body.classList.contains('panel-sheet-collapsed')) return 'collapsed';
-        if (document.body.classList.contains('mobile-panel-expanded'))  return 'full';
-        return 'half';
-    }
-
-    function applyStage(stageName, animate) {
-        const detents = getDetents();
-        const targetTop = detents[stageName];
-
-        // 更新 body 类
-        document.body.classList.remove('panel-sheet-collapsed', 'mobile-panel-expanded', 'mobile-panel-docked-full');
-        if (stageName === 'collapsed') {
-            document.body.classList.add('panel-sheet-collapsed');
-        } else if (stageName === 'full') {
-            document.body.classList.add('mobile-panel-expanded');
-            // 落位完成后开启顶部填色
-            setTimeout(() => {
-                if (document.body.classList.contains('mobile-panel-expanded')) {
-                    document.body.classList.add('mobile-panel-docked-full');
-                }
-            }, animate ? 420 : 0);
-        }
-        // mobile-split-active 在所有三档都保持（是面板"打开"的标记）
-        if (!document.body.classList.contains('mobile-split-active')) {
+    if (!panel || !window.CGoMobileSheet) return;
+    panel._mobileSheetDragCleanup?.();
+    panel._tabSwipeCleanup?.();
+    panel._tabSwipeCleanup = window.CGoPanelTabSwipe?.attach(panel);
+    let mapFollow = null;
+    panel._mobileSheetDragCleanup = window.CGoMobileSheet.attach(panel, {
+        getStage: () => document.body.classList.contains('panel-sheet-collapsed') ? 'collapsed'
+            : document.body.classList.contains('mobile-panel-expanded') ? 'full' : 'half',
+        getDetents: () => {
+            const vh = window.visualViewport?.height || window.innerHeight;
+            return { full: 60, half: vh * 0.40, collapsed: Math.max(vh * 0.40 + 90, vh - 90) };
+        },
+        onStage: stage => {
+            document.body.classList.toggle('panel-sheet-collapsed', stage === 'collapsed');
+            document.body.classList.toggle('mobile-panel-expanded', stage === 'full');
+            document.body.classList.remove('mobile-panel-docked-full');
             document.body.classList.add('mobile-split-active');
-        }
-        return targetTop;
-    }
-
-    // ── 弹簧落位动画 ─────────────────────────────────────────────────
-    let settleRaf = null;
-    function animateSettle(startTop, targetTop, releaseVelocity, onDone) {
-        if (settleRaf) { cancelAnimationFrame(settleRaf); settleRaf = null; }
-        // 系统开启「减少动态效果」时不做弹簧落位，直接交回 CSS 档位
-        if (prefersReducedMotion()) {
-            panel.style.top = '';
-            if (onDone) onDone();
-            return;
-        }
-        const distance = targetTop - startTop;
-        let t = 0;
-        let lastTs = null;
-        // 临界阻尼：x(t) = (startTop - targetTop + v0/ω * t) * e^(-ωt) + targetTop
-        function frame(ts) {
-            if (!lastTs) lastTs = ts;
-            t += Math.min(ts - lastTs, 32); // 最大单帧 32ms 防跳变
-            lastTs = ts;
-            // 临界阻尼位移
-            const omega = SETTLE_OMEGA;
-            const x0 = startTop - targetTop;          // 初始偏移
-            const v0 = releaseVelocity || 0;           // 初始速度
-            const A = x0;
-            const B = v0 + omega * x0;
-            const exp = Math.exp(-omega * t / 1000);
-            const pos = targetTop + (A + B * t / 1000) * exp;
-            panel.style.top = pos + 'px';
-            if (t < SETTLE_MAX_DURATION && Math.abs(pos - targetTop) > 0.3) {
-                settleRaf = requestAnimationFrame(frame);
-            } else {
-                panel.style.top = '';
-                if (onDone) onDone();
+        },
+        onStart: () => {
+            document.body.classList.remove('mobile-panel-docked-full');
+            mapContent.classList.remove('animate-zoom');
+        },
+        onGeometry: ({ top, dragging }) => {
+            // 跟手时只平移既有图层，保持当前缩放，不逐帧重算车站或线路。
+            if (!mapFollow) mapFollow = { top, y: currentY };
+            currentY = mapFollow.y + (top - mapFollow.top) / 2;
+            mapContent.style.transform = `translate3d(${currentX}px, ${currentY}px, 0) scale(${currentScale})`;
+            if (!dragging) {
+                mapFollow = null;
+                document.body.classList.toggle('mobile-panel-docked-full', document.body.classList.contains('mobile-panel-expanded'));
+                markMapMoving();
             }
         }
-        settleRaf = requestAnimationFrame(frame);
-    }
-
-    // ── 拖拽状态 ─────────────────────────────────────────────────────
-    const DRAG_START_THRESHOLD = 6;   // 位移超过该值才判定为拖拽；以下视为轻点，交给 click
-    let drag = null;
-
-    function onPointerDown(e) {
-        if (window.innerWidth > 640) return;
-        const target = e.target;
-        // 按钮 / 链接 / 表单控件上按下时不接管：一旦面板捕获指针，浏览器就会把随后的
-        // click 派发给面板而不是该控件，导致面板内按钮（底栏、标题栏关闭等）全都点不动
-        if (target.closest('button, a, input, select, textarea, label')) return;
-        const isGrabber = target.closest('.sheet-grabber, .panel-header');
-        const isContent = !isGrabber;
-
-        // 内容区：只有当面板是半屏或全屏时才接管（且向上拖才能升档）
-        // 把手/头部：任何时候都可以拖
-        if (isContent) {
-            const currentStage = getCurrentStage();
-            if (currentStage === 'collapsed') return; // 收起时内容不可见，不处理
-        }
-
-        // 阻止触摸事件触发浏览器滚动（仅在把手上）
-        if (isGrabber) e.preventDefault();
-
-        if (settleRaf) { cancelAnimationFrame(settleRaf); settleRaf = null; }
-        // 禁用 CSS transition （必须用 important 才能覆盖带 !important 的 CSS 规则）
-        panel.style.setProperty('transition', 'none', 'important');
-
-        const startRect = panel.getBoundingClientRect();
-        drag = {
-            startY:    e.clientY,
-            startTop:  startRect.top,
-            currentTop: startRect.top,
-            lastY:     e.clientY,
-            lastAt:    performance.now(),
-            velocity:  0,
-            startStage: getCurrentStage(),
-            isGrabber,
-            pointerId: e.pointerId,
-            captured:  false      // 指针捕获与拖拽态延迟到真正拖动时（见 onPointerMove）
-        };
-    }
-
-    function onPointerMove(e) {
-        if (!drag) return;
-        const detents = getDetents();
-        const dy = e.clientY - drag.startY;
-        // 轻点不进入拖拽：只有位移超过阈值才捕获指针并切到拖拽态，
-        // 否则 click 会被派发到面板上，面板内的按钮就点不动了
-        if (!drag.captured) {
-            if (Math.abs(dy) < DRAG_START_THRESHOLD) return;
-            panel.setPointerCapture && panel.setPointerCapture(drag.pointerId);
-            drag.captured = true;
-            document.body.classList.add('panel-sheet-dragging');
-            document.body.classList.remove('mobile-panel-docked-full');   // 拖拽时收回顶部填色
-        }
-        const rawTop = drag.startTop + dy;
-        const clamped = Math.max(detents.full, Math.min(detents.collapsed, rawTop));
-
-        const now = performance.now();
-        const elapsed = Math.max(1, now - drag.lastAt);
-        const instant = (e.clientY - drag.lastY) / elapsed;
-        drag.velocity = elapsed > VELOCITY_STALE_MS
-            ? instant
-            : drag.velocity * 0.6 + instant * 0.4;
-        drag.lastY = e.clientY;
-        drag.lastAt = now;
-        drag.currentTop = clamped;
-
-        // 必须用 important 才能覆盖带 !important 的 CSS body 类选择器规则
-        panel.style.setProperty('top', clamped + 'px', 'important');
-    }
-
-    function onPointerUp(e) {
-        if (!drag) return;
-        if (drag.captured) {
-            panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
-            document.body.classList.remove('panel-sheet-dragging');
-        }
-        // 恢复 transition：先清除内联属性，再交回 CSS 控制
-        panel.style.removeProperty('transition');
-        panel.style.removeProperty('top');
-
-        const detents = getDetents();
-        const dy = e.clientY - drag.startY;
-        const releaseVelocity = performance.now() - drag.lastAt > VELOCITY_STALE_MS ? 0 : drag.velocity;
-        const committed = Math.abs(dy) >= STAGE_STEP_MIN_DISTANCE
-            || Math.abs(releaseVelocity) >= STAGE_STEP_MIN_VELOCITY;
-        let nextStage;
-
-        if (Math.abs(dy) < 7 && drag.isGrabber) {
-            // 轻点把手：三档循环
-            if (drag.startStage === 'full') {
-                nextStage = 'half';
-            } else if (drag.startStage === 'half') {
-                nextStage = 'full';
-            } else {
-                nextStage = 'half'; // collapsed → half
-            }
-        } else if (!committed) {
-            nextStage = drag.startStage;
-        } else {
-            const travel = detents.collapsed - detents.full;
-            const extremeDist = Math.max(120, travel * 0.28);
-            const fast = Math.abs(releaseVelocity) >= EXTREME_FLICK_VELOCITY && Math.abs(dy) >= extremeDist;
-            const goingUp = fast ? releaseVelocity < 0 : dy < 0;
-            const startIdx = STAGES.indexOf(drag.startStage);
-            if (goingUp) {
-                nextStage = fast ? 'full' : STAGES[Math.min(STAGES.length - 1, startIdx + 1)];
-            } else {
-                nextStage = fast ? 'collapsed' : STAGES[Math.max(0, startIdx - 1)];
-            }
-        }
-
-        const currentTop = drag.currentTop;
-        drag = null;
-
-        const targetTop = applyStage(nextStage, true);
-        animateSettle(currentTop, targetTop, releaseVelocity);
-    }
-
-    function onPointerCancel(e) {
-        if (!drag) return;
-        if (drag.captured) {
-            panel.releasePointerCapture && panel.releasePointerCapture(drag.pointerId);
-            document.body.classList.remove('panel-sheet-dragging');
-        }
-        panel.style.removeProperty('transition');
-        panel.style.removeProperty('top');
-        // 就近吸附
-        const detents = getDetents();
-        const pos = drag.currentTop;
-        const midFH = (detents.full + detents.half) / 2;
-        const midHC = (detents.half + detents.collapsed) / 2;
-        let stage;
-        if (pos < midFH) stage = 'full';
-        else if (pos < midHC) stage = 'half';
-        else stage = 'collapsed';
-        const currentTop = drag.currentTop;
-        drag = null;
-        const targetTop = applyStage(stage, true);
-        animateSettle(currentTop, targetTop, 0);
-    }
-
-    panel.addEventListener('pointerdown',   onPointerDown,  { passive: false });
-    panel.addEventListener('pointermove',   onPointerMove,  { passive: true });
-    panel.addEventListener('pointerup',     onPointerUp);
-    panel.addEventListener('pointercancel', onPointerCancel);
-
-    // 注册清理函数
-    panel._mobileSheetDragCleanup = () => {
-        panel.removeEventListener('pointerdown',   onPointerDown);
-        panel.removeEventListener('pointermove',   onPointerMove);
-        panel.removeEventListener('pointerup',     onPointerUp);
-        panel.removeEventListener('pointercancel', onPointerCancel);
-        if (settleRaf) cancelAnimationFrame(settleRaf);
-    };
+    });
 }
 
 function handleShare(station, lineId = "") {

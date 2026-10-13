@@ -779,10 +779,10 @@
         return m <= 0 ? "即將抵達" : m === 1 ? "1 分鐘" : `${m} 分鐘`;
     }
     /** 渲染實時列車行：「2 號月台 · 即將抵達 · 4 分 · 8 分」 */
-    function liveHtml(res, list, end) {
+    function liveHtml(res, list, end, emptyText = "暫無此方向班次") {
         if (!res) return "";
         if (!res.ok) return `<span class="hk-live-off">${res.message}</span>`;
-        if (!list.length) return `<span class="hk-live-off">暫無此方向班次</span>`;
+        if (!list.length) return `<span class="hk-live-off">${emptyText}</span>`;
         const plat = list[0].plat ? `<span class="hk-platnum"><span class="hk-plat-no">${list[0].plat}</span>號月台</span>` : "";
         const items = list.slice(0, 3).map((t, i) => {
             const other = end && t.dest !== end ? `<i>往${stName(t.dest)}</i>` : "";
@@ -1808,7 +1808,79 @@
         }
     };
 
-    /** 綫路分頁：仿月台方向牌，列出兩個行車方向的下一站與距終點站數 */
+    /** 保留常規終點，實時區間車按實際目的地加入，班次只歸屬一張卡。 */
+    function directionRows(lid, sid, res) {
+        const L = routableLines()[lid];
+        if (!L) return [];
+        const rows = new Map();
+        function displayWays(viaRacecourse) {
+            if (lid !== "EAL") return L.ways;
+            // 港鐵 route=RAC 表示經馬場「取代」火炭，不能把兩站串成必經站。
+            // 只校正方向牌，原始站序仍留給地圖與尋路使用。
+            return L.ways.map(w => viaRacecourse
+                ? [...new Set(w.map(id => id === "FOT" ? "RAC" : id))]
+                : w.filter(id => id !== "RAC"));
+        }
+        function add(end, viaRacecourse = false) {
+            viaRacecourse = lid === "EAL" && (viaRacecourse || sid === "RAC" || end === "RAC");
+            const w = displayWays(viaRacecourse).find(w => w.includes(sid) && w.includes(end));
+            if (!w) return;
+            const i = w.indexOf(sid), j = w.indexOf(end);
+            if (i < 0 || j < 0 || i === j) return;
+            const dir = j > i ? 1 : -1;
+            const key = `${dir}|${end}|${viaRacecourse ? "RAC" : ""}`;
+            const short = !L.ways.some(w => w[0] === end || w[w.length - 1] === end);
+            if (!rows.has(key)) rows.set(key, { key, dir, end, next: w[i + dir], left: Math.abs(j - i), short, viaRacecourse, trains: [] });
+            return rows.get(key);
+        }
+        [-1, 1].forEach(dir => displayWays(sid === "RAC").forEach(w => {
+            const i = w.indexOf(sid);
+            if (i !== -1 && w[i + dir]) add(dir > 0 ? w[w.length - 1] : w[0]);
+        }));
+        if (res && res.ok) res.trains.forEach(t => {
+            if (t.valid === "N") return;
+            const row = add(t.dest, lid === "EAL" && t.route === "RAC");
+            if (row) row.trains.push(t);
+        });
+        rows.forEach(r => r.trains.sort((a, b) => (+a.ttnt) - (+b.ttnt)));
+        return [...rows.values()];
+    }
+
+    function directionBoardHtml(lid, sid, res) {
+        const L = routableLines()[lid];
+        if (!L) return "";
+        const groups = new Map();
+        directionRows(lid, sid, res).forEach(r => {
+            // 分岔站的下一站可不同，仍用共同方向組織各目的地。
+            const key = r.dir;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(r);
+        });
+        const color = lineColor(lid);
+        const isTerminus = L.ways.filter(w => w.includes(sid)).every(w => w[0] === sid || w[w.length - 1] === sid);
+        const board = [...groups.values()].map(rows => {
+            const first = rows[0];
+            const sameNext = rows.every(r => r.next === first.next);
+            const heading = sameNext ? `經 ${stName(first.next)} 方向` : "同一行車方向";
+            const cards = rows.map(r => `
+                <button type="button" class="hk-dir" data-jump="${r.next}" data-end="${r.key}">
+                    <span class="hk-dir-arrow" style="background:${color}"><cgo-icon name="arrow-${r.dir > 0 ? "right" : "left"}" size="16"></cgo-icon></span>
+                    <span class="hk-dir-main">
+                        <span class="hk-dir-to">往 <b>${stName(r.end)}</b><i>to ${stEn(r.end)}</i>${r.short ? '<small class="hk-dir-short">區間車</small>' : ""}${r.viaRacecourse ? '<small class="hk-dir-short">經馬場</small>' : ""}</span>
+                        <span class="hk-dir-next">下一站 <b>${stName(r.next)}</b> · 距終點站 ${r.left} 站</span>
+                        ${NT_LINES.includes(lid) ? `<span class="hk-live">${res ? liveHtml(res, r.trains, r.end, "暫無開往此站的班次") : "載入實時班次…"}</span>` : ""}
+                    </span>
+                    <cgo-icon class="hk-dir-go" name="chevron-right" size="16"></cgo-icon>
+                </button>`).join("");
+            return `<section class="hk-dir-group" style="--hk-direction-color:${color}" aria-label="${heading}">
+                <div class="hk-dir-group-title"><cgo-icon name="arrow-${first.dir > 0 ? "right" : "left"}" size="14"></cgo-icon>${heading}${rows.length > 1 ? '<span>同方向 · 不同終點</span>' : ""}</div>
+                <div class="hk-dir-group-cards">${cards}</div>
+            </section>`;
+        }).join("");
+        return `${isTerminus ? `<div class="hk-terminus">本站為${(LINE_NAMES[lid] || [lid])[0]}終點站</div>` : ""}${board}`;
+    }
+
+    /** 綫路分頁：同方向分組、按終點並列顯示常規及區間車。 */
     const DirectionModule = {
         id: "hk-directions",
         name: "月台方向牌",
@@ -1816,43 +1888,36 @@
         order: 20,
         render(ctx) {
             const sid = ctx.station.id, lid = ctx.lineInfo && ctx.lineInfo.id;
-            const L = routableLines()[lid];
-            if (!L) return "";
-            const color = lineColor(lid);
-            const rows = [];
-            [-1, 1].forEach(dir => {
-                // 同一方向可能因支綫而有不同終點：按終點分組
-                const byEnd = new Map();
-                L.ways.forEach(w => {
-                    const i = w.indexOf(sid);
-                    if (i === -1 || !w[i + dir]) return;
-                    const end = dir > 0 ? w[w.length - 1] : w[0];
-                    if (!byEnd.has(end)) byEnd.set(end, { next: w[i + dir], left: dir > 0 ? w.length - 1 - i : i });
-                });
-                byEnd.forEach((v, end) => rows.push({ dir, end, ...v }));
-            });
-            if (!rows.length) return "";
-            const isTerminus = rows.length === 1 && L.ways.every(w => w[0] === sid || w[w.length - 1] === sid);
-            const board = rows.map(r => `
-                <div class="hk-dir" data-jump="${r.next}">
-                    <div class="hk-dir-arrow" style="background:${color}"><cgo-icon name="arrow-${r.dir > 0 ? "right" : "left"}" size="16"></cgo-icon></div>
-                    <div class="hk-dir-main">
-                        <div class="hk-dir-to">往 <b>${stName(r.end)}</b><i>to ${stEn(r.end)}</i></div>
-                        <div class="hk-dir-next">下一站 <b>${stName(r.next)}</b> · 距終點站 ${r.left} 站</div>
-                        ${NT_LINES.includes(lid) ? `<div class="hk-live" data-live="${lid}|${sid}|${r.dir}|${r.end}">載入實時班次…</div>` : ""}
-                    </div>
-                    <cgo-icon class="hk-dir-go" name="chevron-right" size="16"></cgo-icon>
-                </div>`).join("");
-            return `<div class="hk-dirs">${isTerminus ? `<div class="hk-terminus">本站為${(LINE_NAMES[lid] || [lid])[0]}終點站</div>` : ""}${board}</div>`;
+            if (!routableLines()[lid]) return "";
+            return `<div class="hk-dirs" data-direction-line="${lid}" data-direction-station="${sid}">${directionBoardHtml(lid, sid, null)}</div>`;
         },
         onMounted(panel, ctx) {
-            panel.querySelectorAll(".hk-dir[data-jump]").forEach(el => el.addEventListener("click", (e) => {
+            const pane = panel.querySelector(`.tab-pane[data-tab-index="${ctx.tabIndex}"]`) || panel;
+            const board = [...pane.querySelectorAll(".hk-dirs")].find(el =>
+                el.dataset.directionLine === (ctx.lineInfo && ctx.lineInfo.id) && el.dataset.directionStation === ctx.station.id);
+            if (!board || board.dataset.bound) return;
+            board.dataset.bound = "1";
+            board.addEventListener("click", e => {
+                const el = e.target.closest(".hk-dir[data-jump]");
+                if (!el || !board.contains(el)) return;
                 e.stopPropagation();
                 window.selectStation && window.selectStation(el.dataset.jump);
-            }));
-            // 各綫分頁各自掛載；只處理本分頁內的實時班次
-            const pane = panel.querySelector(`.tab-pane[data-tab-index="${ctx.tabIndex}"]`) || panel;
-            mountLive(pane);
+            });
+            const lid = board.dataset.directionLine, sid = board.dataset.directionStation;
+            if (!NT_LINES.includes(lid)) return;
+            const run = () => fetchNextTrains(lid, sid).then(res => {
+                if (!board.isConnected) return;
+                // 更新時保留正在操作的卡片焦點。
+                const focused = board.contains(document.activeElement) ? document.activeElement.closest(".hk-dir") : null;
+                const end = focused && focused.dataset.end;
+                board.innerHTML = directionBoardHtml(lid, sid, res);
+                if (end) [...board.querySelectorAll(".hk-dir")].find(el => el.dataset.end === end)?.focus();
+            });
+            run();
+            const timer = setInterval(() => {
+                if (!board.isConnected) { clearInterval(timer); return; }
+                run();
+            }, 30000);
         }
     };
 
