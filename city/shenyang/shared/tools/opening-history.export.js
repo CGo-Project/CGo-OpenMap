@@ -7,12 +7,19 @@
  * 由内核经 window.CGoOpeningHistoryShared 注入；导出入口由内核在 mount 时调用。
  * 两个布局常量 EXPORT / CARD 也挂回共享层 —— 内核的 viewportBox 要按它们算导出安全区。
  *
- * ⚠️ 加载顺序：必须晚于 opening-history.js。改本文件后记得同步递增缓存版本串。
+ * ⚠️ 加载顺序：必须晚于 opening-history.js，并**晚于 `base/svg-raster.js`**（公共栅格化零件，
+ *    与分享卡 `base/poster.js` 共用）。改本文件后记得同步递增缓存版本串。
  */
 (function () {
     const SHARED = window.CGoOpeningHistoryShared;
     if (!SHARED) {
         console.warn("[线网发展史] opening-history.export.js 需在 opening-history.js 之后加载，已跳过");
+        return;
+    }
+    // 公共栅格化零件（共享层 base/svg-raster.js，与分享卡 poster.js 共用）——硬依赖，须更早加载
+    const RASTER = window.CGoSvgRaster;
+    if (!RASTER) {
+        console.warn("[线网发展史] 缺少共享层 base/svg-raster.js（须早于本导出层加载），已跳过");
         return;
     }
     const { NS, LAYER_ID, STYLE_ID, TOOL_ID, STAGE_CLASS, POP_CLASS, DOT_CLASS, NO_CLASS, NO_SHAPE_CLASS, NO_ICON_CLASS, DOT_ICON_CLASS, ON_CLASS, ALWAYS_CLASS, GONE_CLASS, HOST_CLASS, DUP_LABEL_CLASS, BODY_CLASS, SPEED, ZOOM, POP_BASE, STOP_HOLD, STOP_STAGGER, FREE_SWITCH_HOLD, CONV_MIN, T, SCALE_FLOOR, MOBILE_MAX, KIND_LABEL, STATE_LABEL, badgeOf, isWithdrawal, REDUCE, esc, state, clearTimers, glideMs, holdMs, growDuration, dist, pathCache, sampleCorePath, segLength, pointAt, projectOnPath, slicePath, toD, arcOf, pointAtMulti, tOnStep, bboxOf, stepLabel, canExportVideo, stationMap, linesData, lineStations, byLineId, stationRangeOf, eventOps, findOpIndex, soleOnLine, pushScaleLimit, popScaleLimit, stageHost, pinnedObserver, watchPinned, unwatchPinned, resetMapSelection, enterStage, exitStage, applyAnimDurations, reseek, calloutOf, dotColorOf, themeVar, setNoIcon, applyForm, setDotIcon, popStation, calloutObserver, repaintCallouts, watchCallouts, unwatchCallouts, resyncShown, isOnCanvas, syncVirtualConnectors, syncRdotLabels, syncOffStationLinks, syncPhantomHosts, syncGhostForms, syncGhostLabels, ghostPointAt, visiblePointOf, alignEndsToVisible, trimEndToPoint, realignArchivedPaths, realignPiecePaths, realignLiveSegs, syncConnectorEnds, onPhantomClick, markAlwaysOn, clearMarks, layer, doneGroup, liveGroup, clearCanvas, viewportBox, cnSpanOf, enSpanOf, MN_LANG, altSpanOf, applyNameAt, restoreNames, applyNewName, bezier, EASE, EASE_OUT, EASE_POP, clampZoom, camForPoint, camForBox, camLerp, brushAt, expandBoxByLabels, camTailOf, camWholeOf, growthPhases, phaseAtDt, progAtDt, timeOfProg, stepStops, buildTimeline, recAt, camAt, applyPopProgress, ripple, leaveStation, showStation, ensureGrowPath, applyFrame, syncRenameNames, applyRenameAt, makeHollowMask, makeSegPiece, applyPieceStyle, pieceLen, applyPieceProgress, convertRange, applyConvs, commitPath, pad2, lerpDate, setTrack, lineCountAround, panelModel, applyPanel, scrollListToActive, renderBody, syncToggle, renderList, trackPercentAt, syncNow, syncPlayBtn, startPlayback, tick, play, pause, reset, replay, jumpTo, mount, unmount, phantomIds, watchPhantomNodes, hasData, register } = SHARED;
@@ -185,13 +192,7 @@
         clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
         clone.style.transform = "none";
         // ⚠️ foreignObject 里没有 :root，`:root { --x: … }` 一条都匹配不上 → 变量要逐个搬
-        [document.documentElement, document.body].forEach((src) => {
-            const cs = getComputedStyle(src);
-            for (let i = 0; i < cs.length; i++) {
-                const name = cs[i];
-                if (name.slice(0, 2) === "--") clone.style.setProperty(name, cs.getPropertyValue(name));
-            }
-        });
+        RASTER.applyRootVars(clone);
         // ⚠️ data URL 的 SVG 没有 base URL，相对图片引用解析不了（静默消失）；
         //    换 blob URL 又会被判跨源加载、污染画布 → 只能先内联成 data URL
         for (const el of clone.querySelectorAll("img, image")) {
@@ -221,7 +222,7 @@
         const xml = new XMLSerializer().serializeToString(clone);
         // ⚠️ 内联 CSS 走 CDATA：里面出现 `]]>` 就会提前闭合、把后面的标签名当文本，整份 SVG 直接解析失败。
         //    CSS 里合法出现 `]]>` 的情形很少，但一旦出现，症状就是「导出无声失败」，故宁可分段转义。
-        const cssText = String(state.exportCss || "").replace(/]]>/g, "]]]]><![CDATA[>");
+        const cssText = RASTER.cdata(state.exportCss || "");
         const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">'
             + '<foreignObject width="' + W + '" height="' + H + '">'
             // ⚠️ 只藏**文字**、不藏整个 #labels-layer：呼出框（如沈阳换乘站的「文本框底部描边」
@@ -233,7 +234,7 @@
         if (!(W > 0 && H > 0)) {
             console.warn(`[线网发展史] 导出：地图容器尺寸为 ${W}×${H}，栅格化很可能失败`);
         }
-        const img = await imgFromData(sanitizeXml(svg));
+        const img = await imgFromData(RASTER.sanitizeXml(svg, reportBadXmlChars));
 
         ctx2d.setTransform(1, 0, 0, 1, 0, 0);
         // 底色取**底图背景色**（暗色主题下不能再铺白）：全览那一拍地图内容缩得比输出画布还小，
@@ -869,22 +870,15 @@
     }
 
     /**
-     * XML 1.0 里**不允许出现**的字符：控制符（除 \t \n \r）、孤立代理项、U+FFFE / U+FFFF。
-     * HTML 解析对它们照收不误，但把同一棵 DOM 序列化成 SVG 再交给 XML 解析器就整份失败
-     * （实测症状：`invalid attribute value`，指到克隆根节点的 style 属性里）。
-     * ⚠️ 正则**不加** `u` 标志：要按 UTF-16 码元匹配，才能抓到孤立代理项。
+     * 净化（剔 XML 不允许的字符）走共享层公共件 `CGoSvgRaster.sanitizeXml`；这里只留
+     * 「把剔掉的字符报出来」的诊断回调 —— 控制符 / 孤立代理项 / U+FFFE、FFFF 混进导出 SVG
+     * 多半来自某个样式值或站名文本，报出来便于当上游数据问题追溯。
      */
-    const XML_BAD_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/g;
-
-    /** 栅格化前净化：剔掉 XML 不允许的字符，并把它是什么报出来（数据问题便于追溯） */
-    function sanitizeXml(str) {
-        const bad = str.match(XML_BAD_CHARS);
-        if (!bad) return str;
+    function reportBadXmlChars(bad) {
         const uniq = Array.from(new Set(bad))
             .map((c) => "U+" + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0"));
         console.warn(`[线网发展史] 导出：SVG 里含 ${bad.length} 个 XML 不允许的字符（${uniq.join("、")}）已剔除，`
             + "多半来自某个样式值或站名文本，可作为上游数据问题排查");
-        return str.replace(XML_BAD_CHARS, "");
     }
 
     /**
@@ -924,30 +918,15 @@
         return "；出错处上下文：" + JSON.stringify(svgStr.slice(Math.max(0, offset - 120), offset + 120));
     }
 
-    /** data URL 的 SVG → <img>（decoded ≠ painted，调用方已在外层留出等待） */
-    function imgFromData(svgStr) {
-        const bytes = new TextEncoder().encode(svgStr);
-        let bin = ""; const CH = 0x8000;
-        for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
-        return new Promise((res, rej) => {
-            const img = new Image();
-            img.onload = () => res(img);
-            img.onerror = () => rej(new Error("SVG 栅格化失败（" + describeSvgFailure(svgStr) + "）"));
-            img.src = "data:image/svg+xml;base64," + btoa(bin);
-        });
-    }
+    /** data URL 的 SVG → <img>（decoded ≠ painted，调用方已在外层留出等待）。
+     *  走共享层公共件，失败时附上 `describeSvgFailure` 的复核诊断。 */
+    const imgFromData = (svgStr) =>
+        RASTER.imgFromData(svgStr, (s) => "SVG 栅格化失败（" + describeSvgFailure(s) + "）");
 
     /** 导出前的准备：同源 CSS 文本、外部图片 data URL 缓存、站名度量缓存 */
     async function prepareExport() {
-        let css = "";
-        const sheets = document.styleSheets;
-        for (let i = 0; i < sheets.length; i++) {
-            try {
-                const rules = sheets[i].cssRules;
-                for (let j = 0; j < rules.length; j++) css += rules[j].cssText + "\n";
-            } catch (e) { /* 跨域表（远在字体站的，导出用不到）读不到，跳过 */ }
-        }
-        state.exportCss = css;
+        // 同源样式表规则文本走共享层公共件（跨域表读不到，跳过）
+        state.exportCss = RASTER.collectCss();
         state.exportImgCache = new Map();
         const mc = document.getElementById("map-content");
         for (const el of mc.querySelectorAll("img, image")) {
@@ -956,7 +935,7 @@
             try {
                 const r = await fetch(new URL(src, document.baseURI).href);
                 const b = await r.arrayBuffer();
-                state.exportImgCache.set(src, "data:" + (r.headers.get("content-type") || "image/png") + ";base64," + b64Bytes(b));
+                state.exportImgCache.set(src, "data:" + (r.headers.get("content-type") || "image/png") + ";base64," + RASTER.bytesToBase64(new Uint8Array(b)));
             } catch (e) { /* 取不到就保持原样（该图在导出里会缺失，不致命） */ }
         }
         labelCache = buildLabelCache();
@@ -1055,12 +1034,6 @@
         };
     }
 
-    function b64Bytes(buf) {
-        const b = new Uint8Array(buf); let s = ""; const CH = 0x8000;
-        for (let i = 0; i < b.length; i += CH) s += String.fromCharCode.apply(null, b.subarray(i, i + CH));
-        return btoa(s);
-    }
-
     /**
      * 把单色 SVG 图片（base64 data URL）的填充色统一换成给定色。
      * 导出时给「靠 CSS mask 着色」的徽标兜底用（见 paintFrame 里对 airport.svg 的处理）：
@@ -1076,11 +1049,7 @@
             let svg = new TextDecoder("utf-8").decode(bytes);
             svg = svg.replace(/fill=(['"])(?!none\b)[^'"]*\1/gi, 'fill="' + color + '"');
             if (!/fill=/i.test(svg)) svg = svg.replace(/<svg\b/i, '<svg fill="' + color + '"');
-            const out = new TextEncoder().encode(svg);
-            let s = "";
-            const CH = 0x8000;
-            for (let i = 0; i < out.length; i += CH) s += String.fromCharCode.apply(null, out.subarray(i, i + CH));
-            return "data:image/svg+xml;base64," + btoa(s);
+            return "data:image/svg+xml;base64," + RASTER.stringToBase64(svg);
         } catch (e) { return dataUrl; }
     }
 

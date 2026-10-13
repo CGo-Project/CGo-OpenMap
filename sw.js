@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261014.0100';
+const CACHE_NAME = 'cgo-openmap-v261014.0711';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -151,6 +151,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/base/viewport-inset.js',
     './city/shenyang/shared/base/panel-tab-swipe-relay.js',
     // 分享卡（车站卡 / 行程卡）：DOM → canvas 海报 + 弹窗三动作，六城共用
+    './city/shenyang/shared/base/svg-raster.js',
     './city/shenyang/shared/base/poster.js',
     './city/shenyang/shared/base/share-card.js',
     './city/shenyang/shared/base/share-card.css',

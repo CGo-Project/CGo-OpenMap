@@ -573,7 +573,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261014.0100";
+        const version = "261014.0711";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -584,6 +584,8 @@
         document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
+        // 公共栅格化零件（分享卡海报与沿革视频导出共用，须早于 poster.js 与 opening-history.export.js）
+        document.write(`<script src="./city/shenyang/shared/base/svg-raster.js?v=${version}"><\/script>`);
         // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
         document.write(`<script src="./city/shenyang/shared/base/poster.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/base/share-card.js?v=${version}"><\/script>`);

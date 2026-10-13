@@ -4,13 +4,13 @@
  *
  * 用途：车站卡 / 行程卡这类**一次性成像**的海报——尺寸固定、无相机、无逐帧。
  *
- * 与沿革视频导出那份（`tools/opening-history.export.js` 的 `paintFrame`）**刻意分开**：
+ * 与沿革视频导出那份（`tools/opening-history.export.js` 的 `paintFrame`）**仍是两份**：
  * 那份耦合了相机矩阵、逐帧背压、站名 canvas 缓存、机场徽标重着色与主题切换，是为视频服务的；
  * 这里只做「克隆 → 内联自定义属性与样式表 → 组 foreignObject → 栅格化」这一小段。
- * ⚠️ 二者有约 30 行同源逻辑（搬 `--变量`、sanitizeXml）。**长期保持各自自包含**，
- *    不抽公共件：沿革导出是会被上游合并的产物，一旦它依赖本文件，本文件就成了上游必须
- *    同时收的硬依赖（上游单独合 export.js 而不带本文件 → 线上缺依赖）。等上游自己重构出
- *    公共栅格化再跟随即可。改动其中一份时请顺手看一眼另一份。
+ * **两边真正重合的部分（`sanitizeXml` / `imgFromData` / 同源样式表收集 / 搬 `--变量` /
+ * CDATA 转义 / base64）已抽到同目录的 `base/svg-raster.js`（`window.CGoSvgRaster`）**，
+ * 本文件与沿革导出各自引用它，不再各写一遍。
+ * ⚠️ 故本文件**依赖 `base/svg-raster.js`**，后者必须更早加载（各城 `{city}.js` 已排好）。
  *
  * ⚠️ 海报 DOM 里**不能用 `<cgo-icon>`**：它是 shadow DOM 组件（Lit + attachShadow），
  *    `cloneNode` 拿不到影子里那棵 svg，进 foreignObject 会渲染成**空白**（沿革导出当年
@@ -25,24 +25,24 @@
     "use strict";
     if (typeof window === "undefined") return;
 
+    // 公共栅格化零件（同目录 svg-raster.js）——硬依赖，须更早加载
+    const RASTER = window.CGoSvgRaster;
+    if (!RASTER) {
+        console.warn("[CGoPoster] 缺少共享层 base/svg-raster.js（须早于本文件加载），海报栅格化不可用");
+        return;
+    }
+
     /** 图片内联缓存：src → Promise<data URL|null>（海报反复打开不必重复抓） */
     const imgCache = new Map();
     /** 同源样式表规则文本缓存 */
     let cssCache = null;
 
     /**
-     * 收集页面里**同源**样式表的规则文本。
-     * 跨域样式表读 cssRules 会抛（CORS），跳过即可——本项目的样式表都是同源的。
+     * 收集页面里**同源**样式表的规则文本（在公共件上再套一层缓存：海报会反复取用）。
      */
     function loadCss() {
         if (cssCache != null) return cssCache;
-        const out = [];
-        for (const sheet of Array.from(document.styleSheets)) {
-            try {
-                out.push(Array.from(sheet.cssRules).map((rule) => rule.cssText).join("\n"));
-            } catch (err) { /* 跨域样式表：跳过 */ }
-        }
-        cssCache = out.join("\n");
+        cssCache = RASTER.collectCss();
         return cssCache;
     }
 
@@ -215,31 +215,6 @@
     }
 
     /**
-     * 清掉 XML 非法字符：裸控制字符、落单的代理项与 U+FFFE/FFFF 会让整份 SVG 解析失败。
-     * 与沿革导出里那份同源逻辑（见文件头注释）。
-     */
-    function sanitizeXml(xml) {
-        return xml.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/g, "");
-    }
-
-    /** SVG 文本 → 已解码的 Image（走 base64：中文/字体经 base64 比 `encodeURIComponent` 小得多，
-     *  也与沿革导出那份同源实现保持一致） */
-    function imgFromData(svgText) {
-        const bytes = new TextEncoder().encode(svgText);
-        let bin = "";
-        const CHUNK = 0x8000;
-        for (let i = 0; i < bytes.length; i += CHUNK) {
-            bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
-        }
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = () => reject(new Error("海报栅格化失败：SVG 数据无法解码"));
-            img.src = "data:image/svg+xml;base64," + btoa(bin);
-        });
-    }
-
-    /**
      * 把一块已挂在文档里的 DOM 栅格化成 canvas。
      * @param {HTMLElement} el 海报根节点（须**已挂进文档**，否则量不到尺寸）
      * @param {Object} [opts]
@@ -266,22 +241,14 @@
         clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
         clone.style.setProperty("margin", "0");
         // foreignObject 里没有 :root —— 自定义属性逐个搬到克隆根上，否则海报全丢主题色
-        [document.documentElement, document.body].forEach((src) => {
-            const cs = getComputedStyle(src);
-            for (let i = 0; i < cs.length; i++) {
-                const name = cs[i];
-                if (name.slice(0, 2) === "--") clone.style.setProperty(name, cs.getPropertyValue(name));
-            }
-        });
+        RASTER.applyRootVars(clone);
         await inlineImages(clone);
 
         const xml = new XMLSerializer().serializeToString(clone);
-        // 内联 CSS 走 CDATA：里面出现 `]]>` 会提前闭合、把后面的标签名当文本，整份 SVG 解析失败
-        const cdata = (text) => String(text).replace(/]]>/g, "]]]]><![CDATA[>");
         const buildSvg = (fontCss) =>
             '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">'
             + '<foreignObject width="' + W + '" height="' + H + '">'
-            + '<style><![CDATA[' + cdata(fontCss) + "\n" + cdata(loadCss()) + ']]></style>'
+            + '<style><![CDATA[' + RASTER.cdata(fontCss) + "\n" + RASTER.cdata(loadCss()) + ']]></style>'
             + xml + '</foreignObject></svg>';
 
         // 页面的 webfont 必须内联（SVG 图片文档取不到它们，见 inlineFonts 上面的说明），
@@ -295,9 +262,10 @@
         // 与「照 style.css 栈写死的兜底」两头对齐 —— 不管 webfont 有没有捞到，都是无衬线。
         // （成功时本函数已把 @font-face 内联进 SVG，海报根的这行声明本就会被 CSS 覆盖。）
         if (!fontCss) clone.style.removeProperty("font-family");
+        const decode = (svgText) => RASTER.imgFromData(svgText, () => "海报栅格化失败：SVG 数据无法解码");
         let img;
         try {
-            img = await imgFromData(sanitizeXml(buildSvg(fontCss)));
+            img = await decode(RASTER.sanitizeXml(buildSvg(fontCss)));
         } catch (err) {
             // 兜底：字体内联把 SVG 撑得过大、或某个字体文件解不开时，宁可**少字体也别出不了图**
             if (!fontCss) throw err;
@@ -305,7 +273,7 @@
             // 退化时要与上面 `!fontCss` 分支同一步调：删掉根上的 font-family，
             // 让 CSS 栈末位的 sans-serif 兜底（否则 foreignObject 默认 serif 会接管，字形突变）
             clone.style.removeProperty("font-family");
-            img = await imgFromData(sanitizeXml(buildSvg("")));
+            img = await decode(RASTER.sanitizeXml(buildSvg("")));
         }
         const canvas = document.createElement("canvas");
         canvas.width = Math.round(W * (o.scale || 2));

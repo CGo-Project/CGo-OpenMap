@@ -330,7 +330,7 @@
      */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261014.0100";
+        const version = "261014.0711";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
@@ -350,6 +350,8 @@
         write(`${shared}/route/route-panel-icons.js`);
         write(`${shared}/route/route-panel-search.js`);
         write(`${shared}/route/route-panel.js`);
+        // 公共栅格化零件（分享卡海报与沿革视频导出共用，须早于 poster.js 与 opening-history.export.js）
+        write(`${shared}/base/svg-raster.js`);
         // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
         write(`${shared}/base/poster.js`);
         write(`${shared}/base/share-card.js`);

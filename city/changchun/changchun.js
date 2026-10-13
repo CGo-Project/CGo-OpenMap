@@ -464,7 +464,9 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261014.0100";
+        const version = "261014.0711";
+        // 公共栅格化零件（沿革视频导出与分享卡海报共用；本城导出层先于 poster.js 加载，故置于最前）
+        document.write(`<script src="./city/shenyang/shared/base/svg-raster.js?v=${version}"><\/script>`);
         // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
         document.write(`<script src="./city/changchun/data_opening_history.js?v=${version}"><\/script>`);
         // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」

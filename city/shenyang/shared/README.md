@@ -12,7 +12,7 @@
 
 | 目录 | 放什么 |
 | :--- | :--- |
-| `base/` | 通用基建：侧栏（sidebar-refit / viewport-inset）、站名标题、标签高亮、站距估算、海报栅格化与分享卡（移动抽屉自上游合并 `core/mobile-sheet.js` 后已移交核心，见 2.1） |
+| `base/` | 通用基建：侧栏（sidebar-refit / viewport-inset）、站名标题、标签高亮、站距估算、公共栅格化零件（svg-raster）、海报栅格化与分享卡（移动抽屉自上游合并 `core/mobile-sheet.js` 后已移交核心，见 2.1） |
 | `route/` | 行程规划链：数据构建 → 内核 → 面板（route-data / route-planner / route-panel / loop-direction） |
 | `station/` | 车站详情相关：卡片引擎、时刻表渲染、开通时刻、出入口与设施、题字、提示卡、最近车站、邻站跳转 |
 | `tools/` | 地图小工具（map-tools） |
@@ -63,7 +63,8 @@
 | `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
 | `viewport-inset.js` | 载体 `window.CGoViewportInsets`（`{left, right, bottom}`，px）、接口 `window.CGoViewportInset`（`refresh` / `compute` / `fit`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 浮层遮挡上报：把「哪一侧被遮多少」写回引擎，详见 2.1 |
 | `panel-tab-swipe-relay.js` | 无对外接口（脚本存在即生效，自动接管 `#info-panel` 的 `.panel-body`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `viewport-inset.js`） | 车站信息板横滑切页的**补充通道**：核心 `panel-tab-swipe.js` 会跳过「交互元素」与「地图卡片」两类起手区域，于是「在整宽链接 / 成排按钮 / 迷你地图上左右滑」都没反应；本模块只补这两类，详见 2.1 |
-| `poster.js` | `window.CGoPoster`（`render` / `loadCss` / `toDataUrl` / `inlineImages`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须早于 `share-card.js`** | DOM 海报栅格化（克隆 → 搬自定义属性 → 内联同源位图 → `foreignObject` → canvas）：分享卡的一次性成像基建。**与 `tools/opening-history.export.js` 那份刻意各自自包含、不抽公共件**，详见 2.1 |
+| `svg-raster.js` | `window.CGoSvgRaster`（`sanitizeXml` / `imgFromData` / `collectCss` / `applyRootVars` / `cdata` / `bytesToBase64` / `stringToBase64`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须早于 `poster.js` 与 `tools/opening-history.export.js`** | 海报出图与沿革视频导出**共用**的栅格化零件：净化 XML 非法字符、SVG 文本 → `<img>`（base64）、收集同源样式表、搬 `--变量`、CDATA 转义、base64 编解码，详见 2.1 |
+| `poster.js` | `window.CGoPoster`（`render` / `loadCss` / `toDataUrl` / `inlineImages`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须晚于 `svg-raster.js`、早于 `share-card.js`** | DOM 海报栅格化（克隆 → 搬自定义属性 → 内联同源位图 → `foreignObject` → canvas）：分享卡的一次性成像基建。公共零件取自 `svg-raster.js`，其余（webfont 内联 / 裁边）自持，详见 2.1 |
 | `share-card.js` + `share-card.css` | `window.CGoShareCard`（`open`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须晚于 `route-panel.js` 与 `poster.js`** | 车站卡 / 行程卡分享弹窗：卡片预览 + 下载图片 / 复制链接 / 分享链接。在 **document 捕获阶段**扣下两个 `.panel-share-btn`（core 零改动），深链 `?city=&from=&to=[&need=]`，详见 2.1 |
 | `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close` / `registerTool(def)`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
 | `opening-history.js` + `opening-history.css` | 经 `window.CGoMapTools.registerTool` 注册成**免选站工具**（`window.CGoOpeningHistory` 只暴露 `hasData` / `mount` / `unmount` / `open`）；另把沿革里已拆除的站暴露成 `window.CGO_RETIRED_STATIONS`（供 `adjacent-jump.js` 等后处理读取） | classic script，五城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼）（须晚于 `map-tools.js` 与城市 `data_opening_history.js`） | 线网发展史动态演示：按开通沿革把线网逐段「长」出来（区段沿真实走向生长 → 新开车站脉冲 → 段间跳视口 → 播放 / 暂停 / 重播 / 倍速 / 跳年份），并可把选定区间导出为 **1280×720@30fps 的 MP4**（WebCodecs `VideoEncoder` + mp4-muxer，按需注入），详见 2.1 |
@@ -181,6 +182,19 @@
 > 核心默认那行也没被隐藏，两行同时显示）。`route-panel.js` 的 `cgo-route-entry` 模块因此改为
 > 「面板内找不到就在 `.cgo-mobile-sheet-dock` 里再找一次本行、再由 `row.closest(".panel-footer")` 反查底栏」。
 
+#### svg-raster.js —— 栅格化公共零件（海报出图与沿革视频导出共用）
+
+把 `base/poster.js`（分享卡一次性成像）与 `tools/opening-history.export.js`（沿革逐帧导出）里真正重合的几段收敛到一处，避免同一份逻辑各写一遍、长期漂移。对外是 `window.CGoSvgRaster`：
+
+- `sanitizeXml(str, onBad?)` —— 剔掉 XML 1.0 不允许的字符（控制符、孤立代理项、U+FFFE / U+FFFF）。这些字符 HTML 照收，但把 DOM 序列化成 SVG 再交给 XML 解析器就**整份失败**；正则**不加 `u` 标志**（要按 UTF-16 码元匹配才能抓到孤立代理项）。`onBad` 是可选回调，交调用方自行上报诊断（沿革导出用它把剔了哪些字符打到控制台）。
+- `imgFromData(svgText, errFactory?)` —— SVG 文本 → 已解码的 `<img>`，传输走 **base64**（中文 / 字体经 `encodeURIComponent` 会膨胀得厉害）。`errFactory` 允许调用方自定义错误文案（`<img>` 的 `onerror` 不给细节，沿革导出据此附 `DOMParser` 复核诊断）。
+- `collectCss()` —— 收集页面里**同源**样式表的规则文本（跨域表读 `cssRules` 会抛，跳过）。**不缓存**：生命周期由调用方决定（海报逐次取用自行缓存，导出每轮只取一次）。
+- `applyRootVars(el)` —— 把 `documentElement` / `body` 上的 `--*` 自定义属性逐个搬到 `el` 上（`foreignObject` 里没有 `:root`，不搬则栅格化出来的图全丢主题色）。
+- `cdata(text)` —— 转义 CDATA 内文本：出现 `]]>` 会提前闭合、把后面的标签名当文本，整份 SVG 解析失败。
+- `bytesToBase64(bytes)` / `stringToBase64(str)` —— 分块 base64（一次性 `String.fromCharCode.apply` 到超长数组会因参数过多爆栈）。
+
+⚠️ **加载顺序**：本文件必须早于 `poster.js` 与 `opening-history.export.js`（各城 `{city}.js` 已排好；长春因导出层先于 `poster.js` 加载，本件置于该城脚本最前）。三者随功能整批提交。
+
 #### poster.js —— 一次成像的海报栅格化（分享卡共用）
 
 把一块**已挂进文档**的 DOM 克隆进 `foreignObject` 再画到 canvas：`render(el, { width, scale, background, fonts })`。关键几步：克隆后把 `document.documentElement` / `body` 上的 `--变量` **逐个搬到克隆根**（`foreignObject` 里没有 `:root`，不搬则海报全丢主题色）；再用 `loadCss()` 把**同源**样式表的 `cssRules` 内联进 `<style><![CDATA[…]]></style>`（跨域表读 `cssRules` 会抛，跳过）；同源位图抓成 data URL 内联（**外域一律不抓**——抓了只会污染画布，让 `toBlob` 抛 `SecurityError`；车站卡里那张高德瓦片正是这种），抓不到就摘掉节点、免得留下破图；序列化前清掉 XML 非法控制字符，CDATA 里的 `]]>` 也要转义（否则提前闭合、把后面的标签名当文本，整份 SVG 解析失败）；最后等 `document.fonts.ready` 再画（不等会用回退字体）。
@@ -201,7 +215,7 @@
 - 兜底两道：① `heightPad`（量高后多留 24px）+ 出图后的 `trim()` 双向兜住「量高 ≠ 栅格化高」（字体没内联上、CDN 取不到、分辨率取整都可能差几 px）；② SVG 若因字体过大解不开，自动退回**不带 webfont** 再出一张（少字体也别出不了图）。
 - 传输改走 **base64**（`btoa`，与沿革导出同源做法）：中文与字体经 `encodeURIComponent` 会膨胀得厉害，base64 小得多。
 
-⚠️ **与 `tools/opening-history.export.js` 的 `paintFrame` 刻意分开、长期保持两份**：那份耦合了相机矩阵、逐帧背压、站名 canvas 缓存、机场徽标重着色与主题切换，是为视频服务的。两者只共享约 30 行同源逻辑（搬 `--变量`、`sanitizeXml`），**不抽公共件** —— 沿革导出是会被上游合并的产物，一旦它依赖本文件，本文件就成了上游必须同时收的硬依赖（上游单独合 `export.js` 而不带本文件 → 线上缺依赖）。等上游自己重构出公共栅格化再跟随；改动其中一份时顺手看一眼另一份。
+⚠️ **与 `tools/opening-history.export.js` 的 `paintFrame` 仍是两份**：那份耦合了相机矩阵、逐帧背压、站名 canvas 缓存、机场徽标重着色与主题切换，是为视频服务的，**不并入本文件**。两者真正重合的部分（`sanitizeXml`、`imgFromData`、同源样式表收集、搬 `--变量`、CDATA 转义、base64）**已抽到 `base/svg-raster.js`（`window.CGoSvgRaster`）**，两边各自引用，不再各写一遍 —— 这让出图与导出走同一份公共逻辑，避免长期漂移。⚠️ 代价是**共享层的这两处都得依赖它**：四者（`svg-raster` / `poster` / `opening-history.export` 与登记的 `sw.js`）须**随功能整批提交**，不单独分拆到不同批次，以免出现「合了一份、缺了依赖」。
 
 #### share-card.js + share-card.css —— 车站卡 / 行程卡分享弹窗
 

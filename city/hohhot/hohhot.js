@@ -282,7 +282,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261014.0100";
+        const version = "261014.0711";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -291,6 +291,8 @@
         document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
+        // 公共栅格化零件（分享卡海报与沿革视频导出共用，须早于 poster.js 与 opening-history.export.js）
+        document.write(`<script src="./city/shenyang/shared/base/svg-raster.js?v=${version}"><\/script>`);
         // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
         document.write(`<script src="./city/shenyang/shared/base/poster.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/base/share-card.js?v=${version}"><\/script>`);
