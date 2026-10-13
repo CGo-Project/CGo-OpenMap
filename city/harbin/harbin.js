@@ -115,7 +115,8 @@
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
         },
         stationBoard: {
-            scripts: ["modules/harbin_map.js", "modules/harbin_station_title.js", "modules/harbin_exits.js"],
+            // 线路徽标是全局替换（MutationObserver 盯 body），不受 stationBoard.modules 调度
+            scripts: ["modules/harbin_line_badges.js", "modules/harbin_map.js", "modules/harbin_station_title.js", "modules/harbin_exits.js"],
             // 出入口独立页签（自定义 tab），渲染在「车站信息」之前
             tabs: [
                 { id: "harbin-exits", title: "出入口", icon: "gate" }
@@ -237,7 +238,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261013.1824";
+        const version = "261014.0100";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -246,6 +247,9 @@
         document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
+        // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
+        document.write(`<script src="./city/shenyang/shared/base/poster.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/share-card.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         document.write(`<script src="./city/shenyang/shared/station/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）

@@ -59,7 +59,7 @@ const HARBIN_STATION_EXITS = {
         { name: "1", lines: ["2号线"], pos: "126.566969,45.779376", desc: "西口", geoDesc: "冰景路辅路×雪乡街 路口东侧", roads: ["雪乡街 路北"], bearing: "西", landmarks: ["冰景路"] },
         { name: "2A", lines: ["2号线"], pos: "126.569967,45.779152", desc: "东南口", geoDesc: "冰景路辅路×松北大道 路口东南侧", roads: ["松北大道 路北"], bearing: "东南", landmarks: ["松北大道", "黑龙江省博物馆新馆"] },
         { name: "2B", lines: ["2号线"], pos: "126.569136,45.778631", desc: "南口", geoDesc: "冰景路辅路×松北大道 路口东南侧", roads: ["松北大道 路南"], bearing: "南", landmarks: ["松北大道"] },
-        { name: "3", lines: ["2号线"], pos: "126.568256,45.777761", desc: "南口", geoDesc: "冰景路辅路×雪乡街 路口东南侧", roads: ["雪乡街 路西"], bearing: "南", landmarks: ["雪乡街"] },
+        { name: "3", lines: ["2号线"], pos: "126.568256,45.777761", desc: "南口", geoDesc: "冰景路辅路×雪乡街 路口东南侧", roads: ["雪乡街 路西"], bearing: "南", landmarks: ["雪乡街", "哈尔滨冰雪大世界"] },
         { name: "4", lines: ["2号线"], pos: "126.566460,45.779133", desc: "西口", geoDesc: "冰景路辅路×雪乡街 路口东南侧", roads: ["雪乡街 路西", "冰景路 路南"], bearing: "西", landmarks: ["冰雪大世界"] },
     ],
     "CXL": [
@@ -93,9 +93,9 @@ const HARBIN_STATION_EXITS = {
         { name: "3B", lines: ["3号线"], pos: "126.691640,45.731287", desc: "东北口", geoDesc: "红旗大街辅路×民顺街 路口东北侧", roads: ["红旗大街 路东", "民顺街 路北"], bearing: "东北", landmarks: ["红旗大街", "玻璃钢研究院"] },
     ],
     "GCDX": [
-        { name: "1", lines: ["1号线"], pos: "126.667755,45.775568", desc: "西北口", geoDesc: "文庙街×一曼街 路口东北侧", roads: ["南通大街 路西"], bearing: "西北" },
+        { name: "1", lines: ["1号线"], pos: "126.667755,45.775568", desc: "西北口", geoDesc: "文庙街×一曼街 路口东北侧", roads: ["南通大街 路西"], bearing: "西北", landmarks: ["极乐寺", "文化公园"] },
         { name: "2", lines: ["1号线"], pos: "126.669029,45.775966", desc: "东北口", geoDesc: "宣普街×南海路 路口南侧", roads: ["南通大街 路南"], bearing: "东北" },
-        { name: "3", lines: ["1号线"], pos: "126.667911,45.774934", desc: "南口", geoDesc: "北宣桥街×宣化街 路口东北侧", roads: ["南通大街 路南"], bearing: "南" },
+        { name: "3", lines: ["1号线"], pos: "126.667911,45.774934", desc: "南口", geoDesc: "北宣桥街×宣化街 路口东北侧", roads: ["南通大街 路南"], bearing: "南", landmarks: ["文庙"] },
     ],
     "GLDQ": [
         { name: "1", lines: ["3号线"], pos: "126.595230,45.759112", desc: "北口", geoDesc: "河洲街×哈药路 路口东北侧", roads: ["哈药路 路东", "河洲街 路北"], bearing: "北", landmarks: ["哈药路", "正阳小区东街区", "松花江公路大桥"] },
@@ -111,7 +111,7 @@ const HARBIN_STATION_EXITS = {
     ],
     "GRWHG": [
         { name: "1", lines: ["2号线"], pos: "126.653312,45.750828", desc: "西北口", geoDesc: "中山路辅路×比乐街 路口东侧", roads: ["中山路 路东", "比乐街 路南"], bearing: "西北", landmarks: ["比乐街", "中山路", "哈尔滨市民大厦"] },
-        { name: "2", lines: ["2号线"], pos: "126.655080,45.749446", desc: "东南口", geoDesc: "革新街×中山路 路口东北侧", roads: ["革新街 路北"], bearing: "东南", landmarks: ["革新街", "中山路"] },
+        { name: "2", lines: ["2号线"], pos: "126.655080,45.749446", desc: "东南口", geoDesc: "革新街×中山路 路口东北侧", roads: ["革新街 路北"], bearing: "东南", landmarks: ["革新街", "中山路", "哈尔滨天主教堂"] },
         { name: "3", lines: ["2号线"], pos: "126.654481,45.749197", desc: "东南口", geoDesc: "革新街×中山路 路口西侧", roads: ["中山路 路西", "巴陵街 路南"], bearing: "东南", landmarks: ["革新街", "中山路", "黑龙江省气象局"] },
         { name: "4", lines: ["2号线"], pos: "126.653064,45.750332", desc: "西北口", geoDesc: "巴陵街×中山路 路口西北侧", roads: ["中山路 路南", "巴陵街 路西"], bearing: "西北", landmarks: ["中山路", "哈尔滨市工人文化宫"] },
     ],
@@ -146,7 +146,7 @@ const HARBIN_STATION_EXITS = {
     ],
     "HGD": [
         { name: "1", lines: ["1号线"], pos: "126.626856,45.744165", desc: "西南口", geoDesc: "上夹树街×西大直街 路口西侧", roads: ["西大直街 路北"], bearing: "西南" },
-        { name: "2", lines: ["1号线"], pos: "126.628951,45.745297", desc: "东北口", geoDesc: "西大直街×邮政街 路口东南侧", roads: ["西大直街 路南", "春明街 路东"], bearing: "东北" },
+        { name: "2", lines: ["1号线"], pos: "126.628951,45.745297", desc: "东北口", geoDesc: "西大直街×邮政街 路口东南侧", roads: ["西大直街 路南", "春明街 路东"], bearing: "东北", landmarks: ["哈尔滨工业大学"] },
         { name: "3", lines: ["1号线"], pos: "126.627119,45.743664", desc: "西南口", geoDesc: "下夹树街×西大直街 路口东南侧", roads: ["西大直街 路东", "下夹树街 路南"], bearing: "西南" },
     ],
     "HHDL": [
@@ -191,7 +191,7 @@ const HARBIN_STATION_EXITS = {
         { name: "3", lines: ["1号线"], pos: "126.615696,45.732094", desc: "东南口", geoDesc: "西大直街辅路×和兴路辅路 路口南侧", roads: ["西大直街 路东"], bearing: "东南", landmarks: ["西大直街", "清滨公园", "黑龙江开放大学"] },
     ],
     "HZZX": [
-        { name: "1", lines: ["3号线"], pos: "126.696022,45.750351", desc: "西口", geoDesc: "红旗大街辅路×长江路 路口西侧", roads: ["长江路 路南"], bearing: "西", landmarks: ["长江路", "九三大厦"] },
+        { name: "1", lines: ["3号线"], pos: "126.696022,45.750351", desc: "西口", geoDesc: "红旗大街辅路×长江路 路口西侧", roads: ["长江路 路南"], bearing: "西", landmarks: ["长江路", "龙塔", "九三大厦"] },
         { name: "2", lines: ["3号线"], pos: "126.695943,45.750955", desc: "西北口", geoDesc: "红旗大街辅路×长江路 路口西北侧", roads: ["长江路 路北"], bearing: "西北", landmarks: ["长江路", "浦发大厦"] },
         { name: "3", lines: ["3号线"], pos: "126.697052,45.751668", desc: "北口", geoDesc: "红旗大街辅路×飞翼路 路口东侧", roads: ["红旗大街 路东", "飞翼路 路南"], bearing: "北", landmarks: ["红旗大街", "哈尔滨国际会议展览体育中心"] },
         { name: "4", lines: ["3号线"], pos: "126.696944,45.749556", desc: "南口", geoDesc: "红旗大街辅路×长江路 路口南侧", roads: ["红旗大街 路东"], bearing: "南", landmarks: ["红旗大街", "拉林新村小区"] },
@@ -211,7 +211,7 @@ const HARBIN_STATION_EXITS = {
     "JTXY": [
         { name: "1", lines: ["1号线"], pos: "126.686693,45.787715", desc: "西口", geoDesc: "东直路×太平南三道街 路口东北侧", roads: ["东直路 路北", "太平南三道街 路东"], bearing: "西" },
         { name: "2", lines: ["1号线"], pos: "126.688174,45.788169", desc: "东北口", geoDesc: "东直路×太平南二道街 路口西侧", roads: ["东直路 路北", "太平南二道街 路西"], bearing: "东北" },
-        { name: "3", lines: ["1号线"], pos: "126.687609,45.787586", desc: "东南口", geoDesc: "东直路×太平南二道街 路口西南侧", roads: ["东直路 路南"], bearing: "东南" },
+        { name: "3", lines: ["1号线"], pos: "126.687609,45.787586", desc: "东南口", geoDesc: "东直路×太平南二道街 路口西南侧", roads: ["东直路 路南"], bearing: "东南", landmarks: ["黑龙江工程学院"] },
     ],
     "JXJ": [
         { name: "1", lines: ["3号线"], pos: "126.685702,45.704307", desc: "西南口", geoDesc: "通乡街×星光街 路口西侧", roads: ["通乡街 路西", "进乡街 路南"], bearing: "西南", landmarks: ["星光街", "进乡街"] },
@@ -240,9 +240,9 @@ const HARBIN_STATION_EXITS = {
         { name: "3", lines: ["3号线"], pos: "126.673867,45.700879", desc: "西口", geoDesc: "松海路×松江路 路口西侧", roads: ["松海路 路南", "松江路 路西"], bearing: "西", landmarks: ["松江路", "松海路", "哈尔滨市劳动公园"] },
     ],
     "LGDX": [
-        { name: "1", lines: ["1号线"], pos: "126.611610,45.714297", desc: "南口", geoDesc: "学府二街道×学府路 路口南侧", roads: ["学府路 路西", "北航街 路南"], bearing: "南" },
+        { name: "1", lines: ["1号线"], pos: "126.611610,45.714297", desc: "南口", geoDesc: "学府二街道×学府路 路口南侧", roads: ["学府路 路西", "北航街 路南"], bearing: "南", landmarks: ["黑龙江职业学院"] },
         { name: "2", lines: ["1号线"], pos: "126.611310,45.715420", desc: "西北口", geoDesc: "学府二街道×学府路 路口西北侧", roads: ["学府路 路西", "北航街 路北"], bearing: "西北" },
-        { name: "3", lines: ["1号线"], pos: "126.612151,45.715484", desc: "北口", geoDesc: "学府二街道×学府路 路口东北侧", roads: ["学府路 路东", "学府二街道 路北"], bearing: "北" },
+        { name: "3", lines: ["1号线"], pos: "126.612151,45.715484", desc: "北口", geoDesc: "学府二街道×学府路 路口东北侧", roads: ["学府路 路东", "学府二街道 路北"], bearing: "北", landmarks: ["哈尔滨理工大学"] },
         { name: "4", lines: ["1号线"], pos: "126.612459,45.714370", desc: "东南口", geoDesc: "学府二街道×学府路 路口东南侧", roads: ["学府路 路东", "学府二街道 路南"], bearing: "东南" },
     ],
     "NZL": [
@@ -272,7 +272,7 @@ const HARBIN_STATION_EXITS = {
         { name: "3", lines: ["3号线"], pos: "126.652584,45.788706", desc: "东北口", geoDesc: "南十四道街×北十四道街 路口东北侧", roads: ["靖宇街 路北", "北十四道街 路东"], bearing: "东北", landmarks: ["靖宇街", "哈尔滨市第四医院"] },
     ],
     "RMGC": [
-        { name: "1", lines: ["2号线"], pos: "126.605184,45.773233", desc: "东口", geoDesc: "工程街×经纬街 路口西北侧", roads: ["经纬街 路北", "工程街 路西"], bearing: "东", landmarks: ["经纬街", "工程街", "哈尔滨市国际工程咨询中心", "中国石油天然气股份有限公司", "哈尔滨市华能集中供热有限公司第五分公司"] },
+        { name: "1", lines: ["2号线"], pos: "126.605184,45.773233", desc: "东口", geoDesc: "工程街×经纬街 路口西北侧", roads: ["经纬街 路北", "工程街 路西"], bearing: "东", landmarks: ["经纬街", "工程街", "松花江观光索道", "哈尔滨市国际工程咨询中心", "中国石油天然气股份有限公司", "哈尔滨市华能集中供热有限公司第五分公司"] },
         { name: "2", lines: ["2号线"], pos: "126.604873,45.772306", desc: "东南口", geoDesc: "工程街×工部街 路口东北侧", roads: ["工程街 路北", "工部街 路东"], bearing: "东南", landmarks: ["经纬街", "工程街", "友谊公园", "工程社区卫生服务中心", "黑龙江省志愿服务发展中心", "红专西段社区"] },
         { name: "3", lines: ["2号线"], pos: "126.604424,45.772967", desc: "东南口", geoDesc: "友谊路×经纬街 路口东南侧", roads: ["经纬街 路南"], bearing: "东南", landmarks: ["经纬街", "友谊路", "友谊公园", "哈尔滨市税务局友谊路办公区", "哈尔滨市税务局第三稽查局"] },
         { name: "4", lines: ["3号线"], pos: "126.603034,45.772964", desc: "西南口", geoDesc: "友谊路×经纬街 路口西南侧", roads: ["友谊路 路南", "经纬街 路西"], bearing: "西南", landmarks: ["友谊路", "人民广场", "哈尔滨规划展览馆", "九站公园"] },
@@ -300,7 +300,7 @@ const HARBIN_STATION_EXITS = {
         { name: "3", lines: ["2号线"], pos: "126.678017,45.736718", desc: "东口", geoDesc: "衡山路×珠江路辅路 路口东侧", roads: ["珠江路 路南", "司徒街 路东"], bearing: "东", landmarks: ["珠江路", "黑龙江省计量科学研究院"] },
     ],
     "SZDJ": [
-        { name: "1", lines: ["2号线"], pos: "126.625435,45.766038", desc: "西北口", geoDesc: "斜角街×工厂街 路口东侧", roads: ["经纬街 路北", "尚志大街 路东"], bearing: "西北", landmarks: ["尚志大街", "经纬街", "圣索菲亚教堂"] },
+        { name: "1", lines: ["2号线"], pos: "126.625435,45.766038", desc: "西北口", geoDesc: "斜角街×工厂街 路口东侧", roads: ["经纬街 路北", "尚志大街 路东"], bearing: "西北", landmarks: ["尚志大街", "经纬街", "哈尔滨市博物馆", "圣索菲亚教堂"] },
         { name: "2", lines: ["2号线"], pos: "126.626651,45.765109", desc: "东南口", geoDesc: "尚志大街×电车街 路口东侧", roads: ["电车街 路北"], bearing: "东南", landmarks: ["电车街", "经纬街", "黑龙江日报社"] },
         { name: "3", lines: ["2号线"], pos: "126.625032,45.765728", desc: "西口", geoDesc: "斜角街×工厂街 路口东南侧", roads: ["经纬街 路南", "尚志大街 路东"], bearing: "西", landmarks: ["尚志大街", "经纬街"] },
     ],
@@ -425,7 +425,7 @@ const HARBIN_STATION_EXITS = {
     ],
     "ZLYY": [
         { name: "1", lines: ["3号线"], pos: "126.642633,45.701418", desc: "北口", geoDesc: "保健路辅路×哈平路 路口北侧", roads: ["哈平路 路西"], bearing: "北", landmarks: ["哈平路", "黑龙江省林业科学院"] },
-        { name: "2", lines: ["3号线"], pos: "126.643406,45.701566", desc: "北口", geoDesc: "哈建街×哈平路 路口南侧", roads: ["哈平路 路东"], bearing: "北", landmarks: ["哈平路", "远大都市绿洲小区"] },
+        { name: "2", lines: ["3号线"], pos: "126.643406,45.701566", desc: "北口", geoDesc: "哈建街×哈平路 路口南侧", roads: ["哈平路 路东"], bearing: "北", landmarks: ["哈平路", "植物园", "远大都市绿洲小区"] },
         { name: "3", lines: ["3号线"], pos: "126.643846,45.699615", desc: "东南口", geoDesc: "保健路辅路×哈平路 路口东南侧", roads: ["哈平路 路东"], bearing: "东南", landmarks: ["哈平路"] },
         { name: "4", lines: ["3号线"], pos: "126.642977,45.699483", desc: "南口", geoDesc: "保健路辅路×哈平路 路口南侧", roads: ["哈平路 路西"], bearing: "南", landmarks: ["哈平路", "哈尔滨医科大学附属肿瘤医院门诊综合楼"] },
     ],
