@@ -1184,49 +1184,23 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
         top: auto !important;
         left: 0 !important;
         right: 0 !important;
-        bottom: 0 !important;
         width: 100% !important;
         max-width: none !important;
-        /* 半屏档按内容撑开：40vh 装不下「起终点输入区 + 快捷按钮 + 底栏」，
-           底栏会把输入区压掉半行。改内容自适应，60vh 封顶；内容更高的面板
-           （结果面板）超出部分交给 .panel-body 滚动。
-           用 height 而不是 max-height 定档：内容不足时 max-height 既撑不高也切不到全屏档。
-           高度一律用 dvh：移动端浏览器的 100vh 是地址栏收起时的大视口，比实际可见高度大，
-           面板会比屏幕还高、顶栏被挤到页面标题栏上面（dvh 取当前动态视口，与核心面板一致）。 */
-        height: auto;
-        max-height: 60vh !important;
-        max-height: 60dvh !important;
+        /* 高度档 / 贴底定位已由核心统一接管（core/mobile-sheet.js 内联 top + height +
+           transform，含底栏停靠时扣掉底栏高）。这里不再写 bottom / height / max-height ——
+           两套尺寸规则叠加会多裁掉一档高度（实测）。 */
         border-radius: 20px 20px 0 0 !important;
         box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.15) !important;
     }
 
     .cgo-rt-panel.drawer-full {
-        /* ⚠️ 这里绝不能加 !important：拖动靠内联 height 覆盖档位高度，
-           一旦带上 !important，内联声明会被压死，面板就卡在全屏档拖不回去了。
-           类选择器（0,2,0）本身就压得过上面的 .cgo-rt-panel（0,1,0）。
-           顶端的预留量必须与核心车站面板同口径（style.css 的
-           `top: calc(env(safe-area-inset-top, 0px) + 60px)`）：
-           面板是「贴底 + 定高」定位，顶端 = 视口高 − 高度，
-           少减 safe-area-inset-top 就会顶进刘海/状态栏、压住页面标题栏。
-           高度用 dvh：移动端浏览器的 100vh 取地址栏收起时的大视口，比实际可见高度大。 */
-        height: calc(100vh - 60px);      /* 回退：不支持 dvh / env 的旧内核 */
-        height: calc(100dvh - 60px - env(safe-area-inset-top, 0px));
-        max-height: calc(100vh - 60px) !important;
-        max-height: calc(100dvh - 60px - env(safe-area-inset-top, 0px)) !important;
-        /* 全屏时面板顶端与填色遮罩同色相连，收掉圆角才不会在接缝处留出缺口 */
+        /* 全屏档高度同样交给核心（内联 height = 视口高 − 顶留 − 底栏高）；
+           这里只收圆角：全屏时面板顶端与填色遮罩同色相连，留圆角会在接缝处露缺口。 */
         border-radius: 0 !important;
     }
 
-    /* 最小化档：只留把手与标题栏，内容区与底栏整块折叠。
-       高度交给「把手 + 标题栏」自然撑开，拖动期间的内联 height 由 settle() 清除。 */
-    .cgo-rt-panel.drawer-min {
-        height: auto;
-    }
-
-    .cgo-rt-panel.drawer-min .panel-body,
-    .cgo-rt-panel.drawer-min .panel-footer {
-        display: none !important;
-    }
+    /* 最小化档：只留把手与标题栏。档位高度由核心用 transform 下移实现，
+       内容区/底栏的显隐核心已接管，这里不再写 height / display。 */
 
     .cgo-rt-panel .panel-body {
         max-height: none;                 /* 高度交给面板整体约束 */

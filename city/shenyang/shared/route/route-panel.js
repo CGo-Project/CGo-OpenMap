@@ -2741,6 +2741,30 @@
         });
     }
 
+    /**
+     * 软键盘态的抽屉定高修正。
+     *
+     * 核心按「视口高 − 顶留 − 底栏高」定高，而底栏（`.cgo-mobile-sheet-dock`）是 position:fixed
+     * 贴在**布局视口**底边的；软键盘弹起只压缩 visualViewport，底栏被键盘整个盖住，扣掉的那一档
+     * 就成了面板底部露出来的一条空白（真机实测「多裁掉一个操作栏的高度」）。
+     * 键盘态改为只扣顶留，让面板底边正好接住键盘顶；键盘收起后高度仍由核心自己算。
+     */
+    const KEYBOARD_MIN_GAP = 150;   // px：visualViewport 比 innerHeight 矮这么多即视为键盘弹出
+    function refitSheetForKeyboard(panel) {
+        const vv = window.visualViewport;
+        if (!vv || !panel.classList.contains("cgo-mobile-sheet")) return;
+        if (vv.height >= window.innerHeight - KEYBOARD_MIN_GAP) return;   // 非键盘态：交给核心
+        const top = parseFloat(window.getComputedStyle(panel).top) || 0;
+        panel.style.setProperty("height", Math.max(0, vv.height - top) + "px", "important");
+    }
+    // ⚠️ 核心的 CGoMobileSheet 也在同一个 visualViewport resize 上写高度，监听顺序不可依赖；
+    //    推到下一帧再写，确保覆盖它（每次事件只写一次，代价可忽略）。
+    window.visualViewport?.addEventListener("resize", () => {
+        requestAnimationFrame(() => {
+            document.querySelectorAll(".cgo-mobile-sheet").forEach(refitSheetForKeyboard);
+        });
+    });
+
     /* ======================================================================
      * 面板栈：同时打开多个面板时只显示最后打开的那个
      * ==================================================================== */
@@ -3562,14 +3586,24 @@
             },
             onMounted(container, context) {
                 adoptHelpers(context);
-                const row = container.querySelector(".cgo-rt-entry-btn");
+                // ⚠️ 移动端核心会把 .panel-footer 整块挪进 .cgo-mobile-sheet-dock（挂在面板**之外**），
+                //    而这一步发生在 station-board 的 bindEvents 里、**早于**本 onMounted——直接在
+                //    container 内找本行必然落空，结果是本行按钮绑不上事件、核心那行也不会被隐藏
+                //    （新旧两行同时显示）。故面板内找不到时，在停靠栏里再找一次。
+                //    `.cgo-rt-entry-btn` 全站唯一（只由本模块产在车站底栏），不会与规划/结果面板混淆。
+                const row = container.querySelector(".cgo-rt-entry-btn")
+                    || document.querySelector(".cgo-mobile-sheet-dock .cgo-rt-entry-btn")
+                    || null;
                 if (!row) return;
                 // 普通地铁站：本行即底栏的全部操作，隐藏核心默认的「官网查询 / 高德导航」行以免重复；
                 // 市郊站保留原行（还有时刻表、票务等专属入口）。
                 if (!context.isSuburbanStation) {
-                    container.querySelectorAll(".panel-footer > div").forEach((node) => {
-                        if (node !== row) node.style.display = "none";
-                    });
+                    const footer = row.closest(".panel-footer");
+                    if (footer) {
+                        Array.from(footer.children).forEach((node) => {
+                            if (node !== row) node.style.display = "none";
+                        });
+                    }
                 }
                 row.querySelector('[data-route-act="from"]')?.addEventListener("click", () => {
                     closeInfoPanel();   // 设为起点后收起车站面板，让规划面板独占视野

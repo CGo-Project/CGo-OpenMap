@@ -12,15 +12,15 @@
 
 | 目录 | 放什么 |
 | :--- | :--- |
-| `base/` | 通用基建：抽屉手势（sheet-drag / panel-sheet-gesture）、侧栏（sidebar-refit / viewport-inset）、站名标题、标签高亮、站距估算 |
+| `base/` | 通用基建：侧栏（sidebar-refit / viewport-inset）、站名标题、标签高亮、站距估算（移动抽屉自上游合并 `core/mobile-sheet.js` 后已移交核心，见 2.1） |
 | `route/` | 行程规划链：数据构建 → 内核 → 面板（route-data / route-planner / route-panel / loop-direction） |
 | `station/` | 车站详情相关：卡片引擎、时刻表渲染、开通时刻、出入口与设施、题字、提示卡、最近车站、邻站跳转 |
 | `tools/` | 地图小工具（map-tools） |
 | `feedback/` | 反馈面板 |
 
 > 约定：新增能力**先归到已有目录**，目录内尽量保持「1 js + 1 css」；确实需要才开新目录，避免目录碎片化。
-> 搬家只改路径与 `sw.js` 预缓存清单，**不改变加载顺序**：路线链 `route-data → route-planner → route-panel`，
-> 抽屉链 `sheet-drag → panel-sheet-gesture → route-panel`。改顺序比改路径危险得多（前者会 `undefined` 报错）。
+> 搬家只改路径与 `sw.js` 预缓存清单，**不改变加载顺序**：路线链 `route-data → route-planner → route-panel`。
+> 改顺序比改路径危险得多（前者会 `undefined` 报错）。
 
 ---
 
@@ -62,8 +62,7 @@
 | `nearest-station.js` + `nearest-station.css` | 无对外接口（自动接管 `#locate-btn`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 跨城市「查找最近车站」：在 `#locate-btn` 上以**捕获阶段**扣下核心 `findNearestStation` 的点击，本模块自足地定位、换算 GCJ-02、比对全城站点后，改用 `cgo-modal` 三选一（切换到更近的城市 / 查看当前城市最近车站 / 取消），替掉核心那个同步 `confirm`；样式表由脚本按自身 URL 注入 |
 | `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
 | `viewport-inset.js` | 载体 `window.CGoViewportInsets`（`{left, right, bottom}`，px）、接口 `window.CGoViewportInset`（`refresh` / `compute` / `fit`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 浮层遮挡上报：把「哪一侧被遮多少」写回引擎，详见 2.1 |
-| `sheet-drag.js` | `window.CGoSheetDrag`（`create`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），**须早于 `route-panel.js` 与 `panel-sheet-gesture.js`** | 移动端抽屉手势引擎：头部/把手拖拽 + 内容区跟手仲裁 + 半屏滚动锁；与面板解耦，由适配器接入车站详情 / 行程规划 / 路线结果三个面板，详见 2.1 |
-| `panel-sheet-gesture.js` + `panel-sheet-gesture.css` | `window.CGoPanelSheetGesture`（`refresh`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼），**须晚于 `sheet-drag.js` 与 `viewport-inset.js`** | 车站详情抽屉的适配器：把引擎接到 `top` 空间 + body 档位类上，并卸掉 core 的移动端拖拽，详见 2.1 |
+| `panel-tab-swipe-relay.js` | 无对外接口（脚本存在即生效，自动接管 `#info-panel` 的 `.panel-body`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `viewport-inset.js`） | 车站信息板横滑切页的**补充通道**：核心 `panel-tab-swipe.js` 会跳过 `a` / `button` 等交互元素（保护点击），于是「在整宽链接、成排按钮上左右滑」没反应；本模块只补这一类目标，详见 2.1 |
 | `map-tools.js` + `map-tools.css` | `window.CGoMapTools`（`open` / `openTool(tool, stationId?)` / `close` / `registerTool(def)`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `route-planner.js`） | 地图小工具（票价图 / 等时圈 / 多人汇合）：入口、选站链路、分层设色与结果小窗，详见 2.1 |
 | `opening-history.js` + `opening-history.css` | 经 `window.CGoMapTools.registerTool` 注册成**免选站工具**（`window.CGoOpeningHistory` 只暴露 `hasData` / `mount` / `unmount` / `open`）；另把沿革里已拆除的站暴露成 `window.CGO_RETIRED_STATIONS`（供 `adjacent-jump.js` 等后处理读取） | classic script，五城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼）（须晚于 `map-tools.js` 与城市 `data_opening_history.js`） | 线网发展史动态演示：按开通沿革把线网逐段「长」出来（区段沿真实走向生长 → 新开车站脉冲 → 段间跳视口 → 播放 / 暂停 / 重播 / 倍速 / 跳年份），并可把选定区间导出为 **1280×720@30fps 的 MP4**（WebCodecs `VideoEncoder` + mp4-muxer，按需注入），详见 2.1 |
 | `rdot-label.js` | `window.CGoRdotLabel`（`apply` / `hasRailLink` / `peersOf` / `transferTables` / `stationTable`） | classic script，由 **main.html 在全部数据脚本之后全局引入**（各城零配置；core 是 module、最后执行，故治理必然先于渲染） | 国铁散点（`type: "rdot"`）站名标签：无轨交接驳时**强制显示**、有接驳后**隐藏**（由同名轨交站名承担识别）；底图按终态接驳隐藏、演示按对端入场逐帧显隐，详见 2.1 |
@@ -135,25 +134,48 @@
 
 浮层遮挡上报：只统计 `position: fixed` 且确实可见的面板（核心的 `#info-panel`、行程规划 `#cgo-route-card`、结果 `#cgo-route-result`，以及任何自行声明 `data-cgo-inset` 的浮层——小工具就是用它补上贴角浮层那个 `bottom`），把「哪一侧被遮多少」写回 `window.CGoViewportInsets`，由引擎的 `getViewportInsets()` 消费、收窄平移边界与居中区；遮挡一变就调一次核心的 `enforceBoundaries()` 与 `updateMapTransform()`，全为 0 时与不加本模块完全一致。口径：桌面端按浮层**实际所在的那一侧**留白（跨过中线才左右互换），窄屏按贴底抽屉的高度留底；只认浮层，固定侧栏里的区块是文档流内排布、不与画布重叠，天然不计入，故本模块不需要知道任何形态细节。**窄屏另做一次「主动避让」**：光把平移**区间**放宽是看不见的——内容仍停在原地被压在浮层底下，故在遮挡变化时把地图整体平移「可用区中心移动的那段距离」。该中心的底部口径**必须与引擎 `getViewportCenter()` 一致**（同样含 `mobile-split-active` 期间「0.6 容器高」的托底）：引擎在点选车站时已按这个中心把车站取好景，本模块再按抽屉真实高度算一遍的话，两次位移会叠加、把选中车站顶出屏幕。`fit(box)` 是「查看全程」的取景口（缩放钳在城市 `minScale` / `maxScale` 之内，带一段复用核心 `.animate-zoom` 的过渡）
 
-#### sheet-drag.js —— 移动端抽屉手势引擎（通用）
+#### 移动端抽屉 —— 已移交核心（core/mobile-sheet.js）
 
-与面板解耦的底部抽屉手势引擎，三个面板共用（车站详情 / 行程规划 / 路线结果）。**位置空间、档位读写、拖动期的类切换、滚动锁全部由适配器提供**，引擎只管通用行为：
+车站详情与行程 / 结果面板的三档抽屉、内容区手势仲裁、半屏滚动锁、**底栏停靠**与页签横滑，
+自上游合并后统一由核心 `core/mobile-sheet.js`（`CGoMobileSheet`）承担：
 
-1. **头部 / 把手**：跟手拖动，松手按速度甩动 / 就近吸附到最近档；轻点循环换档（`tapTarget` 决定循环目标）。
-2. **内容区**：首次超过阈值（8px）的位移定档，整段手势不再翻转——`lockHalfScroll` 且「半屏 + 上滑」→ 跟手展开（优先展开、不先滚内容）；内容已在顶部 + 下滑 → 跟手收起；内容已在底部 + 上滑（非最大档）→ 跟手展开；其余交给原生滚动。滚动中抵达顶部 / 底部会**无缝接管**为跟手（不必松手再划一次）。⚠️ 仲裁**不跳过 `a` / `button`**（只跳真正的表单控件）：车站层级图是整宽 `<a>`，若在它上面起手就跳过，用户在那块区域滑动会毫无反应（实测踩过「车站信息页签滑动不了、绕开层级图就能滑」）；只在超过阈值后才接管并 `preventDefault`，轻点与点击不受影响。
-3. **滚动锁**：`lockHalfScroll` 时把半屏的内容区 `touch-action` **内联写死**为 `none`——否则「半屏上滑想展开」会被浏览器先把滚动抢走（判定时 touchmove 已不可取消 `preventDefault`）。全屏则移除内联、交回页面样式。
-4. **落位**：退出拖动（恢复过渡）→ 写档位 → 强制重排锁定起点 → 清内联位置，让 CSS 从「拖到的位置」过渡过去。
+- 车站详情：核心的 `initMobileSheetDrag()` 绑定 `#info-panel`，并把 `.panel-footer` 挪进固定贴底的
+  `.cgo-mobile-sheet-dock`（面板高度 = 视口高 − 顶留 − 底栏高）；
+- 行程 / 结果面板：`route-panel.js` 的 `installDrawer()` 同样接入 `CGoMobileSheet`；
+- 页签横滑：`core/panel-tab-swipe.js`；touch-action 分区与底栏样式在 `css/style.css` 的 `@media (max-width: 640px)` 内。
 
-⚠️ 引擎会接管面板上**所有**抽屉手势，调用方必须先卸掉原有拖拽监听。
-⚠️ `stageObserveEl` 默认 `document.body`（车站的档位类在 body 上）；行程面板会被整体重建，故传面板自身——观察器挂在 body 上会让它从根可达，把已拆除的面板连同引擎一起吊住（内存泄漏）。
+> 注：核心的横滑是「**正文**横滑切页」（监听 `.panel-body`，且遇到自身可横滚的节点会让路），
+> 并不管**页签条自身**的横向滚动。旧共享层给 `#info-panel .panel-tabs-nav` 设的 `touch-action: pan-x`
+> 已随文件删除，故页签条溢出时不能靠触摸拖动（仍可用正文横滑切页，核心会把选中页签 `scrollIntoView` 带进视野）。
+> 实测沈阳站 3 个页签不溢出、未观测到影响；若日后有城市页签多到溢出且被反馈，再单独补一条 `pan-x` 规则即可。
 
-#### panel-sheet-gesture.js + panel-sheet-gesture.css —— 车站详情抽屉（适配器）
+#### panel-tab-swipe-relay.js —— 交互元素上的横滑切页（补充通道）
 
-车站详情 `#info-panel` 的三档抽屉（收起 / 半屏 / 全屏）在移动端的**全部**手势都委托给上面的引擎；本文件只提供适配器：位置空间是 `top`、档位是 body 上的三个类（`panel-sheet-collapsed` / `mobile-split-active` / `mobile-panel-expanded`）、滚动容器是 `.panel-body`、`lockHalfScroll: true`、`deltaSign: 1`；`applyStage` 落位后调 `CGoViewportInset.refresh()` 重算遮挡并重新取景（落位改的是 `body` 类，不会落到 `#info-panel` 的 class/style 上，`viewport-inset` 的观察器收不到，故必须主动调）。
+核心的横滑引擎在起手目标是 `button` / `a` 等交互元素时**直接放弃**（保护点击，历史上出过「手势接管后按钮点不动」）。
+但车站信息板里**整宽 `<a>`**（车站层级图、卡片标题行）与成排按钮占了大半可视面积，于是「在它们上面左右滑」完全没反应。
+本模块只补这一种缺口，**不接管核心已处理的普通区域**：
 
-core 的 `initMobileSheetDrag()` 写死在 `#info-panel` 上（内容区按下也会被拖走、且把 `touch-action` 连同内容滚动一起禁掉），且是闭包私有、无法复用；既然统一到一份实现，就由本模块在**每次渲染后**调用它暴露的 `panel._mobileSheetDragCleanup()` 卸掉、再装上引擎（core 每次重渲染都会重绑，故每次面板重建都要再卸一次）。用「`.panel-body` 是否换过」判断要不要重建，避免被地图卡片铺瓦片之类的子节点变动频繁触发重建。
+- 仅在起手目标命中 `a` / `button` / `[role=button]` / `[role=tab]` 时动作；
+- 横向位移 > 10px 且大于纵向位移 ×1.15 才认作切页手势；**未达阈值一律不 `preventDefault`、不拦点击**；
+- 真表单控件、可横向滚动的容器、地图卡片 / 画布 / iframe 仍让路（与核心同口径）；
+- 命中后点下一枚 / 上一枚页签并 `scrollIntoView`（复用核心的激活事件）；**纵向手势完全不拦**，原生滚动照旧。
 
-样式表按自身 URL 注入：只处理 `touch-action` 分区（`#info-panel` 放行 `pan-y`、头部 / 把手 / 底栏 `none`、页签栏 `pan-x`），半屏禁滚由引擎内联写死、样式表那份只作 JS 未运行时的兜底。
+> ⚠️ **仍未补**：从按钮 / 链接起手**纵向拖动换档**。核心把抽屉位置写在内联 `transform`、档位由闭包里的
+> `getDetents()` 决定，外部无接口；要补就得复刻整套跟手与弹簧，与「上游有重叠实现一律以上游为准」相冲，
+> 故该缺口留待上游在 `core/` 内修（原生滚动本身在按钮上是正常的，不受影响）。
+
+> ⚠️ 共享层原先自建的 `base/sheet-drag.js`（通用引擎）与 `base/panel-sheet-gesture.js / .css`（车站详情适配器）
+> **已删除**。它们会在每次渲染后卸掉核心的控制器、换成自己的，而核心的控制器现在还兼管底栏停靠 ——
+> 两套规则交替接管会让车站面板同时出现「面板内底栏」与「屏幕底固定底栏」，行程面板也会因两套尺寸规则
+> 叠加而多裁掉一档高度。**上游有重叠实现一律以上游为准**，请勿再引入同类接管。
+> `viewport-inset.js`（遮挡上报）是上游没有的能力，保留。
+
+> ⚠️ **写车站底栏模块（`slot: "footer"`）时注意加载时序**：核心会在 `station-board` 的 `bindEvents` 里
+> 就调 `initMobileSheetDrag()`（→ `CGoMobileSheet`），把 `.panel-footer` **整块挪进面板之外的
+> `.cgo-mobile-sheet-dock`**，而这早于模块的 `onMounted`。因此 `onMounted(container)` 里
+> `container.querySelector(".panel-footer …")` 在移动端必然落空 → 模块静默早退（症状：本行按钮没绑上事件、
+> 核心默认那行也没被隐藏，两行同时显示）。`route-panel.js` 的 `cgo-route-entry` 模块因此改为
+> 「面板内找不到就在 `.cgo-mobile-sheet-dock` 里再找一次本行、再由 `row.closest(".panel-footer")` 反查底栏」。
 
 #### map-tools.js + map-tools.css —— 地图小工具
 

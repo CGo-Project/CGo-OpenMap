@@ -330,7 +330,7 @@
      */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261013.1638";
+        const version = "261013.1812";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
@@ -342,6 +342,8 @@
         write(`${shared}/route/loop-direction.js`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         write(`${shared}/base/viewport-inset.js`);
+        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
+        write(`${shared}/base/panel-tab-swipe-relay.js`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         write(`${shared}/route/route-data.js`);
         write(`${shared}/route/route-planner.js`);
