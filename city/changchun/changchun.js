@@ -464,11 +464,14 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261011.2407";
+        const version = "261013.1132";
         // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
         document.write(`<script src="./city/changchun/data_opening_history.js?v=${version}"><\/script>`);
         // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
         document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
+        // 线网发展史拆成三层：内核 + 状态计算（model）+ 视频导出（export），后两者必须晚于内核加载
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.model.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.export.js?v=${version}"><\/script>`);
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);

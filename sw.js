@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261011.2407';
+const CACHE_NAME = 'cgo-openmap-v261013.1132';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -186,8 +186,11 @@ const ASSETS_TO_CACHE = [
     // 地图小工具（东北四市共用）：票价图 / 等时圈，入口在「查找最近车站」按钮下方
     './city/shenyang/shared/tools/map-tools.js',
     './city/shenyang/shared/tools/map-tools.css',
-    // 线网发展史（沈阳）：按开通沿革把线网逐段「长」出来，作为免选站工具挂进地图小工具
+    // 线网发展史（沈阳）：按开通沿革把线网逐段「长」出来，作为免选站工具挂进地图小工具。
+    // 三层结构：内核 + 状态计算（model）+ 视频导出（export），按此顺序加载，经 window.CGoOpeningHistoryShared 互通
     './city/shenyang/shared/tools/opening-history.js',
+    './city/shenyang/shared/tools/opening-history.model.js',
+    './city/shenyang/shared/tools/opening-history.export.js',
     './city/shenyang/shared/tools/opening-history.css',
     // 第三方（非本仓编写）：MP4 封装器，仅「导出视频」时按需注入；MIT，版权与许可见同目录 LICENSE 文本
     './city/shenyang/shared/tools/vendor/mp4-muxer.min.js',

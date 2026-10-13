@@ -525,798 +525,13 @@
         return true;
     }
 
-    /**
-     * 把沿革事件解析成可播放的步骤。
-     *
-     * 播放顺序按日期全局升序（数据文件按线路分组书写便于维护，顺序在这里归一）。
-     * **事件 → 操作**先在此展开：一条事件（date / title / desc）可带 `ops` 里 1~N 个操作，
-     * 每个操作各成一步、各演一拍、各自取景；不写 `ops` 时事件本身就是单个操作（简写）。
-     * 下游一律按「操作流」处理，不需要知道来源是哪种写法。
-     *
-     * 几处按时间推进的判定都在这里一次算完，播放时只读不算：
-     *   · 延伸方向：从**已开通的那一端**起笔（如 2 号线北延二期由航空航天大学往蒲田路画）；
-     *   · 站点形态：换乘站在只通了一条线时先按普通站（dot）入场，第二条线开通时才转 tsf；
-     *     暂缓开通的车站也在所属线路开通时先以未开通圈出现，到自己的补开事件再转正式形态；
-     *   · 更名：有更名记录的车站在更名日期之前一律用旧名入场；
-     *   · 里程：逐段累加已开通区间的站距，供面板显示当前运营里程（停运 / 移除为负）。
-     */
-    function build() {
-        const st = stationMap();
-        const byId = {};
-        linesData().forEach((l) => { byId[l.id] = l; });
-        const events = eventOps();   // 事件已按日期归一、展开成操作流
 
-        const delayed = new Map();   // sid → [补开 / 恢复日…]（**数组**：同一站可多次停运复运，每一笔恢复都要留）
-        const delayedBy = new Map(); // sid → Map(lineId → [该线在本站的到达 / 补开日…])：判暂缓与判停运恢复都按线路粒度看
-        const closed = new Map();    // sid → [{ date, permanent }]（闭站 / 拆除，升序）
-        /**
-         * 拆除终态的站 → 拆除日期（`goneAt`，只记首次）。⚠️ 不是无条件剔除：
-         * **拆除日之前**的 step 里它照常入场（长春辽宁路站 2002 年随一期开通、2021 年才拆除），
-         * 只有拆除日及之后的操作才不许再让它复活 / 记服务账。
-         */
-        const goneAt = new Map();
-        const transferAt = new Map(); // sid → 站内换乘启用日（此前维持单线普通站形态）
-        /**
-         * 往「sid / lineId → 日期数组」里记一笔（去重）。
-         * ⚠️ 恢复日必须**逐笔留下**，不能只存最后一次：同一站同一条线可以「停 → 复 → 再停 → 再复」
-         * （长春解放桥 3 号线即此例），只留最后一次会让早先那次恢复被后来的日期盖掉，
-         * 中间那段正常运营的时期被误判成停运。
-         */
-        const pushDay = (map, key, date) => {
-            const arr = map.get(key) || [];
-            if (arr.indexOf(date) < 0) arr.push(date);
-            map.set(key, arr);
-        };
-        /**
-         * 更名事件指向的车站：优先用事件里显式写的 `sid`，没写时按「现名或曾用名」反查
-         * （兼容只有 from / to 的老数据）。同一站可以有**多次**更名，串成一条链。
-         */
-        const renameTarget = (ev) => {
-            if (ev.sid && st[ev.sid]) return ev.sid;
-            const keys = Object.keys(st);
-            for (let k = 0; k < keys.length; k++) {
-                const s = st[keys[k]];
-                if (s.cn === ev.to) return keys[k];
-                if (Array.isArray(s.aliases) && s.aliases.indexOf(ev.to) >= 0) return keys[k];
-            }
-            return null;
-        };
-        /**
-         * 站台级幽灵点的**存续区间**（先于步骤算好，wantForm 要用）——按**操作下标**计、
-         * 不按日期：同一天可以有好几拍，按日期判会在当天第一拍就把画法改了。
-         * 出现 =「主点在该线首次通车」与「主点自己的、属于该线的 `station-state/open`（站台投用）」
-         *       两个操作里较晚的那一个；
-         * 消失 = 配置的 `until` 动作引用（见 findOpIndex），没写就取主点开通站内换乘
-         *       （`station-state/interchange`）那一个操作。
-         * 配对存在期间主点**不升换乘图元** —— 两座站台各自成点、之间靠连线表达换乘：
-         * 临河街/卫星路、解放桥、长春站南站都是这种「同站不同台」，物理上本就是两座站。
-         */
-        const phantomRange = new Map();   // 主点 sid → [{ fromOp, toOp }]（操作下标，左闭右开）
-        (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
-            if (!pf || !pf.of) return;
-            const lineOpen = events.findIndex((ev) => ev.kind === "line-state" && ev.state === "open" && ev.lineId === pf.line);
-            const platOpen = events.findIndex((ev) => ev.kind === "station-state" && ev.state === "open"
-                && ev.lineId === pf.line && (ev.stations || []).indexOf(pf.of) >= 0);
-            const cand = [lineOpen, platOpen].filter((i) => i >= 0);
-            if (!cand.length) return;
-            const fromOp = Math.max.apply(null, cand);
-            const transfer = events.findIndex((ev) => ev.kind === "station-state" && ev.state === "interchange"
-                && (ev.stations || []).indexOf(pf.of) >= 0);
-            const toOp = pf.until ? findOpIndex(events, pf.until) : transfer;
-            if (toOp < 0 || toOp <= fromOp) return;
-            const list = phantomRange.get(pf.of) || [];
-            list.push({ fromOp: fromOp, toOp: toOp });
-            phantomRange.set(pf.of, list);
-        });
-        /**
-         * 状态类事件归纳成三张时间账（`wantForm` / `closedAt` / `closedLinesAt` 只读这里）：
-         *   open        → 补开 / 恢复日（暂缓站与闭站复开共用一张 `delayed`，按线路粒度另记）
-         *   interchange → 站内换乘启用日（此前不许升 tsf 形态）
-         *   suspended / removed → 闭站日（removed 即拆除，`permanent` 置位、永不再开）
-         * 线路级的 `line-state` 按站序展开成逐站的账 —— 线上的事落到站上，判定路径与站级完全一致。
-         */
-        const markClosed = (sid, ev, permanent) => {
-            if (!closed.has(sid)) closed.set(sid, []);
-            closed.get(sid).push({ date: ev.date, permanent: !!permanent, lineId: ev.lineId });
-            if (permanent && !goneAt.has(sid)) goneAt.set(sid, ev.date);   // 拆除是终态：之后任何操作都不许让它复活（但拆除日之前照常存在）
-        };
-        events.forEach((ev) => {
-            if (ev.kind === "station-state") {
-                if (ev.state === "open") {
-                    (ev.stations || []).forEach((sid) => {
-                        pushDay(delayed, sid, ev.date);
-                        const per = delayedBy.get(sid) || new Map();
-                        pushDay(per, ev.lineId, ev.date);
-                        delayedBy.set(sid, per);
-                    });
-                } else if (ev.state === "interchange") {
-                    // 换乘启用日：只登记时刻，形态判定见 wantForm（此刻之前不许升 tsf）
-                    (ev.stations || []).forEach((sid) => transferAt.set(sid, ev.date));
-                } else {
-                    // 闭站：闭站日之后本站不再是「已开通」站；`removed` 表示拆除（永不再开）。
-                    // 只通一条线的站闭站即整站停用，故直接按「未开通」图元示意 —— 与暂缓站同一套画法。
-                    (ev.stations || []).forEach((sid) => markClosed(sid, ev, ev.state === "removed"));
-                }
-            } else if (ev.kind === "line-state") {
-                // ⚠️ 只有**收缩侧**（suspended / removed）才是闭站账；open 是开通，
-                //    记进去会让全网的站在开通当天就被判成「闭站」（图元全变未开通圈）。
-                if (ev.state === "open") return;
-                const line = byId[ev.lineId];
-                if (!line) return;
-                const ids = lineStations(line);
-                // except 的站级 `state: "removed"`（随段拆除）同样是**终态**，要登记 goneAt
-                const exRem = {};
-                (Array.isArray(ev.except) ? ev.except : []).forEach((e) => {
-                    if (e && e.state === "removed") exRem[e.sid] = true;
-                });
-                stationRangeOf(line, ids, ev).forEach((sid) => markClosed(sid, ev, ev.state === "removed" || !!exRem[sid]));
-            }
-        });
-
-        const shown = new Set();      // 已经出现在画布上的站
-        const lineIdsAt = new Map();  // sid → Set(已开通线路 ID)
-        const firstLineOf = new Map(); // sid → 首条开通线路 ID
-        const formOf = new Map();     // sid → 当前形态
-        const steps = [];
-
-        /**
-         * 此刻该站是否处于闭站（拆除视为永久闭站）。
-         * 恢复的判据是「该次闭站之后、date 之内**存在任意一次**补开 / 恢复」—— 与暂缓站共用 `delayed`。
-         * ⚠️ 不能拿「最后一次恢复日」比：同一站「停 → 复 → 再停 → 再复」时，最后一次会盖掉早先那次，
-         * 于是中间那段正常运营的时期被判成停运（长春解放桥 3 号线即此例）。
-         * 因此芙蓉桥（闭 2021-11-28 → 复 2023-05-30）、西安桥（→ 复 2022-06-01）都走这一条。
-         */
-        const closedAt = (sid, date) => {
-            const list = closed.get(sid);
-            if (!list) return false;
-            let last = null;
-            for (let k = 0; k < list.length; k++) if (list[k].date <= date) last = list[k];
-            if (!last) return false;
-            if (last.permanent) return true;
-            const days = delayed.get(sid) || [];
-            return !days.some((d) => d > last.date && d <= date);
-        };
-
-        /**
-         * 此刻该站应以什么形态出现：
-         * 换乘站不满两条线先当普通站画；**暂缓开通**的站哪怕线路已经通过，
-         * 本站也先按「未开通」图元示意，直到它自己的补开事件才转正式形态；
-         * **闭站 / 拆除**的站同理先按「未开通」示意（拆除的站由渲染层彻底隐去，见 goneAt）。
-         */
-        /**
-         * 某站在 date 时**已停用的线路**集合。逐线判定：该线在本站的最后一次闭站日 ≤ date，
-         * 且此后没有该线的补开（`station-state/open`）落在 date 之内；`removed`（拆除）永不再开。
-         * 一条线停运不等于整站停用 —— 长春站 2021-11-28 起只剩 1 号线、解放桥 2021-03-08 起
-         * 只剩 2 号线，那段时间它们是**那条线的普通站**，不是「未开通」。
-         */
-        const closedLinesAt = (sid, date) => {
-            const out = new Set();
-            const list = closed.get(sid);
-            if (!list) return out;
-            const per = delayedBy.get(sid);
-            for (let k = 0; k < list.length; k++) {
-                const c = list[k];
-                if (c.date > date) continue;
-                if (c.permanent) { out.add(c.lineId); continue; }
-                // 同 closedAt：只看「该次停运之后有没有任意一次该线的恢复」，
-                // 不取该线最后一次到站日（多次停运复运时它会盖掉早先那次恢复）
-                const days = (per && per.get(c.lineId)) || [];
-                if (!days.some((d) => d > c.date && d <= date)) out.add(c.lineId);
-            }
-            return out;
-        };
-        /** 该站在 date 时**仍在服务**的线路（到过站的线路去掉已停用的） */
-        const aliveLinesAt = (sid, date) => {
-            const closedLines = closedLinesAt(sid, date);
-            const out = [];
-            (lineIdsAt.get(sid) || new Set()).forEach((lid) => { if (!closedLines.has(lid)) out.push(lid); });
-            return out;
-        };
-        /** 该站此刻的图元配色：优先用仍在服务的第一条线（只剩一条线时尤其重要） */
-        const aliveColorOf = (sid, date) => {
-            const alive = aliveLinesAt(sid, date);
-            if (!alive.length) return null;
-            // 优先用**最早到达且仍在跑**的那条线的颜色：站点图元沿用「最先覆盖它的线」，
-            // 只有那条线停运时才换成接替它的线（长春站 2021 年只剩 1 号线、解放桥只剩 2 号线）。
-            const first = firstLineOf.get(sid);
-            if (first && alive.indexOf(first) >= 0) {
-                const lf = byId[first];
-                if (lf) return lf.color;
-            }
-            const l = byId[alive[0]];
-            return l ? l.color : null;
-        };
-        const wantForm = (sid, date, opIdx) => {
-            const s = st[sid];
-            if (!s) return "real";
-            // 闭站**按线路**判：全线停用才画「未开通」；只剩一条线在跑时，本站就是那条线的普通站，
-            // 图元与配色都归那条线。
-            const alive = aliveLinesAt(sid, date);
-            if (closedLinesAt(sid, date).size && !alive.length) return "no";
-            if (s.type === "no") {
-                // 数据里本就标着「未开通」的站（在建 / 规划）：除非它有自己的补开事件（暂缓站），
-                // 否则一直按未开通图元示意 —— 线路从它站厅通过，不等于它开通了。
-                const days = delayed.get(sid) || [];
-                return days.some((d) => d <= date) ? "real" : "no";
-            }
-            // 「暂缓开通」的判定：**必须没有任何一条线真正在服务这座站**，才算整站未开通。
-            // 只看「该站自己的补开事件还没到」是不够的 —— 长春站 2002 年就有 3 号线在跑，
-            // 1 号线站台 2019-01-26 才投用，那段时间本站是开着的（只是又一条线来得晚），
-            // 画成未开通图元就错了。所以**按线路逐个看**：只要有一条线已到站、且它在本站
-            // 没有被补开事件压后，本站就是开着的。东新路（4 号线唯一经过、2023-12-31 才停靠）
-            // 这种才会被判成暂缓。
-            if (!closed.has(sid)) {
-                const linesHere = lineIdsAt.get(sid) || new Set();
-                const per = delayedBy.get(sid);
-                let served = false;
-                linesHere.forEach((lid) => {
-                    // 取该线在本站的**最晚**到达 / 补开日：不晚于当日才算真正服务本站
-                    //（延伸段重新经过不能把本站自己的补开日顶回去）
-                    const days = (per && per.get(lid)) || [];
-                    const latest = days.length ? Math.max.apply(null, days) : null;
-                    if (!(latest && latest > date)) served = true;
-                });
-                if (linesHere.size && !served) return "no";
-            }
-            // 站内换乘启用日之前：即便两条线都通过、各自站台也都投用了，只要两站台之间还不能
-            // 站内连通，就仍按「先有一条线、后又被另一条线覆盖的同一座站」渲染 —— 维持单线普通站。
-            // 长春站即此例：3 号线地面站与 1 号线地下站先后投用，但换乘要出站再进站，
-            // 直到 2021-12-31 三号线东延入地，两个站台才站内连通。
-            // 站台级幽灵点存续期间，主点保持**单线普通站**形态：两座站台各自成点、以连线表达换乘，
-            // 不能提前合成换乘图元（临河街/卫星路、解放桥都是这种）。
-            const ph = phantomRange.get(sid);
-            // 存续区间按**操作下标**判（左闭右开）：与幽灵点的移出同一拍收掉，
-            // 不给「事件第一拍先改了、对应动作还没开演」留口子
-            if (opIdx != null && ph && ph.some((r) => opIdx >= r.fromOp && opIdx < r.toOp)) return "dot";
-            const tr = transferAt.get(sid);
-            if (tr && tr > date && s.type === "tsf") return "dot";
-            const n = alive.length;   // 仍**在服务**的线路数（有线路停运时把那条线排除）
-            return (s.type === "tsf" && n < 2) ? "dot" : "real";
-        };
-
-        const stepOfEvent = [];   // 操作下标 → 步骤下标（有的操作不产生步骤，如无走向的 line-state）
-        /** 各线「已画区间」（含镂空态）：line-state{open} 据此判「生长」还是「形态转换」 */
-        const buildDrawn = new Map();   // lineId → [{ s0, s1 }]（采样路径弧长坐标）
-        events.forEach((ev, evIdx) => {
-            const line = byId[ev.lineId];
-            if (!line) return;
-            const ids = lineStations(line);
-            const step = {
-                date: ev.date,
-                kind: ev.kind,
-                state: ev.state,   // 状态类（station-state / line-state）的取值，rename 为 undefined
-                evIdx: ev.evIdx,
-                // 说明分两块挂在**事件**上（title / desc），同一事件的各拍共享
-                title: ev.title || "",
-                desc: ev.desc || "",
-                // 事件级标题单独留一份：事件清单按**事件**列，标题要用它（各拍自己的 title
-                // 是操作级文案，留给面板信息区）
-                evTitle: ev.evTitle || ev.title || "",
-                lineId: ev.lineId,
-                lineName: line.name || ev.lineId,
-                color: line.color || "#8a94a6",
-                pts: null,
-                lengthPx: 0,
-                stations: [],
-                focus: null,
-                rename: null,
-                segConv: [],   // 段形态转换 [{ s0, s1, style }]：solid 实线 / hollow 镂空 / hidden 空白
-                addedMileage: 0
-            };
-            /** line-state 的逐站豁免表：sid → { state?, tsf? } */
-            const ex = {};
-            (Array.isArray(ev.except) ? ev.except : []).forEach((e) => {
-                if (e && e.sid) ex[e.sid] = e;
-            });
-
-            /**
-             * 段内每站登记一次「该线已开通」，再逐个决定是否入场 / 是否换形态。
-             * 一条操作可能带**多段**（`segments`），各段共用一步；站的弹出时刻要按**整步**
-             * 归一化，故额外收 `base`（本段在整步已画长度里的起点）与 `total`（整步总长）。
-             *
-             * `ex` 是 line-state 的逐站豁免：`{ sid, state: "suspended"|"removed"|"open", tsf: false }`
-             *   · state "suspended"：该站**不随段开通**（列车通过不停车），不记服务账；
-             *     从未入场则以「未开通圈」直接入场（暂缓站，不播「开通再倒回」）；
-             *   · state "removed"：该站随段移除；
-             *   · tsf: false：照常记服务账，但压住本拍的自动升换乘（换乘通道未通）。
-             */
-            /** 该站此刻是否已被拆除（终态）：拆除日之前照常，之后不复活 */
-            const isGoneAt = (sid, date) => {
-                const g = goneAt.get(sid);
-                return !!g && date >= g;
-            };
-            const collect = (segIds, path, s0, s1, reversed, base, total, exMap, convTo) => {
-                segIds.forEach((sid) => {
-                    if (isGoneAt(sid, ev.date)) return;   // 拆除终态：拆除日之后不复活、不记服务账
-                    const e = exMap && exMap[sid];
-                    if (e && (e.state === "suspended" || e.state === "removed")) return;   // 豁免：不记服务账
-                    if (!lineIdsAt.has(sid)) {
-                        lineIdsAt.set(sid, new Set());
-                        firstLineOf.set(sid, ev.lineId);   // 首条开通的线路（dot 形态用它上色）
-                    }
-                    lineIdsAt.get(sid).add(ev.lineId);
-                    // 记「该线到本站的日期」：暂缓判定与线路闭站恢复共用这一张账。
-                    // **逐笔留下**（不只留较晚的那次）：区段延伸重新经过本站时不能把「本站自己的
-                    // 补开日」顶回去（暂缓站一被延伸段扫过就提前开通），而多次停运复运时每一笔
-                    // 恢复日又都不能丢 —— 取最晚值只用于「此刻是否已服务」（见 wantForm）。
-                    const per = delayedBy.get(sid) || new Map();
-                    pushDay(per, ev.lineId, ev.date);
-                    delayedBy.set(sid, per);
-                });
-                segIds.forEach((sid) => {
-                    if (isGoneAt(sid, ev.date)) return;   // 拆除终态：拆除日之后不复活
-                    const s = st[sid];
-                    if (!s || !Number.isFinite(s.x)) return;
-                    const e = exMap && exMap[sid];
-                    let want, forceLeave = false;
-                    if (e && e.state === "removed") {
-                        forceLeave = true; want = "gone";
-                    } else if (e && e.state === "suspended") {
-                        // 通过不停车：从未入场 → 以未开通圈入场；已入场 → 保持原形态不转换
-                        if (shown.has(sid)) return;
-                        want = "no";
-                    } else {
-                        want = wantForm(sid, ev.date, evIdx);
-                        if (e && e.tsf === false && want === "real" && s.type === "tsf") want = "dot";
-                    }
-                    const cur = formOf.get(sid);
-                    let mode;
-                    if (!shown.has(sid)) {
-                        if (forceLeave) return;   // 没入场过就谈不上移除
-                        shown.add(sid);
-                        formOf.set(sid, want);
-                        mode = "enter";
-                    } else if (forceLeave) {
-                        formOf.set(sid, want);
-                        mode = "leave";
-                    } else if (cur !== want) {
-                        formOf.set(sid, want);
-                        mode = "upgrade";   // 已在线网上，这次是「从普通站变成换乘站」等形态转换
-                    } else {
-                        return;   // 已在画布上、形态也没变：无事发生
-                    }
-                    let t = 0.5;
-                    let tg = 0.5;   // 全局弧长正向占比（不随画笔翻转）：段转换的擦除波前按它定位
-                    if (path && Number.isFinite(s0) && Number.isFinite(s1) && s1 !== s0) {
-                        const at = projectOnPath(path, s);
-                        // t 是「沿线位置」，必须与画笔的行进方向一致：
-                        // 线条从已开通端起笔时子折线是反的，站点的 t 也要跟着翻过来
-                        if (at !== null) {
-                            tg = Math.max(0, Math.min(1, (at - s0) / (s1 - s0)));
-                            t = tg;
-                            if (reversed) t = 1 - t;
-                        }
-                    }
-                    // 多段步：把「本段内的相对位置」换算成整步进度（笔尖是按整步走的）
-                    if (Number.isFinite(base) && total > 0) {
-                        t = (base + t * Math.abs(s1 - s0)) / total;
-                    }
-                    const firstLine = byId[firstLineOf.get(sid)];
-                    step.stations.push({
-                        sid: sid, x: s.x, y: s.y, t: t, tg: tg, convTo: convTo || null, form: want, mode: mode,
-                        dotColor: aliveColorOf(sid, ev.date) || (firstLine ? firstLine.color : line.color)
-                    });
-                });
-            };
-
-            if (ev.kind === "line-state" && ev.state === "open") {
-                // 区段开通 / 恢复（state 缺省即 open）。一条操作可带**多段**（`segments: [{from,to}, …]`）：
-                // 环线同一天开通的几段弧、或一条线分几处补全。多段**共用一步**，各段按声明方向依次画出；
-                // 段与段之间由时间线插一段「把镜头挪到下一段起点」的运镜（见 buildTimeline.growthPhases）。
-                const spec = (Array.isArray(ev.segments) && ev.segments.length)
-                    ? ev.segments : [{ from: ev.from, to: ev.to }];
-                const path = sampleCorePath(ev.lineId)
-                    || (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2 ? line.pathPoints : null)
-                    || ids.map((sid) => st[sid]).filter((s) => s && Number.isFinite(s.x));
-                if (!path || path.length < 2) return;
-
-                const n = ids.length;
-                const dists = Array.isArray(line.distances) ? line.distances : [];
-                /**
-                 * 这一端「已经在网里」的程度：本端已开通记 2、只是有个通着的邻居记 1、都不通记 0。
-                 * 延伸段从得分高的那一端起笔。只看邻居会漏掉「本端已通、对端才是本次新站」的情形
-                 * （大连 3 号线「大连站 ⇄ 香炉礁」两端邻居都通，按邻居判就会从新站那端起笔，
-                 * 看上去像凭空冒出来一段）。
-                 */
-                const openRank = (k) => {
-                    if (shown.has(ids[k])) return 2;
-                    const box = [ids[k - 1], ids[k + 1]];
-                    if (line.isLoop && n > 1) box.push(ids[(k - 1 + n) % n], ids[(k + 1) % n]);
-                    return box.some((sid) => sid && shown.has(sid)) ? 1 : 0;
-                };
-
-                const segs = [];
-                spec.forEach((sp) => {
-                    let i = ids.indexOf(sp.from), j = ids.indexOf(sp.to);
-                    if (i < 0 || j < 0) return;
-                    // 延伸线从**已开通的那一端**起笔（逐段独立判断）：照声明方向画会从新线的
-                    // 远端空落下笔，看上去像脱网生长
-                    if (openRank(i) < openRank(j)) { const swap = i; i = j; j = swap; }
-                    const arc = arcOf(path, ids, st, line, i, j);
-                    if (!arc) return;
-                    // 里程：按**实际走的那条弧**取站距（跨接缝那一节也不会漏）
-                    arc.edges.forEach((e) => {
-                        const d = Number(dists[e]);
-                        if (Number.isFinite(d)) step.addedMileage += d;
-                    });
-                    arc.pieces.forEach(function (pc) {
-                        const lo = pc[0], hi = pc[1], s0 = pc[2], s1 = pc[3];
-                        if (!(Number.isFinite(s0) && Number.isFinite(s1) && s1 > s0)) return;
-                        let pts = slicePath(path, s0, s1);
-                        if (!pts || pts.length < 2) return;
-                        if (arc.flip) pts = pts.slice().reverse();
-                        // 端点站 ID：生长端点要按它对齐到「此刻可见的图元」（幽灵点让位时连到幽灵点），
-                        // 见 alignEndsToVisible。⚠️ pts 已按 arc.flip 翻过，故首端对应 hi 端。
-                        segs.push({
-                            pts: pts, lo: lo, hi: hi, s0: s0, s1: s1, flip: arc.flip,
-                            len: Math.max(1, segLength(pts)),
-                            headSid: ids[arc.flip ? hi : lo],
-                            tailSid: ids[arc.flip ? lo : hi]
-                        });
-                    });
-                });
-                if (!segs.length) return;
-
-                // 生长 vs 形态转换：**已画过的区间**（实线或镂空）不再重画，只把样式转回实线
-                // （停运段恢复运营即此例，重播生长像「线又长了一遍」）；没画过的才真生长。
-                // 移除过的区间已从已画账里销掉（空白 = 从未画过），再开通时照常重新生长。
-                const drawn = buildDrawn.get(ev.lineId) || [];
-                const grow = [], conv = [];
-                segs.forEach((sg) => {
-                    const covered = drawn.some((iv) => iv.s0 <= sg.s0 + 0.01 && sg.s1 - 0.01 <= iv.s1);
-                    if (covered) { sg.convTo = "solid"; conv.push(sg); }
-                    else grow.push(sg);
-                });
-                step.segConv = conv.map((sg) => ({ s0: sg.s0, s1: sg.s1, style: "solid" }));
-                let total = 0;
-                grow.forEach((sg) => { sg.base = total; total += sg.len; });
-                step.segs = grow;
-                step.pts = grow.length ? grow.reduce((acc, sg) => acc.concat(sg.pts), []) : null;   // 仅供包围盒 / 有无走向判断
-                step.lengthPx = total;
-                if (grow.length) step.focus = pointAtMulti(grow, total / 2);
-                else if (conv.length) step.focus = pointAt(conv[0].pts, segLength(conv[0].pts) / 2);
-                // 本步之后整段都在画布上（镂空也算画过）：记进已画账
-                segs.forEach((sg) => {
-                    drawn.push({ s0: Math.min(sg.s0, sg.s1), s1: Math.max(sg.s0, sg.s1) });
-                });
-                buildDrawn.set(ev.lineId, drawn);
-                segs.forEach((sg) => collect(ids.slice(sg.lo, sg.hi + 1), path, sg.s0, sg.s1, sg.flip, sg.base, total, ex, sg.convTo));
-            } else if (ev.kind === "station-state"
-                && (ev.state === "open" || ev.state === "interchange")) {
-                // open = 投用 / 补开 / 恢复运营（暂缓站与闭站复开都走这里，collect 负责入场或转形态）；
-                // interchange = 站内换乘启用：这是**形态**事件，不改线路。wantForm 已在此日之后
-                // 放行换乘形态，这里把该站真正升为换乘图元即可（启用日与某条线开通同日时，那一步
-                // 可能已升过一次，collect 会按「形态没变」自然跳过）。仍单独成一步，是为了让
-                // 「换乘启用」本身在时间线上有个交代，也覆盖「换乘晚于两条线开通」的普遍情形。
-                const targets = (ev.stations || []).filter((sid) => st[sid] && Number.isFinite(st[sid].x));
-                collect(targets, null, NaN, NaN, false);
-                if (targets.length) {
-                    step.focus = { x: st[targets[0]].x, y: st[targets[0]].y };
-                }
-            } else if (ev.kind === "line-state" || ev.kind === "station-state") {
-                // 撤站：suspended = 该段 / 该站**不通车**（未开通圈，线路段转镂空双线）；
-                let projPath = null;   // 波前定位用的采样折线（line-state 块内赋值）
-                // removed = 移除（图元、站名与引线一并抹掉，mode: "leave"；线路段转空白）。
-                // 只对**已经出现在画布上**的站生效 —— 尚未入场的规划站没有「关」这一说。
-                // `line-state` 是「区段」级的事，先按站序展开成站，判定路径与站级完全一致。
-                if (ev.kind === "line-state") {
-                    // 段的形态转换：suspended → 未开通镂空；removed → 空白（从已画账销掉，
-                    // 将来重新开通时重新生长）。停运 / 移除的里程同步倒扣。
-                    const path = projPath = sampleCorePath(ev.lineId)
-                        || (Array.isArray(line.pathPoints) && line.pathPoints.length >= 2 ? line.pathPoints : null)
-                        || ids.map((sid) => st[sid]).filter((s) => s && Number.isFinite(s.x));
-                    const dists = Array.isArray(line.distances) ? line.distances : [];
-                    const spec = (Array.isArray(ev.segments) && ev.segments.length)
-                        ? ev.segments : [{ from: ev.from, to: ev.to }];
-                    const style = ev.state === "removed" ? "hidden" : "hollow";
-                    spec.forEach((sp) => {
-                        const i = ids.indexOf(sp.from), j = ids.indexOf(sp.to);
-                        if (i < 0 || j < 0) return;
-                        const arc = path && path.length >= 2 ? arcOf(path, ids, st, line, i, j) : null;
-                        if (!arc) return;
-                        arc.edges.forEach((e) => {
-                            const d = Number(dists[e]);
-                            if (Number.isFinite(d)) step.addedMileage -= d;
-                        });
-                        arc.pieces.forEach((pc) => {
-                            const s0 = Math.min(pc[2], pc[3]), s1 = Math.max(pc[2], pc[3]);
-                            if (!(Number.isFinite(s0) && Number.isFinite(s1) && s1 > s0)) return;
-                            step.segConv.push({ s0: s0, s1: s1, style: style });
-                        });
-                    });
-                    if (style === "hidden" && step.segConv.length) {
-                        // 空白 = 从未画过：整段从已画账销掉，再开通照常重新生长
-                        const keep = (buildDrawn.get(ev.lineId) || []).filter((iv) =>
-                            !step.segConv.some((c) => iv.s0 >= c.s0 - 0.01 && iv.s1 <= c.s1 + 0.01));
-                        buildDrawn.set(ev.lineId, keep);
-                    }
-                    if (step.segConv.length && path && path.length >= 2) {
-                        const mid = step.segConv[0];
-                        step.focus = pointAt(path, (mid.s0 + mid.s1) / 2);
-                    }
-                }
-                const range = ev.kind === "line-state" ? stationRangeOf(line, ids, ev) : (ev.stations || []);
-                range.forEach((sid) => {
-                    const e = ex[sid];
-                    if (e && e.state === "open") {
-                        collect([sid], null, NaN, NaN, false, NaN, 0, null);   // 豁免：该站照常开通 / 维持
-                        return;
-                    }
-                    const s = st[sid];
-                    if (!s || !Number.isFinite(s.x) || !shown.has(sid)) return;
-                    // removed：站级 = 整站拆除；线级 = 只移除**未连接任何已开通线路**的独占站
-                    // （共站换乘站的另一条线还在跑，站照常保留，见长春站 / 解放桥）。
-                    const gone = (e && e.state === "removed")
-                        || (ev.state === "removed" && (ev.kind === "station-state" || !aliveLinesAt(sid, ev.date).length));
-                    const want = gone ? "gone" : wantForm(sid, ev.date, evIdx);
-                    formOf.set(sid, want);
-                    if (gone) shown.delete(sid);   // 重新开通时按「再次入场」处理（回放计数也才对）
-                    const first = byId[firstLineOf.get(sid)];
-                    // 站点在擦除方向上的位置：投影到全局弧长、按所属转换段归一（波前逐站驱动用）
-                    let tg = 0.5;
-                    const at = projPath && projPath.length >= 2 ? projectOnPath(projPath, s) : null;
-                    if (at !== null && step.segConv.length) {
-                        const seg = step.segConv.find((c) => at >= Math.min(c.s0, c.s1) - 0.01 && at <= Math.max(c.s0, c.s1) + 0.01);
-                        if (seg && Math.abs(seg.s1 - seg.s0) > 0.01) {
-                            tg = Math.max(0, Math.min(1, (at - Math.min(seg.s0, seg.s1)) / Math.abs(seg.s1 - seg.s0)));
-                        }
-                    }
-                    step.stations.push({
-                        sid: sid, x: s.x, y: s.y, t: 0, tg: tg,
-                        // 波前绑定只对**线级形态转换**（segConv）成立；单站停运/拆除没有线转换，
-                        // 保持 null 走原有巡览逻辑
-                        convTo: step.segConv.length ? (gone ? "hidden" : step.segConv[0].style) : null,
-                        form: want,
-                        mode: gone ? "leave" : "upgrade",
-                        dotColor: aliveColorOf(sid, ev.date) || (first ? first.color : line.color)
-                    });
-                    if (!step.focus) step.focus = { x: s.x, y: s.y };
-                });
-            } else if (ev.kind === "rename") {
-                // 一条事件可带**多对**改名（`ev.renames: [{sid, from, to, fromEn, toEn}, …]`）：
-                // 同日同批的更名（如 2019-05-30 长春 3、4 号线十几站调整）合成一步演，
-                // 不再一站一拍。只写单对时行为与原来完全一致。
-                const specs = (Array.isArray(ev.renames) && ev.renames.length) ? ev.renames : [ev];
-                step.renames = [];
-                specs.forEach((spec) => {
-                    const evx = Object.assign({}, ev, spec);
-                    const sid = renameTarget(evx);
-                    if (!sid) return;
-                    // to* 默认取车站数据里的**现行名**（链上最后一次更名的结果）；
-                    // 若这次是链中间的更名，事件里用 `toEn` / `toMn` 写明当时那版名字。
-                    step.renames.push({
-                        sid: sid, from: evx.from, to: evx.to,
-                        fromEn: evx.fromEn, toEn: evx.toEn || st[sid].en,
-                        fromMn: evx.fromMn, toMn: evx.toMn || st[sid].mn
-                    });
-                });
-                if (step.renames.length) {
-                    step.rename = step.renames[0];   // 兼容：只认单条的老代码仍按原名读
-                    step.focus = { x: st[step.renames[0].sid].x, y: st[step.renames[0].sid].y };
-                }
-            }
-
-            stepOfEvent[evIdx] = steps.length;
-            // 步标识：live 组的复用键（`dataset.no`）、归档节点的 `data-no`、端点对齐时判定
-            // 「该步是否处于让位区间」。⚠️ 早先漏了这一步赋值，`step.no` 恒 undefined，
-            // live 组只在节点离线（stale）时才重建 —— 连着两步都生长时会复用旧路径。
-            step.no = steps.length;
-            // 段形态转换的站按**擦除波前方向**排 —— 车站消失 / 更改的顺序必须与擦除方向一致
-            // （波前扫到哪、站跟到哪）：波前自 tg=1 端（收笔端 / 已开通端）推进，
-            // 故按 tg 降序；生长 / 入场的站仍按画笔顺序。
-            step.stations.sort((a, b) => {
-                if (a.convTo || b.convTo) return -((a.tg || 0) - (b.tg || 0));
-                return a.t - b.t;
-            });
-            steps.push(step);
-        });
-
-        /**
-         * 站台级「幽灵点」（`CGO_OFFSTATION_PLATFORMS`）：同一座车站两条线各有站台、却只能
-         * **付费站外换乘**的那段时期，在图上多画一个点，并配一条虚线连到主点。
-         * 出现时刻 =「该站**首次出现在画布上**」与「该站**本线**首次投用（`station-state/open`）」
-         *            里较晚的那一步 —— 后者用来处理「线路已通过、本站暂缓（列车过站不停）」；
-         * 消失时刻 = 主点 `station-state/interchange`（开通站内换乘）那一步，或配置里的 `until`。
-         * 都从已有事件里取，不必另写日期。
-         * 这类点**不属于任何线路（不在 stationIds 里）**，底图上由共享层的样式规则隐藏。
-         */
-        const demoOnly = new Set();
-        const offPairs = [];
-        /**
-         * 主点「第一次出现在画布上」的那一步 = 该站第一条线通到它的那一拍。
-         * ⚠️ 不能用「某条线的首通步」代替：3 号线分两期（卫星广场在二期 2006-12-26 才通车）、
-         *    4 号线也分两期（长春站北在地下段 2012-05-06 才通车），取线首通会把这些站台
-         *    幽灵点的出生日提前到与它无关的那一期。
-         */
-        const firstAppear = new Map();
-        steps.forEach((s, k) => s.stations.forEach((x) => {
-            if (!firstAppear.has(x.sid)) firstAppear.set(x.sid, k);
-        }));
-        /**
-         * 某站被**某条线**首次服务的那一步 = 该线**覆盖本站**的第一个区段开通拍。
-         * 幽灵点是**按线**的站台（3 号线侧、1 号线侧各一个），每侧都要用它自己那条线到站的
-         * 时刻：长春站北的 4 号线侧 2012-05-06 出现，1 号线侧要等 2017-06-30。
-         * ⚠️ 两个坑都在这里踩过：
-         *   · 不能取「该线**全线首通**」—— 3 号线分两期（卫星广场在二期 2006 才通车）、
-         *     4 号线也分两期（长春站北在地下段 2012 才通车）；
-         *   · 不能取「该步的 `stations` 里有没有本站」—— 车站早已在线网上时，那一步 collect 会
-         *     按「形态没变」提前返回、根本不登记它，于是会把「开通站内换乘」那拍（形态变了才登记）
-         *     误当成该线到站，birth 与 ghostOut 撞在一起、整条幽灵点被丢掉。
-         * 正解：看该线自己那些 `line-state{open}` 拍里，哪一拍的**生长区段站序范围**盖住了本站。
-         */
-        const lineReach = (sid, lineId) => {
-            const line = byId[lineId];
-            if (!line) return -1;
-            const idx = lineStations(line).indexOf(sid);
-            if (idx < 0) return -1;
-            for (let k = 0; k < steps.length; k++) {
-                const s0 = steps[k];
-                if (s0.kind !== "line-state" || s0.state !== "open" || s0.lineId !== lineId) continue;
-                if ((s0.segs || []).some((sg) => sg.lo != null && idx >= sg.lo && idx <= sg.hi)) return k;
-            }
-            return -1;
-        };
-        (window.CGO_OFFSTATION_PLATFORMS || []).forEach((pf) => {
-            const s = pf && pf.id ? st[pf.id] : null;
-            if (!pf || !s || !Number.isFinite(s.x)) return;
-            let open = -1, end = -1, endOp = -1, sawClose = false;
-            events.forEach((ev, k) => {
-                const si = stepOfEvent[k];
-                if (si === undefined) return;
-                const touches = (ev.stations || []).indexOf(pf.of) >= 0;
-                // 本站自己的闭站（改造停运 / 拆除）一旦出现，其后所有 open 都只是「恢复运营」
-                if (touches && ev.kind === "station-state"
-                    && (ev.state === "suspended" || ev.state === "removed")) sawClose = true;
-                // ⚠️ 只有「**该线**在本站的首次投用」才算站台投用 —— 两个限定缺一不可：
-                //    · 按线（`ev.lineId === pf.line`）：长春站 3 号线的站台 2002 年就有了，
-                //      不能拿 2019-01-26「1 号线站台投用」把它拖后；
-                //    · 排除闭站之后的 open（`!sawClose`）：解放桥 2019-06-01 封闭改造、
-                //      2020-01-01 恢复，后者是**恢复运营**不是首次投用。
-                if (open < 0 && !sawClose && ev.kind === "station-state" && ev.state === "open"
-                    && ev.lineId === pf.line && touches) open = si;
-                if (end < 0 && ev.kind === "station-state" && ev.state === "interchange" && touches) { end = si; endOp = k; }
-            });
-            // 出生 = 三者较晚：该站首次出现（先到线）· 本幽灵点所属线到站 · 该站本线首次投用
-            const birth = Math.max(
-                firstAppear.has(pf.of) ? firstAppear.get(pf.of) : -1,
-                lineReach(pf.of, pf.line),
-                open);
-            // 幽灵点的「移出」时刻：默认是主点开通站内换乘那一步；配置里给了 `until`
-            // （如 3、4 号线站名统一那天，或主点所属那条线自己被停运那天）就以 until 为准 ——
-            // 站名已统一、或那条线已不在这座站，就没有「两个同名站台相望」这回事了。
-            // ⚠️ until 是**动作引用**（`{ date, kind, state? }`，见 findOpIndex），绑操作步号、
-            //    严禁按日期找步：2019-05-30 一条事件有「开站内换乘」「17 站更名」两拍，
-            //    按日期只会命中当天第一拍 —— 更名还没开演，两个站台就先合成一个了。
-            let endStep = end;
-            if (pf.until) {
-                const opIdx = findOpIndex(events, pf.until);
-                const si = opIdx >= 0 ? stepOfEvent[opIdx] : undefined;
-                if (si === undefined) {
-                    console.warn("[线网发展史] 幽灵点 " + pf.id + " 的 until 未唯一命中任何操作，已跳过该点");
-                    return;
-                }
-                endStep = si;
-                endOp = opIdx;
-            }
-            if (birth < 0 || endStep <= birth) return;   // 没有「站外换乘」这一段的车站不必插点
-            const dotColor = byId[pf.line] ? byId[pf.line].color : null;
-            // 「笔到人到」：幽灵点跟着主点 / 沿线位置弹出（优先取主点在本步的 t，
-            // 其次按到生长折线的最近投影补算），而不是在生长一开始就冒出来
-            const bStep = steps[birth];
-            const mainPop = bStep.stations.find((q) => q.sid === pf.of);
-            let popT = mainPop ? mainPop.t : tOnStep(bStep, s);
-            if (popT === null || popT === undefined) popT = 0.5;
-            steps[birth].stations.push({ sid: pf.id, x: s.x, y: s.y, t: popT, form: "dot", mode: "enter", dotColor: dotColor, grp: pf.of });
-            steps[endStep].stations.push({ sid: pf.id, x: s.x, y: s.y, t: 0, form: "dot", mode: "leave", dotColor: dotColor, grp: pf.of });
-            // 幽灵点移出的同一拍，主点要按「配对已结束」重判形态：rename 拍不 collect 车站，
-            // 不补这一下，站名合并后主点会永远停在普通站形态（临河街/卫星路 → 职业学院即此例）。
-            // 幂等比较的基准是「回放到本拍为止该站的形态记录」——不能拿 formOf 的最终值比，
-            // 后面的拍还可能再改它（0125 在 2021-12-31 又升回换乘），本拍 collect 动过的也不能重复登记。
-            const mainS = st[pf.of];
-            if (mainS && Number.isFinite(mainS.x) && shown.has(pf.of)) {
-                let curMain;
-                for (let k = 0; k <= endStep; k++) {
-                    steps[k].stations.forEach((q) => { if (q.sid === pf.of) curMain = q.form; });
-                }
-                const wantMain = wantForm(pf.of, steps[endStep].date, endOp);
-                if (wantMain !== curMain) {
-                    formOf.set(pf.of, wantMain);
-                    const firstLine = byId[firstLineOf.get(pf.of)];
-                    steps[endStep].stations.push({
-                        sid: pf.of, x: mainS.x, y: mainS.y, t: 0,
-                        form: wantMain, mode: "upgrade", grp: pf.of,
-                        dotColor: aliveColorOf(pf.of, steps[endStep].date) || (firstLine ? firstLine.color : dotColor)
-                    });
-                }
-            }
-            demoOnly.add(pf.id);
-            /**
-             * 三件事的步号各不相同，用**具名字段**记（早先用数组、极易把「切画法」与
-             * 「幽灵点移出」当成同一个，出现主点提前归位、与幽灵点并存的重影）：
-             *   ghostIn  —— 幽灵点进场（出站换乘开始）：主点自此让位；
-             *   ghostOut —— 幽灵点移出（配对结束，取 `until` 覆盖后的值）：主点归位；
-             *   freeFrom —— 两端转为**免费**换乘那一步（主点开通站内换乘），此前的
-             *               连线用付费画法；找不到该动作时为 -1（连线一直按付费画）。
-             * ⚠️ ghostOut 与 freeFrom **常常不是同一步**：卫星路/临河街（0343）2012-09-22
-             *    就开通了站内换乘（切免费），但两边站名到 2019-05-30 才统一（幽灵点那时才撤）。
-             */
-            // 该幽灵点所属线在本站「停运」的步骤区间：运行时据此把它转成「未开通」圈 ——
-            // 解放桥 3 号线侧 2019-06-01 甩站改造即此例（**两座站台之间的付费换乘线仍然留着**，
-            // 因为站台还在、只是列车不停；到 2020-01-01 恢复运营再转回普通站）。
-            const downSpans = [];
-            let downFrom = -1;
-            steps.forEach((s0, k) => {
-                const down = closedLinesAt(pf.of, s0.date).has(pf.line);
-                if (down && downFrom < 0) downFrom = k;
-                if (!down && downFrom >= 0) { downSpans.push([downFrom, k]); downFrom = -1; }
-            });
-            if (downFrom >= 0) downSpans.push([downFrom, steps.length]);
-            offPairs.push({ host: pf.of, ghost: pf.id, ghostIn: birth, ghostOut: endStep, freeFrom: end, downSpans: downSpans });
-        });
-        // 同一座车站可以配**多条线**的站台幽灵点（各线一个，如长春站既有 3 号线侧也有 1 号线侧）：
-        // 让同组的点互相指认（`peer`），站台之间的连线于是画在**两个幽灵点之间**，
-        // 而不是连到那个已被隐藏起来的主点位置上。
-        // ⚠️ 只配了一个点的车站（双丰 / 长春西站）`peer` **留空**、不回落主点：回落只会让
-        //    那条线去连一个已被隐藏的主点（两点本就几乎同位），图上多出一截没意义的接头。
-        const byHost = new Map();
-        offPairs.forEach((p) => {
-            const arr = byHost.get(p.host) || [];
-            arr.push(p);
-            byHost.set(p.host, arr);
-        });
-        byHost.forEach((arr) => arr.forEach((p) => {
-            const other = arr.find((q) => q !== p);
-            p.peer = other ? other.ghost : null;
-        }));
-        state.demoOnly = demoOnly;
-        state.offPairs = offPairs;
-
-        // 累计量一次算好：面板每步只读，不必重算
-        const lineSet = new Set();
-        let mileage = 0;
-        // 「当前运营站数」口径：随步骤推进维护一份形态表，形态非「未开通」的站才算在运营 ——
-        // 历史累计口径会把已拆除（长春辽宁路）、全线停运、尚未开通的站一直挂在账上，
-        // 与面板上「车站 N 座」的读法不符。拆除 / 全线停运的站从表中除名，恢复再重新入账。
-        const formNow = new Map();   // sid → 该步形态（real / dot / no；拆除即除名）
-        // 国铁车站（`type: "rdot"`）不计入站数统计 —— 它们不是城市轨道交通的车站
-        // （市域铁路怎么算待定，目前五城都没有市域铁路线路）。图元与入场动画照旧
-        // （首条线路开通后启用的按 `station-state/open` 登记、到时入场），只把「车站 N 座 /
-        // 新增 N 站」这两笔账里的它们剔掉，并让**全览取景**也不参与（见 camWholeOf）。
-        const railStations = new Set();
-        Object.keys(st).forEach((sid) => {
-            if (st[sid] && st[sid].type === "rdot") railStations.add(sid);
-        });
-        state.railStations = railStations;
-        steps.forEach((s, i) => {
-            if (s.kind === "line-state" && s.state === "open") lineSet.add(s.lineId);
-            let added = 0, counted = 0;
-            // 撤站（停运 / 拆除 / 区段移除）既不是「新增」也不是「转乘」——它是把站从图上撤下，两笔账都不该动
-            const withdraw = isWithdrawal(s);
-            s.stations.forEach((x) => {
-                if (railStations.has(x.sid)) return;
-                if (demoOnly.has(x.sid)) return;   // 站台幽灵点不是「一座车站」，不计入站数
-                if (withdraw) return;
-                counted++;
-                if (x.mode === "enter") added++;
-            });
-            // 同步形态表：拆除（gone / leave）除名，其余按本步形态记账
-            s.stations.forEach((x) => {
-                if (railStations.has(x.sid) || demoOnly.has(x.sid)) return;
-                if (x.mode === "leave" || x.form === "gone") formNow.delete(x.sid);
-                else if (x.form) formNow.set(x.sid, x.form);
-            });
-            let active = 0;
-            formNow.forEach((f) => { if (f !== "no") active++; });
-            mileage += s.addedMileage;
-            s.no = i + 1;
-            s.lines = lineSet.size;
-            s.enterCount = added;
-            s.upgradeCount = counted - added;
-            s.stationCount = active;   // 「车站」= 当前在运营车站数（不含已拆除 / 全线停运 / 未开通）
-            s.mileage = mileage / 1000;   // 米 → 公里
-        });
-        return steps;
-    }
+    /* ======================================================================
+     * 跨文件共享层（本文件 = 内核）：状态计算层与视频导出层两个扩展文件
+     * 按加载顺序经 window.CGoOpeningHistoryShared 注入 —— 它们晚于本文件加载，
+     * 本文件末尾 Object.assign 之后即可用；本文件只在运行时（mount / 导出）取用。
+     * ==================================================================== */
+    const SHARED = (window.CGoOpeningHistoryShared = window.CGoOpeningHistoryShared || {});
 
     /* ======================================================================
      * 画布接管
@@ -2082,8 +1297,8 @@
         // 取景按这块算，才不会出现「页面里装得下、导出视频里上下（或左右）被裁掉」的溢出。
         // 图例与贴底浮层在视频里根本不存在，故这里也不扣它们的留白，直接居中。
         if (state.exporting) {
-            const k = Math.max(EXPORT.width / hr.width, EXPORT.height / hr.height);
-            const sw = Math.max(120, EXPORT.width / k), sh = Math.max(120, EXPORT.height / k);
+            const k = Math.max(SHARED.export.EXPORT.width / hr.width, SHARED.export.EXPORT.height / hr.height);
+            const sw = Math.max(120, SHARED.export.EXPORT.width / k), sh = Math.max(120, SHARED.export.EXPORT.height / k);
             vw = Math.min(vw, sw);
             vh = Math.min(vh, sh);
             left = hr.width / 2 - vw / 2;
@@ -2095,7 +1310,7 @@
             // 卡宽是输出像素，除以 k 换回视口像素。
             const pos = state.cardPos;
             if (pos && pos !== "off" && state.cardReserve !== false) {
-                const gap = Math.max(0, CARD.w / k + 4);
+                const gap = Math.max(0, SHARED.export.CARD.w / k + 4);
                 vw = Math.max(120, vw - gap);
                 left += (pos === "tr" || pos === "br") ? 0 : gap;
             }
@@ -3623,1121 +2838,6 @@
         syncPlayBtn();
     }
 
-    /* ======================================================================
-     * 导出视频：逐帧渲染（与播放共用同一条时间轴）
-     * ====================================================================
-     * 一帧 = 把 `applyFrame(t)` 之后的**图形层**（去掉站名整层）栅格化，再用 canvas
-     * `fillText` 把站名叠上去。之所以把站名从 SVG 里拿出来：内联字体会让每帧的 SVG
-     * 涨到 6MB、光序列化就 530ms（实测），而 canvas 文字直接吃页面里已经加载好的 webfont。
-     * 相机**不作为 DOM transform** 参与导出 —— 它是渲染时的 canvas 变换，于是文字按最终
-     * 分辨率栅格化，比「先渲染再缩放」清晰。
-     */
-
-    const EXPORT = {
-        width: 1280,
-        height: 720,
-        fps: 30,
-        bitrate: 6000000,
-        codec: "avc1.640028",
-        muxerSrc: "./city/shenyang/shared/tools/vendor/mp4-muxer.min.js"
-    };
-
-    /** 站名的位置与字体样式只量一次 —— 逐帧量 400 个标签的 getComputedStyle 要 60ms */
-    let labelCache = null;
-
-    /**
-     * 从**当前 DOM** 取某个站名的逐行文字与行宽（与 buildLabelCache 同一套拆行法：按 <br> 拆）。
-     * 导出逐帧都用它，不读缓存里的文字 —— 更名事件改写的名字要能立刻出现在视频画面里。
-     */
-    function liveLabelLines(L, ctx2d) {
-        const el = L.el;
-        if (!el) return null;
-        const raw = [];
-        let cur = "";
-        el.childNodes.forEach((c) => {
-            if (c.nodeName === "BR") { raw.push(cur); cur = ""; }
-            else cur += c.textContent || "";
-        });
-        raw.push(cur);
-        if (!raw.some((t) => t)) return null;
-        return raw.map((t) => ({ text: t, w: ctx2d.measureText(t).width }));
-    }
-
-    /**
-     * 更名换字时该站名当前的淡入淡出系数：直接读 DOM 上由 `applyRenameAt` 写在 span 的
-     * inline opacity（没有在换字时是空串 → 1）。用 inline style 读，不触发样式计算。
-     */
-    function renameAlphaOf(L) {
-        const v = L.el && L.el.style ? parseFloat(L.el.style.opacity) : NaN;
-        return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
-    }
-
-    function buildLabelCache() {
-        const host = stageHost();
-        const mc = document.getElementById("map-content");
-        if (!host || !mc) return [];
-        const view = window.getMapView ? window.getMapView() : { scale: 1, x: 0, y: 0 };
-        const mr = mc.getBoundingClientRect();
-        const probe = document.createElement("canvas").getContext("2d");
-        const out = [];
-        host.querySelectorAll("#labels-layer .label-group").forEach((g) => {
-            const sid = g.dataset.sid || "";
-            g.querySelectorAll(".stacn, .staen").forEach((sp) => {
-                const cs = getComputedStyle(sp);
-                if (cs.display === "none" || cs.visibility === "hidden") return;
-                const r = sp.getBoundingClientRect();
-                if (r.width < 0.5 || r.height < 0.5) return;
-                const size = parseFloat(cs.fontSize);
-                const font = `${cs.fontStyle} ${cs.fontWeight} ${size}px ${cs.fontFamily}`;
-                const spacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
-                probe.font = font;
-                if ("letterSpacing" in probe) probe.letterSpacing = spacing;
-                // 站名里的 <br> 是数据自带的排版换行（英文长名常有 2~3 行）。canvas 画不到 <br>，
-                // 必须自己拆行、逐行落位，否则整串会被画成一行，位置与页面完全对不上。
-                const lines = [];
-                let cur = "";
-                sp.childNodes.forEach((c) => {
-                    if (c.nodeName === "BR") { lines.push(cur); cur = ""; }
-                    else cur += c.textContent || "";
-                });
-                lines.push(cur);
-                if (!lines.some((t) => t)) return;
-                const met = probe.measureText(lines.find((t) => t) || "中");
-                // 站名可能带 scaleX（station.textScale），缩放锚点在 transform-origin 上
-                const m = /matrix\(([-\d.]+)[, ]+[-\d.]+[, ]+[-\d.]+[, ]+[-\d.]+[, ]+([-\d.]+)/.exec(cs.transform || "");
-                const sx = m ? parseFloat(m[1]) : 1;
-                const orgPct = parseFloat(cs.transformOrigin) / 100;
-                const boxW = r.width / view.scale;
-                const boxH = r.height / view.scale;
-                out.push({
-                    el: sp, sid: sid,
-                    // 画布坐标（与相机无关）：把屏幕矩形反解回未变换的画布
-                    x: (r.left - mr.left) / view.scale,
-                    y: (r.top - mr.top) / view.scale,
-                    boxW: boxW,
-                    // 行盒高：整块高 ÷ 行数（页面 line-height 由 CSS 统一给，这样最稳）
-                    lh: boxH / Math.max(1, lines.length),
-                    lines: lines.map((t) => ({ text: t, w: t ? probe.measureText(t).width : 0 })),
-                    // 行盒内对齐：页面由 .label-group 的 text-align 决定，canvas 得自己补偏移
-                    align: cs.textAlign,
-                    ascent: met.fontBoundingBoxAscent || size * 0.8,
-                    descent: met.fontBoundingBoxDescent || size * 0.2,
-                    font: font,
-                    spacing: spacing,
-                    color: cs.color,
-                    strokeW: parseFloat(cs.webkitTextStrokeWidth) || 0,
-                    strokeColor: cs.webkitTextStrokeColor,
-                    sx: sx,
-                    anchorX: (r.left - mr.left) / view.scale + (Number.isFinite(orgPct) ? orgPct : 0) * boxW
-                });
-            });
-        });
-        return out;
-    }
-
-    /**
-     * 该站此刻的可见度（0~1）。**不读 DOM**：已弹过的站按 `state.shown` 直接判定，
-     * 正在弹的用时间轴上的进度算 —— 逐帧 getComputedStyle 正是要避免的开销。
-     */
-    function alphaAt(sid, t) {
-        if (state.alwaysOn.has(sid)) return 1;
-        // 出站换乘期间主点让位（与画面同一口径，见 syncPhantomHosts）—— 导出逐帧走这里，
-        // 不能让视频里还留着交叉点上那颗共用的站图元
-        if (state.timeline) {
-            const i = recAt(t).i;
-            if ((state.offPairs || []).some((p) => p.host === sid && p.ghostIn != null
-                && i >= p.ghostIn && i < p.ghostOut)) return 0;
-        }
-        const ap = state.activePops.find((p) => p.sid === sid);
-        if (ap) return Math.max(0, Math.min(1, EASE_POP(state.popDur > 0 ? (t - ap.t0) / state.popDur : 1)));
-        return state.shown.has(sid) ? 1 : 0;
-    }
-
-    /** 把一帧画到 canvas：图形层（栅格化）+ 站名（canvas 文字），相机作为 canvas 变换 */
-    async function paintFrame(canvas, t, ctx2d) {
-        const mc = document.getElementById("map-content");
-        if (!mc) return;
-        const W = Math.round(mc.offsetWidth), H = Math.round(mc.offsetHeight);
-        const cam = camAt(t) || { x: 0, y: 0, scale: 1 };
-        const cw = canvas.width, ch = canvas.height;
-        const hostW = mc.parentElement ? mc.parentElement.clientWidth : cw;
-        const hostH = mc.parentElement ? mc.parentElement.clientHeight : ch;
-        // 「盖住取景」：整体铺满 720p（等比放大到覆盖，超出部分裁掉），内容始终在中央
-        const k = Math.max(cw / hostW, ch / hostH);
-        const ox = (cw - hostW * k) / 2, oy = (ch - hostH * k) / 2;
-        const s = cam.scale * k;
-
-        // ── 图形层：克隆 → 藏站名 → 变量搬到根上 → 外部图片换 data URL → 栅格化 ──
-        const clone = mc.cloneNode(true);
-        clone.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-        clone.style.transform = "none";
-        // ⚠️ foreignObject 里没有 :root，`:root { --x: … }` 一条都匹配不上 → 变量要逐个搬
-        [document.documentElement, document.body].forEach((src) => {
-            const cs = getComputedStyle(src);
-            for (let i = 0; i < cs.length; i++) {
-                const name = cs[i];
-                if (name.slice(0, 2) === "--") clone.style.setProperty(name, cs.getPropertyValue(name));
-            }
-        });
-        // ⚠️ data URL 的 SVG 没有 base URL，相对图片引用解析不了（静默消失）；
-        //    换 blob URL 又会被判跨源加载、污染画布 → 只能先内联成 data URL
-        for (const el of clone.querySelectorAll("img, image")) {
-            const src = el.getAttribute("src") || el.getAttribute("xlink:href") || el.getAttribute("href");
-            const data = src && state.exportImgCache.get(src);
-            if (!data) continue;
-            let use = data;
-            // 龙嘉机场徽标在页面里靠「CSS mask + 文字色底板」着色（见 changchun.js 的
-            // installAirportBadgeStyle），而 mask 里的 url 是**相对路径** —— 内联进导出 SVG 后
-            // 没有 base URL、解析不到，mask 静默失效（同下面 img 那条注释的理由），
-            // 结果只剩一块底色、与「镂空」不符。这里改成**直接把单色轮廓重着色成主题文字色**，
-            // 并摘掉 mask、让 img 显形 —— 与页面上看到的一致，且不再依赖 mask。
-            if (/\/airport\.svg$/i.test(src.split("?")[0])) {
-                use = recolorSvg(data, (state.exportTheme || {}).text || "#222");
-                const item = el.closest ? el.closest(".scattered-item") : null;
-                if (item) {
-                    item.style.setProperty("-webkit-mask", "none");
-                    item.style.setProperty("mask", "none");
-                    item.style.setProperty("background-color", "transparent");
-                }
-                el.style.setProperty("visibility", "visible");
-            }
-            if (el.hasAttribute("src")) el.setAttribute("src", use);
-            if (el.hasAttribute("xlink:href")) el.setAttribute("xlink:href", use);
-            if (el.hasAttribute("href")) el.setAttribute("href", use);
-        }
-        const xml = new XMLSerializer().serializeToString(clone);
-        // ⚠️ 内联 CSS 走 CDATA：里面出现 `]]>` 就会提前闭合、把后面的标签名当文本，整份 SVG 直接解析失败。
-        //    CSS 里合法出现 `]]>` 的情形很少，但一旦出现，症状就是「导出无声失败」，故宁可分段转义。
-        const cssText = String(state.exportCss || "").replace(/]]>/g, "]]]]><![CDATA[>");
-        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">'
-            + '<foreignObject width="' + W + '" height="' + H + '">'
-            // ⚠️ 只藏**文字**、不藏整个 #labels-layer：呼出框（如沈阳换乘站的「文本框底部描边」
-            //    `border-bottom`）是挂在 .label-group 上的，整层藏掉会连框一起丢；文字本身仍要
-            //    由 canvas 画（SVG 里没有页面已加载的 webfont，留下会用回退字体、字形不一致）
-            + '<style><![CDATA[' + cssText
-            + '#labels-layer .stacn, #labels-layer .staen { visibility: hidden !important }]]></style>'
-            + xml + '</foreignObject></svg>';
-        if (!(W > 0 && H > 0)) {
-            console.warn(`[线网发展史] 导出：地图容器尺寸为 ${W}×${H}，栅格化很可能失败`);
-        }
-        const img = await imgFromData(sanitizeXml(svg));
-
-        ctx2d.setTransform(1, 0, 0, 1, 0, 0);
-        // 底色取**底图背景色**（暗色主题下不能再铺白）：全览那一拍地图内容缩得比输出画布还小，
-        // 四周露出来的就是这层底 —— 早先硬编码 #fff，暗色导出会围一圈白边（用户验收反馈）。
-        ctx2d.fillStyle = (state.exportTheme && state.exportTheme.mapBg) || "#fff";
-        ctx2d.fillRect(0, 0, cw, ch);
-        // 进度卡的让位已在**取景**层做掉（见 viewportBox：导出时按卡的所在侧扣掉一个卡宽），
-        // 这里直接把图形层贴上去；站名随后按最终分辨率栅格化。
-        const tx = ox + cam.x * k, ty = oy + cam.y * k;
-        ctx2d.setTransform(s, 0, 0, s, tx, ty);
-        ctx2d.drawImage(img, 0, 0, W, H);
-
-        // ── 站名：与图形层同一套变换，于是文字按最终分辨率栅格化 ──
-        (labelCache || []).forEach((L) => {
-            const a = alphaAt(L.sid, t);
-            if (a <= 0.01) return;
-            // 更名换字的淡出淡入：DOM 那边由 applyRenameAt 写在 span 的 inline opacity 上（蒙文行
-            // 因为整块栅格化，天然跟着变）；canvas 也要乘上同一个 alpha，否则中英文是"啪"地换掉。
-            ctx2d.globalAlpha = a * renameAlphaOf(L);
-            ctx2d.font = L.font;   // ⚠️ 每个缓存项自带字号（中英蒙三行不同），漏了就用默认字体、全都叠一起
-            if ("letterSpacing" in ctx2d) ctx2d.letterSpacing = L.spacing;
-            // 与页面一致：淡入时带 blur（页面里是 `--cgo-oh-pop-blur` = 4px × (1 - alpha)，
-            // 但那是**地图局部坐标**下的值，会被 map-content 的 scale 放大 —— 导出的输出比例是
-            // s = cam.scale × k，故这里也要乘 s 才与页面观感一致）。
-            // ⚠️ canvas 的 filter 半径是**输出像素**，不受当前 CTM 缩放影响（实测），所以必须手乘
-            const blur = 4 * (1 - a) * s;
-            ctx2d.filter = blur > 0.3 ? "blur(" + blur.toFixed(2) + "px)" : "none";
-            ctx2d.fillStyle = L.color;
-            ctx2d.textAlign = "left";
-            ctx2d.textBaseline = "alphabetic";
-            // 行盒内对齐：页面里由 .label-group 的 text-align 决定，canvas 默认靠左，得自己补偏移
-            const alignDx = (w) => (L.align === "center" ? (L.boxW - w) / 2
-                : (L.align === "right" || L.align === "end") ? (L.boxW - w) : 0);
-            if (L.sx !== 1) {
-                ctx2d.save();
-                ctx2d.translate(L.anchorX, 0);
-                ctx2d.scale(L.sx, 1);
-                ctx2d.translate(-L.anchorX, 0);
-            }
-            // 逐行落位（数据里的 <br> 换行 canvas 画不到，得自己拆；基线按行盒 + 字体上下缘算）
-            // ⚠️ 文字**每帧从 DOM 重取**：更名事件会改写标签里的文字，而缓存那份永远停在导出
-            //    开始时的旧文本 —— 于是视频里中英文站名全程都是新名（只有直接栅格化的蒙文行会变）。
-            const lines = liveLabelLines(L, ctx2d) || L.lines;
-            lines.forEach((line, li) => {
-                if (!line.text) return;
-                const baseY = L.y + li * L.lh + (L.lh - (L.ascent + L.descent)) / 2 + L.ascent;
-                const x = L.x + alignDx(line.w);
-                if (L.strokeW > 0) {
-                    ctx2d.lineWidth = L.strokeW;
-                    ctx2d.strokeStyle = L.strokeColor;
-                    ctx2d.strokeText(line.text, x, baseY);
-                }
-                ctx2d.fillText(line.text, x, baseY);
-            });
-            if (L.sx !== 1) ctx2d.restore();
-            ctx2d.globalAlpha = 1;
-        });
-        ctx2d.filter = "none";
-        if ("letterSpacing" in ctx2d) ctx2d.letterSpacing = "0px";
-
-        // ── 进度卡 / 水印：回到设备坐标单独画，不受相机变换影响 ──
-        ctx2d.setTransform(1, 0, 0, 1, 0, 0);
-        drawCard(ctx2d, cw, ch, t, k);
-        drawWatermark(ctx2d, cw, ch);
-        // 收尾那一拍（缩到全图的长停）才补一条免责说明，与水印分居底部两侧
-        if (recAt(t).whole) drawDisclaimer(ctx2d, cw, ch);
-    }
-
-    /* ---- 进度卡：把面板那套「当前事件 + 说明 + 规模 + 进度」合成进画面 ---- */
-
-    /* 画面浮层（进度卡 / 水印）整体放大一档：视频多在手机或大屏远看，字要比页面里大。
-       字号与盒子的尺寸同步放大，版式比例不变。 */
-    const OVERLAY_S = 1.5;
-    const F = (px) => px * OVERLAY_S;
-    const CARD = {
-        // 卡面收窄到原设计的 6 成（原 384×1.5）：视频里它只作进度提示，占太多画面会盖住线网
-        w: Math.round(384 * OVERLAY_S * 0.6),
-        pad: Math.round(16 * OVERLAY_S),
-        margin: Math.round(24 * OVERLAY_S),
-        radius: Math.round(12 * OVERLAY_S),
-        descMax: 3
-    };
-
-    /** 圆角矩形（Chrome 已支持 roundRect，留一个手写兜底） */
-    function roundRect(ctx2d, x, y, w, h, r) {
-        ctx2d.beginPath();
-        if (typeof ctx2d.roundRect === "function") { ctx2d.roundRect(x, y, w, h, r); return; }
-        ctx2d.moveTo(x + r, y);
-        ctx2d.arcTo(x + w, y, x + w, y + h, r);
-        ctx2d.arcTo(x + w, y + h, x, y + h, r);
-        ctx2d.arcTo(x, y + h, x, y, r);
-        ctx2d.arcTo(x, y, x + w, y, r);
-        ctx2d.closePath();
-    }
-
-    /** 逐字折行（中英混排按实际量测宽度切，够用且无需依赖） */
-    function wrapText(ctx2d, text, maxW) {
-        const out = [];
-        let line = "";
-        for (const ch of String(text)) {
-            const test = line + ch;
-            if (line && ctx2d.measureText(test).width > maxW) { out.push(line); line = ch; }
-            else line = test;
-        }
-        if (line) out.push(line);
-        return out;
-    }
-
-    /**
-     * 画布上的玻璃态卡面：把底下**已经画好的地图**挖一块 → 模糊 + 提饱和 → 贴回圆角矩形，
-     * 再叠 CGoUI `.glass-panel` 的那几层（0.82 衬底 / 顶部微光圈 / 0.5px 外圈 / 投影）。
-     * canvas 没有 backdrop-filter，只能这样「先糊底、再盖膜」，做出同样的磨砂观感。
-     * 底衬按 `GLASS_DS` 降采样后再模糊（半径同比缩），再放大贴回 —— 模糊看不出细节，
-     * 代价却掉到约 1/4（大半径模糊尤其明显）。
-     */
-    const GLASS_DS = 0.5;
-
-    let glassScratch = null;
-    function paintGlass(ctx2d, cw, ch, x, y, w, h, r, blur, fade) {
-        const P = Math.ceil(blur * 2) + 2;
-        const sx = Math.max(0, Math.round(x - P)), sy = Math.max(0, Math.round(y - P));
-        const ex = Math.min(cw, Math.round(x + w + P)), ey = Math.min(ch, Math.round(y + h + P));
-        const sw = Math.max(1, ex - sx), sh = Math.max(1, ey - sy);
-        const tw = Math.max(1, Math.round(sw * GLASS_DS)), th = Math.max(1, Math.round(sh * GLASS_DS));
-        if (!glassScratch) glassScratch = document.createElement("canvas");
-        const tmp = glassScratch;
-        if (tmp.width < tw || tmp.height < th) {
-            tmp.width = Math.max(tmp.width, tw);
-            tmp.height = Math.max(tmp.height, th);
-        }
-        const tc = tmp.getContext("2d");
-        tc.setTransform(1, 0, 0, 1, 0, 0);
-        tc.clearRect(0, 0, tw, th);
-        tc.filter = "blur(" + (blur * GLASS_DS).toFixed(1) + "px) saturate(135%)";
-        tc.drawImage(ctx2d.canvas, sx, sy, sw, sh, 0, 0, tw, th);
-        tc.filter = "none";
-
-        // 投影（对齐 --glass-shadow 的 0 8px 24px；半径收着给，太大很费且看不出差别）
-        // ⚠️ 阴影不吃 globalAlpha，淡出时得把 alpha 直接揉进 shadowColor
-        ctx2d.save();
-        ctx2d.shadowColor = "rgba(0,38,59," + (0.16 * fade).toFixed(3) + ")";
-        ctx2d.shadowBlur = Math.max(8, blur * 0.6);
-        ctx2d.shadowOffsetY = Math.max(4, blur * 0.25);
-        roundRect(ctx2d, x, y, w, h, r);
-        ctx2d.fillStyle = "rgba(0,0,0,0.002)";
-        ctx2d.fill();
-        ctx2d.restore();
-
-        // 糊好的底（放大贴回）+ 衬底（对齐 --glass-bg-panel）
-        ctx2d.save();
-        ctx2d.globalAlpha = fade;
-        roundRect(ctx2d, x, y, w, h, r);
-        ctx2d.clip();
-        ctx2d.drawImage(tmp, 0, 0, tw, th, sx, sy, sw, sh);
-        ctx2d.fillStyle = (state.exportTheme && state.exportTheme.glassPanel) || "rgba(255,255,255,.82)";
-        ctx2d.fillRect(x, y, w, h);
-        ctx2d.restore();
-
-        // 0.5px 外圈 + 顶部 1px 微光圈（`.glass-panel::before` 的简化）
-        ctx2d.save();
-        ctx2d.globalAlpha = fade;
-        ctx2d.lineWidth = 1;
-        ctx2d.strokeStyle = "rgba(0,0,0,0.07)";
-        roundRect(ctx2d, x + 0.5, y + 0.5, w - 1, h - 1, r);
-        ctx2d.stroke();
-        ctx2d.beginPath();
-        ctx2d.moveTo(x + r, y + 1.5);
-        ctx2d.lineTo(x + w - r, y + 1.5);
-        ctx2d.strokeStyle = "rgba(255,255,255,0.55)";
-        ctx2d.stroke();
-        ctx2d.restore();
-    }
-
-    /**
-     * 收尾那拍「缩到全图」时把进度卡淡出：全图是主画面，卡再杵着就挡景了。
-     * 淡出窗口取全图那一拍的**运镜时长**（`whole.from → whole.headEnd`），镜头缩、卡同步消；
-     * 之后的停驻期一直是 0。更名换字那类的中间步骤不受影响（整段都是 1）。
-     */
-    function cardAlphaAt(t) {
-        const tl = state.timeline;
-        if (!tl || !tl.whole) return 1;
-        const w = tl.whole;
-        if (t < w.from) return 1;
-        const span = Math.max(1, w.headEnd - w.from);
-        return Math.max(0, 1 - (t - w.from) / span);
-    }
-
-    /**
-     * 把进度卡画到画面指定角落（`state.cardPos` = tl / tr / bl / br / off）。
-     * 取值与面板**同源**（panelModel），所以视频里的数字与面板逐帧一致。
-     * @param {number} k 可见视口 → 输出画面的放大系数（玻璃模糊半径按它换算）
-     */
-    function drawCard(ctx2d, cw, ch, t, k) {
-        const pos = state.cardPos;
-        if (!pos || pos === "off") { state.exportCardRect = null; return; }
-        const fade = cardAlphaAt(t);
-        if (fade <= 0.01) { state.exportCardRect = null; return; }   // 已淡尽：整块别画（也省掉玻璃那笔开销）
-        const th = state.exportTheme || {};
-        const fam = th.font || "sans-serif";
-        const m = panelModel(t, recAt(t));
-        const W = CARD.w, PAD = CARD.pad, innerW = W - PAD * 2;
-        const GAP = F(6);
-
-        // 三块内容分开排：**标题**（事件本身）/ **描述**（括注那句人话）/ **状态**（本次新增与转乘）。
-        // 不是每件事都有括注、都有新增，缺的块直接跳过。宽度不足时都先缩字号，再谈截断。
-        const TITLE_FS = [F(15), F(14), F(13)];
-        let titleFont = TITLE_FS[0], titleLines = [];
-        for (const fs of TITLE_FS) {
-            ctx2d.font = "500 " + fs + "px " + fam;
-            titleFont = fs; titleLines = wrapText(ctx2d, m.title, innerW);
-            if (titleLines.length <= 2) break;
-        }
-        if (titleLines.length > 2) titleLines = titleLines.slice(0, 2);
-
-        const DESC_FS = [F(13), F(12), F(11)];
-        let descFont = DESC_FS[0], descLines = [];
-        if (m.desc) {
-            for (const fs of DESC_FS) {
-                ctx2d.font = "400 " + fs + "px " + fam;
-                descFont = fs; descLines = wrapText(ctx2d, m.desc, innerW);
-                if (descLines.length <= CARD.descMax) break;
-            }
-            if (descLines.length > CARD.descMax) descLines = descLines.slice(0, CARD.descMax);
-        }
-
-        // 状态行：与清单同款 —— CGoUI 的 add / transfer 图标 + 数字（不另画「＋」，也不加底衬）
-        const chips = [];
-        if (m.addCount) chips.push({ icon: "add", n: m.addCount });
-        if (m.upgradeCount) chips.push({ icon: "transfer", n: m.upgradeCount });
-        const statH = chips.length ? F(20) : 0;
-
-        const titleStep = F(20) * (titleFont / F(15));   // 行距随字号等比收
-        const descStep = F(19) * (descFont / F(13));
-        let H = PAD + F(26) + GAP;                        // 日期 + 类型徽标
-        H += titleLines.length * titleStep + GAP;         // 标题
-        if (descLines.length) H += descLines.length * descStep + GAP;
-        if (statH) H += statH + GAP;
-        H += F(17) + GAP;                                 // 规模行
-        H += F(5) + PAD;                                  // 进度条
-
-        const x = (pos === "tr" || pos === "br") ? cw - CARD.margin - W : CARD.margin;
-        const y = (pos === "bl" || pos === "br") ? ch - CARD.margin - H : CARD.margin;
-        // 记下本帧卡面矩形：下一帧据此裁掉落进卡里的站名（尺寸也让取景知道 —— 见 viewportBox）
-        state.exportCardRect = { x: x, y: y, w: W, h: H, pos: pos };
-
-        paintGlass(ctx2d, cw, ch, x, y, W, H, CARD.radius,
-            Math.max(6, Math.min(30, (th.glassBlur || 14) * (k || 1))), fade);
-
-        ctx2d.save();
-        ctx2d.textAlign = "left";
-        ctx2d.textBaseline = "top";
-        ctx2d.globalAlpha = fade;   // 卡面已淡出多少，里面的字就跟着淡多少
-
-        let cy = y + PAD;
-        // 日期 + 类型徽标
-        ctx2d.font = "700 " + F(21) + "px " + fam;
-        ctx2d.fillStyle = th.text || "#222";
-        ctx2d.fillText(m.date, x + PAD, cy + F(2));
-        const bx = x + PAD + ctx2d.measureText(m.date).width + F(12), by = cy + F(4);
-        ctx2d.font = "600 " + F(12) + "px " + fam;
-        const btw = ctx2d.measureText(m.badge).width + F(16);
-        ctx2d.fillStyle = m.badgeColor || th.primary || "#006098";
-        roundRect(ctx2d, bx, by, btw, F(18), F(9));
-        ctx2d.fill();
-        ctx2d.fillStyle = "#fff";
-        ctx2d.fillText(m.badge, bx + F(8), by + F(3));
-        cy += F(26) + GAP;
-
-        // 标题：比描述重一点即可，不用加粗到跳出来
-        ctx2d.font = "500 " + titleFont + "px " + fam;
-        ctx2d.fillStyle = th.text || "#222";
-        titleLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += titleStep; });
-        cy += GAP;
-
-        // 描述（括注）
-        if (descLines.length) {
-            ctx2d.font = "400 " + descFont + "px " + fam;
-            ctx2d.globalAlpha = 0.75 * fade;
-            ctx2d.fillStyle = th.text || "#222";
-            descLines.forEach((ln) => { ctx2d.fillText(ln, x + PAD, cy); cy += descStep; });
-            ctx2d.globalAlpha = fade;
-            cy += GAP;
-        }
-
-        // 状态：本次新增 / 转为换乘 —— 与清单同款，图标 + 数字直接并排（不画胶囊底衬）
-        if (statH) {
-            let cxp = x + PAD;
-            chips.forEach((c) => {
-                const img = state.cardIcons && state.cardIcons[c.icon];
-                if (img) {
-                    ctx2d.drawImage(img, cxp, cy + F(3.5), F(13), F(13));
-                    cxp += F(16);
-                }
-                const txt = String(c.n);
-                ctx2d.font = "500 " + F(13) + "px " + fam;
-                ctx2d.fillStyle = th.text || "#222";
-                ctx2d.globalAlpha = 0.7 * fade;
-                ctx2d.fillText(txt, cxp, cy + F(3));
-                ctx2d.globalAlpha = fade;
-                cxp += ctx2d.measureText(txt).width + F(14);
-            });
-            cy += statH + GAP;
-        }
-
-        // 规模行：与说明同样处理 —— 宽度不足时先缩字号（原字号 F(13)），避免顶出卡面
-        const statsText = `线路 ${m.lines} 条 · 运营车站 ${m.stations} 座 · 里程 ${m.mileage.toFixed(1)} km`;
-        let statsFont = F(13);
-        for (const fs of [F(13), F(12), F(11), F(10)]) {
-            ctx2d.font = "400 " + fs + "px " + fam;
-            statsFont = fs;
-            if (ctx2d.measureText(statsText).width <= innerW) break;
-        }
-        ctx2d.font = "400 " + statsFont + "px " + fam;
-        ctx2d.globalAlpha = 0.62 * fade;
-        ctx2d.fillText(statsText, x + PAD, cy);
-        ctx2d.globalAlpha = fade;
-        cy += F(17) + GAP;
-
-        // 进度条
-        ctx2d.fillStyle = th.info || "rgba(0,0,0,.06)";
-        roundRect(ctx2d, x + PAD, cy, innerW, F(5), F(2.5));
-        ctx2d.fill();
-        const pw = Math.max(0, Math.min(1, m.trackPct / 100)) * innerW;
-        if (pw > 0.5) {
-            ctx2d.fillStyle = th.primary || "#006298";
-            roundRect(ctx2d, x + PAD, cy, Math.max(F(5), pw), F(5), F(2.5));
-            ctx2d.fill();
-        }
-        ctx2d.restore();
-    }
-
-    /* ---- 角落水印：来源署名（AGPLv3 / ODbL 双轨下，视频出片同样要署名） ---- */
-
-    /** 水印文案：`CGo OpenMap · {城市} 开放地图`（城市名取当前注册城市） */
-    function watermarkText() {
-        let city = "";
-        try {
-            const c = window.CityDataManager && window.CityDataManager.getCurrentCity
-                ? window.CityDataManager.getCurrentCity() : null;
-            city = (c && c.name) || "";
-        } catch (e) { /* 取不到就只留项目名 */ }
-        return "CGo OpenMap · " + (city ? city + " " : "") + "开放地图";
-    }
-
-    /** 水印落在右侧吗：与进度卡**分居左右下角**（卡右下→水印左下；卡左下→水印右下；
-        卡在上半屏或关掉→固定右下），这样两者永不重叠 */
-    const watermarkOnRight = () => state.cardPos !== "br";
-
-    function drawWatermark(ctx2d, cw, ch) {
-        const text = watermarkText();
-        if (!text) return;
-        const th = state.exportTheme || {};
-        const fam = th.font || "sans-serif";
-        const pad = CARD.margin;
-        const mark = state.exportMark;
-        const markSize = F(20), gap = F(8);
-
-        ctx2d.save();
-        ctx2d.font = "600 " + F(14) + "px " + fam;
-        ctx2d.textBaseline = "middle";
-        ctx2d.textAlign = "left";
-        const textW = ctx2d.measureText(text).width;
-        const totalW = (mark ? markSize + gap : 0) + textW;
-        const x = watermarkOnRight() ? cw - pad - totalW : pad;
-        const cy = ch - pad - F(13);   // 与进度卡底边同一行
-        let cx = x;
-        ctx2d.globalAlpha = 0.72;
-        if (mark) {
-            ctx2d.drawImage(mark, cx, cy - markSize / 2, markSize, markSize);
-            cx += markSize + gap;
-        }
-        // 先描一圈背景色做底衬，压在线上也看得清
-        ctx2d.lineWidth = F(3);
-        ctx2d.lineJoin = "round";
-        ctx2d.strokeStyle = th.mapBg || "#fff";
-        ctx2d.strokeText(text, cx, cy);
-        ctx2d.fillStyle = th.text || "#222";
-        ctx2d.fillText(text, cx, cy);
-        ctx2d.restore();
-    }
-
-    /* ---- 末尾全览的免责说明：与水印**分居底部两侧**（用户指定），只在收尾那一拍出现 ---- */
-
-    /** 免责说明文案：三条口径（数据由主理团队整理 / 线路图经过变形 / 以实际数据为准） */
-    const DISCLAIMER_TEXT = "数据由该项目主理团队整理 · 线路图经过变形处理 · 请以实际数据为准";
-
-    function drawDisclaimer(ctx2d, cw, ch) {
-        const th = state.exportTheme || {};
-        const fam = th.font || "sans-serif";
-        const pad = CARD.margin;
-        ctx2d.save();
-        // 字号与角落水印**取同一个**（同为 F(14)）、 cy 也同一行 —— 两端文字才会视觉齐平
-        ctx2d.font = "500 " + F(14) + "px " + fam;
-        ctx2d.textBaseline = "middle";
-        // 角落水印在左时说明居右（反之亦然）—— 两端各占一头，互不遮挡
-        const onRight = !watermarkOnRight();
-        ctx2d.textAlign = onRight ? "right" : "left";
-        const x = onRight ? cw - pad : pad;
-        const cy = ch - pad - F(13);   // 与水印同一行（贴着底边）
-        ctx2d.globalAlpha = 0.72;
-        // 与角落水印同款：先描一圈底色做底衬，压在线上也看得清
-        ctx2d.lineWidth = F(3);
-        ctx2d.lineJoin = "round";
-        ctx2d.strokeStyle = th.mapBg || "#fff";
-        ctx2d.strokeText(DISCLAIMER_TEXT, x, cy);
-        ctx2d.fillStyle = th.text || "#222";
-        ctx2d.fillText(DISCLAIMER_TEXT, x, cy);
-        ctx2d.restore();
-    }
-
-    /**
-     * XML 1.0 里**不允许出现**的字符：控制符（除 \t \n \r）、孤立代理项、U+FFFE / U+FFFF。
-     * HTML 解析对它们照收不误，但把同一棵 DOM 序列化成 SVG 再交给 XML 解析器就整份失败
-     * （实测症状：`invalid attribute value`，指到克隆根节点的 style 属性里）。
-     * ⚠️ 正则**不加** `u` 标志：要按 UTF-16 码元匹配，才能抓到孤立代理项。
-     */
-    const XML_BAD_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uD800-\uDFFF\uFFFE\uFFFF]/g;
-
-    /** 栅格化前净化：剔掉 XML 不允许的字符，并把它是什么报出来（数据问题便于追溯） */
-    function sanitizeXml(str) {
-        const bad = str.match(XML_BAD_CHARS);
-        if (!bad) return str;
-        const uniq = Array.from(new Set(bad))
-            .map((c) => "U+" + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0"));
-        console.warn(`[线网发展史] 导出：SVG 里含 ${bad.length} 个 XML 不允许的字符（${uniq.join("、")}）已剔除，`
-            + "多半来自某个样式值或站名文本，可作为上游数据问题排查");
-        return str.replace(XML_BAD_CHARS, "");
-    }
-
-    /**
-     * 诊断用：SVG 栅格化失败时把**真正的原因**说出来。
-     * `<img>` 的 onerror 不给任何细节，只能自己再判一次：
-     *   · XML 不合法 —— DOMParser 会直指出错位置（命名空间缺失、非法字符、CDATA 里的 `]]>` 等），
-     *     并把**出错处上下文**（JSON 转义，控制符会显示成 \u00xx）一起带出来；
-     *   · XML 合法却仍失败 —— 多半是 data URL 过大或含不受支持的内容，这时把体积报出来便于定位。
-     */
-    function describeSvgFailure(svgStr) {
-        const bytes = new TextEncoder().encode(svgStr).length;
-        const parts = [`${bytes} 字节`, `内联 CSS ${(state.exportCss || "").length} 字符`];
-        try {
-            const doc = new DOMParser().parseFromString(svgStr, "image/svg+xml");
-            const err = doc.querySelector("parsererror");
-            if (err) {
-                const msg = String(err.textContent || "").replace(/\s+/g, " ").trim().slice(0, 240);
-                parts.push("XML 解析失败：" + msg + svgErrorContext(svgStr, msg));
-            } else {
-                parts.push("XML 合法（可能是 data URL 过大或含不受支持的内容）");
-            }
-        } catch (e) {
-            parts.push("无法用 DOMParser 复核");
-        }
-        return parts.join("；");
-    }
-
-    /** 按 parsererror 报的「line L at column C」切一段上下文（±120 字符，JSON 转义） */
-    function svgErrorContext(svgStr, errText) {
-        const m = /line (\d+) at column (\d+)/i.exec(errText || "");
-        if (!m) return "";
-        const line = Number(m[1]), col = Number(m[2]);
-        const lines = svgStr.split("\n");
-        let offset = 0;
-        for (let i = 0; i < Math.min(line - 1, lines.length); i++) offset += lines[i].length + 1;
-        offset += Math.max(0, col - 1);
-        return "；出错处上下文：" + JSON.stringify(svgStr.slice(Math.max(0, offset - 120), offset + 120));
-    }
-
-    /** data URL 的 SVG → <img>（decoded ≠ painted，调用方已在外层留出等待） */
-    function imgFromData(svgStr) {
-        const bytes = new TextEncoder().encode(svgStr);
-        let bin = ""; const CH = 0x8000;
-        for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
-        return new Promise((res, rej) => {
-            const img = new Image();
-            img.onload = () => res(img);
-            img.onerror = () => rej(new Error("SVG 栅格化失败（" + describeSvgFailure(svgStr) + "）"));
-            img.src = "data:image/svg+xml;base64," + btoa(bin);
-        });
-    }
-
-    /** 导出前的准备：同源 CSS 文本、外部图片 data URL 缓存、站名度量缓存 */
-    async function prepareExport() {
-        let css = "";
-        const sheets = document.styleSheets;
-        for (let i = 0; i < sheets.length; i++) {
-            try {
-                const rules = sheets[i].cssRules;
-                for (let j = 0; j < rules.length; j++) css += rules[j].cssText + "\n";
-            } catch (e) { /* 跨域表（远在字体站的，导出用不到）读不到，跳过 */ }
-        }
-        state.exportCss = css;
-        state.exportImgCache = new Map();
-        const mc = document.getElementById("map-content");
-        for (const el of mc.querySelectorAll("img, image")) {
-            const src = el.getAttribute("src") || el.getAttribute("xlink:href") || el.getAttribute("href");
-            if (!src || /^(data:|blob:)/.test(src) || state.exportImgCache.has(src)) continue;
-            try {
-                const r = await fetch(new URL(src, document.baseURI).href);
-                const b = await r.arrayBuffer();
-                state.exportImgCache.set(src, "data:" + (r.headers.get("content-type") || "image/png") + ";base64," + b64Bytes(b));
-            } catch (e) { /* 取不到就保持原样（该图在导出里会缺失，不致命） */ }
-        }
-        labelCache = buildLabelCache();
-        state.exportTheme = readThemeVars();
-        state.exportMark = await prepareMark();
-        // 进度卡状态行用的两个图标（与清单里的 add / transfer 同款）
-        state.cardIcons = {
-            add: await prepareIcon("add", (state.exportTheme || {}).text || "#222", false),
-            transfer: await prepareIcon("transfer", (state.exportTheme || {}).text || "#222", false)
-        };
-        state.cardReserve = true;      // 取景给卡让位（全览那一拍除外，见 buildTimeline）
-        state.exportCardRect = null;   // 卡面矩形逐帧记，导出开始时清一次（首帧不让位）
-    }
-
-    /**
-     * 水印左侧的 CGo 小图标：把 CGoUI 的 `<cgo-icon name="cgo">` 临时挂到页面上，取出它
-     * shadow DOM 里的 SVG、栅格化一次（拿不到就退化成纯文字水印）。
-     * ⚠️ 隔离的 SVG（data URL）里没有页面上的 CSS 变量，品牌渐变（`color-mode="brand"` 的
-     * `<stop stop-color="var(--brand-gradient-…)">`）与 `--icon-clr` 都得在根上补好，
-     * 否则渐变那两笔会解析不出来、整块不画。
-     */
-    const MARK_COLOR_MODE = "brand";   // 'mono' 跟随文字色 / 'brand' 用 CGoUI 品牌渐变
-
-    async function prepareMark() {
-        return await prepareIcon("cgo", (state.exportTheme || {}).text || "#222", MARK_COLOR_MODE === "brand");
-    }
-
-    /**
-     * 把一个 `<cgo-icon>` 栅格化成 Image（画布上画图标用）。进度卡状态行的 add / transfer
-     * 也走这条 —— 与面板清单里的图标同一套 CGoUI 矢量，避免在视频里另画一套「＋」。
-     * 拿不到就返回 null，调用方降级为纯文字。
-     */
-    async function prepareIcon(name, col, brand) {
-        const th = state.exportTheme || {};
-        let host = document.querySelector(`cgo-icon[name="${name}"]`);
-        let temp = null;
-        const wrongMode = brand
-            ? !!host && host.getAttribute("color-mode") !== "brand"
-            : !!host && !!host.getAttribute("color-mode");
-        if (!host || wrongMode) {
-            temp = document.createElement("cgo-icon");
-            temp.setAttribute("name", name);
-            temp.setAttribute("size", "24");
-            if (brand) temp.setAttribute("color-mode", "brand");
-            temp.style.cssText = "position:absolute;left:-9999px;top:0;";
-            document.body.appendChild(temp);
-            host = temp;
-            await new Promise((r) => requestAnimationFrame(() => r()));   // 等组件渲染出 shadow DOM
-        }
-        try {
-            const svg = host.shadowRoot && host.shadowRoot.querySelector("svg");
-            if (!svg) return null;
-            const doc = new DOMParser().parseFromString(new XMLSerializer().serializeToString(svg), "image/svg+xml");
-            const root = doc.documentElement;
-            if (!root || root.nodeName === "parsererror") return null;
-            root.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-            root.setAttribute("width", "72");    // 画布上按 30px 画，栅格化给足余量才不发虚
-            root.setAttribute("height", "72");
-            const cs = getComputedStyle(host);
-            const vars = {
-                "--icon-clr": col,
-                "--brand-gradient-start-appname": cs.getPropertyValue("--brand-gradient-start-appname").trim() || th.primary || "#006098",
-                "--brand-gradient-end-appname": cs.getPropertyValue("--brand-gradient-end-appname").trim() || th.primary || "#006098"
-            };
-            Object.keys(vars).forEach((k) => root.style.setProperty(k, vars[k]));
-            root.style.color = col;   // 其余笔画走 currentColor
-            return await imgFromData(new XMLSerializer().serializeToString(root));
-        } catch (e) {
-            return null;
-        } finally {
-            if (temp) temp.remove();
-        }
-    }
-
-    /** 进度卡 / 水印要用的主题色：canvas 读不到 CSS 变量，只能先把算好的值取出来 */
-    function readThemeVars() {
-        const host = stageHost() || document.body;
-        const cs = getComputedStyle(host);
-        const v = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
-        // CGoUI 玻璃系统的模糊半径（blur(14px) saturate(135%) 里的那个 14）
-        const gm = /blur\(\s*([\d.]+)px/.exec(v("--glass-backdrop-blur-surface", "blur(14px)"));
-        return {
-            font: getComputedStyle(document.body).fontFamily || "sans-serif",
-            text: v("--text-main", "#222"),
-            primary: v("--primary-color", "#00263b"),
-            border: v("--border-color", "rgba(0,0,0,.12)"),
-            info: v("--btn-info-bg", "rgba(0,0,0,.06)"),
-            mapBg: v("--map-bg", "#ffffff"),
-            glassPanel: v("--glass-bg-panel", "rgba(255,255,255,.82)"),
-            glassBlur: gm ? parseFloat(gm[1]) : 14
-        };
-    }
-
-    function b64Bytes(buf) {
-        const b = new Uint8Array(buf); let s = ""; const CH = 0x8000;
-        for (let i = 0; i < b.length; i += CH) s += String.fromCharCode.apply(null, b.subarray(i, i + CH));
-        return btoa(s);
-    }
-
-    /**
-     * 把单色 SVG 图片（base64 data URL）的填充色统一换成给定色。
-     * 导出时给「靠 CSS mask 着色」的徽标兜底用（见 paintFrame 里对 airport.svg 的处理）：
-     * mask 的相对 url 内联进 SVG 后没有 base URL、解析不到，只能改成直接着色。取不到就原样返回。
-     */
-    function recolorSvg(dataUrl, color) {
-        try {
-            const m = /^data:image\/svg\+xml;base64,/i.exec(dataUrl);
-            if (!m) return dataUrl;
-            const bin = atob(dataUrl.slice(m[0].length).replace(/\s+/g, ""));
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            let svg = new TextDecoder("utf-8").decode(bytes);
-            svg = svg.replace(/fill=(['"])(?!none\b)[^'"]*\1/gi, 'fill="' + color + '"');
-            if (!/fill=/i.test(svg)) svg = svg.replace(/<svg\b/i, '<svg fill="' + color + '"');
-            const out = new TextEncoder().encode(svg);
-            let s = "";
-            const CH = 0x8000;
-            for (let i = 0; i < out.length; i += CH) s += String.fromCharCode.apply(null, out.subarray(i, i + CH));
-            return "data:image/svg+xml;base64," + btoa(s);
-        } catch (e) { return dataUrl; }
-    }
-
-    /* ---- 编码：WebCodecs `VideoEncoder` + mp4-muxer ----
-     * 逐帧循环与播放共用 `applyFrame(t)`：每帧先把它之后的画面落到 DOM，再用
-     * `paintFrame` 取图。⚠️ 这里用**非落定**模式（settle 省略）—— 站点弹出、涟漪要逐帧
-     * 保留，`paintFrame` 的 `alphaAt` 正是按「正在弹的那几个」算可见度；若传 settle=true，
-     * 弹出会在同一帧被立刻收尾，导出里就看不到站「弹」出来了。 */
-
-    const encoderConfig = () => ({
-        codec: EXPORT.codec,
-        width: EXPORT.width,
-        height: EXPORT.height,
-        bitrate: EXPORT.bitrate,
-        framerate: EXPORT.fps,
-        avc: { format: "avc" }   // mp4-muxer 要的是 AVCC 格式的块，缺了它封不出可播的 MP4
-    });
-
-    /** 按需注入 mp4-muxer（31KB）：不导出就不加载，同一份只注入一次 */
-    function loadMuxer() {
-        if (window.Mp4Muxer) return Promise.resolve(window.Mp4Muxer);
-        if (state.muxerLoading) return state.muxerLoading;
-        state.muxerLoading = new Promise((resolve, reject) => {
-            const s = document.createElement("script");
-            s.src = EXPORT.muxerSrc;
-            s.onload = () => (window.Mp4Muxer ? resolve(window.Mp4Muxer) : reject(new Error("mp4-muxer 未挂到全局")));
-            s.onerror = () => reject(new Error("mp4-muxer 加载失败"));
-            document.head.appendChild(s);
-        });
-        return state.muxerLoading;
-    }
-
-    /** 能力自检：浏览器是否真支持这套编码配置（判 supported 而不是只看构造函数存在） */
-    async function canEncode() {
-        if (typeof window.VideoEncoder !== "function" || typeof window.VideoFrame !== "function") return false;
-        try {
-            const r = await window.VideoEncoder.isConfigSupported(encoderConfig());
-            return !!(r && r.supported);
-        } catch (e) { return false; }
-    }
-
-    function downloadBlob(blob, name) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 4000);
-    }
-
-    /** 文件名：`{城市}_线网发展史_{起}_{止}_{导出时间戳}.mp4`（时间戳避免同名导出互相覆盖/看不出先后） */
-    const exportFileName = (from, to) => {
-        const d = new Date();
-        const p = (n) => String(n).padStart(2, "0");
-        const stamp = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-        const a = state.steps[from] ? state.steps[from].date : "start";
-        const b = state.steps[to] ? state.steps[to].date : "end";
-        // 文件名带上城市：多城各导一段时不至于混在一起（城市名取当前注册城市）
-        let city = "";
-        try {
-            const c = window.CityDataManager && window.CityDataManager.getCurrentCity
-                ? window.CityDataManager.getCurrentCity() : null;
-            city = (c && c.name) || "";
-        } catch (e) { /* 取不到就不带城市 */ }
-        return `${city ? city + "_" : ""}线网发展史_${a}_${b}_${stamp}.mp4`;
-    };
-
-    /**
-     * 把第 from..to 步导出为 MP4。与播放共用一条时间轴：
-     * ① from>0 时先把之前的事件落成「已开通」（jumpTo），画面从 from 起播；
-     * ② 逐帧 `applyFrame(t)` → `paintFrame` → `VideoFrame` → `encode`，按背压等队列；
-     * ③ flush → finalize → Blob 下载。导出期间停下实时播放并锁住相关控件。
-     */
-    async function runExport(from, to) {
-        if (state.exporting) return;
-        // ⚠️ 代次令牌：`state` 是本模块单例，导出期间把面板关掉再打开时，
-        //    在飞的旧导出会继续往**新面板**上写状态、还会把画面落位（把新实例的镜头拽走）。
-        //    unmount 里 +1 即可让它下一拍自行收手（上游审查意见 #4）。
-        const gen = ++state.exportGen;
-        const alive = () => gen === state.exportGen;
-        state.exporting = true;
-        state.exportCancelled = false;
-        // 浮层的静态信息：本次导出的范围 + 当前运镜参数（导出期间这些控件都被锁住）
-        {
-            const e0 = state.els;
-            const a = state.steps[from], b = state.steps[to];
-            if (e0 && e0.expRange) e0.expRange.textContent = (a && b) ? a.date + " → " + b.date : "—";
-            if (e0 && e0.expSpeed) e0.expSpeed.textContent = state.speed + " px/s";
-            if (e0 && e0.expZoom) e0.expZoom.textContent = state.zoom.toFixed(1) + "×";
-            if (e0 && e0.expNow) e0.expNow.textContent = a ? a.date + " " + (a.title || stepLabel(a)) : "—";
-        }
-        // 导出与 rAF 会抢同一条时间线：先把实时播放停干净
-        clearTimers();
-        state.playing = false;
-        syncPlayBtn();
-        syncExportUI();
-        setExportStatus("正在检查编码支持…");
-        let encoder = null;
-        let muxer = null;
-        try {
-            if (!(await canEncode())) {
-                throw new Error("当前浏览器不支持 WebCodecs H.264 编码，请用较新版 Chrome / Edge");
-            }
-            if (!alive()) return;
-            setExportStatus("准备资源…");
-            // 起点画面：from>0 时先补出「之前已开通」的全部线网与车站
-            if (from > 0) jumpTo(from - 1);
-            else { clearCanvas(); clearMarks(); enterStage(); }
-            state.timeline = buildTimeline(from, to);
-            state.popDone = new Set();
-            state.activePops = [];
-            state.ripples = [];
-            state.lastPanelI = null;
-            state.lastResyncI = null;
-            await prepareExport();
-
-            const Mp4Muxer = await loadMuxer();
-            muxer = new Mp4Muxer.Muxer({
-                target: new Mp4Muxer.ArrayBufferTarget(),
-                video: { codec: "avc", width: EXPORT.width, height: EXPORT.height },
-                fastStart: "in-memory"
-            });
-            let encError = null;
-            encoder = new window.VideoEncoder({
-                output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-                error: (e) => { encError = e; }
-            });
-            encoder.configure(encoderConfig());
-
-            const canvas = document.createElement("canvas");
-            canvas.width = EXPORT.width;
-            canvas.height = EXPORT.height;
-            const ctx2d = canvas.getContext("2d");
-            const total = state.timeline.total;
-            const dt = 1000 / EXPORT.fps;
-            const frames = Math.max(1, Math.ceil(total / dt));
-            for (let i = 0; i <= frames; i++) {
-                if (!alive() || state.exportCancelled) break;
-                if (encError) throw encError;
-                const t = Math.min(total, i * dt);
-                applyFrame(t);
-                await paintFrame(canvas, t, ctx2d);
-                const frame = new window.VideoFrame(canvas, {
-                    timestamp: Math.round(i * 1e6 / EXPORT.fps),
-                    duration: Math.round(1e6 / EXPORT.fps)
-                });
-                encoder.encode(frame, { keyFrame: i % (EXPORT.fps * 2) === 0 });
-                frame.close();
-                // 背压：待编码帧堆太多会把内存打爆，超阈值就等一会儿
-                while (encoder.encodeQueueSize > 8 && alive() && !state.exportCancelled && !encError) {
-                    await new Promise((r) => setTimeout(r, 4));
-                }
-                if (!alive()) break;
-                setExportProgress(i + 1, frames + 1, t);
-                if (i % 4 === 0) await new Promise((r) => setTimeout(r, 0));  // 定期让出主线程
-            }
-            if (encError) throw encError;
-            if (!alive()) return;
-
-            if (state.exportCancelled) {
-                setExportStatus("已取消");
-            } else {
-                setExportStatus("正在封装 MP4…");
-                await encoder.flush();
-                encoder.close();
-                encoder = null;
-                muxer.finalize();
-                const blob = new Blob([muxer.target.buffer], { type: "video/mp4" });
-                downloadBlob(blob, exportFileName(from, to));
-                setExportStatus(`已导出 ${frames + 1} 帧 · ${(total / 1000).toFixed(1)} 秒 · ${(blob.size / 1048576).toFixed(1)} MB`);
-            }
-            document.dispatchEvent(new CustomEvent("cgo:opening-export-done", {
-                detail: { from: from, to: to, cancelled: state.exportCancelled }
-            }));
-        } catch (e) {
-            console.error("[线网发展史] 导出失败：", e);
-            if (alive()) setExportStatus("导出失败：" + (e && e.message ? e.message : e), true);
-        } finally {
-            if (encoder) { try { encoder.close(); } catch (e) { /* 已关闭或未配置 */ } }
-            // 面板已被关掉 / 已换新实例（代次变了）时，什么都不碰：旧实例的落位会把新实例的镜头拽走
-            if (alive()) {
-                // 取消时不要只落最后一帧：先清干净再跳到 to —— 保证生长组的 bookkeeping 与 DOM 一致
-                // （只落帧会留下 dataset.no / __segs 与实际子节点不匹配，那条线整段不画）。
-                if (state.timeline && state.els) {
-                    try {
-                        clearCanvas();
-                        jumpTo(to);
-                    } catch (e) { /* 重建失败也要让流程正常收尾 */ }
-                    state.index = to;
-                    state.tCur = state.timeline.total;
-                }
-                state.exporting = false;
-                // 成功收尾时让「已导出 N 帧 · xx MB」在浮层上停一会儿再收（否则一闪而过）；
-                // 取消 / 失败 / 面板已换则立即收。
-                const modal = state.els && state.els.expModal;
-                if (modal && !state.exportCancelled) {
-                    setTimeout(() => {
-                        if (state.els && state.els.expModal === modal) syncExportUI();
-                    }, 2600);
-                } else {
-                    syncExportUI();
-                }
-            }
-        }
-    }
-
-    function setExportStatus(text, isError) {
-        const el = state.els && state.els.expStatus;
-        if (!el) return;
-        el.textContent = text || "";
-        el.classList.toggle("is-error", !!isError);
-    }
-
-    /** 导出首次进度的打点时刻：用来估剩余时间（每轮导出在 done ≤ 1 时重打） */
-    let exportStartAt = 0;
-
-    /** 毫秒 → 「N 秒」/「M 分 N 秒」 */
-    function fmtDuration(ms) {
-        const s = Math.max(1, Math.round(ms / 1000));
-        if (s < 60) return s + " 秒";
-        return Math.floor(s / 60) + " 分 " + (s % 60) + " 秒";
-    }
-
-    function setExportProgress(done, total, t) {
-        const e = state.els;
-        const pct = total ? Math.round(done / total * 100) : 0;
-        if (e && e.expBar) e.expBar.style.width = pct + "%";
-        // 预估剩余时间：已用时间 ÷ 已导帧数 × 剩余帧数。⚠️ 从第 3 帧起才显示 —— 头几帧
-        // 还要摊上编码器初始化与首屏渲染的开销，拿它估会把结果抬得离谱。
-        const now = Date.now();
-        if (done <= 1) exportStartAt = now;
-        const elapsed = exportStartAt ? (now - exportStartAt) / 1000 : 0;
-        // 实时渲染帧率（相对目标帧率）—— 拼在状态行**末尾**（紧随预计剩余时间）
-        const fps = (elapsed > 0.3 && done > 1)
-            ? (done / elapsed).toFixed(1) + "/" + EXPORT.fps + " fps"
-            : "—/" + EXPORT.fps + " fps";
-        // 当前正在导出的事件：按 t 落到哪一拍
-        if (e && e.expNow && t != null && state.timeline) {
-            const rec = recAt(t);
-            const s = rec ? state.steps[rec.i] : null;
-            if (s) e.expNow.textContent = s.date + " " + (s.title || stepLabel(s));
-        }
-        let eta = "";
-        if (exportStartAt && done > 2 && total && done < total) {
-            eta = " · 预计剩余 " + fmtDuration((now - exportStartAt) / done * (total - done));
-        }
-        setExportStatus(`导出中 ${pct}%${eta} · ${fps}`);
-    }
-
-    /** 起止事件下拉：用 CGoUI 的 `<cgo-toolbar-select>`（自带下拉面板与主题跟随） */
-    function renderExportSelects() {
-        const e = state.els;
-        if (!e || !e.expFrom || !e.expTo) return;
-        // 选项左边一颗线路色圆点（`.cgo-toolbar-option-dot`），文字用「日期 + 事件标题」
-        const opts = state.steps
-            .map((s) => `<cgo-toolbar-option value="${s.no - 1}">`
-                + `<span class="cgo-toolbar-option-dot" style="background:${s.color}"></span>`
-                + `${s.date} ${s.title || stepLabel(s)}</cgo-toolbar-option>`)
-            .join("");
-        e.expFrom.innerHTML = opts;
-        e.expTo.innerHTML = opts;
-        e.expFrom.value = "0";
-        e.expTo.value = String(state.steps.length - 1);
-        setExportStatus("");
-    }
-
-    /** 进度卡位置的分段控件高亮（值存在 state.cardPos，不走 DOM 读值） */
-    function syncCardOpts() {
-        const box = state.els && state.els.expCard;
-        if (!box) return;
-        box.querySelectorAll(".cgo-rt-need-opt").forEach((b) => {
-            b.classList.toggle("is-on", b.dataset.card === state.cardPos);
-        });
-    }
-
-    /** 导出期间锁住会干扰时间线的控件，只留「取消」；同时同步导出按钮的按下态 */
-    function syncExportUI() {
-        const e = state.els;
-        if (!e) return;
-        const on = state.exporting;
-        const open = e.exportSet && !e.exportSet.hidden;
-        [e.back, e.play, e.replay, e.setSpeed, e.setZoom, e.toggleInfo].forEach((b) => { if (b) b.disabled = on; });
-        // 展开导出区时把「当前事件 / 说明 / 规模 / 进度条」四块藏起来：它们已合成进视频的进度卡，
-        // 面板上再放一份既重复又占高度（见 opening-history.css 的 .cgo-oh.is-export）
-        if (e.root) e.root.classList.toggle("is-export", open);
-        if (e.exportToggle) {
-            e.exportToggle.classList.toggle("is-on", open);
-            e.exportToggle.setAttribute("aria-pressed", String(open));
-        }
-        if (e.expFrom) e.expFrom.disabled = on;
-        if (e.expTo) e.expTo.disabled = on;
-        if (e.expCard) e.expCard.querySelectorAll(".cgo-rt-need-opt").forEach((b) => { b.disabled = on; });
-        if (e.expStart) e.expStart.hidden = on;
-        // 进度 / 剩余时间 / 帧率 / 取消都在 CGoUI 的浮层里（导出期间不随面板乱动）
-        if (e.expModal) e.expModal.open = !!on;
-        if (e.expBar) e.expBar.style.width = on ? "0%" : e.expBar.style.width;
-    }
 
     /* ======================================================================
      * 挂载 / 卸载（由地图小工具的免选站工具机制驱动）
@@ -4791,20 +2891,8 @@
             expNow: q('[data-oh="expNow"]'),
             list: q(".cgo-oh-list")
         };
-        // 导出浮层改挂到 **body**：面板容器可能带 transform（拖动 / 吸附定位），
-        // 留在里面 `position: fixed` 会相对它定位、盖不住整屏。
-        if (state.els.expModal) {
-            document.body.appendChild(state.els.expModal);
-            // 安全冗余：关掉浮层（点右上角 ×）**即视为取消导出** —— 浮层一收，进度与取消按钮
-            // 就都看不见了，若导出还在后台跑，用户既没有反馈、也没法再中止它。
-            // cgo-modal 是 Web Component，关闭走内部方法、不派发事件，故监听 `open` 属性的消失；
-            // 导出正常收尾时 state.exporting 已置 false，不会误判成取消。
-            state.modalObserver = new MutationObserver(() => {
-                if (state.exporting && !state.els.expModal.open) state.exportCancelled = true;
-            });
-            state.modalObserver.observe(state.els.expModal, { attributes: true, attributeFilter: ["open"] });
-        }
-        state.steps = build();
+        SHARED.export.mountModal();   // 导出浮层改挂 body + 「关闭浮层即取消」观察器（见导出层）
+        state.steps = SHARED.build();
         // 更名链：同一站可以有多次更名（旧名 → 中间名 → … → 现名），按步号升序存成数组
         state.renameMap = new Map();
         state.steps.forEach((s, i) => {
@@ -4847,8 +2935,8 @@
         state.exportCancelled = false;
         state.cardPos = "br";       // 每次挂载都回到默认角落（与速度 / 倍数一样不记忆）
         renderList();
-        renderExportSelects();
-        syncCardOpts();
+        SHARED.export.renderSelects();
+        SHARED.export.syncCardOpts();
 
         state.els.play.addEventListener("click", play);
         state.els.replay.addEventListener("click", replay);
@@ -4859,48 +2947,16 @@
             state.els.speedSet.hidden = !show;
             state.els.zoomSet.hidden = true;
             state.els.exportSet.hidden = true;
-            syncExportUI();
+            SHARED.export.syncExportUI();
         });
         state.els.setZoom.addEventListener("click", () => {
             const show = state.els.zoomSet.hidden;
             state.els.zoomSet.hidden = !show;
             state.els.speedSet.hidden = true;
             state.els.exportSet.hidden = true;
-            syncExportUI();
+            SHARED.export.syncExportUI();
         });
-        // 不支持 WebCodecs 的设备上按钮不渲染（见 canExportVideo），绑定随之跳过
-        if (state.els.exportToggle) state.els.exportToggle.addEventListener("click", () => {
-            if (state.exporting) return;
-            const open = state.els.exportSet.hidden;
-            state.els.exportSet.hidden = !open;
-            state.els.speedSet.hidden = true;
-            state.els.zoomSet.hidden = true;
-            // 与「事件清单」互斥：两个按钮不同时点亮（清单占的是同一块信息区）
-            if (open) { state.els.root.classList.remove("is-list"); syncToggle(); }
-            syncExportUI();
-        });
-        // 起止两个下拉互相钳制，避免选出「起 > 止」的空区间
-        state.els.expFrom.addEventListener("cgo-change", () => {
-            if (Number(state.els.expTo.value) < Number(state.els.expFrom.value)) {
-                state.els.expTo.value = state.els.expFrom.value;
-            }
-        });
-        state.els.expTo.addEventListener("cgo-change", () => {
-            if (Number(state.els.expFrom.value) > Number(state.els.expTo.value)) {
-                state.els.expFrom.value = state.els.expTo.value;
-            }
-        });
-        // 进度卡位置：分段控件，点哪段就把 state.cardPos 切到哪
-        state.els.expCard.addEventListener("click", (ev) => {
-            const b = ev.target.closest(".cgo-rt-need-opt");
-            if (!b || state.exporting) return;
-            state.cardPos = b.dataset.card;
-            syncCardOpts();
-        });
-        state.els.expStart.addEventListener("click", () => {
-            runExport(Number(state.els.expFrom.value), Number(state.els.expTo.value));
-        });
-        state.els.expCancel.addEventListener("click", () => { state.exportCancelled = true; });
+        SHARED.export.bindControls();   // 导出控件绑定（按钮 / 起止钳制 / 进度卡 / 开始 / 取消）
         // 信息区 ⟷ 事件清单：二选一，不是「收起 / 展开」
         state.els.toggleInfo.addEventListener("click", () => {
             state.els.root.classList.toggle("is-list");
@@ -4909,7 +2965,7 @@
                 state.els.speedSet.hidden = true;
                 state.els.zoomSet.hidden = true;
                 state.els.exportSet.hidden = true;
-                syncExportUI();
+                SHARED.export.syncExportUI();
             }
             syncToggle();
         });
@@ -5000,6 +3056,185 @@
     function hasData() {
         return Array.isArray(window.CGO_OPENING_HISTORY) && window.CGO_OPENING_HISTORY.length > 0;
     }
+
+    /** 内核符号交给扩展层（函数声明已提升，此处一次性暴露） */
+    Object.assign(SHARED, {
+        NS: NS,
+        LAYER_ID: LAYER_ID,
+        STYLE_ID: STYLE_ID,
+        TOOL_ID: TOOL_ID,
+        STAGE_CLASS: STAGE_CLASS,
+        POP_CLASS: POP_CLASS,
+        DOT_CLASS: DOT_CLASS,
+        NO_CLASS: NO_CLASS,
+        NO_SHAPE_CLASS: NO_SHAPE_CLASS,
+        NO_ICON_CLASS: NO_ICON_CLASS,
+        DOT_ICON_CLASS: DOT_ICON_CLASS,
+        ON_CLASS: ON_CLASS,
+        ALWAYS_CLASS: ALWAYS_CLASS,
+        GONE_CLASS: GONE_CLASS,
+        HOST_CLASS: HOST_CLASS,
+        DUP_LABEL_CLASS: DUP_LABEL_CLASS,
+        BODY_CLASS: BODY_CLASS,
+        SPEED: SPEED,
+        ZOOM: ZOOM,
+        POP_BASE: POP_BASE,
+        STOP_HOLD: STOP_HOLD,
+        STOP_STAGGER: STOP_STAGGER,
+        FREE_SWITCH_HOLD: FREE_SWITCH_HOLD,
+        CONV_MIN: CONV_MIN,
+        T: T,
+        SCALE_FLOOR: SCALE_FLOOR,
+        MOBILE_MAX: MOBILE_MAX,
+        KIND_LABEL: KIND_LABEL,
+        STATE_LABEL: STATE_LABEL,
+        badgeOf: badgeOf,
+        isWithdrawal: isWithdrawal,
+        REDUCE: REDUCE,
+        esc: esc,
+        state: state,
+        clearTimers: clearTimers,
+        glideMs: glideMs,
+        holdMs: holdMs,
+        growDuration: growDuration,
+        dist: dist,
+        pathCache: pathCache,
+        sampleCorePath: sampleCorePath,
+        segLength: segLength,
+        pointAt: pointAt,
+        projectOnPath: projectOnPath,
+        slicePath: slicePath,
+        toD: toD,
+        arcOf: arcOf,
+        pointAtMulti: pointAtMulti,
+        tOnStep: tOnStep,
+        bboxOf: bboxOf,
+        stepLabel: stepLabel,
+        canExportVideo: canExportVideo,
+        stationMap: stationMap,
+        linesData: linesData,
+        lineStations: lineStations,
+        byLineId: byLineId,
+        stationRangeOf: stationRangeOf,
+        eventOps: eventOps,
+        findOpIndex: findOpIndex,
+        soleOnLine: soleOnLine,
+        pushScaleLimit: pushScaleLimit,
+        popScaleLimit: popScaleLimit,
+        stageHost: stageHost,
+        pinnedObserver: pinnedObserver,
+        watchPinned: watchPinned,
+        unwatchPinned: unwatchPinned,
+        resetMapSelection: resetMapSelection,
+        enterStage: enterStage,
+        exitStage: exitStage,
+        applyAnimDurations: applyAnimDurations,
+        reseek: reseek,
+        calloutOf: calloutOf,
+        dotColorOf: dotColorOf,
+        themeVar: themeVar,
+        setNoIcon: setNoIcon,
+        applyForm: applyForm,
+        setDotIcon: setDotIcon,
+        popStation: popStation,
+        calloutObserver: calloutObserver,
+        repaintCallouts: repaintCallouts,
+        watchCallouts: watchCallouts,
+        unwatchCallouts: unwatchCallouts,
+        resyncShown: resyncShown,
+        isOnCanvas: isOnCanvas,
+        syncVirtualConnectors: syncVirtualConnectors,
+        syncRdotLabels: syncRdotLabels,
+        syncOffStationLinks: syncOffStationLinks,
+        syncPhantomHosts: syncPhantomHosts,
+        syncGhostForms: syncGhostForms,
+        syncGhostLabels: syncGhostLabels,
+        ghostPointAt: ghostPointAt,
+        visiblePointOf: visiblePointOf,
+        alignEndsToVisible: alignEndsToVisible,
+        trimEndToPoint: trimEndToPoint,
+        realignArchivedPaths: realignArchivedPaths,
+        realignPiecePaths: realignPiecePaths,
+        realignLiveSegs: realignLiveSegs,
+        syncConnectorEnds: syncConnectorEnds,
+        onPhantomClick: onPhantomClick,
+        markAlwaysOn: markAlwaysOn,
+        clearMarks: clearMarks,
+        layer: layer,
+        doneGroup: doneGroup,
+        liveGroup: liveGroup,
+        clearCanvas: clearCanvas,
+        viewportBox: viewportBox,
+        cnSpanOf: cnSpanOf,
+        enSpanOf: enSpanOf,
+        MN_LANG: MN_LANG,
+        altSpanOf: altSpanOf,
+        applyNameAt: applyNameAt,
+        restoreNames: restoreNames,
+        applyNewName: applyNewName,
+        bezier: bezier,
+        EASE: EASE,
+        EASE_OUT: EASE_OUT,
+        EASE_POP: EASE_POP,
+        clampZoom: clampZoom,
+        camForPoint: camForPoint,
+        camForBox: camForBox,
+        camLerp: camLerp,
+        brushAt: brushAt,
+        expandBoxByLabels: expandBoxByLabels,
+        camTailOf: camTailOf,
+        camWholeOf: camWholeOf,
+        growthPhases: growthPhases,
+        phaseAtDt: phaseAtDt,
+        progAtDt: progAtDt,
+        timeOfProg: timeOfProg,
+        stepStops: stepStops,
+        buildTimeline: buildTimeline,
+        recAt: recAt,
+        camAt: camAt,
+        applyPopProgress: applyPopProgress,
+        ripple: ripple,
+        leaveStation: leaveStation,
+        showStation: showStation,
+        ensureGrowPath: ensureGrowPath,
+        applyFrame: applyFrame,
+        syncRenameNames: syncRenameNames,
+        applyRenameAt: applyRenameAt,
+        makeHollowMask: makeHollowMask,
+        makeSegPiece: makeSegPiece,
+        applyPieceStyle: applyPieceStyle,
+        pieceLen: pieceLen,
+        applyPieceProgress: applyPieceProgress,
+        convertRange: convertRange,
+        applyConvs: applyConvs,
+        commitPath: commitPath,
+        pad2: pad2,
+        lerpDate: lerpDate,
+        setTrack: setTrack,
+        lineCountAround: lineCountAround,
+        panelModel: panelModel,
+        applyPanel: applyPanel,
+        scrollListToActive: scrollListToActive,
+        renderBody: renderBody,
+        syncToggle: syncToggle,
+        renderList: renderList,
+        trackPercentAt: trackPercentAt,
+        syncNow: syncNow,
+        syncPlayBtn: syncPlayBtn,
+        startPlayback: startPlayback,
+        tick: tick,
+        play: play,
+        pause: pause,
+        reset: reset,
+        replay: replay,
+        jumpTo: jumpTo,
+        mount: mount,
+        unmount: unmount,
+        phantomIds: phantomIds,
+        watchPhantomNodes: watchPhantomNodes,
+        hasData: hasData,
+        register: register,
+    });
 
     window.CGoOpeningHistory = {
         hasData: hasData,
