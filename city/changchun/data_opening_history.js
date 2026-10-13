@@ -173,6 +173,9 @@ const CGO_OPENING_HISTORY = [
 
     // ── 4 号线（长春站北 ⇄ 天新路，站序 0124…0441）──────────────────────
     { date: "2011-06-30", lineId: "CCM04", kind: "line-state", from: "0424", to: "0436",
+        // 东新路（0425）、公平路（0427）两站开通时暂缓（通过不停车），
+        // 分别到 2023-12-31 / 2012-12-17 才投用 —— 必须逐站豁免
+        except: [{ sid: "0425", state: "suspended" }, { sid: "0427", state: "suspended" }],
         title: "轻轨4号线一期高架段：东大桥 ⇄ 车场", desc: "免费观光运行，东新路、公平路暂缓" },
     { date: "2012-05-06", lineId: "CCM04", kind: "line-state", from: "0124", to: "0424",
         title: "轻轨4号线一期地下段：长春站北 ⇄ 东大桥", desc: "含北亚泰大街、伪满皇宫（时称「伪皇宫」）" },
@@ -232,6 +235,9 @@ const CGO_OPENING_HISTORY = [
         fromEn: "Zhiye Xueyuan",
         title: "职业学院站更名为职业技术大学站", desc: "3、4 号线共用站名随驻校（长春职业技术大学）升格更名，报站与导向随 7 号线开通同步更新" },
     { date: "2026-09-28", lineId: "CCM05", kind: "line-state", from: "0501", to: "0518",
+        // 长影旧址博物馆（0508）暂缓开通（线路从其站厅通过、不断开）—— 补开日未公布，
+        // 先按未开通圈豁免；日后拿到确切日期再补一条 station-state{open}
+        except: [{ sid: "0508", state: "suspended" }],
         title: "5号线一期：卓越大街 ⇄ 东大桥", desc: "长影旧址博物馆暂缓开通，线路从其站厅通过、不断开" },
     // 待补：0508 的确切补开日后补一条 station-state{open} —— 该站 data_stations.js 中仍为 type: "no"；
     //       自检只拦「区段端点落在未开通站」，线路**穿过**暂缓站是允许的，故这里整段登记。

@@ -66,6 +66,9 @@ const CGO_OPENING_HISTORY = [
 
     // ── 3 号线（环线，站序 0~35：珠江路 … 公滨路）────────────────────────
     { date: "2017-01-26", lineId: "HBM03", kind: "line-state", from: "CXL", to: "YDEY",
+        // 城乡路（CXL）、哈尔滨大街（KSYGC）两站开通时暂缓（列车通过不停车），
+        // 分别到 2021-11-26 / 2017-06-16 才补开 —— 必须逐站豁免
+        except: [{ sid: "CXL", state: "suspended" }, { sid: "KSYGC", state: "suspended" }],
         title: "3号线一期：城乡路 ⇄ 医大二院", desc: "城乡路、哈尔滨大街两站暂缓开通" },
     { date: "2017-06-16", lineId: "HBM03", kind: "station-state", state: "open", stations: ["KSYGC"],
         title: "哈尔滨大街站补开", desc: "开通时即此站名；2018 年末更名凯盛源广场" },
