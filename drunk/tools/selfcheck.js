@@ -437,7 +437,11 @@ section('开通沿革时间线');
                     events.push({ __shape: `事件 #${evIdx + 1} 的操作 #${opIdx + 1} 缺少 kind` });
                     return;
                 }
-                events.push(Object.assign({}, op, {
+                // 旧写法 line-open 归一进 line-state（缺省 state 即 open）—— 与共享层 eventOps() 同口径
+                const norm = op.kind === 'line-open'
+                    ? Object.assign({}, op, { kind: 'line-state', state: 'open' })
+                    : op;
+                events.push(Object.assign({}, norm, {
                     date: ev.date, title: ev.title || "", desc: ev.desc || "", evIdx: evIdx, opIdx: opIdx
                 }));
             });
@@ -474,8 +478,10 @@ section('开通沿革时间线');
             return out;
         };
 
-        // 事件契约：kind 只有三种（line-state / station-state / rename），状态取值白名单在此把关，
-        // 数据侧拼错一个 state 会静默失效，必须当错误拦下。见共享层 README「线网发展史」一节。
+        // 事件契约：kind 三种（line-state / station-state / rename），状态取值白名单在此把关，
+        // 数据侧拼错一个 state 会静默失效，必须当错误拦下。旧写法 line-open 已在上面归一为
+        // line-state/open（与共享层 eventOps() 同口径），故此处只会见到三种 kind。
+        // 见共享层 README「线网发展史」一节。
         const STATION_STATES = ['open', 'suspended', 'removed', 'interchange'];
         const LINE_STATES = ['open', 'suspended', 'removed'];   // open 缺省；removed = 空白
         const EXCEPT_STATES = ['open', 'suspended', 'removed']; // line-state 逐站豁免可写的转换
@@ -488,10 +494,6 @@ section('开通沿革时间线');
             if (!line) { bad.push(`${where} 线路不存在`); return; }
             const ids = IO.lineAllStationIds(line);
 
-            if (ev.kind === 'line-open') {
-                bad.push(`${where} line-open 已并入 line-state（缺省 state 即开通）`);
-                return;
-            }
             if (ev.kind === 'line-state') {
                 // 三态：open 开通（实线，计入「拼满」）/ suspended 未开通（镂空）/ removed 空白（消失）。
                 // 一条操作可带多段（segments: [{from,to}, …]）：环线同一天开通的两段弧、

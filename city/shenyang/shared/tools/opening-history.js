@@ -483,6 +483,9 @@
                         evIdx: evIdx,
                         opIdx: opIdx
                     });
+                    // 向后兼容旧写法 `line-open`：归一进 line-state（state 缺省即 open）。
+                    // 这条承诺必须落在运行期，否则旧格式的操作会被 build 的分支静默忽略。
+                    if (rec.kind === "line-open") { rec.kind = "line-state"; rec.state = "open"; }
                     if (rec.kind === "line-state" && !rec.state) rec.state = "open";   // 缺省 = 开通
                     out.push(rec);
                 });
@@ -543,8 +546,8 @@
         linesData().forEach((l) => { byId[l.id] = l; });
         const events = eventOps();   // 事件已按日期归一、展开成操作流
 
-        const delayed = new Map();   // 暂缓开通站 → 补开日期（该站最后一次补开日，供 closedAt 判恢复）
-        const delayedBy = new Map(); // sid → Map(lineId → 该线在本站的补开日)：判暂缓要按线路粒度看
+        const delayed = new Map();   // sid → [补开 / 恢复日…]（**数组**：同一站可多次停运复运，每一笔恢复都要留）
+        const delayedBy = new Map(); // sid → Map(lineId → [该线在本站的到达 / 补开日…])：判暂缓与判停运恢复都按线路粒度看
         const closed = new Map();    // sid → [{ date, permanent }]（闭站 / 拆除，升序）
         /**
          * 拆除终态的站 → 拆除日期（`goneAt`，只记首次）。⚠️ 不是无条件剔除：
@@ -553,6 +556,17 @@
          */
         const goneAt = new Map();
         const transferAt = new Map(); // sid → 站内换乘启用日（此前维持单线普通站形态）
+        /**
+         * 往「sid / lineId → 日期数组」里记一笔（去重）。
+         * ⚠️ 恢复日必须**逐笔留下**，不能只存最后一次：同一站同一条线可以「停 → 复 → 再停 → 再复」
+         * （长春解放桥 3 号线即此例），只留最后一次会让早先那次恢复被后来的日期盖掉，
+         * 中间那段正常运营的时期被误判成停运。
+         */
+        const pushDay = (map, key, date) => {
+            const arr = map.get(key) || [];
+            if (arr.indexOf(date) < 0) arr.push(date);
+            map.set(key, arr);
+        };
         /**
          * 更名事件指向的车站：优先用事件里显式写的 `sid`，没写时按「现名或曾用名」反查
          * （兼容只有 from / to 的老数据）。同一站可以有**多次**更名，串成一条链。
@@ -610,9 +624,9 @@
             if (ev.kind === "station-state") {
                 if (ev.state === "open") {
                     (ev.stations || []).forEach((sid) => {
-                        delayed.set(sid, ev.date);
+                        pushDay(delayed, sid, ev.date);
                         const per = delayedBy.get(sid) || new Map();
-                        per.set(ev.lineId, ev.date);
+                        pushDay(per, ev.lineId, ev.date);
                         delayedBy.set(sid, per);
                     });
                 } else if (ev.state === "interchange") {
@@ -647,7 +661,9 @@
 
         /**
          * 此刻该站是否处于闭站（拆除视为永久闭站）。
-         * 恢复的判据是「闭站日之后还有一次 `station-state/open`」—— 与暂缓站共用 `delayed`，
+         * 恢复的判据是「该次闭站之后、date 之内**存在任意一次**补开 / 恢复」—— 与暂缓站共用 `delayed`。
+         * ⚠️ 不能拿「最后一次恢复日」比：同一站「停 → 复 → 再停 → 再复」时，最后一次会盖掉早先那次，
+         * 于是中间那段正常运营的时期被判成停运（长春解放桥 3 号线即此例）。
          * 因此芙蓉桥（闭 2021-11-28 → 复 2023-05-30）、西安桥（→ 复 2022-06-01）都走这一条。
          */
         const closedAt = (sid, date) => {
@@ -657,8 +673,8 @@
             for (let k = 0; k < list.length; k++) if (list[k].date <= date) last = list[k];
             if (!last) return false;
             if (last.permanent) return true;
-            const re = delayed.get(sid);
-            return !(re && re > last.date && re <= date);
+            const days = delayed.get(sid) || [];
+            return !days.some((d) => d > last.date && d <= date);
         };
 
         /**
@@ -682,8 +698,10 @@
                 const c = list[k];
                 if (c.date > date) continue;
                 if (c.permanent) { out.add(c.lineId); continue; }
-                const re = per && per.get(c.lineId);
-                if (!(re && re > c.date && re <= date)) out.add(c.lineId);
+                // 同 closedAt：只看「该次停运之后有没有任意一次该线的恢复」，
+                // 不取该线最后一次到站日（多次停运复运时它会盖掉早先那次恢复）
+                const days = (per && per.get(c.lineId)) || [];
+                if (!days.some((d) => d > c.date && d <= date)) out.add(c.lineId);
             }
             return out;
         };
@@ -718,8 +736,8 @@
             if (s.type === "no") {
                 // 数据里本就标着「未开通」的站（在建 / 规划）：除非它有自己的补开事件（暂缓站），
                 // 否则一直按未开通图元示意 —— 线路从它站厅通过，不等于它开通了。
-                const re = delayed.get(sid);
-                return (re && re <= date) ? "real" : "no";
+                const days = delayed.get(sid) || [];
+                return days.some((d) => d <= date) ? "real" : "no";
             }
             // 「暂缓开通」的判定：**必须没有任何一条线真正在服务这座站**，才算整站未开通。
             // 只看「该站自己的补开事件还没到」是不够的 —— 长春站 2002 年就有 3 号线在跑，
@@ -732,8 +750,11 @@
                 const per = delayedBy.get(sid);
                 let served = false;
                 linesHere.forEach((lid) => {
-                    const d = per ? per.get(lid) : null;
-                    if (!(d && d > date)) served = true;
+                    // 取该线在本站的**最晚**到达 / 补开日：不晚于当日才算真正服务本站
+                    //（延伸段重新经过不能把本站自己的补开日顶回去）
+                    const days = (per && per.get(lid)) || [];
+                    const latest = days.length ? Math.max.apply(null, days) : null;
+                    if (!(latest && latest > date)) served = true;
                 });
                 if (linesHere.size && !served) return "no";
             }
@@ -815,11 +836,11 @@
                     }
                     lineIdsAt.get(sid).add(ev.lineId);
                     // 记「该线到本站的日期」：暂缓判定与线路闭站恢复共用这一张账。
-                    // 取**较晚**的那次：区段延伸重新经过本站时不能把「本站自己的补开日」
-                    // 顶回去（暂缓站一被延伸段扫过就提前开通），闭站恢复也以最近一次为准。
+                    // **逐笔留下**（不只留较晚的那次）：区段延伸重新经过本站时不能把「本站自己的
+                    // 补开日」顶回去（暂缓站一被延伸段扫过就提前开通），而多次停运复运时每一笔
+                    // 恢复日又都不能丢 —— 取最晚值只用于「此刻是否已服务」（见 wantForm）。
                     const per = delayedBy.get(sid) || new Map();
-                    const prev = per.get(ev.lineId);
-                    if (!(prev && prev > ev.date)) per.set(ev.lineId, ev.date);
+                    pushDay(per, ev.lineId, ev.date);
                     delayedBy.set(sid, per);
                 });
                 segIds.forEach((sid) => {
@@ -1252,8 +1273,11 @@
 
         // 累计量一次算好：面板每步只读，不必重算
         const lineSet = new Set();
-        const seen = new Set();
         let mileage = 0;
+        // 「当前运营站数」口径：随步骤推进维护一份形态表，形态非「未开通」的站才算在运营 ——
+        // 历史累计口径会把已拆除（长春辽宁路）、全线停运、尚未开通的站一直挂在账上，
+        // 与面板上「车站 N 座」的读法不符。拆除 / 全线停运的站从表中除名，恢复再重新入账。
+        const formNow = new Map();   // sid → 该步形态（real / dot / no；拆除即除名）
         // 国铁车站（`type: "rdot"`）不计入站数统计 —— 它们不是城市轨道交通的车站
         // （市域铁路怎么算待定，目前五城都没有市域铁路线路）。图元与入场动画照旧
         // （首条线路开通后启用的按 `station-state/open` 登记、到时入场），只把「车站 N 座 /
@@ -1272,16 +1296,23 @@
                 if (railStations.has(x.sid)) return;
                 if (demoOnly.has(x.sid)) return;   // 站台幽灵点不是「一座车站」，不计入站数
                 if (withdraw) return;
-                seen.add(x.sid);
                 counted++;
                 if (x.mode === "enter") added++;
             });
+            // 同步形态表：拆除（gone / leave）除名，其余按本步形态记账
+            s.stations.forEach((x) => {
+                if (railStations.has(x.sid) || demoOnly.has(x.sid)) return;
+                if (x.mode === "leave" || x.form === "gone") formNow.delete(x.sid);
+                else if (x.form) formNow.set(x.sid, x.form);
+            });
+            let active = 0;
+            formNow.forEach((f) => { if (f !== "no") active++; });
             mileage += s.addedMileage;
             s.no = i + 1;
             s.lines = lineSet.size;
             s.enterCount = added;
             s.upgradeCount = counted - added;
-            s.stationCount = seen.size;
+            s.stationCount = active;   // 「车站」= 当前在运营车站数（不含已拆除 / 全线停运 / 未开通）
             s.mileage = mileage / 1000;   // 米 → 公里
         });
         return steps;
@@ -3252,7 +3283,7 @@
                     <div class="cgo-oh-status" hidden></div>
                     <div class="cgo-oh-sum">
                         <span>线路 <b data-oh="lines">0</b> 条</span>
-                        <span>车站 <b data-oh="stations">0</b> 座</span>
+                        <span>运营车站 <b data-oh="stations">0</b> 座</span>
                         <span>里程 <b data-oh="mileage">0</b> km</span>
                     </div>
                     <div class="cgo-oh-track"><div class="cgo-oh-bar"></div></div>
@@ -4095,7 +4126,7 @@
         }
 
         // 规模行：与说明同样处理 —— 宽度不足时先缩字号（原字号 F(13)），避免顶出卡面
-        const statsText = `线路 ${m.lines} 条 · 车站 ${m.stations} 座 · 里程 ${m.mileage.toFixed(1)} km`;
+        const statsText = `线路 ${m.lines} 条 · 运营车站 ${m.stations} 座 · 里程 ${m.mileage.toFixed(1)} km`;
         let statsFont = F(13);
         for (const fs of [F(13), F(12), F(11), F(10)]) {
             ctx2d.font = "400 " + fs + "px " + fam;
