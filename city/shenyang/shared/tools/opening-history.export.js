@@ -40,6 +40,13 @@
     /** 站名的位置与字体样式只量一次 —— 逐帧量 400 个标签的 getComputedStyle 要 60ms */
     let labelCache = null;
 
+    /** 视频清单的**平滑滚动位置**：跨帧保持、向目标缓动 —— 做出「滚动跟随」的过渡，
+     *  而不是逐帧瞬移（用户验收：视频里的清单滚动要有动画过渡）。每次导出开始时重置。 */
+    let listTopSmooth = null;
+
+    /** 清单里「当前项」高亮块的平滑位置与高度：切换事件时补间滑过去（形状/位置补间）。 */
+    let hlSmooth = null;
+
     /**
      * 从**当前 DOM** 取某个站名的逐行文字与行宽（与 buildLabelCache 同一套拆行法：按 <br> 拆）。
      * 导出逐帧都用它，不读缓存里的文字 —— 更名事件改写的名字要能立刻出现在视频画面里。
@@ -77,6 +84,15 @@
         const out = [];
         host.querySelectorAll("#labels-layer .label-group").forEach((g) => {
             const sid = g.dataset.sid || "";
+            // ⚠️ 演示期的两类「临时隐藏」不能当成「永远看不到」：主点让位（HOST_CLASS）与同名
+            //    幽灵点去重（DUP_LABEL_CLASS）都是 `display:none !important`，但会随事件推进恢复，
+            //    其显隐由**绘制时逐帧判定**（见 paintFrame 的剔除 + alphaAt）。
+            //    这里先把类摘掉再测量、量完还原 —— 否则**导出起点正处于让位期**时，那座站的
+            //    主点标签从未进缓存，整段视频里就永久缺名（用户实测：解放桥等「由幽灵图元转为
+            //    tsf」的站，在开通站内换乘那一拍之后就再没有站名；而本缓存只在导出开始时建一次）。
+            const hostOff = g.classList.contains(HOST_CLASS);
+            const dupOff = g.classList.contains(DUP_LABEL_CLASS);
+            if (hostOff || dupOff) g.classList.remove(HOST_CLASS, DUP_LABEL_CLASS);
             g.querySelectorAll(".stacn, .staen").forEach((sp) => {
                 const cs = getComputedStyle(sp);
                 if (cs.display === "none" || cs.visibility === "hidden") return;
@@ -126,6 +142,8 @@
                     anchorX: (r.left - mr.left) / view.scale + (Number.isFinite(orgPct) ? orgPct : 0) * boxW
                 });
             });
+            if (hostOff) g.classList.add(HOST_CLASS);
+            if (dupOff) g.classList.add(DUP_LABEL_CLASS);
         });
         return out;
     }
@@ -230,6 +248,11 @@
 
         // ── 站名：与图形层同一套变换，于是文字按最终分辨率栅格化 ──
         (labelCache || []).forEach((L) => {
+            // 缓存里收着「临时隐藏」的标签（见 buildLabelCache）——绘制前按 DOM 现状剔除：
+            //   · DUP_LABEL_CLASS：同站同名幽灵点只画先入场的那个（与 syncGhostLabels 同一口径）
+            //   · HOST_CLASS：主点让位期（alphaAt 已判，这里双保险）
+            const gEl = L.el && L.el.closest ? L.el.closest(".label-group") : null;
+            if (gEl && (gEl.classList.contains(DUP_LABEL_CLASS) || gEl.classList.contains(HOST_CLASS))) return;
             const a = alphaAt(L.sid, t);
             if (a <= 0.01) return;
             // 更名换字的淡出淡入：DOM 那边由 applyRenameAt 写在 span 的 inline opacity 上（蒙文行
@@ -296,10 +319,7 @@
         pad: Math.round(16 * OVERLAY_S),
         margin: Math.round(24 * OVERLAY_S),
         radius: Math.round(12 * OVERLAY_S),
-        descMax: 3,
-        // 列表卡面：行高与日期列宽
-        rowH: Math.round(24 * OVERLAY_S),
-        dateW: Math.round(78 * OVERLAY_S)
+        descMax: 3
     };
 
     /**
@@ -504,7 +524,7 @@
 
         // 列表卡面：摘要（含进度条）之下，把剩余高度全部铺成「事件清单」——
         // 固定行窗 + 当前事件高亮 + 随进度滚动，与面板清单同一份数据（state.listGroups）
-        if (listMode) drawEventList(ctx2d, x, y, W, H, cy, m, fade, fam, th);
+        if (listMode) drawEventList(ctx2d, x, y, W, H, cy, m, fade, fam, th, showSum);
         ctx2d.restore();
     }
 
@@ -591,57 +611,176 @@
         return cy + F(5) + GAP;
     }
 
+    /** 折行并按 `maxLines` 截断（末行加省略号）—— 列表标题排版用 */
+    function clipLines(ctx2d, text, maxW, maxLines) {
+        const all = wrapText(ctx2d, text, maxW);
+        if (all.length <= maxLines) return all;
+        const out = all.slice(0, maxLines);
+        let last = out[maxLines - 1];
+        while (last.length > 1 && ctx2d.measureText(last + "…").width > maxW) last = last.slice(0, -1);
+        out[maxLines - 1] = last + "…";
+        return out;
+    }
+
     /**
-     * 列表卡面下方的事件清单：固定行窗（按卡片剩余高度算行数）+ 当前事件高亮 +
-     * 随进度滚动（当前事件居中，靠近两端时自然夹住）。数据与面板清单同源：`state.listGroups`。
+     * 列表卡面的事件清单。**两种排版**（`compact` = 「当前事件」开关是否打开）：
+     *   · `compact=true`（与摘要同屏）：每条**一行** —— 日期 | 色点 | 标题 | 计数（计数贴行尾）；
+     *   · `compact=false`（纯列表，只开「事件列表」）：每条**两行** ——
+     *     第一行「日期 … 计数（贴行尾）」，第二行「色点（当无序列表的项目符号）+ 标题」，
+     *     且**当前事件的标题完整折行显示**、其余只占一行（超宽截断）。
+     * 当前事件高亮 + 随进度滚动（以当前事件为锚向上下交替填充）。
+     * 数据与面板清单同源：`state.listGroups`。
+     * ⚠️ 标题一律用正文色 —— 色点取的是线路色，**别让 fillStyle 漏给后面的文字**
+     * （早先就漏成了「标题被染成线路色」）。
      */
-    function drawEventList(ctx2d, x, y, W, H, top, m, fade, fam, th) {
+    function drawEventList(ctx2d, x, y, W, H, top, m, fade, fam, th, compact) {
         const groups = state.listGroups || [];
         if (!groups.length) return;
-        const PAD = CARD.pad, rowH = CARD.rowH, innerW = W - PAD * 2;
-        const avail = (y + H - PAD) - top;
-        const rows = Math.floor(avail / rowH);
-        if (rows < 1) return;
-        // 当前事件：按步号落在哪个事件组里找
+        const PAD = CARD.pad, innerW = W - PAD * 2;
+        const left = x + PAD, right = left + innerW;
+        const text = th.text || "#222";
+        const bodyFS = compact ? F(12) : F(13);
+        const headH = compact ? F(24) : F(16);   // compact：整条高度基准；stacked：日期 / 计数那一行
+        const titleStep = F(18);                 // stacked：标题每行高度
+        const rowGap = F(6);
+
+        ctx2d.textAlign = "left";
+        ctx2d.textBaseline = "middle";
+        ctx2d.font = "500 " + F(11) + "px " + fam;
+        const dateW = ctx2d.measureText("0000-00-00").width;
+        const dotX = left + dateW + F(8);          // compact 的色点（日期右侧）
+        const inlineTextX = dotX + F(8) + F(8);    // compact 的标题起点
+        const bulletX = left + F(3);               // stacked 的项目符号位置
+        const stackedTextX = bulletX + F(8) + F(8);
+
         let cur = groups.findIndex((g) => m.i >= g.from && m.i <= g.to);
         if (cur < 0) cur = 0;
-        const start = Math.max(0, Math.min(Math.max(0, groups.length - rows), cur - Math.floor(rows / 2)));
+
+        // 预排：折行 + 该条高度
+        const items = groups.map((g, i) => {
+            const full = g.step.evTitle || stepLabel(g.step) || "";
+            const counts = COUNT_CHIPS.filter((c) => g[c.key]);
+            ctx2d.font = "500 " + F(11) + "px " + fam;
+            const chipW = counts.reduce((s, c) => s + F(15) + ctx2d.measureText(String(g[c.key])).width + F(10), 0);
+            ctx2d.font = "400 " + bodyFS + "px " + fam;
+            let lines, h;
+            if (compact) {
+                const maxW = Math.max(F(40), right - chipW - F(8) - inlineTextX);
+                lines = clipLines(ctx2d, full, maxW, 1);
+                h = headH + rowGap;
+            } else {
+                // 当前事件**完整折行**（至多 3 行，免得极端长标题吃掉整屏）；其余只占一行
+                lines = clipLines(ctx2d, full, right - stackedTextX, i === cur ? 3 : 1);
+                h = headH + lines.length * titleStep + rowGap;
+            }
+            return { g: g, counts: counts, lines: lines, chipW: chipW, h: h };
+        });
+
+        // ── 滚动：整份清单**一次排好**（静态），再用滚动偏移 + 裁切露出窗口 ──
+        // 早先是「每帧重新决定窗口里放哪几项」：项集合会跳变，滚动时出现「大片文字突然消失」
+        // 与空行（用户实测）。改成一份固定列表整体平移后，各项位置连续变化，滚动平滑；
+        // 已过 / 当前 / 未来三种状态天然由「落在窗口上方 / 窗口内 / 窗口下方」决定，裁切自动出效果。
+        const avail = (y + H - PAD) - top;
+        if (avail < headH) return;
+        const offs = [];                       // 每项顶部在整份列表内的偏移（前缀和）
+        let acc = 0;
+        items.forEach((it) => { offs.push(acc); acc += it.h; });
+        const totalH = acc;
+        // 目标偏移：让当前项中心落在窗口中心；再夹进 [0, totalH - avail] ——
+        // 到顶 / 到底自然停住（不再向上或向下滚），且只要列表比窗口高就必然铺满、下方不留白。
+        const target = Math.max(0, Math.min(
+            offs[cur] + (items[cur] ? items[cur].h : 0) / 2 - avail / 2,
+            Math.max(0, totalH - avail)));
+        // 平滑跟随：每帧向目标缓动（30fps 下约 0.3 秒到位），做出滚动过渡而不是瞬移
+        if (listTopSmooth == null) listTopSmooth = target;
+        else listTopSmooth += (target - listTopSmooth) * 0.2;
+        const scrollY = listTopSmooth;
 
         ctx2d.save();
         ctx2d.beginPath();
-        ctx2d.rect(x + PAD - F(4), top, innerW + F(8), avail);
+        ctx2d.rect(left - F(4), top, innerW + F(8), avail);
         ctx2d.clip();
-        ctx2d.textAlign = "left";
-        ctx2d.textBaseline = "middle";
-        for (let k = 0; k < rows; k++) {
-            const g = groups[start + k];
-            if (!g) break;
-            const idx = start + k;
-            const cy = top + k * rowH + rowH / 2;
-            const on = idx === cur, done = g.to <= m.i;
-            if (on) {
-                ctx2d.globalAlpha = 0.12 * fade;
-                ctx2d.fillStyle = th.primary || "#006298";
-                roundRect(ctx2d, x + PAD - F(4), top + k * rowH + F(2), innerW + F(8), rowH - F(4), F(6));
-                ctx2d.fill();
-            }
-            // 日期
-            ctx2d.globalAlpha = (on ? 0.95 : done ? 0.72 : 0.45) * fade;
-            ctx2d.font = "500 " + F(11) + "px " + fam;
-            ctx2d.fillStyle = th.text || "#222";
-            ctx2d.fillText(g.step.date, x + PAD, cy);
-            // 标题（单行，超宽截断加省略号）
-            const dx = x + PAD + CARD.dateW;
-            const tw = innerW - CARD.dateW;
-            ctx2d.font = (on ? "600 " : "400 ") + F(12) + "px " + fam;
-            const full = g.step.evTitle || "";
-            let txt = full;
-            if (ctx2d.measureText(txt).width > tw) {
-                while (txt.length > 1 && ctx2d.measureText(txt + "…").width > tw) txt = txt.slice(0, -1);
-                txt += "…";
-            }
-            ctx2d.fillText(txt, dx, cy);
+        // 当前项高亮块：**跨帧补间** —— 切换事件时从上一项滑过去（位置与高度都补间），
+        // 而不是「啪」地跳一下。跟随滚动的位移由 scrollY 的缓动带来，两者用同一系数保持同步。
+        const curIy = top - scrollY + offs[cur];
+        const curH = items[cur] ? items[cur].h : 0;
+        if (hlSmooth == null) hlSmooth = { y: curIy, h: curH };
+        else {
+            hlSmooth.y += (curIy - hlSmooth.y) * 0.2;
+            hlSmooth.h += (curH - hlSmooth.h) * 0.2;
         }
+        ctx2d.globalAlpha = 0.12 * fade;
+        ctx2d.fillStyle = th.primary || "#006298";
+        roundRect(ctx2d, left - F(4), hlSmooth.y - F(2), innerW + F(8), hlSmooth.h, F(6));
+        ctx2d.fill();
+        items.forEach((it, i) => {
+            const iy = top - scrollY + offs[i];
+            if (iy >= top + avail || iy + it.h <= top) return;   // 落在窗口外：跳过（画了也看不见）
+            const g = it.g;
+            const on = i === cur, done = g.to <= m.i;
+            // 滚动过渡里**新进入窗口**的项做淡入：按项中心距窗口上下缘的距离渐显
+            // （当前项始终足量，免得它刚好落在边缘时被淡掉）
+            // ⚠️ 边缘只淡到 10% 不透明度、**不淡到全透明**：贴边那几行仍留一点轮廓，
+            //    否则裁切窗口一滑就会看成「大片文字凭空消失」（用户验收反馈）。
+            const EDGE = F(30);
+            const cyc = iy + it.h / 2;
+            const edgeNear = (v) => 0.1 + 0.9 * Math.min(1, Math.max(0, v));
+            const edgeA = on ? 1 : Math.min(
+                edgeNear((cyc - top) / EDGE),
+                edgeNear((top + avail - cyc) / EDGE));
+            const dim = (on ? 0.95 : done ? 0.72 : 0.45) * fade * edgeA;
+            // 首行：日期（左） + 计数（贴行尾）
+            const cy0 = iy + headH / 2;
+            ctx2d.globalAlpha = dim;
+            ctx2d.font = "500 " + F(11) + "px " + fam;
+            ctx2d.fillStyle = text;
+            ctx2d.fillText(g.step.date, left, cy0);
+            if (it.counts.length) {
+                let ccx = right - it.chipW;
+                it.counts.forEach((c) => {
+                    const img = state.cardIcons && state.cardIcons[c.icon];
+                    if (img) {
+                        ctx2d.globalAlpha = dim;
+                        ctx2d.drawImage(img, ccx, cy0 - F(6.5), F(13), F(13));
+                        ccx += F(15);
+                    }
+                    ctx2d.globalAlpha = (on ? 0.85 : done ? 0.6 : 0.4) * fade * edgeA;
+                    ctx2d.fillStyle = text;
+                    const t = String(g[c.key]);
+                    ctx2d.fillText(t, ccx, cy0);
+                    ccx += ctx2d.measureText(t).width + F(10);
+                });
+            }
+            // 标题（一律正文色；色点只在下面单独上色）
+            ctx2d.globalAlpha = dim;
+            ctx2d.font = (on ? "600 " : "400 ") + bodyFS + "px " + fam;
+            ctx2d.fillStyle = text;
+            if (compact) {
+                // 与摘要同屏：色点在日期右侧，标题紧随其后
+                ctx2d.globalAlpha = (on ? 1 : done ? 0.8 : 0.5) * fade * edgeA;
+                ctx2d.fillStyle = g.step.color || "#8a94a6";
+                roundRect(ctx2d, dotX, cy0 - F(4), F(8), F(8), F(2));
+                ctx2d.fill();
+                ctx2d.globalAlpha = dim;
+                ctx2d.fillStyle = text;
+                ctx2d.fillText(it.lines[0] || "", inlineTextX, cy0);
+            } else {
+                // 纯列表：第二行起「项目符号 + 标题」（可多行）
+                const t0 = iy + headH;
+                it.lines.forEach((ln, li) => {
+                    const cy = t0 + li * titleStep + titleStep / 2;
+                    if (li === 0) {
+                        ctx2d.globalAlpha = (on ? 1 : done ? 0.8 : 0.5) * fade * edgeA;
+                        ctx2d.fillStyle = g.step.color || "#8a94a6";
+                        roundRect(ctx2d, bulletX, cy - F(4), F(8), F(8), F(2));
+                        ctx2d.fill();
+                        ctx2d.globalAlpha = dim;
+                        ctx2d.fillStyle = text;
+                    }
+                    ctx2d.fillText(ln, stackedTextX, cy);
+                });
+            }
+        });
         ctx2d.globalAlpha = fade;
         ctx2d.restore();
     }
@@ -821,6 +960,8 @@
             } catch (e) { /* 取不到就保持原样（该图在导出里会缺失，不致命） */ }
         }
         labelCache = buildLabelCache();
+        listTopSmooth = null;   // 清单滚动位置从本段起点重新起算（否则会带着上一段的偏移滑进来）
+        hlSmooth = null;        // 高亮块同理
         state.exportTheme = readThemeVars();
         state.exportMark = await prepareMark();
         // 进度卡状态行用的四枚图标（新增 / 拆除 / 升级 / 降级，与面板清单的 COUNT_CHIPS 同源）
