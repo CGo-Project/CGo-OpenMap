@@ -38,7 +38,7 @@
         id: "harbin",
         name: "哈尔滨",
         searchCity: "哈尔滨",
-        center: { x: 700, y: 780 },
+        center: { x: 620, y: 500 },   // 人民广场 ⇄ 哈尔滨站 中点
         defaultScale: 0.55,
         // 线网含站名的外接盒 x 235…1163 / y 94…1465，右、下各留约 125px 余量
         mapSize: { width: 1290, height: 1590 },
@@ -238,7 +238,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261014.1128";
+        const version = "261014.1143";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）

@@ -47,7 +47,7 @@
         // 城市主题色：呼和浩特地铁官方徽标蓝（与 city/data.js 中 svglogo 的原始填充色一致）
         themeColor: "#017FCB",
         searchCity: "呼和浩特",
-        center: { x: 660, y: 490 },
+        center: { x: 500, y: 360 },   // 新华广场（1、2 号线换乘站）
         defaultScale: 1.0,
         // 线网含站名的外接盒 x 约 48…1260 / y 约 40…925，四周留出余量
         mapSize: { width: 1400, height: 1040 },
@@ -282,7 +282,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261014.1128";
+        const version = "261014.1143";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）

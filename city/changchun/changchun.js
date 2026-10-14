@@ -69,7 +69,7 @@
         name: "长春",
         themeColor: "#C9062C",
         searchCity: "长春",
-        center: { x: 1150, y: 950 },
+        center: { x: 1080, y: 668 },   // 人民广场 ⇄ 长春站 中点
         defaultScale: 0.7,
         mapSize: { width: 2650, height: 2100 },
         officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
@@ -464,7 +464,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261014.1128";
+        const version = "261014.1143";
         // 公共栅格化零件（沿革视频导出与分享卡海报共用；本城导出层先于 poster.js 加载，故置于最前）
         document.write(`<script src="./city/shenyang/shared/base/svg-raster.js?v=${version}"><\/script>`);
         // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
