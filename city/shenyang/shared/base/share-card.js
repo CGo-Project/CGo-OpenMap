@@ -80,6 +80,25 @@
         || window.CityDataManager?.getCurrentCity?.()?.id || "";
     const toast = (message, type) => window.CGO?.showToast?.(message, type || "success");
 
+    /**
+     * 当前是否**非官方域**（测试环境）。
+     *
+     * 分享卡里的二维码指向当前页面 URL，只有官方域（`https://centralgo.site/dev/openmap/` 下）
+     * 的码扫出来才是官方站点。本地 localhost、fork 的 GitHub Pages、以及任何第三方自建部署扫出来
+     * 都是「别人的站点」——卡片被截图/打印传播出去会让人误以为是官方卡。
+     *
+     * 铁律是「纯前端零服务端」，没法跨域探测某个部署是否真的合并了本功能，所以不采用
+     * 「改写成官方域」（那样反而会在官方域未合并时给出「打开城市却不规划路线」的静默降级）。
+     * 改为**如实标注**：非官方域仍正常出码（保住自测与第三方自建的可用性），但卡片打「测试环境」
+     * 水印，链接类动作首次点按给一次性提示，把「这是测试产物」讲清楚。
+     */
+    const OFFICIAL_HOST = "centralgo.site";
+    const isTestHost = () => location.hostname !== OFFICIAL_HOST
+        && !location.hostname.endsWith("." + OFFICIAL_HOST);
+
+    /** 一次性提示的记号（每次会话各一次，避免每次点复制都唠叨） */
+    const devNoticeShown = { copy: false, share: false };
+
     /** 取元素的纯文本：`<br>` 视作空格，并剔除城市模块注入的徽章图形（img / svg）。 */
     function textOf(el) {
         if (!el) return "";
@@ -335,6 +354,20 @@
     }
 
     /**
+     * 给卡片打「测试环境」角标（右上角，绝对定位）。
+     *
+     * 非官方域的二维码指向本地 / fork 地址，卡片被截图传播会让人误以为是官方卡，故明确标注。
+     * 只出文字不带 `<cgo-icon>`（海报区禁用 shadow DOM 图标，见文件头说明）。
+     */
+    function stampTestBadge(card) {
+        card.classList.add("is-test");
+        const badge = document.createElement("div");
+        badge.className = "cgo-share-test";
+        badge.textContent = "测试环境";
+        card.appendChild(badge);
+    }
+
+    /**
      * 行程卡：标题（需求徽记 + 起点 → 终点）→ 处理过的结果正文 → footer（二维码 + 双行引导 + 品牌图标）
      */
     function buildRouteCard() {
@@ -481,6 +514,10 @@
         });
         modal.open = true;
 
+        // 非官方域：卡片打「测试环境」水印（预览与导出图都带 —— renderPoster 是克隆本卡，
+        // is-test 类与水印节点一并被克隆进 foreignObject）。
+        if (isTestHost()) stampTestBadge(built.card);
+
         const qrHost = built.card.querySelector("[data-cgo-qr]");
         const ready = ensureQrcode().then((ok) => {
             if (!ok || !qrHost) return "failed";
@@ -545,8 +582,19 @@
         }
     }
 
+    /**
+     * 测试环境的一次性提示：非官方域下链接指向本地 / fork 地址，分享出去对方打不开官方内容。
+     * 每个动作（复制 / 分享）每次会话各提示一次，之后不再唠叨。
+     */
+    function warnTestLink(action) {
+        if (!isTestHost() || devNoticeShown[action]) return;
+        devNoticeShown[action] = true;
+        toast("当前为测试环境，链接指向本地 / 测试地址", "warning");
+    }
+
     function copyLink() {
         if (!current) return;
+        warnTestLink("copy");
         writeClipboard(current.copyText || current.link).then((ok) => {
             toast(ok ? "链接已复制" : "复制失败，请手动复制", ok ? "success" : "error");
         });
@@ -555,6 +603,7 @@
     /** 系统分享：**只分享链接本身**（不带上卡片图，也不带行程文案）。 */
     function shareLink() {
         if (!current) return;
+        warnTestLink("share");
         if (typeof navigator.share === "function") {
             navigator.share({ title: current.shareTitle, url: current.link })
                 .catch(() => copyLink());       // 用户取消也会走到这里，退化成复制，不打扰

@@ -37,6 +37,8 @@
 .cgo-share-card {
     box-sizing: border-box;
     width: min(420px, 100%);
+    /* 测试环境角标（.cgo-share-test）绝对定位的基准 */
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -225,3 +227,27 @@
     .cgo-share-btn span { display: none; }   /* 窄屏只留图标，三个动作仍在一行 */
     .cgo-share-btn { padding: 10px; }
 }
+
+/* ── 测试环境角标 ────────────────────────────────────────────────────────
+   非官方域（local / fork / 第三方自建）的二维码指向的是**那个站点本身**，
+   卡片被截图或打印传播出去，会让人误以为是官方卡。故在右上角明确标注。
+   只出文字、不用 `<cgo-icon>`（海报区禁用 shadow DOM 图标）。
+   `transform` 只在预览态给一点浮起感，出图（.is-poster）时把它抹掉 ——
+   否则 foreignObject 里那点位移会把角标顶到裁切边外。 */
+.cgo-share-test {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+    color: var(--warning-color, #f59e0b);
+    background: var(--warning-bg, rgba(255, 243, 205, 0.5));
+    border: 1px solid var(--warning-border, rgba(255, 238, 186, 0.5));
+    border-radius: 999px;
+    transform: rotate(6deg);
+}
+.cgo-share-card.is-poster .cgo-share-test { transform: none; }
