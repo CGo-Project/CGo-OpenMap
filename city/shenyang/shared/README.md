@@ -452,9 +452,12 @@ needs: {
 不配 → 换乘按 `transferAt` 默认方式原样显示（福州即此态）；`needs` 只覆盖你写的字段。
 
 **第 4 步（可选）：要「快速前往」推荐区** —— 建 `city/{city}/data_hotspots.js`，写
-`window.CGO_HOTSPOTS = [{ name: "…", sid: "站ID", kind: "hub" 或 "poi", tag: "副标题", icon: "图标名", exit: "通用接驳口", enterExit: "进站口", leaveExit: "出站口" }]`
+`window.CGO_HOTSPOTS = [{ name: "…", sid: "站ID", kind: "hub" 或 "poi", tag: "副标题", icon: "图标名", exit: "通用接驳口", enterExit: "进站口", leaveExit: "出站口", tone: "somber" }]`
 （`kind` 只认 `hub` / `poi` 两组；`sid` 必须是**可规划的地铁站 ID**；接驳口三项全可选，
-口编号须在 `data_exits.js` 里存在，不存在则静默不设）。不建文件 → 面板不出该区。
+口编号须在 `data_exits.js` 里存在，不存在则静默不设。`tone` 可选，`"somber"` 表示
+惨案 / 侵略罪证类纪念地：poi 头标圆点不取线路色、改用 `--text-light` 中性灰，亮暗主题
+各自正确。已打标的五条：沈阳九·一八、大连旅顺博物馆与日俄监狱旧址、长春伪满皇宫博物院、
+哈尔滨七三一罪证陈列馆）。不建文件 → 面板不出该区。
 参考五城现成写法与收录口径：`city/shenyang/data_hotspots.js`（最全，含接驳口与机场航站楼口）。
 
 ---

@@ -773,8 +773,14 @@
      * poi 条目头的圆点颜色（母产品设计：名胜景点用**出口所属线路标识色圆点**、
      * 交通枢纽保留具象图标）：优先接驳口声明的 `lines`（形如「2号线」，匹配 line.name），
      * 退回该站经停的首条线路色；都取不到返回空串走 CSS 默认色。
+     *
+     * **`tone: "somber"` 覆盖线路色**：惨案 / 侵略罪证类纪念地（九·一八、日俄监狱旧址、
+     * 七三一罪证陈列馆、伪满皇宫博物院、旅顺博物馆等）配高饱和线路色与场所的肃穆属性
+     * 不符，城市在条目上声明 `tone: "somber"` 即回落 `--text-light` 中性灰
+     * （修饰类见 route-panel.css 的 .cgo-rt-poi-dot--somber；中枢/普通场馆不声明）。
      */
     function hotDotColor(hot) {
+        if (hot.tone === "somber") return "";   // 交给 CSS 的中性灰，不内联线路色
         const sid = String(hot.sid || "");
         const code = hotExitOf(hot, "to");
         const exit = code ? (exitsApi()?.exitsById?.(sid) || []).find((e) => String(e.name) === code) : null;
@@ -804,7 +810,7 @@
         grid.innerHTML = items.map(({ hot, index }) => `
             <button type="button" class="cgo-rt-quickgo-item" data-hot="${index}" data-sid="${escAttr(hot.sid)}" title="设为起点或终点">
                 ${hot.kind === "poi"
-                    ? `<span class="cgo-rt-poi-dot"${hotDotColor(hot) ? ` style="background:${hotDotColor(hot)}"` : ""}></span>`
+                    ? `<span class="cgo-rt-poi-dot${hot.tone === "somber" ? " cgo-rt-poi-dot--somber" : ""}"${hotDotColor(hot) ? ` style="background:${hotDotColor(hot)}"` : ""}></span>`
                     : `<cgo-icon name="${escAttr(hot.icon || "railway")}" size="14"></cgo-icon>`}
                 <span class="cgo-rt-quickgo-text">
                     <span>${escAttr(hot.name)}</span>

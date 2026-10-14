@@ -456,6 +456,12 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     background: var(--text-light);
 }
 
+/* 惨案 / 侵略罪证类纪念地（城市条目声明 tone: "somber"）：中性灰、不抢眼、不喧闹。
+   走类名而非内联色，故亮暗主题各自取到正确的 --text-light。 */
+.cgo-rt-poi-dot--somber {
+    background: var(--text-light);
+}
+
 .cgo-rt-quickgo-text {
     display: flex;
     flex-direction: column;

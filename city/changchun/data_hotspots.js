@@ -12,7 +12,8 @@ const CHANGCHUN_HOTSPOTS = [
     { name: "长春站", sid: "0125", kind: "hub", icon: "railway", exit: "A" },
     { name: "长春西站", sid: "0225", kind: "hub", icon: "railway", exit: "SE" },
     // ── 名胜景点 ──
-    { name: "伪满皇宫博物院", sid: "0321", kind: "poi", tag: "全国文保 · 4A", exit: "B" },
+    // 伪满皇宫：殖民政权旧址，圆点用中性灰（tone: "somber"），不配线路色
+    { name: "伪满皇宫博物院", sid: "0321", kind: "poi", tag: "全国文保 · 4A", exit: "B", tone: "somber" },
     { name: "长影世纪城", sid: "0355", kind: "poi", tag: "4A", exit: "A" },
     // 净月潭公园（0351）暂无出口数据，不配接驳口
     { name: "净月潭公园", sid: "0351", kind: "poi", tag: "5A" },
