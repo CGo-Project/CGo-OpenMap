@@ -271,8 +271,11 @@
 
 /* 出入口页签的激活色。页签本身由 core 渲染（自定义页签带 data-custom-tab="<city>-exits"），
    core 的 active 底线回落成主题色，与线路页签（线路色）、车站信息（文字色）混在一条栏里；
-   出入口是「走出去看」的实体信息，改用成功色把它区分出来。
-   选择器按页签 id 的 **后缀** 匹配，各城一律是 {city}-exits，故本层不含城市私有信息。 */
+   出入口是「走出去看」的实体信息，改用独立的出口强调色把它区分出来。
+   色语义走 `--cgo-exit-accent` 变量：**默认回落成功色**（沈阳 / 大连 / 长春零配置），
+   导视牌取色偏柠檬黄的城市由本城样式表覆盖（哈尔滨、呼和浩特）——城市只写
+   `:root { --cgo-exit-accent: …; }` 一行，本层不写任何城市私有信息。
+   选择器按页签 id 的 **后缀** 匹配，各城一律是 {city}-exits。 */
 .tab-item[data-custom-tab$="-exits"].active {
-    border-bottom-color: var(--success-color);
+    border-bottom-color: var(--cgo-exit-accent, var(--success-color));
 }
