@@ -8,7 +8,7 @@
  * 3. 既有运营车站不录入车站施工状态，但与在建车站相连的边界区间仍保留，并显示在在建车站信息卡中；
  * 4. 信息卡中的车站名始终读取 data_stations.js 的正式/当前显示名；
  * 5. 区间名保留源表写法，不做正式站名式校正；
- * 6. 日期保留源表精度。
+ * 6. 日期保留源表精度；推测月份以 estimated: true 标记，界面追加“（推测）”。
  */
 window.QINGDAO_CONSTRUCTION_DATA = {
     "QDM05": {
@@ -32,8 +32,8 @@ window.QINGDAO_CONSTRUCTION_DATA = {
                 "sourceName": "福宁立交"
             },
             "M0314": {
-                "date": "—",
-                "status": "主体结构施工",
+                "date": "2026-10",
+                "status": "主体结构完成",
                 "side": "",
                 "sourceName": "宁夏路"
             },
@@ -766,8 +766,9 @@ window.QINGDAO_CONSTRUCTION_DATA = {
                 "details": [
                     {
                         "side": "左线",
-                        "date": "—",
-                        "status": "暂未掘进"
+                        "date": "2026-04",
+                        "estimated": true,
+                        "status": "区间掘进中"
                     },
                     {
                         "side": "右线",
@@ -868,8 +869,9 @@ window.QINGDAO_CONSTRUCTION_DATA = {
                 "details": [
                     {
                         "side": "左线",
-                        "date": "—",
-                        "status": "暂未掘进"
+                        "date": "2026-09",
+                        "estimated": true,
+                        "status": "区间掘进中"
                     },
                     {
                         "side": "右线",
