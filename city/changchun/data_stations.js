@@ -12,6 +12,7 @@ const stationsData = {
         "x": 1080,
         "y": 276,
         "cn": "北环城路",
+        "aliases": ["北环"],
         "en": "Beihuanchenglu",
         "align": "left",
         "offset": {
@@ -43,6 +44,34 @@ const stationsData = {
             "y": 0
         }
     },
+    // 长春站北的两个站台幽灵点（4 号线侧 / 1 号线侧）：4 号线 2012-05-06 先到、1 号线
+    // 2017-06-30 到达，到 2019-05-30 站内换乘通道开通前只能付费站外换乘。仅沿革演示用。
+    // ⚠️ 幽灵点**不写 hideLabel**：底图由 opening-history.js 注入的 `:not(.cgo-oh-stage)` 规则
+    //    隐藏，演示中则要显示站名（否则出站换乘期该站在图上一个没名字的孤点）。
+    "0124B": {
+        "type": "dot",
+        "x": 1097,
+        "y": 501,
+        "cn": "长春站北",
+        "en": "Changchunzhan Bei",
+        "align": "bottom-right",
+        "offset": {
+            "x": 6,
+            "y": 4
+        }
+    },
+    "0124A": {
+        "type": "dot",
+        "x": 1080,
+        "y": 482,
+        "cn": "长春站北",
+        "en": "Changchunzhan Bei",
+        "align": "left",
+        "offset": {
+            "x": -6,
+            "y": 0
+        }
+    },
     "0124": {
         "type": "tsf",
         "x": 1080,
@@ -59,6 +88,38 @@ const stationsData = {
         "type": "tsf",
         "x": 1080,
         "y": 584,
+        "cn": "长春站",
+        "en": "Changchun Zhan",
+        "align": "top-left",
+        "offset": {
+            "x": -6,
+            "y": -4
+        }
+    },
+    // 长春站的两个站台幽灵点（3 号线侧 / 1 号线侧）：3 号线地面站 2002-10-30 先到，
+    // 1 号线站台 2019-01-26 投用（此前列车过站不停），到 2021-12-31 东延入地后才站内连通。
+    // 两站台之间的那段时期只能付费站外换乘。
+    // 该点**不属于任何线路站序**，只用于沿革演示（见 data_opening_history.js 的
+    // CGO_OFFSTATION_PLATFORMS），底图上由演示层隐藏。
+    // ⚠️ 不写 hideLabel：演示中要显示站名（底图由 `:not(.cgo-oh-stage)` 规则隐藏）。
+    // 3 号线侧沿本线**东偏 18px**（本线在此东西向：东广场 1164,584 ⇠ ⇢ 辽宁路 1038,606），
+    // 1 号线侧沿本线北偏 32px（南北向），两点分居交叉点两侧。
+    "0125B": {
+        "type": "dot",
+        "x": 1098,
+        "y": 584,
+        "cn": "长春站",
+        "en": "Changchun Zhan",
+        "align": "right",
+        "offset": {
+            "x": 6,
+            "y": 0
+        }
+    },
+    "0125A": {
+        "type": "dot",
+        "x": 1080,
+        "y": 557,
         "cn": "长春站",
         "en": "Changchun Zhan",
         "align": "top-left",
@@ -96,6 +157,7 @@ const stationsData = {
         "x": 1080,
         "y": 864,
         "cn": "解放大路",
+        "aliases": ["儿童公园"],
         "en": "Jiefang Dalu",
         "align": "top-left",
         "offset": {
@@ -108,6 +170,7 @@ const stationsData = {
         "x": 1080,
         "y": 962,
         "cn": "东北师大",
+        "aliases": ["动植物园"],
         "en": "Dongbei Shida",
         "align": "right",
         "offset": {
@@ -139,6 +202,34 @@ const stationsData = {
             "y": 0
         }
     },
+    // 卫星广场的两个站台幽灵点（3 号线侧 / 1 号线侧）：3 号线高架站 2006-12-26 先到、
+    // 1 号线地下站 2017-06-30 到达，到 2019-05-30 换乘通道开通前只能付费站外换乘。仅演示用。
+    // 3 号线侧沿本线东偏 18px（本线在此东西向：卫光街 1024,1256 ⇠ ⇢ 亚泰立交桥 1164,1256），
+    // 1 号线侧沿本线北偏 18px（南北向）。
+    "0132B": {
+        "type": "dot",
+        "x": 1098,
+        "y": 1256,
+        "cn": "卫星广场",
+        "en": "Weixing Guangchang",
+        "align": "bottom-right",
+        "offset": {
+            "x": 6,
+            "y": 4
+        }
+    },
+    "0132A": {
+        "type": "dot",
+        "x": 1080,
+        "y": 1238,
+        "cn": "卫星广场",
+        "en": "Weixing Guangchang",
+        "align": "top-right",
+        "offset": {
+            "x": 6,
+            "y": -4
+        }
+    },
     "0132": {
         "type": "tsf",
         "x": 1080,
@@ -168,6 +259,7 @@ const stationsData = {
         "x": 1080,
         "y": 1424,
         "cn": "华庆路",
+        "aliases": ["南部新城"],
         "en": "Huaqing Lu",
         "align": "top-right",
         "offset": {
@@ -180,6 +272,7 @@ const stationsData = {
         "x": 1080,
         "y": 1508,
         "cn": "红嘴子",
+        "aliases": ["红咀子"],
         "en": "Hongzuizi",
         "align": "right",
         "offset": {
@@ -319,6 +412,35 @@ const stationsData = {
             "y": -32
         }
     },
+    // 双丰 / 长春西站的 2 号线侧站台幽灵点：6 号线（2024-03-28）到达前这两站只有 2 号线，
+    // 而主点落在 2、6 号线共用的位置（交叉点）上 —— 那段时期改用幽灵点呈现。
+    // ⚠️ y 取 **864**（2 号线在这两站的走向是 `(100,864) → (2172,864)` 的水平段），
+    //    而不是主点的 869 —— 那样图元会整体偏低 5px，路径中线穿不过圈心。
+    // ⚠️ 6 号线侧无需另配：6 号线开通当日就站内换乘（站厅通道），那侧的点没有存续期。
+    "0224B": {
+        "type": "dot",
+        "x": 202,
+        "y": 864,
+        "cn": "双丰",
+        "en": "Shuangfeng",
+        "align": "top",
+        "offset": {
+            "x": 0,
+            "y": -8
+        }
+    },
+    "0225B": {
+        "type": "dot",
+        "x": 286,
+        "y": 864,
+        "cn": "长春西站",
+        "en": "Changchunxi Zhan",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 8
+        }
+    },
     "0226": {
         "type": "dot",
         "x": 380,
@@ -379,6 +501,34 @@ const stationsData = {
             "y": -4
         }
     },
+    // 解放桥的两个站台幽灵点（3 号线侧 / 2 号线侧）：3 号线地面站 2002-10-30 先到、
+    // 2 号线地下站 2018-08-30 到达；换乘通道下穿京哈铁路，2020-09-06 才开通站内换乘。
+    // 3 号线侧沿本线**西南偏 18px**（本线在此为东北—西南斜线：朝阳桥 850,794 ⇢ 湖西桥 750,906），
+    // 2 号线侧沿本线东偏 18px（东西向）—— 两点分居交叉点（780,864）两侧。
+    "0231B": {
+        "type": "dot",
+        "x": 767,
+        "y": 877,
+        "cn": "解放桥",
+        "en": "Jiefang Qiao",
+        "align": "left",
+        "offset": {
+            "x": -6,
+            "y": 0
+        }
+    },
+    "0231A": {
+        "type": "dot",
+        "x": 798,
+        "y": 864,
+        "cn": "解放桥",
+        "en": "Jiefang Qiao",
+        "align": "bottom",
+        "offset": {
+            "x": 0,
+            "y": 4
+        }
+    },
     "0231": {
         "type": "tsf",
         "x": 780,
@@ -437,6 +587,34 @@ const stationsData = {
         "offset": {
             "x": 0,
             "y": 4
+        }
+    },
+    // 吉林大路的两个站台幽灵点（4 号线侧 / 2 号线侧）：4 号线 2011-06-30 先到、
+    // 2 号线 2018-08-30 到达，到 2019-05-30 换乘通道开通前只能付费站外换乘。仅演示用。
+    // 4 号线侧沿本线**北偏 18px**（本线在此南北向：东新路 1332,752 ⇢ 吉林大路 1332,864），
+    // 2 号线侧沿本线东偏 18px（东西向）。
+    "0237B": {
+        "type": "dot",
+        "x": 1332,
+        "y": 846,
+        "cn": "吉林大路",
+        "en": "Jilin Dalu",
+        "align": "left",
+        "offset": {
+            "x": -6,
+            "y": 0
+        }
+    },
+    "0237A": {
+        "type": "dot",
+        "x": 1350,
+        "y": 864,
+        "cn": "吉林大路",
+        "en": "Jilin Dalu",
+        "align": "top-right",
+        "offset": {
+            "x": 6,
+            "y": -4
         }
     },
     "0237": {
@@ -577,6 +755,7 @@ const stationsData = {
         "y": 556,
         "cn": "伪满皇宫",
         "en": "Weimanhuanggong",
+        "aliases": ["伪皇宫"],
         "align": "top-right",
         "offset": {
             "x": 6,
@@ -592,6 +771,22 @@ const stationsData = {
         "align": "bottom",
         "offset": {
             "x": 0,
+            "y": 4
+        }
+    },
+    // 0323 辽宁路：3 号线一期的地面老站（2002-10-30 随一期开通、2021-03-08 随东延入地拆除，
+    // 与芙蓉桥站合并为地下芙蓉桥站）。坐标取「长春站 ⇄ 芙蓉桥」走向上的示意中点 —— 该站
+    // 历史上位于两者之间，如今已不存在，无官方坐标可引；沿革演示里它 2021 年会被抹去
+    //（见 data_opening_history.js 的 permanent 闭站事件），底图线网本身不含此站。
+    "0323": {
+        "type": "dot",
+        "x": 1038,
+        "y": 606,
+        "cn": "辽宁路",
+        "en": "Liaoning Lu",
+        "align": "top-left",
+        "offset": {
+            "x": -6,
             "y": 4
         }
     },
@@ -685,6 +880,7 @@ const stationsData = {
         "y": 1088,
         "cn": "孟家屯",
         "en": "Mengjiatun",
+        "aliases": ["南湖大路"],
         "align": "bottom-left",
         "offset": {
             "x": -6,
@@ -709,6 +905,7 @@ const stationsData = {
         "y": 1204,
         "cn": "电台街",
         "en": "Diantai Jie",
+        "aliases": ["硅谷大街"],
         "align": "right",
         "offset": {
             "x": 10,
@@ -721,6 +918,7 @@ const stationsData = {
         "y": 1256,
         "cn": "前进西",
         "en": "Qianjin Xi",
+        "aliases": ["前进"],
         "align": "bottom",
         "offset": {
             "x": 0,
@@ -769,6 +967,7 @@ const stationsData = {
         "y": 1256,
         "cn": "亚泰立交桥",
         "en": "Yatai Lijiaoqiao",
+        "aliases": ["亚泰大街"],
         "align": "top",
         "offset": {
             "x": 0,
@@ -787,12 +986,46 @@ const stationsData = {
             "y": 4
         }
     },
+    // 职业技术大学（原临河街 / 卫星路）的两个站台幽灵点：3、4 号线在此同名相望 ——
+    // 3 号线侧叫「临河街」、4 号线侧叫「卫星路」，3 号线高架站 2006-12-26 先到，
+    // 4 号线 2011-06-30 到达后只能付费出站换乘，2012-09-22 站内换乘通道开通
+    //（两线站名 2019-05-30 统一为「职业学院」）。仅沿革演示用，底图不出现。
+    // 3 号线侧沿本线**东偏 18px**（本线在此东西向：伊通河 1248,1256 ⇠ ⇢ 吉林广电 1416,1256），
+    // 4 号线侧沿本线北偏 18px（南北向）。
+    "0343B": {
+        "type": "dot",
+        "x": 1350,
+        "y": 1256,
+        "cn": "临河街",
+        "en": "Linhe Jie",
+        "align": "top-right",
+        "offset": {
+            "x": 6,
+            "y": -4
+        }
+    },
+    "0343A": {
+        "type": "dot",
+        "x": 1332,
+        "y": 1238,
+        "cn": "卫星路",
+        "en": "Weixing Lu",
+        "align": "top-left",
+        "offset": {
+            "x": -6,
+            "y": -4
+        }
+    },
     "0343": {
         "type": "tsf",
         "x": 1332,
         "y": 1256,
         "cn": "职业技术大学",
         "en": "Zhiye Jishu Daxue",
+        // 3、4 号线换乘站：3 号线侧旧名「临河街」、4 号线侧旧名「卫星路」，
+        // 2019-05-30 统一为「职业学院」，2026 年随学校升格再更名为现名
+        //（改名生效日未见公告，故只登记旧名、暂不登记 rename 事件）
+        "aliases": ["职业学院", "临河街", "卫星路"],
         "align": "top-right",
         "offset": {
             "x": 6,
@@ -805,6 +1038,7 @@ const stationsData = {
         "y": 1256,
         "cn": "吉林广电",
         "en": "Jilin Guangdian",
+        "aliases": ["仙台大街"],
         "align": "bottom",
         "offset": {
             "x": 0,
@@ -841,6 +1075,7 @@ const stationsData = {
         "y": 1298,
         "cn": "金鑫街",
         "en": "Jinxin Jie",
+        "aliases": ["中医药大学"],
         "align": "top-right",
         "offset": {
             "x": 6,
@@ -853,6 +1088,7 @@ const stationsData = {
         "y": 1340,
         "cn": "博硕路",
         "en": "Boshuo Lu",
+        "aliases": ["东北师大"],
         "align": "top-right",
         "offset": {
             "x": 6,
@@ -865,6 +1101,7 @@ const stationsData = {
         "y": 1382,
         "cn": "金河街",
         "en": "Jinhe Jie",
+        "aliases": ["华桥外院"],
         "align": "top-right",
         "offset": {
             "x": 6,
@@ -889,6 +1126,7 @@ const stationsData = {
         "y": 1508,
         "cn": "净月潭公园",
         "en": "Jingyuetan Gongyuan",
+        "aliases": ["净月公园"],
         "align": "right",
         "offset": {
             "x": 6,
@@ -913,6 +1151,7 @@ const stationsData = {
         "y": 1620,
         "cn": "宝相街",
         "en": "Baoxiang Jie",
+        "aliases": ["福祉路"],
         "align": "right",
         "offset": {
             "x": 6,
@@ -1021,6 +1260,7 @@ const stationsData = {
         "y": 976,
         "cn": "海口路",
         "en": "Haikou Lu",
+        "aliases": ["自由大路"],
         "align": "right",
         "offset": {
             "x": 6,
@@ -1045,6 +1285,7 @@ const stationsData = {
         "y": 1088,
         "cn": "威海路",
         "en": "Weihai Lu",
+        "aliases": ["东南湖大路"],
         "align": "bottom-left",
         "offset": {
             "x": -6,
@@ -1081,6 +1322,7 @@ const stationsData = {
         "y": 1368,
         "cn": "南环城路",
         "en": "Nanhuanchenglu",
+        "aliases": ["南三环"],
         "align": "right",
         "offset": {
             "x": 6,
@@ -1093,6 +1335,7 @@ const stationsData = {
         "y": 1424,
         "cn": "宜盛街",
         "en": "Yisheng Jie",
+        "aliases": ["南四环"],
         "align": "right",
         "offset": {
             "x": 6,
@@ -1105,6 +1348,7 @@ const stationsData = {
         "y": 1480,
         "cn": "天工路",
         "en": "Tiangong Lu",
+        "aliases": ["车场"],
         "align": "right",
         "offset": {
             "x": 6,
@@ -2146,21 +2390,31 @@ const stationsData = {
         },
         textScale: { cn: 0.9, en: 1.0 }
     },
-    "CCT": { 
+    // CCT 长春站（国铁，1907 年即有）：既有设施全程固定显示；标签放东侧，避开 1 号线竖线与 0125A 幽灵点。
+    "CCT": {
         "type": "rdot",
+        // 国铁散点标签机制（shared/base/rdot-label.js）：hideLabel 意图=「有轨交接驳后
+        // 由地铁站名承载识别」；接驳前由机制强制显示（长春站 2002 年起即与 3 号线接驳，
+        // 1 号线站台 2019 年投用后同名重复，国铁名收起）
+        "hideLabel": true,
         "x": 1110,
         "y": 540,
         "cn": "长春站",
         "en": "Changchun Railway Station",
-        "align": "top-left",
+        "align": "right",
         hideLabel: true,
         "offset": {
-            "x": -6,
-            "y": -4
+            "x": 6,
+            "y": 0
         }
     },
-    "CRT": { 
+    // CRT 长春西站（国铁）：与 0225 同名同址相望，站名接驳前也显示；
+    // 0225 的标签再抬高一档给国铁站名让位（两枚图元只差 24px）。
+    "CRT": {
         "type": "rdot",
+        // 同 CCT：hideLabel 意图=接驳后由地铁站名承载。对端 0225（2 号线长春西站）
+        // 2018-08-30 才开通 —— 接驳前由机制强制显示国铁站名
+        "hideLabel": true,
         "x": 268,
         "y": 845,
         "cn": "长春西站",
@@ -2287,11 +2541,13 @@ const stationsData = {
         "y": 720,
         "cn": "龙嘉站",
         "en": "Longjia Railway Station",
-        "align": "top-left",
+        // 国铁散点标签机制（shared/rdot-label.js）：无轨交接驳时强制显示（无视 hideLabel），
+        // 9 号线龙嘉机场站（0903）开通接驳后恢复按 hideLabel 隐藏（由地铁站名承载识别）
         "hideLabel": true,
+        "align": "bottom-right",
         "offset": {
-            "x": 0,
-            "y": 0
+            "x": 6,
+            "y": 6
         }
     },
     // 龙嘉机场装饰徽标已迁至 data_scattered.js（不再作为车站记录）。
@@ -2302,11 +2558,12 @@ const stationsData = {
         "y": 675,
         "cn": "九台南站",
         "en": "Jiutainan Railway Station",
-        "align": "top-left",
+        // 同龙嘉站：无接驳强制显示，9 号线九台南站（0907）接驳后恢复按 hideLabel 隐藏
         "hideLabel": true,
+        "align": "bottom",
         "offset": {
             "x": 0,
-            "y": 0
+            "y": 6
         }
     }
 };

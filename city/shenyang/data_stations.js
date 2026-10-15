@@ -1215,6 +1215,7 @@ const stationsData = {
         y: 920,
         cn: "砂阳",
         en: "SHAYANG",
+        aliases: ["辽宁省妇幼保健院"],
         align: "top",
         offset: { x: -48, y: -35 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -2320,6 +2321,7 @@ const stationsData = {
         cn: "沈阳站",
         en: "Shenyang Railway Station",
         hideLabel: true,
+        offset: { x: 0, y: 8 },
         badge: "./city/shenyang/assets/railway.svg",
     },
     "SBT": {
@@ -2329,6 +2331,7 @@ const stationsData = {
         cn: "沈阳北站",
         en: "Shenyangbei Railway Station",
         hideLabel: true,
+        offset: { x: 0, y: 8 },
         badge: "./city/shenyang/assets/railway.svg",
     },
     "SOT": {
@@ -2338,6 +2341,7 @@ const stationsData = {
         cn: "沈阳南站",
         en: "Shenyangnan Railway Station",
         hideLabel: true,
+        offset: { x: 0, y: 8 },
         badge: "./city/shenyang/assets/railway.svg",
     },
 };

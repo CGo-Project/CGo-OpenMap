@@ -33,7 +33,8 @@ const SHENYANG_HOTSPOTS = [
     { name: "北陵公园（昭陵）", sid: "0204", kind: "poi", tag: "全国文保 · 4A", exit: "E" },
     { name: "东陵公园（福陵）", sid: "0128", kind: "poi", tag: "全国文保 · 4A", exit: "B" },
     { name: "新乐遗址", sid: "0203", kind: "poi", tag: "全国文保", exit: "B" },
-    { name: "九·一八历史博物馆", sid: "1011", kind: "poi", tag: "博物馆", exit: "E" },
+    // 九·一八：惨案纪念地，圆点用中性灰（tone: "somber"），不配线路色
+    { name: "九·一八历史博物馆", sid: "1011", kind: "poi", tag: "博物馆", exit: "E", tone: "somber" },
     { name: "辽宁省博物馆", sid: "0222", kind: "poi", tag: "省博", exit: "A" },
     { name: "沈阳博物馆", sid: "0209", kind: "poi", tag: "市博", exit: "D" },
     // ── 省市级公共建筑与公园（2026-10-09 按沈阳本地宝「地铁可及」补录）──

@@ -116,6 +116,7 @@ const stationsData = {
         cn: "呼钢南路",
         en: "HUGANGNANLU",
         // 旧名「呼钢东路」的蒙文作 …ᠵᠡᠭᠦᠨ ᠵᠠᠮ（东），此处按现行名取「南」
+        aliases: ["呼钢东路", "HUGANGDONGLU"],
         mn: "ᠬᠥᠬᠡᠬᠣᠲᠠ ᠶᠢᠨ ᠪᠣᠯᠣᠳ ᠲᠡᠮᠦᠷ ᠦ᠋ᠨ ᠡᠮᠦᠨ᠎ᠡ ᠵᠠᠮ",
         align: "bottom"
     },
@@ -318,7 +319,8 @@ const stationsData = {
         y: 80,
         cn: "丝绸之路大道",
         en: "SICHOUZHILUDADAO",
-        // 旧名「新城图书馆」的蒙文作 ᠰᠢᠨ᠎ᠡ ᠬᠣᠲᠠ ᠶᠢᠨ ᠨᠣᠮ ᠤᠨ ᠰᠠᠩ，此处按现行名取词
+        // 旧名「东二环路」的蒙文作 ᠵᠡᠭᠦᠨ ᠬᠣᠶᠠᠳᠤᠭᠠᠷ ᠲᠣᠭᠣᠷᠢᠭ ᠵᠠᠮ，此处按现行名取词
+        aliases: ["东二环路", "DONG'ERHUANLU"],
         mn: "ᠲᠣᠷᠭᠠᠨ ᠵᠠᠮ",
         align: "bottom"
     },
@@ -328,7 +330,8 @@ const stationsData = {
         y: 80,
         cn: "北山公园",
         en: "BEISHAN Park",
-        // 旧名「东二环路」的蒙文作 ᠵᠡᠭᠦᠨ ᠬᠣᠶᠠᠳᠤᠭᠠᠷ ᠲᠣᠭᠣᠷᠢᠭ ᠵᠠᠮ，此处按现行名取词
+        // 旧名「新城图书馆」的蒙文作 ᠰᠢᠨ᠎ᠡ ᠬᠣᠲᠠ ᠶᠢᠨ ᠨᠣᠮ ᠤᠨ ᠰᠠᠩ，此处按现行名取词
+        aliases: ["新城图书馆", "XINCHENG Library"],
         mn: "ᠬᠣᠢᠲᠤ ᠠᠭᠤᠯᠠ ᠴᠡᠴᠡᠷᠯᠢᠭ",
         align: "top"
     },

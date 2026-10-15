@@ -69,7 +69,7 @@
         name: "长春",
         themeColor: "#C9062C",
         searchCity: "长春",
-        center: { x: 1150, y: 950 },
+        center: { x: 1080, y: 668 },   // 人民广场 ⇄ 长春站 中点
         defaultScale: 0.7,
         mapSize: { width: 2650, height: 2100 },
         officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
@@ -464,7 +464,16 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.1537";
+        const version = "261014.1228";
+        // 公共栅格化零件（沿革视频导出与分享卡海报共用；本城导出层先于 poster.js 加载，故置于最前）
+        document.write(`<script src="./city/shenyang/shared/base/svg-raster.js?v=${version}"><\/script>`);
+        // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
+        document.write(`<script src="./city/changchun/data_opening_history.js?v=${version}"><\/script>`);
+        // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
+        // 线网发展史拆成三层：内核 + 状态计算（model）+ 视频导出（export），后两者必须晚于内核加载
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.model.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.export.js?v=${version}"><\/script>`);
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
@@ -474,21 +483,25 @@
         document.write(`<script src="./city/shenyang/shared/base/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/base/viewport-inset.js?v=${version}"><\/script>`);
-        // 移动端抽屉手势仲裁：内容区优先滚动、半屏上滑优先展开（core 零改动，见 shared/base/panel-sheet-gesture.js）
-        document.write(`<script src="./city/shenyang/shared/base/panel-sheet-gesture.js?v=${version}"><\/script>`);
+        // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
+        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
+        document.write(`<script src="./city/shenyang/shared/base/panel-tab-swipe-relay.js?v=${version}"><\/script>`);
         // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
         document.write(`<script src="./city/shenyang/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）
         document.write(`<script src="./city/shenyang/shared/station/opening-schedule.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/changchun/data_opening.js?v=${version}"><\/script>`);
+        // 国铁散点标签机制（rdot-label.js）已移至 main.html 数据区之后统一引入 ——
+        // 放这里会在 data_stations.js 之前执行，apply() 拿不到数据直接失效
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-planner.js?v=${version}"><\/script>`);
-        // 移动端抽屉手势引擎（车站详情与行程/结果面板共用；须早于两个消费方）
-        document.write(`<script src="./city/shenyang/shared/base/sheet-drag.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
+        // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
+        document.write(`<script src="./city/shenyang/shared/base/poster.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/share-card.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         document.write(`<script src="./city/shenyang/shared/station/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）

@@ -47,7 +47,7 @@
         // 城市主题色：呼和浩特地铁官方徽标蓝（与 city/data.js 中 svglogo 的原始填充色一致）
         themeColor: "#017FCB",
         searchCity: "呼和浩特",
-        center: { x: 660, y: 490 },
+        center: { x: 500, y: 360 },   // 新华广场（1、2 号线换乘站）
         defaultScale: 1.0,
         // 线网含站名的外接盒 x 约 48…1260 / y 约 40…925，四周留出余量
         mapSize: { width: 1400, height: 1040 },
@@ -282,17 +282,20 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.1537";
+        const version = "261014.1243";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-planner.js?v=${version}"><\/script>`);
-        // 移动端抽屉手势引擎（车站详情与行程/结果面板共用；须早于两个消费方）
-        document.write(`<script src="./city/shenyang/shared/base/sheet-drag.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
+        // 公共栅格化零件（分享卡海报与沿革视频导出共用，须早于 poster.js 与 opening-history.export.js）
+        document.write(`<script src="./city/shenyang/shared/base/svg-raster.js?v=${version}"><\/script>`);
+        // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
+        document.write(`<script src="./city/shenyang/shared/base/poster.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/share-card.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         document.write(`<script src="./city/shenyang/shared/station/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
@@ -302,8 +305,9 @@
         document.write(`<script src="./city/shenyang/shared/tools/map-tools.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区（须晚于上面三者）
         document.write(`<script src="./city/shenyang/shared/base/viewport-inset.js?v=${version}"><\/script>`);
-        // 移动端抽屉手势仲裁：内容区优先滚动、半屏上滑优先展开（core 零改动，见 shared/base/panel-sheet-gesture.js）
-        document.write(`<script src="./city/shenyang/shared/base/panel-sheet-gesture.js?v=${version}"><\/script>`);
+        // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
+        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
+        document.write(`<script src="./city/shenyang/shared/base/panel-tab-swipe-relay.js?v=${version}"><\/script>`);
         // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
         document.write(`<script src="./city/shenyang/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         // 车站设施共享渲染层（须早于本城设施模块与数据文件；样式表由共享层按自身 URL 注入）
@@ -320,6 +324,13 @@
         document.write(`<script src="./city/hohhot/data_exits.js?v=${version}"><\/script>`);
         // 「快速前往」静态推荐清单（行程规划面板；约定全局 CGO_HOTSPOTS）
         document.write(`<script src="./city/hohhot/data_hotspots.js?v=${version}"><\/script>`);
+        // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
+        document.write(`<script src="./city/hohhot/data_opening_history.js?v=${version}"><\/script>`);
+        // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
+        // 线网发展史拆成三层：内核 + 状态计算（model）+ 视频导出（export），后两者必须晚于内核加载
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.model.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.export.js?v=${version}"><\/script>`);
         (HohhotCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/hohhot/${scriptPath}?v=${version}"><\/script>`);
         });

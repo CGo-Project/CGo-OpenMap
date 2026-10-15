@@ -607,7 +607,7 @@ const CALLIGRAPHY_DATA = {
     // 简介文案取自沈阳地铁官网 images/to_2/jpg/ 下的官方简介页原文。
     // 题字横图需逐站实拍采集：已采到横图的站填写 image / ratio / alt（标题栏显示题字），
     // 尚未采到的站只保留 calligrapher（标题栏保持普通文字站名，仅在信息页显示简介）。
-    // 仍未采到横图的仅剩 0216 营盘街一站（0218 白塔河路已于 2026-10-08 补录）。
+    // 2 号线题字横图至此全部采齐（末一站 0216 营盘街于 2026-10-11 补录）。
     // -------------------------------------------------------------------------
     "0219": {
         image: "./city/shenyang/assets/calligraphy/quanyunlu.png",
@@ -628,6 +628,9 @@ const CALLIGRAPHY_DATA = {
         calligrapher: { name: "余华", intro: "余华，男，生于1960年，浙江嘉兴人，代表作有《活着》《兄弟》等" }
     },
     "0216": {
+        image: "./city/shenyang/assets/calligraphy/yingpanjie.png",
+        ratio: 2.215,
+        alt: "营盘街站",
         calligrapher: { name: "熊召政", intro: "熊召政，男，生于1953年，湖北英山人，代表作有《酒色财气》《在深山》等" }
     },
     "0215": {

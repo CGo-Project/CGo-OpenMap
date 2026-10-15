@@ -218,6 +218,27 @@
         }
     }
 
+    /**
+     * 蒙文行**文本被改写**时重量一次压缩比。
+     *
+     * 「线网发展史」的更名动画会就地改写这一行（旧名 ↔ 新名，见共享层 opening-history.js），
+     * 字串一变所需 scaleY 也变；不重量就会一直用旧比值 —— 观感就是「上下压缩没跟上」。
+     * 共享层已保证只在文本真的不同时才写，所以这里不会被每帧叫醒。
+     */
+    let mnTextObserver = null;
+    function watchMnText(mn) {
+        if (typeof MutationObserver !== "function") return;
+        if (!mnTextObserver) {
+            mnTextObserver = new MutationObserver((records) => {
+                records.forEach((rec) => {
+                    const el = rec.target.nodeType === 1 ? rec.target : rec.target.parentElement;
+                    if (el && el.classList.contains("hohhot-mn")) fitVertical(el);
+                });
+            });
+        }
+        mnTextObserver.observe(mn, { characterData: true, childList: true, subtree: true });
+    }
+
     /** 单个标签：确保蒙文块存在并就位（幂等） */
     function decorateLabel(labelEl) {
         const stationId = labelEl.dataset ? labelEl.dataset.sid : null;
@@ -238,6 +259,7 @@
             labelEl.insertBefore(mn, labelEl.querySelector(":scope > .staen"));
             labelEl.classList.add("has-mn");
         }
+        watchMnText(mn);
         fitVertical(mn);
     }
 
@@ -257,6 +279,8 @@
         // 引擎会整体重建标签层（换城市 / 重新渲染），故跟随 childList 重新补齐
         const observer = new MutationObserver(() => {
             observer.disconnect();
+            // 标签层重建：旧节点已作废，顺带把蒙文行文本观察器也放掉，免得挂在游离节点上
+            if (mnTextObserver) mnTextObserver.disconnect();
             decorateAll();
             scheduleRefit();
             watchVisibility(layer);

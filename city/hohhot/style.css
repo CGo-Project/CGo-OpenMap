@@ -242,3 +242,10 @@
 .panel-header .panel-badges .text-badge {
     color: inherit;
 }
+
+/* ===== 出入口页签的激活色（城市侧覆盖，见 shared/station/exits.css）=====
+   共享层默认用成功语义色（--success-color），但本城导视牌的出入口提示取色
+   偏柠檬黄，页签底线改用警告语义色以与实地标识对齐。 */
+:root {
+    --cgo-exit-accent: var(--warning-color);
+}
