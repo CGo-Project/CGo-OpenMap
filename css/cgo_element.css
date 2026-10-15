@@ -116,10 +116,22 @@ a:hover {
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
     --shadow-xl: 0 18px 46px rgba(0, 0, 0, 0.16);
 
-    /* 过渡速度 */
-    --transition-fast: 0.15s ease;
-    --transition-base: 0.2s ease;
-    --transition-slow: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* 过渡速度 — C-06: 解耦曲线与时长，引入工业级缓动 Token */
+    --transition-fast: 0.15s;
+    --transition-base: 0.2s;
+    --transition-slow: 0.3s;
+
+    /* ── 工业级缓动曲线 (Emil Kowalski) ── */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);       /* 入场、反馈首选 */
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);   /* 常驻元素平移 */
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);            /* 退出、消失 */
+    --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);  /* 入场弹性（仅限弹出，退出严禁） */
+
+    /* ── 时长阶梯 ── */
+    --dur-micro: 120ms;   /* 按压微反馈 */
+    --dur-fast: 160ms;    /* 按钮 hover、图标 */
+    --dur-base: 220ms;    /* 小型入场 */
+    --dur-slow: 350ms;    /* 幕幕、抄屉、Drawer */
 }
 
 /* ── 标题 ── */
@@ -216,9 +228,31 @@ a:hover {
     margin: 0;
     touch-action: manipulation;
     white-space: nowrap;
-    transition: all var(--transition-base);
+    /* C-05: 精确声明属性，避免 transition:all 触发重绘 */
+    transition:
+        color var(--dur-fast) var(--ease-out),
+        background-color var(--dur-fast) var(--ease-out),
+        border-color var(--dur-fast) var(--ease-out),
+        box-shadow var(--dur-fast) var(--ease-out),
+        transform var(--dur-micro) var(--ease-out),
+        opacity var(--dur-fast) var(--ease-out);
     user-select: none;
     text-decoration: none;
+}
+
+/* C-05: 按压物理微反馈 (Scale Feedback) */
+.btn:active:not([disabled]):not(.loading):not([aria-disabled="true"]) {
+    transform: scale(0.97);
+    transition-duration: var(--dur-micro);
+}
+
+/* C-05: 触摸设备屏蔽粘滞 hover 态 */
+@media (hover: none) and (pointer: coarse) {
+    .btn:hover {
+        background-color: revert;
+        border-color: revert;
+        box-shadow: none;
+    }
 }
 
 .btn:focus-visible {
@@ -1251,7 +1285,8 @@ body[data-glass-mode='blur'] .text-dialog {
 .text-dialog.closing,
 .help-dialog.closing,
 .modal-dialog.closing {
-    animation: dialogOut 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    /* C-01: 退出动画禁用弹性超调曲线，改用干脱的 ease-in */
+    animation: dialogOut 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 @keyframes dialogOut {
@@ -1262,7 +1297,8 @@ body[data-glass-mode='blur'] .text-dialog {
 
     to {
         opacity: 0;
-        transform: translate(-50%, -48%) scale(0.96);
+        /* C-01: scale(0.97) 安静收缩，不反弹 */
+        transform: translate(-50%, -48%) scale(0.97);
     }
 }
 
@@ -1321,15 +1357,6 @@ body[data-glass-mode='blur'] .text-dialog {
 .help-container::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.18);
     border-radius: 3px;
-}
-
-/* 深色下黑滑块会隐身，改半透明浅滑块 */
-[data-theme="dark"] .help-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.28);
-}
-
-[data-theme="dark"] .help-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.44);
 }
 
 .help-header {
@@ -1541,15 +1568,17 @@ body[data-glass-mode='blur'] .text-dialog {
     border-color: var(--border-color, #383a3c);
 }
 
+/* C-02: \u4f7f\u7528\u72ec\u7acb CSS translate \u5c5e\u6027\u800c\u975e transform\uff0c
+   \u907f\u514d\u5c45\u4e2d\u5c55\u5f00\u65f6 translateX(-50%) \u88ab\u8986\u76d6\u5bfc\u81f4\u52a8\u753b\u7ed3\u675f\u4f4d\u7f6e\u7a81\u8df3 */
 @keyframes dropdownIn {
     from {
         opacity: 0;
-        transform: translateY(-6px);
+        translate: 0 -6px;
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        translate: 0 0;
     }
 }
 
@@ -2788,5 +2817,35 @@ th.selected::after {
 
     to {
         transform: translateY(0);
+    }
+}
+
+/* C-01: Drawer 退出动画 — 干脆下滑，不反弹 */
+@keyframes drawerOut {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   §17  无障碍防护与移动端适配 (C-04 A11y + Mobile-Native)
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* C-04: prefers-reduced-motion — 遵循系统减弱动效设置
+   保留有助于理解的过渡（透明度/颜色），移除几何位移动画 */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }

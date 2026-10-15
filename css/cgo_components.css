@@ -45,7 +45,9 @@
     cursor: pointer;
     font-weight: 600;
     font-family: var(--font-sans);
-    transition: all 0.18s ease;
+    transition:
+        background-color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+        color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 .admin-tab:hover {
     background: var(--admin-surface-soft, var(--panel-bg));
@@ -823,7 +825,9 @@
     font-size: 18px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
+    transition:
+        background-color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+        color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
     display: flex;
     align-items: center;
     justify-content: center;
