@@ -1789,36 +1789,205 @@ canvas {
     color: var(--text-light);
 }
 
-/* ── 工具栏按钮（全宽操作按钮）── */
+/* ── 工具栏按钮（全宽操作按钮，全面对齐 <cgo-button> 次世代规范）── */
+cgo-toolbar-btn,
 .cgo-toolbar-btn {
+    position: relative;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     width: 100%;
-    padding: 10px 14px;
+    min-height: 34px;
+    height: 34px;
+    padding: 6px 14px;
     border-radius: var(--radius-sm, 6px);
-    border: 1px solid var(--border-color);
-    background: var(--btn-info-bg);
-    color: var(--text-main);
+    border: none !important;
+    outline: none !important;
+    background-color: var(--btn-info-bg, #f1f3f5);
+    color: var(--text-main, #00263b);
     cursor: pointer;
-    font-family: var(--font-sans);
-    font-size: 13px;
+    font-family: var(--font-sans, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+    font-size: var(--text-md, 13px);
     font-weight: 500;
-    transition: all var(--transition-base, 0.2s ease);
-    text-align: left;
+    line-height: 1;
+    box-sizing: border-box;
+    white-space: nowrap;
+    user-select: none;
+    overflow: hidden;
+    isolation: isolate;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    /* Emil Kowalski 规范：显式过渡，无位移浮动 */
+    transition:
+        color var(--dur-fast, 140ms) ease,
+        background-color var(--dur-fast, 140ms) ease,
+        box-shadow var(--dur-fast, 140ms) ease,
+        transform var(--dur-micro, 100ms) cubic-bezier(0.23, 1, 0.32, 1),
+        opacity var(--dur-fast, 140ms) ease;
 }
 
-.cgo-toolbar-btn:hover {
-    background: var(--btn-info-hover);
+/* <cgo-button> 同款 1px 双轴微光描边 (Layer 2 Masked 1px Hairline Rim Light，唯一描边来源) */
+cgo-toolbar-btn::before,
+.cgo-toolbar-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background:
+        linear-gradient(to right,
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
+            rgba(0, 0, 0, 0) var(--lg-rim-side, 3px),
+            rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 3px)),
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 0,
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) var(--lg-rim-hold, 1px),
+            rgba(255, 255, 255, 0) 8px,
+            rgba(0, 0, 0, 0.02) calc(100% - 4px),
+            rgba(0, 0, 0, 0.12) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.64;
+    transition: opacity var(--dur-fast, 140ms) ease;
 }
 
+cgo-toolbar-btn:hover:not(:disabled)::before,
+.cgo-toolbar-btn:hover:not(:disabled)::before {
+    opacity: 0.75;
+}
+
+cgo-toolbar-btn:hover:not(:disabled),
+.cgo-toolbar-btn:hover:not(:disabled) {
+    background-color: var(--btn-info-hover, #e9ecef);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* 按压微触感反馈：仅在点击瞬间产生 scale(0.98) 弹性回馈，取消悬停上下位移 */
+cgo-toolbar-btn:active:not(:disabled),
+.cgo-toolbar-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+/* 焦点环指示器 */
+cgo-toolbar-btn:focus-visible,
+.cgo-toolbar-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 2px var(--bg-color, #ffffff), 0 0 0 4px var(--primary-color, #006098) !important;
+}
+
+/* 保证按钮文字和图标在 Layer 3 (z-index: 3) 绝对锐利清晰 */
+cgo-toolbar-btn > *,
+.cgo-toolbar-btn > * {
+    position: relative;
+    z-index: 3;
+}
+
+/* 暗色模式适配 */
+[data-theme='dark'] cgo-toolbar-btn,
+[data-theme='dark'] .cgo-toolbar-btn {
+    background-color: var(--btn-info-bg, #262729);
+    color: var(--text-main, #e5e8ea);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme='dark'] cgo-toolbar-btn:hover:not(:disabled),
+[data-theme='dark'] .cgo-toolbar-btn:hover:not(:disabled) {
+    background-color: var(--btn-info-hover, #323438);
+    color: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme='dark'] cgo-toolbar-btn::before,
+[data-theme='dark'] .cgo-toolbar-btn::before {
+    background:
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 0,
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 1px,
+            rgba(255, 255, 255, 0) 8px,
+            rgba(255, 255, 255, 0) calc(100% - 4px),
+            rgba(255, 255, 255, 0.08) 100%);
+}
+
+[data-theme='dark'] cgo-toolbar-btn:focus-visible,
+[data-theme='dark'] .cgo-toolbar-btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--bg-color, #1a1a1a), 0 0 0 4px var(--primary-hover, #0070b0) !important;
+}
+
+/* ── 变体：Primary 主色按钮 ── */
+cgo-toolbar-btn.cgo-toolbar-btn-primary,
 .cgo-toolbar-btn.cgo-toolbar-btn-primary {
-    background: var(--primary-color);
-    color: #fff;
-    border-color: var(--primary-color);
+    background-color: var(--primary-color, #006098);
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(0, 96, 152, 0.2);
 }
 
-.cgo-toolbar-btn.cgo-toolbar-btn-primary:hover {
-    background: var(--primary-hover);
-    border-color: var(--primary-hover);
+cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled),
+.cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover, #004f80);
+    color: #ffffff !important;
+    box-shadow: 0 2px 5px rgba(0, 96, 152, 0.25);
+}
+
+[data-theme='dark'] cgo-toolbar-btn.cgo-toolbar-btn-primary,
+[data-theme='dark'] .cgo-toolbar-btn.cgo-toolbar-btn-primary {
+    background-color: var(--primary-color, #0070b0);
+    color: #ffffff !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled),
+[data-theme='dark'] .cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover, #0084d1);
+    color: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(0, 112, 176, 0.35);
+}
+
+/* ── 变体：Danger 危险按钮 ── */
+cgo-toolbar-btn.cgo-toolbar-btn-danger,
+.cgo-toolbar-btn.cgo-toolbar-btn-danger {
+    background-color: var(--danger-color, #ea4335);
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(234, 67, 53, 0.2);
+}
+
+cgo-toolbar-btn.cgo-toolbar-btn-danger:hover:not(:disabled),
+.cgo-toolbar-btn.cgo-toolbar-btn-danger:hover:not(:disabled) {
+    background-color: var(--danger-hover, #d33828);
+    color: #ffffff !important;
+    box-shadow: 0 2px 5px rgba(234, 67, 53, 0.28);
+}
+
+/* ── 变体：Success 成功按钮 ── */
+cgo-toolbar-btn.cgo-toolbar-btn-success,
+.cgo-toolbar-btn.cgo-toolbar-btn-success {
+    background-color: var(--success-color, #34a853);
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(52, 168, 83, 0.2);
+}
+
+cgo-toolbar-btn.cgo-toolbar-btn-success:hover:not(:disabled),
+.cgo-toolbar-btn.cgo-toolbar-btn-success:hover:not(:disabled) {
+    background-color: #2d9248;
+    color: #ffffff !important;
+    box-shadow: 0 2px 5px rgba(52, 168, 83, 0.28);
+}
+
+/* ── 禁用状态 ── */
+cgo-toolbar-btn:disabled,
+cgo-toolbar-btn[disabled],
+.cgo-toolbar-btn:disabled,
+.cgo-toolbar-btn[disabled],
+.cgo-toolbar-btn.is-disabled {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    transform: none !important;
+    box-shadow: none !important;
 }
