@@ -640,6 +640,10 @@
     function onDocumentClick(event) {
         const btn = event.target?.closest?.(".panel-share-btn");
         if (!btn) return;
+        // 地图小工具入口复用了 .panel-share-btn 的样式（shared/tools/map-tools.js 的
+        // cgo-mt-inline-btn），但它是工具入口、不是分享入口：捕获阶段必须放行，
+        // 否则会抢在按钮自身的 click 处理器之前弹出分享卡
+        if (btn.classList.contains("cgo-mt-inline-btn")) return;
         // 行程结果面板的分享按钮：带 data-share="route"
         if (btn.dataset.share === "route") {
             event.preventDefault();
