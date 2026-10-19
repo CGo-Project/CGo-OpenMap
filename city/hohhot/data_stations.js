@@ -126,7 +126,7 @@ const stationsData = {
         y: 360,
         cn: "西龙王庙",
         en: "XILONGWANGMIAO",
-        mn: "ᠪᠠᠷᠠᠭᠤᠨ ᠯᠤᠤᠰ ᠤᠨ ᠰᠦᠮ᠎ᠡ",
+        mn: "ᠪᠠᠷᠠᠭᠤᠨ ᠯᠤᠤᠰ ‍ᠣᠨ ᠰᠦᠮ᠎ᠡ",
         align: "top"
     },
     "M106": {
@@ -135,7 +135,7 @@ const stationsData = {
         y: 360,
         cn: "乌兰夫纪念馆",
         en: "WULANFU Memorial Hall",
-        mn: "ᠤᠯᠠᠭᠠᠨᠬᠦᠦ ᠶᠢᠨ ᠳᠤᠷᠠᠰᠬᠠᠯ ᠤᠨ ᠣᠷᠳᠣᠨ",
+        mn: "ᠤᠯᠠᠭᠠᠨᠬᠦᠦ ᠶᠢᠨ ᠳᠤᠷᠠᠰᠬᠠᠯ ‍ᠤᠨ ᠣᠷᠳᠣᠨ",
         align: "bottom"
     },
     "M107": {
@@ -163,7 +163,7 @@ const stationsData = {
         y: 360,
         cn: "人民会堂",
         en: "People's Hall",
-        mn: "ᠠᠷᠠᠳ ᠤᠨ ᠬᠤᠷᠠᠯ ᠤᠨ ᠲᠠᠩᠬᠢᠮ",
+        mn: "ᠠᠷᠠᠳ ‍ᠣᠨ ᠬᠤᠷᠠᠯ ‍ᠤᠨ ᠲᠠᠩᠬᠢᠮ",
         align: "top"
     },
     "M110": {
@@ -172,7 +172,7 @@ const stationsData = {
         y: 360,
         cn: "将军衙署",
         en: "JIANGJUNYASHU",
-        mn: "ᠵᠠᠩᠵᠤᠨ ᠤ ᠶᠠᠮᠤᠨ",
+        mn: "ᠵᠠᠩᠵᠤᠨ ‍ᠣ ᠶᠠᠮᠤᠨ",
         align: "bottom"
     },
     "M111": {
@@ -181,7 +181,7 @@ const stationsData = {
         y: 360,
         cn: "艺术学院",
         en: "Arts College",
-        mn: "ᠤᠷᠠᠯᠢᠭ ᠤᠨ ᠳᠡᠭᠡᠳᠦ ᠰᠤᠷᠭᠠᠭᠤᠯᠢ",
+        mn: "ᠤᠷᠠᠯᠢᠭ ‍ᠤᠨ ᠳᠡᠭᠡᠳᠦ ᠰᠤᠷᠭᠠᠭᠤᠯᠢ",
         align: "top"
     },
     "M112": {
@@ -199,7 +199,7 @@ const stationsData = {
         y: 360,
         cn: "内蒙古展览馆",
         en: "Inner Mongolia Exhibition Hall",
-        mn: "ᠥᠪᠥᠷ ᠮᠣᠩᠭᠣᠯ ᠤᠨ ᠦᠵᠡᠰᠬᠦᠯᠡᠩ ᠦᠨ ᠣᠷᠳᠣᠨ",
+        mn: "ᠥᠪᠥᠷ ᠮᠣᠩᠭᠣᠯ ‍ᠤᠨ ᠦᠵᠡᠰᠬᠦᠯᠡᠩ ‍ᠤᠨ ᠣᠷᠳᠣᠨ",
         align: "top"
     },
     "M114": {
@@ -208,7 +208,7 @@ const stationsData = {
         y: 360,
         cn: "内蒙古博物院",
         en: "Inner Mongolia Museum",
-        mn: "ᠥᠪᠥᠷ ᠮᠣᠩᠭᠣᠯ ᠤᠨ ᠮᠦᠽᠧᠢ",
+        mn: "ᠥᠪᠥᠷ ᠮᠣᠩᠭᠣᠯ ‍ᠤᠨ ᠮᠦᠽᠧᠢ",
         align: "bottom"
     },
     "M115": {
@@ -217,7 +217,7 @@ const stationsData = {
         y: 360,
         cn: "市政府",
         en: "City Government",
-        mn: "ᠬᠣᠲᠠ ᠶᠢᠨ ᠵᠠᠰᠠᠭ ᠤᠨ ᠣᠷᠳᠣᠨ",
+        mn: "ᠬᠣᠲᠠ ᠶᠢᠨ ᠵᠠᠰᠠᠭ ‍ᠤᠨ ᠣᠷᠳᠣᠨ",
         align: "top"
     },
     "M116": {
@@ -262,7 +262,7 @@ const stationsData = {
         y: 360,
         cn: "坝堰（机场）",
         en: "BAYAN(Airport)",
-        mn: "ᠪᠠᠶᠠᠨ (ᠨᠢᠰᠬᠡᠯ ᠦᠨ ᠪᠠᠭᠤᠳᠠᠯ)",
+        mn: "ᠪᠠᠶᠠᠨ (ᠨᠢᠰᠬᠡᠯ ‍ᠤᠨ ᠪᠠᠭᠤᠳᠠᠯ)",
         align: "bottom"
     },
 
@@ -274,7 +274,7 @@ const stationsData = {
         cn: "内蒙古体育馆",
         en: "Inner Mongolia Gymnasium",
         // 维基漏首词 ᠥᠪᠥᠷ，此处补全
-        mn: "ᠥᠪᠥᠷ ᠮᠣᠩᠭᠣᠯ ᠤᠨ ᠲᠠᠮᠢᠷ ᠤᠨ ᠣᠷᠳᠣᠨ",
+        mn: "ᠥᠪᠥᠷ ᠮᠣᠩᠭᠣᠯ ‍ᠤᠨ ᠲᠠᠮᠢᠷ ‍ᠤᠨ ᠣᠷᠳᠣᠨ",
         align: "top"
     },
     "M209": {
@@ -370,7 +370,7 @@ const stationsData = {
         y: 140,
         cn: "呼和浩特体育场",
         en: "Hohhot Stadium",
-        mn: "ᠬᠥᠬᠡᠬᠣᠲᠠ ᠶᠢᠨ ᠲᠠᠮᠢᠷ ᠤᠨ ᠲᠠᠯᠠᠪᠠᠢ",
+        mn: "ᠬᠥᠬᠡᠬᠣᠲᠠ ᠶᠢᠨ ᠲᠠᠮᠢᠷ ‍ᠤᠨ ᠲᠠᠯᠠᠪᠠᠢ",
         align: "left"
     },
     "M212": {
@@ -388,7 +388,7 @@ const stationsData = {
         y: 260,
         cn: "呼和浩特站",
         en: "Hohhot Railway Station",
-        mn: "ᠬᠥᠬᠡᠬᠣᠲᠠ ᠶᠢᠨ ᠭᠠᠯᠲᠤ ᠲᠡᠷᠭᠡᠨ ᠦ ᠥᠷᠲᠡᠭᠡ",
+        mn: "ᠬᠥᠬᠡᠬᠣᠲᠠ ᠶᠢᠨ ᠭᠠᠯᠲᠤ ᠲᠡᠷᠭᠡᠨ ‍ᠤ ᠥᠷᠲᠡᠭᠡ",
         align: "left"
     },
     "M214": {
@@ -451,7 +451,7 @@ const stationsData = {
         y: 820,
         cn: "内大南校区",
         en: "NEIDA NANXIAOQU",
-        mn: "ᠥᠪᠥᠷ ᠮᠣᠩᠭᠣᠯ ᠤᠨ ᠶᠡᠬᠡ ᠰᠤᠷᠭᠠᠭᠤᠯᠢ ᠶᠢᠨ ᠡᠮᠦᠨ᠎ᠡ ᠲᠣᠭᠣᠷᠢᠭ",
+        mn: "ᠥᠪᠥᠷ ᠮᠣᠩᠭᠣᠯ ‍ᠤᠨ ᠶᠡᠬᠡ ᠰᠤᠷᠭᠠᠭᠤᠯᠢ ᠶᠢᠨ ᠡᠮᠦᠨ᠎ᠡ ᠲᠣᠭᠣᠷᠢᠭ",
         align: "left"
     },
 
