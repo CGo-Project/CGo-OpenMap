@@ -37,11 +37,12 @@
     <title>CGo OpenMap - 线路图在线编辑器</title>
 
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261019.002445">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261019.002445">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261019.002445">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261019.002445">
-    <link rel="stylesheet" href="css/editor.css?v=261019.002445">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261020.1839">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261020.1839">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261020.1839">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261020.1839">
+    <link rel="stylesheet" href="css/editor.css?v=261020.1839">
+
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -218,6 +219,15 @@
                                 </span>
                                 <span class="tool-name">自由直线</span>
                             </button>
+                            <button class="tool-btn" data-tool="segratio" title="比例斜率线段：斜边严格按「统一夹角」的比例走（默认 1:1 即 45°；可设 2:1、3:2、1:2 等非 45° 夹角），剩余位移落在较长的轴上；比例用整数比表达，折点同时落在夹角与网格上">
+                                <span class="tool-preview">
+                                    <svg viewBox="0 0 40 26" aria-hidden="true">
+                                        <path d="M3 23 L23 13 L37 10" fill="none" stroke="currentColor" stroke-width="3.4"
+                                            stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </span>
+                                <span class="tool-name">比例斜率</span>
+                            </button>
                             <button class="tool-btn" data-tool="segfree" title="连续绘制：左键放下临时节点（点中已有车站 / 节点则直接连上），右键放置新车站；按住 Shift 对齐 0°/45°/90°，双击或 Enter 结束">
                                 <span class="tool-preview">
                                     <svg viewBox="0 0 40 26" aria-hidden="true">
@@ -319,6 +329,16 @@
                             <option value="100">100 px</option>
                         </select>
                     </div>
+                    <div class="field-row">
+                        <label for="sel-slope">统一夹角</label>
+                        <select id="sel-slope"></select>
+                    </div>
+                    <div class="field-row" id="slope-custom-row" style="display:none">
+                        <label for="slope-m">自定义比例</label>
+                        <input type="number" id="slope-m" min="1" max="12" step="1" value="1" title="水平分量 m">
+                        <input type="number" id="slope-n" min="1" max="12" step="1" value="1" title="垂直分量 n">
+                    </div>
+                    <p class="side-hint" id="slope-hint"></p>
                     <label class="check-row">
                         <input type="checkbox" id="chk-grid" checked>
                         <span>显示网格与坐标刻度</span>
@@ -400,6 +420,7 @@
                 <span class="stage-mode" id="stage-mode">选择模式</span>
                 <span class="stage-stat" id="stage-stat">节点 0 · 线段 0 · 水域 0</span>
                 <span class="stage-coord" id="stage-coord">x: 0, y: 0</span>
+                <span class="stage-unsaved" id="unsaved-hint" hidden><cgo-icon name="warning" size="12"></cgo-icon>有未保存 / 未导出的改动 · 记得「保存到本地」并「导出 JSON」</span>
                 <button class="mini-btn" id="btn-toggle-sidebar" title="收起/展开左侧工具栏">
                     <cgo-icon name="tabs" size="14"></cgo-icon>
                 </button>
@@ -794,11 +815,12 @@
     <!-- ========================================================================== -->
     <!-- 4. 脚本加载：CGoUI 图标组件库 + 编辑器主逻辑                                   -->
     <!-- ========================================================================== -->
-    <script type="module" src="../core/cgo-ui.js?v=261019.002445"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261020.1839"></script>
     <!-- 车站图元模板与折线倒角算法：与实际线路图共用同一份「唯一真源」，保证画布所见即所得 -->
-    <script src="../core/path-geometry.js?v=261019.002445"></script>
-    <script src="../core/station-icons.js?v=261019.002445"></script>
-    <script src="js/editor.js?v=261019.002445"></script>
+    <script src="../core/path-geometry.js?v=261020.1839"></script>
+    <script src="../core/station-icons.js?v=261020.1839"></script>
+    <script src="js/editor.js?v=261020.1839"></script>
+
 </body>
 
 </html>

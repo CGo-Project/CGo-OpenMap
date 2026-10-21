@@ -517,6 +517,26 @@ body.editor-body {
     white-space: nowrap;
 }
 
+/* 未保存 / 未导出改动的提醒（stage-coord 的 margin-left:auto 会把它与右侧按钮一起推过去）。
+   带 icon 的胶囊，配色沿用主题的 warning 语义变量。 */
+.stage-unsaved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full, 9999px);
+    border: 1px solid var(--warning-border, rgba(255, 238, 186, 0.5));
+    background: var(--warning-bg, rgba(255, 243, 205, 0.5));
+    color: var(--warning-color, #f59e0b);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* 作者样式里的 display 会盖掉 hidden 属性的 UA 规则，必须显式让位 */
+.stage-unsaved[hidden] {
+    display: none;
+}
+
 .stage-coord {
     margin-left: auto;
     font-variant-numeric: tabular-nums;
