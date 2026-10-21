@@ -19,17 +19,17 @@ const VIRTUAL_FREE_CONNECT_LINES = [];
 // 付费/国铁虚拟换乘映射表
 const VIRTUAL_TRANSFER_MAP = {
     // 水部
-    "M216": ["M603"],
-    "M603": ["M216"],
+    "M216": ["BE11"],
+    "BE11": ["M216"],
     // 三叉街
-    "M113": ["M605"],
-    "M605": ["M113"],
+    "M113": ["BE09"],
+    "BE09": ["M113"],
 };
 
 // 付费/国铁虚拟换乘连线数组
 const VIRTUAL_CONNECT_LINES = [
     // 水部
-    { from: "M216", to: "M603" },
+    { from: "M216", to: "BE11" },
     // 三叉街
-    { from: "M113", to: "M605" },
+    { from: "M113", to: "BE09" },
 ];

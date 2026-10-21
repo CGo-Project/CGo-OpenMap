@@ -71,7 +71,7 @@ const FUZHOU_SITE_SPACE_DATA = {
         cn: "福州火车站",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754976509575237.jpg",
         sourceLine: "M1",
-        lines: ["M1", "M6"],
+        lines: ["M1", "BE"],
         exits: [
             "A2出入口:火车站南广场",
             "D2出入口:站前路南侧",
@@ -123,7 +123,7 @@ const FUZHOU_SITE_SPACE_DATA = {
         cn: "东街口",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754978513014853.jpg",
         sourceLine: "M1",
-        lines: ["M1", "M3"],
+        lines: ["M1", "M4"],
         exits: [
             "A出入口:八一七北路与杨桥路交叉口东北侧",
             "B出入口:八一七北路与杨桥路交叉口西北侧",
@@ -260,7 +260,7 @@ const FUZHOU_SITE_SPACE_DATA = {
         cn: "城门",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754979192893509.jpg",
         sourceLine: "M1",
-        lines: ["M1", "M3"],
+        lines: ["M1", "M4"],
         exits: [
             "A出入口（预留):南三环路南侧、福峡路东侧",
             "B出入口:南三环路南侧、福峡路西侧",
@@ -303,7 +303,7 @@ const FUZHOU_SITE_SPACE_DATA = {
         cn: "福州火车南站",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754979399761989.jpg",
         sourceLine: "M1",
-        lines: ["M1", "M4"],
+        lines: ["M1", "M5"],
         exits: [
             "A1出入口:永南路南侧、胪雷路东侧",
             "A2出入口:永南路南侧、胪雷路东侧",
@@ -329,7 +329,7 @@ const FUZHOU_SITE_SPACE_DATA = {
         cn: "梁厝",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754969767141445.jpg",
         sourceLine: "M1",
-        lines: ["M1", "M5"],
+        lines: ["M1", "M6"],
         exits: [],
         updatedAt: "2026-09-11 18:14:52"
     },
@@ -337,7 +337,7 @@ const FUZHOU_SITE_SPACE_DATA = {
         cn: "下洋",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754970611474501.jpg",
         sourceLine: "M1",
-        lines: ["M1", "M5"],
+        lines: ["M1", "M6"],
         exits: [],
         updatedAt: "2026-09-11 18:14:57"
     },
@@ -426,7 +426,7 @@ const FUZHOU_SITE_SPACE_DATA = {
         cn: "金山",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754981436452933.jpg",
         sourceLine: "M2",
-        lines: ["M2", "M4"],
+        lines: ["M2", "M5"],
         exits: [],
         updatedAt: "2026-08-28 18:11:48"
     },
@@ -490,7 +490,7 @@ const FUZHOU_SITE_SPACE_DATA = {
         cn: "前屿",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754980820357189.jpg",
         sourceLine: "M2",
-        lines: ["M2", "M3"],
+        lines: ["M2", "M4"],
         exits: [],
         updatedAt: "2026-09-11 18:18:12"
     },
@@ -521,448 +521,448 @@ const FUZHOU_SITE_SPACE_DATA = {
     "M401": {
         cn: "半洲",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/24/755193819586629.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:18:52"
     },
     "M402": {
         cn: "建新",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/24/755193870151749.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:18:59"
     },
     "M403": {
         cn: "洪塘",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/24/755193974042693.jpg",
-        sourceLine: "M3",
-        lines: ["M3", "M4"],
+        sourceLine: "M4",
+        lines: ["M4", "M5"],
         exits: [],
         updatedAt: "2026-09-11 18:19:06"
     },
     "M404": {
         cn: "金牛山",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/24/755194077859909.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:19:13"
     },
     "M405": {
         cn: "凤凰池",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754974790008901.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:19:19"
     },
     "M406": {
         cn: "陆庄",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754974857121861.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:19:25"
     },
     "M407": {
         cn: "西门",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754974924476485.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:19:30"
     },
     "M409": {
         cn: "省立医院",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975112396869.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:19:42"
     },
     "M410": {
         cn: "东门",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975171870789.jpg",
-        sourceLine: "M3",
-        lines: ["M3", "M6"],
+        sourceLine: "M4",
+        lines: ["M4", "BE"],
         exits: [],
         updatedAt: "2026-09-11 18:19:48"
     },
     "M411": {
         cn: "三角池",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975240028229.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:19:53"
     },
     "M412": {
         cn: "竹屿",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975296962629.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-08-28 18:22:29"
     },
     "M413": {
         cn: "横屿",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975394545733.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-08-28 18:22:46"
     },
     "M414": {
         cn: "后屿",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975493570629.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-08-28 18:22:59"
     },
     "M416": {
         cn: "光明港",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975646048325.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:20:11"
     },
     "M417": {
         cn: "鳌峰洲",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975717720133.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:20:20"
     },
     "M418": {
         cn: "花海公园",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975788961861.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:20:27"
     },
     "M419": {
         cn: "会展中心",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754975845912645.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:20:34"
     },
     "M420": {
         cn: "林浦",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2026/03/11/782691800043589.jpg",
-        sourceLine: "M3",
-        lines: ["M3", "M5"],
+        sourceLine: "M4",
+        lines: ["M4", "M6"],
         exits: [],
         updatedAt: "2026-09-11 18:20:41"
     },
     "M422": {
         cn: "螺洲温泉",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754976036458565.jpg",
-        sourceLine: "M3",
-        lines: ["M3"],
+        sourceLine: "M4",
+        lines: ["M4"],
         exits: [],
         updatedAt: "2026-09-11 18:20:54"
     },
     "M423": {
         cn: "帝封江",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754976125173829.jpg",
-        sourceLine: "M3",
-        lines: ["M3", "M4", "M6"],
+        sourceLine: "M4",
+        lines: ["M4", "M5", "BE"],
         exits: [],
         updatedAt: "2026-09-11 18:21:02"
     },
-    "M401_2": {
+    "M501": {
         cn: "荆溪厚屿",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754971405234245.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:21:37"
     },
-    "M402_2": {
+    "M502": {
         cn: "农林大学",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754971514953797.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:21:44"
     },
-    "M404_2": {
+    "M504": {
         cn: "阵坂",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754971716145221.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:21:59"
     },
-    "M405_2": {
+    "M505": {
         cn: "马榕",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754971793322053.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:22:05"
     },
-    "M407_2": {
+    "M507": {
         cn: "凤岗里",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754971941695557.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:22:18"
     },
-    "M408": {
+    "M508": {
         cn: "浦上大道",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972000157765.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:22:25"
     },
-    "M409_2": {
+    "M509": {
         cn: "霞镜",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972083003461.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:22:32"
     },
-    "M410_2": {
+    "M510": {
         cn: "东岭",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972151582789.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-08-28 18:20:42"
     },
-    "M411_2": {
+    "M511": {
         cn: "台屿",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972225876037.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-08-28 18:21:04"
     },
-    "M412_2": {
+    "M512": {
         cn: "盘屿",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972303368261.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:22:44"
     },
-    "M413_2": {
+    "M513": {
         cn: "吴山",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972390944837.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:22:53"
     },
-    "M414_2": {
+    "M514": {
         cn: "盖山竹榄",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972464853061.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:22:59"
     },
-    "M415": {
+    "M515": {
         cn: "义序",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972526747717.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:23:05"
     },
-    "M417_2": {
+    "M517": {
         cn: "螺洲古镇",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754972769919045.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:23:20"
     },
-    "M418_2": {
+    "M518": {
         cn: "前锦",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754974392201285.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:23:27"
     },
-    "M419_2": {
+    "M519": {
         cn: "龙江",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754974458347589.jpg",
-        sourceLine: "M4",
-        lines: ["M4"],
+        sourceLine: "M5",
+        lines: ["M5"],
         exits: [],
         updatedAt: "2026-09-11 18:23:35"
     },
-    "M516": {
+    "M601": {
         cn: "万寿",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973918851141.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:41:03"
     },
-    "M514": {
+    "M603": {
         cn: "下吴",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973851910213.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:40:34"
     },
-    "M512": {
+    "M605": {
         cn: "沙京",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973766950981.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:40:01"
     },
-    "M511": {
+    "M606": {
         cn: "鹤上",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973708398661.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:39:27"
     },
-    "M510": {
+    "M607": {
         cn: "吴航",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973640982597.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:39:00"
     },
-    "M509": {
+    "M608": {
         cn: "十洋",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973581422661.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:38:40"
     },
-    "M508": {
+    "M609": {
         cn: "郑和",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973510004805.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:38:12"
     },
-    "M507": {
+    "M610": {
         cn: "航城",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973440077893.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:37:40"
     },
-    "M506": {
+    "M611": {
         cn: "营前",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973375479877.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:37:04"
     },
-    "M503": {
+    "M614": {
         cn: "樟岚",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973164920901.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:35:31"
     },
-    "M501": {
+    "M616": {
         cn: "潘墩",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754973041717317.jpg",
-        sourceLine: "M5",
-        lines: ["M5"],
+        sourceLine: "M6",
+        lines: ["M6"],
         exits: [],
         updatedAt: "2026-02-02 17:34:41"
     },
-    "M615": {
+    "BE01": {
         cn: "文岭",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977695551557.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-02-06 17:53:46"
     },
-    "M614": {
+    "BE02": {
         cn: "机场",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977623257157.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-02-06 17:53:33"
     },
-    "M613": {
+    "BE03": {
         cn: "滨海中央商务区",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977560854597.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-02-02 17:57:29"
     },
-    "M612": {
+    "BE04": {
         cn: "大数据",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977495478341.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-07-29 17:17:40"
     },
-    "M609": {
+    "BE06": {
         cn: "首占",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977407705157.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-02-02 17:55:57"
     },
-    "M608": {
+    "BE07": {
         cn: "祥谦",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977330352197.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-02-02 17:55:36"
     },
-    "M605": {
+    "BE09": {
         cn: "三叉街（滨海快线）",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977185230917.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-02-06 17:51:48"
     },
-    "M604": {
+    "BE10": {
         cn: "南公园",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977114009669.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-02-02 17:53:33"
     },
-    "M603": {
+    "BE11": {
         cn: "闽都",
         map: "https://www.fzmtr.com/fzmtrstorage/resources/image/2025/12/23/754977045082181.jpg",
-        sourceLine: "M6",
-        lines: ["M6"],
+        sourceLine: "BE",
+        lines: ["BE"],
         exits: [],
         updatedAt: "2026-02-02 18:44:10"
     }

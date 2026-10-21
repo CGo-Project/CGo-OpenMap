@@ -21,7 +21,7 @@
         searchCity: "福州",
         center: { x: 1250, y: 800 },
         defaultScale: 1.0,
-        mapSize: { width: 2500, height: 1600 },
+        mapSize: { width: 2200, height: 1800 },
         /**
          * 官网线路查询入口（首页城市卡片的「官方参考」链接）。
          * 与 city/data.js 的注册项保持一致；两处都写是因为各城 {city}.js 末尾的
@@ -29,7 +29,7 @@
          */
         officialMapUrl: "https://www.fzmtr.com/xlcx",
         LINE_META: {},
-        LINE_SORT_ORDER: ["M1", "M2", "M3", "M4", "M5", "M6"],
+        LINE_SORT_ORDER: ["M1", "M2", "M4", "M5", "M6", "BE"],
         LINE_SYNC_GROUPS: [],
         SUBURBAN_LINES: [],
         MERGE_STATIONS: [],
@@ -74,7 +74,9 @@
             scripts: [
                 "modules/fuzhou_timetable.js",
                 "modules/fuzhou_site_space.js",
-                "modules/fuzhou_cultural.js"
+                "modules/fuzhou_cultural.js",
+                "modules/fuzhou_airport.js",
+                "modules/fuzhou_railway.js"
             ],
             modules: {
                 "stacard": { enabled: true, order: 10, targetTab: "line-tab" },
@@ -82,7 +84,11 @@
                 // 文旅卡片：本站名胜指引 + 附近景点（点景点前往服务它的车站）
                 "fuzhou-cultural-tip": { enabled: true, order: 14, targetTab: "station-info" },
                 // 车站空间示意图与出入口是车站级资料（换乘站各线为同一张图），放在「车站信息」栏目
-                "fuzhou-station-space": { enabled: true, order: 15, targetTab: "station-info" }
+                "fuzhou-station-space": { enabled: true, order: 15, targetTab: "station-info" },
+                // 机场联络：只挂机场站（BE02），说明两座航站楼的步行距离与航司分工
+                "fuzhou-airport-tip": { enabled: true, order: 16, targetTab: "station-info" },
+                // 国铁联络：只挂与国铁直接接驳的三站（M104 福州站 / M121 福州南站 / BE06 长乐站）
+                "fuzhou-railway-tip": { enabled: true, order: 17, targetTab: "station-info" }
             }
         }
     };
@@ -189,7 +195,7 @@
         coords: FuzhouCity.dataFiles.amapDataUrl,
         cityIcon: "fuzhou",
         /** 滨海快线是城际快线，编号按官方口径写作 F1（F 为小号修饰字） */
-        lineCodes: { M6: { prefix: "F", code: "1" } },
+        lineCodes: { BE: { prefix: "F", code: "1" } },
         /**
          * 首末班取值：官网结构化的 first / last 一律是「HH:MM」或「次日HH:MM」，
          * 本城两种写法都有，这里统一交给 hourSlots；末班跨日用 period "last" 区分，
@@ -203,7 +209,7 @@
             return Object.entries(info.directions || {}).flatMap(([destName, times]) => {
                 const dest = terminuses[destName] || destName;
                 // 滨海快线一格里混排普通 / 大站 / 直达，必须按类别分链；其余线路官网只有一类车
-                const entries = line.id === "M6"
+                const entries = line.id === "BE"
                     ? binhaiEntries(times)
                     : [["first", "首", times.first], ["last", "末", times.last]];
                 return slot(dest, entries);
@@ -253,8 +259,8 @@
          * （例如某侧有专用通道），按方向分别写即可。
          */
         walkMinutes: {
-            "M216|M603": 10, "M603|M216": 10,     // 水部 ⇄ 闽都
-            "M113|M605": 6, "M605|M113": 6        // 三叉街 ⇄ 三叉街（滨海快线）
+            "M216|BE11": 10, "BE11|M216": 10,     // 水部 ⇄ 闽都
+            "M113|BE09": 6, "BE09|M113": 6        // 三叉街 ⇄ 三叉街（滨海快线）
         },
         /**
          * 站内换乘方式与换乘用时（分钟）。键为换乘站 ID，机制见 shared/route/route-data.js
@@ -279,14 +285,14 @@
              *
              * 方向按各线 stationIds 的顺序编码：dir "+" 表示沿站序递增、"−" 递减。
              *   · 1 号线：梁厝(M123) 在索引 22，往三江口(M125, 索引 24) 即 "+"
-             *   · 6 号线：梁厝(M123) 在索引 12，往万寿(M516, 索引 0)  即 "−"
-             * 故同台对写作 "M1+M5-"（线对顺序无关，两种写法都认）。
+             *   · 6 号线：梁厝(M123) 在索引 12，往万寿(M601, 索引 0)  即 "−"
+             * 故同台对写作 "M1+M6-"（线对顺序无关，两种写法都认）。
              *
              * 这里用 sameDir **显式指定**而不是靠几何判定 —— 站台实际布置以现场为准。
              */
             "M123": {
                 mode: "同台换乘", minutes: 2,
-                sameDir: { "M1+M5-": 1, "M1-M5+": 1 }
+                sameDir: { "M1+M6-": 1, "M1-M6+": 1 }
             },
             "M124": { mode: "站厅换乘", minutes: 2 },      // 下洋 1号线 ⇄ 6号线
             "M210": { mode: "T型节点换乘", minutes: 1 },   // 金山 2号线 ⇄ 5号线
@@ -295,26 +301,45 @@
             "M410": { mode: "通道换乘", minutes: 4 },      // 东门 4号线 ⇄ 滨海快线
             "M420": { mode: "T型节点换乘", minutes: 1 },   // 林浦 4号线 ⇄ 6号线
             /**
-             * 帝封江：4 号线与 5 号线同台换乘，换滨海快线则要走通道（4 分钟）。
+             * 帝封江：4 / 5 号线之间**同台还是走站厅取决于方向**，换滨海快线一律走通道。
              *
-             * 同台的是「4 号线往帝封江方向（终点，下客站台）⇄ 5 号线往荆溪厚屿方向」，
-             * 1 分钟；另一对方向要绕到对面站台，故默认给 2 分钟。
-             * 方向按各线 stationIds 顺序编码：
-             *   · 4 号线：帝封江(M423) 在索引 22（本站即其终点），往帝封江即 "−"
-             *     （沿站序递减驶向终点，到站下客）
-             *   · 5 号线：帝封江(M423) 在索引 15，往荆溪厚屿(M401_2, 索引 0) 即 "−"
-             * 故同台对写作 "M3-M4-"。
+             * 现场布置（主理人核定）：
+             *   · 滨海快线 → 4 号线、滨海快线 → 5 号线：通道换乘，5 分钟；
+             *   · 4 号线（往帝封江，本站即其终点，到站下客）→ 5 号线往荆溪厚屿：**同台**；
+             *   · 5 号线（往福州火车南站）→ 4 号线往半洲：**同台**；
+             *   · 4 号线（到站下客）→ 5 号线往福州火车南站：**站厅换乘，2 分钟**。
              *
-             * ⚠️ 这一对与站序几何算出来的「同向」并不一致（几何给 M3−/M4+），
-             * 以现场站台布置为准，故用 sameDir **显式指定**。
-             * pairs 用于覆盖「与滨海快线换乘」——那是通道换乘，4 分钟。
+             * 方向按各线 stationIds 顺序编码（dir 沿站序递增为 +、递减为 −）：
+             *   · 4 号线：半洲(M401) 在索引 0、帝封江(M423) 在索引 22（终点），
+             *     故「往半洲」= −；「往帝封江」= +（到站即终点，本键记为 +）；
+             *   · 5 号线：荆溪厚屿(M501) 在索引 0、帝封江在索引 15、福州火车南站(M121) 在索引 19，
+             *     故「往荆溪厚屿」= −、「往福州火车南站」= +。
+             *
+             * 于是：
+             *   · 同台那两对写作 "M4-M5+" 与 "M5+M4-"（1 分钟，方式=同台换乘）；
+             *   · 其余方向（4 号线到站 → 5 号线往福州火车南站等）走站厅，2 分钟（方式=站厅换乘）。
+             *     这两者方式不同，故 sameDir 的值写成**对象**（mode + minutes 一起给），
+             *     未命中 sameDir 的方向取该 pairs 自己的 mode / minutes。
+             *
+             * ⚠️ pairs 的键按**字典序**归一化（见共享层 pairKey："M4" > "BE"），
+             * 故换滨海快线的键必须写作 "BE|M4" / "BE|M5"。
+             *
+             * ⚠️ 与站序几何算出的「同向」并不一致，以现场站台布置为准，
+             * 故用 sameDir **显式指定**，不启用几何兜底。
              */
             "M423": {
-                mode: "同台换乘", minutes: 2,
-                sameDir: { "M3-M4-": 1, "M4-M3-": 1 },
                 pairs: {
-                    "M3|M6": { mode: "通道换乘", minutes: 4 },
-                    "M4|M6": { mode: "通道换乘", minutes: 4 }
+                    /* 4 ⇄ 5 号线：同台的那一对方向 1 分钟，其余方向走站厅 2 分钟 */
+                    "M4|M5": {
+                        mode: "站厅换乘", minutes: 2,
+                        sameDir: {
+                            "M4+M5-": { mode: "同台换乘", minutes: 1 },
+                            "M5+M4-": { mode: "同台换乘", minutes: 1 }
+                        }
+                    },
+                    /* 换滨海快线：一律通道，5 分钟 */
+                    "BE|M4": { mode: "通道换乘", minutes: 5 },
+                    "BE|M5": { mode: "通道换乘", minutes: 5 }
                 }
             }
         }

@@ -93,6 +93,13 @@
      *     没有 sameDir 时，才退回按站序几何判方向：
      *     取该站沿站序前后各 span 站算单位位移向量（span 由大到小回退），
      *     两线向量夹角 < 90° 即视为同向。
+     *   · pairs 的值里可再给 `sameDir`，即**同一条线对上按方向分成不同换乘方式**：
+     *     `pairs: { "M4|M5": { mode: "站厅换乘", minutes: 2,
+     *                          sameDir: { "M4-M5+": { mode: "同台换乘", minutes: 1 } } } }`
+     *     —— 命中 sameDir 的那对方向取该条目的 mode 与 minutes；未命中的方向取该 pairs
+     *     自己的 mode 与 minutes。用于「同一对线路，这个方向同台、那个方向要上站厅」
+     *     这类现场布置（如帝封江 4/5 号线）。
+     *     为兼容既有写法，sameDir 的值也可以直接给**数字**（只改时长、mode 沿用该层）。
      *   · 未配置的车站 → 内核用 DEFAULTS.xferMinutes（同站换乘默认 2 分钟）。
      * 城市未配置 transferAt 时本机制完全不生效，与不加完全一致。
      * ====================================================================== */
@@ -178,40 +185,54 @@
                 || entry.pairs?.[pairKey(fromBase, toBase)];
             const spec = perPair || entry;
             let minutes = Number(spec.minutes);
+            let mode = perPair?.mode || entry.mode || "";
             // 两种表达同台对的方式都算触发：显式 sameDir 优先，其次 sameDirMinutes 走几何
             if (spec.sameDirMinutes !== undefined || spec.sameDir !== undefined) {
-                minutes = resolveSameDir(spec, sid, fromBase, toBase, fromDir, toDir, stations, linesById, minutes);
+                const hit = resolveSameDir(spec, sid, fromBase, toBase, fromDir, toDir, stations, linesById);
+                // 命中方向条目时**连 mode 一起取**（同一线对的不同方向可能换乘方式不同，
+                // 如帝封江 4/5 号线：一个方向同台、另一个方向要上站厅）；
+                // 未命中则沿用本层 minutes / mode。
+                if (hit) {
+                    minutes = hit.minutes;
+                    if (hit.mode) mode = hit.mode;
+                }
             }
             if (!Number.isFinite(minutes)) return null;
-            return { minutes, mode: perPair?.mode || entry.mode || "" };
+            return { minutes, mode };
         };
         return lookup;
     }
 
     /**
-     * 「同向同台」那一档的时长。
+     * 「同向同台」那一档：返回 { minutes, mode? }，未命中返回 null（调用方沿用本层值）。
      *
      * 两种来源，**显式优先**：
-     *   1. spec.sameDir —— 城市直接点明哪一对方向是同台，形如 { "M1+M5-": 1 }；
-     *      线对顺序无关，两种写法都认；命中即用其值。
+     *   1. spec.sameDir —— 城市直接点明哪一对方向是同台，形如
+     *      { "M1+M5-": 1 }（只改时长）或 { "M1+M5-": { mode: "同台换乘", minutes: 1 } }
+     *      （时长与方式一起给）。线对顺序无关，两种写法都认。
      *   2. spec.sameDirMinutes —— 没点明时按站序几何判定同向（见 headingVector）。
      *
      * 之所以要有第 1 种：站台实际布置以现场为准，几何推算只能当兜底
      * ——实测中出现过几何判定的同台对与城市给的实际同台对不一致的情形。
      */
-    function resolveSameDir(spec, sid, fromBase, toBase, fromDir, toDir, stations, linesById, baseMinutes) {
+    function resolveSameDir(spec, sid, fromBase, toBase, fromDir, toDir, stations, linesById) {
         const dirTag = (id, d) => `${id}${Number(d) > 0 ? "+" : "-"}`;
         const explicit = spec.sameDir;
         if (explicit && typeof explicit === "object") {
             const a = dirTag(fromBase, fromDir);
             const b = dirTag(toBase, toDir);
             const hit = explicit[`${a}${b}`] ?? explicit[`${b}${a}`];
-            // 点明了同台对却不在其中 → 用基础时长（反向）
-            return hit !== undefined && Number.isFinite(Number(hit)) ? Number(hit) : baseMinutes;
+            if (hit === undefined) return null;                 // 未点明 → 用本层值
+            if (typeof hit === "object" && hit !== null) {
+                const m = Number(hit.minutes);
+                return Number.isFinite(m) ? { minutes: m, mode: hit.mode } : null;
+            }
+            const m = Number(hit);
+            return Number.isFinite(m) ? { minutes: m } : null;  // 只给数字 → 只改时长
         }
         const v1 = headingVector(linesById.get(fromBase), sid, Number(fromDir), stations);
         const v2 = headingVector(linesById.get(toBase), sid, Number(toDir), stations);
-        return isSameDirection(v1, v2) ? Number(spec.sameDirMinutes) : baseMinutes;
+        return isSameDirection(v1, v2) ? { minutes: Number(spec.sameDirMinutes) } : null;
     }
 
     /**
