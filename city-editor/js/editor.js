@@ -1714,10 +1714,748 @@
         return text;
     }
 
+    // ==========================================================================
+    // 15.5 参考底图：可自由变换的描图参照（半透明垫在最底层）
+    // ==========================================================================
+    //
+    // 定位：给作者一张线路图位图当描图参照。它**不属于工程数据** —— 不存进 project，
+    // 因此不会被写进「工程 JSON / 城市代码 / OpenMap 工程包 / 导出 SVG」，
+    // 也不会因为 20 秒一次的自动暂存把几 MB 的位图塞进 localStorage。
+    // 代价：刷新页面后需要重新上传（随时可卸载，不影响任何已录入的几何）。
+    //
+    // 变换模型：以「未旋转的外接矩形 + 绕自身中心旋转」表达
+    //   x, y     矩形左上角（画布坐标）
+    //   w, h     矩形尺寸（画布像素；旋转不改变它们，只是绕中心转）
+    //   rotate   旋转角（度，正值为顺时针，与 SVG rotate() 一致）
+    // 参考图不一定是整张画布：它可能是某个局部（老图的一角、一段走向的截图），
+    // 所以这里不强制自动贴合——位置 / 大小 / 旋转全部可手调，另给两个一键贴合的预设。
+    // 「参考图编辑模式」下可直接在画布上拖动移动、拖四角缩放、拖顶部圆柄旋转。
+
+    /** 默认透明度：既看得清底图线条，又不至于盖住自己画的线路 */
+    var GHOST_DEFAULT_OPACITY = 0.4;
+    /** 参考图最小边长（画布像素）：避免被拖成 0 之后再也抓不住 */
+    var GHOST_MIN_SIZE = 10;
+    /** 旋转手柄离顶边的屏幕距离（px） */
+    var GHOST_ROTATE_OFFSET = 26;
+    /** 控制柄的屏幕命中半径（px） */
+    var GHOST_HANDLE_HIT = 11;
+
+    var ghost = {
+        src: null, img: null,
+        blob: null, name: '',        // 位图本体（Blob）与文件名
+        handle: null,                // 首选：源文件句柄（File System Access API），可跨刷新重新读取
+        pendingHandle: null,         // 需要用户点一下授权时暂存句柄
+        pendingMeta: null,           // 「源文件找不到 → 重新指定」时保留原来的位置/大小/旋转
+        needPermission: false,       // 句柄在、但要用户确认读取权限
+        x: 0, y: 0, w: 0, h: 0,
+        rotate: 0,
+        opacity: GHOST_DEFAULT_OPACITY,
+        visible: true,
+        aspect: true            // 缩放时是否锁定宽高比
+    };
+    /** 复用同一个 <image> 节点：renderAll 在拖拽时会被高频调用，不能每次都重建图元 */
+    var ghostNode = null;
+    /** 是否处于「参考图编辑模式」 */
+    var ghostEdit = false;
+    /** 正在进行的参考图拖拽 { kind: 'move' | 'scale' | 'rotate', ... } */
+    var ghostDrag = null;
+
+    function ghostReady() { return !!(project && ghost.img && ghost.src); }
+
+    function rectCenter(f) { return { x: f.x + f.w / 2, y: f.y + f.h / 2 }; }
+
+    /** 矩形局部坐标（原点在左上角、未旋转）→ 画布坐标 */
+    function rectLocalToWorld(f, lx, ly) {
+        var c = rectCenter(f), r = f.rotate * Math.PI / 180;
+        var dx = lx - f.w / 2, dy = ly - f.h / 2;
+        return {
+            x: c.x + dx * Math.cos(r) - dy * Math.sin(r),
+            y: c.y + dx * Math.sin(r) + dy * Math.cos(r)
+        };
+    }
+
+    /** 画布坐标 → 矩形局部坐标（判断点是否落在参考图内） */
+    function rectWorldToLocal(f, p) {
+        var c = rectCenter(f), r = -f.rotate * Math.PI / 180;
+        var dx = p.x - c.x, dy = p.y - c.y;
+        return {
+            x: dx * Math.cos(r) - dy * Math.sin(r) + f.w / 2,
+            y: dx * Math.sin(r) + dy * Math.cos(r) + f.h / 2
+        };
+    }
+
+    function ghostCenter() { return rectCenter(ghost); }
+
+    /** 一键贴合预设：contain = 等比缩到画布内居中；cover = 拉伸铺满四边 */
+    function ghostFitRect(kind) {
+        var cw = project.canvas.width, ch = project.canvas.height;
+        var iw = ghost.img.naturalWidth || ghost.img.width || 1;
+        var ih = ghost.img.naturalHeight || ghost.img.height || 1;
+        if (kind === 'cover') return { x: 0, y: 0, w: cw, h: ch };
+        var k = Math.min(cw / iw, ch / ih);
+        var w = round2(iw * k), h = round2(ih * k);
+        return { x: round2((cw - w) / 2), y: round2((ch - h) / 2), w: w, h: h };
+    }
+
+    function pointInGhost(world) {
+        if (!ghostReady()) return false;
+        var l = rectWorldToLocal(ghost, world);
+        return l.x >= 0 && l.x <= ghost.w && l.y >= 0 && l.y <= ghost.h;
+    }
+
+    /** 四角 + 旋转柄的画布坐标（u = 1/view.k，让旋转柄保持屏幕等距） */
+    function ghostHandles(u) {
+        if (!ghostReady()) return [];
+        var list = [
+            { kind: 'scale', corner: 'nw', at: rectLocalToWorld(ghost, 0, 0) },
+            { kind: 'scale', corner: 'ne', at: rectLocalToWorld(ghost, ghost.w, 0) },
+            { kind: 'scale', corner: 'se', at: rectLocalToWorld(ghost, ghost.w, ghost.h) },
+            { kind: 'scale', corner: 'sw', at: rectLocalToWorld(ghost, 0, ghost.h) }
+        ];
+        var topMid = rectLocalToWorld(ghost, ghost.w / 2, 0);
+        var c = ghostCenter();
+        var len = Math.hypot(topMid.x - c.x, topMid.y - c.y) || 1;
+        var off = (u || 1) * GHOST_ROTATE_OFFSET;
+        list.push({
+            kind: 'rotate',
+            at: { x: topMid.x + (topMid.x - c.x) / len * off, y: topMid.y + (topMid.y - c.y) / len * off },
+            anchor: topMid
+        });
+        return list;
+    }
+
+    /** 命中参考图控制柄（屏幕容差，缩放后也抓得住） */
+    function hitGhostHandle(world) {
+        if (!ghostEdit || !ghostReady() || !ghost.visible) return null;
+        var u = unitScale();
+        var tol = GHOST_HANDLE_HIT * u;
+        var best = null, bestD = tol;
+        ghostHandles(u).forEach(function (h) {
+            var d = Math.hypot(h.at.x - world.x, h.at.y - world.y);
+            if (d <= bestD) { best = h; bestD = d; }
+        });
+        return best;
+    }
+
+    /** 画参考图本身（#ghost-layer 是 #view-layer 的第一个子层 → 位于所有图层之下） */
+    function renderGhost() {
+        var layer = $('ghost-layer');
+        if (!layer) return;
+        var show = !!(ghostReady() && ghost.visible && ghost.w > 0 && ghost.h > 0);
+        if (!show) {
+            if (ghostNode && ghostNode.parentNode) ghostNode.parentNode.removeChild(ghostNode);
+            ghostNode = null;
+            return;
+        }
+        if (!ghostNode) {
+            ghostNode = document.createElementNS(NS, 'image');
+            ghostNode.setAttribute('class', 'ghost-image');
+            // Safari < 15 只认 xlink:href，因此两样都写
+            ghostNode.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', ghost.src);
+            layer.appendChild(ghostNode);
+        }
+        if (ghostNode.getAttribute('href') !== ghost.src) {
+            // 换图（blob: URL 变了）时两个属性都要更新，否则旧 Safari 会继续显示上一张
+            ghostNode.setAttribute('href', ghost.src);
+            ghostNode.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', ghost.src);
+        }
+        var c = ghostCenter();
+        ghostNode.setAttribute('x', round2(ghost.x));
+        ghostNode.setAttribute('y', round2(ghost.y));
+        ghostNode.setAttribute('width', round2(ghost.w));
+        ghostNode.setAttribute('height', round2(ghost.h));
+        // 尺寸由 x/y/w/h 决定，禁止 viewBox 二次适配；旋转绕自身中心
+        ghostNode.setAttribute('preserveAspectRatio', 'none');
+        ghostNode.setAttribute('transform', ghost.rotate
+            ? 'rotate(' + round2(ghost.rotate) + ' ' + round2(c.x) + ' ' + round2(c.y) + ')' : '');
+        ghostNode.setAttribute('opacity', String(ghost.opacity));
+    }
+
+    /**
+     * 参考图状态变化后的统一刷新。
+     * 注意必须连 overlay 一起重画：外框与四角/旋转控制柄在 #overlay-layer 里，
+     * 只调 renderGhost() 的话图片会动、控制框却留在原地（曾经的 bug）。
+     */
+    function refreshGhost() {
+        renderGhost();
+        renderOverlay();
+        syncGhostFields();
+        updateGhostHint();
+        saveGhostToStore();      // 防抖写本地缓存：拖拽过程中只在停下 500ms 后落一次盘
+    }
+
+    /**
+     * 参考图编辑模式的外框与控制柄（画在 #overlay-layer 最上层）。
+     * 与折角 / 水域控制柄一致：**不做元素级事件**，统一 pointer-events:none，
+     * 命中判定交给 onPointerDown 里的坐标计算 —— 这样控制柄永远不会抢走画布手势。
+     */
+    function renderGhostHandles(layer, u) {
+        if (!ghostEdit || !ghostReady() || !ghost.visible) return;
+        var corners = [
+            rectLocalToWorld(ghost, 0, 0), rectLocalToWorld(ghost, ghost.w, 0),
+            rectLocalToWorld(ghost, ghost.w, ghost.h), rectLocalToWorld(ghost, 0, ghost.h)
+        ];
+        var frame = document.createElementNS(NS, 'polygon');
+        frame.setAttribute('points', corners.map(function (p) { return round2(p.x) + ',' + round2(p.y); }).join(' '));
+        frame.setAttribute('fill', 'none');
+        frame.setAttribute('stroke', 'var(--info-color, #006098)');
+        frame.setAttribute('stroke-width', round2(1.4 * u));
+        frame.setAttribute('stroke-dasharray', round2(6 * u) + ' ' + round2(4 * u));
+        frame.setAttribute('pointer-events', 'none');
+        layer.appendChild(frame);
+
+        ghostHandles(u).forEach(function (h) {
+            if (h.kind === 'rotate') {
+                var line = document.createElementNS(NS, 'line');
+                line.setAttribute('x1', round2(h.anchor.x));
+                line.setAttribute('y1', round2(h.anchor.y));
+                line.setAttribute('x2', round2(h.at.x));
+                line.setAttribute('y2', round2(h.at.y));
+                line.setAttribute('stroke', 'var(--info-color, #006098)');
+                line.setAttribute('stroke-width', round2(1.2 * u));
+                line.setAttribute('pointer-events', 'none');
+                layer.appendChild(line);
+            }
+            var grip = document.createElementNS(NS, h.kind === 'rotate' ? 'circle' : 'rect');
+            if (h.kind === 'rotate') {
+                grip.setAttribute('cx', round2(h.at.x));
+                grip.setAttribute('cy', round2(h.at.y));
+                grip.setAttribute('r', round2(6 * u));
+            } else {
+                grip.setAttribute('x', round2(h.at.x - 5 * u));
+                grip.setAttribute('y', round2(h.at.y - 5 * u));
+                grip.setAttribute('width', round2(10 * u));
+                grip.setAttribute('height', round2(10 * u));
+                grip.setAttribute('rx', round2(1.5 * u));
+            }
+            grip.setAttribute('fill', 'var(--card-bg, #fff)');
+            grip.setAttribute('stroke', 'var(--info-color, #006098)');
+            grip.setAttribute('stroke-width', round2(2 * u));
+            grip.setAttribute('pointer-events', 'none');
+            layer.appendChild(grip);
+        });
+
+        if (ghost.rotate) {
+            var c = ghostCenter();
+            var label = document.createElementNS(NS, 'text');
+            label.setAttribute('x', round2(c.x));
+            label.setAttribute('y', round2(c.y + 4 * u));
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('font-size', round2(11 * u));
+            label.setAttribute('font-family', 'var(--font-sans, system-ui, sans-serif)');
+            label.setAttribute('fill', 'var(--info-color, #006098)');
+            label.setAttribute('pointer-events', 'none');
+            label.textContent = round2(ghost.rotate) + '°';
+            layer.appendChild(label);
+        }
+    }
+
+    /** 把参考图当前状态回填到左侧面板（并同步「没有图时全部禁用」） */
+    function syncGhostFields() {
+        var has = ghostReady();
+        var setVal = function (id, v) { var el = $(id); if (el && el.value !== String(v)) el.value = v; };
+        if (has) {
+            setVal('ghost-x', round2(ghost.x));
+            setVal('ghost-y', round2(ghost.y));
+            setVal('ghost-w', round2(ghost.w));
+            setVal('ghost-h', round2(ghost.h));
+            setVal('ghost-rotate', round2(ghost.rotate));
+            setVal('ghost-rotate-range', Math.round(ghost.rotate));
+            setVal('ghost-opacity', Math.round(ghost.opacity * 100));
+        }
+        var opacityLabel = $('ghost-opacity-value');
+        if (opacityLabel) opacityLabel.textContent = Math.round(ghost.opacity * 100) + '%';
+        var visible = $('ghost-visible');
+        if (visible) { visible.checked = ghost.visible; visible.disabled = !has; }
+        var aspect = $('ghost-aspect');
+        if (aspect) { aspect.checked = ghost.aspect; aspect.disabled = !has; }
+        var uploadLabel = $('ghost-upload-label');
+        if (uploadLabel) uploadLabel.textContent = has ? '更换参考图' : '上传参考图';
+        var regrant = $('btn-ghost-regrant');
+        if (regrant) regrant.hidden = !ghost.needPermission;
+        ['ghost-x', 'ghost-y', 'ghost-w', 'ghost-h', 'ghost-rotate', 'ghost-rotate-range',
+            'ghost-opacity', 'btn-ghost-fit-contain', 'btn-ghost-fit-cover',
+            'btn-ghost-edit', 'btn-ghost-remove'].forEach(function (id) {
+            var el = $(id);
+            if (el) el.disabled = !has;
+        });
+        if (!has && ghostEdit) setGhostEditMode(false, true);
+    }
+
+    /** 面板上的状态说明 */
+    function updateGhostHint() {
+        var el = $('ghost-hint');
+        if (!el) return;
+        if (ghost.needPermission) {
+            el.textContent = '参考图来自本机文件，浏览器需要你确认一次读取权限：点上方「恢复参考图」即可；'
+                + '也可以点「上传参考图」重新指定一张。';
+            return;
+        }
+        if (!ghostReady()) {
+            el.textContent = GHOST_HANDLE_SUPPORTED
+                ? '未上传。点「上传参考图」选一张线路图位图（也可以把图片拖到画布上）：只记住电脑上那个文件的位置，'
+                    + '刷新后自动重新读取，不复制进浏览器存储；参考图不参与导出。'
+                : '未上传。可直接把图片拖到画布上；当前浏览器不支持文件句柄，参考图会以副本形式存在本机缓存里，'
+                    + '刷新后自动恢复；参考图不参与导出。';
+            return;
+        }
+        el.textContent = '原图 ' + ghost.img.naturalWidth + ' × ' + ghost.img.naturalHeight +
+            '，画布上 ' + round2(ghost.w) + ' × ' + round2(ghost.h) +
+            '，位置 (' + round2(ghost.x) + ', ' + round2(ghost.y) + ')，旋转 ' + round2(ghost.rotate) + '°。' +
+            (ghostEdit
+                ? '编辑模式已开启：拖动移动、拖四角缩放、拖顶部圆柄旋转（Shift 锁比例 / 15° 吸附，方向键微调，Esc 退出）。'
+                : '点「参考图编辑模式」即可在画布上直接调整。') +
+            (ghost.handle
+                ? '来源：本机文件「' + (ghost.handle.name || ghost.name) + '」（刷新后自动重新读取，源文件改动会同步生效）。'
+                : '来源：本机缓存副本（当前浏览器不支持文件句柄，源文件改动不会同步）。');
+    }
+
+    /** 进入 / 退出参考图编辑模式 */
+    function setGhostEditMode(on, silent) {
+        if (on && !ghostReady()) { if (!silent) toast('先上传一张参考图，再进入编辑模式'); return; }
+        ghostEdit = !!on;
+        ghostDrag = null;
+        var btn = $('ghost-edit');
+        if (btn) btn.classList.toggle('active', ghostEdit);
+        var stage = $('stage-canvas');
+        if (stage) stage.classList.toggle('ghost-editing', ghostEdit);
+        if (ghostEdit) {
+            setTool('select');      // 编辑参考图时避免误建元素
+            draft = null;
+        }
+        refreshGhost();
+        if (!silent) {
+            toast(ghostEdit
+                ? '参考图编辑模式：拖动图片移动，拖四角缩放（Shift 锁比例），拖顶部圆柄旋转（Shift 15° 吸附）；方向键微调，Esc 退出'
+                : '已退出参考图编辑模式');
+        }
+    }
+
+    /** 一键贴合：contain = 适应画布（等比居中 + 0°）；cover = 铺满画布（拉伸四边 + 0°） */
+    function applyGhostFit(kind) {
+        if (!ghostReady()) { toast('先上传一张参考图'); return; }
+        var rect = ghostFitRect(kind === 'cover' ? 'cover' : 'contain');
+        ghost.x = rect.x; ghost.y = rect.y; ghost.w = rect.w; ghost.h = rect.h;
+        ghost.rotate = 0;
+        refreshGhost();
+        toast(kind === 'cover' ? '参考图已铺满画布（拉伸到四边、0°）' : '参考图已适应画布（等比居中、0°）');
+    }
+
+    /** 开始拖拽参考图（onPointerDown 命中后调用） */
+    function startGhostDrag(hit, ev) {
+        var world = screenToWorld(ev.clientX, ev.clientY);
+        ghostDrag = {
+            kind: hit.kind,
+            corner: hit.corner || null,
+            startWorld: world,
+            start: { x: ghost.x, y: ghost.y, w: ghost.w, h: ghost.h, rotate: ghost.rotate }
+        };
+        try { $('stage-canvas').setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+        renderAll();
+    }
+
+    /**
+     * 拖角缩放：**对角固定**，并保证旋转后那个角仍在画布上原地不动。
+     * 做法：把指针与固定角都换算到「起始矩形的局部坐标系」，
+     * 由两者在局部轴上的距离得到新宽高，再用新尺寸反推中心。
+     */
+    function scaleGhostTo(world, corner, uniform) {
+        var s = ghostDrag.start;
+        var fixedStart = {
+            nw: { x: s.w, y: s.h }, ne: { x: 0, y: s.h },
+            se: { x: 0, y: 0 }, sw: { x: s.w, y: 0 }
+        }[corner];
+        if (!fixedStart) return;
+        var fixedWorld = rectLocalToWorld(s, fixedStart.x, fixedStart.y);
+        var ptrLocal = rectWorldToLocal(s, world);
+        var nw = Math.max(GHOST_MIN_SIZE, Math.abs(ptrLocal.x - fixedStart.x));
+        var nh = Math.max(GHOST_MIN_SIZE, Math.abs(ptrLocal.y - fixedStart.y));
+        if (uniform && s.w > 0 && s.h > 0) {
+            var k = Math.max(nw / s.w, nh / s.h);
+            nw = Math.max(GHOST_MIN_SIZE, round2(s.w * k));
+            nh = Math.max(GHOST_MIN_SIZE, round2(s.h * k));
+        }
+        // 固定角在「新矩形」里的局部坐标（永远是被拖角的对角）
+        var fixedNew = {
+            nw: { x: nw, y: nh }, ne: { x: 0, y: nh },
+            se: { x: 0, y: 0 }, sw: { x: nw, y: 0 }
+        }[corner];
+        var rad = s.rotate * Math.PI / 180;
+        var dx = fixedNew.x - nw / 2, dy = fixedNew.y - nh / 2;
+        var cx = fixedWorld.x - (dx * Math.cos(rad) - dy * Math.sin(rad));
+        var cy = fixedWorld.y - (dx * Math.sin(rad) + dy * Math.cos(rad));
+        ghost.w = round2(nw);
+        ghost.h = round2(nh);
+        ghost.x = round2(cx - nw / 2);
+        ghost.y = round2(cy - nh / 2);
+    }
+
+    /**
+     * 由指针位置算旋转角：旋转柄在正上方时为 0°，顺时针为正，取值落在 (-180, 180]。
+     * snap = true（Shift）时按 15° 吸附。
+     */
+    function ghostRotateFromPoint(center, world, snap) {
+        var deg = Math.atan2(world.y - center.y, world.x - center.x) * 180 / Math.PI + 90;
+        while (deg > 180) deg -= 360;
+        while (deg <= -180) deg += 360;
+        if (snap) deg = Math.round(deg / 15) * 15;
+        return round2(deg);
+    }
+
+    /** 拖拽过程中的实时更新 */
+    function updateGhostDrag(world, ev) {
+        if (!ghostDrag || !ghostReady()) return;
+        var s = ghostDrag.start;
+        if (ghostDrag.kind === 'move') {
+            ghost.x = round2(s.x + (world.x - ghostDrag.startWorld.x));
+            ghost.y = round2(s.y + (world.y - ghostDrag.startWorld.y));
+        } else if (ghostDrag.kind === 'rotate') {
+            ghost.rotate = ghostRotateFromPoint({ x: s.x + s.w / 2, y: s.y + s.h / 2 }, world, ev.shiftKey);
+        } else if (ghostDrag.kind === 'scale') {
+            scaleGhostTo(world, ghostDrag.corner, ev.shiftKey || ghost.aspect);
+        }
+        refreshGhost();
+    }
+
+    /**
+     * 兜底路径：普通 <input type=file> / 拖入的文件（拿不到句柄的浏览器走这里）。
+     * 位图以 Blob 副本存进 IndexedDB；pendingMeta 存在时按它还原上次排版（重新指定源文件）。
+     */
+    function loadGhostFile(file) {
+        if (!file) return;
+        if (!project) { toast('请先创建画布，再上传参考图'); return; }
+        if (!/^image\//i.test(file.type || '')) { toast('参考图只支持位图（PNG / JPG / WebP / GIF）'); return; }
+        var keep = ghostReady();
+        var reuseMeta = ghost.pendingMeta || null;
+        ghostDecodeImage(file).then(function (decoded) {
+            if (!decoded) { toast('这张图片无法解码，请换一张位图'); return; }
+            applyGhostImage(file, decoded.url, decoded.img, reuseMeta, null);
+            ghost.pendingMeta = null;
+            toast((reuseMeta ? '已重新指定参考图：' : (keep ? '已更换参考图：' : '已铺上参考图：')) + (file.name || '图片') +
+                (reuseMeta ? '（沿用了上次的位置与旋转）' : (keep ? '（保留了中心点与旋转角）' : '（半透明垫在最底层，不参与导出）')) +
+                (GHOST_HANDLE_SUPPORTED ? '' : '，已存为本机缓存副本，刷新后会自动恢复'));
+        });
+    }
+
+    /** 卸载参考图：连本地缓存一起清掉（工程几何一点不动） */
+    function removeGhost() {
+        var had = ghostReady();
+        var oldSrc = ghost.src;
+        ghost.src = null;
+        ghost.img = null;
+        ghost.blob = null;
+        ghost.handle = null;
+        ghost.pendingHandle = null;
+        ghost.pendingMeta = null;
+        ghost.needPermission = false;
+        ghost.name = '';
+        ghost.x = 0; ghost.y = 0; ghost.w = 0; ghost.h = 0;
+        ghost.rotate = 0;
+        ghostNode = null;
+        var layer = $('ghost-layer');
+        if (layer) clearChildren(layer);
+        if (oldSrc && /^blob:/.test(oldSrc)) {
+            try { URL.revokeObjectURL(oldSrc); } catch (e) { /* ignore */ }
+        }
+        clearGhostStore();
+        if (ghostEdit) setGhostEditMode(false, true);
+        refreshGhost();
+        toast(had ? '已卸载参考图（含本机缓存；工程几何未受影响）' : '当前没有参考图');
+    }
+
+
+    // ==========================================================================
+    // 15.6 参考图的来源记忆与本地持久化
+    // ==========================================================================
+    //
+    // 目标：刷新页面后参考图与它的位置 / 大小 / 旋转 / 透明度都能自动恢复，不必重传。
+    // 两条路线（自动选择，面板上会写明当前用的是哪一条）：
+    //
+    //   ① **源文件句柄（首选；Chrome / Edge 等 Chromium 系）**
+    //      只记住「电脑上那个文件」的句柄（File System Access API 的 FileSystemFileHandle，
+    //      可结构化克隆后存进 IndexedDB），位图**不复制进浏览器存储**：省配额，
+    //      而且源文件改过之后刷新就能用上新版。刷新后三种情况：
+    //        · 权限仍在      → 直接重新读取，静默恢复；
+    //        · 权限需确认    → 亮出「恢复参考图」按钮，点一下即授权后读取；
+    //        · 文件被移走/删 → 提示「找不到参考图源文件，请重新指定」，并保留上次的位置与旋转。
+    //
+    //   ② **本机缓存副本（兜底；Firefox / 老 Safari 等不支持句柄）**
+    //      把位图以 Blob 存进 IndexedDB（不做 base64）。语义与上一版一致。
+    //
+    // ⚠️ 为什么不能只存一个「路径字符串」：网页没有权限按路径读本地文件 —— 页面从 http:// 打开时
+    //    `<img src="file:///…">` 与 fetch('file:///…') 都会被浏览器拦掉。这是浏览器的安全边界，
+    //    不是本项目的限制；平台上「记住电脑上的文件」的唯一合法途径就是文件句柄。
+    //
+    // 任何一步失败（隐私模式、配额不足、不支持、用户取消）都只警告，绝不影响编辑器使用。
+
+    var GHOST_DB_NAME = 'cgo-openmap-editor';
+    var GHOST_DB_STORE = 'reference-image';
+    var GHOST_DB_VERSION = 1;
+    var GHOST_SAVE_DELAY = 500;
+    /** 是否支持 File System Access API（决定走句柄还是缓存副本） */
+    var GHOST_HANDLE_SUPPORTED = typeof window !== 'undefined' &&
+        typeof window.showOpenFilePicker === 'function';
+
+    var ghostDbPromise = null;
+    var ghostSaveTimer = null;
+    var ghostStoreWarned = false;
+
+    function ghostWarnOnce(err) {
+        if (ghostStoreWarned) return;
+        ghostStoreWarned = true;
+        console.warn('[CGo OpenMap] 参考图本地缓存不可用：', err);
+        toast('参考图无法记住来源（可能是隐私模式或存储已满）：本次仍可正常使用，但刷新后需要重新指定');
+    }
+
+    function ghostDb() {
+        if (ghostDbPromise) return ghostDbPromise;
+        ghostDbPromise = new Promise(function (resolve, reject) {
+            if (!window.indexedDB) { reject(new Error('当前环境不支持 IndexedDB')); return; }
+            var req = window.indexedDB.open(GHOST_DB_NAME, GHOST_DB_VERSION);
+            req.onupgradeneeded = function () {
+                var db = req.result;
+                if (!db.objectStoreNames.contains(GHOST_DB_STORE)) {
+                    db.createObjectStore(GHOST_DB_STORE, { keyPath: 'id' });
+                }
+            };
+            req.onsuccess = function () { resolve(req.result); };
+            req.onerror = function () { reject(req.error || new Error('打开本地库失败')); };
+        });
+        return ghostDbPromise;
+    }
+
+    /** 在事务里跑一次操作；get 的结果从 request.result 取 */
+    function ghostTx(mode, fn) {
+        return ghostDb().then(function (db) {
+            return new Promise(function (resolve, reject) {
+                var tx = db.transaction(GHOST_DB_STORE, mode);
+                var req = fn(tx.objectStore(GHOST_DB_STORE));
+                tx.oncomplete = function () { resolve(req ? req.result : undefined); };
+                tx.onerror = function () { reject(tx.error || new Error('本地库事务失败')); };
+                tx.onabort = function () { reject(tx.error || new Error('本地库事务被中止')); };
+            });
+        });
+    }
+
+    function ghostMeta() {
+        return {
+            x: ghost.x, y: ghost.y, w: ghost.w, h: ghost.h,
+            rotate: ghost.rotate, opacity: ghost.opacity,
+            visible: ghost.visible, aspect: ghost.aspect,
+            name: ghost.name || '', savedAt: new Date().toISOString()
+        };
+    }
+
+    function ghostNum(v, fallback) {
+        var n = parseFloat(v);
+        return isFinite(n) ? n : fallback;
+    }
+
+    /** 写来源记忆：有句柄只存句柄（不复制位图），否则存 Blob 副本 */
+    function saveGhostToStore(immediate) {
+        if (!ghost.handle && !ghost.blob) return;
+        if (ghostSaveTimer) { clearTimeout(ghostSaveTimer); ghostSaveTimer = null; }
+        var run = function () {
+            ghostSaveTimer = null;
+            if (!ghost.handle && !ghost.blob) return;
+            ghostTx('readwrite', function (store) {
+                var rec = { id: 'reference', meta: ghostMeta(), mode: ghost.handle ? 'handle' : 'blob' };
+                if (ghost.handle) rec.handle = ghost.handle;
+                else rec.blob = ghost.blob;
+                return store.put(rec);
+            }).catch(ghostWarnOnce);
+        };
+        if (immediate) run();
+        else ghostSaveTimer = setTimeout(run, GHOST_SAVE_DELAY);
+    }
+
+    function clearGhostStore() {
+        if (ghostSaveTimer) { clearTimeout(ghostSaveTimer); ghostSaveTimer = null; }
+        return ghostTx('readwrite', function (store) { return store.delete('reference'); })
+            .catch(function (err) { console.warn('[CGo OpenMap] 清理参考图来源记忆失败：', err); });
+    }
+
+    /** 把 Blob（或 File）解码成可渲染的图片对象 */
+    function ghostDecodeImage(blob) {
+        return new Promise(function (resolve) {
+            var url = URL.createObjectURL(blob);
+            var img = new Image();
+            img.onload = function () { resolve({ img: img, url: url }); };
+            img.onerror = function () {
+                try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+                resolve(null);
+            };
+            img.src = url;
+        });
+    }
+
+    /**
+     * 应用一张参考图：新上传 / 更换 / 从源文件或缓存恢复都走这里。
+     *   meta 传对象 → 按它还原位置 / 大小 / 旋转 / 透明度（恢复、重新指定时用）；
+     *   meta 为 null → 此前没有图就「适应画布」，否则视为更换（保留中心与旋转）。
+     */
+    function applyGhostImage(blob, url, img, meta, handle) {
+        var prevSrc = ghost.src;
+        var hadImage = ghostReady();
+        ghost.blob = blob || null;
+        ghost.src = url;
+        ghost.img = img;
+        ghost.handle = handle || null;
+        ghost.pendingHandle = null;
+        ghost.needPermission = false;
+        ghost.name = (blob && blob.name) || (handle && handle.name) || (meta && meta.name) || '参考图';
+        if (meta) {
+            // 宽高：非正数视为损坏数据（尺寸不可能 ≤0），回落原图尺寸；只有正数才按最小值钳制，
+            // 这样用户自己设的极小尺寸仍然被尊重（曾经的 bug：坏数据会还原成 10px 细条）
+            var iw = img.naturalWidth || 100, ih = img.naturalHeight || 100;
+            var mw = ghostNum(meta.w, iw), mh = ghostNum(meta.h, ih);
+            ghost.w = round2(mw > 0 ? Math.max(GHOST_MIN_SIZE, mw) : iw);
+            ghost.h = round2(mh > 0 ? Math.max(GHOST_MIN_SIZE, mh) : ih);
+            ghost.x = round2(ghostNum(meta.x, 0));
+            ghost.y = round2(ghostNum(meta.y, 0));
+            ghost.rotate = round2(ghostNum(meta.rotate, 0));
+            ghost.opacity = clamp(ghostNum(meta.opacity, GHOST_DEFAULT_OPACITY), 0.05, 1);
+            ghost.visible = meta.visible !== false;
+            ghost.aspect = meta.aspect !== false;
+        } else if (!hadImage || !ghost.w || !ghost.h) {
+            var rect = ghostFitRect('contain');
+            ghost.x = rect.x;
+            ghost.y = rect.y;
+            ghost.w = rect.w;
+            ghost.h = rect.h;
+            ghost.rotate = 0;
+            ghost.visible = true;
+        } else {
+            var ratio = (img.naturalHeight || 1) / (img.naturalWidth || 1);
+            var nw = Math.max(GHOST_MIN_SIZE, round2(ghost.w));
+            var nh = Math.max(GHOST_MIN_SIZE, round2(nw * ratio));
+            var c = ghostCenter();
+            ghost.w = nw;
+            ghost.h = nh;
+            ghost.x = round2(c.x - nw / 2);
+            ghost.y = round2(c.y - nh / 2);
+        }
+        refreshGhost();
+        if (prevSrc && prevSrc !== url && /^blob:/.test(prevSrc)) {
+            try { URL.revokeObjectURL(prevSrc); } catch (e) { /* ignore */ }
+        }
+        saveGhostToStore(true);
+    }
+
+    /**
+     * 从文件句柄读取参考图。meta 为对象时按它还原排版。
+     * 读不到（源文件被移动 / 改名 / 删除）就提示重新指定，并记住原来的排版。
+     */
+    function applyHandleFile(handle, meta, quiet) {
+        return handle.getFile().then(function (file) {
+            return ghostDecodeImage(file).then(function (decoded) {
+                if (!decoded) { toast('这个文件不是可解码的位图，请重新指定'); return false; }
+                applyGhostImage(file, decoded.url, decoded.img, meta, handle);
+                return true;
+            });
+        }).catch(function (err) {
+            console.warn('[CGo OpenMap] 读取参考图源文件失败：', err);
+            ghost.pendingHandle = handle;
+            ghost.pendingMeta = meta || null;
+            ghost.needPermission = false;
+            clearGhostStore();
+            refreshGhost();
+            toast('找不到参考图源文件，请重新指定' + (meta ? '（上次的位置与旋转会被保留）' : ''));
+            return false;
+        });
+    }
+
+    /** 「上传 / 更换参考图」：优先拿文件句柄，不支持句柄时才退回普通文件选择器 */
+    function pickGhostFile() {
+        if (!project) { toast('请先创建画布，再上传参考图'); return; }
+        var meta = ghost.pendingMeta || null;
+        if (!GHOST_HANDLE_SUPPORTED) {
+            var input = $('ghost-input');
+            if (input) input.click();
+            return;
+        }
+        window.showOpenFilePicker({
+            multiple: false,
+            types: [{ description: '线路图位图', accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'] } }]
+        }).then(function (handles) {
+            if (!handles || !handles.length) return false;
+            var handle = handles[0];
+            return applyHandleFile(handle, meta, false).then(function (done) {
+                if (done) {
+                    ghost.pendingMeta = null;
+                    toast('已载入参考图：' + (handle.name || '') +
+                        '（已记住源文件位置，刷新后自动重新读取；不复制进浏览器存储，也不参与导出）');
+                }
+                return done;
+            });
+        }).catch(function (err) {
+            if (err && err.name === 'AbortError') return false;    // 用户取消，不打扰
+            console.warn('[CGo OpenMap] 文件选择器不可用，退回普通选择器：', err);
+            var input = $('ghost-input');
+            if (input) input.click();
+            return false;
+        });
+    }
+
+    /** 用户点「恢复参考图」：借这次点击向浏览器申请读取权限 */
+    function regrantGhostFile() {
+        var handle = ghost.pendingHandle;
+        if (!handle) return;
+        var ask = handle.requestPermission ? handle.requestPermission({ mode: 'read' }) : Promise.resolve('granted');
+        ask.then(function (state) {
+            if (state !== 'granted') { toast('未获得读取权限：可点「上传参考图」重新指定文件'); return null; }
+            var meta = ghost.pendingMeta;
+            ghost.pendingHandle = null;
+            ghost.needPermission = false;
+            return applyHandleFile(handle, meta, false);
+        }).catch(function (err) { console.warn('[CGo OpenMap] 申请文件读取权限失败：', err); });
+    }
+
+    /** 刷新后恢复：句柄优先，其次缓存副本 */
+    function restoreGhostFromStore() {
+        return ghostTx('readonly', function (store) { return store.get('reference'); })
+            .then(function (rec) {
+                if (!rec) return false;
+                if (rec.handle) {
+                    var handle = rec.handle, meta = rec.meta || {};
+                    var query = handle.queryPermission
+                        ? handle.queryPermission({ mode: 'read' })
+                        : Promise.resolve('granted');
+                    return query.then(function (state) {
+                        if (state === 'granted') {
+                            return applyHandleFile(handle, meta, true).then(function (done) {
+                                if (done) toast('已从源文件恢复参考图（沿用上次的位置 / 大小 / 旋转 / 透明度）');
+                                return done;
+                            });
+                        }
+                        // 需要点一下才能授权：亮出按钮，不动排版
+                        ghost.pendingHandle = handle;
+                        ghost.pendingMeta = meta;
+                        ghost.needPermission = true;
+                        refreshGhost();
+                        toast('参考图来自本机文件：浏览器需要你确认一次读取权限，点「恢复参考图」即可');
+                        return false;
+                    });
+                }
+                if (!rec.blob) return false;
+                return ghostDecodeImage(rec.blob).then(function (decoded) {
+                    if (!decoded) { clearGhostStore(); return false; }
+                    applyGhostImage(rec.blob, decoded.url, decoded.img, rec.meta || {}, null);
+                    toast('已恢复上次的参考图（本机缓存副本，含位置 / 大小 / 旋转 / 透明度）');
+                    return true;
+                });
+            })
+            .catch(function (err) {
+                console.warn('[CGo OpenMap] 参考图恢复失败：', err);
+                return false;
+            });
+    }
+
     function renderAll() {
         updateStageInfo();
         if (!project) return;
         setViewBox();
+        renderGhost();          // 参考图：先画最底层，再叠水域/网格/线路
         renderGrid();
         renderAxes();
         renderWaters();
@@ -3140,6 +3878,9 @@
             layer.appendChild(rect);
         }
 
+        // 参考图编辑模式的外框与控制柄（与选中元素无关，始终画在最上层）
+        renderGhostHandles(layer, u);
+
         if (!selection) return;
 
         // 自由文本：用虚线框标出范围，并画出锚点（拖拽/旋转都以锚点为中心）
@@ -3339,7 +4080,7 @@
             ' · 线段 ' + project.segments.length +
             ' · 水域 ' + project.waters.length +
             ' · 线路 ' + project.lines.length;
-        mode.textContent = toolLabel(activeTool) +
+        mode.textContent = (ghostEdit ? '参考图编辑 · ' : '') + toolLabel(activeTool) +
             (autoRoute && activeTool.indexOf('seg') === 0 ? ' · 自动选型' : '') +
             (selectedNodeIds.length > 1 ? ' · 已选 ' + selectedNodeIds.length + ' 个节点' : '') +
             (selectedSegmentIds.length > 1 ? ' · 已选 ' + selectedSegmentIds.length + ' 条线段' : '');
@@ -3512,6 +4253,7 @@
 
         // 右键：连续绘制模式下放置新车站并继续连线；其余模式右键拖拽框选节点
         if (ev.button === 2 && ev.pointerType !== 'touch') {
+            if (ghostEdit) return;      // 参考图编辑模式下右键不参与框选，避免抢手势
             if (activeTool === 'segfree') {
                 handleSegmentClick(screenToWorld(ev.clientX, ev.clientY), ev.shiftKey, true);
                 return;
@@ -3523,6 +4265,15 @@
         if (ev.button !== 0 && ev.pointerType === 'mouse') return;
 
         var world = screenToWorld(ev.clientX, ev.clientY);
+
+        // 参考图编辑模式：只手势参考图的移动 / 缩放 / 旋转，创建与选择一律让位
+        // （控制柄与外框都是 pointer-events:none，命中判定集中在这里做）
+        if (ghostEdit && ghostReady()) {
+            var ghostHit = hitGhostHandle(world);
+            if (ghostHit) { startGhostDrag(ghostHit, ev); return; }
+            if (pointInGhost(world)) { startGhostDrag({ kind: 'move' }, ev); return; }
+            return;      // 点在图外：不建元素、不选元素，避免调参考图时误改线网
+        }
 
         if (activeTool === 'select') {
             // Shift + 左键点击线段：快捷翻转折角方向（补记撤销点）
@@ -3863,6 +4614,9 @@
         pointerWorld = world;      // 记录指针位置，供 Ctrl+V 决定粘贴落点
         $('stage-coord').textContent = 'x: ' + Math.round(world.x) + ', y: ' + Math.round(world.y);
 
+        // 参考图编辑模式：拖拽参考图时只更新参考图，不参与节点/线段/水域的拖拽逻辑
+        if (ghostDrag) { updateGhostDrag(world, ev); return; }
+
         if (dragState && dragState.kind === 'pan') {
             view.cx = dragState.startCx - (ev.clientX - dragState.startX) / view.k;
             view.cy = dragState.startCy - (ev.clientY - dragState.startY) / view.k;
@@ -4004,6 +4758,12 @@
         canvas.classList.remove('panning');
         canvas.classList.remove('resizing-water');
         canvas.classList.remove('marquee-drag');
+        if (ghostDrag) {
+            ghostDrag = null;
+            try { canvas.releasePointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+            refreshGhost();
+            return;
+        }
         if (dragState && dragState.kind === 'marquee') {
             var moved = dragState.moved;
             var picked = selectedNodeIds.length;
@@ -4226,6 +4986,20 @@
             if (key === 'v') { ev.preventDefault(); pasteClipboardNodes(true); return; }
             if (key === 'd') { ev.preventDefault(); duplicateSelectedNodes(); return; }
             return;   // 其余 Ctrl 组合交给浏览器
+        }
+
+        // 参考图编辑模式：Esc 退出；方向键微调参考图位置（Shift 加速 10 倍）
+        if (ghostEdit && ghostReady()) {
+            var gArrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+            if (gArrow) {
+                ev.preventDefault();
+                var gStep = ev.shiftKey ? 10 : 1;
+                ghost.x = round2(ghost.x + gArrow[0] * gStep);
+                ghost.y = round2(ghost.y + gArrow[1] * gStep);
+                refreshGhost();
+                return;
+            }
+            if (ev.key === 'Escape') { setGhostEditMode(false); return; }
         }
 
         if (ev.key === 'Escape') {
@@ -6340,6 +7114,7 @@
         setAutoRoute(true, { silent: true });
         scheduleFit();
         markProjectClean();          // 空画布即基线
+        refreshGhost();              // 新建画布后重画参考图与它的外框
         if (!silent) toast('已创建 ' + w + ' × ' + h + ' 画布，原点 O 位于左上角顶点');
     }
 
@@ -6380,7 +7155,7 @@
 
         // 只重绘新尺寸下的画布内容：不调用 clampView/resetView，
         // 不重新锁定 SVG 尺寸，也不调整缩放与平移，因此画布上已有元素与视图完全不动。
-        renderAll();
+        refreshGhost();              // 画布尺寸变了：底图与外框读数一起刷新
         if (!silent) toast('画布尺寸已更新为 ' + w + ' × ' + h + '（画布内容与视图保持不变）');
     }
 
@@ -9901,6 +10676,28 @@
             '对话框可设置城市 ID/名称、主题色、线路 ID 前缀、站距比例（米/像素）与运营公司，',
             '并会实时显示自检结果（站序连续性、车站引用完整性、线路颜色合法性等）。',
             '',
+            '【九、参考图（描图参照，可自由变换）】',
+            '「参考图 → 上传参考图」选一张线路图位图，也可以直接把图片拖到画布上；',
+            '它会以半透明垫在**最底层**，位置 / 大小 / 旋转 / 透明度全部可以自己调 ——',
+            '参考图不必与画布等大，也可以只是某个局部（老图的一角、一段走向的截图）：',
+            '   · 参考图编辑模式：进入后在画布上拖动图片即可移动，拖四角缩放、拖顶部圆柄旋转',
+            '     （Shift 锁比例 / 15° 吸附）；方向键微调位置（Shift 加速 10 倍），Esc 退出；',
+            '     该模式下不会创建或选中任何元素，避免调参考图时误改线网；',
+            '   · 数值微调：面板上的 X / Y / 宽 / 高 / 旋转 / 透明度 都能直接输入，',
+            '     「缩放时锁定宽高比」决定改宽或改高时另一边是否等比跟随；',
+            '   · 一键贴合：「适应画布」等比缩到画布内居中、「铺满画布」拉伸到四边（两者都会把旋转归零）；',
+            '   · 加载 / 更换 / 卸载：同一个按钮先「上传参考图」，有图后变成「更换参考图」',
+            '     （更换保留中心点与旋转角，按新图宽高比重算高度）；「卸载」只清参照图，几何一点不动；',
+            '   · 来源记忆：默认只记住「电脑上那个文件」的句柄（Chrome / Edge 等支持 File System Access',
+            '     的浏览器），位图不复制进浏览器存储 —— 源文件改过之后刷新就能用上新版；',
+            '     浏览器不支持句柄时（如 Firefox）才退回「本机缓存副本」，这时源文件改动不会同步；',
+            '   · 刷新后：权限还在就直接重新读取；需要确认权限时点一下「恢复参考图」；',
+            '     源文件被移动 / 改名 / 删除会提示「找不到参考图源文件，请重新指定」，',
+            '     并保留上次的位置与旋转，重新指定后排版照旧；',
+            '   · 参考图不写进工程 JSON / 城市代码 / OpenMap 工程包，也不会出现在导出的 SVG 里，',
+            '     更不会被 20 秒的自动暂存写进浏览器本地存储；「卸载」会连来源记忆一起清掉；',
+            '     图片始终只在本机，不会被上传到任何地方。',
+            '',
             '提示：工程会自动暂存到浏览器本地（20 秒一次、静默覆盖同一份本地工程），刷新页面后可恢复；',
             '但自动暂存**不是交付物** —— 只要还没点过「保存到本地」或「导出 JSON」，状态栏会一直显示',
             '「有未保存 / 未导出的改动」，此时关闭或刷新页面浏览器会先弹一次确认。交付流程是：',
@@ -10067,6 +10864,143 @@
         $('btn-empty-create').addEventListener('click', function () { applyCanvasSize(); });
         $('btn-empty-open').addEventListener('click', function () { fileInput.click(); });
         $('btn-new-canvas').addEventListener('click', newCanvasFromInputs);
+
+        // 参考图（描图参照：可自由变换，半透明垫在最底层；不进工程数据）
+        // 上传 / 更换：优先走 File System Access 的句柄选择器（这样刷新后能按源文件恢复）
+        var ghostUploadBtn = $('btn-ghost-upload');
+        if (ghostUploadBtn) {
+            ghostUploadBtn.addEventListener('click', function () { pickGhostFile(); });
+        }
+        // 兜底：普通文件选择器（不支持句柄的浏览器，或句柄选择器出错时）
+        var ghostInput = $('ghost-input');
+        if (ghostInput) {
+            ghostInput.addEventListener('change', function () {
+                var picked = ghostInput.files && ghostInput.files[0];
+                if (picked) loadGhostFile(picked);
+                ghostInput.value = '';      // 清空，使同一张图再次选择也能触发 change
+            });
+        }
+        // 句柄在、但浏览器要用户点一下才给读取权限
+        var ghostRegrantBtn = $('btn-ghost-regrant');
+        if (ghostRegrantBtn) {
+            ghostRegrantBtn.addEventListener('click', function () { regrantGhostFile(); });
+        }
+        var ghostEditBtn = $('ghost-edit');
+        if (ghostEditBtn) {
+            ghostEditBtn.addEventListener('click', function () { setGhostEditMode(!ghostEdit); });
+        }
+        var ghostVisible = $('ghost-visible');
+        if (ghostVisible) {
+            ghostVisible.addEventListener('change', function () {
+                ghost.visible = ghostVisible.checked;
+                refreshGhost();
+            });
+        }
+        var ghostAspect = $('ghost-aspect');
+        if (ghostAspect) {
+            ghostAspect.addEventListener('change', function () { ghost.aspect = ghostAspect.checked; });
+        }
+
+        /** 参考图数值框：改动即写回模型并重绘；输入非法值就回填当前值 */
+        function bindGhostNumber(id, apply) {
+            var el = $(id);
+            if (!el) return;
+            el.addEventListener('change', function () {
+                if (!ghostReady()) { syncGhostFields(); return; }
+                var v = parseFloat(el.value);
+                if (isFinite(v)) apply(v);
+                refreshGhost();
+            });
+        }
+        bindGhostNumber('ghost-x', function (v) { ghost.x = round2(v); });
+        bindGhostNumber('ghost-y', function (v) { ghost.y = round2(v); });
+        bindGhostNumber('ghost-w', function (v) {
+            var nw = Math.max(GHOST_MIN_SIZE, round2(v));
+            if (ghost.aspect && ghost.w > 0) ghost.h = Math.max(GHOST_MIN_SIZE, round2(ghost.h * (nw / ghost.w)));
+            ghost.w = nw;
+        });
+        bindGhostNumber('ghost-h', function (v) {
+            var nh = Math.max(GHOST_MIN_SIZE, round2(v));
+            if (ghost.aspect && ghost.h > 0) ghost.w = Math.max(GHOST_MIN_SIZE, round2(ghost.w * (nh / ghost.h)));
+            ghost.h = nh;
+        });
+        bindGhostNumber('ghost-rotate', function (v) {
+            var deg = v;
+            while (deg > 180) deg -= 360;
+            while (deg <= -180) deg += 360;
+            ghost.rotate = round2(deg);
+        });
+
+        var ghostRotateRange = $('ghost-rotate-range');
+        if (ghostRotateRange) {
+            ghostRotateRange.addEventListener('input', function () {
+                if (!ghostReady()) return;
+                ghost.rotate = round2(parseInt(ghostRotateRange.value, 10) || 0);
+                refreshGhost();
+            });
+        }
+        var ghostOpacity = $('ghost-opacity');
+        if (ghostOpacity) {
+            ghostOpacity.addEventListener('input', function () {
+                ghost.opacity = clamp((parseInt(ghostOpacity.value, 10) || 40) / 100, 0.05, 1);
+                var label = $('ghost-opacity-value');
+                if (label) label.textContent = Math.round(ghost.opacity * 100) + '%';
+                renderGhost();
+            });
+        }
+        var ghostFitContain = $('btn-ghost-fit-contain');
+        if (ghostFitContain) ghostFitContain.addEventListener('click', function () { applyGhostFit('contain'); });
+        var ghostFitCover = $('btn-ghost-fit-cover');
+        if (ghostFitCover) ghostFitCover.addEventListener('click', function () { applyGhostFit('cover'); });
+        var ghostRemove = $('btn-ghost-remove');
+        if (ghostRemove) ghostRemove.addEventListener('click', removeGhost);
+
+        // 把图片直接拖到画布上也能当参考图
+        var canvasHost = $('stage-canvas');
+        if (canvasHost) {
+            canvasHost.addEventListener('dragover', function (ev) {
+                if (!ev.dataTransfer) return;
+                ev.preventDefault();        // 不阻止默认行为的话，浏览器会直接把这张图打开
+                ev.dataTransfer.dropEffect = 'copy';
+                canvasHost.classList.add('drop-active');
+            });
+            canvasHost.addEventListener('dragleave', function () {
+                canvasHost.classList.remove('drop-active');
+            });
+            canvasHost.addEventListener('drop', function (ev) {
+                ev.preventDefault();
+                canvasHost.classList.remove('drop-active');
+                var dt = ev.dataTransfer;
+                var dropped = dt && dt.files && dt.files[0];
+                var item = dt && dt.items && dt.items[0];
+                // 能在投放事件里拿到文件句柄就优先用它（刷新后可按源文件重新读取）；
+                // 拿不到（Firefox 等）再退回 Blob 副本。注意 getAsFileSystemHandle 必须在事件内同步调用。
+                if (GHOST_HANDLE_SUPPORTED && item && typeof item.getAsFileSystemHandle === 'function') {
+                    item.getAsFileSystemHandle().then(function (handle) {
+                        if (!handle || handle.kind !== 'file') {
+                            if (dropped) loadGhostFile(dropped);
+                            return;
+                        }
+                        var meta = ghost.pendingMeta || null;
+                        applyHandleFile(handle, meta, false).then(function (done) {
+                            if (done) {
+                                ghost.pendingMeta = null;
+                                toast('已载入参考图：' + (handle.name || '') +
+                                    '（已记住源文件位置，刷新后自动重新读取；不参与导出）');
+                            } else if (dropped) {
+                                loadGhostFile(dropped);
+                            }
+                        });
+                    }).catch(function () { if (dropped) loadGhostFile(dropped); });
+                    return;
+                }
+                if (dropped) loadGhostFile(dropped);
+            });
+        }
+
+        // 参考图面板初始状态：没有图时各控件统一禁用
+        syncGhostFields();
+        updateGhostHint();
 
         // 网格
         $('chk-snap').addEventListener('change', function () {
@@ -10595,6 +11529,9 @@
             $('stage-empty').hidden = true;      // 载入期间不闪空状态，失败时由 seedDemoProject 兜底
             loadSampleProject({ silent: !demoRequested });
         }
+
+        // 参考图：与工程自动暂存完全独立的一条本地缓存，恢复它不会标记「有未导出改动」
+        restoreGhostFromStore();
 
         // 自动暂存
         setInterval(function () { if (project) saveToLocal(false); }, 20000);
