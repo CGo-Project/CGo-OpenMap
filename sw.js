@@ -397,6 +397,8 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/modules/fuzhou_timetable.js',
     './city/fuzhou/modules/fuzhou_site_space.js',
     './city/fuzhou/modules/fuzhou_cultural.js',
+    './city/fuzhou/modules/fuzhou_airport.js',
+    './city/fuzhou/modules/fuzhou_railway.js',
     './city/fuzhou/stacard/script.js',
     './city/fuzhou/data_stations.js',
     './city/fuzhou/data_lines.js',
