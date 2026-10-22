@@ -21,10 +21,14 @@
  * 1. 当制作了新城市（如 `shanghai`）或新增静态资源时，请在下方 `ASSETS_TO_CACHE` 中补充对应资源路径；
  * 2. ⚠️ 务必更新 Service Worker：修改任何业务数据或代码后，必须同步递增 `CACHE_NAME` 版本号，否则更改可能无法生效！
  *    若在调试开发过程中遇到“怎么修改代码都不起作用、刷新无反应”的情况，请务必优先排查是否是 Service Worker 强缓存导致。
+ * 3. 🚨 缓存版本与静态资源版本格式铁律（严禁省略或格式不匹配）：
+ *    `CACHE_NAME` 中的版本号（'cgo-openmap-v{yymmdd.hhmmss}'）以及全站 HTML/JS/CSS 引用的所有 `?v={yymmdd.hhmmss}`，
+ *    格式必须严格为 `yymmdd.hhmmss`，共 12 位纯数字（前 6 位年月日，后 6 位时分秒，如 `261022.223300`）。
+ *    严禁省略秒数（如 4 位时分）、严禁非标准位数或格式不匹配，必须全站绝对一致！
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261022.2104';
+const CACHE_NAME = 'cgo-openmap-v261022.223300';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
