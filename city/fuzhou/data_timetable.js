@@ -494,7 +494,7 @@ const GLOBAL_SCHEDULE_DATA = {
             }
         }
     },
-    "M3": {
+    "M4": {
         "M401": {
             cn: "半洲",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=4号线&stationName=半洲",
@@ -726,8 +726,8 @@ const GLOBAL_SCHEDULE_DATA = {
             }
         }
     },
-    "M4": {
-        "M401_2": {
+    "M5": {
+        "M501": {
             cn: "荆溪厚屿",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=荆溪厚屿",
             source: "福州地铁官网「站点查询」",
@@ -737,7 +737,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:48", last: "次日00:25" }
             }
         },
-        "M402_2": {
+        "M502": {
             cn: "农林大学",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=农林大学",
             source: "福州地铁官网「站点查询」",
@@ -757,7 +757,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:42", last: "次日00:18" }
             }
         },
-        "M404_2": {
+        "M504": {
             cn: "阵坂",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=阵坂",
             source: "福州地铁官网「站点查询」",
@@ -767,7 +767,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:39", last: "次日00:16" }
             }
         },
-        "M405_2": {
+        "M505": {
             cn: "马榕",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=马榕",
             source: "福州地铁官网「站点查询」",
@@ -787,7 +787,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:34", last: "次日00:10" }
             }
         },
-        "M407_2": {
+        "M507": {
             cn: "凤岗里",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=凤岗里",
             source: "福州地铁官网「站点查询」",
@@ -797,7 +797,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:32", last: "次日00:07" }
             }
         },
-        "M408": {
+        "M508": {
             cn: "浦上大道",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=浦上大道",
             source: "福州地铁官网「站点查询」",
@@ -807,7 +807,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:30", last: "次日00:05" }
             }
         },
-        "M409_2": {
+        "M509": {
             cn: "霞镜",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=霞镜",
             source: "福州地铁官网「站点查询」",
@@ -817,7 +817,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:28", last: "次日00:02" }
             }
         },
-        "M410_2": {
+        "M510": {
             cn: "东岭",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=东岭",
             source: "福州地铁官网「站点查询」",
@@ -827,7 +827,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:25", last: "23:59" }
             }
         },
-        "M411_2": {
+        "M511": {
             cn: "台屿",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=台屿",
             source: "福州地铁官网「站点查询」",
@@ -837,7 +837,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:23", last: "23:57" }
             }
         },
-        "M412_2": {
+        "M512": {
             cn: "盘屿",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=盘屿",
             source: "福州地铁官网「站点查询」",
@@ -847,7 +847,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:21", last: "23:54" }
             }
         },
-        "M413_2": {
+        "M513": {
             cn: "吴山",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=吴山",
             source: "福州地铁官网「站点查询」",
@@ -857,7 +857,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:18", last: "23:51" }
             }
         },
-        "M414_2": {
+        "M514": {
             cn: "盖山竹榄",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=盖山竹榄",
             source: "福州地铁官网「站点查询」",
@@ -867,7 +867,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:16", last: "23:49" }
             }
         },
-        "M415": {
+        "M515": {
             cn: "义序",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=义序",
             source: "福州地铁官网「站点查询」",
@@ -887,7 +887,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:11", last: "23:44" }
             }
         },
-        "M417_2": {
+        "M517": {
             cn: "螺洲古镇",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=螺洲古镇",
             source: "福州地铁官网「站点查询」",
@@ -897,7 +897,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:09", last: "23:41" }
             }
         },
-        "M418_2": {
+        "M518": {
             cn: "前锦",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=前锦",
             source: "福州地铁官网「站点查询」",
@@ -907,7 +907,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "荆溪厚屿": { first: "06:06", last: "23:38" }
             }
         },
-        "M419_2": {
+        "M519": {
             cn: "龙江",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=5号线&stationName=龙江",
             source: "福州地铁官网「站点查询」",
@@ -928,8 +928,8 @@ const GLOBAL_SCHEDULE_DATA = {
             }
         }
     },
-    "M5": {
-        "M516": {
+    "M6": {
+        "M601": {
             cn: "万寿",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=万寿",
             source: "福州地铁官网「站点查询」",
@@ -939,7 +939,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:00", last: "22:30" }
             }
         },
-        "M514": {
+        "M603": {
             cn: "下吴",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=下吴",
             source: "福州地铁官网「站点查询」",
@@ -949,7 +949,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:04", last: "22:34" }
             }
         },
-        "M512": {
+        "M605": {
             cn: "沙京",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=沙京",
             source: "福州地铁官网「站点查询」",
@@ -959,7 +959,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:09", last: "22:39" }
             }
         },
-        "M511": {
+        "M606": {
             cn: "鹤上",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=鹤上",
             source: "福州地铁官网「站点查询」",
@@ -969,7 +969,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:11", last: "22:41" }
             }
         },
-        "M510": {
+        "M607": {
             cn: "吴航",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=吴航",
             source: "福州地铁官网「站点查询」",
@@ -979,7 +979,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:14", last: "22:44" }
             }
         },
-        "M509": {
+        "M608": {
             cn: "十洋",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=十洋",
             source: "福州地铁官网「站点查询」",
@@ -989,7 +989,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:16", last: "22:46" }
             }
         },
-        "M508": {
+        "M609": {
             cn: "郑和",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=郑和",
             source: "福州地铁官网「站点查询」",
@@ -999,7 +999,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:18", last: "22:48" }
             }
         },
-        "M507": {
+        "M610": {
             cn: "航城",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=航城",
             source: "福州地铁官网「站点查询」",
@@ -1009,7 +1009,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:21", last: "22:51" }
             }
         },
-        "M506": {
+        "M611": {
             cn: "营前",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=营前",
             source: "福州地铁官网「站点查询」",
@@ -1039,7 +1039,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:34", last: "23:04" }
             }
         },
-        "M503": {
+        "M614": {
             cn: "樟岚",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=樟岚",
             source: "福州地铁官网「站点查询」",
@@ -1059,7 +1059,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "潘墩": { first: "06:40", last: "23:10" }
             }
         },
-        "M501": {
+        "M616": {
             cn: "潘墩",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=6号线&stationName=潘墩",
             source: "福州地铁官网「站点查询」",
@@ -1070,8 +1070,8 @@ const GLOBAL_SCHEDULE_DATA = {
             }
         }
     },
-    "M6": {
-        "M615": {
+    "BE": {
+        "BE01": {
             cn: "文岭",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=文岭",
             source: "福州地铁官网「站点查询」",
@@ -1085,7 +1085,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "福州火车站": { text: "第一列(大站) 05:55" }
             }
         },
-        "M614": {
+        "BE02": {
             cn: "机场",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=机场",
             source: "福州地铁官网「站点查询」",
@@ -1099,7 +1099,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "福州火车站": { text: "第一列(大站) 06:00" }
             }
         },
-        "M613": {
+        "BE03": {
             cn: "滨海中央商务区",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=滨海中央商务区",
             source: "福州地铁官网「站点查询」",
@@ -1109,7 +1109,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "福州火车站": { first: "06:10", last: "22:40", text: "第二列(普通) 06:10 | 末班车(普通) 22:40" }
             }
         },
-        "M612": {
+        "BE04": {
             cn: "大数据",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=大数据",
             source: "福州地铁官网「站点查询」",
@@ -1123,7 +1123,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "福州火车站": { text: "第一列(大站) 06:07" }
             }
         },
-        "M609": {
+        "BE06": {
             cn: "首占",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=首占",
             source: "福州地铁官网「站点查询」",
@@ -1133,7 +1133,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "福州火车站": { first: "06:21", last: "22:51", text: "第二列(普通) 06:21 | 末班车(普通) 22:51" }
             }
         },
-        "M608": {
+        "BE07": {
             cn: "祥谦",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=祥谦",
             source: "福州地铁官网「站点查询」",
@@ -1157,7 +1157,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "福州火车站": { text: "第一列(大站) 06:25" }
             }
         },
-        "M605": {
+        "BE09": {
             cn: "三叉街（滨海快线）",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=三叉街（滨海快线）",
             source: "福州地铁官网「站点查询」",
@@ -1171,7 +1171,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "福州火车站": { text: "第一列(大站) 06:29" }
             }
         },
-        "M604": {
+        "BE10": {
             cn: "南公园",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=南公园",
             source: "福州地铁官网「站点查询」",
@@ -1181,7 +1181,7 @@ const GLOBAL_SCHEDULE_DATA = {
                 "福州火车站": { first: "06:41", last: "23:11", text: "第二列(普通) 06:41 | 末班车(普通) 23:11" }
             }
         },
-        "M603": {
+        "BE11": {
             cn: "闽都",
             url: "https://www.fzmtr.com/services/siteQuery?lineName=滨海快线&stationName=闽都",
             source: "福州地铁官网「站点查询」",
@@ -1237,22 +1237,22 @@ const FUZHOU_LINE_INTERVALS = {
         offPeak: "平峰时段(工作日 6:30-7:00、9:00-17:00、19:00-22:00，休息日 6:30-22:00扣除高峰期)：行车间隔约 6分50秒 / 班",
         lowPeak: "低峰期(工作日及休息日 22:00-23:00)：行车间隔约 10分钟 / 班"
     },
-    "M3": {
+    "M4": {
         peak: "高峰时段(工作日 7:00-9:00、17:00-19:00，休息日 17:00-19:00)：行车间隔约 5分30秒 / 班",
         offPeak: "平峰时段(工作日 6:30-7:00、9:00-17:00、19:00-22:00，休息日 6:30-22:00扣除高峰期)：行车间隔约 6分50秒 / 班",
         lowPeak: "低峰时段(工作日及休息日 22:00-23:00)：行车间隔约 10分钟 / 班"
     },
-    "M4": {
+    "M5": {
         peak: "高峰时段(工作日 7:00-9:00、17:00-19:00)：行车间隔约 6分50秒 / 班",
         offPeak: "平峰时段(工作日 6:30-7:00、9:00-17:00、19:00-22:00，休息日 6:30-22:00)：行车间隔约 7分50秒 / 班",
         lowPeak: "低峰时段(工作日及休息日 22:00-23:00)：行车间隔约 10分钟 / 班"
     },
-    "M5": {
+    "M6": {
         peak: "高峰时段(工作日 7:00-9:00、17:00-19:00)：行车间隔约 7分50秒 / 班",
         offPeak: "平峰时段(工作日 6:30-7:00、9:00-17:00、19:00-22:00，休息日 6:30-22:00)：行车间隔约 9分20秒 / 班",
         lowPeak: "低峰时段(工作日及休息日 22:00-23:00，6号线部分至22:30)：行车间隔约 10分钟 / 班"
     },
-    "M6": {
+    "BE": {
         peak: "大站快车(每日 7:00-22:00)：行车间隔约 60分钟 / 班（中间仅停靠东门、三叉街（滨海快线）、帝封江、大数据、机场共5个站）",
         offPeak: "普通列车(全天运营时段)：行车间隔最小 7分30秒 / 班",
         lowPeak: ""

@@ -87,9 +87,9 @@ OSM 缺站台节点的车站改用高德 GCJ-02 站坐标转 WGS-84 后投影到
 | 帝封江 | 4 号线 ⇄ 5 号线 | 同台换乘 | **4 号线往帝封江（终点下客）⇄ 5 号线往荆溪厚屿：1 分钟**；其余方向 2 分钟 |
 | 帝封江 | 4 / 5 号线 ⇄ 滨海快线 | 通道换乘 | 4 分钟 |
 
-> **同台换乘用 `sameDir` 显式点明方向对**（键形如 `"M1+M5-"`：线路 ID + `+`/`−`，
+> **同台换乘用 `sameDir` 显式点明方向对**（键形如 `"M1+M6-"`：线路 ID + `+`/`−`，
 > `+` 表示沿该线 `stationIds` 递增行驶）。之所以不靠几何判定：站台实际布置以现场为准，
-> 实测中帝封江的**几何同向对（M3−/M4+）与现场站台（M3−/M4−）并不一致**，
+> 实测中帝封江的**几何同向对（M4−/M5+）与现场站台（M4−/M5−）并不一致**，
 > 故共享层的几何判定只作兜底（`sameDirMinutes`），有 `sameDir` 时以它为准。
 > 梁厝的几何判定与现场一致，两者互为印证。
 >
@@ -124,20 +124,22 @@ OSM 缺站台节点的车站改用高德 GCJ-02 站坐标转 WGS-84 后投影到
 
 ## 车站信息板模块
 
-`modules/` 下三个模块的实际挂载状态如下（`fuzhou.js` 通过 `document.write` 同步引入，
+`modules/` 下五个模块的实际挂载状态如下（`fuzhou.js` 通过 `document.write` 同步引入，
 与青岛 / 北京做法一致）：
 
 | 模块 | 状态 | 说明 |
 | :--- | :--- | :--- |
 | `fuzhou_timetable.js` | **已挂载** | 首末班车，`stationBoard.modules` 中为 `fuzhou-line-timetable`，挂「线路」页签 |
 | `fuzhou_site_space.js` | **已挂载** | 车站空间示意图与出入口，`fuzhou-station-space`，挂「车站信息」页签。点示意图在**本页浮层**里看大图（`<cgo-modal>`，宽度上限 `min(1560px, 94vw)` 随分辨率变化，图片 `max-height:84vh` + `object-fit:contain`），点浮层以外的遮罩或按 Esc 退出；浮层里另有「官网原图」外链备用 |
-| `fuzhou_cultural.js` | ⚠️ **未挂载** | 代码完整（`window.StationBoard.registerModule({ id: "fuzhou-cultural-tip" })`，自带 DOMContentLoaded 自注册），且已登记进 `sw.js` 的预缓存清单，但 **`fuzhou.js` 的加载列表与 `stationBoard.modules` 配置里都没有它**，因此这个「福州文化名胜指引」卡片当前不会出现在页面上 |
+| `fuzhou_cultural.js` | **已挂载** | 文化名胜指引，`fuzhou-cultural-tip`，挂「车站信息」页签、`order` 14。**只给有 A 级景区或大型公园的车站出卡片**（判定依据是 `data_attractions.js` 的 `tier` 字段），不给每座车站硬加指引；点景点即前往服务它的车站 |
+| `fuzhou_airport.js` | **已挂载** | 机场联络，`fuzhou-airport-tip`，挂「车站信息」页签、`order` 16。**只挂机场站（BE02）**，说明两座航站楼到出发大厅的步行距离与时间（T1 约 500m/6 分、T2 约 700m/9 分），以及两座航站楼分别办理哪些航司与航班 |
+| `fuzhou_railway.js` | **已挂载** | 国铁联络，`fuzhou-railway-tip`，挂「车站信息」页签、`order` 17。**只挂与国铁直接接驳的三站**：福州火车站（M104）→ 国铁**福州站**、福州火车南站（M121）→ 国铁**福州南站**、首占（BE06）→ 国铁**长乐站**。地铁站名与国铁站名并不一致（福州火车站 ≠ 福州站），卡片把两套名称对上，并给出 12306 余票查询入口（口径同北京 `getRailway12306Url`，本项目只作跳转、不提供票务） |
 
-> 补齐方式（两处都要改，缺一不可，与其它城市模块一致）：
-> ① 在 `fuzhou.js` 的 `stationBoard.scripts` 数组里加入 `"modules/fuzhou_cultural.js"`；
-> ② 在 `stationBoard.modules` 里加入
-> `"fuzhou-cultural-tip": { enabled: true, order: 15, targetTab: "station-info" }`。
-> 改完请跑 `tools/fuzhou_check.js` 并递增 `sw.js` 的 `CACHE_NAME`。
+> 城市专属模块要同时在**三处**登记，任一处漏了都会静默失效：
+> ① `fuzhou.js` 的 `stationBoard.scripts`（不然不会被加载）；
+> ② 同文件的 `stationBoard.modules`（不然注册了也不渲染）；
+> ③ `sw.js` 的 `ASSETS_TO_CACHE`（不然离线时取不到）。
+> `tools/fuzhou_check.js` 的 ⑩ 节会把这三处对齐检查一遍，改完请跑它并递增 `sw.js` 的 `CACHE_NAME`。
 
 ## 自检
 
