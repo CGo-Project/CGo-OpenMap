@@ -517,6 +517,26 @@ body.editor-body {
     white-space: nowrap;
 }
 
+/* 未保存 / 未导出改动的提醒（stage-coord 的 margin-left:auto 会把它与右侧按钮一起推过去）。
+   带 icon 的胶囊，配色沿用主题的 warning 语义变量。 */
+.stage-unsaved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full, 9999px);
+    border: 1px solid var(--warning-border, rgba(255, 238, 186, 0.5));
+    background: var(--warning-bg, rgba(255, 243, 205, 0.5));
+    color: var(--warning-color, #f59e0b);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* 作者样式里的 display 会盖掉 hidden 属性的 UA 规则，必须显式让位 */
+.stage-unsaved[hidden] {
+    display: none;
+}
+
 .stage-coord {
     margin-left: auto;
     font-variant-numeric: tabular-nums;
@@ -571,6 +591,59 @@ body.editor-body {
     width: 100%;
     height: 100%;
     user-select: none;
+}
+
+/* ------------------------------------------------------------------
+   参考底图（描图参照）：垫在 #view-layer 最底层的半透明位图
+   ------------------------------------------------------------------
+   必须 pointer-events:none —— 否则这张图会吃掉指针事件，
+   导致它盖住的地方既选不中节点、也拖不动画布。 */
+.ghost-layer {
+    pointer-events: none;
+}
+
+.ghost-image {
+    image-rendering: auto;
+}
+
+/* 拖拽图片到画布上时的高亮提示 */
+.stage-canvas.drop-active::after {
+    content: '松开即可作为参考底图铺在最底层';
+    position: absolute;
+    inset: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--primary-color, #006098);
+    border-radius: var(--radius-sm, 6px);
+    background: rgba(0, 96, 152, 0.08);
+    color: var(--primary-color, #006098);
+    font-size: 13px;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 6;
+}
+
+/* 参考图面板里的透明度 / 旋转滑杆与读数 */
+#ghost-opacity,
+#ghost-rotate-range {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--primary-color, #006098);
+}
+
+/* 参考图编辑模式：画布光标提示「当前在调参考图，不是在画线」 */
+.stage-canvas.ghost-editing,
+.stage-canvas.ghost-editing.mode-select {
+    cursor: move;
+}
+
+.ghost-opacity-value {
+    min-width: 34px;
+    color: var(--text-light, #636f75);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
 }
 
 /* 画布上的空状态卡片 */

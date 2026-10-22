@@ -19,8 +19,7 @@
     <!-- 移植说明：制作新城市时，可在 city/data.js 中配置城市标题与描述，也会动态更新此处 -->
     <!-- ========================================================================== -->
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <meta name="description" content="CGo OpenMap 是一款现代轻量、高度可扩展的开源城市轨道交通交互线路图引擎，支持快速制作和部署各城市地铁线路图。">
     <meta name="keywords" content="CGo OpenMap, 线路图开放平台, 开源地铁图, 城市轨道交通, 地铁线路图, 轨道交通">
@@ -50,12 +49,12 @@
     <!-- style.css: 地图引擎核心样式、图层布局、动画与手势响应                          -->
     <!-- ========================================================================== -->
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261022.2104">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261022.2104">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261022.2104">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261022.2104">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261022.2104">
-    <link rel="stylesheet" href="css/style.css?v=261022.2104">
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261022.215841">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261022.1300">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261022.1300">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261022.215841">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261022.1300">
+    <link rel="stylesheet" href="css/style.css?v=261022.1300">
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -156,7 +155,7 @@
                     <span>城市列表</span>
                 </a>
                 <a href="https://centralgo.site/" class="btn btn-info" title="Central Go 首页">
-                    <cgo-icon name="home"></cgo-icon>
+                    <cgo-icon name="cgo"></cgo-icon>
                     <span>Central Go</span>
                 </a>
             </div>
@@ -198,7 +197,8 @@
             <div class="header-right">
                 <!-- 更多：选项下拉菜单 -->
                 <div class="dropdown options-dropdown">
-                    <button id="options-btn" class="btn btn-info dropbtn" title="更多" aria-haspopup="true" aria-expanded="false">
+                    <button id="options-btn" class="btn btn-info dropbtn" title="更多" aria-haspopup="true"
+                        aria-expanded="false">
                         <cgo-icon name="menu"></cgo-icon>
                         <span>更多</span>
                     </button>
@@ -263,8 +263,7 @@
 
         <!-- 地图平移缩放主容器 -->
         <!-- role="application"：方向键 / WASD 平移、+ - 缩放由引擎接管；车站的键盘入口是搜索与线路列表 -->
-        <div id="map-container" role="application" tabindex="0"
-            aria-label="轨道交通线路图。方向键平移，加号减号缩放；选择车站请使用搜索或线路列表">
+        <div id="map-container" role="application" tabindex="0" aria-label="轨道交通线路图。方向键平移，加号减号缩放；选择车站请使用搜索或线路列表">
             <div id="map-content">
                 <div id="scattered-layer" aria-hidden="true"></div>
                 <svg id="lines-layer" aria-hidden="true"></svg>
@@ -311,7 +310,7 @@
     <!--    - data_timetable.js: 首末班车时刻                                         -->
     <!--    - data_notopen.js: 在建线路虚线                                            -->
     <!-- 3. 核心引擎 (core/script.js) 读取上述数据并统一渲染                           -->
-    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js?v=261022.2104) -->
+    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js?v=261022.215841) -->
     <!-- ========================================================================== -->
     <!-- 折线倒角几何算法 (引擎与 Drunk 编辑模式共用，必须早于 core/script.js) -->
     <script src="core/path-geometry.js?v=261022.2104"></script>
@@ -381,7 +380,7 @@
         })();
     </script>
     <!-- CGoUI Web Components 基础组件库 -->
-    <script type="module" src="core/cgo-ui.js?v=261022.2104"></script>
+    <script type="module" src="core/cgo-ui.js?v=261022.215841"></script>
     <script>
         // 图片加载完毕后添加 loaded 类，配合 CSS 实现平滑淡入
         document.addEventListener('DOMContentLoaded', function () {

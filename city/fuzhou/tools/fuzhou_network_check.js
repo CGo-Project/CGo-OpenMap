@@ -56,8 +56,8 @@ sandbox.CGoRouteData = {
         .filter((e) => e[2])
         .map(([period, label, time]) => ({ dest, period, label, time }))
 };
-run(readShared("route-data.js"), "route-data.js");
-run(readShared("route-planner.js"), "route-planner.js");
+run(readShared("route/route-data.js"), "route-data.js");
+run(readShared("route/route-planner.js"), "route-planner.js");
 run(readCity("fuzhou.js"), "fuzhou.js");
 
 const nameOf = (sid) => sandbox.stationsData[sid]?.cn || sid;
@@ -157,9 +157,9 @@ const fail = (msg) => { problems += 1; process.stdout.write(`  ✗ ${msg}\n`); }
     process.stdout.write("\n④ 抽样实算（确认换乘方式与用时进了结果步骤）\n");
     const planner = sandbox.CGoRoutePlanner.create(network);
     const samples = [
-        ["M101", "M516", "象峰 → 万寿（1 号线 → … → 6 号线）"],
+        ["M101", "M601", "象峰 → 万寿（1 号线 → … → 6 号线）"],
         ["M403", "M221", "洪塘 → 鼓山（4 号线 → 5 号线 → 2 号线）"],
-        ["M104", "M615", "福州火车站 → 文岭（滨海快线直乘）"]
+        ["M104", "BE01", "福州火车站 → 文岭（滨海快线直乘）"]
     ];
     samples.forEach(([a, b, label]) => {
         const r = planner.plan(a, b, "time");
@@ -179,7 +179,7 @@ const fail = (msg) => { problems += 1; process.stdout.write(`  ✗ ${msg}\n`); }
     // 这里只做源码级守门：确认说明与「有换乘才显示」的判定都还在，
     // 免得日后重构把它连判定一起删掉而无人察觉。
     process.stdout.write("\n⑤ 换乘时间说明（结果面板）\n");
-    const panelSrc = readShared("route-panel.js");
+    const panelSrc = readShared("route/route-panel.js");
     const gateOk = /route\.steps\.some\(\(s\) => s\.t === "xfer" && !s\.through\)/.test(panelSrc);
     const noteOk = panelSrc.includes("换乘时间因步行速度和车站人流量不同，仅供参考");
     const noteClassOk = panelSrc.includes('class="cgo-rt-leg note"');
@@ -195,7 +195,7 @@ const fail = (msg) => { problems += 1; process.stdout.write(`  ✗ ${msg}\n`); }
     // 需求：所有城市都不再计算「距离最短」方案。该目标已从内核 OBJECTIVES 移除，
     // 故候选里不可能出现该标签；这条断言防止它被重新加回来。
     const labelSeen = new Set();
-    [["M101", "M516"], ["M403", "M221"], ["M104", "M615"], ["M101", "M125"]].forEach(([a, b]) => {
+    [["M101", "M601"], ["M403", "M221"], ["M104", "BE01"], ["M101", "M125"]].forEach(([a, b]) => {
         (planner.planAll(a, b) || []).forEach((r) => (r.labels || []).forEach((l) => labelSeen.add(l)));
     });
     const distanceLeaked = [...labelSeen].some((l) => l.includes("距离最短"));

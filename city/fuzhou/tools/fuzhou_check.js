@@ -232,9 +232,9 @@ const OFFICIAL = {
     newMeters: 47850,
     totalMeters: 61760,
 };
-const binhai = linesData.find((line) => line.id === "M6");
+const binhai = linesData.find((line) => line.id === "BE");
 if (!binhai) {
-    check("滨海快线（M6）存在", false, "未找到 M6");
+    check("滨海快线（BE）存在", false, "未找到 BE");
 } else {
     const ids = binhai.stationIds;
     const split = ids.indexOf("M423");                 // 帝封江
@@ -246,7 +246,7 @@ if (!binhai) {
         cum.set(ids[i], cumulative);
         if (i < binhai.distances.length) cumulative += binhai.distances[i];
     }
-    // M6 站序自文岭端（索引 0）起算、帝封江在索引 split、福州火车站为末站：
+    // BE 站序自文岭端（索引 0）起算、帝封江在索引 split、福州火车站为末站：
     // distances[i] 是 ids[i] → ids[i+1] 的跳距，故
     //   新区段（帝封江 — 文岭）  = distances[0 .. split-1]
     //   主城区段（帝封江 — 福州火车站）= distances[split .. 末]
@@ -310,8 +310,8 @@ if (!officialFare || !Object.keys(officialFare).length) {
 
     // 票价规则必须命中官方表；查不到的组合必须返回 null（不猜不估）
     const probes = [
-        ["M113", "M605"], ["M111", "M605"], ["M104", "M614"],
-        ["M423", "M608"], ["M101", "M125"], ["M101", "M202"]
+        ["M113", "BE09"], ["M111", "BE09"], ["M104", "BE02"],
+        ["M423", "BE07"], ["M101", "M125"], ["M101", "M202"]
     ];
     const fareFn = config.fare?.metro;
     let missHit = 0;
@@ -336,9 +336,9 @@ if (!officialFare || !Object.keys(officialFare).length) {
     // 查不到的组合必须返回 null（不猜不估）：未开通站、同站进出
     const nullCases = [
         ["M101", "M101", "同站进出"],
-        ["M611", "M615", "起点为未开通站（滨海西）"],
-        ["M513", "M501", "起点为未开通站（莲花）"],
-        ["M501", "M515", "终点为未开通站（壶井）"]
+        ["BE05", "BE01", "起点为未开通站（滨海西）"],
+        ["M604", "M616", "起点为未开通站（莲花）"],
+        ["M616", "M602", "终点为未开通站（壶井）"]
     ];
     const badNull = nullCases.filter(([a, b]) => {
         const got = fareFn(0, { entry: a, exit: b, stops: [] });
@@ -414,14 +414,26 @@ section("⑦ 站内换乘方式与用时（transferAt）");
             notInterchange.map((sid) => `${sid}(${stationsData[sid]?.cn})`).join(", "));
 
         // 取值合法
+        // 注意：**顶层 minutes 不是必需的** —— 只提供 pairs 的站（每条线对自己带
+        // 方式与用时，顶层不再给默认值）应当放行，如帝封江。
         const badValue = [];
         keys.forEach((sid) => {
             const entry = table[sid];
             const specs = [entry, ...Object.values(entry.pairs || {})];
             specs.forEach((sp, i) => {
+                if (i === 0 && sp?.minutes === undefined) return;   // 顶层可缺省
                 const m = sp?.minutes;
                 if (!Number.isFinite(m) || m <= 0 || m > 30) {
                     badValue.push(`${stationsData[sid]?.cn}${i ? "(pairs)" : ""}=${m}`);
+                }
+                // pairs 里的 sameDir 若给了对象，其 minutes 也必须合法
+                if (sp?.sameDir && typeof sp.sameDir === "object") {
+                    Object.entries(sp.sameDir).forEach(([k, v]) => {
+                        const sm = typeof v === "object" && v !== null ? v.minutes : v;
+                        if (!Number.isFinite(Number(sm)) || Number(sm) <= 0 || Number(sm) > 30) {
+                            badValue.push(`${stationsData[sid]?.cn} sameDir[${k}]=${sm}`);
+                        }
+                    });
                 }
                 if (sp?.sameDirMinutes !== undefined
                     && (!Number.isFinite(sp.sameDirMinutes) || sp.sameDirMinutes <= 0 || sp.sameDirMinutes > 30)) {
@@ -465,23 +477,63 @@ section("⑦ 站内换乘方式与用时（transferAt）");
                 check(`${label} 的 sameDir 含正反两种写法`,
                     wantKeys.every((k) => keys.includes(k)),
                     `期望含 ${wantKeys.join("、")}，实际 ${keys.join("、")}`);
-                const badVal = keys.filter((k) => sameDir[k] !== 1);
+                const badVal = keys.filter((k) => {
+                    const v = sameDir[k];
+                    const m = typeof v === "object" && v !== null ? Number(v.minutes) : Number(v);
+                    return m !== 1;
+                });
                 check(`${label} 同台方向对用时为 1 分钟`, badVal.length === 0,
-                    badVal.map((k) => `${k}=${sameDir[k]}`).join("、"));
+                    badVal.map((k) => `${k}=${JSON.stringify(sameDir[k])}`).join("、"));
                 const badFmt = keys.filter((k) => !/^[A-Za-z0-9_]+[+-][A-Za-z0-9_]+[+-]$/.test(k));
                 check(`${label} 的 sameDir 键格式为 线+dir线+dir`, badFmt.length === 0,
                     badFmt.join("、"));
             }
         };
-        checkSameDir("M123", "梁厝", ["M1+M5-", "M1-M5+"]);
-        checkSameDir("M423", "帝封江", ["M3-M4-", "M4-M3-"]);
+        checkSameDir("M123", "梁厝", ["M1+M6-", "M1-M6+"]);
 
+        /**
+         * 帝封江单列核对 —— 这是全网唯一「同一线对按方向分成不同换乘方式」的站，
+         * 且 4 号线以本站为终点（到站下客），方向语义容易写反。故不走 checkSameDir
+         * 的通用形态，改为**按用户核定的现场规则逐条断言**。
+         *
+         * 方向按各线 stationIds 顺序编码（dir 沿站序递增为 +、递减为 -）：
+         *   · 4 号线：半洲(M401) 索引 0、帝封江(M423) 索引 22（终点）
+         *   · 5 号线：荆溪厚屿(M501) 索引 0、帝封江索引 15、福州火车南站(M121) 索引 19
+         * 故「4 号线往帝封江」= M4+（驶向末站，到站下客）、「5 号线往荆溪厚屿」= M5-、
+         * 「5 号线往福州火车南站」= M5+、「4 号线往半洲」= M4-。
+         */
         if (table.M423) {
             const pairs = table.M423.pairs || {};
-            check("帝封江已声明 4 号线 ⇄ 滨海快线 的换乘方式", Boolean(pairs["M3|M6"]),
-                "缺 M3|M6");
-            check("帝封江已声明 5 号线 ⇄ 滨海快线 的换乘方式", Boolean(pairs["M4|M6"]),
-                "缺 M4|M6");
+            const p45 = pairs["M4|M5"];
+            check("帝封江已声明 4 ⇄ 5 号线的换乘方式（含方向区分）",
+                Boolean(p45) && p45.sameDir && typeof p45.sameDir === "object",
+                `实际 ${JSON.stringify(p45 || null).slice(0, 80)}`);
+            if (p45?.sameDir) {
+                const sd = p45.sameDir;
+                const want = {
+                    // 4 号线往帝封江(到站) → 5 号线往荆溪厚屿：同台
+                    "M4+M5-": 1,
+                    // 5 号线往福州火车南站 → 4 号线往半洲：同台
+                    "M5+M4-": 1
+                };
+                Object.entries(want).forEach(([k, v]) => {
+                    const got = sd[k];
+                    const m = typeof got === "object" && got !== null ? Number(got.minutes) : Number(got);
+                    check(`帝封江 同台对 ${k} 为 ${v} 分钟`, m === v,
+                        got === undefined ? `缺键 ${k}（现有 ${Object.keys(sd).join("、")}）` : `实际 ${m}`);
+                });
+                // 未点明的方向走站厅（pairs 自带的 mode / minutes）
+                check("帝封江 4 ⇄ 5 号线未点明方向为站厅换乘 2 分钟",
+                    p45.mode === "站厅换乘" && Number(p45.minutes) === 2,
+                    `实际 ${p45.mode} ${p45.minutes} 分`);
+            }
+            // 换滨海快线：一律通道 5 分钟。键为字典序（共享层 pairKey 会排序，"M4" > "BE"）
+            ["BE|M4", "BE|M5"].forEach((k) => {
+                const v = pairs[k];
+                check(`帝封江已声明 ${k} 的换乘方式为通道 5 分钟`,
+                    Boolean(v) && v.mode === "通道换乘" && Number(v.minutes) === 5,
+                    v ? `实际 ${v.mode} ${v.minutes} 分` : `缺 ${k}（现有 ${Object.keys(pairs).join("、")}）`);
+            });
         } else {
             check("帝封江（M423）已配置换乘方式", false, "transferAt 缺少 M423");
         }
@@ -489,6 +541,13 @@ section("⑦ 站内换乘方式与用时（transferAt）");
         process.stdout.write(`  已配置 ${keys.length} 个换乘站：`
             + keys.map((sid) => {
                 const e = table[sid];
+                // 只有 pairs、没有顶层 mode/minutes 的站（如帝封江）不打印 undefined，
+                // 改为列出各线对的方式，否则汇总行会出现「undefined undefined分」。
+                if (e.mode === undefined && e.minutes === undefined) {
+                    const detail = Object.entries(e.pairs || {})
+                        .map(([k, v]) => `${k} ${v.mode} ${v.minutes}分`).join("、");
+                    return `${stationsData[sid].cn} 按线对区分（${detail}）`;
+                }
                 const extra = e.pairs ? `（另有 ${Object.keys(e.pairs).length} 组线路对例外）` : "";
                 return `${stationsData[sid].cn} ${e.mode} ${e.minutes}分${extra}`;
             }).join("；") + "\n");
@@ -598,7 +657,12 @@ section("⑧ 文旅景点与水域层枢纽徽标");
     const sea = scattered.filter((i) => i.id.includes("sea"));
     const badges = scattered.filter((i) => i.id.startsWith("fuzhou-railway") || i.id === "fuzhou-airport");
     check("水域底图已配置", sea.length === 1, `实际 ${sea.length} 条`);
-    check("火车站与机场徽标已配置", badges.length === 3, `实际 ${badges.length} 条`);
+    /**
+     * 徽标数量**不写死**：枢纽徽标是持续增补的（长乐站即后加的第 4 枚），
+     * 写死数量会让每次增补都以「断言失败」呈现，掩盖真正该报的问题。
+     * 改为断言「至少覆盖国铁车站与机场」，并单独核对每枚徽标都有登记（见 vHUB）。
+     */
+    check("火车站与机场徽标已配置", badges.length >= 3, `实际 ${badges.length} 条`);
     // 水域层里每个条目都应有素材文件
     const noFile = scattered.filter((i) => !fs.existsSync(path.join(ROOT, String(i.file || "").replace(/^\.\//, ""))));
     check("水域层条目的素材文件都存在", noFile.length === 0,
@@ -609,6 +673,17 @@ section("⑧ 文旅景点与水域层枢纽徽标");
         notSquare.map((i) => `${i.id} ${i.width}×${i.height}`).join("、"));
     const sizes = [...new Set(badges.map((i) => i.width))];
     check("枢纽徽标尺寸一致", sizes.length === 1, `出现 ${sizes.join("、")} 三种尺寸`);
+    /**
+     * 每枚徽标都必须在下方的 HUB 表里登记「贴着哪座车站」——
+     * 新增徽标却忘了登记时，这里会直接报出来（而不是等到位置核对时才暴露，
+     * 更不该像曾经那样在打印阶段抛异常、把整个自检带崩）。
+     */
+    {
+        const knownHubIds = ["fuzhou-railway-main", "fuzhou-railway-south", "fuzhou-airport", "fuzhou-railway-changle"];
+        const unregistered = badges.filter((i) => !knownHubIds.includes(i.id));
+        check("枢纽徽标均已登记对应车站", unregistered.length === 0,
+            `${unregistered.map((i) => i.id).join("、")} 未登记（需加入本文件的 HUB 表）`);
+    }
     // 徽标必须在水域底图之上，否则会被底图盖住
     const seaZ = sea[0]?.zIndex ?? 0;
     const below = badges.filter((i) => !(i.zIndex > seaZ));
@@ -617,11 +692,18 @@ section("⑧ 文旅景点与水域层枢纽徽标");
     /**
      * 徽标应贴着自己标注的枢纽站，且**落在站名的反侧**（不压站名与站点图元）。
      * 站位来自 data_scattered.js 的坐标推导约定：偏移 = 边长/2 + 17 = 32px。
+     *
+     * 新增徽标时**必须在此登记对应车站**：下面的核对靠这张表找出「徽标该贴着谁」，
+     * 漏登记会被判为「无对应车站」。同时下方输出也做了兜底 —— 曾经因为在打印时
+     * 直接取 stationsData[HUB[id]].cn 而在缺项时抛异常，导致整个自检中断，
+     * 掩盖了本该报出来的问题。
      */
     const HUB = {
         "fuzhou-railway-main": "M104",
         "fuzhou-railway-south": "M121",
-        "fuzhou-airport": "M614"
+        "fuzhou-airport": "BE02",
+        // 长乐站（福平铁路）：无地铁站节点，徽标按其最近车站首占(BE06)贴放（偏移同为 32px）
+        "fuzhou-railway-changle": "BE06"
     };
     const OPPOSITE = {
         left: "right", right: "left", top: "bottom", bottom: "top",
@@ -650,8 +732,12 @@ section("⑧ 文旅景点与水域层枢纽徽标");
     check("徽标落在站名反侧（不压站名）", wrongSide.length === 0, wrongSide.join("、"));
     process.stdout.write("  水域层："
         + scattered.map((i) => `${i.id}(z=${i.zIndex})`).join("、") + "\n");
+    // 兜底：徽标未登记对应车站时打印 id 本身，而不是取 .cn 抛异常中断整个自检
     process.stdout.write("  枢纽徽标："
-        + badges.map((i) => `${stationsData[HUB[i.id]].cn} ${i.width}px`).join("、") + "\n");
+        + badges.map((i) => {
+            const hub = stationsData[HUB[i.id]];
+            return `${hub ? hub.cn : i.id} ${i.width}px`;
+        }).join("、") + "\n");
 }
 
 /* ── 9. 徽标与配色 ─────────────────────────────────────────────────── */
@@ -664,6 +750,84 @@ linesData.forEach((line) => {
     const file = path.join(ROOT, "assets", "svg", line.svg);
     check(`${line.id} 徽标模板存在（${line.svg}）`, fs.existsSync(file), "缺少该模板");
 });
+
+/* ── 10. 城市专属模块 与 三处登记的一致性 ─────────────────────────── */
+section("⑩ 城市专属模块与登记一致性");
+{
+    /**
+     * 城市专属模块要同时在**三处**登记，任一处漏了都会静默失效：
+     *   ① city/fuzhou/fuzhou.js 的 stationBoard.scripts —— 不然根本不会被加载；
+     *   ② 同文件的 stationBoard.modules      —— 不然注册了也不渲染；
+     *   ③ sw.js 的 ASSETS_TO_CACHE           —— 不然离线时取不到。
+     * 本项目多次在这类「多处登记」上出错（徽标曾漏登记 HUB、SW 版本曾忘记递增），
+     * 故这里把三者对齐检查一遍：凡 modules 里启用的城市模块，三处都必须齐全。
+     */
+    const fuzhouSrc = fs.readFileSync(path.join(CITY_DIR, "fuzhou.js"), "utf8");
+    const swSrc = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
+
+    const scripts = [...fuzhouSrc.matchAll(/"modules\/([a-z_]+\.js)"/g)].map((m) => m[1]);
+    check("stationBoard.scripts 非空", scripts.length > 0, `实际 ${scripts.length} 条`);
+
+    // ① scripts 里列的模块文件都要真实存在
+    const missingFile = scripts.filter((f) => !fs.existsSync(path.join(CITY_DIR, "modules", f)));
+    check("scripts 列的模块文件都存在", missingFile.length === 0, missingFile.join("、"));
+
+    // ③ scripts 里列的模块都要登记进 sw.js（离线可用）
+    const notInSw = scripts.filter((f) => !swSrc.includes(`./city/fuzhou/modules/${f}`));
+    check("scripts 列的模块都已登记进 sw.js", notInSw.length === 0,
+        `未登记：${notInSw.join("、")}`);
+
+    // ② modules 里启用的福州专属模块，其 id 要在对应模块文件里真实注册
+    const enabledIds = [...fuzhouSrc.matchAll(/"([a-z-]*fuzhou[a-z-]*)":\s*\{\s*enabled:\s*true/g)]
+        .map((m) => m[1]);
+    check("stationBoard.modules 列出福州专属模块", enabledIds.length > 0, `实际 ${enabledIds.length} 个`);
+
+    const moduleSrc = scripts
+        .map((f) => fs.readFileSync(path.join(CITY_DIR, "modules", f), "utf8")).join("\n");
+    const unregistered = enabledIds.filter((id) => !moduleSrc.includes(`id: "${id}"`));
+    check("modules 里启用的 id 都在模块文件中注册", unregistered.length === 0,
+        `未注册：${unregistered.join("、")}`);
+
+    // 机场联络只挂机场站，且内容为两座航站楼的分工
+    const airportModule = fs.existsSync(path.join(CITY_DIR, "modules", "fuzhou_airport.js"))
+        ? fs.readFileSync(path.join(CITY_DIR, "modules", "fuzhou_airport.js"), "utf8") : "";
+    check("机场联络模块存在", Boolean(airportModule), "缺 modules/fuzhou_airport.js");
+    if (airportModule) {
+        check("机场联络只挂机场站（BE02）", /"BE02"\s*:/.test(airportModule), "未按 BE02 索引");
+        ["1号航站楼", "2号航站楼", "厦门航空（MF）", "河北航空（NS）", "江西航空（RY）", "国际港澳台"]
+            .forEach((t) => check(`机场联络含「${t}」`, airportModule.includes(t), "缺该内容"));
+        // 铁律五：图标必须走 CGoUI
+        check("机场联络使用 cgo-icon", /<cgo-icon name="/.test(airportModule), "未使用 CGoUI 图标");
+    }
+
+    /**
+     * 国铁联络：三对「地铁站 → 国铁站」的对应关系。
+     * 地铁站名与国铁站名**并不一致**（福州火车站 ≠ 福州站），写错就会把乘客导向错误的车站，
+     * 故逐对钉住；并核对三站都是真实存在、且确实经停线路的站点。
+     */
+    const railModule = fs.existsSync(path.join(CITY_DIR, "modules", "fuzhou_railway.js"))
+        ? fs.readFileSync(path.join(CITY_DIR, "modules", "fuzhou_railway.js"), "utf8") : "";
+    check("国铁联络模块存在", Boolean(railModule), "缺 modules/fuzhou_railway.js");
+    if (railModule) {
+        const RAIL_PAIRS = [["M104", "福州站"], ["M121", "福州南站"], ["BE06", "长乐站"]];
+        RAIL_PAIRS.forEach(([sid, rail]) => {
+            const station = stationsData[sid];
+            check(`国铁联络目标站存在：${sid}`, Boolean(station), "车站数据里没有该 id");
+            check(`国铁联络 ${station ? station.cn : sid} → ${rail}`,
+                new RegExp(`"${sid}"\\s*:\\s*\\{\\s*rail:\\s*"${rail}"`).test(railModule),
+                `模块里未把 ${sid} 指向 ${rail}`);
+        });
+        // 不应把别的车站也挂上国铁联络（只此三站）
+        const idHits = [...railModule.matchAll(/"([A-Z]{1,3}\d{2,3})"\s*:\s*\{\s*rail:/g)].map((m) => m[1]);
+        check("国铁联络只登记三站", idHits.length === 3 && RAIL_PAIRS.every(([sid]) => idHits.includes(sid)),
+            `实际 ${idHits.length} 个：${idHits.join("、")}`);
+        check("国铁联络使用 cgo-icon", /<cgo-icon name="/.test(railModule), "未使用 CGoUI 图标");
+        check("国铁联络外链带 noopener", /rel="noopener/.test(railModule), "外链缺 rel=noopener");
+    }
+
+    process.stdout.write(`  模块：${scripts.join("、")}\n`);
+    process.stdout.write(`  启用：${enabledIds.join("、")}\n`);
+}
 
 /* ── 汇总 ─────────────────────────────────────────────────────────── */
 process.stdout.write(`\n${"─".repeat(60)}\n`);
