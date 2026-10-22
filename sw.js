@@ -25,6 +25,7 @@
  */
 
 const CACHE_NAME = 'cgo-openmap-v261015.132000';
+const CACHE_NAME = 'cgo-openmap-v261020.1839';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -386,6 +387,8 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/modules/fuzhou_timetable.js',
     './city/fuzhou/modules/fuzhou_site_space.js',
     './city/fuzhou/modules/fuzhou_cultural.js',
+    './city/fuzhou/modules/fuzhou_airport.js',
+    './city/fuzhou/modules/fuzhou_railway.js',
     './city/fuzhou/stacard/script.js',
     './city/fuzhou/data_stations.js',
     './city/fuzhou/data_lines.js',
