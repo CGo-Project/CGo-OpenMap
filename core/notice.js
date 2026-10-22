@@ -15,7 +15,11 @@
  * 字段说明：
  * - id: 唯一编号，已读状态记录于 localStorage (`nal_notice_read_ids`)
  * - active: 是否启用该通知 (true/false)
- * - deadline: 有效期截止时间 ("YYYY-MM-DD HH:mm:ss" 或 "permanent")
+ * - startTime: 可选，开始展示时间 ("YYYY-MM-DD HH:mm:ss")；未到时间不展示，缺省视为立即开始
+ * - deadline: 有效期截止时间 ("YYYY-MM-DD HH:mm:ss" 或 "permanent")，控制帮助弹窗中的展示
+ * - city: 可选，限定生效城市 ID（如 "shenyang"）；缺省为全城通用
+ * - pushWindowDays: 可选，浮动卡片的推送窗口天数，默认 30 天（从 startTime 起算）；
+ *   超过窗口后不再弹卡，但仍可在「帮助与关于」中查看，直到 deadline
  * - summary: 浮动卡片展示的简明摘要
  * - detail: 帮助弹窗中展示的详细正文 (支持富文本与详情图片)
  * ==============================================================================
@@ -29,10 +33,46 @@
         'ads': { title: '推广信息', color: '#009f3c', icon: 'notification' }
     };
 
+    /** 浮动卡片默认推送窗口：从 startTime 起 30 天内，与新线开通通知口径一致 */
+    const DEFAULT_PUSH_WINDOW_DAYS = 30;
+
+    const currentCityId = () => (
+        window.CityDataManager?.getCurrentCityId?.()
+        || (typeof window.CURRENT_CITY?.id === 'string' ? window.CURRENT_CITY.id : '')
+        || ''
+    );
+
+    function parseLocalTime(value) {
+        if (!value || value === 'permanent') return null;
+        const date = new Date(String(value).replace(' ', 'T'));
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
     function checkValidity(item) {
         if (!item.active) return false;
-        if (!item.deadline || item.deadline === 'permanent') return true;
-        return Date.now() <= new Date(item.deadline.replace(' ', 'T')).getTime();
+        // 城市限定：取不到当前城市时不做过滤，避免公告被整体隐藏
+        const city = currentCityId();
+        if (item.city && city && item.city !== city) return false;
+
+        const now = Date.now();
+        const start = parseLocalTime(item.startTime);
+        if (start && now < start.getTime()) return false;
+
+        const end = parseLocalTime(item.deadline);
+        return !end || now <= end.getTime();
+    }
+
+    /**
+     * 是否仍在浮动卡片的推送窗口内。
+     * 只约束弹卡；帮助弹窗的公告列表仍由 checkValidity（deadline）控制。
+     */
+    function isWithinPushWindow(item) {
+        const start = parseLocalTime(item.startTime);
+        if (!start) return true;
+        const days = Number(item.pushWindowDays) > 0
+            ? Number(item.pushWindowDays)
+            : DEFAULT_PUSH_WINDOW_DAYS;
+        return Date.now() - start.getTime() <= days * 86400000;
     }
 
     window.NAL_NOTICE = {
@@ -63,6 +103,36 @@
                 image: './assets/images/qq.png',
                 summary: "欢迎加入 CGo OpenMap 官方交流群",
                 detail: "官方 QQ 交流群（群号：619357751）现已开放！欢迎轨道交通爱好者、前端开发者及城市主理人加入交流线网规划与城市移植。<br><a href='https://qm.qq.com/q/nHfgBDS68o' target='_blank' style='color:#12b7f5; text-decoration:underline; font-weight:600; display:inline-flex; align-items:center; gap:4px;'><cgo-icon name='arrow-right' size='12'></cgo-icon><span>点击一键加入官方 QQ 群</span></a>"
+            },
+            {
+                id: '20261022_sy_tram5_last',
+                active: true,
+                category: 'ops',
+                city: 'shenyang',
+                startTime: '2026-10-22 00:00:00',
+                deadline: '2026-11-25 23:59:59',
+                summary: "10月25日起，浑南有轨5号线末班提前",
+                detail: "自 2026 年 10 月 25 日起，浑南有轨 5 号线末班车调整为：<b>李石寨 20:00 发车</b>、<b>奥体中心 21:20 发车</b>。请留意出行时间。"
+            },
+            {
+                id: '20261112_hh_baita_close_notice',
+                active: true,
+                category: 'ops',
+                city: 'hohhot',
+                startTime: '2026-11-12 00:00:00',
+                deadline: '2026-11-25 23:59:59',
+                summary: "11月26日起，白塔机场关闭",
+                detail: "自 2026 年 11 月 26 日零时起，呼和浩特白塔国际机场关闭，航班整体转至盛乐国际机场。本图将同步移除白塔机场的轨道接驳入口。"
+            },
+            {
+                id: '20261126_hh_baita_closed',
+                active: true,
+                category: 'ops',
+                city: 'hohhot',
+                startTime: '2026-11-26 00:00:00',
+                deadline: '2026-12-26 23:59:59',
+                summary: "白塔机场已关闭，请前往盛乐国际机场",
+                detail: "呼和浩特白塔国际机场已于 2026 年 11 月 26 日零时起关闭，航班整体转至盛乐国际机场；盛乐机场暂无轨道接驳。"
             },
         ]
     };
@@ -292,7 +362,9 @@
 
         const readIds = getReadIds();
         const validItems = window.NAL_NOTICE.items.filter(item => {
-            return checkValidity(item) && (!readIds.includes(item.id) || item.alwaysShow);
+            return checkValidity(item)
+                && isWithinPushWindow(item)
+                && (!readIds.includes(item.id) || item.alwaysShow);
         });
 
         validItems.forEach((item, index) => {
