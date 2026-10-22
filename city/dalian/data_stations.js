@@ -2281,14 +2281,14 @@ const stationsData = {
         "y": 739,
         "cn": "大连站",
         "en": "Dalian Railway Station",
-        "align": "top",
+        "align": "right",
         hideLabel: true,
         "offset": {
             "x": 0,
             "y": 0
         },
         "textScale": {
-            "cn": 0.9,
+            "cn": 1,
             "en": 1
         },
      },

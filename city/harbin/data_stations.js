@@ -657,10 +657,10 @@ const stationsData = {
         y: 560,
         cn: "哈尔滨站",
         en: "Harbin Railway Station",
-        align: "top",
+        align: "top-right",
         hideLabel: true,
         offset: { x: 0, y: 0 },
-        textScale: { cn: 0.9, en: 1 }
+        textScale: { cn: 1, en: 1 }
     },
     "VAB": {
         type: "rdot",
@@ -668,10 +668,10 @@ const stationsData = {
         y: 885,
         cn: "哈尔滨西站",
         en: "Harbinxi Railway Station",
-        align: "top",
+        align: "top-right",
         hideLabel: true,
         offset: { x: 0, y: 0 },
-        textScale: { cn: 0.9, en: 1 }
+        textScale: { cn: 1, en: 1 }
     },
     "HTB": {
         type: "rdot",
@@ -679,10 +679,10 @@ const stationsData = {
         y: 160,
         cn: "哈尔滨北站",
         en: "Harbinbei Railway Station",
-        align: "top",
+        align: "top-right",
         hideLabel: true,
         offset: { x: 0, y: 0 },
-        textScale: { cn: 0.9, en: 1 }
+        textScale: { cn: 1, en: 1 }
     },
     "VBB": {
         type: "rdot",
@@ -690,9 +690,9 @@ const stationsData = {
         y: 380,
         cn: "哈尔滨东站",
         en: "Harbindong Railway Station",
-        align: "top",
+        align: "bottom",
         hideLabel: true,
         offset: { x: 0, y: 0 },
-        textScale: { cn: 0.9, en: 1 }
+        textScale: { cn: 1, en: 1 }
     }
 };
