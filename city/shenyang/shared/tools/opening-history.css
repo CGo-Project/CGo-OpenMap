@@ -387,6 +387,7 @@
 .cgo-oh-actions .cgo-oh-icon-btn.is-on {
     color: #fff;
     background: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset, 0 4px 14px rgba(0, 38, 59, 0.28);
 }
 
 /* ── 导出区「卡面」的两个开关：图标 + 文字 + 激活态，均分该行剩余宽度 ── */
@@ -411,6 +412,7 @@
 .cgo-oh-card-btn.is-on {
     color: #fff;
     background: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset, 0 4px 14px rgba(0, 38, 59, 0.28);
 }
 
 /* ⚠️ 激活态悬停必须显式写：该按钮同时带 `cgo-mt-quick`，悬停会落到那套通用样式上
@@ -649,7 +651,9 @@
     gap: 2px;
     padding: 2px;
     background: var(--btn-info-bg);
-    border-radius: 999px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-sm, 6px);
+    box-sizing: border-box;
 }
 
 .cgo-oh-export .cgo-rt-need-opt {
@@ -666,17 +670,27 @@
     color: var(--text-main);
     background: transparent;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--radius-xs, 4px);
     cursor: pointer;
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-oh-export .cgo-rt-need-opt.is-on {
     background: var(--card-bg);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    color: var(--primary-color, #006098);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .cgo-oh-export .cgo-rt-need-opt:hover:not(.is-on) {
     background: var(--border-color);
+}
+
+.cgo-oh-export .cgo-rt-need-opt:active {
+    transform: scale(0.98);
 }
 
 .cgo-oh-export .cgo-rt-need-opt:disabled {

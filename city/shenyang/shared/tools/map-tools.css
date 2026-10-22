@@ -255,7 +255,8 @@
 }
 
 /* ── 面板外壳：工具列表与结果小窗共用 ───────────────────────────── */
-/* 浮在地图右下角。桌面端固定侧栏在左侧，两者不打架 */
+/* 浮层形态对齐 CGoUI 2.2 Liquid Glass「Tier B 不可交互底板」（与 cgo-modal 同配方）；
+   侧栏形态 .cgo-mt-in-section 在下方单独复位，仍是普通区块容器 */
 .cgo-mt-panel {
     position: fixed;
     right: 20px;
@@ -272,13 +273,96 @@
     font-weight: 400;
     color: var(--text-main);
     background: var(--card-bg);
-    border-radius: 10px;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.32);
+    border-radius: var(--radius-lg, 12px);
+    box-shadow: 0 20px 50px -10px rgba(0, 38, 59, 0.2), 0 8px 24px -4px rgba(0, 38, 59, 0.12);
     overflow: hidden;
 }
 
 .cgo-mt-panel.show {
     display: flex;
+}
+
+/* Tier B：仅浮层形态启用玻璃底板。
+   ⚠️ backdrop-filter 必须挂在 ::after 上，不能挂在面板本身：
+   非 none 的 backdrop-filter 会让面板成为 position: fixed 的包含块，
+   面板内的 <cgo-toolbar-select> 下拉（.options 是 fixed 定位）会改以面板为参照，
+   于是被面板的 overflow: hidden 裁掉一截（线网发展史的日期下拉实测）。 */
+.cgo-mt-panel:not(.cgo-mt-in-section) {
+    background: transparent;
+    isolation: isolate;
+}
+
+.cgo-mt-panel:not(.cgo-mt-in-section)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82));
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    pointer-events: none;
+    transition: background-color 0.25s ease;
+}
+
+.cgo-mt-panel:not(.cgo-mt-in-section)::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) var(--lg-rim-hold, 1px),
+        rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.cgo-mt-panel:not(.cgo-mt-in-section) > * {
+    position: relative;
+    z-index: 3;
+}
+
+[data-theme='dark'] .cgo-mt-panel:not(.cgo-mt-in-section) {
+    box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.7), 0 8px 24px -4px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] .cgo-mt-panel:not(.cgo-mt-in-section)::before {
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 1px,
+        rgba(255, 255, 255, 0) 8px);
+}
+
+/* flat / none 玻璃档位降级为实色底板 */
+:root[glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section),
+:root[data-glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section),
+body[glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section),
+body[data-glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section) {
+    background: var(--card-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+:root[glass-mode='flat'] .cgo-mt-panel::after,
+:root[data-glass-mode='flat'] .cgo-mt-panel::after,
+body[glass-mode='flat'] .cgo-mt-panel::after,
+body[data-glass-mode='flat'] .cgo-mt-panel::after,
+:root[glass-mode='none'] .cgo-mt-panel::after,
+:root[data-glass-mode='none'] .cgo-mt-panel::after,
+body[glass-mode='none'] .cgo-mt-panel::after,
+body[data-glass-mode='none'] .cgo-mt-panel::after,
+:root[glass-mode='none'] .cgo-mt-panel::before,
+:root[data-glass-mode='none'] .cgo-mt-panel::before,
+body[glass-mode='none'] .cgo-mt-panel::before,
+body[data-glass-mode='none'] .cgo-mt-panel::before {
+    display: none;
 }
 
 .cgo-mt-head {
@@ -313,10 +397,15 @@
     border: 0;
     border-radius: 50%;
     cursor: pointer;
+    transition: background-color var(--dur-fast, 160ms) ease, transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-mt-close:hover {
     background: rgba(255, 255, 255, 0.18);
+}
+
+.cgo-mt-close:active {
+    transform: scale(0.94);
 }
 
 .cgo-mt-body {
@@ -399,6 +488,8 @@
     opacity: 0.7;
 }
 
+/* 「开启」按钮已换 <cgo-button variant="primary" size="sm">；本类保留给发展史导出等
+   仍沿用原生 button 的调用点，皮肤按 2.2 主色按钮对齐（顶部内高光 + 按压回弹） */
 .cgo-mt-launch {
     flex: none;
     display: inline-flex;
@@ -413,11 +504,25 @@
     border: 0;
     border-radius: 999px;
     cursor: pointer;
-    transition: filter 0.15s;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(0, 96, 152, 0.2);
+    transition:
+        filter var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-mt-launch:hover {
-    filter: brightness(1.1);
+    filter: brightness(1.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 5px rgba(0, 96, 152, 0.25);
+}
+
+.cgo-mt-launch:active {
+    transform: scale(0.98);
+}
+
+/* 工具列表里的 <cgo-button> 是 flex 行尾的固定项，不参与挤压 */
+.cgo-mt-item cgo-button {
+    flex: none;
 }
 
 /* ── 图例标尺：一条色带 + 一行刻度（与上游等时圈标尺同一形态）───── */
@@ -628,6 +733,7 @@
     opacity: 0.75;
 }
 
+/* 分段控件：对齐 CGoUI 2.2 .tab-pill-group（容器微边框，激活项白底卡片 + 主题色字） */
 .cgo-mt-range-opts {
     flex: 1;
     min-width: 0;
@@ -635,7 +741,9 @@
     gap: 2px;
     padding: 2px;
     background: var(--btn-info-bg);
-    border-radius: 999px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-sm, 6px);
+    box-sizing: border-box;
 }
 
 .cgo-mt-range-opt {
@@ -649,17 +757,27 @@
     color: var(--text-main);
     background: transparent;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--radius-xs, 4px);
     cursor: pointer;
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-mt-range-opt.is-on {
     background: var(--card-bg);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    color: var(--primary-color, #006098);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .cgo-mt-range-opt:hover:not(.is-on) {
     background: var(--border-color);
+}
+
+.cgo-mt-range-opt:active {
+    transform: scale(0.98);
 }
 
 /* 「最近 10 站」列表：按用时升序，条目多时内部滚动 —— 面板本身也能滚，
@@ -669,8 +787,10 @@
     flex-direction: column;
     max-height: 190px;
     overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    /* 2.2 卡片口径：单层微光描边取代实体边框 */
+    border: none;
+    border-radius: var(--radius-md, 8px);
+    box-shadow: 0 0 0 1px var(--border-color), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .cgo-mt-near-item {
@@ -686,6 +806,7 @@
     border: 0;
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
+    transition: background-color var(--dur-fast, 160ms) ease;
 }
 
 .cgo-mt-near-item:last-child {
@@ -735,12 +856,19 @@
     text-align: left;
     background: var(--btn-info-bg);
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-md, 8px);
     cursor: pointer;
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-mt-meet-item:hover {
     background: var(--border-color);
+}
+
+.cgo-mt-meet-item:active {
+    transform: scale(0.98);
 }
 
 .cgo-mt-meet-rank {
@@ -800,7 +928,7 @@
     gap: 8px;
 }
 
-/* chip 按钮：与行程规划的 .cgo-rt-quick 同一观感 */
+/* chip 按钮：与行程规划的 .cgo-rt-quick 同一观感（2.2：微光描边 + 按压回弹） */
 .cgo-mt-quick {
     flex: 1 1 auto;
     display: flex;
@@ -817,10 +945,25 @@
     border: none;
     border-radius: 999px;
     cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-mt-quick:hover {
     background: var(--border-color);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.cgo-mt-quick:active {
+    transform: scale(0.97);
+}
+
+.cgo-mt-quick:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-color, #fff), 0 0 0 4px var(--primary-color, #006098);
 }
 
 /* ── 选站期间的可点热区 ─────────────────────────────────────────────
@@ -918,6 +1061,12 @@ body.legend-pinned:not(.pinned-hidden) .cgo-mt-pick-tip {
     border: 0;
     border-radius: 999px;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    transition: transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+.cgo-mt-pick-cancel:active {
+    transform: scale(0.96);
 }
 
 /* ── 固定侧栏形态：本模块收进侧栏区块（#cgo-map-tools-section）后，浮层外壳复位 ──────
