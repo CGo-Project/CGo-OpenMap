@@ -24,7 +24,7 @@
  *
  * 加载：接入城市在 `{city}.js` 的 document.write 列表里引入（与 route-panel 等同为经典脚本）。
  *
- * 对外接口：`window.CGoGeoEstimate = { estimateForPair, applyToPanel, ready }`
+ * 对外接口：`window.CGoGeoEstimate = { estimateForPair, metersBetween, applyToPanel, ready }`
  */
 (function () {
     "use strict";
@@ -103,6 +103,26 @@
         const ratio = rounded / displayed;
         if (ratio < RATIO_MIN || ratio > RATIO_MAX) return null;
         return rounded;
+    }
+
+    /**
+     * 纯函数：两站 ID 的球面距离（米，与 estimateForPair 同口径：四舍五入到 10 米、下限 10 米）。
+     * 供「主动改写邻站」用 —— 上一站/下一站指向已拆除站时，改写为沿站序向外第一座活站
+     * （见 shared/station/adjacent-jump.js）；这种改写没有可比的面板现值，故不设偏离窗口。
+     * @returns {number|null} 坐标缺失 / 任一站不存在时返回 null
+     */
+    function metersBetween(fromSid, toSid) {
+        if (!coordIndex || !fromSid || !toSid) return null;
+        const stations = window.stationsData || {};
+        const a = stations[fromSid];
+        const b = stations[toSid];
+        if (!a || !b || !a.cn || !b.cn) return null;
+        const ca = parseCoord(coordIndex[a.cn]);
+        const cb = parseCoord(coordIndex[b.cn]);
+        if (!ca || !cb) return null;
+        const meters = haversine(ca[0], ca[1], cb[0], cb[1]);
+        if (!Number.isFinite(meters) || meters <= 0) return null;
+        return Math.max(10, Math.round(meters / 10) * 10);
     }
 
     /** 拉取当前城市 amap_data.json，建站名扁平索引（与核心 LBS 同一份数据、同一合并语义：后写覆盖）。
@@ -193,5 +213,5 @@
         }
     }
 
-    window.CGoGeoEstimate = { estimateForPair, applyToPanel, loadCoordIndex, get ready() { return ready; } };
+    window.CGoGeoEstimate = { estimateForPair, metersBetween, applyToPanel, loadCoordIndex, get ready() { return ready; } };
 })();

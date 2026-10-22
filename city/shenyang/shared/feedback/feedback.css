@@ -32,7 +32,8 @@
     color: var(--text-main);
 }
 
-/* 场景切换（只有「更多」菜单的通用入口会打开它）：一排小胶囊，单选 */
+/* 场景切换（只有「更多」菜单的通用入口会打开它）：一排小胶囊，单选。
+   皮肤对齐 CGoUI 2.2 .filter-tag（微光描边 + 激活实心主题色） */
 .cgo-fb-scene {
     display: flex;
     flex-wrap: wrap;
@@ -42,24 +43,34 @@
 
 .cgo-fb-scene-btn {
     padding: 3px 10px;
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+    border: none;
     border-radius: 999px;
     background: transparent;
     font: inherit;
     font-size: 11px;
     color: var(--text-light);
     cursor: pointer;
+    box-shadow: 0 0 0 1px var(--border-color, rgba(0, 0, 0, 0.12)), 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-fb-scene-btn:hover {
-    border-color: var(--primary-color);
     color: var(--primary-color);
+    box-shadow: 0 0 0 1px var(--primary-color), 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.cgo-fb-scene-btn:active {
+    transform: scale(0.96);
 }
 
 .cgo-fb-scene-btn.is-on {
-    border-color: var(--primary-color);
     background: var(--primary-color);
     color: #fff;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset, 0 4px 14px rgba(0, 38, 59, 0.28);
 }
 
 .cgo-fb-head {
@@ -99,6 +110,7 @@
 .cgo-fb-note:focus {
     border-color: var(--primary-color);
     outline: none;
+    box-shadow: 0 0 0 3.5px rgba(0, 96, 152, 0.14), 0 1px 2px rgba(0, 96, 152, 0.08);
 }
 
 .cgo-fb-actions {
@@ -107,35 +119,8 @@
     gap: 8px;
 }
 
+/* 操作按钮已换 <cgo-button size="sm">，外观、按下反馈、禁用态全部由组件内置；
+   这里只约束它在换行行内的占位 */
 .cgo-fb-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 12px;
-    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
-    border-radius: 6px;
-    background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.04));
-    font: inherit;
-    color: var(--text-main);
-    cursor: pointer;
-}
-
-.cgo-fb-btn:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-}
-
-.cgo-fb-btn.primary {
-    border-color: var(--primary-color);
-    background: var(--primary-color);
-    color: #fff;
-}
-
-.cgo-fb-btn.primary:hover {
-    color: #fff;
-    opacity: 0.9;
-}
-
-.cgo-fb-btn.ghost {
-    background: transparent;
+    flex: none;
 }

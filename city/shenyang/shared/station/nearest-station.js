@@ -350,15 +350,9 @@
                 ${blocks.join("\n")}
             </div>
             <div class="cgo-near-actions">
-                ${better ? `<button type="button" class="cgo-near-btn primary" data-act="switch">
-                    <cgo-icon name="map" size="14"></cgo-icon>切换到${better.city.name}
-                </button>` : ""}
-                <button type="button" class="cgo-near-btn${better ? "" : " primary"}" data-act="local">
-                    <cgo-icon name="location" size="14"></cgo-icon>查看${cityName}最近车站
-                </button>
-                <button type="button" class="cgo-near-btn ghost" data-act="cancel">
-                    <cgo-icon name="close" size="14"></cgo-icon>取消
-                </button>
+                ${better ? `<cgo-button class="cgo-near-btn" variant="primary" icon="map" data-act="switch">切换到${better.city.name}</cgo-button>` : ""}
+                <cgo-button class="cgo-near-btn" variant="${better ? "info" : "primary"}" icon="location" data-act="local">查看${cityName}最近车站</cgo-button>
+                <cgo-button class="cgo-near-btn cgo-near-btn--ghost" variant="ghost" icon="close" data-act="cancel">取消</cgo-button>
             </div>
         `;
 

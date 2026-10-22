@@ -16,7 +16,10 @@
     margin-bottom: 0;
 }
 
-/* ── 面板容器（与 #info-panel 同款观感，位置错开不遮挡）──────────── */
+/* ── 面板容器（与 #info-panel 同款观感，位置错开不遮挡）────────────
+   外观对齐 CGoUI 2.2 Liquid Glass「Tier B 不可交互底板」：0.82 衬底 + 底部微光圈，
+   与 <cgo-modal> / .text-dialog 同一配方（见 css/cgo_element.css 的 Tier B 段）。
+   底板由 ::after 提供，故容器自身背景必须透明；内容层统一抬到 z-index 3。 */
 .cgo-rt-panel {
     position: fixed;
     top: 20px;
@@ -28,17 +31,104 @@
     max-height: calc(100vh - 110px);
     display: none;
     flex-direction: column;
-    background: var(--card-bg);
+    background: transparent;
     color: var(--text-main);
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-lg, 12px);
+    box-shadow: 0 20px 50px -10px rgba(0, 38, 59, 0.2), 0 8px 24px -4px rgba(0, 38, 59, 0.12);
     overflow: hidden;
+    isolation: isolate;
     font-size: 13px;
     font-weight: 400;
 }
 
 .cgo-rt-panel.show {
     display: flex;
+}
+
+/* Tier B Layer 1：0.82 固定衬底。
+   ⚠️ backdrop-filter 必须挂在 ::after 上，不能挂在面板本身：
+   非 none 的 backdrop-filter 会让面板成为 position: fixed 的包含块，
+   面板内的 <cgo-toolbar-select> 等 fixed 弹层会被面板的 overflow: hidden 裁掉。 */
+.cgo-rt-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82));
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    pointer-events: none;
+    transition: background-color 0.25s ease;
+}
+
+/* Tier B Layer 2：顶部弱化微光圈 */
+.cgo-rt-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) var(--lg-rim-hold, 1px),
+        rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* Tier B Layer 3：内容层，压住衬底与微光圈 */
+.cgo-rt-panel > * {
+    position: relative;
+    z-index: 3;
+}
+
+[data-theme='dark'] .cgo-rt-panel {
+    box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.7), 0 8px 24px -4px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] .cgo-rt-panel::before {
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 1px,
+        rgba(255, 255, 255, 0) 8px);
+}
+
+/* flat / none 玻璃档位：退回 1.x 的实色底板（与上游降级口径一致） */
+:root[glass-mode='flat'] .cgo-rt-panel,
+:root[data-glass-mode='flat'] .cgo-rt-panel,
+body[glass-mode='flat'] .cgo-rt-panel,
+body[data-glass-mode='flat'] .cgo-rt-panel {
+    background: var(--card-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+:root[glass-mode='flat'] .cgo-rt-panel::after,
+:root[data-glass-mode='flat'] .cgo-rt-panel::after,
+body[glass-mode='flat'] .cgo-rt-panel::after,
+body[data-glass-mode='flat'] .cgo-rt-panel::after,
+:root[glass-mode='none'] .cgo-rt-panel::after,
+:root[data-glass-mode='none'] .cgo-rt-panel::after,
+body[glass-mode='none'] .cgo-rt-panel::after,
+body[data-glass-mode='none'] .cgo-rt-panel::after,
+:root[glass-mode='none'] .cgo-rt-panel::before,
+:root[data-glass-mode='none'] .cgo-rt-panel::before,
+body[glass-mode='none'] .cgo-rt-panel::before,
+body[data-glass-mode='none'] .cgo-rt-panel::before {
+    display: none;
+}
+
+/* 核心的 .panel-body / .panel-footer 用 !important 刷了实色底，会把 Tier B 衬底整块盖住。
+   浮层形态下改为透明，让玻璃底板透出来；侧栏形态没有 .cgo-rt-panel 前缀，不受影响。 */
+.cgo-rt-panel > .panel-body,
+.cgo-rt-panel > .panel-footer {
+    background-color: transparent !important;
 }
 
 /* 面板栈：同时打开多个面板时，非栈顶的面板整体收起。
@@ -113,52 +203,44 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     position: relative;
 }
 
-/* 起终点输入框与检索框（#station-search-input）保持同一套输入外观：
-   同样的描边、圆角、字号、底色与聚焦态，两种形态下各自对齐同形态的检索框 */
+/* 起终点输入框：对齐 CGoUI 2.2 .form-control（圆角/字号/聚焦双层光环） */
 .cgo-rt-field input {
     width: 100%;
     box-sizing: border-box;
     padding: 10px 12px;
-    font-size: 14px;
-    font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-family: var(--font-sans, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif);
+    font-size: var(--text-md, 14px);
     color: var(--text-main) !important;
     background-color: var(--bg-color) !important;
     border: 1px solid var(--divider) !important;
-    border-radius: 6px;
+    border-radius: var(--radius-sm, 6px);
     outline: none;
-    transition: border-color 0.2s;
+    transition:
+        border-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        background-color var(--dur-fast, 160ms) ease;
 }
 
 .cgo-rt-field input:focus {
-    border-color: #00263b;
-    background-color: #fff;
+    border-color: var(--primary-color, #006098) !important;
+    background-color: var(--card-bg) !important;
+    box-shadow: 0 0 0 3.5px rgba(0, 96, 152, 0.14), 0 1px 2px rgba(0, 96, 152, 0.08);
+}
+
+[data-theme='dark'] .cgo-rt-field input:focus {
+    border-color: var(--primary-color, #4dabf7) !important;
+    box-shadow: 0 0 0 3.5px rgba(77, 171, 247, 0.22), 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .cgo-rt-field input::placeholder {
     color: #bdcbd2;
 }
 
+/* 对调起终点：改用 <cgo-button icon-only>，外观与尺寸由组件自身给出；
+   vi-way 旋转 90° 作为「交换」语义（旋转宿主，内部图标随之转动） */
 .cgo-rt-swap {
     align-self: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--card-bg);
-    color: var(--text-main);
-    cursor: pointer;
-}
-
-.cgo-rt-swap:hover {
-    background: var(--btn-info-bg);
-}
-
-/* 对调起终点：vi-way 旋转 90° 作为「交换」语义 */
-.cgo-rt-swap-icon {
-    display: inline-flex;   /* 自定义元素默认 inline，需转为可变换的盒子 */
+    flex: none;
     transform: rotate(90deg);
 }
 
@@ -170,9 +252,9 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     margin-top: 4px;
     max-height: 220px;
     overflow-y: auto;
-    background: var(--card-bg);
+    background: var(--glass-bg-panel, var(--card-bg));
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--radius-md, 8px);
     display: none;
 }
 
@@ -215,13 +297,24 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     line-height: 1;
     color: var(--text-main);
     background: var(--btn-info-bg);
-    border: 1px solid var(--divider);
+    border: none;
     border-radius: 999px;
     cursor: pointer;
+    /* 2.2 filter-tag 口径：单层微光描边取代实体边框 */
+    box-shadow: 0 0 0 1px var(--divider), 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-rt-exittrigger:hover {
     background: var(--border-color);
+    box-shadow: 0 0 0 1px var(--border-color), 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.cgo-rt-exittrigger:active {
+    transform: scale(0.96);
 }
 
 /* 已指定口：主题色高亮，一眼看出这端定了口 */
@@ -229,6 +322,7 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     color: var(--btn-text, #fff);
     background: var(--primary-color);
     border-color: transparent;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset, 0 4px 14px rgba(0, 38, 59, 0.28);
 }
 
 .cgo-rt-exittrigger[hidden] {
@@ -243,10 +337,10 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     z-index: 10;   /* 盖在候选列表与按钮行之上 */
     display: block;   /* 块级：需求行 / 提示行 / 芯片行自上而下各占一层 */
     padding: 8px;
-    background: var(--card-bg);
+    background: var(--glass-bg-panel, var(--card-bg));
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-md, 8px);
+    box-shadow: var(--shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.12));
 }
 
 .cgo-rt-exitmenu[hidden] {
@@ -272,13 +366,16 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     color: var(--text-light);
 }
 
+/* 分段控件：对齐 CGoUI 2.2 .tab-pill-group（容器微边框，激活项为白底卡片 + 主题色字） */
 .cgo-rt-need-opts {
     flex: 1;   /* 撑满标签之外的剩余宽度 */
     display: flex;
     gap: 2px;
     padding: 2px;
     background: var(--btn-info-bg);
-    border-radius: 999px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-sm, 6px);
+    box-sizing: border-box;
 }
 
 .cgo-rt-need-opt {
@@ -296,17 +393,27 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     color: var(--text-main);
     background: transparent;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--radius-xs, 4px);
     cursor: pointer;
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-rt-need-opt.is-on {
     background: var(--card-bg);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    color: var(--primary-color, #006098);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .cgo-rt-need-opt:hover:not(.is-on) {
     background: var(--border-color);
+}
+
+.cgo-rt-need-opt:active {
+    transform: scale(0.98);
 }
 
 /* 结果标题栏的需求徽记（浮层起讫行前 / 侧栏标题前）：无需求时隐藏——
@@ -432,14 +539,24 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     font-size: 13px;
     color: var(--text-main);
     text-align: left;
-    background: var(--card-bg);
-    border: 1px solid var(--divider);
-    border-radius: 8px;
+    background: var(--glass-bg-card, var(--card-bg));
+    border: none;
+    border-radius: var(--radius-md, 8px);
+    box-shadow: 0 0 0 1px var(--divider), 0 1px 2px rgba(0, 0, 0, 0.04);
     cursor: pointer;
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-rt-quickgo-item:hover {
     background: var(--btn-info-bg);
+    box-shadow: 0 0 0 1px var(--border-color), 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.cgo-rt-quickgo-item:active {
+    transform: scale(0.98);
 }
 
 .cgo-rt-quickgo-item cgo-icon {
@@ -453,6 +570,12 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     width: 8px;
     height: 8px;
     border-radius: 50%;
+    background: var(--text-light);
+}
+
+/* 惨案 / 侵略罪证类纪念地（城市条目声明 tone: "somber"）：中性灰、不抢眼、不喧闹。
+   走类名而非内联色，故亮暗主题各自取到正确的 --text-light。 */
+.cgo-rt-poi-dot--somber {
     background: var(--text-light);
 }
 
@@ -491,19 +614,31 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     padding: 5px 9px;
     color: var(--text-main);
     background: var(--card-bg);
-    border: 1px solid var(--divider);
+    border: none;
     border-radius: 999px;
     cursor: pointer;
+    /* 2.2 filter-tag 口径 */
+    box-shadow: 0 0 0 1px var(--divider), 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-rt-exit-chip:hover {
     background: var(--btn-info-bg);
+    box-shadow: 0 0 0 1px var(--border-color), 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.cgo-rt-exit-chip:active {
+    transform: scale(0.96);
 }
 
 .cgo-rt-exit-chip.active {
     color: var(--btn-text, #fff);
     background: var(--primary-color);
-    border-color: transparent;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset, 0 4px 14px rgba(0, 38, 59, 0.28);
 }
 
 /* 暂停使用的口：弱化但不拦选（数据可能滞后，交给用户判断） */
@@ -525,11 +660,11 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     gap: 8px;
     /* 红框区（需求条 + 快速/定位/选点/清空）相对固定：panel-body 一旦滚动
        （上方内容超高、小屏），本行钉在滚动区顶部不随输入框滚走；
-       实底用面板同色，挡住从上方滚过的内容。panel-body 不滚时无视觉变化 */
+       底色取 Tier B 同档衬底，挡住从上方滚过的内容。panel-body 不滚时无视觉变化 */
     position: sticky;
     top: 0;
     z-index: 3;
-    background: var(--card-bg);
+    background: var(--glass-bg-panel, var(--card-bg));
     margin-top: 12px;
 }
 
@@ -553,16 +688,33 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     border: none;
     border-radius: 999px;
     cursor: pointer;
+    /* 2.2：单层微光描边 + 顶部高光，去掉实体边框；仅点击时回弹 */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-rt-quick:hover {
     background: var(--border-color);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.cgo-rt-quick:active {
+    transform: scale(0.97);
+}
+
+.cgo-rt-quick:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-color, #fff), 0 0 0 4px var(--primary-color, #006098);
 }
 
 /* 选点进行中：按钮就地变为「取消选点」并以危险色填充 */
 .cgo-rt-quick.danger {
     color: var(--btn-text, #fff);
     background: var(--danger-color);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(234, 67, 53, 0.2);
 }
 
 .cgo-rt-quick.danger:hover {
@@ -923,7 +1075,12 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     flex: none;
 }
 
-.cgo-rt-go,
+/* 底栏主操作：改用 <cgo-button variant="primary">，外观/按下反馈/禁用态由组件内置，
+   这里只约束它在 .panel-footer 里的占位（不参与伸缩） */
+.cgo-rt-go {
+    flex: none;
+}
+
 .cgo-rt-again {
     flex: none;
     display: flex;
@@ -933,22 +1090,12 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     font: inherit;
     font-size: 13px;
     font-weight: 700 !important;   /* 同 .cgo-rt-quick：覆盖全局表单重置 */
-    color: var(--btn-text, #fff);
-    background: var(--primary-color);
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-.cgo-rt-go:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
-.cgo-rt-again {
     color: var(--text-main);
     background: var(--btn-info-bg);
-    border: 1px solid var(--border-color);
+    border: none;
+    border-radius: var(--radius-md, 8px);
+    cursor: pointer;
+    box-shadow: 0 0 0 1px var(--border-color), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* ── 地图选点态：指针光标提示可点选车站 ────────────────────────── */
@@ -987,12 +1134,16 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     white-space: nowrap;
     color: var(--text-main);
     background: var(--btn-info-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border: none;
+    border-radius: var(--radius-md, 8px);
     cursor: pointer;
     text-decoration: none;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
-    transition: background 0.12s, transform 0.12s;
+    /* 2.2：实体边框改为单层微光描边 + 顶部内高光 */
+    box-shadow: 0 0 0 1px var(--border-color), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 /* 纯图标按钮：收缩为正方形，不参与等分 */
@@ -1021,10 +1172,16 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
 
 .cgo-rt-fbtn:hover {
     background: var(--border-color);
+    box-shadow: 0 0 0 1px var(--border-color), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 5px rgba(0, 0, 0, 0.08);
 }
 
 .cgo-rt-fbtn:active {
-    transform: scale(0.97);
+    transform: scale(0.98);
+}
+
+.cgo-rt-fbtn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-color, #fff), 0 0 0 4px var(--primary-color, #006098) !important;
 }
 
 /* 设为终点：强调按钮 */
@@ -1032,11 +1189,13 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     color: var(--btn-text, #fff);
     background: var(--primary-color);
     border-color: transparent;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(0, 96, 152, 0.2);
 }
 
 .cgo-rt-fbtn.emphasis:hover {
     filter: brightness(1.08);
     background: var(--primary-color);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 6px rgba(0, 96, 152, 0.3);
 }
 
 .cgo-rt-fbtn:disabled {
@@ -1184,49 +1343,23 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
         top: auto !important;
         left: 0 !important;
         right: 0 !important;
-        bottom: 0 !important;
         width: 100% !important;
         max-width: none !important;
-        /* 半屏档按内容撑开：40vh 装不下「起终点输入区 + 快捷按钮 + 底栏」，
-           底栏会把输入区压掉半行。改内容自适应，60vh 封顶；内容更高的面板
-           （结果面板）超出部分交给 .panel-body 滚动。
-           用 height 而不是 max-height 定档：内容不足时 max-height 既撑不高也切不到全屏档。
-           高度一律用 dvh：移动端浏览器的 100vh 是地址栏收起时的大视口，比实际可见高度大，
-           面板会比屏幕还高、顶栏被挤到页面标题栏上面（dvh 取当前动态视口，与核心面板一致）。 */
-        height: auto;
-        max-height: 60vh !important;
-        max-height: 60dvh !important;
+        /* 高度档 / 贴底定位已由核心统一接管（core/mobile-sheet.js 内联 top + height +
+           transform，含底栏停靠时扣掉底栏高）。这里不再写 bottom / height / max-height ——
+           两套尺寸规则叠加会多裁掉一档高度（实测）。 */
         border-radius: 20px 20px 0 0 !important;
         box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.15) !important;
     }
 
     .cgo-rt-panel.drawer-full {
-        /* ⚠️ 这里绝不能加 !important：拖动靠内联 height 覆盖档位高度，
-           一旦带上 !important，内联声明会被压死，面板就卡在全屏档拖不回去了。
-           类选择器（0,2,0）本身就压得过上面的 .cgo-rt-panel（0,1,0）。
-           顶端的预留量必须与核心车站面板同口径（style.css 的
-           `top: calc(env(safe-area-inset-top, 0px) + 60px)`）：
-           面板是「贴底 + 定高」定位，顶端 = 视口高 − 高度，
-           少减 safe-area-inset-top 就会顶进刘海/状态栏、压住页面标题栏。
-           高度用 dvh：移动端浏览器的 100vh 取地址栏收起时的大视口，比实际可见高度大。 */
-        height: calc(100vh - 60px);      /* 回退：不支持 dvh / env 的旧内核 */
-        height: calc(100dvh - 60px - env(safe-area-inset-top, 0px));
-        max-height: calc(100vh - 60px) !important;
-        max-height: calc(100dvh - 60px - env(safe-area-inset-top, 0px)) !important;
-        /* 全屏时面板顶端与填色遮罩同色相连，收掉圆角才不会在接缝处留出缺口 */
+        /* 全屏档高度同样交给核心（内联 height = 视口高 − 顶留 − 底栏高）；
+           这里只收圆角：全屏时面板顶端与填色遮罩同色相连，留圆角会在接缝处露缺口。 */
         border-radius: 0 !important;
     }
 
-    /* 最小化档：只留把手与标题栏，内容区与底栏整块折叠。
-       高度交给「把手 + 标题栏」自然撑开，拖动期间的内联 height 由 settle() 清除。 */
-    .cgo-rt-panel.drawer-min {
-        height: auto;
-    }
-
-    .cgo-rt-panel.drawer-min .panel-body,
-    .cgo-rt-panel.drawer-min .panel-footer {
-        display: none !important;
-    }
+    /* 最小化档：只留把手与标题栏。档位高度由核心用 transform 下移实现，
+       内容区/底栏的显隐核心已接管，这里不再写 height / display。 */
 
     .cgo-rt-panel .panel-body {
         max-height: none;                 /* 高度交给面板整体约束 */

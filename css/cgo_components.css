@@ -745,7 +745,7 @@
     display: none;
 }
 #info-panel.panel-adjust-anim {
-    transition: top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .panel-header {
@@ -1233,14 +1233,14 @@
 .line-visual-overlay {
     fill: none;
     pointer-events: none;
-    transition: all 0.2s;
+    transition: opacity var(--dur-fast, 140ms) ease;
 }
 .line-visual-outer,
 .line-visual-inner {
     fill: none;
     stroke-linecap: round;
     stroke-linejoin: round;
-    transition: all 0.2s;
+    transition: stroke var(--dur-fast, 140ms) ease, opacity var(--dur-fast, 140ms) ease;
     pointer-events: none;
 }
 .line-visual-group.active .line-visual-outer {
@@ -1582,7 +1582,11 @@ canvas {
     cursor: pointer;
     font-size: 13px;
     color: var(--text-main);
-    transition: all var(--transition-base, 0.2s ease);
+    transition:
+        background-color var(--dur-fast, 140ms) ease,
+        border-color var(--dur-fast, 140ms) ease,
+        box-shadow var(--dur-fast, 140ms) ease,
+        color var(--dur-fast, 140ms) ease;
     user-select: none;
     min-height: 32px;
     box-sizing: border-box;
@@ -1828,40 +1832,8 @@ cgo-toolbar-btn,
         opacity var(--dur-fast, 140ms) ease;
 }
 
-/* <cgo-button> 同款 1px 双轴微光描边 (Layer 2 Masked 1px Hairline Rim Light，唯一描边来源) */
-cgo-toolbar-btn::before,
-.cgo-toolbar-btn::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background:
-        linear-gradient(to right,
-            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
-            rgba(0, 0, 0, 0) var(--lg-rim-side, 3px),
-            rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 3px)),
-            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
-        linear-gradient(to bottom,
-            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 0,
-            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) var(--lg-rim-hold, 1px),
-            rgba(255, 255, 255, 0) 8px,
-            rgba(0, 0, 0, 0.02) calc(100% - 4px),
-            rgba(0, 0, 0, 0.12) 100%);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    z-index: 2;
-    opacity: 0.64;
-    transition: opacity var(--dur-fast, 140ms) ease;
-}
+/* 微光描边统一继承自 cgo_element.css 中的 cgo-toolbar-btn::before，避免重复声明 */
 
-cgo-toolbar-btn:hover:not(:disabled)::before,
-.cgo-toolbar-btn:hover:not(:disabled)::before {
-    opacity: 0.75;
-}
 
 cgo-toolbar-btn:hover:not(:disabled),
 .cgo-toolbar-btn:hover:not(:disabled) {
@@ -1904,16 +1876,6 @@ cgo-toolbar-btn > *,
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
 }
 
-[data-theme='dark'] cgo-toolbar-btn::before,
-[data-theme='dark'] .cgo-toolbar-btn::before {
-    background:
-        linear-gradient(to bottom,
-            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 0,
-            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 1px,
-            rgba(255, 255, 255, 0) 8px,
-            rgba(255, 255, 255, 0) calc(100% - 4px),
-            rgba(255, 255, 255, 0.08) 100%);
-}
 
 [data-theme='dark'] cgo-toolbar-btn:focus-visible,
 [data-theme='dark'] .cgo-toolbar-btn:focus-visible {

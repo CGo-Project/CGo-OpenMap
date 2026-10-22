@@ -6,9 +6,9 @@
   - 方标右侧由「号线」一行改为**三行**：中文「号线」/ 蒙文「第一线」/ 英文「Line」，
     三行行距相等，并与方标一起以 75 为竖直中心。
 
-  蒙文：ᠨᠢᠭᠡᠳᠦᠭᠡᠷ ᠮᠥᠷ（nigedüger mör，第一线）。ᠮᠥᠷ = 线/路线；ᠨᠢᠭᠡᠳᠦᠭᠡᠷ = 第一。
+  蒙文：ᠳ᠋ᠦᠭᠡᠷ ᠱᠤᠭᠤᠮ（dügür hugum，序数词词尾 + 线）。ᠬᠤᠭᠤᠮ = 线；ᠳ᠋ᠦᠭᠡᠷ = 第一（词尾式）。
   蒙文行带序数词是因为蒙文里数字不能借用方标里的阿拉伯数字，必须写成序数词才成立。
-  ⚠️ 蒙文写法待母语者复核后再定稿，详见 data_stations.js 的蒙文说明。
+  写法照官方导视牌实拍核对（详见 data_lines.js 的蒙文说明）。
 
   配色沿用引擎约定：底色取 --svgclr、文字与描边取 --svgtext。
 -->
@@ -24,7 +24,7 @@
         font-size="30">号线</text>
   <text x="112" y="85" fill="var(--svgtext, #ffffff)"
         font-family="'Mongolian Baiti', 'Noto Sans Mongolian', 'Menksoft Qagan', sans-serif"
-        font-size="30">ᠨᠢᠭᠡᠳᠦᠭᠡᠷ ᠮᠥᠷ</text>
+        font-size="30">ᠳ᠋ᠦᠭᠡᠷ ᠱᠤᠭᠤᠮ</text>
   <text x="112" y="118" fill="var(--svgtext, #ffffff)"
         font-family="Arial, Helvetica, sans-serif" font-size="30">Line</text>
 </svg>

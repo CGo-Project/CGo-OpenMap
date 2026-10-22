@@ -355,7 +355,7 @@
      */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.1537";
+        const version = "261022.2104";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
@@ -367,12 +367,19 @@
         write(`${shared}/route/loop-direction.js`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         write(`${shared}/base/viewport-inset.js`);
+        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
+        write(`${shared}/base/panel-tab-swipe-relay.js`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         write(`${shared}/route/route-data.js`);
         write(`${shared}/route/route-planner.js`);
         write(`${shared}/route/route-panel-icons.js`);
         write(`${shared}/route/route-panel-search.js`);
         write(`${shared}/route/route-panel.js`);
+        // 公共栅格化零件（分享卡海报与沿革视频导出共用，须早于 poster.js 与 opening-history.export.js）
+        write(`${shared}/base/svg-raster.js`);
+        // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
+        write(`${shared}/base/poster.js`);
+        write(`${shared}/base/share-card.js`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         write(`${shared}/station/nearest-station.js`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）

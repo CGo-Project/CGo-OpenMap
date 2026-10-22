@@ -5,12 +5,18 @@
  * 原本只是纯文本；本模块给它加上「点一下就跳到那座车站详情」的交互，
  * 便于沿线连续浏览——点完下一站，新面板的上下行又能继续点。
  *
+ * 此处还兼作**已拆除站纠正**：沿革数据里 `removed` 的站（如长春 3 号线原辽宁路站 0323），
+ * 线路站序仍保留它以便演示还原历史形态，核心并不知道它已不存在——于是非演示态下
+ * 「上一站 / 下一站」与「可接驳或付费换乘至」会把它当活站。本模块据 opening-history.js
+ * 暴露的 `window.CGO_RETIRED_STATIONS` 就地纠正：邻站改写为沿站序向外第一座活站
+ * （距离按经纬度重估）、接驳徽标滤掉已被拆除的对端。演示进行中不干预。
+ *
  * 为什么不改 core：
  *   - core 里 prev / next 是**渲染好的 HTML 字符串**（站名 + 距离 span），不携带车站 ID，
  *     为可选交互去改核心渲染不符合「core 与业务解耦」的铁律；
- *   - 本模块不改 DOM 结构与渲染结果，只在面板装配完成后（onMounted）给已有的
- *     `.info-value` 补 data 属性、键盘可达性与点击处理，对 core 零侵入，
- *     与 geo-estimate.js 的「面板就地增强」是同一思路。
+ *   - 本模块只在面板装配完成后（onMounted）就地增强已有的 `.info-value`：补 data 属性、
+ *     键盘可达性与点击处理（以及把已拆除的邻站改写为活站），对 core 零侵入，
+ *     与 geo-estimate.js 的「面板就地改写」是同一思路。
  *
  * 车站 ID 怎么来（站名反查）：
  *   - 从 info-value 的**首个非空文本子节点**取站名（其后那个 span 是距离，不参与匹配），
@@ -125,6 +131,106 @@
         return null;
     }
 
+    /* ======================================================================
+     * 已拆除站纠正：面板里不该再把「已拆除站」当成活站
+     *
+     * 拆除只写在沿革数据里（`data_opening_history.js` 的 removed 操作，如长春 3 号线原辽宁路
+     * 站），线路站序仍保留该站以还原历史形态，核心并不知道它已经不存在 —— 于是非演示态的
+     * 「上一站 / 下一站」与「可接驳或付费换乘至」会把它当活站。这里在面板装配完成后按
+     * 沿革数据纠正（core 零改动），演示进行中则由演示层按时间轴自行呈现，不在此干预。
+     * ==================================================================== */
+
+    /** 沿革里「已拆除站」集合（由 opening-history.js 暴露）；没有该数据的城市返回 null */
+    function retiredSet() {
+        const list = window.CGO_RETIRED_STATIONS;
+        return Array.isArray(list) && list.length ? new Set(list) : null;
+    }
+
+    /** 演示（线网发展史）进行中：#map-content 挂着 cgo-oh-stage */
+    function demoOn() {
+        return !!document.getElementById("map-content")?.classList.contains("cgo-oh-stage");
+    }
+
+    /** 站名 → 车站 ID（只看现行名，不处理同名歧义；用于判断这一行显示的是不是已拆除站） */
+    function sidByName(name) {
+        if (!name) return null;
+        const table = stationTable();
+        return Object.keys(table).find((id) => table[id] && table[id].cn === name) || null;
+    }
+
+    /**
+     * 沿线路站序从 activeSid 向 dir（-1 上一站 / +1 下一站）找第一座**未拆除**的站。
+     * 分支线按 way1 / way2 各自查找，环线首尾相接。
+     * @returns {string|null} 找不到（已到尽头 / 线路缺失）返回 null
+     */
+    function nextLiveSid(lineId, activeSid, dir, retired) {
+        const line = (window.linesData || []).find((l) => l.id === lineId);
+        if (!line) return null;
+        const groups = line.hasbranch
+            ? [line["stationIds-way1"] || [], line["stationIds-way2"] || []]
+            : [line.stationIds || []];
+        for (const ids of groups) {
+            const idx = ids.indexOf(activeSid);
+            if (idx < 0) continue;
+            const len = ids.length;
+            const loop = line.isLoop === true;
+            const steps = loop ? len - 1 : (dir < 0 ? idx : len - 1 - idx);
+            for (let k = 1; k <= steps; k++) {
+                const pos = loop ? (((dir < 0 ? idx - k : idx + k) % len) + len) % len : (dir < 0 ? idx - k : idx + k);
+                if (!retired.has(ids[pos])) return ids[pos];
+            }
+            return null;
+        }
+        return null;
+    }
+
+    /** 改写「上一站 / 下一站」一行的站名与距离（距离按经纬度重估；取不到就只留站名） */
+    function applyRowName(valueEl, name, meters) {
+        const nodes = Array.prototype.slice.call(valueEl.childNodes);
+        const text = nodes.find((n) => n.nodeType === 3 && n.textContent.trim());
+        if (text) text.textContent = name + " ";
+        const span = nodes.find((n) => n.nodeType === 1 && n.tagName === "SPAN");
+        if (!span) return;
+        if (meters != null) {
+            span.textContent = `(约${meters}米)`;
+            span.dataset.cgoGeoDone = "1";   // 已按球面值写好，别让 geo-estimate 再算一遍
+        } else {
+            span.remove();
+        }
+    }
+
+    /**
+     * 邻站指向已拆除站时，改写为沿站序向外第一座活站。
+     * @returns {boolean} 是否发生了改写
+     */
+    function rewriteRetiredNeighbor(valueEl, lineInfo, activeSid, dir, retired) {
+        const sid = sidByName(stationNameOf(valueEl));
+        if (!sid || !retired.has(sid)) return false;
+        const alt = nextLiveSid(lineInfo.id, activeSid, dir, retired);
+        if (!alt || alt === sid) return false;
+        const altName = (stationTable()[alt] || {}).cn;
+        if (!altName) return false;
+        const geo = window.CGoGeoEstimate;
+        const meters = (geo && typeof geo.metersBetween === "function")
+            ? geo.metersBetween(activeSid, alt) : null;
+        applyRowName(valueEl, altName, meters);
+        return true;
+    }
+
+    /**
+     * 「可接驳或付费换乘至 / 电子客票可免费站外换乘」行里的线路徽标：对端车站若已拆除，
+     * 该对端实际不存在了，徽标一并滤掉；整行滤空则连区块一起移除。
+     */
+    function filterRetiredBadges(row, retired) {
+        let hit = 0;
+        row.querySelectorAll(".transfer-link[data-jump-sid]").forEach((el) => {
+            if (!retired.has(el.getAttribute("data-jump-sid"))) return;
+            el.remove();
+            hit++;
+        });
+        if (hit && !row.querySelector(".transfer-link")) (row.closest(".transfer-section") || row).remove();
+    }
+
     /**
      * 跳转到目标车站详情，并停在与当前一致的线路页签上。
      * selectStation 同步完成面板渲染，随后按线路名点选同名页签即可，
@@ -188,14 +294,24 @@
             const pane = infoPanel.querySelector(`.tab-pane[data-tab-index="${context.tabIndex}"]`);
             if (!pane) return;
 
+            // 演示进行中不纠正：拆除 / 幽灵站由演示层按时间轴自行呈现
+            const retired = demoOn() ? null : retiredSet();
             const lineInfo = context.lineInfo || {};
             const nextLabel = lineInfo.nextLabel || "下一站";
             pane.querySelectorAll(".info-row").forEach((row) => {
                 const labelEl = row.querySelector(".info-label");
-                const valueEl = row.querySelector(".info-value");
-                if (!labelEl || !valueEl) return;
+                if (!labelEl) return;
                 const label = (labelEl.textContent || "").trim();
+                // 接驳 / 站外换乘徽标：对端车站已被拆除的，一并滤掉（该对端实际不存在了）
+                if (retired && (label === "可接驳或付费换乘至" || label === "电子客票可免费站外换乘")) {
+                    filterRetiredBadges(row, retired);
+                    return;
+                }
                 if (label !== "上一站" && label !== nextLabel) return;
+                const valueEl = row.querySelector(".info-value");
+                if (!valueEl) return;
+                // 邻站已被拆除：先改写为沿站序向外第一座活站，再按改写后的站名绑跳转
+                if (retired) rewriteRetiredNeighbor(valueEl, lineInfo, activeSid, label === "上一站" ? -1 : 1, retired);
                 bindRow(valueEl, lineInfo.name || "", activeSid);
             });
         }

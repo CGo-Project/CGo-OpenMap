@@ -42,16 +42,22 @@
 
     /* ── 样式注入：按脚本自身 URL 找同名 css，与 calligraphy.css / route-panel.css 同一做法。
         query（?v= 版本号）一并带过去：Service Worker 对静态资源是「精确匹配优先」，
-       CSS 的 URL 若恒定不变，改了样式也会一直被旧缓存命中。 ── */
+       CSS 的 URL 若恒定不变，改了样式也会一直被旧缓存命中。
+       station-panel-glass.css 是本脚本的伴生样式（车站详情卡片的 Tier B 玻璃底板），
+       在同一处注入，保证六城只引一个脚本就能同时拿到两份样式。 ── */
     (function injectStyle() {
-        if (document.getElementById(STYLE_ID)) return;
         const src = document.currentScript?.src;
         if (!src) return;
-        const link = document.createElement("link");
-        link.id = STYLE_ID;
-        link.rel = "stylesheet";
-        link.href = src.replace(/sidebar-refit\.js(\?|$)/, "sidebar-refit.css$1");
-        document.head.appendChild(link);
+        const add = (id, file) => {
+            if (document.getElementById(id)) return;
+            const link = document.createElement("link");
+            link.id = id;
+            link.rel = "stylesheet";
+            link.href = src.replace(/sidebar-refit\.js(\?|$)/, `${file}$1`);
+            document.head.appendChild(link);
+        };
+        add(STYLE_ID, "sidebar-refit.css");
+        add("cgo-station-panel-glass-style", "station-panel-glass.css");
     })();
 
     const root = () => document.documentElement;

@@ -180,6 +180,21 @@
     });
 
     /**
+     * 分享卡（共享层 `base/share-card.js`）的线路徽标「按原形重画」钩子。
+     *
+     * 面板里的徽标是**为染色 header 特化**过的：题字给 `.panel-header` 染上线路线色后，同线路的
+     * 徽标会反色（圆底/数字对调防融合）。分享卡把 `.panel-badges` 克隆进卡片，而卡片里**没有**
+     * 染色 header，那份反色就成了无源之水 —— 故卡片挂进文档后回调本钩子，
+     * `getHeaderTintForBadge()` 在卡片里找不到 `.sy-calligraphy-header`，重画即落到常规配色（原形）。
+     */
+    window.CGO_SHARE_BADGES = (container) => {
+        container.querySelectorAll(":scope > .line-badge").forEach((badge) => {
+            const lines = getBadgeLines(badge);
+            if (lines?.length) renderCompactLineBadge(badge, lines);
+        });
+    };
+
+    /**
      * @param {Array} lines 线路数组
      * @param {null|{color:string,onColor:string,lineId:string}} headerTint
      *        徽标所在题字 header 的染色信息（底色 / 可读文字色 / 染色来源线路 ID）；

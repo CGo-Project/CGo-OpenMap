@@ -277,8 +277,11 @@ body, p, .body, .page-subtitle {
         opacity var(--dur-fast, 140ms) ease;
 }
 
-/* 卡片同款精致 1px 双轴微光描边 (Layer 2 Masked 1px Hairline Rim Light) */
-.btn::before {
+/* 按钮、徽章与工具栏按钮精致 1px 双轴微光描边 (Layer 2 Masked 1px Hairline Rim Light) */
+.btn::before,
+.badge::before,
+cgo-toolbar-btn::before,
+.cgo-toolbar-btn::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -306,11 +309,16 @@ body, p, .body, .page-subtitle {
     transition: opacity var(--dur-fast, 140ms) ease;
 }
 
-.btn:hover:not([disabled]):not(.loading):not([aria-disabled="true"])::before {
+.btn:hover:not([disabled]):not(.loading):not([aria-disabled="true"])::before,
+cgo-toolbar-btn:hover:not(:disabled)::before,
+.cgo-toolbar-btn:hover:not(:disabled)::before {
     opacity: 0.75;
 }
 
-[data-theme='dark'] .btn::before {
+[data-theme='dark'] .btn::before,
+[data-theme='dark'] .badge::before,
+[data-theme='dark'] cgo-toolbar-btn::before,
+[data-theme='dark'] .cgo-toolbar-btn::before {
     background:
         linear-gradient(to bottom,
             rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 0,
@@ -517,14 +525,7 @@ body[data-glass-mode='none'] .btn {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
 }
-:root[glass-mode='flat'] .btn::before,
-:root[data-glass-mode='flat'] .btn::before,
-body[glass-mode='flat'] .btn::before,
-body[data-glass-mode='flat'] .btn::before,
-:root[glass-mode='none'] .btn::before,
-:root[data-glass-mode='none'] .btn::before,
-body[glass-mode='none'] .btn::before,
-body[data-glass-mode='none'] .btn::before {
+:is(:root, body):is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none']) :is(.btn, .badge, cgo-toolbar-btn, .cgo-toolbar-btn)::before {
     display: none;
 }
 :root[glass-mode='flat'] .btn-primary,
@@ -573,7 +574,11 @@ body[data-glass-mode='none'] .btn::before {
     height: 36px;
     border-radius: var(--radius-full);
     cursor: pointer;
-    transition: all var(--transition-slow);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out);
     font-family: var(--font-sans);
     font-size: var(--text-base);
     display: inline-flex;
@@ -689,7 +694,11 @@ body[data-glass-mode='none'] .btn::before {
     font-size: var(--text-base);
     font-weight: 600;
     gap: 6px;
-    transition: all var(--transition-base);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out);
     white-space: nowrap;
     touch-action: manipulation;
 }
@@ -1039,7 +1048,10 @@ body[data-glass-mode='none'] .btn::before {
     color: var(--text-main);
     font-family: var(--font-sans);
     font-size: var(--text-md);
-    transition: all var(--transition-base);
+    transition:
+        border-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        background-color var(--dur-fast, 160ms) ease;
     appearance: none;
     -webkit-appearance: none;
 }
@@ -1187,44 +1199,7 @@ body[data-glass-mode='none'] .btn::before {
     user-select: none;
 }
 
-/* 同步 cgo-button 精致 1px 双轴微光描边 (Layer 2 Masked 1px Hairline Rim Light) */
-.badge::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background:
-        linear-gradient(to right,
-            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
-            rgba(0, 0, 0, 0) var(--lg-rim-side, 3px),
-            rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 3px)),
-            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
-        linear-gradient(to bottom,
-            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 0,
-            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) var(--lg-rim-hold, 1px),
-            rgba(255, 255, 255, 0) 8px,
-            rgba(0, 0, 0, 0.02) calc(100% - 4px),
-            rgba(0, 0, 0, 0.12) 100%);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    z-index: 2;
-    opacity: 0.64;
-    transition: opacity var(--dur-fast, 140ms) ease;
-}
 
-[data-theme='dark'] .badge::before {
-    background:
-        linear-gradient(to bottom,
-            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 0,
-            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 1px,
-            rgba(255, 255, 255, 0) 8px,
-            rgba(255, 255, 255, 0) calc(100% - 4px),
-            rgba(255, 255, 255, 0.08) 100%);
-}
 
 .badge > * {
     position: relative;
@@ -1484,7 +1459,10 @@ body[data-glass-mode='none'] .btn::before {
     color: var(--text-light);
     font-size: var(--text-sm);
     cursor: pointer;
-    transition: all var(--transition-base);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        border-color var(--dur-fast, 160ms) ease;
     border: 1px solid var(--border-color);
 }
 
@@ -1561,7 +1539,12 @@ body[data-glass-mode='none'] .btn::before {
     border: 1px solid transparent;
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition:
+        color var(--dur-fast, 140ms) ease,
+        background-color var(--dur-fast, 140ms) ease,
+        box-shadow var(--dur-fast, 140ms) ease,
+        border-color var(--dur-fast, 140ms) ease,
+        transform var(--dur-micro, 100ms) cubic-bezier(0.16, 1, 0.3, 1);
     user-select: none;
     outline: none;
     box-sizing: border-box;
@@ -1634,7 +1617,10 @@ body[data-glass-mode='none'] .btn::before {
     font-size: var(--text-base);
     color: var(--text-light);
     border-bottom: 3px solid transparent;
-    transition: all var(--transition-base);
+    transition:
+        color var(--dur-fast, 140ms) ease,
+        background-color var(--dur-fast, 140ms) ease,
+        border-color var(--dur-fast, 140ms) ease;
     font-weight: 500;
     white-space: nowrap;
     user-select: none;
@@ -1718,54 +1704,7 @@ body[data-glass-mode='none'] .btn::before {
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
 }
 
-/* Tier B Layer 1 衬底 (0.82 固定) */
-.text-dialog::after,
-.help-dialog::after,
-.modal-dialog::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    border-radius: inherit;
-    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82));
-    pointer-events: none;
-    transition: background-color 0.25s ease;
-}
-[data-theme='dark'] .text-dialog::after,
-[data-theme='dark'] .help-dialog::after,
-[data-theme='dark'] .modal-dialog::after {
-    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.82));
-}
 
-/* Tier B Layer 2 弱化微光圈 (顶部柔和单向光，与 0.82 底板自然融合) */
-.text-dialog::before,
-.help-dialog::before,
-.modal-dialog::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(to bottom,
-        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) 0,
-        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) var(--lg-rim-hold, 1px),
-        rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    z-index: 2;
-    opacity: 0.8;
-}
-[data-theme='dark'] .text-dialog::before,
-[data-theme='dark'] .help-dialog::before,
-[data-theme='dark'] .modal-dialog::before {
-    background: linear-gradient(to bottom,
-        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 0,
-        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 1px,
-        rgba(255, 255, 255, 0) 8px);
-}
 
 [data-theme='dark'] .text-dialog,
 [data-theme='dark'] .help-dialog,
@@ -1958,7 +1897,10 @@ body[data-glass-mode='none'] .btn::before {
     font-family: var(--font-sans);
     font-size: var(--text-md);
     font-weight: 600;
-    transition: all var(--transition-base);
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out);
 }
 
 .help-action-btn.primary {
@@ -1987,7 +1929,7 @@ body[data-glass-mode='none'] .btn::before {
     padding: 12px 16px;
     border-radius: var(--radius-lg, 12px);
     font-size: var(--text-sm, 13px);
-    color: var(--text-light);
+    color: var(--text-main);
     line-height: 1.6;
     margin: 14px 0 0;
     box-sizing: border-box;
@@ -1998,10 +1940,25 @@ body[data-glass-mode='none'] .btn::before {
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
 }
 
+/* 确保直接文本节点不被伪元素衬底遮挡（在 isolation: isolate 下置于文本层下方） */
+.help-data-info::after,
+.help-data-info2::after {
+    z-index: -1 !important;
+}
+
+.help-data-info::before,
+.help-data-info2::before {
+    z-index: 0 !important;
+}
+
 /* Tier C Layer 1: 中不透明衬底 (0.72 固定) */
 .help-card::after,
 .help-data-info::after,
-.help-data-info2::after {
+.help-data-info2::after,
+cgo-modal .card::after,
+cgo-modal .modal-card::after,
+.modal-dialog .card::after,
+.modal-dialog .modal-card::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -2013,14 +1970,22 @@ body[data-glass-mode='none'] .btn::before {
 }
 [data-theme='dark'] .help-card::after,
 [data-theme='dark'] .help-data-info::after,
-[data-theme='dark'] .help-data-info2::after {
+[data-theme='dark'] .help-data-info2::after,
+[data-theme='dark'] cgo-modal .card::after,
+[data-theme='dark'] cgo-modal .modal-card::after,
+[data-theme='dark'] .modal-dialog .card::after,
+[data-theme='dark'] .modal-dialog .modal-card::after {
     background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
 }
 
 /* Tier C Layer 2: 1px Masked Hairline Rim Light 双轴微光圈层 */
 .help-card::before,
 .help-data-info::before,
-.help-data-info2::before {
+.help-data-info2::before,
+cgo-modal .card::before,
+cgo-modal .modal-card::before,
+.modal-dialog .card::before,
+.modal-dialog .modal-card::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -2049,7 +2014,11 @@ body[data-glass-mode='none'] .btn::before {
 }
 [data-theme='dark'] .help-card::before,
 [data-theme='dark'] .help-data-info::before,
-[data-theme='dark'] .help-data-info2::before {
+[data-theme='dark'] .help-data-info2::before,
+[data-theme='dark'] cgo-modal .card::before,
+[data-theme='dark'] cgo-modal .modal-card::before,
+[data-theme='dark'] .modal-dialog .card::before,
+[data-theme='dark'] .modal-dialog .modal-card::before {
     background:
         linear-gradient(to bottom,
             rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 0,
@@ -2060,15 +2029,52 @@ body[data-glass-mode='none'] .btn::before {
 }
 [data-theme='dark'] .help-card,
 [data-theme='dark'] .help-data-info,
-[data-theme='dark'] .help-data-info2 {
+[data-theme='dark'] .help-data-info2,
+[data-theme='dark'] cgo-modal .card,
+[data-theme='dark'] cgo-modal .modal-card,
+[data-theme='dark'] .modal-dialog .card,
+[data-theme='dark'] .modal-dialog .modal-card {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .help-card > *,
 .help-data-info > *,
-.help-data-info2 > * {
+.help-data-info2 > *,
+cgo-modal .card > *,
+cgo-modal .modal-card > *,
+.modal-dialog .card > *,
+.modal-dialog .modal-card > * {
     position: relative;
     z-index: 3;
+}
+
+cgo-modal .card,
+cgo-modal .modal-card,
+.modal-dialog .card,
+.modal-dialog .modal-card {
+    position: relative;
+    background: transparent !important;
+    border: none !important;
+    border-radius: var(--radius-lg, 12px);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+    color: var(--text-main);
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow: var(--glass-shadow-surface, 0 4px 16px rgba(0, 38, 59, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    cursor: default;
+    transform: none !important;
+}
+
+cgo-modal .card:hover,
+cgo-modal .modal-card:hover,
+.modal-dialog .card:hover,
+.modal-dialog .modal-card:hover {
+    transform: none !important;
+    box-shadow: var(--glass-shadow-surface, 0 4px 16px rgba(0, 38, 59, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)) !important;
 }
 
 /* 帮助弹窗内设置行组件 */
@@ -2166,10 +2172,10 @@ body[data-glass-mode='none'] .btn::before {
     z-index: 500;
     padding: 6px;
     overflow: hidden;
-    isolation: isolate;
+    contain: style;
     box-sizing: border-box;
-    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
-    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
     animation: dropdownIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -2409,7 +2415,9 @@ body[data-glass-mode='none'] .btn::before {
     pointer-events: none;
     z-index: 11000;
     opacity: 0;
-    transition: all 0.3s ease;
+    transition:
+        opacity var(--dur-fast, 160ms) ease-out,
+        transform var(--dur-fast, 160ms) var(--ease-out);
     white-space: nowrap;
     box-shadow: var(--shadow-md);
 }
@@ -2514,10 +2522,10 @@ a.tool-card {
     color: var(--text-main);
     box-sizing: border-box;
     overflow: hidden;
-    isolation: isolate;
+    contain: style;
     box-shadow: var(--glass-shadow);
     transition: transform var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1)),
-                box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1));
+                box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1)));
     cursor: pointer;
 }
 
@@ -2558,13 +2566,12 @@ a.tool-card .liquid-glass-effect {
     inset: 0;
     z-index: 0;
     border-radius: inherit;
-    backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
-    -webkit-backdrop-filter: var(--glass-backdrop-blur, blur(5px) saturate(130%));
-    backdrop-filter: var(--glass-backdrop-filter, blur(5px) saturate(130%) url(#glass-distortion));
-    -webkit-backdrop-filter: var(--glass-backdrop-filter, blur(5px) saturate(130%) url(#glass-distortion));
-    filter: var(--glass-refraction-filter, url(#glass-distortion));
+    backdrop-filter: var(--glass-backdrop-filter, blur(5px) saturate(130%));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter, blur(5px) saturate(130%));
+    filter: var(--glass-refraction-filter, none);
     pointer-events: none;
     overflow: hidden;
+    /* .liquid-glass-effect 是叶子装饰层，isolation: isolate 安全，不会包含弹出层 */
     isolation: isolate;
 }
 
@@ -2677,7 +2684,9 @@ a.tool-card > *:not(.liquid-glass-effect):not(.glass-refraction) {
     color: var(--text-main);
     box-sizing: border-box;
     overflow: hidden;
-    isolation: isolate;
+    /* Fix: contain: style 防止 z-index/counter 溢出，且不创建 backdrop-filter 参考平面边界，
+       避免嵌套玻璃容器相互抑制 backdrop-filter 效果。*/
+    contain: style;
     box-shadow: var(--glass-shadow);
     cursor: default;
     /* Layer 0: 更强模糊与折射 (blur(14px) saturate(135%)) */
@@ -2690,8 +2699,8 @@ a.tool-card > *:not(.liquid-glass-effect):not(.glass-refraction) {
 body[glass-mode='liquid'] .glass-panel,
 body[data-glass-mode='liquid'] .glass-panel,
 :root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur']) .glass-panel {
-    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
-    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
 }
 
 .glass-panel .liquid-glass-effect,
@@ -2700,49 +2709,70 @@ body[data-glass-mode='liquid'] .glass-panel,
     inset: 0;
     z-index: 0;
     border-radius: inherit;
-    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
-    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
-    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
-    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
-    filter: var(--glass-refraction-filter, url(#glass-distortion));
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
+    /* Fix: 参考 glass-shared.js 折射层的修复，使用 CSS 变量而非硬编码 url(#id) 避免业务文档边界引用失效 */
+    filter: var(--glass-refraction-filter, none);
     pointer-events: none;
     overflow: hidden;
-    isolation: isolate;
+    isolation: isolate; /* 叶子装饰层，不包含弹出层，保留 isolation 安全 */
 }
 
-/* Tier B Layer 1: 高不透明衬底 (亮色 0.82，暗色 0.82，无 hover 变化) */
-.glass-panel::after {
+/* Tier B Layer 1: 高不透明衬底 (亮色 0.9，暗色 0.9，无 hover 变化) */
+.glass-panel::after,
+.text-dialog::after,
+.help-dialog::after,
+.modal-dialog::after {
     content: "";
     position: absolute;
     inset: 0;
     z-index: 1;
     border-radius: inherit;
-    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82));
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.9));
     pointer-events: none;
+    transition: background-color 0.25s ease;
 }
 
 [data-theme='dark'] .glass-panel::after,
-:root:not([data-theme='light']) .glass-panel::after {
-    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.82));
+:root:not([data-theme='light']) .glass-panel::after,
+[data-theme='dark'] .text-dialog::after,
+[data-theme='dark'] .help-dialog::after,
+[data-theme='dark'] .modal-dialog::after {
+    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.9));
 }
 
 /* Tier B Layer 2: 弱化微光圈 */
-.glass-panel::before {
+.glass-panel::before,
+.text-dialog::before,
+.help-dialog::before,
+.modal-dialog::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
     padding: 1px;
     background: linear-gradient(to bottom,
-        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 0,
-        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 1px,
-        rgba(255, 255, 255, 0) 12px);
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) var(--lg-rim-hold, 1px),
+        rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px));
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
     z-index: 2;
+    opacity: 0.8;
+}
+
+[data-theme='dark'] .glass-panel::before,
+:root:not([data-theme='light']) .glass-panel::before,
+[data-theme='dark'] .text-dialog::before,
+[data-theme='dark'] .help-dialog::before,
+[data-theme='dark'] .modal-dialog::before {
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 1px,
+        rgba(255, 255, 255, 0) 8px);
 }
 
 .glass-panel > *:not(.liquid-glass-effect):not(.glass-refraction) {
@@ -2756,11 +2786,11 @@ body[data-glass-mode='liquid'] .glass-panel,
     box-shadow: var(--glass-shadow) !important;
 }
 .glass-panel:hover::after {
-    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82)) !important;
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.9)) !important;
 }
 [data-theme='dark'] .glass-panel:hover::after,
 :root:not([data-theme='light']) .glass-panel:hover::after {
-    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.82)) !important;
+    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.9)) !important;
 }
 
 
@@ -2778,7 +2808,8 @@ body[data-glass-mode='liquid'] .glass-panel,
     color: var(--text-main);
     box-sizing: border-box;
     overflow: hidden;
-    isolation: isolate;
+    /* Fix: contain: style 防止 z-index/counter 溢出，且不创建 backdrop-filter 参考平面边界。 */
+    contain: style;
     box-shadow: var(--glass-shadow);
     cursor: default;
     /* Layer 0: 折射磨砂 (blur(14px) saturate(135%)) */
@@ -2792,8 +2823,22 @@ body[data-glass-mode='liquid'] .glass-panel,
 .header-island.glass-surface,
 .tool-header.glass-surface,
 .glass-surface:has(.dropdown-content),
-.glass-surface:has(cgo-dropdown) {
+.glass-surface:has(cgo-dropdown),
+.glass-surface:has(cgo-toolbar-select),
+.glass-surface:has(cgo-admin-select),
+.glass-surface:has(.cgo-toolbar-select) {
     overflow: visible !important;
+}
+
+/* 下拉菜单展开时解除 .glass-surface 的 backdrop-filter，防止抑制子组件的次世代液态磨砂折射 */
+.glass-surface:has(.dropdown-content.show),
+.glass-surface:has(.dropdown.is-open),
+.glass-surface:has(cgo-dropdown[open]),
+.glass-surface:has(cgo-toolbar-select[open]),
+.glass-surface:has(cgo-admin-select[open]),
+.glass-surface:has(.cgo-toolbar-select.is-open) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 
 :root[glass-mode='liquid'] .glass-surface,
@@ -2801,8 +2846,8 @@ body[data-glass-mode='liquid'] .glass-panel,
 body[glass-mode='liquid'] .glass-surface,
 body[data-glass-mode='liquid'] .glass-surface,
 :root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur']) .glass-surface {
-    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
-    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
 }
 
 .glass-surface .liquid-glass-effect,
@@ -2811,10 +2856,8 @@ body[data-glass-mode='liquid'] .glass-surface,
     inset: 0;
     z-index: 0;
     border-radius: inherit;
-    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
-    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
-    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
-    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%) url(#glass-distortion));
+    backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-filter-surface, blur(14px) saturate(135%));
     filter: var(--glass-refraction-filter, url(#glass-distortion));
     pointer-events: none;
     overflow: hidden;
@@ -2894,7 +2937,7 @@ body[data-glass-mode='liquid'] .glass-surface,
     color: var(--text-main);
     box-sizing: border-box;
     overflow: hidden;
-    isolation: isolate;
+    contain: style;
     box-shadow: var(--glass-shadow);
     backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
@@ -2978,7 +3021,9 @@ body[data-glass-mode='liquid'] .glass-surface,
     color: var(--primary-color);
     opacity: 0;
     transform: translateX(-10px);
-    transition: all 0.3s ease;
+    transition:
+        opacity var(--dur-fast, 160ms) ease-out,
+        transform var(--dur-fast, 160ms) var(--ease-out);
     font-weight: bold;
     display: flex;
     align-items: center;
@@ -3132,7 +3177,10 @@ body[data-glass-mode='flat'] .tool-item,
 
 /* 悬停升级卡 */
 .upgrade-tier-card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition:
+        box-shadow var(--dur-fast, 160ms) ease,
+        border-color var(--dur-fast, 160ms) ease,
+        background-color var(--dur-fast, 160ms) ease !important;
 }
 
 .upgrade-tier-card:hover {
@@ -3291,7 +3339,9 @@ th.selected::after {
     align-items: center;
     flex-shrink: 0;
     padding: 12px;
-    transition: all var(--transition-slow);
+    transition:
+        background-color var(--dur-base, 220ms) ease,
+        box-shadow var(--dur-base, 220ms) ease;
 }
 
 .avatar-preview-large svg {
@@ -3319,7 +3369,10 @@ th.selected::after {
     justify-content: center;
     align-items: center;
     padding: 5px;
-    transition: all var(--transition-base);
+    transition:
+        border-color var(--dur-fast, 160ms) ease,
+        opacity var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out);
     opacity: 0.5;
 }
 
@@ -3356,7 +3409,10 @@ th.selected::after {
     height: 24px;
     border-radius: 50%;
     cursor: pointer;
-    transition: all var(--transition-base);
+    transition:
+        transform var(--dur-micro, 120ms) var(--ease-out),
+        border-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease;
     border: 2px solid transparent;
 }
 
@@ -3435,7 +3491,10 @@ th.selected::after {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     isolation: isolate;
-    transition: all 0.25s ease;
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out);
 }
 
 .current-level-card .user-group-tag::before {

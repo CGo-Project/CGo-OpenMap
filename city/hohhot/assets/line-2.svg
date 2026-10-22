@@ -3,9 +3,8 @@
 
   版式与 line-1.svg 完全一致（微圆角方标 + 白描边 + 右侧中文/蒙文/英文三行）。
 
-  蒙文：ᠬᠣᠶᠠᠳᠤᠭᠠᠷ ᠮᠥᠷ（qoyadugar mör，第二线）。ᠮᠥᠷ = 线/路线；ᠬᠣᠶᠠᠳᠤᠭᠠᠷ = 第二
-  （与官方站名「西二环路 = ᠪᠠᠷᠠᠭᠤᠨ ᠬᠣᠶᠠᠳᠤᠭᠠᠷ ᠲᠣᠭᠣᠷᠢᠭ」同词）。
-  ⚠️ 蒙文写法待母语者复核后再定稿。
+  蒙文：ᠳ᠋ᠤᠭᠠᠷ ᠱᠤᠭᠤᠮ（dügür hugum，序数词词尾 + 线）。ᠬᠤᠭᠤᠮ = 线；ᠳ᠋ᠤᠭᠠᠷ = 第二（词尾式）。
+  写法照官方导视牌实拍核对（详见 data_lines.js 的蒙文说明）。
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 150" role="img" aria-label="2号线徽标">
   <rect x="1" y="26" width="98" height="98" rx="4" ry="4" fill="var(--svgclr, #0367A5)"/>
@@ -19,7 +18,7 @@
         font-size="30">号线</text>
   <text x="112" y="85" fill="var(--svgtext, #ffffff)"
         font-family="'Mongolian Baiti', 'Noto Sans Mongolian', 'Menksoft Qagan', sans-serif"
-        font-size="30">ᠬᠣᠶᠠᠳᠤᠭᠠᠷ ᠮᠥᠷ</text>
+        font-size="30">ᠳ᠋ᠤᠭᠠᠷ ᠱᠤᠭᠤᠮ</text>
   <text x="112" y="118" fill="var(--svgtext, #ffffff)"
         font-family="Arial, Helvetica, sans-serif" font-size="30">Line</text>
 </svg>

@@ -91,26 +91,36 @@
 }
 
 /* ── 换乘站的「以普通站入场」─────────────────────────────────────────
-   该站此刻只通了一条线，还不是换乘站：图元按普通 dot 画（环色取**首条开通线路**
-   的颜色）。标签与呼出线照旧 —— 呼出框是这套图的标签体系，不该因为线路数而跳变。 */
+   该站此刻只通了一条线，还不是换乘站：**原生换乘图元藏起来，换成该城普通站的
+   图元**（由 JS 走 city.renderStationIcon / CGoStationIcons 取真源 HTML 盖上来，
+   环色取**首条开通线路**的颜色）。不在这里另画一个圆 —— 各城普通站画法不同
+   （沈阳线路色环、哈尔滨与大连文字色环、上海短横……），自己画必然和图上其他
+   普通站对不上。标签与呼出线照旧 —— 呼出框是这套图的标签体系，不该因为线路数跳变。 */
 #map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot > svg {
     display: none;
 }
 
-#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot::before {
-    content: "";
+#map-content.cgo-oh-stage #stations-layer .station .cgo-oh-doticon {
     position: absolute;
     left: 50%;
     top: 50%;
     box-sizing: border-box;
     width: 10px;
     height: 10px;
-    margin: -5px 0 0 -5px;
-    border: 1.6px solid var(--cgo-oh-dot, var(--station-stroke, #666));
-    border-radius: 50%;
-    background: var(--map-bg);
+    display: none;
+    pointer-events: none;
     opacity: var(--cgo-oh-pop-alpha, 0);
-    transform: scale(var(--cgo-oh-pop-scale, 0.35));
+    transform: translate(-50%, -50%) scale(var(--cgo-oh-pop-scale, 0.35));
+}
+
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-dot .cgo-oh-doticon {
+    display: block;
+}
+
+#map-content.cgo-oh-stage #stations-layer .station .cgo-oh-doticon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 /* ── 暂缓开通站：以「未开通」图元入场 ────────────────────────────────
@@ -154,6 +164,36 @@
 #map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-pop {
     display: block;
     opacity: var(--cgo-oh-pop-alpha, 1);
+}
+
+/* ── 拆除（永久闭站）：图元、站名与引线一并隐去 ──────────────────────
+   与上面的「暂缓开通」不同：暂缓 / 闭站只是把图元换成未开通圈（将来还会恢复），
+   拆除（如长春 3 号线原辽宁路站，随东延入地废弃）则**直接从画布上消失**。
+   由 applyFrame 在拆除那一步给三处元素挂上 .cgo-oh-gone；重放 / 回拖时
+   clearMarks 会把类摘掉，站又回来（与其它形态同一套还原机制）。
+   ⚠️ 必须 !important：核心的 `#stations-layer .station` 是 `display: flex`，
+   不带 !important 盖不住；导出时这条规则随样式表内联进每帧 SVG，图元才会一起消失。 */
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-gone,
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-gone,
+#map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-gone {
+    display: none !important;
+}
+
+/* ── 出站换乘期：主点让位给幽灵点 ────────────────────────────────────
+   同一座车站的两条线各有站台、只能出站换乘的那段时期，交叉点上的**共用图元**
+   （图元 / 站名 / 引线）整体隐去 —— 该站这时的呈现就是幽灵点，它停在各自线路的
+   走向上、避开交叉点，两座站台之间那条虚线由相邻的 .cgo-oh-offlink 图层负责。
+   与「拆除」同款：applyFrame 按幽灵点的进出步挂 / 摘类（见 syncPhantomHosts），
+   同样必须 !important（核心的 .station 是 display:flex），导出时随样式内联。 */
+#map-content.cgo-oh-stage #stations-layer .station.cgo-oh-host-off,
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-host-off,
+#map-content.cgo-oh-stage [data-cgo-callout-layer] [data-cgo-callout].cgo-oh-host-off {
+    display: none !important;
+}
+
+/* 同一站的两个站台幽灵点共用一个站名：只留先入场的那个标签，免得出现两个一模一样的名字 */
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-dup-label {
+    display: none !important;
 }
 
 /* 虚拟换乘（站外连通）连线：两端车站都还没出现在画布上时先不画。
@@ -268,6 +308,22 @@
     opacity: 0.72;
 }
 
+/* 信息区与导出进度卡同版式：标题 / 描述 / 状态三块 */
+.cgo-oh-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-main);
+}
+
+/* 状态：直接放清单里那两颗计数块（`.cgo-oh-item-add`），这里只管排布 */
+.cgo-oh-status {
+    display: flex;
+    gap: 10px;
+    margin-top: 3px;
+}
+
 /* 统计：摆在进度条上方，先看规模再看进度 */
 .cgo-oh-sum {
     display: flex;
@@ -297,9 +353,15 @@
 
 /* ── 操作行：图标按钮 + 两枚显示当前取值的设置按钮 ────────────────────
    6 枚按钮要挤进 320px 的面板，故图标按钮定宽、设置按钮吃剩余宽度 */
-.cgo-oh-actions {
+/* ⚠️ 选择器必须带上 `.cgo-mt-actions`：map-tools.css 里 `.cgo-mt-actions { gap: 8px }` 与本规则同为
+   0,1,0 且**加载更晚**，会把间距覆盖掉（实测一直生效的是 8px）。提到 0,2,0 才压得住。 */
+.cgo-oh-actions.cgo-mt-actions {
     display: flex;
     gap: 6px;
+    /* ⚠️ 允许换行：这一行有 7 枚按钮（5 枚定宽图标 + 2 枚取值按钮），320px 面板里勉强排下，
+       但**侧栏（尤其窄屏侧栏）比它更窄** → 不换行就横向溢出，还会把下面的清单挤变形
+       （用户实测反馈：「控制按钮在侧栏模式下多到溢出，列表高度也跟着算错」）。 */
+    flex-wrap: wrap;
 }
 
 .cgo-oh-actions .cgo-mt-quick {
@@ -312,17 +374,72 @@
     width: 30px;
 }
 
+/* 侧栏 / 窄窗态：面板被压窄后这一行本就吃紧（7 枚按钮），把间距收一档，
+   换行位置更早、不至于挤成一团（用户验收反馈）。 */
+@media (max-width: 1080px) {
+    .cgo-oh-actions.cgo-mt-actions {
+        gap: 4px;
+    }
+}
+
 /* 切到清单态时给按钮一个明确的「按下去了」的样子 —— 两态互斥，
    光看正文有时分不清是「清单空了」还是「还在信息区」 */
 .cgo-oh-actions .cgo-oh-icon-btn.is-on {
     color: #fff;
     background: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset, 0 4px 14px rgba(0, 38, 59, 0.28);
+}
+
+/* ── 导出区「卡面」的两个开关：图标 + 文字 + 激活态，均分该行剩余宽度 ── */
+.cgo-oh-card-modes {
+    flex: 1;
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+}
+
+.cgo-oh-card-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 8px;
+    white-space: nowrap;
+}
+
+.cgo-oh-card-btn.is-on {
+    color: #fff;
+    background: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset, 0 4px 14px rgba(0, 38, 59, 0.28);
+}
+
+/* ⚠️ 激活态悬停必须显式写：该按钮同时带 `cgo-mt-quick`，悬停会落到那套通用样式上
+   （背景换掉 → 主题色被冲掉），早先看着「悬停态背景不对」就是这个。这里保持主题色、
+   只压深一点给反馈。 */
+.cgo-oh-card-btn.is-on:hover {
+    color: #fff;
+    background: var(--primary-color, #00263b);
+    filter: brightness(1.12);
+}
+
+/* 未激活悬停：给一层浅底反馈（与位置分段控件的 hover 同一档） */
+.cgo-oh-card-btn:hover:not(.is-on) {
+    background: var(--btn-info-bg);
 }
 
 .cgo-oh-actions .cgo-oh-set-btn {
     flex: 1 1 auto;
     padding: 7px 4px;
     font-variant-numeric: tabular-nums;
+}
+
+/* 播放期间锁住这两枚按钮（时间线正在跑，改步长/取景要重建，见 syncPlayBtn） */
+.cgo-oh-actions .cgo-oh-set-btn:disabled,
+.cgo-oh-actions .cgo-oh-set-btn.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 /* 设置区：由那两枚按钮开关，默认收起 */
@@ -507,7 +624,9 @@
    它们已经合成进导出画面里的进度卡（右下角），面板上再放一份既重复又占高度。
    与「清单态」互不干扰 —— 两者都只是把这几块 display:none。 */
 .cgo-oh.is-export .cgo-oh-now,
+.cgo-oh.is-export .cgo-oh-title,
 .cgo-oh.is-export .cgo-oh-desc,
+.cgo-oh.is-export .cgo-oh-status,
 .cgo-oh.is-export .cgo-oh-sum,
 .cgo-oh.is-export .cgo-oh-track {
     display: none;
@@ -532,7 +651,9 @@
     gap: 2px;
     padding: 2px;
     background: var(--btn-info-bg);
-    border-radius: 999px;
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-sm, 6px);
+    box-sizing: border-box;
 }
 
 .cgo-oh-export .cgo-rt-need-opt {
@@ -549,17 +670,27 @@
     color: var(--text-main);
     background: transparent;
     border: 0;
-    border-radius: 999px;
+    border-radius: var(--radius-xs, 4px);
     cursor: pointer;
+    transition:
+        background-color var(--dur-fast, 160ms) ease,
+        color var(--dur-fast, 160ms) ease,
+        box-shadow var(--dur-fast, 160ms) ease,
+        transform var(--dur-micro, 120ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 .cgo-oh-export .cgo-rt-need-opt.is-on {
     background: var(--card-bg);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    color: var(--primary-color, #006098);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .cgo-oh-export .cgo-rt-need-opt:hover:not(.is-on) {
     background: var(--border-color);
+}
+
+.cgo-oh-export .cgo-rt-need-opt:active {
+    transform: scale(0.98);
 }
 
 .cgo-oh-export .cgo-rt-need-opt:disabled {
@@ -614,3 +745,46 @@
     color: #d33;
     opacity: 1;
 }
+
+/* ---- 导出进度浮层：外壳用 CGoUI 的 <cgo-modal>，这里只给 slot 内容排版 ---- */
+.cgo-oh-exp-meta {
+    display: grid;
+    gap: 4px;
+    margin: 0 0 10px;
+    font-size: 13px;
+}
+
+.cgo-oh-exp-meta > div {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    min-width: 0;   /* ⚠️ grid 子项默认 min-width:auto，长事件名会顶破卡片（用户验收反馈） */
+}
+
+.cgo-oh-exp-meta dt {
+    flex: 0 0 62px;
+    opacity: .6;
+}
+
+.cgo-oh-exp-meta dd {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.cgo-oh-exp-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.cgo-oh-exp-modal-actions .cgo-mt-quick {
+    padding: 7px 14px;
+}
+
+/* rdot 国铁标签「接驳后藏」：类只在演示态生效（底图由 rdot-label.js 的 :not(.cgo-oh-stage) 规则管），退出演示自动还原 */
+.cgo-oh-stage .cgo-oh-rdot-hidden { display: none !important; }
