@@ -1969,7 +1969,7 @@ const stationsData = {
         }
     },
     "0508": {
-        type: "no",
+        type: "dot",
         "x": 982,
         "y": 1010,
         "cn": "长影旧址博物馆",

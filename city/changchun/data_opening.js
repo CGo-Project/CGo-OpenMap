@@ -54,6 +54,16 @@ const CGO_OPENING_SCHEDULE = [
         // 长影旧址博物馆（0508）暂缓开通：5 号线一期 9-28 开通初期运营时该站不开通
         holdStations: ["0508"],
         notOpenLines: ["CCM05"]
+    },
+    {
+        // 5 号线一期暂缓站长影旧址博物馆（0508）补开。
+        // 开通时刻取当日该站两方向中较早的首班车（上行 5:36，下行 5:49）。
+        id: "CCM05-changying-museum",
+        lineId: "CCM05",
+        name: "长影旧址博物馆站",
+        opensAt: "2026-10-22T05:36+08:00",
+        opensAs: "dot",
+        stationIds: ["0508"]
     }
 ];
 
