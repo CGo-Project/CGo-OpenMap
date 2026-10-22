@@ -292,7 +292,8 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
     position: fixed;
     right: 22px;
     bottom: 24px;
-    z-index: 10021;
+    /* Keep below the core station card (z-index: 2000) on ALL screen sizes. */
+    z-index: 1900;
     width: fit-content;
     max-width: min(660px, calc(100vw - 44px));
     padding: 14px 16px;
@@ -425,7 +426,7 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
 #qd-construction-legend .qd-construction-legend-track-progress::before { }
 #qd-construction-legend .qd-construction-legend-track-progress::before,
 #qd-construction-legend .qd-construction-legend-track-progress::after {
-    background-image: linear-gradient(to right, transparent 0, transparent 1.5px, #fff 1.5px, #fff 4.5px, transparent 4.5px);
+    background-image: linear-gradient(to right, transparent 0, transparent 1.9px, #fff 1.9px, #fff 4.1px, transparent 4.1px);
     background-color: #b224b2;
     background-repeat: no-repeat;
 }
@@ -439,20 +440,33 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
 
 @media (max-width: 900px) {
     #qd-construction-legend {
-        right: 14px;
-        bottom: 18px;
-        width: auto;
-        max-width: calc(100vw - 28px);
-        padding: 12px 14px;
+        right: 10px;
+        bottom: 14px;
+        width: min(320px, calc(100vw - 20px));
+        max-width: calc(100vw - 20px);
+        box-sizing: border-box;
+        padding: 10px 12px;
     }
-    #qd-construction-legend .qd-construction-legend-grid {
-        grid-template-columns: 1fr;
-        row-gap: 10px;
-        column-gap: 0;
-    }
-    #qd-construction-legend .qd-construction-legend-text {
+    #qd-construction-legend .qd-construction-legend-title {
+        margin-bottom: 8px;
         font-size: 14px;
     }
+    #qd-construction-legend .qd-construction-legend-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        row-gap: 8px;
+        column-gap: 10px;
+    }
+    #qd-construction-legend .qd-construction-legend-text {
+        font-size: 12.5px;
+    }
+    /* 仅等比缩放符号：尺寸、间隔、白芯全部继承桌面版的同一几何。 */
+    #qd-construction-legend .qd-construction-legend-station,
+    #qd-construction-legend .qd-construction-legend-track {
+        transform: scale(0.78);
+        transform-origin: center center;
+        margin-right: 4px;
+    }
+
 }
 
 
@@ -493,9 +507,42 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
     width: 100%;
 }
 
-@media (max-width: 600px) {
+@media (min-width: 641px) {
+    #qd-construction-segment-popup .panel-header {
+        cursor: move;
+        user-select: none;
+    }
+    #qd-construction-segment-popup.qd-construction-segment-dragging {
+        transition: opacity 160ms ease;
+    }
+}
+
+@media (max-width: 640px) {
     #qd-construction-segment-popup {
-        width: min(360px, calc(100vw - 20px));
+        left: 0 !important;
+        right: 0 !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 20px 20px 0 0 !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        box-shadow: 0 -5px 20px rgba(0,0,0,0.15);
+    }
+    #qd-construction-segment-popup .panel-header {
+        flex-shrink: 0;
+        border-radius: 20px 20px 0 0;
+        touch-action: none;
+    }
+    #qd-construction-segment-popup .panel-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     }
 }
 
@@ -546,7 +593,14 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
      * 整体上移 0.95 / 24 ≈ 3.96%，让地图定位点对应五角星的视觉重心。
      */
     transform: translate(-50%, -50%) translateY(-3.96%);
-    pointer-events: none !important;
+    pointer-events: auto !important;
+    cursor: pointer;
+}
+
+.map-qingdao .qd-construction-latest-marker:focus-visible {
+    outline: 2px solid #e98913;
+    outline-offset: 3px;
+    border-radius: 3px;
 }
 
 .map-qingdao .qd-construction-latest-marker-icon {

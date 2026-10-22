@@ -86,12 +86,14 @@
 
         const side = showSide ? (detail.side || "—") : "";
         const date = detail.date || "—";
+        const displayDate = detail.estimated && date !== "—" ? `${date}（推测）` : date;
+        const dateColumnWidth = detail.estimated ? "108px" : "78px";
         const status = detail.status || "暂无更新";
 
         return `
             <div style="
                 display:grid;
-                grid-template-columns:${showSide ? '42px 78px minmax(0,1fr)' : '78px minmax(0,1fr)'};
+                grid-template-columns:${showSide ? `42px ${dateColumnWidth} minmax(0,1fr)` : `${dateColumnWidth} minmax(0,1fr)`};
                 align-items:center;
                 column-gap:8px;
                 min-height:28px;
@@ -112,7 +114,7 @@
                     white-space:nowrap;
                     font-variant-numeric:tabular-nums;
                     text-align:left;
-                ">${date}</div>
+                ">${displayDate}</div>
                 <div style="
                     display:grid;
                     grid-template-columns:9px minmax(0,1fr);
@@ -322,5 +324,5 @@
         }
     });
 
-    console.log("[QingdaoConstruction] v66 loaded");
+    console.log("[QingdaoConstruction] v67 loaded");
 })();

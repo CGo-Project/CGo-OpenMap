@@ -71,6 +71,7 @@
     let overlayStationDeltas = new Map();
     let highlightGuardInstalled = false;
     let popupDismissInstalled = false;
+    let segmentPopupStage = "half";
 
     // 这两个未开通车站的基础坐标与线路中心线存在视觉偏差；
     // 进度模式下将专题车站吸附到左右施工线的中线，同时让专题站名跟随同样位移。
@@ -213,12 +214,14 @@
 
         popup = document.createElement("div");
         popup.id = SEGMENT_POPUP_ID;
+        popup.className = "cgo-rt-panel";
         popup.setAttribute("role", "dialog");
         popup.setAttribute("aria-live", "polite");
         popup.style.display = "none";
         // 外壳直接沿用 StationBoard 的 panel-header / panel-body / panel-close-btn。
         popup.innerHTML = `
             <div class="panel-header">
+                <div class="sheet-grabber" aria-hidden="true"><span class="sheet-grabber-bar"></span></div>
                 <div class="header-name-group">
                     <div class="panel-cn-name qd-construction-segment-panel-title"></div>
                     <div class="panel-en-name qd-construction-segment-panel-subtitle"></div>
@@ -235,7 +238,136 @@
             closeSegmentPopup();
         });
         document.body.appendChild(popup);
+        installSegmentPopupInteractions(popup);
+        installSegmentPopupBreakpointHandler(popup);
         return popup;
+    }
+
+    function ensureSegmentPopupMobileSheet(popup) {
+        if (!popup || popup._qdSegmentMobileSheetCleanup || !window.CGoMobileSheet) return;
+        popup._qdSegmentMobileSheetCleanup = window.CGoMobileSheet.attach(popup, {
+            getStage: () => segmentPopupStage,
+            getDetents: () => {
+                const vh = window.visualViewport?.height || window.innerHeight;
+                return {
+                    full: 60,
+                    half: Math.max(60, Math.min(vh - 92, parseFloat(popup.style.getPropertyValue("--qd-segment-initial-top")) || vh * 0.40)),
+                    collapsed: Math.max(vh * 0.40 + 90, vh - 90)
+                };
+            },
+            onStage: (stage) => {
+                segmentPopupStage = stage;
+                popup.dataset.sheetStage = stage;
+            }
+        });
+    }
+
+    function installSegmentPopupInteractions(popup) {
+        if (!popup || popup._qdSegmentInteractionsInstalled) return;
+        popup._qdSegmentInteractionsInstalled = true;
+        const header = popup.querySelector(".panel-header");
+        if (!header) return;
+
+        let dragging = false;
+        let startX = 0;
+        let startY = 0;
+        let initialLeft = 0;
+        let initialTop = 0;
+
+        const onPointerDown = (event) => {
+            if (window.innerWidth <= 640 || !event.isPrimary || event.button !== 0) return;
+            if (event.target.closest("button, a, input, select, textarea, [role='button']")) return;
+            const rect = popup.getBoundingClientRect();
+            dragging = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            initialLeft = rect.left;
+            initialTop = rect.top;
+            popup.classList.add("qd-construction-segment-dragging");
+            document.body.style.cursor = "move";
+            event.preventDefault();
+        };
+        const onPointerMove = (event) => {
+            if (!dragging) return;
+            const pad = 0;
+            const width = popup.offsetWidth;
+            const height = popup.offsetHeight;
+            let left = initialLeft + event.clientX - startX;
+            let top = initialTop + event.clientY - startY;
+            left = Math.max(pad, Math.min(left, Math.max(pad, window.innerWidth - width - pad)));
+            top = Math.max(pad, Math.min(top, Math.max(pad, window.innerHeight - height - pad)));
+            popup.style.left = `${left}px`;
+            popup.style.top = `${top}px`;
+        };
+        const stopPointerDrag = () => {
+            if (!dragging) return;
+            dragging = false;
+            popup.classList.remove("qd-construction-segment-dragging");
+            document.body.style.cursor = "";
+        };
+
+        header.addEventListener("pointerdown", onPointerDown);
+        document.addEventListener("pointermove", onPointerMove);
+        document.addEventListener("pointerup", stopPointerDrag);
+        document.addEventListener("pointercancel", stopPointerDrag);
+        ensureSegmentPopupMobileSheet(popup);
+    }
+
+    // CGoMobileSheet restores its own inline styles when crossing 640px, but it
+    // does not restore the Qingdao popup's display mode or recompute its anchor.
+    // Reconcile only at the UI breakpoint, not on every viewport resize.
+    function installSegmentPopupBreakpointHandler(popup) {
+        if (popup._qdBreakpointInstalled) return;
+        popup._qdBreakpointInstalled = true;
+        const media = window.matchMedia("(max-width: 640px)");
+        media.addEventListener("change", () => {
+            popup._qdOpenAnimation?.cancel();
+            const open = popup.classList.contains("show");
+            if (media.matches) {
+                popup.style.removeProperty("left");
+                popup.style.removeProperty("right");
+                popup.style.display = open ? "flex" : "none";
+                if (open) {
+                    segmentPopupStage = "half";
+                    popup.dataset.sheetStage = "half";
+                    updateSegmentMobileDetent(popup);
+                }
+            } else {
+                popup.style.removeProperty("--qd-segment-initial-top");
+                popup.style.display = open ? "block" : "none";
+                if (open) {
+                    // The generic sheet listener has already removed mobile
+                    // transform/height/top; recompute from the live SVG midpoint.
+                    const hit = popup._qdAnchorHit;
+                    const anchor = hit?.isConnected ? projectSegmentMidpoint(hit) : null;
+                    positionSegmentPopup(popup, anchor?.pageX ?? window.innerWidth / 2,
+                        anchor?.pageY ?? window.innerHeight / 2);
+                } else {
+                    popup.style.removeProperty("top");
+                    popup.style.removeProperty("left");
+                }
+            }
+        });
+    }
+
+    function updateSegmentMobileDetent(popup) {
+        const headerHeight = popup.querySelector(".panel-header")?.offsetHeight || 58;
+        const bodyHeight = popup.querySelector(".panel-body")?.scrollHeight || 0;
+        const vh = window.visualViewport?.height || window.innerHeight;
+        const visibleHeight = Math.min(vh * 0.36, Math.max(120, headerHeight + bodyHeight + 8));
+        popup.style.setProperty("--qd-segment-initial-top", `${Math.max(60, vh - visibleHeight)}px`);
+        popup._qdSegmentMobileSheetCleanup?.refresh?.();
+    }
+
+    function projectSegmentMidpoint(hit) {
+        if (!hit || typeof hit.getTotalLength !== "function") return null;
+        try {
+            const mid = hit.getPointAtLength(hit.getTotalLength() / 2);
+            const ctm = hit.getScreenCTM?.();
+            if (!ctm) return null;
+            return { pageX: ctm.a * mid.x + ctm.c * mid.y + ctm.e + window.pageXOffset,
+                pageY: ctm.b * mid.x + ctm.d * mid.y + ctm.f + window.pageYOffset };
+        } catch (_) { return null; }
     }
 
     function closeSegmentPopup() {
@@ -247,23 +379,69 @@
         }, 180);
     }
 
-    function positionSegmentPopup(popup, clientX, clientY) {
-        const gap = 12;
-        const pad = 10;
-        const rect = popup.getBoundingClientRect();
-        let left = clientX + gap;
-        let top = clientY + gap;
-        if (left + rect.width > window.innerWidth - pad) left = clientX - rect.width - gap;
-        if (top + rect.height > window.innerHeight - pad) top = clientY - rect.height - gap;
-        left = Math.max(pad, Math.min(left, window.innerWidth - rect.width - pad));
-        top = Math.max(pad, Math.min(top, window.innerHeight - rect.height - pad));
-        popup.style.left = `${left}px`;
-        popup.style.top = `${top}px`;
+    // 与 core/showPanelAt 一致：将区间几何中点视为虚拟车站，
+    // 以其屏幕投影坐标为锚点，右下各偏移 15px，越界时向左/上翻转。
+    function positionSegmentPopup(popup, pageX, pageY) {
+        const pad = 15;
+        const pw = popup.offsetWidth || 360;
+        const ph = popup.offsetHeight || 260;
+        const scrollX = window.pageXOffset;
+        const scrollY = window.pageYOffset;
+        const viewportW = window.innerWidth;
+        const viewportH = window.innerHeight;
+        let left = pageX + pad;
+        let top = pageY + pad;
+        if (left + pw > viewportW + scrollX) left = pageX - pw - pad;
+        if (left < scrollX) left = scrollX + 10;
+        if (top + ph > viewportH + scrollY) top = pageY - ph - pad;
+        if (top < scrollY) top = scrollY + 10;
+        popup.style.left = `${left - scrollX}px`;
+        popup.style.top = `${top - scrollY}px`;
     }
 
-    function showSegmentPopup(segment, api, clientX, clientY) {
+    // 桌面端直接把区间路径中点投影到当前屏幕，像点击车站一样定位弹窗。
+    // 不调整地图位移或缩放；移动端才将虚拟站点移动到抽屉上方。
+    function focusSegmentOnMap(hit) {
+        if (!hit || typeof hit.getTotalLength !== "function") return null;
+        let midpoint;
+        try { midpoint = hit.getPointAtLength(hit.getTotalLength() / 2); }
+        catch (_) { return null; }
+        if (!Number.isFinite(midpoint.x) || !Number.isFinite(midpoint.y)) return null;
+        const mobile = window.innerWidth <= 640;
+        if (!mobile) {
+            const ctm = hit.getScreenCTM?.();
+            if (!ctm) return null;
+            return {
+                pageX: ctm.a * midpoint.x + ctm.c * midpoint.y + ctm.e + window.pageXOffset,
+                pageY: ctm.b * midpoint.x + ctm.d * midpoint.y + ctm.f + window.pageYOffset
+            };
+        }
+        if (typeof window.getMapView !== "function" || typeof window.setMapView !== "function") return null;
+        const map = document.getElementById("map-container");
+        const content = document.getElementById("map-content");
+        if (!map || !content) return null;
+        const scale = 1.4;
+        const targetX = map.clientWidth / 2;
+        const targetY = map.clientHeight * 0.30;
+        content.classList.add("animate-zoom");
+        window.setMapView({ x: targetX - midpoint.x * scale, y: targetY - midpoint.y * scale, scale });
+        window.setTimeout(() => content.classList.remove("animate-zoom"), 450);
+        const rect = map.getBoundingClientRect();
+        return { pageX: rect.left + window.pageXOffset + targetX,
+                 pageY: rect.top + window.pageYOffset + targetY };
+    }
+
+    function dismissStationPanel() {
+        const panel = document.getElementById("info-panel");
+        if (!panel || getComputedStyle(panel).display === "none") return;
+        if (typeof window.resetMapState === "function") window.resetMapState();
+    }
+
+    function showSegmentPopup(segment, api, anchor, hit) {
+        // Retain the SVG anchor so layout switching can re-project its current position.
         if (!segment) return;
         const popup = ensureSegmentPopup();
+        popup._qdAnchorHit = hit || null;
         const title = popup.querySelector(".qd-construction-segment-panel-title");
         const subtitle = popup.querySelector(".qd-construction-segment-panel-subtitle");
         const slot = popup.querySelector(".qd-construction-segment-card-slot");
@@ -283,10 +461,29 @@
                 ? api.renderSegmentProgressCard(segment)
                 : "";
         }
-        popup.style.display = "block";
+        const mobilePopup = window.innerWidth <= 640;
+        popup.style.display = mobilePopup ? "flex" : "block";
         popup.classList.remove("show");
-        positionSegmentPopup(popup, clientX, clientY);
-        requestAnimationFrame(() => popup.classList.add("show"));
+        if (mobilePopup) {
+            segmentPopupStage = "half";
+            popup.dataset.sheetStage = segmentPopupStage;
+            ensureSegmentPopupMobileSheet(popup);
+            // 默认只露出足够容纳信息的高度，仍可继续拖到全屏。
+            updateSegmentMobileDetent(popup);
+        } else {
+            positionSegmentPopup(popup, anchor?.pageX ?? window.innerWidth / 2, anchor?.pageY ?? window.innerHeight / 2);
+        }
+        // 先完成虚拟车站锚点定位，再显示信息卡；每次点击都重播桌面端入场动画。
+        // 用 Web Animations 避免同帧重复打开时 CSS transition 被合并。
+        popup._qdOpenAnimation?.cancel();
+        popup.classList.add("show");
+        if (!mobilePopup && typeof popup.animate === "function" &&
+            !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+            popup._qdOpenAnimation = popup.animate([
+                { opacity: 0, transform: "translateY(6px) scale(0.985)" },
+                { opacity: 1, transform: "translateY(0) scale(1)" }
+            ], { duration: 190, easing: "cubic-bezier(0.22, 1, 0.36, 1)" });
+        }
     }
 
     function installPopupDismissHandlers() {
@@ -294,6 +491,10 @@
         popupDismissInstalled = true;
         document.addEventListener("pointerdown", (event) => {
             if (!visible) return;
+            if (event.target.closest?.(".station, .label-group")) {
+                closeSegmentPopup();
+                return;
+            }
             if (event.target.closest?.(`#${SEGMENT_POPUP_ID}`)) return;
             if (event.target.closest?.(".qd-construction-segment-hit")) return;
             closeSegmentPopup();
@@ -329,9 +530,10 @@
         const open = (event) => {
             event.preventDefault();
             event.stopPropagation();
-            const x = Number.isFinite(event.clientX) ? event.clientX : window.innerWidth / 2;
-            const y = Number.isFinite(event.clientY) ? event.clientY : window.innerHeight / 2;
-            showSegmentPopup(segment, api, x, y);
+            // 先关闭车站卡；桌面端只按区间中点定位弹窗，移动端才调整视角。
+            dismissStationPanel();
+            const anchor = focusSegmentOnMap(hit);
+            showSegmentPopup(segment, api, anchor, hit);
         };
         hit.addEventListener("click", open);
         layer.appendChild(hit);
@@ -450,6 +652,9 @@
             el.dataset.tangentX = String(tangentX);
             el.dataset.tangentY = String(tangentY);
             if (meta?.kind) el.dataset.markerKind = meta.kind;
+            if (meta?.stationId) el.dataset.stationId = meta.stationId;
+            if (meta?.lineId) el.dataset.lineId = meta.lineId;
+            if (meta?.specialShiftX) el.dataset.specialShiftX = String(meta.specialShiftX);
             if (meta?.fromId) el.dataset.fromId = meta.fromId;
             if (meta?.toId) el.dataset.toId = meta.toId;
             el.innerHTML = `
@@ -459,6 +664,35 @@
                     </svg>
                     <span class="qd-construction-latest-marker-char">新</span>
                 </span>`;
+            if (meta?.kind === "station" || meta?.kind === "segment") {
+                el.setAttribute("role", "button");
+                el.setAttribute("tabindex", "0");
+                el.setAttribute("aria-label", meta.kind === "station" ? "查看车站最新建设进度" : "查看区间最新建设进度");
+                const activate = (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!visible) return;
+                    if (meta.kind === "station") {
+                        if (typeof window.selectStation !== "function") return;
+                        closeSegmentPopup();
+                        // 使用站点本身的默认打开机制；桌面不自动平移。
+                        window.selectStation(meta.stationId, event.pageX, event.pageY);
+                    } else {
+                        const hits = document.querySelectorAll(`#${LAYER_ID} .qd-construction-segment-hit`);
+                        const hit = Array.from(hits).find((node) =>
+                            node.dataset.lineId === meta.lineId &&
+                            node.dataset.from === meta.fromId && node.dataset.to === meta.toId);
+                        if (!hit) return;
+                        dismissStationPanel();
+                        const anchor = focusSegmentOnMap(hit);
+                        showSegmentPopup(meta.segment, api, anchor, hit);
+                    }
+                };
+                el.addEventListener("click", activate);
+                el.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" || event.key === " ") activate(event);
+                });
+            }
             layer.appendChild(el);
         };
 
@@ -499,21 +733,24 @@
                 const pt = samplePointAndNormal(path, startLength, endLength);
                 const recentSides = recentSegmentSides(segment, now);
                 const outward = 21;
+                // 海红区间（海南路 M0623 — 红树林 M0622）：星标单独向左平移半个图形。
+                const seaHongOffsetX = line.id === "QDM06" &&
+                    ((segment.from === "M0623" && segment.to === "M0622") ||
+                     (segment.from === "M0622" && segment.to === "M0623")) ? -11 : 0;
+                const markerMeta = { kind: "segment", lineId: line.id, fromId: segment.from, toId: segment.to, segment, specialShiftX: seaHongOffsetX };
 
                 // 左右线分别判断最近一个月的进度。
                 // 如果两边都有新进度，就在线路两侧各显示一个“新”星标。
                 if (recentSides.has("左线")) {
                     addMarker(
-                        pt.x - pt.nx * outward, pt.y - pt.ny * outward,
-                        -pt.nx, -pt.ny, pt.tx, pt.ty,
-                        { kind: "segment", fromId: segment.from, toId: segment.to }
+                        pt.x - pt.nx * outward + seaHongOffsetX, pt.y - pt.ny * outward,
+                        -pt.nx, -pt.ny, pt.tx, pt.ty, markerMeta
                     );
                 }
                 if (recentSides.has("右线")) {
                     addMarker(
-                        pt.x + pt.nx * outward, pt.y + pt.ny * outward,
-                        pt.nx, pt.ny, pt.tx, pt.ty,
-                        { kind: "segment", fromId: segment.from, toId: segment.to }
+                        pt.x + pt.nx * outward + seaHongOffsetX, pt.y + pt.ny * outward,
+                        pt.nx, pt.ny, pt.tx, pt.ty, markerMeta
                     );
                 }
             });
@@ -633,7 +870,7 @@
                     const baseProjection = baseScreenX * screenTx + baseScreenY * screenTy;
                     const tangentOffset = (targetProjection - baseProjection) / screenPerMapUnit;
 
-                    marker.style.left = `${baseX + tx * tangentOffset}px`;
+                    marker.style.left = `${baseX + tx * tangentOffset + (Number(marker.dataset.specialShiftX) || 0)}px`;
                     marker.style.top = `${baseY + ty * tangentOffset}px`;
                     return;
                 }
@@ -1294,6 +1531,7 @@
             badgeLayer.classList.remove("show");
         }
         if (latestLayer) {
+            latestLayer.setAttribute("aria-hidden", "false");
             latestLayer.style.display = "block";
             latestLayer.classList.remove("show");
         }
@@ -1323,6 +1561,7 @@
         labelLayer?.classList.remove("show");
         badgeLayer?.classList.remove("show");
         latestLayer?.classList.remove("show");
+        latestLayer?.setAttribute("aria-hidden", "true");
         legend?.classList.remove("show");
         hideTimer = setTimeout(() => {
             if (!visible) {
@@ -1427,6 +1666,7 @@
             }
             const latestLayer = ensureLatestMarkerLayer();
             if (latestLayer) {
+                latestLayer.setAttribute("aria-hidden", visible ? "false" : "true");
                 latestLayer.style.display = visible ? "block" : "none";
                 latestLayer.classList.toggle("show", visible);
             }
