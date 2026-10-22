@@ -193,6 +193,8 @@
 }
 
 /* ── 三个动作 ─────────────────────────────────────────────────────────── */
+/* 按钮改用 <cgo-button>：皮肤、按下反馈、禁用态与焦点环由组件内置，
+   这里只约束三颗均分与窄屏只留图标 */
 .cgo-share-actions {
     display: flex;
     gap: 8px;
@@ -200,32 +202,11 @@
 .cgo-share-btn {
     flex: 1 1 0;
     min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px 8px;
-    font-size: 13px;
-    font-family: inherit;
-    color: var(--text-main, #00263b);
-    background: var(--btn-info-bg, #e9ecef);
-    border: 1px solid transparent;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background-color 0.18s, opacity 0.18s;
 }
-.cgo-share-btn:hover { background: var(--btn-info-hover, #dee2e6); }
-.cgo-share-btn.primary {
-    color: var(--btn-text, #fff);
-    background: var(--primary-color, #00263b);
-}
-.cgo-share-btn.primary:hover { background: var(--primary-hover, #004060); }
-.cgo-share-btn:disabled { opacity: 0.55; cursor: default; }
 .cgo-share-btn span { white-space: nowrap; }
 
 @media (max-width: 380px) {
     .cgo-share-btn span { display: none; }   /* 窄屏只留图标，三个动作仍在一行 */
-    .cgo-share-btn { padding: 10px; }
 }
 
 /* ── 测试环境角标 ────────────────────────────────────────────────────────

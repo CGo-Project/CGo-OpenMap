@@ -1,0 +1,125 @@
+/* CGo OpenMap - 车站详情卡片液态玻璃底板（共享层）
+ *
+ * 由同目录 sidebar-refit.js 按自身 URL 推导并注入（与 sidebar-refit.css 同一做法），
+ * 六城只要引入 sidebar-refit.js 即自动生效，无需手工引用本文件。
+ *
+ * 目标：把核心的车站详情浮层 #info-panel 对齐 CGoUI 2.2 Liquid Glass「Tier B 不可交互底板」，
+ * 与行程规划 / 地图小工具 / <cgo-modal> 使用同一套 0.82 衬底 + 顶部微光圈配方。
+ *
+ * ⚠️ 三条实现约束：
+ *   1. 只作用于浮层形态 —— body.legend-pinned 下 #info-panel 会被搬进固定侧栏的区块里，
+ *      那是一张实色卡片，不能让地图从卡片里透出来。故所有玻璃规则都挂在
+ *      `body:not(.legend-pinned)` 下；若只靠末尾复位，ID 选择器的权重会压过复位规则。
+ *   2. backdrop-filter 一律挂在 ::after 上而不是容器本身 —— 非 none 的 backdrop-filter
+ *      会让容器成为 position: fixed 的包含块，面板内的 fixed 弹层（如工具栏下拉）会被
+ *      overflow: hidden 裁掉。
+ *   3. 核心给正文 / 底栏 / 页签栏刷了实色 !important，玻璃形态下必须逐项改透明；
+ *      标题栏（深色品牌条）保持原样，作为面板的视觉锚点。
+ */
+
+body:not(.legend-pinned) #info-panel {
+    background: transparent !important;
+    border-radius: var(--radius-lg, 12px);
+    box-shadow: 0 20px 50px -10px rgba(0, 38, 59, 0.2), 0 8px 24px -4px rgba(0, 38, 59, 0.12);
+    isolation: isolate;
+}
+
+/* Tier B Layer 1：0.82 固定衬底（模糊只在这里） */
+body:not(.legend-pinned) #info-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.82));
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    pointer-events: none;
+    transition: background-color 0.25s ease;
+}
+
+/* Tier B Layer 2：顶部弱化微光圈 */
+body:not(.legend-pinned) #info-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) var(--lg-rim-hold, 1px),
+        rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+/* Tier B Layer 3：内容层。页签栏原本靠 z-index 10 压住正文的滚动内容，这里保持它的层级 */
+body:not(.legend-pinned) #info-panel > * {
+    position: relative;
+    z-index: 3;
+}
+
+body:not(.legend-pinned) #info-panel > .panel-tabs-container {
+    z-index: 10;
+}
+
+body:not(.legend-pinned) #info-panel > .panel-body,
+body:not(.legend-pinned) #info-panel > .panel-footer,
+body:not(.legend-pinned) #info-panel > .panel-tabs-container {
+    background-color: transparent !important;
+}
+
+[data-theme='dark'] body:not(.legend-pinned) #info-panel {
+    box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.7), 0 8px 24px -4px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='dark'] body:not(.legend-pinned) #info-panel::before {
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 1px,
+        rgba(255, 255, 255, 0) 8px);
+}
+
+/* flat / none 玻璃档位：退回 1.x 实色底板（与上游降级口径一致） */
+:root[glass-mode='flat'] body:not(.legend-pinned) #info-panel,
+:root[data-glass-mode='flat'] body:not(.legend-pinned) #info-panel,
+body[glass-mode='flat']:not(.legend-pinned) #info-panel,
+body[data-glass-mode='flat']:not(.legend-pinned) #info-panel {
+    background: var(--card-bg) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+:root[glass-mode='flat'] body:not(.legend-pinned) #info-panel::after,
+:root[data-glass-mode='flat'] body:not(.legend-pinned) #info-panel::after,
+body[glass-mode='flat']:not(.legend-pinned) #info-panel::after,
+body[data-glass-mode='flat']:not(.legend-pinned) #info-panel::after,
+:root[glass-mode='none'] body:not(.legend-pinned) #info-panel::after,
+:root[data-glass-mode='none'] body:not(.legend-pinned) #info-panel::after,
+body[glass-mode='none']:not(.legend-pinned) #info-panel::after,
+body[data-glass-mode='none']:not(.legend-pinned) #info-panel::after,
+:root[glass-mode='none'] body:not(.legend-pinned) #info-panel::before,
+:root[data-glass-mode='none'] body:not(.legend-pinned) #info-panel::before,
+body[glass-mode='none']:not(.legend-pinned) #info-panel::before,
+body[data-glass-mode='none']:not(.legend-pinned) #info-panel::before {
+    display: none;
+}
+
+:root[glass-mode='flat'] body:not(.legend-pinned) #info-panel > .panel-body,
+:root[data-glass-mode='flat'] body:not(.legend-pinned) #info-panel > .panel-body,
+body[glass-mode='flat']:not(.legend-pinned) #info-panel > .panel-body,
+body[data-glass-mode='flat']:not(.legend-pinned) #info-panel > .panel-body,
+:root[glass-mode='flat'] body:not(.legend-pinned) #info-panel > .panel-footer,
+:root[data-glass-mode='flat'] body:not(.legend-pinned) #info-panel > .panel-footer,
+body[glass-mode='flat']:not(.legend-pinned) #info-panel > .panel-footer,
+body[data-glass-mode='flat']:not(.legend-pinned) #info-panel > .panel-footer,
+:root[glass-mode='flat'] body:not(.legend-pinned) #info-panel > .panel-tabs-container,
+:root[data-glass-mode='flat'] body:not(.legend-pinned) #info-panel > .panel-tabs-container,
+body[glass-mode='flat']:not(.legend-pinned) #info-panel > .panel-tabs-container,
+body[data-glass-mode='flat']:not(.legend-pinned) #info-panel > .panel-tabs-container {
+    background-color: var(--card-bg) !important;
+}

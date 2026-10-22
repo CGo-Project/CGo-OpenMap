@@ -246,10 +246,10 @@
                 <div class="cgo-fb-context" data-context></div>
                 <textarea class="cgo-fb-note" data-note rows="3" placeholder="${escapeHtml(kind.notePlaceholder)}"></textarea>
                 <div class="cgo-fb-actions">
-                    <button type="button" class="cgo-fb-btn" data-act="copy"><cgo-icon name="copy" size="13"></cgo-icon><span data-copy-label>复制</span></button>
-                    <button type="button" class="cgo-fb-btn primary" data-act="issue"><cgo-icon name="external" size="13"></cgo-icon>新建 GitHub Issue</button>
-                    ${qqGroupUrl() ? `<button type="button" class="cgo-fb-btn" data-act="qq" title="官方 QQ 交流群 ${escapeHtml(String(qqGroup()))}"><cgo-icon name="chat" size="13"></cgo-icon>加入 QQ 群</button>` : ""}
-                    <button type="button" class="cgo-fb-btn ghost" data-act="close"><cgo-icon name="close" size="13"></cgo-icon>关闭</button>
+                    <cgo-button class="cgo-fb-btn" variant="info" size="sm" icon="copy" data-act="copy"><span data-copy-label>复制</span></cgo-button>
+                    <cgo-button class="cgo-fb-btn" variant="primary" size="sm" icon="external" data-act="issue">新建 GitHub Issue</cgo-button>
+                    ${qqGroupUrl() ? `<cgo-button class="cgo-fb-btn" variant="info" size="sm" icon="chat" data-act="qq" title="官方 QQ 交流群 ${escapeHtml(String(qqGroup()))}">加入 QQ 群</cgo-button>` : ""}
+                    <cgo-button class="cgo-fb-btn" variant="ghost" size="sm" icon="close" data-act="close">关闭</cgo-button>
                 </div>
             </div>
         `;

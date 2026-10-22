@@ -130,9 +130,10 @@
        看着就像卡片外面还套了一层容器；投影收到贴着卡片的一点深度即可。 */
     body.legend-pinned .panel-section {
         background: var(--card-bg) !important;
-        border: 1px solid var(--border-color) !important;
+        /* 2.2 卡片口径：实体边框改为单层微光描边，避免「边框 + 投影」双层边线 */
+        border: none !important;
         border-radius: 12px !important;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+        box-shadow: 0 0 0 1px var(--border-color), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
         margin: 0 !important;
     }
 
@@ -215,6 +216,11 @@
     body.legend-pinned .cgo-sb-hctl-btn:hover {
         background-color: var(--list-hover);
         color: var(--text-main);
+    }
+
+    /* 2.2：按下时轻微回弹 */
+    body.legend-pinned .cgo-sb-hctl-btn:active {
+        transform: scale(0.94);
     }
 
     /* 展开/收缩按钮的两枚图标按档位互斥显示：

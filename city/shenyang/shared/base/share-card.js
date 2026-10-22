@@ -481,15 +481,9 @@
             <div class="cgo-share">
                 <div class="cgo-share-stage"></div>
                 <div class="cgo-share-actions">
-                    <button type="button" class="cgo-share-btn primary" data-cgo-act="save">
-                        <cgo-icon name="download" size="16"></cgo-icon><span>下载图片</span>
-                    </button>
-                    <button type="button" class="cgo-share-btn" data-cgo-act="copy">
-                        <cgo-icon name="link" size="16"></cgo-icon><span>复制链接</span>
-                    </button>
-                    <button type="button" class="cgo-share-btn" data-cgo-act="share">
-                        <cgo-icon name="external" size="16"></cgo-icon><span>分享链接</span>
-                    </button>
+                    <cgo-button class="cgo-share-btn" variant="primary" icon="download" data-cgo-act="save"><span>下载图片</span></cgo-button>
+                    <cgo-button class="cgo-share-btn" variant="info" icon="link" data-cgo-act="copy"><span>复制链接</span></cgo-button>
+                    <cgo-button class="cgo-share-btn" variant="info" icon="external" data-cgo-act="share"><span>分享链接</span></cgo-button>
                 </div>
             </div>
         `;
@@ -557,7 +551,7 @@
 
     async function saveImage(btn) {
         if (!current || typeof window.CGoPoster?.render !== "function") return;
-        btn.disabled = true;
+        btn.toggleAttribute("disabled", true);
         try {
             await current.ready;                       // 二维码是异步注入的，出图前等它落位
             let canvas = await renderPoster(current.card);
@@ -578,7 +572,7 @@
             console.warn("[CGoShareCard] 出图失败", err);
             toast("出图失败，可改用「复制链接」分享", "error");
         } finally {
-            btn.disabled = false;
+            btn.toggleAttribute("disabled", false);
         }
     }
 

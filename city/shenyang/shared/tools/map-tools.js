@@ -561,9 +561,7 @@
                             <b>${tool.name}</b>
                             <span>${tool.desc}</span>
                         </div>
-                        <button type="button" class="cgo-mt-launch" data-launch="${tool.id}">
-                            开启<cgo-icon name="arrow-right" size="12"></cgo-icon>
-                        </button>
+                        <cgo-button variant="primary" size="sm" icon="arrow-right" icon-pos="right" data-launch="${tool.id}">开启</cgo-button>
                     </div>
                 `).join("")}
             </div>

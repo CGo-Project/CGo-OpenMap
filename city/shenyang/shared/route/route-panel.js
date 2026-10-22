@@ -462,7 +462,7 @@
                             <div class="cgo-rt-exitmenu" hidden></div>
                         </div>
                     </div>
-                    <button class="cgo-rt-swap" title="对调起终点"><cgo-icon name="vi-way" size="18" class="cgo-rt-swap-icon"></cgo-icon></button>
+                    <cgo-button class="cgo-rt-swap" variant="info" icon-only icon="vi-way" title="对调起终点"></cgo-button>
                 </div>
                 <div class="cgo-rt-actions">
                     <div class="cgo-rt-needbar" hidden></div>
@@ -489,7 +489,7 @@
             </div>
             <div class="panel-footer cgo-rt-foot">
                 <span class="cgo-rt-status">请选择起点和终点</span>
-                <button class="cgo-rt-go" disabled>查询路线<cgo-icon name="chevron-right" size="14"></cgo-icon></button>
+                <cgo-button class="cgo-rt-go" variant="primary" icon="chevron-right" icon-pos="right" disabled>查询路线</cgo-button>
             </div>
         `;
     }
@@ -931,7 +931,7 @@
         if (!panel) return;
         const ready = Boolean(state.from && state.to);
         const button = panel.querySelector(".cgo-rt-go") || panel._cgoSheetFooter?.querySelector(".cgo-rt-go");
-        if (button) button.disabled = !ready;
+        if (button) button.toggleAttribute("disabled", !ready);
         if (ready) setStatus("已选好起终点");
         else if (!state.from && !state.to) setStatus("请选择起点和终点");
         else if (!state.from) setStatus("请选择起点");
