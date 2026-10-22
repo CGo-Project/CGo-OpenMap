@@ -429,7 +429,8 @@ body[data-header-mode="floating"] .header-island,
     box-sizing: border-box;
     pointer-events: auto;
     z-index: 1000;
-    isolation: isolate !important;
+    /* Fix: contain: style 防止 z-index 溢出，且不创建 backdrop-filter 参考平面边界。 */
+    contain: style !important;
     overflow: visible !important;
     transition:
         left 0.25s ease,
@@ -472,6 +473,7 @@ body[header-mode="floating"] .header-island-left .header-left,
 .tool-header[header-mode="floating"] .header-island-left .header-left {
     min-width: auto;
     flex-shrink: 0;
+    gap: 8px !important;
 }
 
 :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .header-island-left .header-center,
@@ -576,7 +578,8 @@ body[data-header-mode="floating"] .header-island-right,
     margin: 0 !important;
     transform: none !important;
     z-index: 1000 !important;
-    isolation: isolate !important;
+    /* Fix: contain: style 防止 z-index 溢出，且不创建 backdrop-filter 参考平面边界。 */
+    contain: style !important;
     overflow: visible !important;
 }
 
@@ -672,19 +675,27 @@ body[header-mode="floating"] .tool-header:not(:has(.header-island)),
     overflow: visible !important;
 }
 
-/* 下拉菜单在浮动岛屿内展开时提权并保障溢出可见 */
+/* 下拉菜单在浮动岛屿/菜单栏内展开时提权并保障溢出可见 */
 .header-island:has(.dropdown-content.show),
 .tool-header:has(.dropdown-content.show),
+.cgoauth-header:has(.dropdown-content.show),
 .header-island:has(.dropdown.is-open),
 .tool-header:has(.dropdown.is-open),
+.cgoauth-header:has(.dropdown.is-open),
 .header-island:has(cgo-dropdown[open]),
 .tool-header:has(cgo-dropdown[open]),
+.cgoauth-header:has(cgo-dropdown[open]),
 .header-island:has(cgo-toolbar-select[open]),
-.tool-header:has(cgo-toolbar-select[open]) {
+.tool-header:has(cgo-toolbar-select[open]),
+.cgoauth-header:has(cgo-toolbar-select[open]),
+.header-island:has(cgo-admin-select[open]),
+.tool-header:has(cgo-admin-select[open]),
+.cgoauth-header:has(cgo-admin-select[open]),
+.header-island:has(.cgo-toolbar-select.is-open),
+.tool-header:has(.cgo-toolbar-select.is-open),
+.cgoauth-header:has(.cgo-toolbar-select.is-open) {
     z-index: 50002 !important;
     overflow: visible !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
 }
 
 /* 分体悬浮模式（桌面双岛）：返回与主页按钮默认隐藏文字标签，仅保留精致图标 */
@@ -717,15 +728,10 @@ body[header-mode="floating"] .header-island-left .header-left .btn,
     flex-shrink: 0;
 }
 
-/* 悬浮菜单栏 + 玻璃态 联动：档位 1 液态玻璃 (Liquid Glass 光学折射 + 边缘微光，严格采用 Tier C 不可交互强调板规范，作为默认档位) */
-:root[glass-mode='liquid'][header-mode='floating'] .header-island,
-:root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
-body[glass-mode='liquid'][header-mode='floating'] .header-island,
-body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
-.tool-header[header-mode='floating'][glass-mode='liquid'] .header-island,
-:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island,
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])[header-mode='floating'] .header-island,
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur']):not([header-mode='classic']) .header-island {
+/* 悬浮菜单栏 + 玻璃态 联动：液态玻璃与磨砂模糊 (Tier C 不可交互强调板规范，作为默认档位) */
+:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island,
+.tool-header[header-mode='floating']:is([glass-mode='liquid'], [glass-mode='blur']) .header-island,
+:is(:root, body):is([glass-mode='liquid'], [glass-mode='blur']) .tool-header[header-mode='floating'] .header-island {
     backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
@@ -733,14 +739,9 @@ body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
     box-shadow: var(--glass-shadow);
 }
 
-:root[glass-mode='liquid'][header-mode='floating'] .header-island::before,
-:root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island::before,
-body[glass-mode='liquid'][header-mode='floating'] .header-island::before,
-body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island::before,
+:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island::before,
 .tool-header[header-mode='floating'][glass-mode='liquid'] .header-island::before,
-:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island::before,
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])[header-mode='floating'] .header-island::before,
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur']):not([header-mode='classic']) .header-island::before {
+:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -767,53 +768,17 @@ body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island::befo
     z-index: 1;
 }
 
-:root[glass-mode='liquid'][header-mode='floating'] .header-island > *,
-:root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island > *,
-body[glass-mode='liquid'][header-mode='floating'] .header-island > *,
-body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island > *,
+:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island > *,
 .tool-header[header-mode='floating'][glass-mode='liquid'] .header-island > *,
-:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island > *,
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])[header-mode='floating'] .header-island > *,
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur']):not([header-mode='classic']) .header-island > * {
+:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island > * {
     position: relative;
     z-index: 10;
 }
 
-/* 悬浮菜单栏 + 玻璃态 联动：档位 2 磨砂模糊 (Blur 纯模糊高饱和) */
-:root[glass-mode='blur'][header-mode='floating'] .header-island,
-:root[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
-body[glass-mode='blur'][header-mode='floating'] .header-island,
-body[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
-.tool-header[header-mode='floating'][glass-mode='blur'] .header-island,
-:root[glass-mode='blur'] .tool-header[header-mode='floating'] .header-island {
-    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
-    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
-    background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
-    border: none;
-    box-shadow: var(--glass-shadow);
-}
-
-/* 暗色主题下的 Liquid Glass 悬浮菜单栏适配 (Tier C 暗色: 0.72) */
-[data-theme='dark']:root[glass-mode='liquid'][header-mode='floating'] .header-island,
-[data-theme='dark']:root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
-[data-theme='dark'] body[glass-mode='liquid'][header-mode='floating'] .header-island,
-[data-theme='dark'] body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island,
-[data-theme='dark'] .tool-header[header-mode='floating'][glass-mode='liquid'] .header-island,
-[data-theme='dark']:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island,
-[data-theme='dark']:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])[header-mode='floating'] .header-island,
-[data-theme='dark']:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur']):not([header-mode='classic']) .header-island {
-    background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
-    border: none;
-    box-shadow: var(--glass-shadow);
-}
-
-/* 暗色主题下的 Blur 悬浮菜单栏适配 */
-[data-theme='dark']:root[glass-mode='blur'][header-mode='floating'] .header-island,
-[data-theme='dark']:root[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
-[data-theme='dark'] body[glass-mode='blur'][header-mode='floating'] .header-island,
-[data-theme='dark'] body[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
-[data-theme='dark'] .tool-header[header-mode='floating'][glass-mode='blur'] .header-island,
-[data-theme='dark']:root[glass-mode='blur'] .tool-header[header-mode='floating'] .header-island {
+/* 暗色主题下的 Liquid Glass / Blur 悬浮菜单栏适配 (Tier C 暗色: 0.72) */
+[data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island,
+[data-theme='dark'] .tool-header[header-mode='floating']:is([glass-mode='liquid'], [glass-mode='blur']) .header-island,
+[data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [glass-mode='blur']) .tool-header[header-mode='floating'] .header-island {
     background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
@@ -841,14 +806,7 @@ body[data-glass-mode='blur'][data-header-mode='floating'] .header-island,
    样式在 cgo_element.css 中通过 isolation isolate 隔离，无需额外覆盖 ::before 规则 */
 
 /* 单胶囊悬浮菜单栏（未拆分双岛时）在 liquid / blur 模式下的适配 */
-:root[glass-mode='liquid'][header-mode='floating'] .tool-header:not(:has(.header-island)),
-:root[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header:not(:has(.header-island)),
-body[glass-mode='liquid'][header-mode='floating'] .tool-header:not(:has(.header-island)),
-:root[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-island)),
-:root[data-glass-mode='blur'][data-header-mode='floating'] .tool-header:not(:has(.header-island)),
-body[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-island)),
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])[header-mode='floating'] .tool-header:not(:has(.header-island)),
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur']):not([header-mode='classic']) .tool-header:not(:has(.header-island)) {
+:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .tool-header:not(:has(.header-island)) {
     backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
@@ -856,30 +814,14 @@ body[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-is
     box-shadow: var(--glass-shadow);
 }
 
-[data-theme='dark']:root[glass-mode='liquid'][header-mode='floating'] .tool-header:not(:has(.header-island)),
-[data-theme='dark']:root[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header:not(:has(.header-island)),
-[data-theme='dark'] body[glass-mode='liquid'][header-mode='floating'] .tool-header:not(:has(.header-island)),
-[data-theme='dark']:root[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-island)),
-[data-theme='dark']:root[data-glass-mode='blur'][data-header-mode='floating'] .tool-header:not(:has(.header-island)),
-[data-theme='dark'] body[glass-mode='blur'][header-mode='floating'] .tool-header:not(:has(.header-island)),
-[data-theme='dark']:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])[header-mode='floating'] .tool-header:not(:has(.header-island)),
-[data-theme='dark']:root:not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur']):not([header-mode='classic']) .tool-header:not(:has(.header-island)) {
+[data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .tool-header:not(:has(.header-island)) {
     background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
 }
 
 /* 悬浮菜单栏内部竖分割线在玻璃模式下的纯净微光线 */
-:root[glass-mode='liquid'][header-mode='floating'] .header-island-divider,
-:root[data-glass-mode='liquid'][data-header-mode='floating'] .header-island-divider,
-:root[glass-mode='blur'][header-mode='floating'] .header-island-divider,
-:root[data-glass-mode='blur'][data-header-mode='floating'] .header-island-divider,
-body[glass-mode='liquid'][header-mode='floating'] .header-island-divider,
-body[data-glass-mode='liquid'][data-header-mode='floating'] .header-island-divider,
-body[glass-mode='blur'][header-mode='floating'] .header-island-divider,
-body[data-glass-mode='blur'][data-header-mode='floating'] .header-island-divider,
-:root:not([glass-mode='flat']):not([glass-mode='none'])[header-mode='floating'] .header-island-divider,
-:root:not([glass-mode='flat']):not([glass-mode='none']):not([header-mode='classic']) .header-island-divider {
+:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island-divider {
     background-color: var(--glass-border);
     opacity: 0.85;
 }
@@ -967,6 +909,35 @@ body:has(.tool-header.floating-header) .tool-container {
     overflow-y: auto;
 }
 
+/* ── 页面标题与副标题 (Page Title & Subtitle) ── */
+.page-title {
+    text-align: center;
+    color: var(--text-main);
+    font-size: var(--text-h1, 28px);
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+}
+
+.page-subtitle {
+    text-align: center;
+    color: var(--text-light);
+    font-size: 0.95rem;
+    margin-top: 0;
+    margin-bottom: 28px;
+    line-height: 1.6;
+}
+
+.page-title + .page-subtitle {
+    margin-top: -2px;
+}
+
+.article-content .page-title,
+.article-content .page-subtitle {
+    text-align: left;
+}
+
 /* ── 工具卡片网格与行布局 (Tools Grid & Rows) ── */
 .tools-row {
     display: grid;
@@ -1052,6 +1023,9 @@ body[header-mode="floating"] .tool-container:has(.tools-row) {
 }
 .panel.active {
     display: block;
+}
+.panel > .panel-desc {
+    margin-bottom: 24px;
 }
 
 @keyframes fadeIn {
@@ -1708,7 +1682,11 @@ body.map-page {
     border: 1px solid var(--border-color);
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition:
+        background-color var(--dur-fast, 140ms) ease,
+        border-color var(--dur-fast, 140ms) ease,
+        color var(--dur-fast, 140ms) ease,
+        transform var(--dur-micro, 100ms) cubic-bezier(0.16, 1, 0.3, 1);
     font-size: 0.7rem;
     color: var(--text-main);
     animation: slideIn 0.3s ease-out;
@@ -1896,31 +1874,22 @@ body.map-page {
 
 
     /* 悬浮菜单栏移动端自适应折叠为单胶囊栏 */
+    :is(:root, body):is([header-mode="floating"], [data-header-mode="floating"]) .header-island,
+    .tool-header:is([header-mode="floating"], [data-header-mode="floating"], .floating-header) .header-island,
     :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header) .header-island,
-    :root[header-mode="floating"] .header-island,
-    :root[data-header-mode="floating"] .header-island,
-    body[header-mode="floating"] .header-island,
-    .tool-header[header-mode="floating"] .header-island,
-    .tool-header.floating-header .header-island,
     .header-island.glass-surface {
         display: contents !important;
     }
 
-    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header) .header-island-divider,
-    :root[header-mode="floating"] .header-island-divider,
-    :root[data-header-mode="floating"] .header-island-divider,
-    body[header-mode="floating"] .header-island-divider,
-    .tool-header[header-mode="floating"] .header-island-divider,
-    .tool-header.floating-header .header-island-divider {
+    :is(:root, body):is([header-mode="floating"], [data-header-mode="floating"]) .header-island-divider,
+    .tool-header:is([header-mode="floating"], [data-header-mode="floating"], .floating-header) .header-island-divider,
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header) .header-island-divider {
         display: none !important;
     }
 
-    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header),
-    :root[header-mode="floating"] .tool-header,
-    :root[data-header-mode="floating"] .tool-header,
-    body[header-mode="floating"] .tool-header,
-    .tool-header[header-mode="floating"],
-    .tool-header.floating-header {
+    :is(:root, body):is([header-mode="floating"], [data-header-mode="floating"]) .tool-header,
+    .tool-header:is([header-mode="floating"], [data-header-mode="floating"], .floating-header),
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header) {
         position: fixed !important;
         top: calc(env(safe-area-inset-top, 0px) + 16px) !important;
         left: calc(10px + env(safe-area-inset-left, 0px)) !important;
@@ -1944,42 +1913,22 @@ body.map-page {
     }
 
     :root:not([header-mode="classic"]):not([data-header-mode="classic"]) body:has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
-    :root[header-mode="floating"] body::before,
-    :root[data-header-mode="floating"] body::before,
-    body[header-mode="floating"]::before,
-    body[data-header-mode="floating"]::before,
+    :root:is([header-mode="floating"], [data-header-mode="floating"]) body::before,
+    body:is([header-mode="floating"], [data-header-mode="floating"])::before,
     .floating-header-scrim {
         height: calc(env(safe-area-inset-top, 0px) + 64px);
     }
 
     :root:not([header-mode="classic"]):not([data-header-mode="classic"]) body:has(.tool-header:not([header-mode="classic"]):not(.classic-header)) .tool-container,
-    :root[header-mode="floating"] .tool-container,
-    :root[data-header-mode="floating"] .tool-container,
-    body[header-mode="floating"] .tool-container {
+    :is(:root, body):is([header-mode="floating"], [data-header-mode="floating"]) .tool-container {
         padding-top: calc(env(safe-area-inset-top, 0px) + 72px) !important;
     }
 
-    /* 移动端悬浮胶囊栏：液态玻璃 (Liquid Glass 光学折射，对齐 Tier C 不可交互强调板) */
-    :root[glass-mode='liquid'][header-mode='floating'] .tool-header,
-    :root[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header,
-    body[glass-mode='liquid'][header-mode='floating'] .tool-header,
-    body[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header,
-    .tool-header[header-mode='floating'][glass-mode='liquid'],
-    :root[glass-mode='liquid'] .tool-header[header-mode='floating'] {
-        backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
-        -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
-        background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
-        border: none !important;
-        box-shadow: var(--glass-shadow) !important;
-    }
-
-    /* 移动端悬浮胶囊栏：磨砂模糊 (Blur 纯模糊高饱和) */
-    :root[glass-mode='blur'][header-mode='floating'] .tool-header,
-    :root[data-glass-mode='blur'][data-header-mode='floating'] .tool-header,
-    body[glass-mode='blur'][header-mode='floating'] .tool-header,
-    body[data-glass-mode='blur'][data-header-mode='floating'] .tool-header,
-    .tool-header[header-mode='floating'][glass-mode='blur'],
-    :root[glass-mode='blur'] .tool-header[header-mode='floating'] {
+    /* 移动端悬浮胶囊栏：液态玻璃与磨砂模糊 (Tier C 不可交互强调板) */
+    :is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur']):is([header-mode='floating'], [data-header-mode='floating']) .tool-header,
+    :is(:root, body):is([glass-mode='liquid'], [glass-mode='blur']) .tool-header[header-mode='floating'],
+    .tool-header[header-mode='floating']:is([glass-mode='liquid'], [glass-mode='blur']),
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header) {
         backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
         -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
         background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
@@ -1988,26 +1937,68 @@ body.map-page {
     }
 
     /* 移动端悬浮胶囊栏暗色主题适配 */
-    [data-theme='dark']:root[glass-mode='liquid'][header-mode='floating'] .tool-header,
-    [data-theme='dark']:root[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header,
-    [data-theme='dark'] body[glass-mode='liquid'][header-mode='floating'] .tool-header,
-    [data-theme='dark'] body[data-glass-mode='liquid'][data-header-mode='floating'] .tool-header,
-    [data-theme='dark'] .tool-header[header-mode='floating'][glass-mode='liquid'],
-    [data-theme='dark']:root[glass-mode='liquid'] .tool-header[header-mode='floating'] {
+    [data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur']):is([header-mode='floating'], [data-header-mode='floating']) .tool-header,
+    [data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [glass-mode='blur']) .tool-header[header-mode='floating'],
+    [data-theme='dark'] .tool-header[header-mode='floating']:is([glass-mode='liquid'], [glass-mode='blur']),
+    [data-theme='dark']:root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header) {
         background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
         border: none !important;
         box-shadow: var(--glass-shadow) !important;
     }
 
-    [data-theme='dark']:root[glass-mode='blur'][header-mode='floating'] .tool-header,
-    [data-theme='dark']:root[data-glass-mode='blur'][data-header-mode='floating'] .tool-header,
-    [data-theme='dark'] body[glass-mode='blur'][header-mode='floating'] .tool-header,
-    [data-theme='dark'] body[data-glass-mode='blur'][data-header-mode='floating'] .tool-header,
-    [data-theme='dark'] .tool-header[header-mode='floating'][glass-mode='blur'],
-    [data-theme='dark']:root[glass-mode='blur'] .tool-header[header-mode='floating'] {
-        background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
-        border: none !important;
-        box-shadow: var(--glass-shadow) !important;
+    /* 移动端菜单栏/胶囊顶栏内展开下拉菜单时提权并解除底座 backdrop-filter，杜绝父子双层滤镜抵消，保障子面板完整呈现次世代液态磨砂折射 */
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(.dropdown-content.show),
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(.dropdown.is-open),
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(cgo-dropdown[open]),
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(cgo-toolbar-select[open]),
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(cgo-admin-select[open]),
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(.cgo-toolbar-select.is-open),
+    .header-island:has(.dropdown-content.show),
+    .tool-header:has(.dropdown-content.show),
+    .cgoauth-header:has(.dropdown-content.show),
+    .header-island:has(.dropdown.is-open),
+    .tool-header:has(.dropdown.is-open),
+    .cgoauth-header:has(.dropdown.is-open),
+    .header-island:has(cgo-dropdown[open]),
+    .tool-header:has(cgo-dropdown[open]),
+    .cgoauth-header:has(cgo-dropdown[open]),
+    .header-island:has(cgo-toolbar-select[open]),
+    .tool-header:has(cgo-toolbar-select[open]),
+    .cgoauth-header:has(cgo-toolbar-select[open]),
+    .header-island:has(cgo-admin-select[open]),
+    .tool-header:has(cgo-admin-select[open]),
+    .cgoauth-header:has(cgo-admin-select[open]),
+    .header-island:has(.cgo-toolbar-select.is-open),
+    .tool-header:has(.cgo-toolbar-select.is-open),
+    .cgoauth-header:has(.cgo-toolbar-select.is-open) {
+        z-index: 50002 !important;
+        overflow: visible !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /*
+     * Fix: 补充 cgo-notice-center 展开时的父容器 backdrop-filter 清除规则。
+     * position: fixed 已从根本上解决嵌套问题；此规则兼容旧版 Light DOM 嵌套场景。
+     */
+    .header-island:has(cgo-notice-center),
+    .tool-header:has(cgo-notice-center),
+    .cgoauth-header:has(cgo-notice-center),
+    .glass-surface:has(cgo-notice-center),
+    .glass-panel:has(cgo-notice-center) {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* 交互效果集中在更多按钮本身，而非整个顶栏发生边框/位移突变 */
+    .dropdown:has(.dropdown-content.show) > .dropbtn,
+    .dropdown.is-open > .dropbtn {
+        background: var(--btn-info-hover, rgba(0, 0, 0, 0.08)) !important;
+        transform: scale(0.96);
+    }
+    [data-theme='dark'] .dropdown:has(.dropdown-content.show) > .dropbtn,
+    [data-theme='dark'] .dropdown.is-open > .dropbtn {
+        background: rgba(255, 255, 255, 0.12) !important;
     }
 
     /* 按钮在小屏仅显示图标 */
@@ -2106,9 +2097,16 @@ body.map-page {
         margin-top: 0;
     }
 
-    /* 页面标题 */
+    /* 页面标题与副标题 */
     .page-title {
         font-size: 24px;
+        margin-bottom: 6px;
+    }
+
+    .page-subtitle {
+        font-size: 0.875rem;
+        margin-bottom: 20px;
+        padding: 0 8px;
     }
 
     /* 底栏折行 */
