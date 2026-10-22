@@ -153,6 +153,118 @@
         return isLightTheme() ? s.fillLight : s.fillDark;
     }
 
+    /** 统一夹角默认值：1:1 即标准 45° */
+    var SLOPE_DEFAULT = { m: 1, n: 1 };
+
+    /** 统一夹角预设（比例 = 水平分量 : 垂直分量，n/m 即倾斜角的正切） */
+    var SLOPE_PRESETS = [
+        { m: 1, n: 1, label: '1:1（45°，标准正交）' },
+        { m: 2, n: 1, label: '2:1（63.4°）' },
+        { m: 1, n: 2, label: '1:2（26.6°）' },
+        { m: 3, n: 2, label: '3:2（33.7°）' },
+        { m: 2, n: 3, label: '2:3（56.3°）' },
+        { m: 3, n: 1, label: '3:1（71.6°）' },
+        { m: 1, n: 3, label: '1:3（18.4°）' },
+        { m: 4, n: 1, label: '4:1（76.0°）' },
+        { m: 1, n: 4, label: '1:4（14.0°）' }
+    ];
+
+    /**
+     * 项目级统一夹角（斜率比例 m:n）。
+     *
+     * 背景：并非所有城市都用标准 45° 正交体系——香港全网以 2:1 斜线为主，沈阳是 3:2，
+     * 上海 / 青岛 / 福州则在 1:1 之外混用 1:2、1:3 等更缓的斜线。
+     * 用「整数比例」而不是「角度」表达统一夹角，是为了让斜线坐标能同时满足
+     * 「严格落在该夹角上」与「落在网格上」：步长取 k·(m, n) 且 k 为网格尺寸的整数倍时，
+     * 两个轴的坐标必然都是网格的整数倍（见 snapPointToRays）。
+     * m 为水平分量、n 为垂直分量，n/m = tan(夹角)，因此 1:1 就是 45°。
+     * 该比例同时驱动：「比例斜率」线段类型、Shift 方向吸附、自动选型与折角可达性判定。
+     */
+    function slopeRatio() {
+        if (!project) return { m: SLOPE_DEFAULT.m, n: SLOPE_DEFAULT.n };
+        if (!project.slope || typeof project.slope !== 'object') project.slope = {};
+        var s = project.slope;
+        var m = Math.round(parseFloat(s.m)), n = Math.round(parseFloat(s.n));
+        s.m = (isFinite(m) && m >= 1 && m <= 12) ? m : SLOPE_DEFAULT.m;
+        s.n = (isFinite(n) && n >= 1 && n <= 12) ? n : SLOPE_DEFAULT.n;
+        return s;
+    }
+
+    /** 是否为标准 45° 体系（1:1）——所有与旧行为保持一致的分支都以此为准 */
+    function isStandardSlope() {
+        var s = slopeRatio();
+        return s.m === 1 && s.n === 1;
+    }
+
+    /** 统一夹角对应的比例斜边单位向量（供吸附与折角判据使用） */
+    function slopeUnit() {
+        var s = slopeRatio();
+        var h = Math.hypot(s.m, s.n) || 1;
+        return { x: s.m / h, y: s.n / h, m: s.m, n: s.n };
+    }
+
+    /** 统一夹角的倾斜角（度，0~90） */
+    function slopeAngleDeg() {
+        var s = slopeRatio();
+        return Math.atan2(s.n, s.m) * 180 / Math.PI;
+    }
+
+    /** 单条线段的生效比例：线段自带 slope 覆盖优先，否则用项目统一夹角 */
+    function ratioOfSegment(seg) {
+        var s = seg && seg.slope;
+        var m = s ? Math.round(parseFloat(s.m)) : NaN, n = s ? Math.round(parseFloat(s.n)) : NaN;
+        if (isFinite(m) && isFinite(n) && m >= 1 && n >= 1 && m <= 12 && n <= 12) return { m: m, n: n };
+        return slopeRatio();
+    }
+
+    /** 把当前工程的统一夹角同步到左栏控件与提示文案 */
+    function syncSlopeControls() {
+        var sel = $('sel-slope'), hint = $('slope-hint'), row = $('slope-custom-row');
+        if (!sel || !hint) return;
+        var s = slopeRatio();
+        var isPreset = SLOPE_PRESETS.some(function (p) { return p.m === s.m && p.n === s.n; });
+        if (!sel.options.length) {
+            sel.innerHTML = SLOPE_PRESETS.map(function (p) {
+                return '<option value="' + p.m + ':' + p.n + '">' + p.label + '</option>';
+            }).join('') + '<option value="custom">自定义比例…</option>';
+        }
+        sel.value = isPreset ? (s.m + ':' + s.n) : 'custom';
+        if (row) row.style.display = isPreset ? 'none' : '';
+        var mEl = $('slope-m'), nEl = $('slope-n');
+        if (mEl) mEl.value = s.m;
+        if (nEl) nEl.value = s.n;
+        hint.innerHTML = '当前统一夹角 <b>' + s.m + ':' + s.n + '</b>（约 ' + slopeAngleDeg().toFixed(1) + '°）' +
+            (isStandardSlope()
+                ? '——标准 45° 正交体系。'
+                : '——非 45° 体系：Shift 方向吸附、自动选型与「比例斜率」线段都按该夹角走；' +
+                  '折点步长取该比例的整数倍，所以斜线坐标依旧严格落在网格上。');
+    }
+
+    /**
+     * 设置项目级统一夹角并同步界面。
+     * 改夹角会影响自动选型与「比例斜率」线段的斜边，因此默认顺手重算一遍可自动走线的线段
+     * （手绘路径 segfree 不受影响）。
+     */
+    function setSlopeRatio(m, n, opts) {
+        if (!project) return;
+        opts = opts || {};
+        m = clamp(Math.round(m) || 1, 1, 12);
+        n = clamp(Math.round(n) || 1, 1, 12);
+        var cur = slopeRatio();
+        if (cur.m === m && cur.n === n) { syncSlopeControls(); return; }
+        project.slope = { m: m, n: n };
+        syncSlopeControls();
+        var changed = 0;
+        if (opts.refresh !== false) {
+            var res = refreshAutoSegments(null);
+            changed = (res && res.changed) || 0;
+        }
+        renderAll();
+        renderInspector();
+        toast('统一夹角已设为 ' + m + ':' + n + '（约 ' + slopeAngleDeg().toFixed(1) + '°）' +
+            (changed ? '，已按新夹角重算 ' + changed + ' 条走线' : ''));
+    }
+
     /** 线段类型元数据 */
     var SEG_META = {
         auto: { label: '自动选型' },
@@ -160,7 +272,8 @@
         seg90: { label: '90° 折角' },
         seg90d: { label: '斜 90° 折角' },
         segaxis: { label: '自由直线' },
-        segfree: { label: '连续绘制' }
+        segfree: { label: '连续绘制' },
+        segratio: { label: '比例斜率' }
     };
 
     /**
@@ -168,10 +281,12 @@
      *   · segaxis（自由直线）——两端直连，方向不限；与坐标轴平行只是它的特例
      *     （平行线段的折角在几何上退化，用 seg135 / seg90 画出来同样是直线）；
      *   · segfree（连续绘制）——保留人工绘制的多个转折点。
+     *   · segratio（比例斜率）——斜边严格按线段自带的斜率比例（缺省取项目统一夹角）生成；
+     *     它必须算手动类型，否则拖动节点时会被 135°/90° 的自动选型覆盖，非 45° 的斜线就白设了。
      * 其余折角 / 直线类型都是「自动走线」，拖动节点或「刷新线段配置」时按各自类型重新生成走线。
      */
     function isManualSegmentType(type) {
-        return !SEG_META[type] || type === 'segfree' || type === 'segaxis';
+        return !SEG_META[type] || type === 'segfree' || type === 'segaxis' || type === 'segratio';
     }
 
     /** 节点样式尺寸（世界坐标像素） */
@@ -220,6 +335,13 @@
                 fillLight: WATER_DEFAULT.fillLight, fillDark: WATER_DEFAULT.fillDark,
                 opacity: WATER_DEFAULT.opacity, zIndex: WATER_DEFAULT.zIndex
             },
+            /**
+             * 项目级统一夹角（斜率比例 m:n，默认 1:1 即标准 45°）。
+             * 部分城市的线网统一使用非 45° 的固定夹角（香港 2:1、沈阳 3:2、上海 1:3…），
+             * 该比例驱动「比例斜率」线段类型、Shift 方向吸附与自动选型；
+             * 用整数比而不是角度表达，是为了让斜线坐标同时落在夹角与网格上。
+             */
+            slope: { m: SLOPE_DEFAULT.m, n: SLOPE_DEFAULT.n },
             /** 线路：{ id, name, color } */
             lines: [],
             /**
@@ -390,10 +512,16 @@
     }
 
     /**
-     * 按住 Shift 时的方向吸附：把点约束到上一点出发的 0°/45°/90°（8 方向）射线上。
+     * 按住 Shift 时的方向吸附：把点约束到「上一点出发的统一夹角射线」上。
      *
-     * 轴向（0°/90°）方向把沿射线距离对齐到网格步长；45° 方向则把轴向分量对齐到网格步长，
-     * 因此吸附后的折点同时满足「严格 0°/45°/90°」与「落在网格上」两个条件，导出坐标仍是整齐的整数。
+     * 候选方向 = 0°/90° 两条轴 + 项目统一夹角的两种朝向（m:n 与镜像 n:m）。
+     * 1:1（默认）时候选恰好就是原来的 0°/45°/90° 八方向。
+     *
+     * 落网格保证：先取与鼠标方向夹角最小的候选方向，再把「沿该方向的轴向步数」按网格取整为 k
+     * （k 是网格尺寸 g 的整数倍），落点 = from + k·(A, B)。
+     * 因为 k 是 g 的整数倍，k·A 与 k·B 必然也都是 g 的整数倍，所以斜点**同时**严格满足
+     * 「落在统一夹角上」与「落在网格上」——这正是 1:2、3:2 这类比例斜率能保持坐标整齐的原因。
+     * 45° 时 k·(1,1) 即原来的 a（两轴各走 k），并且吸附点取的是射线上**离光标最近**的格点。
      *
      * @param {{x:number,y:number}} from 参考点（上一个折点）
      * @param {{x:number,y:number}} to   鼠标位置
@@ -404,29 +532,42 @@
         var g = snapEnabled() ? gridSize() : 1;
         var dx = to.x - from.x, dy = to.y - from.y;
         if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return { x: round2(from.x), y: round2(from.y) };
-        var oct = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));      // 就近取 8 方向
-        var dirX = Math.round(Math.cos(oct * Math.PI / 4));
-        var dirY = Math.round(Math.sin(oct * Math.PI / 4));
-        var along = dx * dirX + dy * dirY;                             // 在该方向上的投影长度
-        var x, y;
-        if (dirX !== 0 && dirY !== 0) {
-            // 45°：对齐轴向分量，两轴坐标同时落在网格上
-            var a = Math.max(g, Math.round(Math.abs(along) / Math.SQRT2 / g) * g);
-            x = from.x + dirX * a;
-            y = from.y + dirY * a;
-        } else {
-            var len = Math.max(g, Math.round(Math.abs(along) / g) * g);
-            x = from.x + dirX * len;
-            y = from.y + dirY * len;
+        var s = slopeRatio();
+        var cands = [
+            { A: 1, B: 0 }, { A: -1, B: 0 }, { A: 0, B: 1 }, { A: 0, B: -1 },
+            { A: s.m, B: s.n }, { A: -s.m, B: s.n }, { A: s.m, B: -s.n }, { A: -s.m, B: -s.n },
+            { A: s.n, B: s.m }, { A: -s.n, B: s.m }, { A: s.n, B: -s.m }, { A: -s.n, B: -s.m }
+        ];
+        var dist = Math.hypot(dx, dy) || 1;
+        var best = cands[0], bestCos = -2;
+        for (var i = 0; i < cands.length; i++) {
+            var c = cands[i], len = Math.hypot(c.A, c.B) || 1;
+            var cos = (dx * c.A + dy * c.B) / (dist * len);
+            if (cos > bestCos) { bestCos = cos; best = c; }
         }
+        var step = Math.hypot(best.A, best.B) || 1;
+        var along = (dx * best.A + dy * best.B) / step;      // 沿该方向的真实投影长度
+        var k = Math.max(1, Math.round(Math.abs(along) / step / g)) * g;
+        var x = from.x + best.A * k, y = from.y + best.B * k;
         return snapEnabled() ? { x: Math.round(x / g) * g, y: Math.round(y / g) * g } : { x: round2(x), y: round2(y) };
     }
 
-    /** 方向吸附后的角度标签（用于状态栏提示） */
+    /** 方向吸附后的角度标签（用于状态栏提示）：就近取轴 / 统一夹角体系内的角度 */
     function rayAngleLabel(from, to) {
-        var deg = Math.round(Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI);
-        var oct = Math.round(deg / 45) * 45;
-        return ((oct % 360) + 360) % 360;
+        var deg = Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI;
+        var s = slopeRatio();
+        var marks = [0, 90, 180, 270];
+        if (s.m === 1 && s.n === 1) marks = marks.concat([45, 135, 225, 315]);
+        else {
+            var th = Math.atan2(s.n, s.m) * 180 / Math.PI;
+            marks = marks.concat([th, 180 - th, 180 + th, 360 - th]);
+        }
+        var norm = ((deg % 360) + 360) % 360, best = marks[0], bestD = 1e9;
+        marks.forEach(function (m) {
+            var d = Math.abs(((norm - m + 540) % 360) - 180);
+            if (d < bestD) { bestD = d; best = m; }
+        });
+        return Math.round(best);
     }
 
     function setViewBox() {
@@ -544,10 +685,12 @@
      */
     function pushHistory() {
         if (!project) return;
-        undoStack.push(JSON.stringify(project));
+        var snap = JSON.stringify(project);
+        undoStack.push(snap);
         if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
         redoStack.length = 0;
         syncTopButtons();
+        setUnsavedHint(true);       // 紧接着就会改模型，先把「有未导出改动」挂上（撤销回基线后会由 syncUnsavedHint 收掉）
     }
 
     /**
@@ -588,6 +731,7 @@
         renderAll();
         renderInspector();
         syncTopButtons();
+        syncUnsavedHint();          // 撤销/重做后按真实差异刷新提醒
         if (message) toast(message);
     }
 
@@ -595,6 +739,41 @@
         var u = $('btn-undo'), r = $('btn-redo');
         if (u) u.classList.toggle('is-disabled', !undoStack.length);
         if (r) r.classList.toggle('is-disabled', !redoStack.length);
+    }
+
+    // ==========================================================================
+    // 4.5 未保存 / 未导出改动的提醒
+    // ==========================================================================
+    //
+    // 浏览器本地自动暂存（20 秒一次）只用于「防丢」，**不是交付物**：交付要落成城市数据文件，
+    // 靠的是「更多 → 保存到本地」与「更多 → 导出 JSON」。因此这里单独记一个「已保存 / 已导出」
+    // 的基线快照——自动暂存**不**更新它，提醒会一直挂着，直到用户显式保存或导出；
+    // 离开页面时若仍有改动，再由 beforeunload 拦一道。
+
+    /** 最近一次「保存到本地 / 导出 JSON / 刚载入」时的工程快照（null = 还没有基线） */
+    var cleanSnap = null;
+
+    function setUnsavedHint(visible) {
+        var el = $('unsaved-hint');
+        if (el) el.hidden = !visible;
+    }
+
+    /** 是否有未保存 / 未导出的改动 */
+    function hasUnsavedChanges() {
+        if (!project) return false;
+        if (cleanSnap === null) return true;
+        return JSON.stringify(project) !== cleanSnap;
+    }
+
+    /** 把当前状态记为基线：保存到本地 / 导出 JSON / 刚载入工程时调用 */
+    function markProjectClean() {
+        cleanSnap = project ? JSON.stringify(project) : null;
+        setUnsavedHint(false);
+    }
+
+    /** 按真实差异刷新提醒（撤销回基线状态后提示会自动消失） */
+    function syncUnsavedHint() {
+        setUnsavedHint(hasUnsavedChanges());
     }
 
     // ==========================================================================
@@ -828,6 +1007,37 @@
     }
 
     /**
+     * 生成「比例斜率」路径：斜边严格按斜率比例 A:B 走，剩余位移落在较长的那个轴上。
+     *
+     * 与 buildDiagPath 的关系：1:1 时**直接委托** buildDiagPath，因此标准 45° 体系的走线
+     * 逐字节不变；只有非 45° 的统一夹角（香港 2:1、沈阳 3:2、上海 1:3…）才走下面的泛化分支。
+     *
+     * 数学：设斜边吃掉 k·(A, B) 的位移，则 k = min(|dx|/A, |dy|/B) 时斜边最长且不会越过 B 点，
+     * 剩余位移必然只落在位移较大的那个轴上，于是第二段是纯轴平行段：
+     *   · 斜边方向恒为 A:B（或其镜像 B:A，取决于更贴近哪一侧），于是「全网同向斜线步调一致」；
+     *   · 折角内角 = 180° − atan(B/A)，1:1 时正是 135°。
+     * @param {string} firstAxis 以哪一段起笔：'diagonal'（斜边先走）| 'axis'（轴段先走）
+     * @param {{m:number,n:number}} [ratio] 斜率比例，缺省取项目统一夹角
+     */
+    function buildRatioPath(a, b, firstAxis, ratio) {
+        var s = ratio || slopeRatio();
+        if (s.m === 1 && s.n === 1) return buildDiagPath(a, b, firstAxis);
+        var dx = b.x - a.x, dy = b.y - a.y;
+        var adx = Math.abs(dx), ady = Math.abs(dy);
+        // 斜边朝哪一侧更近：方向比 |dy|/|dx| 大于 n/m 时改用镜像比例 (n, m)
+        var A = (ady * s.m > adx * s.n) ? s.n : s.m;
+        var B = (ady * s.m > adx * s.n) ? s.m : s.n;
+        var k = Math.min(adx / A, ady / B);
+        if (k * Math.hypot(A, B) <= AUTO.axisTol) return [{ x: a.x, y: a.y }, { x: b.x, y: b.y }];
+        var sx = dx >= 0 ? 1 : -1, sy = dy >= 0 ? 1 : -1;
+        var diagonalFirst = firstAxis !== 'axis';
+        var mid = diagonalFirst
+            ? { x: a.x + sx * k * A, y: a.y + sy * k * B }   // 斜边先走，轴平行段收尾
+            : { x: b.x - sx * k * A, y: b.y - sy * k * B };  // 轴平行段先走，斜边收尾
+        return dedupePoints([{ x: a.x, y: a.y }, mid, { x: b.x, y: b.y }]);
+    }
+
+    /**
      * 生成「斜 90° 折角」路径：两段 45° 斜线相交成 90°。
      *
      * A 的两条 45° 对角线与 B 的两条 45° 对角线共有两个夹角为 90° 的交点：
@@ -929,6 +1139,14 @@
             var target = samePolyline(pts, d1) ? d2 : d1;
             return samePolyline(pts, target) ? null : target;
         }
+        if (seg.type === 'segratio' && pts.length === 3 && minor > AUTO.axisTol) {
+            // 比例斜率同 135° 折角：斜边先走 / 轴段先走两种走线，互换即「翻折角方向」
+            var rr = ratioOfSegment(seg);
+            var q1 = buildRatioPath(a, b, 'diagonal', rr), q2 = buildRatioPath(a, b, 'axis', rr);
+            if (samePolyline(q1, q2)) return null;
+            var qTarget = samePolyline(pts, q1) ? q2 : q1;
+            return samePolyline(pts, qTarget) ? null : qTarget;
+        }
         if (seg.type === 'seg90d') {
             // 斜 90° 折角也只有两种走线，分别位于 AB 两侧
             var v1 = buildDiag90Path(a, b, false), v2 = buildDiag90Path(a, b, true);
@@ -974,7 +1192,7 @@
         var manualType = isManualSegmentType(seg.type);
         var routedDefault = (seg.routed === true && autoRoute && !manualType)
             ? autoRouteBetween(a, b, false)
-            : { type: seg.type, points: routeBetweenByType(a, b, seg.type, false) };
+            : { type: seg.type, points: routeBetweenByType(a, b, seg.type, false, ratioOfSegment(seg)) };
         if (samePolyline(routedDefault.points, pts)) {
             seg.cornerFlip = false;
         } else {
@@ -1002,9 +1220,13 @@
             return { type: 'segaxis', points: [{ x: round2(a.x), y: round2(a.y) }, { x: round2(b.x), y: round2(b.y) }] };
         }
 
-        // 2. 对角带内 → 135° 折角
-        if (minor >= major / AUTO.diagRatio && minor >= AUTO.shortDiag) {
-            return { type: 'seg135', points: buildDiagPath(a, b, flip ? 'axis' : 'diagonal') };
+        // 2. 对角带内 → 折角（标准 45° 体系用 135° 折角，非 45° 统一夹角用比例斜率折角）
+        var s = slopeRatio();
+        if (minor * s.m * AUTO.diagRatio >= major * s.n && minor >= AUTO.shortDiag) {
+            if (s.m === 1 && s.n === 1) {
+                return { type: 'seg135', points: buildDiagPath(a, b, flip ? 'axis' : 'diagonal') };
+            }
+            return { type: 'segratio', points: buildRatioPath(a, b, flip ? 'axis' : 'diagonal', s) };
         }
 
         // 3. 其余 → 90° 折角（默认取较短走线，flip 时取另一侧）
@@ -1018,8 +1240,9 @@
      * 折角类型（135° / 90° / 斜 90°）按几何重建折角走线；
      * 其余（自由直线 segaxis、连续绘制 segfree、未知类型）一律两端直连。
      */
-    function routeBetweenByType(a, b, type, flip) {
+    function routeBetweenByType(a, b, type, flip, ratio) {
         if (type === 'seg135') return buildDiagPath(a, b, flip ? 'axis' : 'diagonal');
+        if (type === 'segratio') return buildRatioPath(a, b, flip ? 'axis' : 'diagonal', ratio || slopeRatio());
         if (type === 'seg90d') return buildDiag90Path(a, b, flip);
         if (type === 'seg90') {
             if (flip) {
@@ -1048,7 +1271,11 @@
         var n1 = Math.hypot(v1x, v1y), n2 = Math.hypot(v2x, v2y);
         if (n1 < 0.6 || n2 < 0.6) return true; // 退化段忽略
         var cos = Math.abs((v1x * v2x + v1y * v2y) / (n1 * n2));
-        return Math.abs(cos - 0) < 0.02 || Math.abs(cos - Math.SQRT1_2) < 0.02;
+        // 允许两种折角：90° 直角（|cos|≈0）、以及项目统一夹角对应的折角
+        // （1:1 即 135° 折角 |cos|=√½；非 45° 时 |cos| = m/√(m²+n²)，例如沈阳 3:2 → 0.832）
+        var s = slopeRatio();
+        var ratioCos = s.m / Math.hypot(s.m, s.n);
+        return Math.abs(cos - 0) < 0.02 || Math.abs(cos - ratioCos) < 0.02 || Math.abs(cos - Math.SQRT1_2) < 0.02;
     }
 
     /**
@@ -1078,12 +1305,17 @@
         if (pts.length > 3) return false;
         if (pts.length === 2) return true;
         var kinds = [];
+        var s = slopeRatio();
         for (var k = 1; k < pts.length; k++) {
             var dx = Math.abs(pts[k].x - pts[k - 1].x), dy = Math.abs(pts[k].y - pts[k - 1].y);
+            var span = Math.max(dx, dy);
             if (dx < 0.6 && dy < 0.6) kinds.push('zero');
             else if (dx < 0.6 || dy < 0.6) kinds.push('axis');
-            else if (Math.abs(dx - dy) < 0.6) kinds.push('diagonal');
-            else kinds.push('free');
+            else if (Math.abs(dx - dy) < 0.6
+                || Math.abs(dy * s.m - dx * s.n) <= Math.max(0.6, span * 0.01)      // 比例斜边 A:B
+                || Math.abs(dy * s.n - dx * s.m) <= Math.max(0.6, span * 0.01)) {   // 镜像 B:A
+                kinds.push('diagonal');
+            } else kinds.push('free');
         }
         if (kinds.indexOf('free') >= 0) return false;
         if (kinds.every(function (k) { return k === 'axis' || k === 'zero'; })) return true; // 直角 L 形
@@ -1110,7 +1342,7 @@
         var flip = seg.cornerFlip === true;
         var routed = (seg.routed === true && autoRoute && !manualType)
             ? autoRouteBetween(a, b, flip)
-            : { type: seg.type, points: routeBetweenByType(a, b, seg.type, flip) };
+            : { type: seg.type, points: routeBetweenByType(a, b, seg.type, flip, ratioOfSegment(seg)) };
         var newPts = routed.points.map(function (p) { return { x: p.x, y: p.y }; });
         newPts[0] = { x: a.x, y: a.y };
         newPts[newPts.length - 1] = { x: b.x, y: b.y };
@@ -1482,10 +1714,748 @@
         return text;
     }
 
+    // ==========================================================================
+    // 15.5 参考底图：可自由变换的描图参照（半透明垫在最底层）
+    // ==========================================================================
+    //
+    // 定位：给作者一张线路图位图当描图参照。它**不属于工程数据** —— 不存进 project，
+    // 因此不会被写进「工程 JSON / 城市代码 / OpenMap 工程包 / 导出 SVG」，
+    // 也不会因为 20 秒一次的自动暂存把几 MB 的位图塞进 localStorage。
+    // 代价：刷新页面后需要重新上传（随时可卸载，不影响任何已录入的几何）。
+    //
+    // 变换模型：以「未旋转的外接矩形 + 绕自身中心旋转」表达
+    //   x, y     矩形左上角（画布坐标）
+    //   w, h     矩形尺寸（画布像素；旋转不改变它们，只是绕中心转）
+    //   rotate   旋转角（度，正值为顺时针，与 SVG rotate() 一致）
+    // 参考图不一定是整张画布：它可能是某个局部（老图的一角、一段走向的截图），
+    // 所以这里不强制自动贴合——位置 / 大小 / 旋转全部可手调，另给两个一键贴合的预设。
+    // 「参考图编辑模式」下可直接在画布上拖动移动、拖四角缩放、拖顶部圆柄旋转。
+
+    /** 默认透明度：既看得清底图线条，又不至于盖住自己画的线路 */
+    var GHOST_DEFAULT_OPACITY = 0.4;
+    /** 参考图最小边长（画布像素）：避免被拖成 0 之后再也抓不住 */
+    var GHOST_MIN_SIZE = 10;
+    /** 旋转手柄离顶边的屏幕距离（px） */
+    var GHOST_ROTATE_OFFSET = 26;
+    /** 控制柄的屏幕命中半径（px） */
+    var GHOST_HANDLE_HIT = 11;
+
+    var ghost = {
+        src: null, img: null,
+        blob: null, name: '',        // 位图本体（Blob）与文件名
+        handle: null,                // 首选：源文件句柄（File System Access API），可跨刷新重新读取
+        pendingHandle: null,         // 需要用户点一下授权时暂存句柄
+        pendingMeta: null,           // 「源文件找不到 → 重新指定」时保留原来的位置/大小/旋转
+        needPermission: false,       // 句柄在、但要用户确认读取权限
+        x: 0, y: 0, w: 0, h: 0,
+        rotate: 0,
+        opacity: GHOST_DEFAULT_OPACITY,
+        visible: true,
+        aspect: true            // 缩放时是否锁定宽高比
+    };
+    /** 复用同一个 <image> 节点：renderAll 在拖拽时会被高频调用，不能每次都重建图元 */
+    var ghostNode = null;
+    /** 是否处于「参考图编辑模式」 */
+    var ghostEdit = false;
+    /** 正在进行的参考图拖拽 { kind: 'move' | 'scale' | 'rotate', ... } */
+    var ghostDrag = null;
+
+    function ghostReady() { return !!(project && ghost.img && ghost.src); }
+
+    function rectCenter(f) { return { x: f.x + f.w / 2, y: f.y + f.h / 2 }; }
+
+    /** 矩形局部坐标（原点在左上角、未旋转）→ 画布坐标 */
+    function rectLocalToWorld(f, lx, ly) {
+        var c = rectCenter(f), r = f.rotate * Math.PI / 180;
+        var dx = lx - f.w / 2, dy = ly - f.h / 2;
+        return {
+            x: c.x + dx * Math.cos(r) - dy * Math.sin(r),
+            y: c.y + dx * Math.sin(r) + dy * Math.cos(r)
+        };
+    }
+
+    /** 画布坐标 → 矩形局部坐标（判断点是否落在参考图内） */
+    function rectWorldToLocal(f, p) {
+        var c = rectCenter(f), r = -f.rotate * Math.PI / 180;
+        var dx = p.x - c.x, dy = p.y - c.y;
+        return {
+            x: dx * Math.cos(r) - dy * Math.sin(r) + f.w / 2,
+            y: dx * Math.sin(r) + dy * Math.cos(r) + f.h / 2
+        };
+    }
+
+    function ghostCenter() { return rectCenter(ghost); }
+
+    /** 一键贴合预设：contain = 等比缩到画布内居中；cover = 拉伸铺满四边 */
+    function ghostFitRect(kind) {
+        var cw = project.canvas.width, ch = project.canvas.height;
+        var iw = ghost.img.naturalWidth || ghost.img.width || 1;
+        var ih = ghost.img.naturalHeight || ghost.img.height || 1;
+        if (kind === 'cover') return { x: 0, y: 0, w: cw, h: ch };
+        var k = Math.min(cw / iw, ch / ih);
+        var w = round2(iw * k), h = round2(ih * k);
+        return { x: round2((cw - w) / 2), y: round2((ch - h) / 2), w: w, h: h };
+    }
+
+    function pointInGhost(world) {
+        if (!ghostReady()) return false;
+        var l = rectWorldToLocal(ghost, world);
+        return l.x >= 0 && l.x <= ghost.w && l.y >= 0 && l.y <= ghost.h;
+    }
+
+    /** 四角 + 旋转柄的画布坐标（u = 1/view.k，让旋转柄保持屏幕等距） */
+    function ghostHandles(u) {
+        if (!ghostReady()) return [];
+        var list = [
+            { kind: 'scale', corner: 'nw', at: rectLocalToWorld(ghost, 0, 0) },
+            { kind: 'scale', corner: 'ne', at: rectLocalToWorld(ghost, ghost.w, 0) },
+            { kind: 'scale', corner: 'se', at: rectLocalToWorld(ghost, ghost.w, ghost.h) },
+            { kind: 'scale', corner: 'sw', at: rectLocalToWorld(ghost, 0, ghost.h) }
+        ];
+        var topMid = rectLocalToWorld(ghost, ghost.w / 2, 0);
+        var c = ghostCenter();
+        var len = Math.hypot(topMid.x - c.x, topMid.y - c.y) || 1;
+        var off = (u || 1) * GHOST_ROTATE_OFFSET;
+        list.push({
+            kind: 'rotate',
+            at: { x: topMid.x + (topMid.x - c.x) / len * off, y: topMid.y + (topMid.y - c.y) / len * off },
+            anchor: topMid
+        });
+        return list;
+    }
+
+    /** 命中参考图控制柄（屏幕容差，缩放后也抓得住） */
+    function hitGhostHandle(world) {
+        if (!ghostEdit || !ghostReady() || !ghost.visible) return null;
+        var u = unitScale();
+        var tol = GHOST_HANDLE_HIT * u;
+        var best = null, bestD = tol;
+        ghostHandles(u).forEach(function (h) {
+            var d = Math.hypot(h.at.x - world.x, h.at.y - world.y);
+            if (d <= bestD) { best = h; bestD = d; }
+        });
+        return best;
+    }
+
+    /** 画参考图本身（#ghost-layer 是 #view-layer 的第一个子层 → 位于所有图层之下） */
+    function renderGhost() {
+        var layer = $('ghost-layer');
+        if (!layer) return;
+        var show = !!(ghostReady() && ghost.visible && ghost.w > 0 && ghost.h > 0);
+        if (!show) {
+            if (ghostNode && ghostNode.parentNode) ghostNode.parentNode.removeChild(ghostNode);
+            ghostNode = null;
+            return;
+        }
+        if (!ghostNode) {
+            ghostNode = document.createElementNS(NS, 'image');
+            ghostNode.setAttribute('class', 'ghost-image');
+            // Safari < 15 只认 xlink:href，因此两样都写
+            ghostNode.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', ghost.src);
+            layer.appendChild(ghostNode);
+        }
+        if (ghostNode.getAttribute('href') !== ghost.src) {
+            // 换图（blob: URL 变了）时两个属性都要更新，否则旧 Safari 会继续显示上一张
+            ghostNode.setAttribute('href', ghost.src);
+            ghostNode.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', ghost.src);
+        }
+        var c = ghostCenter();
+        ghostNode.setAttribute('x', round2(ghost.x));
+        ghostNode.setAttribute('y', round2(ghost.y));
+        ghostNode.setAttribute('width', round2(ghost.w));
+        ghostNode.setAttribute('height', round2(ghost.h));
+        // 尺寸由 x/y/w/h 决定，禁止 viewBox 二次适配；旋转绕自身中心
+        ghostNode.setAttribute('preserveAspectRatio', 'none');
+        ghostNode.setAttribute('transform', ghost.rotate
+            ? 'rotate(' + round2(ghost.rotate) + ' ' + round2(c.x) + ' ' + round2(c.y) + ')' : '');
+        ghostNode.setAttribute('opacity', String(ghost.opacity));
+    }
+
+    /**
+     * 参考图状态变化后的统一刷新。
+     * 注意必须连 overlay 一起重画：外框与四角/旋转控制柄在 #overlay-layer 里，
+     * 只调 renderGhost() 的话图片会动、控制框却留在原地（曾经的 bug）。
+     */
+    function refreshGhost() {
+        renderGhost();
+        renderOverlay();
+        syncGhostFields();
+        updateGhostHint();
+        saveGhostToStore();      // 防抖写本地缓存：拖拽过程中只在停下 500ms 后落一次盘
+    }
+
+    /**
+     * 参考图编辑模式的外框与控制柄（画在 #overlay-layer 最上层）。
+     * 与折角 / 水域控制柄一致：**不做元素级事件**，统一 pointer-events:none，
+     * 命中判定交给 onPointerDown 里的坐标计算 —— 这样控制柄永远不会抢走画布手势。
+     */
+    function renderGhostHandles(layer, u) {
+        if (!ghostEdit || !ghostReady() || !ghost.visible) return;
+        var corners = [
+            rectLocalToWorld(ghost, 0, 0), rectLocalToWorld(ghost, ghost.w, 0),
+            rectLocalToWorld(ghost, ghost.w, ghost.h), rectLocalToWorld(ghost, 0, ghost.h)
+        ];
+        var frame = document.createElementNS(NS, 'polygon');
+        frame.setAttribute('points', corners.map(function (p) { return round2(p.x) + ',' + round2(p.y); }).join(' '));
+        frame.setAttribute('fill', 'none');
+        frame.setAttribute('stroke', 'var(--info-color, #006098)');
+        frame.setAttribute('stroke-width', round2(1.4 * u));
+        frame.setAttribute('stroke-dasharray', round2(6 * u) + ' ' + round2(4 * u));
+        frame.setAttribute('pointer-events', 'none');
+        layer.appendChild(frame);
+
+        ghostHandles(u).forEach(function (h) {
+            if (h.kind === 'rotate') {
+                var line = document.createElementNS(NS, 'line');
+                line.setAttribute('x1', round2(h.anchor.x));
+                line.setAttribute('y1', round2(h.anchor.y));
+                line.setAttribute('x2', round2(h.at.x));
+                line.setAttribute('y2', round2(h.at.y));
+                line.setAttribute('stroke', 'var(--info-color, #006098)');
+                line.setAttribute('stroke-width', round2(1.2 * u));
+                line.setAttribute('pointer-events', 'none');
+                layer.appendChild(line);
+            }
+            var grip = document.createElementNS(NS, h.kind === 'rotate' ? 'circle' : 'rect');
+            if (h.kind === 'rotate') {
+                grip.setAttribute('cx', round2(h.at.x));
+                grip.setAttribute('cy', round2(h.at.y));
+                grip.setAttribute('r', round2(6 * u));
+            } else {
+                grip.setAttribute('x', round2(h.at.x - 5 * u));
+                grip.setAttribute('y', round2(h.at.y - 5 * u));
+                grip.setAttribute('width', round2(10 * u));
+                grip.setAttribute('height', round2(10 * u));
+                grip.setAttribute('rx', round2(1.5 * u));
+            }
+            grip.setAttribute('fill', 'var(--card-bg, #fff)');
+            grip.setAttribute('stroke', 'var(--info-color, #006098)');
+            grip.setAttribute('stroke-width', round2(2 * u));
+            grip.setAttribute('pointer-events', 'none');
+            layer.appendChild(grip);
+        });
+
+        if (ghost.rotate) {
+            var c = ghostCenter();
+            var label = document.createElementNS(NS, 'text');
+            label.setAttribute('x', round2(c.x));
+            label.setAttribute('y', round2(c.y + 4 * u));
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('font-size', round2(11 * u));
+            label.setAttribute('font-family', 'var(--font-sans, system-ui, sans-serif)');
+            label.setAttribute('fill', 'var(--info-color, #006098)');
+            label.setAttribute('pointer-events', 'none');
+            label.textContent = round2(ghost.rotate) + '°';
+            layer.appendChild(label);
+        }
+    }
+
+    /** 把参考图当前状态回填到左侧面板（并同步「没有图时全部禁用」） */
+    function syncGhostFields() {
+        var has = ghostReady();
+        var setVal = function (id, v) { var el = $(id); if (el && el.value !== String(v)) el.value = v; };
+        if (has) {
+            setVal('ghost-x', round2(ghost.x));
+            setVal('ghost-y', round2(ghost.y));
+            setVal('ghost-w', round2(ghost.w));
+            setVal('ghost-h', round2(ghost.h));
+            setVal('ghost-rotate', round2(ghost.rotate));
+            setVal('ghost-rotate-range', Math.round(ghost.rotate));
+            setVal('ghost-opacity', Math.round(ghost.opacity * 100));
+        }
+        var opacityLabel = $('ghost-opacity-value');
+        if (opacityLabel) opacityLabel.textContent = Math.round(ghost.opacity * 100) + '%';
+        var visible = $('ghost-visible');
+        if (visible) { visible.checked = ghost.visible; visible.disabled = !has; }
+        var aspect = $('ghost-aspect');
+        if (aspect) { aspect.checked = ghost.aspect; aspect.disabled = !has; }
+        var uploadLabel = $('ghost-upload-label');
+        if (uploadLabel) uploadLabel.textContent = has ? '更换参考图' : '上传参考图';
+        var regrant = $('btn-ghost-regrant');
+        if (regrant) regrant.hidden = !ghost.needPermission;
+        ['ghost-x', 'ghost-y', 'ghost-w', 'ghost-h', 'ghost-rotate', 'ghost-rotate-range',
+            'ghost-opacity', 'btn-ghost-fit-contain', 'btn-ghost-fit-cover',
+            'btn-ghost-edit', 'btn-ghost-remove'].forEach(function (id) {
+            var el = $(id);
+            if (el) el.disabled = !has;
+        });
+        if (!has && ghostEdit) setGhostEditMode(false, true);
+    }
+
+    /** 面板上的状态说明 */
+    function updateGhostHint() {
+        var el = $('ghost-hint');
+        if (!el) return;
+        if (ghost.needPermission) {
+            el.textContent = '参考图来自本机文件，浏览器需要你确认一次读取权限：点上方「恢复参考图」即可；'
+                + '也可以点「上传参考图」重新指定一张。';
+            return;
+        }
+        if (!ghostReady()) {
+            el.textContent = GHOST_HANDLE_SUPPORTED
+                ? '未上传。点「上传参考图」选一张线路图位图（也可以把图片拖到画布上）：只记住电脑上那个文件的位置，'
+                    + '刷新后自动重新读取，不复制进浏览器存储；参考图不参与导出。'
+                : '未上传。可直接把图片拖到画布上；当前浏览器不支持文件句柄，参考图会以副本形式存在本机缓存里，'
+                    + '刷新后自动恢复；参考图不参与导出。';
+            return;
+        }
+        el.textContent = '原图 ' + ghost.img.naturalWidth + ' × ' + ghost.img.naturalHeight +
+            '，画布上 ' + round2(ghost.w) + ' × ' + round2(ghost.h) +
+            '，位置 (' + round2(ghost.x) + ', ' + round2(ghost.y) + ')，旋转 ' + round2(ghost.rotate) + '°。' +
+            (ghostEdit
+                ? '编辑模式已开启：拖动移动、拖四角缩放、拖顶部圆柄旋转（Shift 锁比例 / 15° 吸附，方向键微调，Esc 退出）。'
+                : '点「参考图编辑模式」即可在画布上直接调整。') +
+            (ghost.handle
+                ? '来源：本机文件「' + (ghost.handle.name || ghost.name) + '」（刷新后自动重新读取，源文件改动会同步生效）。'
+                : '来源：本机缓存副本（当前浏览器不支持文件句柄，源文件改动不会同步）。');
+    }
+
+    /** 进入 / 退出参考图编辑模式 */
+    function setGhostEditMode(on, silent) {
+        if (on && !ghostReady()) { if (!silent) toast('先上传一张参考图，再进入编辑模式'); return; }
+        ghostEdit = !!on;
+        ghostDrag = null;
+        var btn = $('ghost-edit');
+        if (btn) btn.classList.toggle('active', ghostEdit);
+        var stage = $('stage-canvas');
+        if (stage) stage.classList.toggle('ghost-editing', ghostEdit);
+        if (ghostEdit) {
+            setTool('select');      // 编辑参考图时避免误建元素
+            draft = null;
+        }
+        refreshGhost();
+        if (!silent) {
+            toast(ghostEdit
+                ? '参考图编辑模式：拖动图片移动，拖四角缩放（Shift 锁比例），拖顶部圆柄旋转（Shift 15° 吸附）；方向键微调，Esc 退出'
+                : '已退出参考图编辑模式');
+        }
+    }
+
+    /** 一键贴合：contain = 适应画布（等比居中 + 0°）；cover = 铺满画布（拉伸四边 + 0°） */
+    function applyGhostFit(kind) {
+        if (!ghostReady()) { toast('先上传一张参考图'); return; }
+        var rect = ghostFitRect(kind === 'cover' ? 'cover' : 'contain');
+        ghost.x = rect.x; ghost.y = rect.y; ghost.w = rect.w; ghost.h = rect.h;
+        ghost.rotate = 0;
+        refreshGhost();
+        toast(kind === 'cover' ? '参考图已铺满画布（拉伸到四边、0°）' : '参考图已适应画布（等比居中、0°）');
+    }
+
+    /** 开始拖拽参考图（onPointerDown 命中后调用） */
+    function startGhostDrag(hit, ev) {
+        var world = screenToWorld(ev.clientX, ev.clientY);
+        ghostDrag = {
+            kind: hit.kind,
+            corner: hit.corner || null,
+            startWorld: world,
+            start: { x: ghost.x, y: ghost.y, w: ghost.w, h: ghost.h, rotate: ghost.rotate }
+        };
+        try { $('stage-canvas').setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+        renderAll();
+    }
+
+    /**
+     * 拖角缩放：**对角固定**，并保证旋转后那个角仍在画布上原地不动。
+     * 做法：把指针与固定角都换算到「起始矩形的局部坐标系」，
+     * 由两者在局部轴上的距离得到新宽高，再用新尺寸反推中心。
+     */
+    function scaleGhostTo(world, corner, uniform) {
+        var s = ghostDrag.start;
+        var fixedStart = {
+            nw: { x: s.w, y: s.h }, ne: { x: 0, y: s.h },
+            se: { x: 0, y: 0 }, sw: { x: s.w, y: 0 }
+        }[corner];
+        if (!fixedStart) return;
+        var fixedWorld = rectLocalToWorld(s, fixedStart.x, fixedStart.y);
+        var ptrLocal = rectWorldToLocal(s, world);
+        var nw = Math.max(GHOST_MIN_SIZE, Math.abs(ptrLocal.x - fixedStart.x));
+        var nh = Math.max(GHOST_MIN_SIZE, Math.abs(ptrLocal.y - fixedStart.y));
+        if (uniform && s.w > 0 && s.h > 0) {
+            var k = Math.max(nw / s.w, nh / s.h);
+            nw = Math.max(GHOST_MIN_SIZE, round2(s.w * k));
+            nh = Math.max(GHOST_MIN_SIZE, round2(s.h * k));
+        }
+        // 固定角在「新矩形」里的局部坐标（永远是被拖角的对角）
+        var fixedNew = {
+            nw: { x: nw, y: nh }, ne: { x: 0, y: nh },
+            se: { x: 0, y: 0 }, sw: { x: nw, y: 0 }
+        }[corner];
+        var rad = s.rotate * Math.PI / 180;
+        var dx = fixedNew.x - nw / 2, dy = fixedNew.y - nh / 2;
+        var cx = fixedWorld.x - (dx * Math.cos(rad) - dy * Math.sin(rad));
+        var cy = fixedWorld.y - (dx * Math.sin(rad) + dy * Math.cos(rad));
+        ghost.w = round2(nw);
+        ghost.h = round2(nh);
+        ghost.x = round2(cx - nw / 2);
+        ghost.y = round2(cy - nh / 2);
+    }
+
+    /**
+     * 由指针位置算旋转角：旋转柄在正上方时为 0°，顺时针为正，取值落在 (-180, 180]。
+     * snap = true（Shift）时按 15° 吸附。
+     */
+    function ghostRotateFromPoint(center, world, snap) {
+        var deg = Math.atan2(world.y - center.y, world.x - center.x) * 180 / Math.PI + 90;
+        while (deg > 180) deg -= 360;
+        while (deg <= -180) deg += 360;
+        if (snap) deg = Math.round(deg / 15) * 15;
+        return round2(deg);
+    }
+
+    /** 拖拽过程中的实时更新 */
+    function updateGhostDrag(world, ev) {
+        if (!ghostDrag || !ghostReady()) return;
+        var s = ghostDrag.start;
+        if (ghostDrag.kind === 'move') {
+            ghost.x = round2(s.x + (world.x - ghostDrag.startWorld.x));
+            ghost.y = round2(s.y + (world.y - ghostDrag.startWorld.y));
+        } else if (ghostDrag.kind === 'rotate') {
+            ghost.rotate = ghostRotateFromPoint({ x: s.x + s.w / 2, y: s.y + s.h / 2 }, world, ev.shiftKey);
+        } else if (ghostDrag.kind === 'scale') {
+            scaleGhostTo(world, ghostDrag.corner, ev.shiftKey || ghost.aspect);
+        }
+        refreshGhost();
+    }
+
+    /**
+     * 兜底路径：普通 <input type=file> / 拖入的文件（拿不到句柄的浏览器走这里）。
+     * 位图以 Blob 副本存进 IndexedDB；pendingMeta 存在时按它还原上次排版（重新指定源文件）。
+     */
+    function loadGhostFile(file) {
+        if (!file) return;
+        if (!project) { toast('请先创建画布，再上传参考图'); return; }
+        if (!/^image\//i.test(file.type || '')) { toast('参考图只支持位图（PNG / JPG / WebP / GIF）'); return; }
+        var keep = ghostReady();
+        var reuseMeta = ghost.pendingMeta || null;
+        ghostDecodeImage(file).then(function (decoded) {
+            if (!decoded) { toast('这张图片无法解码，请换一张位图'); return; }
+            applyGhostImage(file, decoded.url, decoded.img, reuseMeta, null);
+            ghost.pendingMeta = null;
+            toast((reuseMeta ? '已重新指定参考图：' : (keep ? '已更换参考图：' : '已铺上参考图：')) + (file.name || '图片') +
+                (reuseMeta ? '（沿用了上次的位置与旋转）' : (keep ? '（保留了中心点与旋转角）' : '（半透明垫在最底层，不参与导出）')) +
+                (GHOST_HANDLE_SUPPORTED ? '' : '，已存为本机缓存副本，刷新后会自动恢复'));
+        });
+    }
+
+    /** 卸载参考图：连本地缓存一起清掉（工程几何一点不动） */
+    function removeGhost() {
+        var had = ghostReady();
+        var oldSrc = ghost.src;
+        ghost.src = null;
+        ghost.img = null;
+        ghost.blob = null;
+        ghost.handle = null;
+        ghost.pendingHandle = null;
+        ghost.pendingMeta = null;
+        ghost.needPermission = false;
+        ghost.name = '';
+        ghost.x = 0; ghost.y = 0; ghost.w = 0; ghost.h = 0;
+        ghost.rotate = 0;
+        ghostNode = null;
+        var layer = $('ghost-layer');
+        if (layer) clearChildren(layer);
+        if (oldSrc && /^blob:/.test(oldSrc)) {
+            try { URL.revokeObjectURL(oldSrc); } catch (e) { /* ignore */ }
+        }
+        clearGhostStore();
+        if (ghostEdit) setGhostEditMode(false, true);
+        refreshGhost();
+        toast(had ? '已卸载参考图（含本机缓存；工程几何未受影响）' : '当前没有参考图');
+    }
+
+
+    // ==========================================================================
+    // 15.6 参考图的来源记忆与本地持久化
+    // ==========================================================================
+    //
+    // 目标：刷新页面后参考图与它的位置 / 大小 / 旋转 / 透明度都能自动恢复，不必重传。
+    // 两条路线（自动选择，面板上会写明当前用的是哪一条）：
+    //
+    //   ① **源文件句柄（首选；Chrome / Edge 等 Chromium 系）**
+    //      只记住「电脑上那个文件」的句柄（File System Access API 的 FileSystemFileHandle，
+    //      可结构化克隆后存进 IndexedDB），位图**不复制进浏览器存储**：省配额，
+    //      而且源文件改过之后刷新就能用上新版。刷新后三种情况：
+    //        · 权限仍在      → 直接重新读取，静默恢复；
+    //        · 权限需确认    → 亮出「恢复参考图」按钮，点一下即授权后读取；
+    //        · 文件被移走/删 → 提示「找不到参考图源文件，请重新指定」，并保留上次的位置与旋转。
+    //
+    //   ② **本机缓存副本（兜底；Firefox / 老 Safari 等不支持句柄）**
+    //      把位图以 Blob 存进 IndexedDB（不做 base64）。语义与上一版一致。
+    //
+    // ⚠️ 为什么不能只存一个「路径字符串」：网页没有权限按路径读本地文件 —— 页面从 http:// 打开时
+    //    `<img src="file:///…">` 与 fetch('file:///…') 都会被浏览器拦掉。这是浏览器的安全边界，
+    //    不是本项目的限制；平台上「记住电脑上的文件」的唯一合法途径就是文件句柄。
+    //
+    // 任何一步失败（隐私模式、配额不足、不支持、用户取消）都只警告，绝不影响编辑器使用。
+
+    var GHOST_DB_NAME = 'cgo-openmap-editor';
+    var GHOST_DB_STORE = 'reference-image';
+    var GHOST_DB_VERSION = 1;
+    var GHOST_SAVE_DELAY = 500;
+    /** 是否支持 File System Access API（决定走句柄还是缓存副本） */
+    var GHOST_HANDLE_SUPPORTED = typeof window !== 'undefined' &&
+        typeof window.showOpenFilePicker === 'function';
+
+    var ghostDbPromise = null;
+    var ghostSaveTimer = null;
+    var ghostStoreWarned = false;
+
+    function ghostWarnOnce(err) {
+        if (ghostStoreWarned) return;
+        ghostStoreWarned = true;
+        console.warn('[CGo OpenMap] 参考图本地缓存不可用：', err);
+        toast('参考图无法记住来源（可能是隐私模式或存储已满）：本次仍可正常使用，但刷新后需要重新指定');
+    }
+
+    function ghostDb() {
+        if (ghostDbPromise) return ghostDbPromise;
+        ghostDbPromise = new Promise(function (resolve, reject) {
+            if (!window.indexedDB) { reject(new Error('当前环境不支持 IndexedDB')); return; }
+            var req = window.indexedDB.open(GHOST_DB_NAME, GHOST_DB_VERSION);
+            req.onupgradeneeded = function () {
+                var db = req.result;
+                if (!db.objectStoreNames.contains(GHOST_DB_STORE)) {
+                    db.createObjectStore(GHOST_DB_STORE, { keyPath: 'id' });
+                }
+            };
+            req.onsuccess = function () { resolve(req.result); };
+            req.onerror = function () { reject(req.error || new Error('打开本地库失败')); };
+        });
+        return ghostDbPromise;
+    }
+
+    /** 在事务里跑一次操作；get 的结果从 request.result 取 */
+    function ghostTx(mode, fn) {
+        return ghostDb().then(function (db) {
+            return new Promise(function (resolve, reject) {
+                var tx = db.transaction(GHOST_DB_STORE, mode);
+                var req = fn(tx.objectStore(GHOST_DB_STORE));
+                tx.oncomplete = function () { resolve(req ? req.result : undefined); };
+                tx.onerror = function () { reject(tx.error || new Error('本地库事务失败')); };
+                tx.onabort = function () { reject(tx.error || new Error('本地库事务被中止')); };
+            });
+        });
+    }
+
+    function ghostMeta() {
+        return {
+            x: ghost.x, y: ghost.y, w: ghost.w, h: ghost.h,
+            rotate: ghost.rotate, opacity: ghost.opacity,
+            visible: ghost.visible, aspect: ghost.aspect,
+            name: ghost.name || '', savedAt: new Date().toISOString()
+        };
+    }
+
+    function ghostNum(v, fallback) {
+        var n = parseFloat(v);
+        return isFinite(n) ? n : fallback;
+    }
+
+    /** 写来源记忆：有句柄只存句柄（不复制位图），否则存 Blob 副本 */
+    function saveGhostToStore(immediate) {
+        if (!ghost.handle && !ghost.blob) return;
+        if (ghostSaveTimer) { clearTimeout(ghostSaveTimer); ghostSaveTimer = null; }
+        var run = function () {
+            ghostSaveTimer = null;
+            if (!ghost.handle && !ghost.blob) return;
+            ghostTx('readwrite', function (store) {
+                var rec = { id: 'reference', meta: ghostMeta(), mode: ghost.handle ? 'handle' : 'blob' };
+                if (ghost.handle) rec.handle = ghost.handle;
+                else rec.blob = ghost.blob;
+                return store.put(rec);
+            }).catch(ghostWarnOnce);
+        };
+        if (immediate) run();
+        else ghostSaveTimer = setTimeout(run, GHOST_SAVE_DELAY);
+    }
+
+    function clearGhostStore() {
+        if (ghostSaveTimer) { clearTimeout(ghostSaveTimer); ghostSaveTimer = null; }
+        return ghostTx('readwrite', function (store) { return store.delete('reference'); })
+            .catch(function (err) { console.warn('[CGo OpenMap] 清理参考图来源记忆失败：', err); });
+    }
+
+    /** 把 Blob（或 File）解码成可渲染的图片对象 */
+    function ghostDecodeImage(blob) {
+        return new Promise(function (resolve) {
+            var url = URL.createObjectURL(blob);
+            var img = new Image();
+            img.onload = function () { resolve({ img: img, url: url }); };
+            img.onerror = function () {
+                try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ }
+                resolve(null);
+            };
+            img.src = url;
+        });
+    }
+
+    /**
+     * 应用一张参考图：新上传 / 更换 / 从源文件或缓存恢复都走这里。
+     *   meta 传对象 → 按它还原位置 / 大小 / 旋转 / 透明度（恢复、重新指定时用）；
+     *   meta 为 null → 此前没有图就「适应画布」，否则视为更换（保留中心与旋转）。
+     */
+    function applyGhostImage(blob, url, img, meta, handle) {
+        var prevSrc = ghost.src;
+        var hadImage = ghostReady();
+        ghost.blob = blob || null;
+        ghost.src = url;
+        ghost.img = img;
+        ghost.handle = handle || null;
+        ghost.pendingHandle = null;
+        ghost.needPermission = false;
+        ghost.name = (blob && blob.name) || (handle && handle.name) || (meta && meta.name) || '参考图';
+        if (meta) {
+            // 宽高：非正数视为损坏数据（尺寸不可能 ≤0），回落原图尺寸；只有正数才按最小值钳制，
+            // 这样用户自己设的极小尺寸仍然被尊重（曾经的 bug：坏数据会还原成 10px 细条）
+            var iw = img.naturalWidth || 100, ih = img.naturalHeight || 100;
+            var mw = ghostNum(meta.w, iw), mh = ghostNum(meta.h, ih);
+            ghost.w = round2(mw > 0 ? Math.max(GHOST_MIN_SIZE, mw) : iw);
+            ghost.h = round2(mh > 0 ? Math.max(GHOST_MIN_SIZE, mh) : ih);
+            ghost.x = round2(ghostNum(meta.x, 0));
+            ghost.y = round2(ghostNum(meta.y, 0));
+            ghost.rotate = round2(ghostNum(meta.rotate, 0));
+            ghost.opacity = clamp(ghostNum(meta.opacity, GHOST_DEFAULT_OPACITY), 0.05, 1);
+            ghost.visible = meta.visible !== false;
+            ghost.aspect = meta.aspect !== false;
+        } else if (!hadImage || !ghost.w || !ghost.h) {
+            var rect = ghostFitRect('contain');
+            ghost.x = rect.x;
+            ghost.y = rect.y;
+            ghost.w = rect.w;
+            ghost.h = rect.h;
+            ghost.rotate = 0;
+            ghost.visible = true;
+        } else {
+            var ratio = (img.naturalHeight || 1) / (img.naturalWidth || 1);
+            var nw = Math.max(GHOST_MIN_SIZE, round2(ghost.w));
+            var nh = Math.max(GHOST_MIN_SIZE, round2(nw * ratio));
+            var c = ghostCenter();
+            ghost.w = nw;
+            ghost.h = nh;
+            ghost.x = round2(c.x - nw / 2);
+            ghost.y = round2(c.y - nh / 2);
+        }
+        refreshGhost();
+        if (prevSrc && prevSrc !== url && /^blob:/.test(prevSrc)) {
+            try { URL.revokeObjectURL(prevSrc); } catch (e) { /* ignore */ }
+        }
+        saveGhostToStore(true);
+    }
+
+    /**
+     * 从文件句柄读取参考图。meta 为对象时按它还原排版。
+     * 读不到（源文件被移动 / 改名 / 删除）就提示重新指定，并记住原来的排版。
+     */
+    function applyHandleFile(handle, meta, quiet) {
+        return handle.getFile().then(function (file) {
+            return ghostDecodeImage(file).then(function (decoded) {
+                if (!decoded) { toast('这个文件不是可解码的位图，请重新指定'); return false; }
+                applyGhostImage(file, decoded.url, decoded.img, meta, handle);
+                return true;
+            });
+        }).catch(function (err) {
+            console.warn('[CGo OpenMap] 读取参考图源文件失败：', err);
+            ghost.pendingHandle = handle;
+            ghost.pendingMeta = meta || null;
+            ghost.needPermission = false;
+            clearGhostStore();
+            refreshGhost();
+            toast('找不到参考图源文件，请重新指定' + (meta ? '（上次的位置与旋转会被保留）' : ''));
+            return false;
+        });
+    }
+
+    /** 「上传 / 更换参考图」：优先拿文件句柄，不支持句柄时才退回普通文件选择器 */
+    function pickGhostFile() {
+        if (!project) { toast('请先创建画布，再上传参考图'); return; }
+        var meta = ghost.pendingMeta || null;
+        if (!GHOST_HANDLE_SUPPORTED) {
+            var input = $('ghost-input');
+            if (input) input.click();
+            return;
+        }
+        window.showOpenFilePicker({
+            multiple: false,
+            types: [{ description: '线路图位图', accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'] } }]
+        }).then(function (handles) {
+            if (!handles || !handles.length) return false;
+            var handle = handles[0];
+            return applyHandleFile(handle, meta, false).then(function (done) {
+                if (done) {
+                    ghost.pendingMeta = null;
+                    toast('已载入参考图：' + (handle.name || '') +
+                        '（已记住源文件位置，刷新后自动重新读取；不复制进浏览器存储，也不参与导出）');
+                }
+                return done;
+            });
+        }).catch(function (err) {
+            if (err && err.name === 'AbortError') return false;    // 用户取消，不打扰
+            console.warn('[CGo OpenMap] 文件选择器不可用，退回普通选择器：', err);
+            var input = $('ghost-input');
+            if (input) input.click();
+            return false;
+        });
+    }
+
+    /** 用户点「恢复参考图」：借这次点击向浏览器申请读取权限 */
+    function regrantGhostFile() {
+        var handle = ghost.pendingHandle;
+        if (!handle) return;
+        var ask = handle.requestPermission ? handle.requestPermission({ mode: 'read' }) : Promise.resolve('granted');
+        ask.then(function (state) {
+            if (state !== 'granted') { toast('未获得读取权限：可点「上传参考图」重新指定文件'); return null; }
+            var meta = ghost.pendingMeta;
+            ghost.pendingHandle = null;
+            ghost.needPermission = false;
+            return applyHandleFile(handle, meta, false);
+        }).catch(function (err) { console.warn('[CGo OpenMap] 申请文件读取权限失败：', err); });
+    }
+
+    /** 刷新后恢复：句柄优先，其次缓存副本 */
+    function restoreGhostFromStore() {
+        return ghostTx('readonly', function (store) { return store.get('reference'); })
+            .then(function (rec) {
+                if (!rec) return false;
+                if (rec.handle) {
+                    var handle = rec.handle, meta = rec.meta || {};
+                    var query = handle.queryPermission
+                        ? handle.queryPermission({ mode: 'read' })
+                        : Promise.resolve('granted');
+                    return query.then(function (state) {
+                        if (state === 'granted') {
+                            return applyHandleFile(handle, meta, true).then(function (done) {
+                                if (done) toast('已从源文件恢复参考图（沿用上次的位置 / 大小 / 旋转 / 透明度）');
+                                return done;
+                            });
+                        }
+                        // 需要点一下才能授权：亮出按钮，不动排版
+                        ghost.pendingHandle = handle;
+                        ghost.pendingMeta = meta;
+                        ghost.needPermission = true;
+                        refreshGhost();
+                        toast('参考图来自本机文件：浏览器需要你确认一次读取权限，点「恢复参考图」即可');
+                        return false;
+                    });
+                }
+                if (!rec.blob) return false;
+                return ghostDecodeImage(rec.blob).then(function (decoded) {
+                    if (!decoded) { clearGhostStore(); return false; }
+                    applyGhostImage(rec.blob, decoded.url, decoded.img, rec.meta || {}, null);
+                    toast('已恢复上次的参考图（本机缓存副本，含位置 / 大小 / 旋转 / 透明度）');
+                    return true;
+                });
+            })
+            .catch(function (err) {
+                console.warn('[CGo OpenMap] 参考图恢复失败：', err);
+                return false;
+            });
+    }
+
     function renderAll() {
         updateStageInfo();
         if (!project) return;
         setViewBox();
+        renderGhost();          // 参考图：先画最底层，再叠水域/网格/线路
         renderGrid();
         renderAxes();
         renderWaters();
@@ -1788,7 +2758,7 @@
         return d + ' Z';
     }
 
-    /** 判断折角是接近 90° 还是接近 135°（用于取默认圆角半径） */
+    /** 判断折角是接近 90° 还是接近斜角（用于取默认圆角半径） */
     function isRightAngleCorner(prev, curr, next) {
         var v1x = prev.x - curr.x, v1y = prev.y - curr.y;
         var v2x = next.x - curr.x, v2y = next.y - curr.y;
@@ -1796,7 +2766,10 @@
         // 退化折角（相邻折点重合）没有方向，按非直角处理，避免误判为 90° 取到 18px 圆角
         if (l1 < 1e-6 || l2 < 1e-6) return false;
         var dot = Math.abs((v1x * v2x + v1y * v2y) / (l1 * l2));
-        return dot < 0.35;
+        // 阈值必须与核心引擎一致：core/path-geometry.js 用 |u1·u2| < 0.1 判定直角取 18px。
+        // 曾经这里写成 0.35，于是内角 84°~110° 的缓斜折角在编辑器里预览成 18px 圆角、
+        // 上线却被引擎渲染成 8px——所见非所得（1:3 / 1:4 这类缓斜率尤其明显）。
+        return dot < 0.1;
     }
 
     /** 线段折角圆角半径：无自定义时按折角形态取默认值（内置 90°=18、135°=8，与核心引擎一致） */
@@ -2109,7 +3082,7 @@
      */
     function routeDrawGeometry(seg, A, B) {
         var type = SEG_META[seg.type] ? seg.type : 'segaxis';
-        var routed = routeBetweenByType(A, B, type, seg.cornerFlip === true);
+        var routed = routeBetweenByType(A, B, type, seg.cornerFlip === true, ratioOfSegment(seg));
         var out = dedupePointsKeepNid((routed || []).map(function (p) { return { x: p.x, y: p.y }; }));
         if (out.length < 2) out = [{ x: A.x, y: A.y }, { x: B.x, y: B.y }];
         out[0] = { x: round2(A.x), y: round2(A.y) };
@@ -2905,6 +3878,9 @@
             layer.appendChild(rect);
         }
 
+        // 参考图编辑模式的外框与控制柄（与选中元素无关，始终画在最上层）
+        renderGhostHandles(layer, u);
+
         if (!selection) return;
 
         // 自由文本：用虚线框标出范围，并画出锚点（拖拽/旋转都以锚点为中心）
@@ -3079,6 +4055,7 @@
             case 'seg90': return '添加 90° 折角线段';
             case 'seg90d': return '添加斜 90° 折角线段';
             case 'segaxis': return '添加自由直线';
+            case 'segratio': return '添加比例斜率线段';
             case 'segfree': return '连续绘制（手绘线段）';
             case 'water': return '添加水域面';
             case 'waterpath': return '添加水域路径';
@@ -3103,7 +4080,7 @@
             ' · 线段 ' + project.segments.length +
             ' · 水域 ' + project.waters.length +
             ' · 线路 ' + project.lines.length;
-        mode.textContent = toolLabel(activeTool) +
+        mode.textContent = (ghostEdit ? '参考图编辑 · ' : '') + toolLabel(activeTool) +
             (autoRoute && activeTool.indexOf('seg') === 0 ? ' · 自动选型' : '') +
             (selectedNodeIds.length > 1 ? ' · 已选 ' + selectedNodeIds.length + ' 个节点' : '') +
             (selectedSegmentIds.length > 1 ? ' · 已选 ' + selectedSegmentIds.length + ' 条线段' : '');
@@ -3276,6 +4253,7 @@
 
         // 右键：连续绘制模式下放置新车站并继续连线；其余模式右键拖拽框选节点
         if (ev.button === 2 && ev.pointerType !== 'touch') {
+            if (ghostEdit) return;      // 参考图编辑模式下右键不参与框选，避免抢手势
             if (activeTool === 'segfree') {
                 handleSegmentClick(screenToWorld(ev.clientX, ev.clientY), ev.shiftKey, true);
                 return;
@@ -3287,6 +4265,15 @@
         if (ev.button !== 0 && ev.pointerType === 'mouse') return;
 
         var world = screenToWorld(ev.clientX, ev.clientY);
+
+        // 参考图编辑模式：只手势参考图的移动 / 缩放 / 旋转，创建与选择一律让位
+        // （控制柄与外框都是 pointer-events:none，命中判定集中在这里做）
+        if (ghostEdit && ghostReady()) {
+            var ghostHit = hitGhostHandle(world);
+            if (ghostHit) { startGhostDrag(ghostHit, ev); return; }
+            if (pointInGhost(world)) { startGhostDrag({ kind: 'move' }, ev); return; }
+            return;      // 点在图外：不建元素、不选元素，避免调参考图时误改线网
+        }
 
         if (activeTool === 'select') {
             // Shift + 左键点击线段：快捷翻转折角方向（补记撤销点）
@@ -3627,6 +4614,9 @@
         pointerWorld = world;      // 记录指针位置，供 Ctrl+V 决定粘贴落点
         $('stage-coord').textContent = 'x: ' + Math.round(world.x) + ', y: ' + Math.round(world.y);
 
+        // 参考图编辑模式：拖拽参考图时只更新参考图，不参与节点/线段/水域的拖拽逻辑
+        if (ghostDrag) { updateGhostDrag(world, ev); return; }
+
         if (dragState && dragState.kind === 'pan') {
             view.cx = dragState.startCx - (ev.clientX - dragState.startX) / view.k;
             view.cy = dragState.startCy - (ev.clientY - dragState.startY) / view.k;
@@ -3768,6 +4758,12 @@
         canvas.classList.remove('panning');
         canvas.classList.remove('resizing-water');
         canvas.classList.remove('marquee-drag');
+        if (ghostDrag) {
+            ghostDrag = null;
+            try { canvas.releasePointerCapture(ev.pointerId); } catch (e) { /* ignore */ }
+            refreshGhost();
+            return;
+        }
         if (dragState && dragState.kind === 'marquee') {
             var moved = dragState.moved;
             var picked = selectedNodeIds.length;
@@ -3992,6 +4988,20 @@
             return;   // 其余 Ctrl 组合交给浏览器
         }
 
+        // 参考图编辑模式：Esc 退出；方向键微调参考图位置（Shift 加速 10 倍）
+        if (ghostEdit && ghostReady()) {
+            var gArrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+            if (gArrow) {
+                ev.preventDefault();
+                var gStep = ev.shiftKey ? 10 : 1;
+                ghost.x = round2(ghost.x + gArrow[0] * gStep);
+                ghost.y = round2(ghost.y + gArrow[1] * gStep);
+                refreshGhost();
+                return;
+            }
+            if (ev.key === 'Escape') { setGhostEditMode(false); return; }
+        }
+
         if (ev.key === 'Escape') {
             if (draft) { cancelDraft(); }
             clearSelection();
@@ -4067,12 +5077,14 @@
         }
         if (selection.type === 'node') {
             // 多选节点：展示选择集摘要（单项属性仍在单选时编辑）
-            if (selectedNodeIds.length > 1) return renderMultiNodeProps(host);
-            return renderNodeProps(host, project.nodes[selection.id]);
+            if (selectedNodeIds.length > 1) { renderMultiNodeProps(host); return; }
+            renderNodeProps(host, project.nodes[selection.id]);
+            return;
         }
         if (selection.type === 'segment') {
-            if (selectedSegmentIds.length > 1) return renderMultiSegmentProps(host);
-            return renderSegmentProps(host, findSegment(selection.id));
+            if (selectedSegmentIds.length > 1) { renderMultiSegmentProps(host); return; }
+            renderSegmentProps(host, findSegment(selection.id));
+            return;
         }
         if (selection.type === 'water') return renderWaterProps(host, findWater(selection.id));
         if (selection.type === 'text') return renderTextProps(host, findText(selection.id));
@@ -4826,24 +5838,35 @@
     }
 
     function bindNodeProps(node, isStation) {
-        // 同一输入框的 change 已记录历史后，紧随其后的 input 不应再次记录，
-        // 否则会误清空重做栈，导致「撤销后无法重做」。
-        var historyPushed = false;
+        /**
+         * 输入框的「改动即入历史」绑定。
+         *
+         * 两条不变量（2026-10 修正，原实现在这里踩了两个坑）：
+         *   1. 撤销快照必须在**本次改动落盘之前**记录。浏览器对文本输入是先 `input` 后 `change`，
+         *      原实现让 `input` 直接改模型、`change` 才 `withHistory`，于是入栈的是「改后」状态，
+         *      第一次编辑根本撤不回来；
+         *   2. 每次编辑收尾后标志必须复位。原实现的 `historyPushed` 一次为真就永不复位，
+         *      导致同一字段第二次编辑时 `input` 分支提前 return —— 画布不再实时预览，必须失焦才生效。
+         * 因此这里改成「第一次 input/change 时记快照，change 收尾时复位」。
+         */
         function onChange(id, handler) {
             var el = $(id);
             if (!el) return;
+            var pushed = false;
+            function apply() { handler(el.value); }
+            el.addEventListener('input', function () {
+                if (!pushed) { pushHistory(); pushed = true; }
+                apply();
+                renderAll();
+                updateStageInfo();
+            });
             el.addEventListener('change', function () {
-                withHistory(function () { handler(el.value); });
-                historyPushed = true;
+                if (!pushed) { pushHistory(); pushed = true; }   // 粘贴 / 程序化赋值只触发 change
+                apply();
                 renderAll();
                 renderList();
                 updateStageInfo();
-            });
-            el.addEventListener('input', function () {
-                if (historyPushed) return;      // 本次编辑已入栈，避免重复记录
-                handler(el.value);
-                renderAll();
-                updateStageInfo();
+                pushed = false;                                  // 下一次编辑重新记快照
             });
         }
 
@@ -4864,8 +5887,18 @@
             });
         }
 
-        onChange('node-x', function (v) { node.x = round2(parseFloat(v) || 0); syncNodeSegments(node); });
-        onChange('node-y', function (v) { node.y = round2(parseFloat(v) || 0); syncNodeSegments(node); });
+        // 面板改坐标与拖拽必须走同一套后续动作：同步线段端点 + 重算自动走线
+        // （只 syncNodeSegments 不 liveRecomputeSegmentsFor 会让 135°/90° 折角不跟着重算，线被拉斜）
+        onChange('node-x', function (v) {
+            node.x = round2(parseFloat(v) || 0);
+            syncNodeSegments(node);
+            liveRecomputeSegmentsFor(node);
+        });
+        onChange('node-y', function (v) {
+            node.y = round2(parseFloat(v) || 0);
+            syncNodeSegments(node);
+            liveRecomputeSegmentsFor(node);
+        });
 
         if (!isStation) return;
 
@@ -4931,16 +5964,25 @@
         }
 
         // 指定坐标：直接写入并重绘当前标签，不重建面板（避免打断连续输入）
+        // 撤销快照的时机与复位规则同 bindNodeProps 的 onChange（见其注释）。
         function bindLabelCoord(id, axis) {
             var el = $(id);
             if (!el) return;
+            var pushed = false;
             function apply() {
                 var v = round2(parseFloat(el.value) || 0);
                 if (axis === 'x') node.labelX = v; else node.labelY = v;
                 renderAll();
             }
-            el.addEventListener('input', apply);
-            el.addEventListener('change', function () { withHistory(apply); });
+            el.addEventListener('input', function () {
+                if (!pushed) { pushHistory(); pushed = true; }
+                apply();
+            });
+            el.addEventListener('change', function () {
+                if (!pushed) { pushHistory(); pushed = true; }
+                apply();
+                pushed = false;
+            });
         }
         bindLabelCoord('node-label-x', 'x');
         bindLabelCoord('node-label-y', 'y');
@@ -5038,6 +6080,26 @@
             Object.keys(SEG_META).filter(function (k) { return k !== 'auto'; }).map(function (k) {
                 return '<option value="' + k + '"' + (seg.type === k ? ' selected' : '') + '>' + SEG_META[k].label + '</option>';
             }).join('') + '</select></div>';
+
+        // ---- 斜率比例（比例斜率线段专用；其余类型可先设好比例再切类型）----
+        var projRatio = slopeRatio();
+        var segRatio = (seg.slope && isFinite(seg.slope.m) && isFinite(seg.slope.n))
+            ? { m: Math.round(seg.slope.m), n: Math.round(seg.slope.n) } : null;
+        html += '<div class="prop-field"><label for="seg-slope">斜率比例</label><select id="seg-slope">' +
+            '<option value=""' + (segRatio ? '' : ' selected') + '>跟随项目统一夹角（' +
+            projRatio.m + ':' + projRatio.n + '）</option>' +
+            SLOPE_PRESETS.map(function (p) {
+                var sel = (segRatio && segRatio.m === p.m && segRatio.n === p.n) ? ' selected' : '';
+                return '<option value="' + p.m + ':' + p.n + '"' + sel + '>' + p.label + '</option>';
+            }).join('') + '</select></div>';
+        if (seg.type === 'segratio') {
+            var eff = segRatio || projRatio;
+            html += '<p class="side-hint">本段斜边严格按 <b>' + eff.m + ':' + eff.n + '</b> 走（折角内角约 ' +
+                Math.round(180 - Math.atan2(eff.n, eff.m) * 180 / Math.PI) + '°），剩余位移落在较长的那个轴上。' +
+                '比例用整数比表达，是为了让折点同时严格落在该夹角与网格上。</p>';
+        } else {
+            html += '<p class="side-hint">切换到「比例斜率」后按该比例生成斜边；1:1 与 135° 折角完全等价。</p>';
+        }
 
         html += '<div class="prop-field"><label>端点</label><div class="prop-note">' +
             endNodes.map(function (n) {
@@ -5329,6 +6391,22 @@
             renderInspector();
         });
 
+        var slopeSel = $('seg-slope');
+        if (slopeSel) slopeSel.addEventListener('change', function () {
+            withHistory(function () {
+                if (!slopeSel.value) delete seg.slope;
+                else {
+                    var pr = slopeSel.value.split(':');
+                    seg.slope = { m: parseInt(pr[0], 10), n: parseInt(pr[1], 10) };
+                }
+                // 比例变了，斜边要按新比例重算（手动类型也走 routeBetweenByType）
+                recomputeSegmentRoute(seg);
+            });
+            renderAll();
+            renderInspector();
+            toast(slopeSel.value ? '本段斜率已设为 ' + slopeSel.value : '本段斜率跟随项目统一夹角');
+        });
+
         var reselect = $('btn-reselect-seg');
         if (reselect) reselect.addEventListener('click', function () {
             withHistory(function () { applySegmentType(seg); });
@@ -5371,7 +6449,7 @@
         var flip = seg.cornerFlip === true;
         var routed = (type === 'auto')
             ? autoRouteBetween(a, b, flip)
-            : { type: type, points: routeBetweenByType(a, b, type, flip) };
+            : { type: type, points: routeBetweenByType(a, b, type, flip, ratioOfSegment(seg)) };
         var newPts = routed.points.map(function (p) { return { x: p.x, y: p.y }; });
         newPts[0] = { x: a.x, y: a.y };
         newPts[newPts.length - 1] = { x: b.x, y: b.y };
@@ -5916,7 +6994,14 @@
             return;
         }
         stage.innerHTML = '<span class="line-badge-preview-empty">载入中…</span>';
-        fetch('../assets/svg/' + encodeURIComponent(badgeName), { cache: 'no-cache' })
+        // 徽标取值有两种写法：仓库内置模板名（icon@01.svg，在 assets/svg/ 下），
+        // 以及已入库城市自带的仓库根相对路径（如 ./city/hongkong/assets/line/HSR.svg）。
+        // 后者若仍按 assets/svg/ 拼接就会 404（载入香港等城市时实测过），这里分别解析。
+        var badgeUrl = /^\.{1,2}\//.test(badgeName)
+            ? '../' + badgeName.replace(/^\.\//, '')
+            : (badgeName.indexOf('/') >= 0 ? '../' + badgeName.replace(/^\/+/, '')
+                : '../assets/svg/' + encodeURIComponent(badgeName));
+        fetch(badgeUrl, { cache: 'no-cache' })
             .then(function (res) {
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 return res.text();
@@ -6028,6 +7113,8 @@
         // 新建空白画布回到绘制默认：开启「线段自动选型」（导入工程时则保持关闭）
         setAutoRoute(true, { silent: true });
         scheduleFit();
+        markProjectClean();          // 空画布即基线
+        refreshGhost();              // 新建画布后重画参考图与它的外框
         if (!silent) toast('已创建 ' + w + ' × ' + h + ' 画布，原点 O 位于左上角顶点');
     }
 
@@ -6068,7 +7155,7 @@
 
         // 只重绘新尺寸下的画布内容：不调用 clampView/resetView，
         // 不重新锁定 SVG 尺寸，也不调整缩放与平移，因此画布上已有元素与视图完全不动。
-        renderAll();
+        refreshGhost();              // 画布尺寸变了：底图与外框读数一起刷新
         if (!silent) toast('画布尺寸已更新为 ' + w + ' × ' + h + '（画布内容与视图保持不变）');
     }
 
@@ -6099,6 +7186,7 @@
         clearSelection();
         draft = null;
         syncLineSelect();
+        syncSlopeControls();
         var autoWasOn = autoRoute;
         setAutoRoute(false, { silent: true });
         resetView();
@@ -6109,6 +7197,7 @@
         $('stage-empty').hidden = true;
         scheduleFit();
         if (message) toast(message + (autoWasOn ? '（已关闭「线段自动选型」，线段类型沿用工程内已有设置）' : ''));
+        markProjectClean();          // 刚载入的工程即基线：不做任何改动就离开时不该拦
         return project;
     }
 
@@ -6143,7 +7232,9 @@
         if (!project) { toast('请先创建画布'); return; }
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
-            if (notify) toast('已保存到浏览器本地');
+            // 自动暂存（notify=false）只防丢、不算「已保存 / 已交付」，提醒继续挂着；
+            // 只有用户点「保存到本地」才把当前状态记为基线。
+            if (notify) { markProjectClean(); toast('已保存到浏览器本地'); }
         } catch (e) {
             toast('保存失败：' + e.message);
         }
@@ -6196,6 +7287,7 @@
             toast('已恢复上次编辑的工程' + (modeRestored
                 ? '（编辑模式：' + (autoRoute ? '线段自动选型' : '手动线段类型') + '）'
                 : ''));
+            markProjectClean();          // 刚恢复出来的状态就是基线
             return true;
         } catch (e) {
             return false;
@@ -6244,6 +7336,13 @@
             if (/^#[0-9a-fA-F]{6}$/.test(String(srcWaterStyle.fillDark || ''))) base.waterStyle.fillDark = srcWaterStyle.fillDark;
             if (isFinite(parseFloat(srcWaterStyle.opacity))) base.waterStyle.opacity = clamp(parseFloat(srcWaterStyle.opacity), 0.05, 1);
             if (isFinite(parseInt(srcWaterStyle.zIndex, 10))) base.waterStyle.zIndex = clamp(parseInt(srcWaterStyle.zIndex, 10), 0, 4);
+        }
+        // 项目级统一夹角（斜率比例 m:n）：整数化并钳制在 1~12，缺省回落到 1:1（45°）
+        var srcSlope = (data.slope && typeof data.slope === 'object') ? data.slope : null;
+        if (srcSlope) {
+            var sm = Math.round(parseFloat(srcSlope.m)), sn = Math.round(parseFloat(srcSlope.n));
+            if (isFinite(sm) && sm >= 1 && sm <= 12) base.slope.m = sm;
+            if (isFinite(sn) && sn >= 1 && sn <= 12) base.slope.n = sn;
         }
         if (!base.lines.length && base.segments.length) {
             var line = { id: 'L' + (base.idSeq++), name: '线路1', color: LINE_PALETTE[0] };
@@ -9367,12 +10466,14 @@
             '【二、添加元素】',
             '1. 车站节点：圆形，描边使用所在线路的颜色；',
             '2. 临时节点：黑色 × 表示，用于连续绘制的转折锚点，不参与换乘站判定；',
-            '3. 线段：135° 折角 / 90° 折角 / 斜 90° 折角 / 自由直线 / 连续绘制；',
+            '3. 线段：135° 折角 / 90° 折角 / 斜 90° 折角 / 自由直线 / 比例斜率 / 连续绘制；',
             '   · 90° 折角：两段轴平行线相交成 90°（L 形）；',
             '   · 斜 90° 折角：两段 45° 斜线相交成 90°（V 形），折角点由过两端的两条 45° 线相交得到，',
             '     可在属性面板或 Shift+左键点击在线段两侧间翻转；',
             '   · 自由直线：两端节点直连，方向不限（与坐标轴平行只是它的一种特例），拖动节点时始终直连，',
             '     不会被「线段自动选型」改写成折角走线；',
+            '   · 比例斜率：斜边严格按「统一夹角」的比例走（1:1 即与 135° 折角完全等价），剩余位移落在较长的那个轴上；',
+            '     线段属性面板里可给单条线段指定比例（跟随项目统一夹角 / 2:1 / 3:2 / 1:2 …），拖动节点时按该比例重算；',
             '   · 连续绘制：保留人工绘制的多个转折点，同样不参与自动选型；绘制时左键放临时节点（点中已有车站 / 节点则直接连上）、右键放新车站；',
             '4. 路径编辑模式下开启「线段自动选型」，绘制时按两端节点坐标自动选择走线类型：',
             '   · 两端与坐标轴平行        → 自由直线（两端直连）',
@@ -9575,8 +10676,33 @@
             '对话框可设置城市 ID/名称、主题色、线路 ID 前缀、站距比例（米/像素）与运营公司，',
             '并会实时显示自检结果（站序连续性、车站引用完整性、线路颜色合法性等）。',
             '',
-            '提示：工程会自动暂存到浏览器本地，刷新页面后可恢复；若页面表现与修改不符，',
-            '请优先排查 Service Worker 缓存（可强制刷新或在偏好设置中清除缓存）。',
+            '【九、参考图（描图参照，可自由变换）】',
+            '「参考图 → 上传参考图」选一张线路图位图，也可以直接把图片拖到画布上；',
+            '它会以半透明垫在**最底层**，位置 / 大小 / 旋转 / 透明度全部可以自己调 ——',
+            '参考图不必与画布等大，也可以只是某个局部（老图的一角、一段走向的截图）：',
+            '   · 参考图编辑模式：进入后在画布上拖动图片即可移动，拖四角缩放、拖顶部圆柄旋转',
+            '     （Shift 锁比例 / 15° 吸附）；方向键微调位置（Shift 加速 10 倍），Esc 退出；',
+            '     该模式下不会创建或选中任何元素，避免调参考图时误改线网；',
+            '   · 数值微调：面板上的 X / Y / 宽 / 高 / 旋转 / 透明度 都能直接输入，',
+            '     「缩放时锁定宽高比」决定改宽或改高时另一边是否等比跟随；',
+            '   · 一键贴合：「适应画布」等比缩到画布内居中、「铺满画布」拉伸到四边（两者都会把旋转归零）；',
+            '   · 加载 / 更换 / 卸载：同一个按钮先「上传参考图」，有图后变成「更换参考图」',
+            '     （更换保留中心点与旋转角，按新图宽高比重算高度）；「卸载」只清参照图，几何一点不动；',
+            '   · 来源记忆：默认只记住「电脑上那个文件」的句柄（Chrome / Edge 等支持 File System Access',
+            '     的浏览器），位图不复制进浏览器存储 —— 源文件改过之后刷新就能用上新版；',
+            '     浏览器不支持句柄时（如 Firefox）才退回「本机缓存副本」，这时源文件改动不会同步；',
+            '   · 刷新后：权限还在就直接重新读取；需要确认权限时点一下「恢复参考图」；',
+            '     源文件被移动 / 改名 / 删除会提示「找不到参考图源文件，请重新指定」，',
+            '     并保留上次的位置与旋转，重新指定后排版照旧；',
+            '   · 参考图不写进工程 JSON / 城市代码 / OpenMap 工程包，也不会出现在导出的 SVG 里，',
+            '     更不会被 20 秒的自动暂存写进浏览器本地存储；「卸载」会连来源记忆一起清掉；',
+            '     图片始终只在本机，不会被上传到任何地方。',
+            '',
+            '提示：工程会自动暂存到浏览器本地（20 秒一次、静默覆盖同一份本地工程），刷新页面后可恢复；',
+            '但自动暂存**不是交付物** —— 只要还没点过「保存到本地」或「导出 JSON」，状态栏会一直显示',
+            '「有未保存 / 未导出的改动」，此时关闭或刷新页面浏览器会先弹一次确认。交付流程是：',
+            '「保存到本地」留档 + 「导出 JSON」把工程文件交给城市维护者落地。',
+            '若页面表现与修改不符，请优先排查 Service Worker 缓存（可强制刷新或在偏好设置中清除缓存）。',
             '',
             '快速体验：编辑器打开时若没有本地工程，会自动载入默认示例工程；',
             '也可在「更多」菜单中点击「载入示例工程」，或访问 city-editor/index.html?demo=1 强制载入。',
@@ -9661,6 +10787,7 @@
         syncTopButtons();
         $('stage-empty').hidden = true;
         scheduleFit();
+        markProjectClean();          // 内置示例即基线
         toast('已载入示例工程：可直接体验换乘站自动样式、折角线段与水域');
     }
 
@@ -9738,6 +10865,143 @@
         $('btn-empty-open').addEventListener('click', function () { fileInput.click(); });
         $('btn-new-canvas').addEventListener('click', newCanvasFromInputs);
 
+        // 参考图（描图参照：可自由变换，半透明垫在最底层；不进工程数据）
+        // 上传 / 更换：优先走 File System Access 的句柄选择器（这样刷新后能按源文件恢复）
+        var ghostUploadBtn = $('btn-ghost-upload');
+        if (ghostUploadBtn) {
+            ghostUploadBtn.addEventListener('click', function () { pickGhostFile(); });
+        }
+        // 兜底：普通文件选择器（不支持句柄的浏览器，或句柄选择器出错时）
+        var ghostInput = $('ghost-input');
+        if (ghostInput) {
+            ghostInput.addEventListener('change', function () {
+                var picked = ghostInput.files && ghostInput.files[0];
+                if (picked) loadGhostFile(picked);
+                ghostInput.value = '';      // 清空，使同一张图再次选择也能触发 change
+            });
+        }
+        // 句柄在、但浏览器要用户点一下才给读取权限
+        var ghostRegrantBtn = $('btn-ghost-regrant');
+        if (ghostRegrantBtn) {
+            ghostRegrantBtn.addEventListener('click', function () { regrantGhostFile(); });
+        }
+        var ghostEditBtn = $('ghost-edit');
+        if (ghostEditBtn) {
+            ghostEditBtn.addEventListener('click', function () { setGhostEditMode(!ghostEdit); });
+        }
+        var ghostVisible = $('ghost-visible');
+        if (ghostVisible) {
+            ghostVisible.addEventListener('change', function () {
+                ghost.visible = ghostVisible.checked;
+                refreshGhost();
+            });
+        }
+        var ghostAspect = $('ghost-aspect');
+        if (ghostAspect) {
+            ghostAspect.addEventListener('change', function () { ghost.aspect = ghostAspect.checked; });
+        }
+
+        /** 参考图数值框：改动即写回模型并重绘；输入非法值就回填当前值 */
+        function bindGhostNumber(id, apply) {
+            var el = $(id);
+            if (!el) return;
+            el.addEventListener('change', function () {
+                if (!ghostReady()) { syncGhostFields(); return; }
+                var v = parseFloat(el.value);
+                if (isFinite(v)) apply(v);
+                refreshGhost();
+            });
+        }
+        bindGhostNumber('ghost-x', function (v) { ghost.x = round2(v); });
+        bindGhostNumber('ghost-y', function (v) { ghost.y = round2(v); });
+        bindGhostNumber('ghost-w', function (v) {
+            var nw = Math.max(GHOST_MIN_SIZE, round2(v));
+            if (ghost.aspect && ghost.w > 0) ghost.h = Math.max(GHOST_MIN_SIZE, round2(ghost.h * (nw / ghost.w)));
+            ghost.w = nw;
+        });
+        bindGhostNumber('ghost-h', function (v) {
+            var nh = Math.max(GHOST_MIN_SIZE, round2(v));
+            if (ghost.aspect && ghost.h > 0) ghost.w = Math.max(GHOST_MIN_SIZE, round2(ghost.w * (nh / ghost.h)));
+            ghost.h = nh;
+        });
+        bindGhostNumber('ghost-rotate', function (v) {
+            var deg = v;
+            while (deg > 180) deg -= 360;
+            while (deg <= -180) deg += 360;
+            ghost.rotate = round2(deg);
+        });
+
+        var ghostRotateRange = $('ghost-rotate-range');
+        if (ghostRotateRange) {
+            ghostRotateRange.addEventListener('input', function () {
+                if (!ghostReady()) return;
+                ghost.rotate = round2(parseInt(ghostRotateRange.value, 10) || 0);
+                refreshGhost();
+            });
+        }
+        var ghostOpacity = $('ghost-opacity');
+        if (ghostOpacity) {
+            ghostOpacity.addEventListener('input', function () {
+                ghost.opacity = clamp((parseInt(ghostOpacity.value, 10) || 40) / 100, 0.05, 1);
+                var label = $('ghost-opacity-value');
+                if (label) label.textContent = Math.round(ghost.opacity * 100) + '%';
+                renderGhost();
+            });
+        }
+        var ghostFitContain = $('btn-ghost-fit-contain');
+        if (ghostFitContain) ghostFitContain.addEventListener('click', function () { applyGhostFit('contain'); });
+        var ghostFitCover = $('btn-ghost-fit-cover');
+        if (ghostFitCover) ghostFitCover.addEventListener('click', function () { applyGhostFit('cover'); });
+        var ghostRemove = $('btn-ghost-remove');
+        if (ghostRemove) ghostRemove.addEventListener('click', removeGhost);
+
+        // 把图片直接拖到画布上也能当参考图
+        var canvasHost = $('stage-canvas');
+        if (canvasHost) {
+            canvasHost.addEventListener('dragover', function (ev) {
+                if (!ev.dataTransfer) return;
+                ev.preventDefault();        // 不阻止默认行为的话，浏览器会直接把这张图打开
+                ev.dataTransfer.dropEffect = 'copy';
+                canvasHost.classList.add('drop-active');
+            });
+            canvasHost.addEventListener('dragleave', function () {
+                canvasHost.classList.remove('drop-active');
+            });
+            canvasHost.addEventListener('drop', function (ev) {
+                ev.preventDefault();
+                canvasHost.classList.remove('drop-active');
+                var dt = ev.dataTransfer;
+                var dropped = dt && dt.files && dt.files[0];
+                var item = dt && dt.items && dt.items[0];
+                // 能在投放事件里拿到文件句柄就优先用它（刷新后可按源文件重新读取）；
+                // 拿不到（Firefox 等）再退回 Blob 副本。注意 getAsFileSystemHandle 必须在事件内同步调用。
+                if (GHOST_HANDLE_SUPPORTED && item && typeof item.getAsFileSystemHandle === 'function') {
+                    item.getAsFileSystemHandle().then(function (handle) {
+                        if (!handle || handle.kind !== 'file') {
+                            if (dropped) loadGhostFile(dropped);
+                            return;
+                        }
+                        var meta = ghost.pendingMeta || null;
+                        applyHandleFile(handle, meta, false).then(function (done) {
+                            if (done) {
+                                ghost.pendingMeta = null;
+                                toast('已载入参考图：' + (handle.name || '') +
+                                    '（已记住源文件位置，刷新后自动重新读取；不参与导出）');
+                            } else if (dropped) {
+                                loadGhostFile(dropped);
+                            }
+                        });
+                    }).catch(function () { if (dropped) loadGhostFile(dropped); });
+                    return;
+                }
+                if (dropped) loadGhostFile(dropped);
+            });
+        }
+
+        // 参考图面板初始状态：没有图时各控件统一禁用
+        syncGhostFields();
+        updateGhostHint();
+
         // 网格
         $('chk-snap').addEventListener('change', function () {
             toast(this.checked ? '已开启网格对齐（' + gridSize() + ' px）' : '已关闭网格对齐');
@@ -9747,6 +11011,20 @@
             toast('网格大小已设为 ' + gridSize() + ' px');
         });
         $('chk-grid').addEventListener('change', renderAll);
+
+        // 统一夹角（斜率比例）——驱动比例斜率线段、Shift 方向吸附与自动选型
+        var slopeSel = $('sel-slope');
+        if (slopeSel) slopeSel.addEventListener('change', function () {
+            if (this.value === 'custom') { syncSlopeControls(); return; }
+            var pr = this.value.split(':');
+            setSlopeRatio(parseInt(pr[0], 10), parseInt(pr[1], 10));
+        });
+        ['slope-m', 'slope-n'].forEach(function (id) {
+            var el = $(id);
+            if (el) el.addEventListener('change', function () {
+                setSlopeRatio(parseInt($('slope-m').value, 10), parseInt($('slope-n').value, 10));
+            });
+        });
 
         // 自动选型（切换后写入本地，刷新恢复工程时一并还原）
         $('chk-auto').addEventListener('change', function () {
@@ -9799,7 +11077,8 @@
         $('btn-export-json').addEventListener('click', function () {
             if (!project) { toast('请先创建画布'); return; }
             download('cgo-openmap-project.json', JSON.stringify(project, null, 2));
-            toast('已导出工程 JSON');
+            markProjectClean();          // 导出即交付：提醒随之收掉
+            toast('已导出工程 JSON（这是交给维护者落地城市数据的交付物，记得先「保存到本地」）');
         });
         $('btn-export-code').addEventListener('click', function () {
             if (!project) { toast('请先创建画布'); return; }
@@ -9837,6 +11116,7 @@
             }
             loadSampleProject();
         });
+
         $('btn-help').addEventListener('click', function () {
             openModal('编辑器操作说明',
                 '坐标系与 CGo OpenMap 数据层一致：原点 O 位于画布左上角，X 轴向右为正，Y 轴向下为正。',
@@ -9993,6 +11273,15 @@
             sizeObserver = new ResizeObserver(handleStageResize);
             sizeObserver.observe($('stage-canvas'));
         }
+
+        // 离开页面提醒：本地自动暂存只防丢，交付仍要「保存到本地」+「导出 JSON」。
+        // 注意 beforeunload 的文案由浏览器决定、无法自定义，所以正文提醒放在状态栏的
+        // #unsaved-hint 上（有改动时一直显示），这里只负责拦住「忘了交付就关页面」。
+        window.addEventListener('beforeunload', function (ev) {
+            if (!hasUnsavedChanges()) return;
+            ev.preventDefault();
+            ev.returnValue = '';
+        });
     }
 
     function init() {
@@ -10002,6 +11291,7 @@
         setTool('select');
         syncAutoButton();
         syncTopButtons();
+        syncSlopeControls();
         updateStageInfo();
 
         // 调试与自动化测试探针
@@ -10166,7 +11456,68 @@
             /** 调试探针：载入示例工程（默认 sample/cityedit_sample.json），返回是否成功 */
             loadSample: function (opts) { return loadSampleProject(opts || {}); },
             /** 调试探针：示例工程地址 */
-            sampleUrl: function () { return SAMPLE_URL; }
+            sampleUrl: function () { return SAMPLE_URL; },
+            /** 调试探针：统一夹角（斜率比例）读写 */
+            slopeRatio: function () { return project ? slopeRatio() : null; },
+            setSlope: function (m, n) { setSlopeRatio(m, n); return project ? slopeRatio() : null; },
+            slopePresets: function () { return SLOPE_PRESETS.slice(); },
+            /** 调试探针：按比例生成斜边路径（用于核对非 45° 折角的几何） */
+            ratioPath: function (ax, ay, bx, by, m, n, firstAxis) {
+                return buildRatioPath({ x: ax, y: ay }, { x: bx, y: by }, firstAxis || 'diagonal', { m: m, n: n });
+            },
+            /** 调试探针：Shift 方向吸附（返回吸附点与其到参考点的位移） */
+            snapRay: function (fx, fy, tx, ty) {
+                var p = snapPointToRays({ x: fx, y: fy }, { x: tx, y: ty });
+                return { x: p.x, y: p.y, dx: p.x - fx, dy: p.y - fy };
+            },
+            /** 调试探针：自动选型结果（不含 flip） */
+            autoRoute: function (ax, ay, bx, by) {
+                return autoRouteBetween({ x: ax, y: ay }, { x: bx, y: by }, false);
+            },
+            /** 调试探针：按类型生成走线 */
+            routeByType: function (ax, ay, bx, by, type, m, n) {
+                return routeBetweenByType({ x: ax, y: ay }, { x: bx, y: by }, type, false,
+                    (m && n) ? { m: m, n: n } : null);
+            },
+            /** 调试探针：折角默认圆角半径（18=直角 / 8=斜角，与核心引擎一致） */
+            cornerRadius: function (ax, ay, cx, cy, bx, by) {
+                return isRightAngleCorner({ x: ax, y: ay }, { x: cx, y: cy }, { x: bx, y: by }) ? 18 : 8;
+            },
+            /** 调试探针：当前线段类型清单 */
+            segTypes: function () { return Object.keys(SEG_META); },
+            /** 调试探针：把某座车站挪到新坐标（几何改动的最小单元） */
+            moveStationTo: function (stationKey, x, y) {
+                var n = project && project.nodes[stationKey];
+                if (!n) return false;
+                n.x = x; n.y = y;
+                syncNodeSegments(n);
+                liveRecomputeSegmentsFor(n);
+                renderAll();
+                return true;
+            },
+            /** 调试探针：新增一座车站（等价于用「车站节点」工具点一下） */
+            addStation: function (opts) {
+                if (!project) return null;
+                var n = newStationNode(opts.x, opts.y);
+                if (opts.code) n.code = opts.code;
+                if (opts.cn) n.cn = opts.cn;
+                if (opts.en) n.en = opts.en;
+                if (opts.align) n.align = opts.align;
+                if (opts.notOpen) n.notOpen = true;
+                pushHistory();
+                renderAll();
+                renderInspector();
+                return n.id;
+            },
+            /** 调试探针：把两座车站用一条线段连起来（线路取 activeLineId 或显式指定） */
+            connectNodes: function (keyA, keyB, lineId) {
+                if (!project) return false;
+                if (lineId) activeLineId = lineId;
+                var a = project.nodes[keyA], b = project.nodes[keyB];
+                if (!a || !b) return false;
+                commitSegment([a, b], null);
+                return true;
+            }
         };
 
         var params = new URLSearchParams(window.location.search);
@@ -10178,6 +11529,9 @@
             $('stage-empty').hidden = true;      // 载入期间不闪空状态，失败时由 seedDemoProject 兜底
             loadSampleProject({ silent: !demoRequested });
         }
+
+        // 参考图：与工程自动暂存完全独立的一条本地缓存，恢复它不会标记「有未导出改动」
+        restoreGhostFromStore();
 
         // 自动暂存
         setInterval(function () { if (project) saveToLocal(false); }, 20000);
