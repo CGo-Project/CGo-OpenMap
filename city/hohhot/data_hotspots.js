@@ -3,16 +3,25 @@
  *
  * 口径同 city/shenyang/data_hotspots.js：纯静态写入、无热度算法、不消费规划结果。
  * ⚠️ 白塔机场的地铁站名为「坝堰（机场）」（M120），显示名用机场常用名；
+ * 该机场自 2026-11-26 零时起关闭，航班整体转至盛乐国际机场（暂无轨道接驳，故不收录）：
+ * 关闭前保留条目并标注关闭日期，关闭后自动从「快速前往」移除，避免继续把旅客导向已停用机场。
  * 大召寺、昭君墓、五塔寺等站名对不上的暂不收录（宁少勿错）。
  * 接驳口字段（exit / enterExit / leaveExit）可选，未配则点选只填车站、不指定口。
  * 供共享层 shared/route/route-panel.js 读取（约定全局 CGO_HOTSPOTS）。
  */
+const BAITA_AIRPORT_CLOSE_AT = Date.parse("2026-11-26T00:00:00+08:00");
+const baiTaAirportOpen = Date.now() < BAITA_AIRPORT_CLOSE_AT;
+
 const HOHHOT_HOTSPOTS = [
     // ── 交通枢纽 ──
     { name: "呼和浩特站", sid: "M213", kind: "hub", icon: "railway", exit: "A" },
     { name: "呼和浩特东站", sid: "M116", kind: "hub", icon: "railway", exit: "A" },
     // 白塔机场两口天然分向：A 仅供出站、B 仅供进站——用双字段分别指定
-    { name: "白塔机场", sid: "M120", kind: "hub", icon: "plane", enterExit: "B", leaveExit: "A" },
+    ...(baiTaAirportOpen ? [{
+        name: "白塔机场", sid: "M120", kind: "hub", icon: "plane",
+        tag: "11月26日起关闭",
+        enterExit: "B", leaveExit: "A"
+    }] : []),
     // ── 名胜景点 ──
     { name: "内蒙古博物院", sid: "M114", kind: "poi", tag: "省博", exit: "A" },
     // 将军衙署：本地宝地铁攻略明确「1 号线将军衙署站 C2 口」（据以修正此前的 A 口）

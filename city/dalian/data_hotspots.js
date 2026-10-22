@@ -11,19 +11,23 @@
  */
 const DALIAN_HOTSPOTS = [
     // ── 交通枢纽 ──
-    { name: "大连站", sid: "0301", kind: "hub", icon: "railway", exit: "A" },
+    // 大连站：有轨 201 路「大连火车站」约 250 m，近于地铁大连站约 340 m；
+    // 有轨站无出口数据，不配 exit
+    { name: "大连站", sid: "20108", kind: "hub", icon: "railway" },
     { name: "大连北站", sid: "0102", kind: "hub", icon: "railway", exit: "C" },
     { name: "周水子机场", sid: "0219", kind: "hub", icon: "plane", exit: "A" },
     // ── 名胜景点 ──
     { name: "金石滩旅游度假区", sid: "0311", kind: "poi", tag: "5A", exit: "B" },
     { name: "中山广场近代建筑群", sid: "0206", kind: "poi", tag: "全国文保", exit: "B" },
-    { name: "旅顺博物馆", sid: "0806", kind: "poi", tag: "全国文保", exit: "1号门" },
+    // 旅顺博物馆：藏有侵略史迹相关史料，圆点用中性灰（tone: "somber"），不配线路色
+    { name: "旅顺博物馆", sid: "0806", kind: "poi", tag: "全国文保", exit: "1号门", tone: "somber" },
     // 以下按「官方交通建议含地铁」补录（2026-10-09 搜索核实）：
     // 老虎滩海洋公园：本地宝「地铁 5 号线直达虎滩公园站 C 口出站」（站取 0502 虎滩公园）
     { name: "老虎滩海洋公园", sid: "0502", kind: "poi", tag: "4A", exit: "C" },
-    // 日俄监狱旧址：本地宝交通页「地铁 12 号线旅顺站（B 口）+ 公交」；旧址为全国重点文保
-    // （本站出口表只有 1 号门 / 2 号门，与旅顺博物馆同站同口兜底）
-    { name: "日俄监狱旧址", sid: "0806", kind: "poi", tag: "全国文保", exit: "1号门" }
+    // 日俄监狱旧址：侵略史迹，圆点用中性灰（tone: "somber"），不配线路色；
+    // 交通见本地宝「地铁 12 号线旅顺站（B 口）+ 公交」（本站出口表只有 1 号门 / 2 号门，
+    // 与旅顺博物馆同站同口兜底）
+    { name: "日俄监狱旧址", sid: "0806", kind: "poi", tag: "全国文保", exit: "1号门", tone: "somber" }
 ];
 window.DALIAN_HOTSPOTS = DALIAN_HOTSPOTS;
 window.CGO_HOTSPOTS = DALIAN_HOTSPOTS;

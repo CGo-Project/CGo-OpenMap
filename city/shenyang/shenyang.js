@@ -573,7 +573,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261010.1537";
+        const version = "261022.1300";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -581,11 +581,14 @@
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
         document.write(`<script src="./city/shenyang/shared/route/route-data.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-planner.js?v=${version}"><\/script>`);
-        // 移动端抽屉手势引擎（车站详情与行程/结果面板共用；须早于两个消费方）
-        document.write(`<script src="./city/shenyang/shared/base/sheet-drag.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-icons.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel-search.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/route/route-panel.js?v=${version}"><\/script>`);
+        // 公共栅格化零件（分享卡海报与沿革视频导出共用，须早于 poster.js 与 opening-history.export.js）
+        document.write(`<script src="./city/shenyang/shared/base/svg-raster.js?v=${version}"><\/script>`);
+        // 分享卡（车站卡 / 行程卡）：接管两个面板的分享按钮；出图基建 poster.js 须先于其加载
+        document.write(`<script src="./city/shenyang/shared/base/poster.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/base/share-card.js?v=${version}"><\/script>`);
         // 跨城市「查找最近车站」：接管核心的 findNearestStation 及其「距离较远」confirm
         document.write(`<script src="./city/shenyang/shared/station/nearest-station.js?v=${version}"><\/script>`);
         // 固定侧栏「浮岛卡片」改造（须晚于 route-panel.js，样式表以本层为准）
@@ -604,8 +607,9 @@
         document.write(`<script src="./city/shenyang/shared/base/station-title.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/base/viewport-inset.js?v=${version}"><\/script>`);
-        // 移动端抽屉手势仲裁：内容区优先滚动、半屏上滑优先展开（core 零改动，见 shared/base/panel-sheet-gesture.js）
-        document.write(`<script src="./city/shenyang/shared/base/panel-sheet-gesture.js?v=${version}"><\/script>`);
+        // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
+        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
+        document.write(`<script src="./city/shenyang/shared/base/panel-tab-swipe-relay.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station/tip-card.js?v=${version}"><\/script>`);
         // 呼出线随标签进入 active：按 data-cgo-callout 把站名标签的选中态同步到引线
         document.write(`<script src="./city/shenyang/shared/base/label-active.js?v=${version}"><\/script>`);
@@ -630,6 +634,10 @@
         document.write(`<script src="./city/shenyang/data_opening_history.js?v=${version}"><\/script>`);
         // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
         document.write(`<script src="./city/shenyang/shared/tools/opening-history.js?v=${version}"><\/script>`);
+        // 线网发展史拆成三层：本文件 = 内核（几何 / 渲染 / 面板 / 挂载），下面两个是它的扩展，
+        // 必须晚于内核加载（经 window.CGoOpeningHistoryShared 注入）
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.model.js?v=${version}"><\/script>`);
+        document.write(`<script src="./city/shenyang/shared/tools/opening-history.export.js?v=${version}"><\/script>`);
         (ShenyangCity.stationBoard?.scripts || []).forEach((scriptPath) => {
             document.write(`<script src="./city/shenyang/${scriptPath}?v=${version}"><\/script>`);
         });

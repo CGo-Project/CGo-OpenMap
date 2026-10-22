@@ -111,17 +111,17 @@
         }
         const { html: facHtml, types } = recommendFacRows(sid, alt);
         if (!facHtml) {
-            return `<div class="cgo-rt-leg-line muted"><span>推荐改用 ${alt.join("、")} 口</span></div>`;
+            return `<div class="cgo-rt-leg-line muted" data-role="gate"><span>推荐改用 ${alt.join("、")} 口</span></div>`;
         }
         return `
-            <div class="cgo-rt-leg-line muted cgo-rt-expandable" data-expand="${key}" title="查看推荐出入口设施">
+            <div class="cgo-rt-leg-line muted cgo-rt-expandable" data-role="gate" data-expand="${key}" title="查看推荐出入口设施">
                 <cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>
                 <span>推荐改用 ${alt.join("、")} 口 · 设施：${types.join("、")}</span>
             </div>
-            <div data-list="${key}" hidden><div class="cgo-rt-leg-line muted"><div class="cgo-rt-facwrap">${facHtml}</div></div></div>
+            <div data-list="${key}" hidden><div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${facHtml}</div></div></div>
         `;
     }
-    const warnLineHtml = (text) => `<div class="cgo-rt-leg-line cgo-rt-warn">
+    const warnLineHtml = (text) => `<div class="cgo-rt-leg-line cgo-rt-warn" data-role="gate">
         <cgo-icon name="warning" size="13"></cgo-icon><span>${text}</span>
     </div>`;
     /**
@@ -147,7 +147,7 @@
         const detail = parts.map((p) =>
             `<div>${p.line ? `<span class="cgo-fac-line">${escAttr(lineName(p.line))}</span>` : ""}${escAttr(p.text)}</div>`).join("");
         return `
-            <div class="info-row cgo-fac-row">
+            <div class="info-row cgo-fac-row" data-role="fac">
                 <span class="info-label cgo-fac-name">
                     <cgo-icon name="${escAttr(icon)}" size="14"></cgo-icon>${escAttr(name)}
                 </span>
@@ -158,7 +158,7 @@
                     </button>
                 </span>
             </div>
-            <div class="cgo-fac-detail" hidden>${detail}</div>
+            <div class="cgo-fac-detail" data-role="fac" hidden>${detail}</div>
         `;
     }
 
@@ -179,7 +179,7 @@
             item.icon, item.name,
             item.parts || item.text.split(" / ").map((t) => ({ line: null, text: t }))
         )).join("");
-        return `<div class="cgo-rt-leg-line muted"><div class="cgo-rt-facwrap">${items}</div></div>`;
+        return `<div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${items}</div></div>`;
     }
 
     /** 推荐口的设施折叠行（name = 「A 口 · 电梯」）：只列推荐口、当前需求命中的设施；
@@ -233,17 +233,17 @@
         const mark = dir === "entry" ? "login" : "gate";
         const { html: facHtml, types } = recommendFacRows(sid, names);
         const summary = facHtml ? `
-            <div class="cgo-rt-leg-line muted cgo-rt-expandable" data-expand="${key}" title="查看出入口设施">
+            <div class="cgo-rt-leg-line muted cgo-rt-expandable" data-role="fac" data-expand="${key}" title="查看出入口设施">
                 <cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>
                 <span>设施：${types.join("、")}</span>
             </div>` : "";
         const panel = facHtml ? `
             <div data-list="${key}" hidden>
-                <div class="cgo-rt-leg-line muted"><div class="cgo-rt-facwrap">${facHtml}</div></div>
+                <div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${facHtml}</div></div>
             </div>` : "";
         return `
             <li class="cgo-rt-leg exitgate">
-                <div class="cgo-rt-leg-head">
+                <div class="cgo-rt-leg-head" data-role="gate">
                     <span class="cgo-rt-mode exitgate"><cgo-icon name="${mark}" size="16"></cgo-icon></span>
                     <span class="cgo-rt-leg-name"><b>${names.join("、")}</b><em>推荐${dir === "entry" ? "可进站" : "可出站"}出入口</em></span>
                 </div>
@@ -773,8 +773,14 @@
      * poi 条目头的圆点颜色（母产品设计：名胜景点用**出口所属线路标识色圆点**、
      * 交通枢纽保留具象图标）：优先接驳口声明的 `lines`（形如「2号线」，匹配 line.name），
      * 退回该站经停的首条线路色；都取不到返回空串走 CSS 默认色。
+     *
+     * **`tone: "somber"` 覆盖线路色**：惨案 / 侵略罪证类纪念地（九·一八、日俄监狱旧址、
+     * 七三一罪证陈列馆、伪满皇宫博物院、旅顺博物馆等）配高饱和线路色与场所的肃穆属性
+     * 不符，城市在条目上声明 `tone: "somber"` 即回落 `--text-light` 中性灰
+     * （修饰类见 route-panel.css 的 .cgo-rt-poi-dot--somber；中枢/普通场馆不声明）。
      */
     function hotDotColor(hot) {
+        if (hot.tone === "somber") return "";   // 交给 CSS 的中性灰，不内联线路色
         const sid = String(hot.sid || "");
         const code = hotExitOf(hot, "to");
         const exit = code ? (exitsApi()?.exitsById?.(sid) || []).find((e) => String(e.name) === code) : null;
@@ -804,7 +810,7 @@
         grid.innerHTML = items.map(({ hot, index }) => `
             <button type="button" class="cgo-rt-quickgo-item" data-hot="${index}" data-sid="${escAttr(hot.sid)}" title="设为起点或终点">
                 ${hot.kind === "poi"
-                    ? `<span class="cgo-rt-poi-dot"${hotDotColor(hot) ? ` style="background:${hotDotColor(hot)}"` : ""}></span>`
+                    ? `<span class="cgo-rt-poi-dot${hot.tone === "somber" ? " cgo-rt-poi-dot--somber" : ""}"${hotDotColor(hot) ? ` style="background:${hotDotColor(hot)}"` : ""}></span>`
                     : `<cgo-icon name="${escAttr(hot.icon || "railway")}" size="14"></cgo-icon>`}
                 <span class="cgo-rt-quickgo-text">
                     <span>${escAttr(hot.name)}</span>
@@ -1606,6 +1612,19 @@
     /**
      * 步骤区：乘车段为「出发/上车行 + 开往行 + 站数时间行」，换乘段为三行，末尾补一行到达。
      * 乘车段左侧用线路色粗竖线、换乘段用灰色竖线串联，形成一条连续的行程脊线。
+     *
+     * **行级语义标记 `data-role`**（腿级形态类 exitgate / ride / xfer / walk / arrive / note 是
+     * `<li class="cgo-rt-leg">` 上的样式类，行级 `cgo-rt-leg-line` 只有 muted / cgo-rt-warn /
+     * cgo-rt-expandable 这类**样式类**、没有语义）。分享卡（`base/share-card.js`）要给结果正文做
+     * 「删纯设施行 / 折起展开区」的无损后处理，于是这里补齐行级语义：
+     *   · `fac`  纯设施行：`.cgo-rt-facwrap` 载体行、`.cgo-fac-row` / `.cgo-fac-detail`、
+     *            「设施：…」摘要行（gateRecommendLine）与进出站条的设施摘要行 —— **分享卡只删这一类**；
+     *   · `gate` 出入口 / 合规推荐与警示行（gateAdviseLine、推荐口 leg 的 head）；
+     *   · `xfer` 换乘方式行与需求变体说明行；
+     *   · `ride` 乘车段的「线路名 + 开往」「乘坐 N 站」行；
+     *   · `walk` 站外步行 / 出站换乘的说明行；
+     *   · `note` 末尾的用时口径脚注行。
+     * 新增/改动词法时请一并维护本标记，分享卡不必再靠类名猜。详见 `shared/README.md` 的行级语义小节。
      */
     function renderLegs(route, tailId) {
         const legs = [];
@@ -1628,12 +1647,12 @@
                         <span class="cgo-rt-mode exitgate"><cgo-icon name="depart" size="16"></cgo-icon></span>
                         <span class="cgo-rt-leg-name"><b>${state.fromExitLandmark || stationName(state.from)}</b><em>出发</em></span>
                     </div>
-                    <div class="cgo-rt-leg-line muted${entryFac ? " cgo-rt-expandable" : ""}"${entryFac ? ` data-expand="${entryKey}" title="查看出入口设施"` : ""}>
+                    <div class="cgo-rt-leg-line muted${entryFac ? " cgo-rt-expandable" : ""}" data-role="fac"${entryFac ? ` data-expand="${entryKey}" title="查看出入口设施"` : ""}>
                         ${entryFac ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
                         <span>经 ${boldExitCode(state.fromExit)} 进站${entrySpec ? gateNote(entrySpec) : ""}</span>
                     </div>
                     ${gateAdviseLine(state.from, state.fromExit, "entry", `fac-${++facSeq}`)}
-                    ${entryFac ? `<div data-list="${entryKey}" hidden><div class="cgo-rt-leg-line muted"><div class="cgo-rt-facwrap">${entryFac}</div></div></div>` : ""}
+                    ${entryFac ? `<div data-list="${entryKey}" hidden><div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${entryFac}</div></div></div>` : ""}
                 </li>
             `);
         } else {
@@ -1687,11 +1706,11 @@
                                 <b data-jump="${start}">${stationName(start)}</b><em>${action}</em>
                             </span>
                         </div>
-                        <div class="cgo-rt-leg-line">
+                        <div class="cgo-rt-leg-line" data-role="ride">
                             <span class="cgo-rt-line-name">${group.throughName || line?.name || ""}</span>
                             <span>${directionHtml}</span>
                         </div>
-                        <div class="cgo-rt-leg-line${middle.length ? " cgo-rt-expandable" : ""}"${middle.length ? ` data-expand="${index}" title="查看途经车站"` : ""}>
+                        <div class="cgo-rt-leg-line${middle.length ? " cgo-rt-expandable" : ""}" data-role="ride"${middle.length ? ` data-expand="${index}" title="查看途经车站"` : ""}>
                             ${middle.length ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
                             <span>乘坐 ${stopsCount} 站 · ${Math.round(minutes)} 分钟</span>
                         </div>
@@ -1726,11 +1745,11 @@
                                 <b data-jump="${step.at}">${stationName(step.at)}</b><em>换乘</em>
                             </span>
                         </div>
-                        <div class="cgo-rt-leg-line muted${facHtml ? " cgo-rt-expandable" : ""}"${facHtml ? ` data-expand="${facKey}" title="查看换乘设施"` : ""}>
+                        <div class="cgo-rt-leg-line muted${facHtml ? " cgo-rt-expandable" : ""}" data-role="xfer"${facHtml ? ` data-expand="${facKey}" title="查看换乘设施"` : ""}>
                             ${facHtml ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
                             <span>${xferLabel} · 约 ${Math.round(xferMinutes)} 分钟</span>
                         </div>
-                        ${needNote ? `<div class="cgo-rt-leg-line muted"><cgo-icon name="info" size="13"></cgo-icon><span>${escAttr(needNote)}</span></div>` : ""}
+                        ${needNote ? `<div class="cgo-rt-leg-line muted" data-role="xfer"><cgo-icon name="info" size="13"></cgo-icon><span>${escAttr(needNote)}</span></div>` : ""}
                         ${facHtml ? `<div data-list="${facKey}" hidden>${facHtml}</div>` : ""}
                     </li>
                 `);
@@ -1760,11 +1779,11 @@
                     const key = fac ? `fac-${++facSeq}` : "";
                     const lead = dir === "exit" ? `从 ${boldExitCode(exit.name)}出` : `经 ${boldExitCode(exit.name)}进站`;
                     return `
-                        <div class="cgo-rt-leg-line muted${fac ? " cgo-rt-expandable" : ""}"${fac ? ` data-expand="${key}" title="查看出入口设施"` : ""}>
+                        <div class="cgo-rt-leg-line muted${fac ? " cgo-rt-expandable" : ""}" data-role="fac"${fac ? ` data-expand="${key}" title="查看出入口设施"` : ""}>
                             ${fac ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
                             <span>${lead}${spec ? gateNote(spec) : ""}</span>
                         </div>
-                        ${fac ? `<div data-list="${key}" hidden><div class="cgo-rt-leg-line muted"><div class="cgo-rt-facwrap">${fac}</div></div></div>` : ""}
+                        ${fac ? `<div data-list="${key}" hidden><div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${fac}</div></div></div>` : ""}
                         ${gateAdviseLine(sid, exit.name, dir, `fac-${++facSeq}`)}
                     `;
                 };
@@ -1778,7 +1797,7 @@
                             <b data-jump="${step.a}">${stationName(step.a)}</b><em>${kind === "transfer" ? "换乘" : "步行"}</em>
                         </span>
                     </div>
-                    <div class="cgo-rt-leg-line muted">
+                    <div class="cgo-rt-leg-line muted" data-role="walk">
                         <span>${caption}</span>
                     </div>
                     ${gateRows}
@@ -1799,12 +1818,12 @@
                         <span class="cgo-rt-mode exitgate"><cgo-icon name="gate" size="16"></cgo-icon></span>
                         <span class="cgo-rt-leg-name"><b>${stationName(state.to)}</b><em>下车</em></span>
                     </div>
-                    <div class="cgo-rt-leg-line muted${exitFac ? " cgo-rt-expandable" : ""}"${exitFac ? ` data-expand="${exitKey}" title="查看出入口设施"` : ""}>
+                    <div class="cgo-rt-leg-line muted${exitFac ? " cgo-rt-expandable" : ""}" data-role="fac"${exitFac ? ` data-expand="${exitKey}" title="查看出入口设施"` : ""}>
                         ${exitFac ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
                         <span>出 ${boldExitCode(state.toExit)} 前往${gateSpec ? gateNote(gateSpec) : ""}</span>
                     </div>
                     ${gateAdviseLine(state.to, state.toExit, "exit", `fac-${++facSeq}`)}
-                    ${exitFac ? `<div data-list="${exitKey}" hidden><div class="cgo-rt-leg-line muted"><div class="cgo-rt-facwrap">${exitFac}</div></div></div>` : ""}
+                    ${exitFac ? `<div data-list="${exitKey}" hidden><div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${exitFac}</div></div></div>` : ""}
                 </li>
             `);
         } else {
@@ -1828,7 +1847,7 @@
         notes.push("乘车用时不含等车及前往进站口或目的地的时间");
         legs.push(`
             <li class="cgo-rt-leg note">
-                <div class="cgo-rt-leg-line muted">
+                <div class="cgo-rt-leg-line muted" data-role="note">
                     <cgo-icon name="info" size="13"></cgo-icon>
                     <span>${notes.join("；")}</span>
                 </div>
@@ -1920,21 +1939,14 @@
     }
 
     /**
-     * 分享：把当前行程描述复制到剪贴板。
+     * 分享：把当前行程描述复制到剪贴板（文案见 routeShareText）。
      *
      * 起讫站取实际乘车的首末站（与结果面板标题栏同一口径）：起讫点本身可能只是
      * 出站换乘的落点，末段是出站步行时步行落点才是真正的终点。
      */
     async function shareRoute() {
-        const route = currentRoute();
-        if (!route) return;
-        const rides = route.steps.filter((step) => step.t === "ride");
-        const lastStep = route.steps[route.steps.length - 1];
-        const head = rides[0]?.stops[0] || state.from;
-        const tail = lastStep?.t === "walk" ? lastStep.b
-            : (rides.length ? rides[rides.length - 1].stops.slice(-1)[0] : state.to);
-        const text = `我目前在${stationName(head)}，距离${stationName(tail)}还有 ${route.stops} 站左右，`
-            + `大约 ${Math.round(route.minutes + gateOverhead(route))} 分钟到达。本信息由 ${location.href} 提供，仅供参考。`;
+        const text = routeShareText();
+        if (!text) return;
         try {
             await navigator.clipboard.writeText(text);
             showToast("行程信息已复制，可直接粘贴分享");
@@ -1942,6 +1954,22 @@
             showToast("复制失败，请手动复制行程信息", "error");
             setStatus(text);
         }
+    }
+
+    /**
+     * 行程分享文案（**不**写剪贴板）。
+     *
+     * 起讫站取实际乘车的首末站（与结果面板标题栏同一口径）：起讫点本身可能只是
+     * 出站换乘的落点，末段是出站步行时步行落点才是真正的终点。
+     * 分享卡（`base/share-card.js`）的「复制链接」要把这份原文案拼上深链一起复制，
+     * 故从 shareRoute 里抽成独立出口：**两者共用同一份文案，改措辞只需改这里**。
+     */
+    function routeShareText() {
+        const route = currentRoute();
+        if (!route) return "";
+        const { head, tail } = routeEndpoints(route);
+        return `我目前在${stationName(head)}，距离${stationName(tail)}还有 ${route.stops} 站左右，`
+            + `大约 ${Math.round(route.minutes + gateOverhead(route))} 分钟到达。本信息由 ${location.href} 提供，仅供参考。`;
     }
 
     /**
@@ -2740,6 +2768,30 @@
             }
         });
     }
+
+    /**
+     * 软键盘态的抽屉定高修正。
+     *
+     * 核心按「视口高 − 顶留 − 底栏高」定高，而底栏（`.cgo-mobile-sheet-dock`）是 position:fixed
+     * 贴在**布局视口**底边的；软键盘弹起只压缩 visualViewport，底栏被键盘整个盖住，扣掉的那一档
+     * 就成了面板底部露出来的一条空白（真机实测「多裁掉一个操作栏的高度」）。
+     * 键盘态改为只扣顶留，让面板底边正好接住键盘顶；键盘收起后高度仍由核心自己算。
+     */
+    const KEYBOARD_MIN_GAP = 150;   // px：visualViewport 比 innerHeight 矮这么多即视为键盘弹出
+    function refitSheetForKeyboard(panel) {
+        const vv = window.visualViewport;
+        if (!vv || !panel.classList.contains("cgo-mobile-sheet")) return;
+        if (vv.height >= window.innerHeight - KEYBOARD_MIN_GAP) return;   // 非键盘态：交给核心
+        const top = parseFloat(window.getComputedStyle(panel).top) || 0;
+        panel.style.setProperty("height", Math.max(0, vv.height - top) + "px", "important");
+    }
+    // ⚠️ 核心的 CGoMobileSheet 也在同一个 visualViewport resize 上写高度，监听顺序不可依赖；
+    //    推到下一帧再写，确保覆盖它（每次事件只写一次，代价可忽略）。
+    window.visualViewport?.addEventListener("resize", () => {
+        requestAnimationFrame(() => {
+            document.querySelectorAll(".cgo-mobile-sheet").forEach(refitSheetForKeyboard);
+        });
+    });
 
     /* ======================================================================
      * 面板栈：同时打开多个面板时只显示最后打开的那个
@@ -3562,14 +3614,24 @@
             },
             onMounted(container, context) {
                 adoptHelpers(context);
-                const row = container.querySelector(".cgo-rt-entry-btn");
+                // ⚠️ 移动端核心会把 .panel-footer 整块挪进 .cgo-mobile-sheet-dock（挂在面板**之外**），
+                //    而这一步发生在 station-board 的 bindEvents 里、**早于**本 onMounted——直接在
+                //    container 内找本行必然落空，结果是本行按钮绑不上事件、核心那行也不会被隐藏
+                //    （新旧两行同时显示）。故面板内找不到时，在停靠栏里再找一次。
+                //    `.cgo-rt-entry-btn` 全站唯一（只由本模块产在车站底栏），不会与规划/结果面板混淆。
+                const row = container.querySelector(".cgo-rt-entry-btn")
+                    || document.querySelector(".cgo-mobile-sheet-dock .cgo-rt-entry-btn")
+                    || null;
                 if (!row) return;
                 // 普通地铁站：本行即底栏的全部操作，隐藏核心默认的「官网查询 / 高德导航」行以免重复；
                 // 市郊站保留原行（还有时刻表、票务等专属入口）。
                 if (!context.isSuburbanStation) {
-                    container.querySelectorAll(".panel-footer > div").forEach((node) => {
-                        if (node !== row) node.style.display = "none";
-                    });
+                    const footer = row.closest(".panel-footer");
+                    if (footer) {
+                        Array.from(footer.children).forEach((node) => {
+                            if (node !== row) node.style.display = "none";
+                        });
+                    }
                 }
                 row.querySelector('[data-route-act="from"]')?.addEventListener("click", () => {
                     closeInfoPanel();   // 设为起点后收起车站面板，让规划面板独占视野
@@ -3609,5 +3671,5 @@
         init();
     }
 
-    window.CGoRoutePanel = { open: openPlan, close: closePanel, toggle, clearHighlight };
+    window.CGoRoutePanel = { open: openPlan, close: closePanel, toggle, clearHighlight, shareText: routeShareText };
 })();

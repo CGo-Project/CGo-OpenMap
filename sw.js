@@ -24,7 +24,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261019.002445';
+const CACHE_NAME = 'cgo-openmap-v261022.1300';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -147,10 +147,14 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/station/timetable-renderer.js',
     './city/shenyang/shared/station/stacard-engine.js',
     './city/shenyang/shared/base/station-title.js',
+    './city/shenyang/shared/base/rdot-label.js',
     './city/shenyang/shared/base/viewport-inset.js',
-    './city/shenyang/shared/base/sheet-drag.js',
-    './city/shenyang/shared/base/panel-sheet-gesture.js',
-    './city/shenyang/shared/base/panel-sheet-gesture.css',
+    './city/shenyang/shared/base/panel-tab-swipe-relay.js',
+    // 分享卡（车站卡 / 行程卡）：DOM → canvas 海报 + 弹窗三动作，六城共用
+    './city/shenyang/shared/base/svg-raster.js',
+    './city/shenyang/shared/base/poster.js',
+    './city/shenyang/shared/base/share-card.js',
+    './city/shenyang/shared/base/share-card.css',
     './city/shenyang/shared/station/tip-card.js',
     './city/shenyang/shared/base/label-active.js',
     './city/shenyang/shared/station/adjacent-jump.js',
@@ -187,11 +191,16 @@ const ASSETS_TO_CACHE = [
     // 地图小工具（东北四市共用）：票价图 / 等时圈，入口在「查找最近车站」按钮下方
     './city/shenyang/shared/tools/map-tools.js',
     './city/shenyang/shared/tools/map-tools.css',
-    // 线网发展史（沈阳）：按开通沿革把线网逐段「长」出来，作为免选站工具挂进地图小工具
+    // 线网发展史（沈阳）：按开通沿革把线网逐段「长」出来，作为免选站工具挂进地图小工具。
+    // 三层结构：内核 + 状态计算（model）+ 视频导出（export），按此顺序加载，经 window.CGoOpeningHistoryShared 互通
     './city/shenyang/shared/tools/opening-history.js',
+    './city/shenyang/shared/tools/opening-history.model.js',
+    './city/shenyang/shared/tools/opening-history.export.js',
     './city/shenyang/shared/tools/opening-history.css',
     // 第三方（非本仓编写）：MP4 封装器，仅「导出视频」时按需注入；MIT，版权与许可见同目录 LICENSE 文本
     './city/shenyang/shared/tools/vendor/mp4-muxer.min.js',
+    // 第三方（非本仓编写）：二维码生成，仅打开分享卡时按需注入；MIT，见同目录 qrcode-generator.LICENSE.txt
+    './city/shenyang/shared/tools/vendor/qrcode-generator.js',
     './city/shenyang/amap_data.json',
     './city/shenyang/staname.csv',
     './city/shenyang/style.css',
@@ -340,6 +349,7 @@ const ASSETS_TO_CACHE = [
     './city/dalian/stacard/script.js',
     './city/dalian/data_stations.js',
     './city/dalian/data_lines.js',
+    './city/dalian/data_opening_history.js',
     './city/dalian/data_virtual_transfers.js',
     './city/dalian/data_scattered.js',
     './city/dalian/data_notopen.js',
@@ -364,6 +374,7 @@ const ASSETS_TO_CACHE = [
     './city/changchun/stacard/script.js',
     './city/changchun/data_stations.js',
     './city/changchun/data_lines.js',
+    './city/changchun/data_opening_history.js',
     './city/changchun/data_virtual_transfers.js',
     './city/changchun/data_scattered.js',
     './city/changchun/data_notopen.js',
@@ -444,6 +455,7 @@ const ASSETS_TO_CACHE = [
 
     // 城市配置与业务数据 (哈尔滨)
     './city/harbin/harbin.js',
+    './city/harbin/modules/harbin_line_badges.js',
     './city/harbin/modules/harbin_map.js',
     './city/harbin/modules/harbin_station_title.js',
     './city/harbin/modules/harbin_exits.js',
@@ -472,6 +484,7 @@ const ASSETS_TO_CACHE = [
     './city/hohhot/stacard/script.js',
     './city/hohhot/data_stations.js',
     './city/hohhot/data_lines.js',
+    './city/hohhot/data_opening_history.js',
     './city/hohhot/data_virtual_transfers.js',
     './city/hohhot/data_scattered.js',
     './city/hohhot/data_legend.js',
@@ -520,15 +533,19 @@ const ASSETS_TO_CACHE = [
  * 瞬时堆积几百个文件流，部分请求被浏览器取消后句柄回收不及，直接 EMFILE 打穿服务
  * （2026-10-04 实测：服务端 `Error: EMFILE ... open 'city/hohhot/data_stations.js'` 崩退出，
  *  预缓存随之中断，已 bump 的新资源整批取不到，控制台只留 net::ERR_FAILED）。
- * 故按批推进：批内并行、批间串行并留间隔，瞬时压力从 400+ 降到 4。
+ * 故按批推进：批内并行、批间串行并留间隔，瞬时压力从 400+ 降到 2。
  */
-const PRECACHE_BATCH_SIZE = 4;
+const PRECACHE_BATCH_SIZE = 2;
 /**
  * 批间隔（ms）：让静态服务来得及回收上一批的文件句柄。
- * 400+ 条清单按 4 条一批推进约需 100 批，即使每批等 60ms 也只多花 6 秒左右，
+ * 400+ 条清单按 2 条一批推进约需 200 批，即使每批等 180ms 也只多花半分多钟，
  * 而预缓存在后台进行、不阻塞页面，这点代价换的是本地服务不再被打崩。
+ * ⚠️ 2026-10-10 又崩了一次（`EMFILE ... open 'city/sydney/assets/line/WSA.svg'`）：
+ *    当天连续递增了 4 次版本串，等于让浏览器连着跑 4 轮全量预缓存，光靠限流扛不住。
+ *    根治方向是把预缓存清单缩到「外壳 + 当前城市」（其余城市首访时由 fetch 处理器按需缓存），
+ *    待与上游对齐后再动；在此之前**不要连续 bump 版本串**。
  */
-const PRECACHE_BATCH_GAP_MS = 60;
+const PRECACHE_BATCH_GAP_MS = 180;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

@@ -633,10 +633,13 @@
                 const verticals = getVerticals(station?.id);
                 const filters = filterConfigs();
                 const typesByExit = filters.length ? facilityTypesByExit(station?.id, facilityGlobals) : new Map();
-                // 只列出「本站确有出口命中」的模式，免得点开是一份空清单
-                const usable = filters.filter((item) => item.types?.some((type) => [...typesByExit.values()].some((set) => set.has(type))));
-                const filtersHtml = usable.length
-                    ? `<div class="cgo-exit-filters">${usable.map((item) => `<button type="button" class="cgo-exit-filter" data-filter="${escapeHtml(item.id)}" aria-pressed="false"><cgo-icon name="${escapeHtml(item.icon || "info")}" size="13"></cgo-icon>${escapeHtml(item.name)}</button>`).join("")}</div>`
+                // 需求行与行程规划**完全同一套**（`.cgo-rt-need-opts` / `.cgo-rt-need-opt`，样式在
+                // route-panel.css）：首段「步行」= 不筛选（全部），其后按各城 CGO_EXIT_FILTERS 出
+                // 「携带行李 / 无障碍」；**单选**、默认落在「步行」。零配置城市照旧整行不出。
+                const segs = [{ id: "", icon: "walk", name: "步行" }]
+                    .concat(filters.map((f) => ({ id: f.id, icon: f.icon || "info", name: f.name })));
+                const filtersHtml = filters.length
+                    ? `<div class="cgo-exit-filters cgo-rt-need-opts">${segs.map((s) => `<button type="button" class="cgo-rt-need-opt${s.id ? "" : " is-on"}" data-filter="${escapeHtml(s.id)}" aria-pressed="${s.id ? "false" : "true"}"><cgo-icon name="${escapeHtml(s.icon)}" size="13"></cgo-icon><span>${escapeHtml(s.name)}</span></button>`).join("")}</div>`
                     : "";
                 return `
                     <div class="cgo-exit-section">
@@ -702,14 +705,20 @@
                     });
                 });
 
-                // 筛选模式：单选，再点一次取消（互斥，避免叠加出空清单）
-                const buttons = [...container.querySelectorAll(".cgo-exit-filter")];
+                // 需求段：**单选**（与行程规划的需求控件一致）—— 选中段即应用，选「步行」恢复全部。
+                // 激活态打 `is-on` 类（同一套样式），aria-pressed 同步给读屏
+                const buttons = [...container.querySelectorAll(".cgo-exit-filters .cgo-rt-need-opt")];
+                const setPressed = (btn, on) => {
+                    btn.classList.toggle("is-on", on);
+                    btn.setAttribute("aria-pressed", String(on));
+                };
                 for (const button of buttons) {
                     button.addEventListener("click", () => {
-                        const active = button.getAttribute("aria-pressed") === "true";
-                        for (const other of buttons) other.setAttribute("aria-pressed", "false");
-                        button.setAttribute("aria-pressed", String(!active));
-                        const types = active ? null : filterConfigs().find((item) => item.id === button.dataset.filter)?.types;
+                        if (button.classList.contains("is-on")) return;   // 单选：点当前段不取消
+                        for (const other of buttons) setPressed(other, false);
+                        setPressed(button, true);
+                        const id = button.dataset.filter;
+                        const types = id ? filterConfigs().find((item) => item.id === id)?.types : null;
                         applyFilter(container, types || null);
                     });
                 }
