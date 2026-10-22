@@ -19,10 +19,10 @@ const LEGEND_CONFIG = [
         items: [
             { targets: ["M1"], name: "1号线" },
             { targets: ["M2"], name: "2号线" },
-            { targets: ["M3"], name: "4号线" },
-            { targets: ["M4"], name: "5号线" },
-            { targets: ["M5"], name: "6号线" },
-            { targets: ["M6"], name: "滨海快线" }
+            { targets: ["M4"], name: "4号线" },
+            { targets: ["M5"], name: "5号线" },
+            { targets: ["M6"], name: "6号线" },
+            { targets: ["BE"], name: "滨海快线" }
         ]
     }
 ];

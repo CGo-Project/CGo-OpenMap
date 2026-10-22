@@ -291,9 +291,9 @@
             svglogo: null, // 已接入 CGoUI 内置 fuzhou 官方矢量图标
             folder: "./city/fuzhou",
             mainLogic: "./city/fuzhou/fuzhou.js",
-            center: { x: 1500, y: 1250 },
+            center: { x: 1183, y: 898 },
             defaultScale: 0.6,
-            mapSize: { width: 4000, height: 2500 },
+            mapSize: { width: 2200, height: 1800 },
             searchCity: "福州",
             title: "CGo OpenMap - 福州轨道交通线路图",
             keywords: "CGo OpenMap, 福州, 轨道交通, 线路图",
