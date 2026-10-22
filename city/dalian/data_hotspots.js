@@ -11,7 +11,9 @@
  */
 const DALIAN_HOTSPOTS = [
     // ── 交通枢纽 ──
-    { name: "大连站", sid: "0301", kind: "hub", icon: "railway", exit: "A" },
+    // 大连站：有轨 201 路「大连火车站」约 250 m，近于地铁大连站约 340 m；
+    // 有轨站无出口数据，不配 exit
+    { name: "大连站", sid: "20108", kind: "hub", icon: "railway" },
     { name: "大连北站", sid: "0102", kind: "hub", icon: "railway", exit: "C" },
     { name: "周水子机场", sid: "0219", kind: "hub", icon: "plane", exit: "A" },
     // ── 名胜景点 ──

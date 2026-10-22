@@ -47,7 +47,9 @@ const SHENYANG_HOTSPOTS = [
     { name: "科普公园", sid: "0214", kind: "poi", tag: "市级公园", exit: "B" },
     // 公园均在浑河南岸：取贴桥南侧的口
     { name: "长白岛森林公园", sid: "0415", kind: "poi", tag: "市级公园", exit: "D" },
-    { name: "奥林匹克生态公园", sid: "1018", kind: "poi", tag: "市级公园", exit: "D" }
+    // 奥林匹克生态公园：有轨 5 号线「浑南图书馆」约 1.1 km，近于 9 号线长青桥约 1.5 km；
+    // 有轨站无出口数据，不配 exit
+    { name: "奥林匹克生态公园", sid: "T506", kind: "poi", tag: "市级公园" }
 ];
 window.SHENYANG_HOTSPOTS = SHENYANG_HOTSPOTS;
 window.CGO_HOTSPOTS = SHENYANG_HOTSPOTS;
