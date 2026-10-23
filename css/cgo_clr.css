@@ -225,10 +225,10 @@
 
     /* ══════════════════════════════════════════════════════
        CGoUI 顶栏模式中央默认档位配置 (Single Source of Truth)
-       classic: 默认原版经典吸顶顶栏（Zero-Regression 零变更保证）
-       floating: 新版脱离文档流的双岛屿/单胶囊悬浮菜单栏
+       classic: 原版经典吸顶顶栏（向后兼容）
+       floating: 新版脱离文档流的双岛屿/单胶囊悬浮菜单栏（OpenMap 默认）
        ══════════════════════════════════════════════════════ */
-    --cgo-header-default: classic;
+    --cgo-header-default: floating;
     --header-floating-height: 52px;
     --header-floating-mobile-height: 48px;
     --header-floating-radius: 12px;

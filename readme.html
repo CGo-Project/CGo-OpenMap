@@ -20,6 +20,13 @@
             var t = localStorage.getItem('app-theme');
             if (t) document.documentElement.setAttribute('data-theme', t);
             var hm = localStorage.getItem('root_cgo_header_mode') || localStorage.getItem('cgo_header_mode');
+            if (hm === 'classic') {
+                localStorage.removeItem('root_cgo_header_mode');
+                localStorage.removeItem('cgo_header_mode');
+                localStorage.removeItem('main_cgo_header_mode');
+                localStorage.setItem('cgo_header_mode', 'floating');
+                hm = 'floating';
+            }
             if (hm) document.documentElement.setAttribute('header-mode', hm);
             var gm = localStorage.getItem('cgo_glass_mode');
             if (gm) document.documentElement.setAttribute('glass-mode', gm);
@@ -27,14 +34,14 @@
     </script>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.005503">
-    <script type="module" src="core/cgo-ui.js?v=261023.005503"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.120200">
+    <script type="module" src="core/cgo-ui.js?v=261023.120200"></script>
 
     <!-- 仅引用本地 css/ 样式表以保障项目独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.005503">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261023.005503">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.005503">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261023.005503">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.120200">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261023.120200">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.120200">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261023.120200">
 
     <style>
         /* Web Components 未注册前优雅占位，防闪烁 */

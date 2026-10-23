@@ -28,7 +28,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261023.005503';
+const CACHE_NAME = 'cgo-openmap-v261023.120200';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -41,29 +41,42 @@ const ASSETS_TO_CACHE = [
     './readme.html',
     './privacy.html',
 
-    // 线路图在线编辑器 (city-editor)
-    './city-editor/index.html',
-    './city-editor/css/editor.css',
-    './city-editor/js/editor.js',
-    // 编辑器示例工程（sample/cityedit_sample.json）引用的线路徽标模板
+    // 开放地图编辑器 (OpenMap Editor)
+    './editor/index.html',
+    './editor/css/editor-layout.css',
+    './editor/css/editor-ribbon.css',
+    './editor/css/editor-components.css',
+    './editor/js/core/project-model.js',
+    './editor/js/core/history-manager.js',
+    './editor/js/core/city-project-io.js',
+    './editor/js/algorithms/segment-router.js',
+    './editor/js/algorithms/data-sanitizer.js',
+    './editor/js/algorithms/align-solver.js',
+    './editor/js/algorithms/topology-tracer.js',
+    './editor/js/layers/viewport.js',
+    './editor/js/layers/grid-layer.js',
+    './editor/js/layers/ghost-transformer.js',
+    './editor/js/layers/scattered-layer.js',
+    './editor/js/layers/water-layer.js',
+    './editor/js/layers/text-scattered-layer.js',
+    './editor/js/layers/vector-route-layer.js',
+    './editor/js/layers/not-open-layer.js',
+    './editor/js/layers/virtual-connector-layer.js',
+    './editor/js/layers/station-layer.js',
+    './editor/js/tools/pdf-vector-extractor.js',
+    './editor/js/tools/deepseek-vision.js',
+    './editor/js/tools/knowledge-matcher.js',
+    './editor/js/tools/batch-station-tool.js',
+    './editor/js/tools/mileage-manager.js',
+    './editor/js/tools/bundle-exporter.js',
+    './editor/js/pipelines/pipeline-ingest.js',
+    './editor/js/pipelines/pipeline-surgical.js',
+    './editor/js/pipelines/pipeline-draw.js',
+    './editor/js/ui/ribbon-controller.js',
+    './editor/js/ui/nav-tree-view.js',
+    './editor/js/ui/inspector-view.js',
+    './editor/js/editor-app.js',
     './assets/svg/icon@bh.svg',
-
-    // Drunk 转换工作台与城市编辑模式 (drunk)
-    // 注：drunk/tools/selfcheck.js 与 city/fuzhou/tools/fuzhou_check.js 是 Node 端自检脚本，
-    //     浏览器不会请求，故不预缓存
-    './drunk/index.html',
-    './drunk/css/drunk.css',
-    './drunk/js/drunk_logger.js',
-    './drunk/js/drunk_sanitizer.js',
-    './drunk/js/city_project_io.js',
-    './drunk/js/city_knowledge_matcher.js',
-    './drunk/js/pdf_vector_extractor.js',
-    './drunk/js/deepseek_vision.js',
-    './drunk/js/vision_detector.js',
-    './drunk/js/ocr_align_solver.js',
-    './drunk/js/topology_tracer.js',
-    './drunk/js/openmap_codegen.js',
-    './drunk/js/drunk_pipeline.js',
 
     // 样式表
     './css/style.css',

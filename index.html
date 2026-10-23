@@ -7,6 +7,13 @@
             var t = localStorage.getItem('app-theme');
             if (t) document.documentElement.setAttribute('data-theme', t);
             var hm = localStorage.getItem('root_cgo_header_mode') || localStorage.getItem('cgo_header_mode');
+            if (hm === 'classic') {
+                localStorage.removeItem('root_cgo_header_mode');
+                localStorage.removeItem('cgo_header_mode');
+                localStorage.removeItem('main_cgo_header_mode');
+                localStorage.setItem('cgo_header_mode', 'floating');
+                hm = 'floating';
+            }
             if (hm) document.documentElement.setAttribute('header-mode', hm);
             var gm = localStorage.getItem('cgo_glass_mode');
             if (gm) document.documentElement.setAttribute('glass-mode', gm);
@@ -16,8 +23,7 @@
         })();
     </script>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <meta name="description" content="CGo OpenMap - 现代轻量开源城市轨道交通交互线路图开放平台。选择城市进入全景智能线网图。">
     <meta name="keywords" content="CGo OpenMap, 城市轨道交通, 地铁线路图, 开源地铁图, 地图开放平台">
@@ -29,14 +35,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.005503">
-    <script type="module" src="core/cgo-ui.js?v=261023.005503"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.120200">
+    <script type="module" src="core/cgo-ui.js?v=261023.120200"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.005503">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261023.005503">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.005503">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261023.005503">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.120200">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261023.120200">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.120200">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261023.120200">
 
     <style>
         html {
@@ -494,11 +500,13 @@
 
         /* ---- 无障碍：本页不加载 css/style.css，以下与其「20. 无障碍」一节保持一致 ---- */
         :root {
-            --focus-ring: #1a73e8; /* 对 #fff 4.51 / #f8f9fa 4.27 */
+            --focus-ring: #1a73e8;
+            /* 对 #fff 4.51 / #f8f9fa 4.27 */
         }
 
         [data-theme="dark"] {
-            --focus-ring: #8ab4f8; /* 对 #1a1a1a 8.26 / #1f2020 7.75 */
+            --focus-ring: #8ab4f8;
+            /* 对 #1a1a1a 8.26 / #1f2020 7.75 */
         }
 
         :where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="tab"], [role="option"]):focus-visible {
@@ -521,13 +529,17 @@
         }
 
         :root {
-            --info-text: #006098;    /* 对 --info-bg #e8f0fe 5.86 */
-            --warning-text: #9f6607; /* 对 --warning-bg≈#fff9e6 4.56 */
+            --info-text: #006098;
+            /* 对 --info-bg #e8f0fe 5.86 */
+            --warning-text: #9f6607;
+            /* 对 --warning-bg≈#fff9e6 4.56 */
         }
 
         [data-theme="dark"] {
-            --info-text: #0095ec;    /* 对 --info-bg #1a2a3a 4.53 */
-            --warning-text: #f59e0b; /* 沿用原值：对 --warning-bg≈#2d291a 6.77 */
+            --info-text: #0095ec;
+            /* 对 --info-bg #1a2a3a 4.53 */
+            --warning-text: #f59e0b;
+            /* 沿用原值：对 --warning-bg≈#2d291a 6.77 */
         }
 
         /* 深色模式下 --info-color (#006098) 作文字只有 2.18:1，改用提亮的文字专用色 */
@@ -580,8 +592,7 @@
         <div class="header-island header-island-left glass-surface">
             <div class="header-center">
                 <div class="img-icon-wrapper header-logo-wrapper">
-                    <img src="./assets/icons/mapicon.png" alt="" class="header-logo" loading="eager"
-                        decoding="async"
+                    <img src="./assets/icons/mapicon.png" alt="" class="header-logo" loading="eager" decoding="async"
                         onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
                     <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
                 </div>
@@ -636,12 +647,13 @@
                 </div>
                 <div class="port-banner-info">
                     <h3>为你的城市认领或制作专属线路图</h3>
-                    <p>可使用 Drunk 智能转换系统从图片/PDF中极速提取线路拓扑（早期测试阶段，仅供测试使用，欢迎共同开发），最快 1 小时即可完成新城市上线与独立部署。</p>
+                    <p>可使用 OpenMap Editor 开放地图编辑器从矢量 PDF、位图、百科表格或空白画布极速构建线路拓扑，最快 1 小时即可完成新城市上线与独立部署。</p>
                 </div>
             </div>
             <div class="port-banner-actions">
-                <a href="./drunk/" target="_blank" class="btn btn-primary" title="进入 Drunk 线路图智能转换工作台">
-                    <span>Drunk 智能转换 (测试版)</span>
+                <a href="./editor/" target="_blank" class="btn btn-primary" title="进入 OpenMap Editor 开放地图编辑器">
+                    <cgo-icon name="drunk" size="16"></cgo-icon>
+                    <span>开放地图编辑器</span>
                     <cgo-icon name="chevron-right" size="13"></cgo-icon>
                 </a>
                 <a href="./PORTING.md" target="_blank" class="btn btn-info">
@@ -670,7 +682,7 @@
         <div class="footer-nav">
             <a href="./readme.html">关于平台</a>
             <span class="footer-sep">·</span>
-            <a href="./drunk/">Drunk 转换工作台</a>
+            <a href="./editor/">开放地图编辑器</a>
             <span class="footer-sep">·</span>
             <a href="./QUICKSTART.md" target="_blank">新手指南</a>
             <span class="footer-sep">·</span>
@@ -690,8 +702,8 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=261023.005503"></script>
-    <script src="core/tool-theme.js?v=261023.005503"></script>
+    <script src="city/data.js?v=261023.120200"></script>
+    <script src="core/tool-theme.js?v=261023.120200"></script>
 
     <!-- 动态城市渲染与数据绑定 -->
     <script>
