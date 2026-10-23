@@ -106,10 +106,12 @@ const SHENYANG_TRAMWAY_TIMETABLE = {
             { stationName: "会展中心", first: "10:10" }
         ]
     },
+    // HNT5：2026-10-25 起末班提前（李石寨 20:00、奥体中心 21:20）。
+    // lastBefore 为调整前末班，lastEffectiveFrom 之前仍按旧值展示，避免提前生效。
     HNT5: {
         endpoints: [
-            { stationId: "T501", stationName: "奥体中心", first: "06:30", last: "22:00" },
-            { stationId: "T529", stationName: "李石寨", first: "05:30", last: "21:00" }
+            { stationId: "T501", stationName: "奥体中心", first: "06:30", last: "21:20", lastBefore: "22:00", lastEffectiveFrom: "2026-10-25" },
+            { stationId: "T529", stationName: "李石寨", first: "05:30", last: "20:00", lastBefore: "21:00", lastEffectiveFrom: "2026-10-25" }
         ]
     }
 };

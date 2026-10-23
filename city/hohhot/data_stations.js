@@ -493,7 +493,7 @@ const stationsData = {
         y: 260,
         cn: "呼和浩特站",
         en: "Hohhot Railway Station",
-        align: "top",
+        align: "left",
         hideLabel: true,
         offset: { x: 0, y: 0 },
         textScale: { cn: 0.9, en: 1 }
@@ -504,7 +504,7 @@ const stationsData = {
         y: 360,
         cn: "呼和浩特东站",
         en: "Hohhot East Railway Station",
-        align: "top",
+        align: "bottom",
         hideLabel: true,
         offset: { x: 0, y: 0 },
         textScale: { cn: 0.9, en: 1 }

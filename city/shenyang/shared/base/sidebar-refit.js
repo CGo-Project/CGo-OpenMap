@@ -329,6 +329,88 @@
      * ==================================================================== */
 
     /**
+     * 「空间不足时自动清理旧窗口」的偏好开关。
+     *
+     * 兜底分两步：先收起侧栏里其它占高区块（无损），仍不够才清退最旧的折叠窗口（有损）。
+     * 这个开关只控制第二步——关掉后仍会收起其它区块，但绝不删除用户的历史窗口。
+     *
+     * 设置项由本层注入到核心的偏好设置面板里（紧跟「侧边栏历史记录」一行），不改 core：
+     * core/settings.js 是上游公用组件，本层只做 DOM 追加，上游将来自己加开关时删掉这段即可。
+     */
+    const AUTOCLEAN_KEY = "cgo_sidebar_autoclean";
+    const AUTOCLEAN_ROW_ID = "cgo-sb-autoclean-row";
+    const AUTOCLEAN_SWITCH_ID = "cgo-sb-autoclean";
+
+    /** 默认开启（历史行为不变）；只有显式存过 off 才视为关闭 */
+    function autoCleanEnabled() {
+        try {
+            return localStorage.getItem(AUTOCLEAN_KEY) !== "off";
+        } catch {
+            return true;
+        }
+    }
+
+    /**
+     * 往偏好设置面板注入开关行。
+     * @returns {boolean} 面板已就位并完成注入（或此前已注入）时为 true
+     */
+    function injectAutocleanPref() {
+        if (document.getElementById(AUTOCLEAN_ROW_ID)) return true;
+        const historySelect = document.getElementById("pref-history-limit");
+        if (!historySelect) return false;
+        const row = historySelect.closest(".settings-row");
+        if (!row) return false;
+
+        const el = document.createElement("div");
+        el.className = "settings-row desktop-only";
+        el.id = AUTOCLEAN_ROW_ID;
+        el.innerHTML = `
+            <div>
+                <span class="settings-label">空间不足时自动清理旧窗口</span>
+                <span class="settings-desc">展开窗口过小时，自动清退最早的车站窗口直至达到最低高度；实际保留数还受上方记录条数限制</span>
+            </div>
+            <button type="button" class="cgo-switch" id="${AUTOCLEAN_SWITCH_ID}"
+                role="switch" aria-checked="false" aria-label="空间不足时自动清理旧窗口">
+                <span class="cgo-switch-thumb"></span>
+            </button>
+        `;
+        row.after(el);
+
+        const sw = el.querySelector(`#${AUTOCLEAN_SWITCH_ID}`);
+        if (sw) {
+            const sync = (on) => {
+                sw.setAttribute("aria-checked", String(on));
+                sw.classList.toggle("is-on", on);
+            };
+            sync(autoCleanEnabled());
+            sw.addEventListener("click", () => {
+                const on = !autoCleanEnabled();
+                try {
+                    localStorage.setItem(AUTOCLEAN_KEY, on ? "on" : "off");
+                } catch { }
+                sync(on);
+                // 从关到开：立刻重评当前展开窗口；从开到关：正在跑的队列会在下一步自行停下
+                if (on) scheduleSectionRefit();
+            });
+        }
+        return true;
+    }
+
+    /** 偏好设置面板由 core 在启动后动态创建，等它出现再注入 */
+    let prefWaiter = null;
+
+    function watchForAutocleanPref() {
+        if (injectAutocleanPref()) return;
+        if (prefWaiter) return;
+        prefWaiter = new MutationObserver(() => {
+            if (!injectAutocleanPref()) return;
+            prefWaiter.disconnect();
+            prefWaiter = null;
+        });
+        prefWaiter.observe(document.body, { childList: true, subtree: true });
+    }
+
+    /**
      * 展开的车站窗口至少应占到的高度（em，按根字号折算）。
      * 低于这个值说明折叠窗口把侧栏挤满了，内容已经放不下。
      */
@@ -410,6 +492,9 @@
             return;
         }
 
+        // 关闭「自动清理」时到此为止：无损的收起动作保留，但绝不清退历史窗口
+        if (!autoCleanEnabled()) return;
+
         // DOM 顺序即 window.STATION_HISTORY 的顺序，故从头取就是从最旧开始
         const queue = [...container.querySelectorAll(".station-history-section.collapsed")];
         let cursor = 0;
@@ -423,6 +508,8 @@
         };
 
         const step = () => {
+            // 清理途中用户关掉了开关：立即收手，尚未清掉的窗口保持原样
+            if (!autoCleanEnabled()) { finish(); return; }
             // 核心重建（rebuildSidebarHistory 会清空容器）后本次队列即作废
             if (!expanded.isConnected) { finish(); return; }
             if (expanded.getBoundingClientRect().height >= minHeight) { finish(); return; }
@@ -715,6 +802,8 @@
 
     function start() {
         refresh();
+        // 偏好设置面板由 core 动态创建：等它出现后追加「自动清理」开关
+        watchForAutocleanPref();
         // body 的 class 决定形态（legend-pinned / pinned-hidden）与侧栏显隐
         new MutationObserver(() => {
             syncPinButton();

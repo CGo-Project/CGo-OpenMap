@@ -1716,7 +1716,7 @@ const stationsData = {
         cn: "三好桥",
         en: "SANHAOQIAO",
         align: "top-left",
-        offset: { x: -20, y: 4 },
+        offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "0618": {
@@ -2013,7 +2013,7 @@ const stationsData = {
         en: "",
         //en: "Shenyang Customs",
         align: "top",
-        offset: { x: 0, y: 0 },
+        offset: { x: 0, y: -3 },
         textScale: { cn: 0.9, en: 0.7 }
     },
     "T503": {
@@ -2024,7 +2024,7 @@ const stationsData = {
         en: "",
         //en: "Jinshuihuacheng",
         align: "top-right",
-        offset: { x: -4, y: 1 },
+        offset: { x: -4, y: -2 },
         textScale: { cn: 0.9, en: 0.8 }
     },
     "T504": {
@@ -2035,7 +2035,7 @@ const stationsData = {
         en: "",
         //en: "Olympic Aquatic Stadium",
         align: "left",
-        offset: { x: 0, y: 0 },
+        offset: { x: 0, y: 4 },
         textScale: { cn: 0.9, en: 1 }
     },
     "T505": {
@@ -2320,8 +2320,9 @@ const stationsData = {
         y: 780,
         cn: "沈阳站",
         en: "Shenyang Railway Station",
+        align: "top",
         hideLabel: true,
-        offset: { x: 0, y: 8 },
+        offset: { x: 0, y: -8 },
         badge: "./city/shenyang/assets/railway.svg",
     },
     "SBT": {
@@ -2330,8 +2331,9 @@ const stationsData = {
         y: 660,
         cn: "沈阳北站",
         en: "Shenyangbei Railway Station",
+        align: "right",
         hideLabel: true,
-        offset: { x: 0, y: 8 },
+        offset: { x: 8, y: 0 },
         badge: "./city/shenyang/assets/railway.svg",
     },
     "SOT": {
@@ -2340,8 +2342,9 @@ const stationsData = {
         y: 1400,
         cn: "沈阳南站",
         en: "Shenyangnan Railway Station",
+        align: "left",
         hideLabel: true,
-        offset: { x: 0, y: 8 },
+        offset: { x: -8, y: 0 },
         badge: "./city/shenyang/assets/railway.svg",
     },
 };

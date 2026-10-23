@@ -294,7 +294,7 @@
 
     // 同步写入城市专属自定义模块脚本（与 document.write 城市数据脚本同批执行，确保早于 type=module 的 core/script.js）
     if (typeof document !== 'undefined' && typeof document.write === 'function') {
-        document.write('<scr' + 'ipt src="./city/beijing/modules/beijing_cultural.js?v=261022.223300"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/beijing/modules/beijing_cultural.js?v=261023.005503"><\/scr' + 'ipt>');
     }
 
     // ==========================================================================

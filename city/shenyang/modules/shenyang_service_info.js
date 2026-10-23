@@ -58,6 +58,17 @@
         }).filter((row) => row.destination && (row.first || row.last));
     }
 
+    /**
+     * 有轨末班：若端点声明了 lastEffectiveFrom，则在其生效日前回退到 lastBefore。
+     * 用于调图预告：数据可提前写入新时刻，但生效前仍展示旧值。
+     */
+    function effectiveLast(info) {
+        if (!info.lastEffectiveFrom) return info.last || "";
+        const from = new Date(`${info.lastEffectiveFrom}T00:00:00+08:00`).getTime();
+        if (Number.isNaN(from) || Date.now() >= from) return info.last || "";
+        return info.lastBefore || info.last || "";
+    }
+
     /** 有轨：端点站始发时刻 → 归一化行（该表不区分工作日/节假日与夏冬） */
     function tramwayRows(lineId) {
         const infos = getTramwayOriginInfos(lineId);
@@ -66,7 +77,7 @@
         return infos.map((info) => ({
             destination: info.stationName || "",
             first: info.first || "",
-            last: info.last || "",
+            last: effectiveLast(info),
             mode: "origin",
             note: timetable.dailySinglePair ? "每日1对" : ""
         })).filter((row) => row.destination && (row.first || row.last));
