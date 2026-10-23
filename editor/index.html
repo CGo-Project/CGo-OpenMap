@@ -122,7 +122,7 @@
             <button class="title-bar-btn" id="btnHeaderOpenFile" title="打开/导入工程文件">
                 <cgo-icon name="folder" size="15"></cgo-icon>
             </button>
-            <button class="title-bar-btn" id="btnHeaderSave" title="快速保存工程">
+            <button class="title-bar-btn" id="btnHeaderSave" title="导出工程完整 JSON 归档包 (服务器端只读保护：仅允许导出，禁止覆盖服务器)">
                 <cgo-icon name="save" size="15"></cgo-icon>
             </button>
             <cgo-theme-toggle></cgo-theme-toggle>
@@ -317,9 +317,9 @@
                             </cgo-toolbar-select>
                         </div>
                         <button class="ribbon-action-btn-lg" id="btnSurgicalPatchSave"
-                            title="执行外科手术式条目级回写 (Surgical Patch)">
+                            title="根据已修改车站条目安全生成增量补丁文件 (data_stations.patched.js) 并下载。服务器端只读保护：禁止直接覆盖服务端生产文件">
                             <div class="ribbon-icon"><cgo-icon name="save" size="18"></cgo-icon></div>
-                            <span class="btn-text">外科手术回写</span>
+                            <span class="btn-text">导出车站补丁</span>
                         </button>
                         <button class="ribbon-action-btn-lg" id="btnExportPatchFiles" title="单条目增量补丁打包导出">
                             <div class="ribbon-icon"><cgo-icon name="export-zip" size="18"></cgo-icon></div>
@@ -489,6 +489,12 @@
         <div class="status-bar-left">
             <span class="status-indicator-dot" id="healthStatusDot"></span>
             <span id="healthStatusText">系统就绪</span>
+            <span class="safe-mode-pill" id="safeModeIndicator"
+                style="display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:3px;font-size:10px;background:rgba(0,38,59,0.06);color:var(--text-light);cursor:help;"
+                title="服务器端安全模式：纯客户端沙盒运行，已禁止直接在服务器上覆盖写入，所有修改仅允许导出到本地文件。">
+                <cgo-icon name="protect" size="11"></cgo-icon>
+                <span>服务器只读保护 · 仅允许导出</span>
+            </span>
         </div>
         <div class="status-bar-center">
             <span id="cursorCoordinates">X: 0, Y: 0</span>

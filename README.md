@@ -136,7 +136,6 @@
 除了做新城市，OpenMap Editor 也是 **OpenMap 任意已注册城市的编辑模式**。入口如下：
 
 - 访问主页（`index.html`）最下方的 **「OpenMap Editor 开放地图编辑器」** 入口卡片；
-- 或直接访问 `editor/index.html?city={city_id}`。
 
 **车站**：拖站、改中英文站名、切换车站类型、用 8 方向轮盘调站名朝向、用 `Alt + 方向键` 微调文字偏移、`Delete` 删站。
 

@@ -1601,10 +1601,10 @@
                             res.patchedSource,
                             'text/javascript'
                         );
-                        showToast('已外科回写 ' + res.dirtyCount + ' 个改动条目并下载', 'success');
+                        showToast('已安全生成 ' + res.dirtyCount + ' 个车站改动补丁并开始下载（服务端保持安全只读，未覆盖写入）', 'success');
                     }
                 } catch (e) {
-                    showToast('回写失败: ' + (e.message || e), 'error');
+                    showToast('生成补丁失败: ' + (e.message || e), 'error');
                 }
             });
         }
