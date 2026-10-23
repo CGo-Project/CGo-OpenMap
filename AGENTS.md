@@ -68,7 +68,7 @@
   3. **空间利用率与缩放可读性**：严禁大面积无效空白与松散拉跨（以北京线网为标杆，合理利用每一寸空隙），确保全图在缩小概览（Zoom-out）时文字依然清晰可读；
   4. **硬性数据与元数据完整**：站间距 `distances` 长度严格匹配站数；`city/data.js` 中主理人 `maintainers`、`officialMapUrl`、视口中心 `center` 必须完整填写，严禁上线后信息残缺；
   5. **方向明确防堆砌**：特色功能必须有明确的主攻方向（旅客服务导向 vs 工程规划导向，不超过 2 个），严禁杂乱贪多堆砌；
-  6. **自检前置**：提交前必须运行 `node drunk/tools/selfcheck.js` 确保 100% 通过自检，且控制台零报错。
+  6. **自检前置**：提交前必须运行 `node editor/tests/selfcheck.js` 确保 100% 通过自检，且控制台零报错。
 
 ---
 
@@ -88,20 +88,21 @@ openmap/
 ├── privacy.html                # 隐私政策页面
 ├── manifest.json               # PWA 配置文件
 ├── sw.js                       # Service Worker 离线缓存
-├── drunk/                      # Drunk 转换工作台 + OpenMap 城市编辑模式 (早期测试版)
-│   ├── index.html              # 沉浸式暗色工作台页面 (样式内联于 <style>，drunk.css 目前未被引用)
-│   ├── css/drunk.css           # 早期样式表，当前未被 index.html 引用
-│   └── js/                     # 转换管道、识别算法与城市工程读写
-│       ├── drunk_pipeline.js   # 交互流程调度总线 (识图/载入城市/编辑/撤销/导出)
-│       ├── city_project_io.js  # 城市工程读写层：条目级无损回写 + 分支线路访问器
-│       ├── drunk_sanitizer.js  # 识别结果净化与几何校正 (纯函数，可 Node 直跑回归)
-│       ├── deepseek_vision.js  # DeepSeek 视觉大模型识图引擎 (客户端直连)
-│       ├── pdf_vector_extractor.js # PDF & AI 矢量图层与 XMP 色板直通解析
-│       ├── city_knowledge_matcher.js # 维基百科知识库动态匹配与 Levenshtein 纠错
-│       ├── ocr_align_solver.js # 智能 OCR 与 8 方向文字排版求解器
-│       ├── topology_tracer.js  # 线网拓扑追踪 (分支/环线/换乘)
-│       ├── openmap_codegen.js  # 标准代码生成器与数据完整性自检
-│       └── drunk_logger.js     # 控制台诊断追踪日志
+├── editor/                     # 开放地图编辑器 (OpenMap Editor / CGoUI Ribbon 生产力工作台)
+│   ├── index.html              # 现代化 Ribbon 工作台页面 (Liquid Glass 折射 + 四分组功能区)
+│   ├── css/                    # 界面布局、Ribbon 工具栏与 8 方向轮盘检视面板样式
+│   │   ├── editor-layout.css
+│   │   ├── editor-ribbon.css
+│   │   └── editor-components.css
+│   ├── js/                     # 模块化流水线、纯函数几何算法与图层系统
+│   │   ├── core/               # 统一工程模型、条目级外科回写 (CityProjectIO) 与撤销栈 (HistoryManager)
+│   │   ├── algorithms/         # 折角反算 (SegmentRouter)、数据清洗 (DataSanitizer)、8方向避让 (AlignSolver)、拓扑连通 (TopologyTracer)
+│   │   ├── layers/             # 统一视口 (Viewport)、参考底图 (GhostTransformer)、线路层、车站层、水域层、自由文本层
+│   │   ├── pipelines/          # 三大流水线：矢量导入 (Ingest)、存量维护 (Surgical)、CAD自由规划 (Draw)
+│   │   ├── tools/              # PDF矢量解析、DeepSeek识图、维基匹配、批量放站、里程管理、零依赖ZIP导出
+│   │   └── ui/                 # Ribbon控制器、属性检视面板与 8 方向轮盘
+│   └── tests/
+│       └── selfcheck.js        # 自动化回归测试（221项断言覆盖15座城市与纯函数算法）
 ├── docs/                       # 架构设计与二次开发文档
 │   └── STATION_MODULE_GUIDE.md # 车站信息板自定义模块开发与配置指南
 ├── core/                       # 核心渲染与交互引擎 (多城市通用)
@@ -300,32 +301,34 @@ const linesData = [
 
 ---
 
-## 5. Drunk 转换系统与 Agent 协作指南 (实验特性)
+## 5. OpenMap Editor (开放地图编辑器) 架构与 Agent 协作指南
 
-> [!WARNING]
-> **早期开发验证阶段声明**：  
-> **Drunk 转换系统（`drunk/`）目前处于早期开发验证阶段，仅供测试与实验使用**。系统算法与数据结构仍在频繁迭代中，导出结果请以实际运行渲染测试为准。**极其欢迎开发者与社区团队共同参与其识别算法、矢量图层直通及拓扑求解器的协同开发！**
+> [!NOTE]
+> **OpenMap Editor (`/editor/`)** 是整合了原 `city-editor`（全功能交互编辑、水域河流、自由规划、百科表格放站、里程管理）与 `drunk`（PDF/AI矢量直通提取、DeepSeek视觉识图、条目级外科手术式无损回写、8方向文字避让）的**统一现代化生产力工作台**。界面全面升级为 CGoUI 2.2 Ribbon 效率类布局与 Liquid Glass 折射空间滤镜。
 
-Drunk（`drunk/index.html`）有两种工作模式：
+OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 
-- **识图模式（新城市）**：解决“新城市手工测量 `(x, y)` 坐标繁琐且易出错”，从底图/PDF/AI 自动矢量化出整套城市数据；
-- **编辑模式（已有城市）**：**Drunk 同时是 OpenMap 任意已注册城市的可视化编辑器**。从顶栏下拉框（或线路图「偏好设置 → 编辑此图」，或直接访问 `drunk/index.html?city={city_id}`）载入 `city/{city_id}/`，即可：
+- **智能提取流水线 (Ingest Pipeline)**：解决“新城市手工测量 `(x, y)` 坐标繁琐且易出错”，从高清矢量 PDF/AI 或位图自动提取并规整整套城市数据；
+- **存量维护流水线 (Surgical Pipeline)**：**OpenMap 任意已注册城市的可视化外科手术级编辑器**。从顶栏下拉框（或线路图「偏好设置 → 编辑此图」，或直接访问 `editor/index.html?city={city_id}`）载入 `city/{city_id}/`，即可：
   - **车站**：拖站 / 方向键挪站、改中英文站名、切换类型、调站名朝向与文字偏移、删站；
   - **线路**：点图例项或直接点画布上的线条选中，改线路名 / 标志色 / 运营公司 / `useStrictRounding`，
     并可拖动走向折点、双击线条插入折点、`Delete` 删折点（分支线路的
     `pathPoints-main` / `-branch1` / `-branch2` 一并支持）；
     选中拐角折点后还能调该拐角的圆角半径 `r`（留空=自动按夹角取 18/8px，`0`=保持直角）。
-
-  导出时只改写你实际动过的条目——挪一个折点，`git diff` 里就只有那一行 `{ x: …, y: … }`。
+  - **8 方向轮盘**：右侧检视面板配备 8 方向避让轮盘，毫秒级即时预览并写回 `align` 字段。
+  - 导出时只改写你实际动过的条目——挪一个折点，`git diff` 里就只有那一行 `{ x: …, y: … }`。
+- **自由规划流水线 (Draw Pipeline)**：空白画布新建城市、网格与夹角吸附（135°/90°）、河道水域绘制、自由文字注释与一键 OpenMap 标准 ZIP 打包导出。
 
 ### 5.1 核心架构与模块分工
-- `drunk/js/city_project_io.js`：**城市工程读写层**。读取 `city/{city_id}/data_*.js` 并保留源码原文，提供条目级「外科手术式回写」与分支线路数据模型访问器。
-- `drunk/js/drunk_sanitizer.js`：**识别结果净化与几何校正器**（纯函数）。噪点站剔除、脏站名清洗、同名换乘站合并、退化线路剔除，以及墨迹吸附 + 最小二乘相似变换的整体歪斜校正。
-- `drunk/js/pdf_vector_extractor.js`：基于 Mozilla PDF.js 原生解析 PDF/AI 图层，直通读取矢量路径、OCG 图层语义及 XMP 色板（CMYK/RGB 专色转 Hex），支持多行文字自适应聚类。
-- `drunk/js/deepseek_vision.js`：客户端直连 DeepSeek 官方视觉大模型（`deepseek-v4-flash-vision-exp`），零中间服务器，用于整网位图拓扑结构解析。
-- `drunk/js/city_knowledge_matcher.js`：动态拉取维基百科分类树（MediaWiki API），结合 Levenshtein 模糊编辑距离自动补全站名与中英双语对齐。
-- `drunk/js/ocr_align_solver.js`：计算站名与站点的空间相对方位，自动分配 8 方向避让锚点。
-- `drunk/js/openmap_codegen.js`：生成标准 OpenMap 格式代码，并强制执行完整性自检。
+- `editor/js/core/city-project-io.js`：**城市工程读写层**。读取 `city/{city_id}/data_*.js` 并保留源码原文，提供条目级「外科手术式回写」与分支线路数据模型访问器。
+- `editor/js/core/history-manager.js`：**统一历史撤销栈**（消解各处独立撤销栈，支持 60 步历史与脏状态追踪）。
+- `editor/js/algorithms/data-sanitizer.js`：**识别结果净化与几何校正器**（纯函数）。噪点站剔除、脏站名清洗、同名换乘站合并、退化线路剔除，以及墨迹吸附 + 最小二乘相似变换的整体歪斜校正。
+- `editor/js/algorithms/segment-router.js`：**折角与走线求解器**（纯函数，135°/90°/斜率折点反算与自动选型）。
+- `editor/js/tools/pdf-vector-extractor.js`：基于 Mozilla PDF.js 原生解析 PDF/AI 图层，直通读取矢量路径、OCG 图层语义及 XMP 色板（CMYK/RGB 专色转 Hex），支持多行文字自适应聚类。
+- `editor/js/tools/deepseek-vision.js`：客户端直连 DeepSeek 官方视觉大模型（`deepseek-v4-flash-vision-exp`），零中间服务器，用于整网位图拓扑结构解析。
+- `editor/js/tools/knowledge-matcher.js`：动态拉取维基百科分类树（MediaWiki API），结合 Levenshtein 模糊编辑距离自动补全站名与中英双语对齐。
+- `editor/js/algorithms/align-solver.js`：计算站名与站点的空间相对方位，自动分配 8 方向避让锚点。
+- `editor/js/tools/bundle-exporter.js`：纯 JS 零外部依赖直接生成标准 ZIP 压缩包与条目级补丁。
 
 ### 5.1.1 🚨 编辑模式最高铁律：回写必须无损
 
@@ -402,13 +405,13 @@ Drunk（`drunk/index.html`）有两种工作模式：
 否则一载入城市就会显示「477 处改动」，导出摘要把每座车站都列成改过，
 甚至可能把派生字段写回数据文件。
 
-### 5.1.3 改动纯函数层后必须跑自检
+### 5.1.3 改动纯函数层或编辑器核心后必须跑自检
 
 ```bash
-node drunk/tools/selfcheck.js
+node editor/tests/selfcheck.js
 ```
 
-零依赖、零构建、不需要浏览器。覆盖 `city_project_io.js` 的条目级无损回写与 `drunk_sanitizer.js` 的净化/几何校正，断言直接跑在 `city/` 下的**全部真实城市数据**上（当前 62 项断言 / 6 座城市）。改动这两个模块后**必须**跑通再提交。
+零依赖、零构建、不需要浏览器。覆盖 `city-project-io.js` 的条目级无损回写、`data-sanitizer.js` 几何校正、折角反算算法、维基百科 HTML 表格提取，断言直接跑在 `city/` 下的**全部真实城市数据**上（当前 221 项断言 / 15 座城市）。改动相关模块后**必须** 100% 跑通再提交。
 
 ### 5.2 代码生成完整性自检（由 `openmap_codegen.js` 的 `validateData()` 实际执行）
 
@@ -523,8 +526,8 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
 ### 任务 A：为项目移植新城市
 根据用户情况选择以下两种路径之一：
 
-#### 路径一：借助 Drunk 工作台快速提取并由 Agent 后期整合（推荐，测试阶段）
-1. 引导用户启动本地静态服务并访问 `http://localhost:8080/drunk/`；
+#### 路径一：借助 OpenMap Editor 开放地图编辑器快速提取与编辑（推荐）
+1. 引导用户启动本地静态服务并访问 `http://localhost:8080/editor/`；
 2. 上传该城市的高清线路图图片、PDF 或 Adobe Illustrator (.ai) 文件；
 3. 执行“视觉识图”或矢量解析，利用 8 方向轮盘排版并执行“45°/90°吸附”；
 4. 点击“导出城市工程”，将代码交付给 Agent 或直接放置于 `city/{city_id}/` 下；

@@ -1,0 +1,453 @@
+/**
+ * 开放地图编辑器 (OpenMap Editor) - Office Ribbon 专属功能区样式
+ * 基于 CGoUI 2.2 Ribbon 效率类界面规范
+ */
+
+.office-ribbon-container {
+    background: var(--office-ribbon-bg);
+    border-bottom: 1px solid var(--office-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 40;
+    position: relative;
+    transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+/* 选项卡标题行 */
+.ribbon-tabs-row {
+    min-height: var(--ribbon-tabs-height);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--office-border);
+    background: var(--card-bg, #ffffff);
+    user-select: none;
+    gap: 6px;
+}
+
+.ribbon-tabs-left {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+}
+
+.ribbon-tabs-left::-webkit-scrollbar {
+    display: none;
+}
+
+.ribbon-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-light);
+    font-family: inherit;
+    font-size: var(--font-size-base-sub, 12px);
+    font-weight: 600;
+    padding: 7px clamp(8px, 1.2vw, 16px);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 4px 4px 0 0;
+    white-space: nowrap;
+    transition: color var(--dur-fast) ease, background-color var(--dur-fast) ease, border-color var(--dur-fast) var(--ease-btn), transform 100ms var(--ease-btn);
+}
+
+.ribbon-tab-btn:hover {
+    color: var(--text-main);
+    background: var(--office-hover);
+}
+
+.ribbon-tab-btn.active {
+    color: var(--office-primary);
+    border-bottom-color: var(--office-primary);
+    background: var(--office-ribbon-bg);
+    font-weight: 700;
+}
+
+.ribbon-tab-btn:active {
+    transform: scale(0.98);
+}
+
+/* 选项卡右侧折叠按钮 */
+.ribbon-tabs-right {
+    display: flex;
+    align-items: center;
+    padding-left: 6px;
+    flex-shrink: 0;
+}
+
+.ribbon-collapse-toggle-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: var(--font-size-xs, 11px);
+    font-weight: 500;
+    color: var(--text-light);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+    transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, transform 100ms var(--ease-btn);
+}
+
+.ribbon-collapse-toggle-btn:hover {
+    background: var(--office-hover);
+    color: var(--text-main);
+}
+
+.ribbon-collapse-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+/* Ribbon 工具栏主体：固定高度与平滑折叠 */
+.ribbon-toolbar-body {
+    height: var(--ribbon-toolbar-height);
+    min-height: var(--ribbon-toolbar-height);
+    max-height: var(--ribbon-toolbar-height);
+    display: flex;
+    align-items: stretch;
+    padding: 6px 12px;
+    gap: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    box-sizing: border-box;
+    transition: max-height var(--dur-slow) var(--ease-btn), opacity var(--dur-base) ease, padding var(--dur-base) ease;
+}
+
+/* 折叠收起状态 */
+.office-ribbon-container.collapsed .ribbon-toolbar-body {
+    max-height: 0;
+    min-height: 0;
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+    border-bottom: none;
+}
+
+/* 选项卡工具内容组 */
+.ribbon-tab-content-group {
+    display: none;
+    align-items: stretch;
+    gap: 0;
+    flex: 1;
+    min-width: max-content;
+    height: 100%;
+}
+
+.ribbon-tab-content-group.active {
+    display: flex;
+    animation: ribbonTabFadeIn var(--dur-base) var(--ease-out);
+}
+
+@keyframes ribbonTabFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* 命令分组卡片 */
+.ribbon-group {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0 8px;
+    min-width: fit-content;
+    flex-shrink: 0;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.ribbon-group-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    height: 54px;
+    min-width: fit-content;
+}
+
+.ribbon-group-label {
+    text-align: center;
+    font-size: var(--font-size-2xs, 9px);
+    color: var(--text-light);
+    letter-spacing: 0.3px;
+    padding-top: 2px;
+    margin-top: 2px;
+    height: 16px;
+    line-height: 16px;
+    white-space: nowrap;
+    user-select: none;
+    border-top: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .ribbon-group-label {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 分隔竖线 */
+.ribbon-divider {
+    width: 1px;
+    background: var(--office-border);
+    margin: 6px 4px;
+    flex-shrink: 0;
+    align-self: stretch;
+}
+
+/* 大图标动作按钮 */
+.ribbon-action-btn-lg {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 6px;
+    cursor: pointer;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: var(--font-size-base-sub, 12px);
+    font-weight: 600;
+    min-width: 74px;
+    width: 74px;
+    height: 54px;
+    min-height: 54px;
+    gap: 3px;
+    white-space: nowrap;
+    box-sizing: border-box;
+    transition: transform 120ms var(--ease-btn), background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+
+.ribbon-action-btn-lg.btn-wide {
+    min-width: 90px;
+    width: 90px;
+}
+
+.ribbon-action-btn-lg .btn-text {
+    display: inline-block;
+    white-space: nowrap;
+    line-height: 1.25;
+    text-align: center;
+    font-size: var(--font-size-xs, 11px);
+}
+
+.ribbon-action-btn-lg:hover:not(:disabled) {
+    background: var(--card-bg, #ffffff);
+    border-color: var(--office-border);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.ribbon-action-btn-lg:active:not(:disabled) {
+    transform: scale(0.97);
+    background: var(--office-hover);
+}
+
+.ribbon-action-btn-lg.active {
+    background: var(--office-primary-light);
+    border-color: var(--office-primary);
+    color: var(--office-primary);
+}
+
+.ribbon-action-btn-lg .ribbon-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    color: var(--office-primary);
+    transition: transform var(--dur-fast) var(--ease-btn);
+}
+
+.ribbon-action-btn-lg.highlight-action {
+    background: var(--office-primary-light);
+    border-color: var(--office-primary);
+    color: var(--office-primary);
+}
+
+.ribbon-action-btn-lg.primary-action {
+    background: var(--office-primary);
+    color: #ffffff;
+    border-color: var(--office-primary);
+}
+
+.ribbon-action-btn-lg.primary-action .ribbon-icon {
+    color: #ffffff;
+}
+
+.ribbon-action-btn-lg.primary-action:hover:not(:disabled) {
+    opacity: 0.92;
+    box-shadow: 0 2px 6px rgba(0, 38, 59, 0.25);
+}
+
+/* 纵向紧凑按钮组 */
+.ribbon-v-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: center;
+    min-width: 86px;
+    width: 86px;
+    height: 54px;
+    box-sizing: border-box;
+}
+
+.ribbon-btn-sm {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 8px;
+    height: 24px;
+    font-size: var(--font-size-xs, 11px);
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--text-main);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+    width: 100%;
+    box-sizing: border-box;
+    transition: color var(--dur-fast) ease, background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, transform 100ms var(--ease-btn);
+}
+
+.ribbon-btn-sm:hover {
+    background: var(--card-bg, #ffffff);
+    border-color: var(--office-border);
+}
+
+.ribbon-btn-sm:active {
+    transform: scale(0.97);
+}
+
+.ribbon-btn-sm.active {
+    background: var(--office-primary-light);
+    border-color: var(--office-primary);
+    color: var(--office-primary);
+}
+
+.ribbon-btn-sm.danger:hover {
+    color: var(--danger-color, #dc3545);
+    background: rgba(220, 53, 69, 0.1);
+    border-color: rgba(220, 53, 69, 0.25);
+}
+
+/* 参数调节滑块与微调器 */
+.ribbon-param-box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 2px 6px;
+    width: 144px;
+    min-width: 144px;
+    max-width: 144px;
+    height: 54px;
+    box-sizing: border-box;
+}
+
+.ribbon-param-box .param-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-light);
+    height: 16px;
+}
+
+.ribbon-param-box .param-label-row strong {
+    color: var(--office-primary);
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 3px;
+}
+
+.ribbon-param-box cgo-toolbar-select {
+    width: 100%;
+}
+
+.param-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    width: 100%;
+}
+
+.param-step-btn {
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    transition: all var(--dur-fast) var(--ease-btn);
+    flex-shrink: 0;
+}
+
+.param-step-btn:hover {
+    background: var(--office-hover);
+    color: var(--text-main);
+}
+
+.param-slider {
+    flex: 1;
+    height: 4px;
+    accent-color: var(--office-primary);
+    cursor: pointer;
+}
+
+/* 高密度紧凑参数输入行 (Section 6 规划规范) */
+.ribbon-param-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 6px;
+    padding: 2px 6px;
+    height: 54px;
+    box-sizing: border-box;
+    align-content: center;
+}
+
+.compact-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--font-size-xs, 11px);
+    background: var(--office-hover);
+    border: 1px solid var(--office-border);
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+.compact-field label {
+    color: var(--text-light);
+    font-weight: 600;
+    font-size: var(--font-size-2xs, 9px);
+}
+
+.compact-field input {
+    width: 44px;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: var(--font-size-xs, 11px);
+    text-align: right;
+    outline: none;
+    font-family: inherit;
+}

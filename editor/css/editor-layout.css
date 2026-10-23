@@ -1,0 +1,541 @@
+/**
+ * 开放地图编辑器 (OpenMap Editor) - 基础布局与工作区样式
+ * 基于 CGoUI 2.2 规范与 Office App Shell 架构
+ */
+
+:root {
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+    --title-bar-height: 38px;
+    --ribbon-tabs-height: 36px;
+    --ribbon-toolbar-height: 88px;
+    --status-bar-height: 26px;
+
+    /* 字号标准阶梯 (严格遵循 Ponytail Full 规范，杜绝奇数字号) */
+    --font-size-2xs: 9px;
+    --font-size-xs: 11px;
+    --font-size-base-sub: 12px;
+    --font-size-base: 14px;
+    --font-size-md: 16px;
+
+    /* CGoUI Ribbon 专属 Token 映射 */
+    --office-primary: var(--primary-color, #00263b);
+    --office-primary-dark: var(--text-main, #00263b);
+    --office-primary-light: rgba(0, 38, 59, 0.08);
+    --office-ribbon-bg: var(--card-bg, #ffffff);
+    --office-border: var(--border-color, #dee2e6);
+    --office-hover: var(--bg-color, #f8f9fa);
+
+    /* 工业级交互动效缓动曲线 */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-btn: cubic-bezier(0.16, 1, 0.3, 1);
+
+    --dur-fast: 160ms;
+    --dur-base: 220ms;
+    --dur-slow: 300ms;
+}
+
+[data-theme="dark"] {
+    --office-primary: var(--primary-color, #38bdf8);
+    --office-primary-dark: var(--text-main, #e6edf3);
+    --office-primary-light: rgba(56, 189, 248, 0.12);
+    --office-ribbon-bg: var(--card-bg, #161a22);
+    --office-border: var(--border-color, #30363d);
+    --office-hover: var(--bg-color, #21262d);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ==========================================================================
+   0. App Shell 容器
+   ========================================================================== */
+body.office-app-shell {
+    font-family: var(--font-sans);
+    background-color: var(--bg-color, #f8f9fa);
+    color: var(--text-main, #00263b);
+    height: 100vh;
+    height: 100dvh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ==========================================================================
+   1. 顶部标题栏 (Title Bar)
+   ========================================================================== */
+.office-title-bar {
+    height: var(--title-bar-height);
+    background: var(--card-bg, #ffffff);
+    border-bottom: 1px solid var(--office-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    flex-shrink: 0;
+    z-index: 50;
+}
+
+.title-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.office-app-icon {
+    width: 22px;
+    height: 22px;
+    color: var(--office-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.office-doc-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--font-size-base, 14px);
+    font-weight: 600;
+}
+
+.app-brand {
+    color: var(--text-main);
+    font-weight: 700;
+    letter-spacing: -0.2px;
+}
+
+.doc-sep {
+    color: var(--text-light);
+    opacity: 0.5;
+}
+
+.doc-name {
+    color: var(--text-light);
+    font-weight: 500;
+    font-size: var(--font-size-base-sub, 12px);
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.title-bar-center {
+    display: flex;
+    align-items: center;
+}
+
+.global-quick-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--office-hover);
+    border: 1px solid var(--office-border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: var(--font-size-base-sub, 12px);
+}
+
+.pill-label {
+    color: var(--text-light);
+    font-size: var(--font-size-xs, 11px);
+}
+
+.title-dropdown {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: var(--font-size-base-sub, 12px);
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    max-width: 240px;
+}
+
+.title-quick-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--office-primary);
+    display: flex;
+    align-items: center;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.title-quick-btn:hover {
+    background: var(--office-primary-light);
+}
+
+.title-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.title-bar-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 3px 6px;
+    color: var(--text-main);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-base-sub, 12px);
+    transition: all var(--dur-fast) var(--ease-out);
+}
+
+.title-bar-btn:hover {
+    background: var(--office-hover);
+    border-color: var(--office-border);
+}
+
+/* ==========================================================================
+   2. 三栏主工作区 (Workbench)
+   ========================================================================== */
+.editor-main-workbench {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    position: relative;
+    background-color: var(--bg-color, #f8f9fa);
+}
+
+/* 左侧图层/拓扑大纲抽屉 */
+.workbench-nav-tree {
+    width: 250px;
+    min-width: 200px;
+    max-width: 400px;
+    background: var(--card-bg, #ffffff);
+    border-right: 1px solid var(--office-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    z-index: 10;
+    transition: width var(--dur-base) var(--ease-out);
+}
+
+.workbench-nav-tree.collapsed {
+    width: 0;
+    min-width: 0;
+    border-right: none;
+}
+
+.drawer-header {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--office-border);
+    font-size: var(--font-size-base-sub, 12px);
+    font-weight: 600;
+}
+
+/* 面板收起/折叠小按钮 (大纲面板与属性面板通用，对齐 CGoUI 效率微交互) */
+.panel-collapse-btn,
+.drawer-header .modal-close-btn,
+.inspector-header .modal-close-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-light, #666);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: var(--radius-xs, 4px);
+    transition: background-color var(--dur-fast, 140ms) ease, color var(--dur-fast, 140ms) ease, transform 100ms var(--ease-btn, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.panel-collapse-btn:hover,
+.drawer-header .modal-close-btn:hover,
+.inspector-header .modal-close-btn:hover {
+    background: var(--office-hover, rgba(0, 38, 59, 0.06));
+    color: var(--text-main, #00263b);
+}
+
+.panel-collapse-btn:active,
+.drawer-header .modal-close-btn:active,
+.inspector-header .modal-close-btn:active {
+    transform: scale(0.92);
+}
+
+[data-theme='dark'] .panel-collapse-btn,
+[data-theme='dark'] .drawer-header .modal-close-btn,
+[data-theme='dark'] .inspector-header .modal-close-btn {
+    color: var(--text-light, #a0b0b9);
+}
+
+[data-theme='dark'] .panel-collapse-btn:hover,
+[data-theme='dark'] .drawer-header .modal-close-btn:hover,
+[data-theme='dark'] .inspector-header .modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main, #e5e8ea);
+}
+
+.drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 6px;
+}
+
+/* 中央视口画布 */
+.workbench-canvas-viewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg-color, #f8f9fa);
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+}
+
+.workbench-canvas-viewport.panning {
+    cursor: grab;
+}
+
+.workbench-canvas-viewport.panning:active {
+    cursor: grabbing;
+}
+
+.workbench-canvas-viewport.crosshair {
+    cursor: crosshair;
+}
+
+#editorSvg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* 视口浮动 HUD 控制球/条 */
+.viewport-hud {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--card-bg, #ffffff);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--office-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    z-index: 20;
+}
+
+.hud-btn {
+    width: 26px;
+    height: 26px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-main);
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--dur-fast) var(--ease-out);
+}
+
+.hud-btn:hover {
+    background: var(--office-hover);
+    border-color: var(--office-border);
+}
+
+.hud-btn:active {
+    transform: scale(0.95);
+}
+
+.hud-btn.active {
+    background: var(--office-hover, #f3f4f6);
+    color: var(--office-primary, #005a9e);
+    border-color: var(--office-border);
+}
+
+/* 侧栏折叠后浮出的小标签 (Docked Expand Tabs) */
+.workbench-expand-tab {
+    position: absolute;
+    top: 14px;
+    z-index: 20;
+    display: none;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 10px;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--office-border);
+    color: var(--text-color, #24292f);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    transition: all var(--dur-fast) var(--ease-out);
+    user-select: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.workbench-expand-tab:hover {
+    background: var(--office-hover, #f3f4f6);
+    color: var(--office-primary, #005a9e);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+}
+
+.workbench-expand-tab.left {
+    left: 0;
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+}
+
+.workbench-expand-tab.right {
+    right: 0;
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+}
+
+.workbench-expand-tab.visible,
+.workbench-nav-tree.collapsed ~ .workbench-canvas-viewport #btnExpandNavDrawer,
+.editor-main-workbench:has(.workbench-inspector-panel.collapsed) #btnExpandInspector {
+    display: inline-flex;
+}
+
+.hud-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--office-border);
+    margin: 0 2px;
+}
+
+.hud-zoom-text {
+    font-size: var(--font-size-xs, 11px);
+    font-weight: 600;
+    padding: 0 4px;
+    min-width: 44px;
+    text-align: center;
+    cursor: pointer;
+}
+
+/* 右侧属性检视面板 */
+.workbench-inspector-panel {
+    width: 330px;
+    min-width: 280px;
+    max-width: 450px;
+    background: var(--card-bg, #ffffff);
+    border-left: 1px solid var(--office-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    z-index: 10;
+    transition: width var(--dur-base) var(--ease-out);
+}
+
+.workbench-inspector-panel.collapsed {
+    width: 0;
+    min-width: 0;
+    border-left: none;
+}
+
+.inspector-header {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--office-border);
+    font-size: var(--font-size-base-sub, 12px);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.inspector-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ==========================================================================
+   3. 底部状态指示栏 (Status Bar)
+   ========================================================================== */
+.office-status-bar {
+    height: var(--status-bar-height);
+    background: var(--card-bg, #ffffff);
+    border-top: 1px solid var(--office-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    flex-shrink: 0;
+    z-index: 30;
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-light);
+}
+
+.status-bar-left, .status-bar-center, .status-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-indicator-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    display: inline-block;
+    transition: background-color var(--dur-base) ease;
+}
+
+.status-indicator-dot.busy {
+    background: #f59e0b;
+    box-shadow: 0 0 6px #f59e0b;
+}
+
+.status-indicator-dot.error {
+    background: #ef4444;
+    box-shadow: 0 0 6px #ef4444;
+}
+
+#cursorCoordinates {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-light);
+}
+
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zoom-slider {
+    width: 80px;
+    height: 4px;
+    accent-color: var(--office-primary);
+    cursor: pointer;
+}

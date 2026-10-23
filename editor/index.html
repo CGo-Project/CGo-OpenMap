@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN" glass-mode="liquid">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="description" content="开放地图编辑器 OpenMap Editor，全功能轨道交通地图编辑工作台">
+    <title>开放地图编辑器 OpenMap Editor</title>
+    <link rel="shortcut icon" href="../assets/icons/favicon.ico">
+
+    <!-- 0. 路径自愈脚本 (避免静态服务结尾无斜杠导致相对路径 404) -->
+    <script>
+        (function () {
+            if (/\/editor$/.test(location.pathname)) {
+                var base = document.createElement('base');
+                base.href = location.pathname + '/';
+                document.head.insertBefore(base, document.head.firstChild);
+            }
+        })();
+    </script>
+
+    <!-- 0. 防闪烁主题脚本 (Anti-Flicker，最先执行) -->
+    <script>
+        (function () {
+            var t = localStorage.getItem('app-theme') || localStorage.getItem('cgo-theme');
+            document.documentElement.setAttribute('data-theme', t || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+        })();
+    </script>
+
+    <!-- 字体引入 (Web Fonts，保证与主地图 main.html 100% 渲染一致) -->
+    <link rel="preconnect" href="https://fonts.loli.net">
+    <link rel="preconnect" href="https://gstatic.loli.net" crossorigin>
+    <link
+        href="https://fonts.loli.net/css2?family=Arimo:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261022.223300">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261022.223300">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261022.223300">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261022.223300">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261022.223300">
+
+    <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
+    <link rel="stylesheet" href="css/editor-layout.css">
+    <link rel="stylesheet" href="css/editor-ribbon.css">
+    <link rel="stylesheet" href="css/editor-components.css">
+
+    <style>
+        /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
+        cgo-icon:not(:defined),
+        cgo-button:not(:defined),
+        cgo-theme-toggle:not(:defined),
+        cgo-badge:not(:defined),
+        cgo-card:not(:defined) {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            visibility: visible;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+
+<body class="office-app-shell">
+    <!-- Liquid Glass 空间折射滤镜管线 -->
+    <svg id="cgo-liquid-glass-filters" aria-hidden="true"
+        style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;">
+        <defs>
+            <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.025 0.025" numOctaves="1" result="noise" />
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="20" xChannelSelector="R"
+                    yChannelSelector="G" />
+            </filter>
+        </defs>
+    </svg>
+
+    <!-- =====================================================================
+         1. 顶部标题栏 (Title Bar)
+         ===================================================================== -->
+    <header class="office-title-bar">
+        <div class="title-bar-left">
+            <div class="office-app-icon" title="开放地图编辑器 (OpenMap Editor)">
+                <cgo-icon name="drunk" size="22"></cgo-icon>
+            </div>
+            <div class="office-doc-title">
+                <span class="app-brand">OpenMap Editor</span>
+                <span class="doc-sep">Beta2 /</span>
+                <span class="doc-name" id="currentDocLabel">未打开工程</span>
+            </div>
+        </div>
+
+        <div class="title-bar-center"></div>
+
+        <div class="title-bar-right">
+            <button class="title-bar-btn" id="btnHeaderNewCanvas" title="新建工程画布">
+                <cgo-icon name="add" size="15"></cgo-icon>
+            </button>
+            <button class="title-bar-btn" id="btnHeaderOpenFile" title="打开/导入工程文件">
+                <cgo-icon name="folder" size="15"></cgo-icon>
+            </button>
+            <button class="title-bar-btn" id="btnHeaderSave" title="快速保存工程">
+                <cgo-icon name="save" size="15"></cgo-icon>
+            </button>
+            <cgo-theme-toggle></cgo-theme-toggle>
+        </div>
+    </header>
+
+    <!-- =====================================================================
+         2. Ribbon 功能区 (Ribbon Container)
+         ===================================================================== -->
+    <nav class="office-ribbon-container" id="officeRibbonContainer">
+        <!-- 选项卡切换行 -->
+        <div class="ribbon-tabs-row" id="ribbonTabsRow">
+            <div class="ribbon-tabs-left">
+                <button class="ribbon-tab-btn active" data-tab="home" id="tabBtn_home" title="双击可折叠/展开功能区">
+                    <cgo-icon name="home" size="13"></cgo-icon>
+                    <span>开始</span>
+                </button>
+                <button class="ribbon-tab-btn" data-tab="ingest" id="tabBtn_ingest" title="双击可折叠/展开功能区">
+                    <cgo-icon name="sparkle" size="13"></cgo-icon>
+                    <span>智能转换</span>
+                </button>
+                <button class="ribbon-tab-btn" data-tab="surgical" id="tabBtn_surgical" title="双击可折叠/展开功能区">
+                    <cgo-icon name="edit" size="13"></cgo-icon>
+                    <span>城市维护</span>
+                </button>
+                <button class="ribbon-tab-btn" data-tab="tools" id="tabBtn_tools" title="双击可折叠/展开功能区">
+                    <cgo-icon name="preset" size="13"></cgo-icon>
+                    <span>数据与工具</span>
+                </button>
+            </div>
+            <div class="ribbon-tabs-right">
+                <button class="ribbon-collapse-toggle-btn" id="ribbonCollapseBtn" title="折叠/展开功能区">
+                    <cgo-icon name="expand-less" size="13" id="ribbonCollapseIcon"></cgo-icon>
+                    <span id="ribbonCollapseLabel">折叠功能区</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Ribbon 工具栏主体内容 -->
+        <div class="ribbon-toolbar-body" id="ribbonToolbarBody">
+
+            <!-- ==================== TAB 1: 开始 (Home) ==================== -->
+            <div class="ribbon-tab-content-group active" data-tab="home" id="ribbonGroupSet_home">
+                <!-- 常用编辑工具组 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <button class="ribbon-action-btn-lg" id="toolBtn_select" title="选择与拖拽图元 (V)">
+                            <div class="ribbon-icon"><cgo-icon name="touch" size="18"></cgo-icon></div>
+                            <span class="btn-text">选择</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="toolBtn_station" title="放置车站节点 (S)">
+                            <div class="ribbon-icon"><cgo-icon name="add" size="18"></cgo-icon></div>
+                            <span class="btn-text">添加车站</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="toolBtn_temp" title="放置辅助临时节点 (T)">
+                            <div class="ribbon-icon"><cgo-icon name="pin" size="18"></cgo-icon></div>
+                            <span class="btn-text">临时节点</span>
+                        </button>
+                    </div>
+                    <div class="ribbon-group-label">基础图元</div>
+                </div>
+
+                <div class="ribbon-divider"></div>
+
+                <!-- 走线与折角系统组 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <div class="ribbon-v-stack">
+                            <button class="ribbon-btn-sm" id="toolBtn_seg135" title="135° 正交折角走线 (45°斜段 + 轴段)">
+                                <cgo-icon name="design" size="12"></cgo-icon><span>135° 折角</span>
+                            </button>
+                            <button class="ribbon-btn-sm" id="toolBtn_seg90" title="90° 正交直角走线 (L 形)">
+                                <cgo-icon name="design" size="12"></cgo-icon><span>90° 直角</span>
+                            </button>
+                        </div>
+                        <div class="ribbon-v-stack">
+                            <button class="ribbon-btn-sm" id="toolBtn_seg90d" title="斜 90° 对角折角 (双斜段)">
+                                <cgo-icon name="design" size="12"></cgo-icon><span>斜 90°</span>
+                            </button>
+                            <button class="ribbon-btn-sm" id="toolBtn_segaxis" title="自由直线 (两端直连)">
+                                <cgo-icon name="design" size="12"></cgo-icon><span>自由直线</span>
+                            </button>
+                        </div>
+                        <div class="ribbon-v-stack">
+                            <button class="ribbon-btn-sm" id="btnFlipCorner" title="翻转选中线段折角方向 (Shift+Click)">
+                                <cgo-icon name="flip-h" size="12"></cgo-icon><span>翻转折角</span>
+                            </button>
+                            <button class="ribbon-btn-sm active" id="btnToggleAutoRoute" title="线段自动选型开关">
+                                <cgo-icon name="sparkle" size="12"></cgo-icon><span>自动选型</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ribbon-group-label">走线与折角 (CAD)</div>
+                </div>
+
+                <div class="ribbon-divider"></div>
+
+                <!-- 地理与辅助要素组 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <button class="ribbon-action-btn-lg" id="toolBtn_water" title="绘制水域多边形或河道 (W)">
+                            <div class="ribbon-icon"><cgo-icon name="map" size="18"></cgo-icon></div>
+                            <span class="btn-text">水域/河流</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="toolBtn_text" title="放置自由注释文本 (X)">
+                            <div class="ribbon-icon"><cgo-icon name="vi-text" size="18"></cgo-icon></div>
+                            <span class="btn-text">注释文字</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnImportGhostImage" title="载入参考描图底图 (I)">
+                            <div class="ribbon-icon"><cgo-icon name="image" size="18"></cgo-icon></div>
+                            <span class="btn-text">参考底图</span>
+                        </button>
+                    </div>
+                    <div class="ribbon-group-label">地理与素材</div>
+                </div>
+
+                <div class="ribbon-divider"></div>
+
+                <!-- 历史与重算组 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <div class="ribbon-v-stack">
+                            <button class="ribbon-btn-sm" id="btnUndo" title="撤销 (Ctrl+Z)">
+                                <cgo-icon name="undo" size="12"></cgo-icon><span>撤销</span>
+                            </button>
+                            <button class="ribbon-btn-sm" id="btnRedo" title="重做 (Ctrl+Y / Ctrl+Shift+Z)">
+                                <cgo-icon name="redo" size="12"></cgo-icon><span>重做</span>
+                            </button>
+                        </div>
+                        <button class="ribbon-action-btn-lg" id="btnRefreshAutoSegments" title="按最新车站布局批量重算所有自动走线线段">
+                            <div class="ribbon-icon"><cgo-icon name="refresh" size="18"></cgo-icon></div>
+                            <span class="btn-text">刷新线网</span>
+                        </button>
+                    </div>
+                    <div class="ribbon-group-label">历史与重算</div>
+                </div>
+            </div>
+
+            <!-- ==================== TAB 2: 智能转换 (Ingest) ==================== -->
+            <div class="ribbon-tab-content-group" data-tab="ingest" id="ribbonGroupSet_ingest">
+                <!-- 导入流水线 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <button class="ribbon-action-btn-lg" id="btnIngestPdf" title="载入 PDF/AI 原生矢量文件直通抽取">
+                            <div class="ribbon-icon"><cgo-icon name="export-pdf" size="18"></cgo-icon></div>
+                            <span class="btn-text">PDF识别</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnIngestVision"
+                            title="调用 DeepSeek-Vision 视觉模型解析位图线路图">
+                            <div class="ribbon-icon"><cgo-icon name="sparkle" size="18"></cgo-icon></div>
+                            <span class="btn-text">智能识图</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnDeepseekConfig" title="配置 DeepSeek API Key 与模型地址">
+                            <div class="ribbon-icon"><cgo-icon name="settings" size="18"></cgo-icon></div>
+                            <span class="btn-text">模型设置</span>
+                        </button>
+                    </div>
+                    <div class="ribbon-group-label">自动化导入来源</div>
+                </div>
+
+                <div class="ribbon-divider"></div>
+
+                <!-- 拓扑净化与校准 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <button class="ribbon-action-btn-lg" id="btnSanitizeTopology" title="过滤噪点、合并重叠车站、清理退化折线">
+                            <div class="ribbon-icon"><cgo-icon name="filter" size="18"></cgo-icon></div>
+                            <span class="btn-text">拓扑净化</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnAutoCalibrateAffine" title="最小二乘法歪斜自动校准与旋转复位">
+                            <div class="ribbon-icon"><cgo-icon name="north" size="18"></cgo-icon></div>
+                            <span class="btn-text">几何校准</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnMatchWikiKnowledge" title="基于维基百科城市树补齐双语站名">
+                            <div class="ribbon-icon"><cgo-icon name="world" size="18"></cgo-icon></div>
+                            <span class="btn-text">知识库匹配</span>
+                        </button>
+                    </div>
+                    <div class="ribbon-group-label">净化与对齐</div>
+                </div>
+            </div>
+
+            <!-- ==================== TAB 3: 城市维护 (Surgical) ==================== -->
+            <div class="ribbon-tab-content-group" data-tab="surgical" id="ribbonGroupSet_surgical">
+                <!-- 存量城市读写 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <div class="ribbon-param-box" style="width: 180px; min-width: 180px;">
+                            <div class="param-label-row"><span>在线城市库</span></div>
+                            <cgo-toolbar-select id="selectCityToLoad" value="" placeholder="载入城市工程..." style="width: 100%;">
+                                <cgo-toolbar-option value="">载入城市工程...</cgo-toolbar-option>
+                            </cgo-toolbar-select>
+                        </div>
+                        <button class="ribbon-action-btn-lg" id="btnSurgicalPatchSave"
+                            title="执行外科手术式条目级回写 (Surgical Patch)">
+                            <div class="ribbon-icon"><cgo-icon name="save" size="18"></cgo-icon></div>
+                            <span class="btn-text">外科手术回写</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnExportPatchFiles" title="单条目增量补丁打包导出">
+                            <div class="ribbon-icon"><cgo-icon name="export-zip" size="18"></cgo-icon></div>
+                            <span class="btn-text">导出增量补丁</span>
+                        </button>
+                    </div>
+                    <div class="ribbon-group-label">存量城市无损维护</div>
+                </div>
+
+                <div class="ribbon-divider"></div>
+
+                <!-- 快速微调 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <div class="ribbon-v-stack">
+                            <button class="ribbon-btn-sm" id="btnQuickSolveLabels" title="自动求解 8 方向文字避让锚点">
+                                <cgo-icon name="sparkle" size="12"></cgo-icon><span>自动文字避让</span>
+                            </button>
+                            <button class="ribbon-btn-sm" id="btnInspectDifferences" title="对比当前画布与原始城市文件差异">
+                                <cgo-icon name="view-list" size="12"></cgo-icon><span>审查改动</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ribbon-group-label">微调与对比</div>
+                </div>
+            </div>
+
+            <!-- ==================== TAB 4: 数据与工具 (Tools) ==================== -->
+            <div class="ribbon-tab-content-group" data-tab="tools" id="ribbonGroupSet_tools">
+                <!-- 批量生产力 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <button class="ribbon-action-btn-lg" id="btnOpenBatchStationModal"
+                            title="从维基百科/百度百科表格 HTML 提取站名批量建站">
+                            <div class="ribbon-icon"><cgo-icon name="view-list" size="18"></cgo-icon></div>
+                            <span class="btn-text">百科批量放站</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnOpenMileageModal" title="运营里程与实际站间距录入校验">
+                            <div class="ribbon-icon"><cgo-icon name="table" size="18"></cgo-icon></div>
+                            <span class="btn-text">实际站间距</span>
+                        </button>
+                    </div>
+                    <div class="ribbon-group-label">批量数据生产</div>
+                </div>
+
+                <div class="ribbon-divider"></div>
+
+                <!-- 打包与导出 -->
+                <div class="ribbon-group">
+                    <div class="ribbon-group-controls">
+                        <button class="ribbon-action-btn-lg" id="btnExportOpenMapZip"
+                            title="打包导出标准 CGo OpenMap 城市工程包 Zip">
+                            <div class="ribbon-icon"><cgo-icon name="export-zip" size="18"></cgo-icon></div>
+                            <span class="btn-text">导出OM包</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnExportProjectJson" title="导出可再次编辑的工程 JSON">
+                            <div class="ribbon-icon"><cgo-icon name="save" size="18"></cgo-icon></div>
+                            <span class="btn-text">保存JSON</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnExportRenderedSvg" title="导出当前完整矢量 SVG 图像">
+                            <div class="ribbon-icon"><cgo-icon name="image" size="18"></cgo-icon></div>
+                            <span class="btn-text">导出SVG</span>
+                        </button>
+                    </div>
+                    <div class="ribbon-group-label">成果交付</div>
+                </div>
+            </div>
+
+        </div>
+    </nav>
+
+    <!-- =====================================================================
+         3. 三栏主工作区 (Workbench)
+         ===================================================================== -->
+    <main class="editor-main-workbench" id="editorWorkbench">
+        <!-- 左侧图层/拓扑大纲抽屉 -->
+        <aside class="workbench-nav-tree" id="workbenchNavDrawer">
+            <div class="drawer-header">
+                <span id="navTreeTitle">图层与拓扑大纲</span>
+                <button class="panel-collapse-btn" id="btnToggleNavDrawer" title="收起大纲">
+                    <cgo-icon name="chevron-left" size="14"></cgo-icon>
+                </button>
+            </div>
+            <div class="drawer-body" id="navTreeContent" style="padding: 4px;">
+                <!-- 由 NavTreeView 动态构建文件资源管理器风格树状大纲 -->
+            </div>
+        </aside>
+
+        <!-- 中央视口画布 -->
+        <div class="workbench-canvas-viewport" id="workbenchViewport">
+            <!-- 左右侧栏折叠后浮现的边缘展开标签 (Docked Expand Tabs) -->
+            <button class="workbench-expand-tab left" id="btnExpandNavDrawer" title="展开图层与拓扑大纲 (Ctrl+[)">
+                <cgo-icon name="chevron-right" size="13"></cgo-icon>
+                <span>图层大纲</span>
+            </button>
+            <button class="workbench-expand-tab right" id="btnExpandInspector" title="展开属性检视面板 (Ctrl+])">
+                <span>属性检视</span>
+                <cgo-icon name="chevron-left" size="13"></cgo-icon>
+            </button>
+
+            <svg id="editorSvg" xmlns="http://www.w3.org/2000/svg">
+                <g id="viewLayer">
+                    <g id="ghostLayer"></g>
+                    <g id="scatteredLayer"></g>
+                    <g id="waterLayer"></g>
+                    <g id="gridLayer"></g>
+                    <g id="lineLayer"></g>
+                    <g id="notOpenLayer"></g>
+                    <g id="virtualConnectorLayer"></g>
+                    <g id="stationLayer"></g>
+                    <g id="labelLayer"></g>
+                    <g id="textLayer"></g>
+                    <g id="handleLayer"></g>
+                </g>
+            </svg>
+
+            <!-- 悬浮视口 HUD 工具栏 -->
+            <div class="viewport-hud" id="viewportHud">
+                <button class="hud-btn active" id="hudBtnToggleNav" title="切换图层大纲显示 (Ctrl+[)">
+                    <cgo-icon name="view-list" size="14"></cgo-icon>
+                </button>
+                <div class="hud-divider"></div>
+                <button class="hud-btn" id="hudBtnZoomOut" title="缩小视口 (-)">
+                    <cgo-icon name="zoom-out" size="14"></cgo-icon>
+                </button>
+                <span class="hud-zoom-text" id="hudZoomText" title="点击复位 100%">100%</span>
+                <button class="hud-btn" id="hudBtnZoomIn" title="放大视口 (+)">
+                    <cgo-icon name="zoom-in" size="14"></cgo-icon>
+                </button>
+                <div class="hud-divider"></div>
+                <button class="hud-btn" id="hudBtnFit" title="自适应居中画布 (F)">
+                    <cgo-icon name="fullscn" size="14"></cgo-icon>
+                </button>
+                <button class="hud-btn" id="hudBtnGrid" title="切换网格显示 (G)">
+                    <cgo-icon name="view-grid" size="14"></cgo-icon>
+                </button>
+                <button class="hud-btn" id="hudBtnSnap" title="网格吸附开关">
+                    <cgo-icon name="link" size="14"></cgo-icon>
+                </button>
+                <div class="hud-divider"></div>
+                <button class="hud-btn active" id="hudBtnToggleInspector" title="切换属性检视面板 (Ctrl+])">
+                    <cgo-icon name="edit" size="14"></cgo-icon>
+                </button>
+            </div>
+        </div>
+
+        <!-- 右侧属性与 8 方向轮盘检视面板 -->
+        <aside class="workbench-inspector-panel" id="workbenchInspector">
+            <div class="inspector-header">
+                <span>属性检视</span>
+                <button class="panel-collapse-btn" id="btnToggleInspector" title="收起检视面板">
+                    <cgo-icon name="chevron-right" size="14"></cgo-icon>
+                </button>
+            </div>
+            <div class="inspector-body" id="inspectorBody">
+                <div style="text-align: center; color: var(--text-light); padding: 30px 10px; font-size: 12px;">
+                    点击画布中的车站、折线、水域或文本进行检视与编辑
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- =====================================================================
+         4. 底部状态指示栏 (Status Bar)
+         ===================================================================== -->
+    <footer class="office-status-bar" id="officeStatusBar">
+        <div class="status-bar-left">
+            <span class="status-indicator-dot" id="healthStatusDot"></span>
+            <span id="healthStatusText">系统就绪</span>
+        </div>
+        <div class="status-bar-center">
+            <span id="cursorCoordinates">X: 0, Y: 0</span>
+        </div>
+        <div class="status-bar-right">
+            <cgo-badge id="dirtyCounterBadge" variant="info">未修改</cgo-badge>
+            <div class="zoom-controls">
+                <button class="hud-btn" id="statusBtnZoomOut" style="width:20px;height:20px;" title="缩小">
+                    <cgo-icon name="zoom-out" size="12"></cgo-icon>
+                </button>
+                <input type="range" class="zoom-slider" id="bottomZoomSlider" min="0.05" max="3.0" step="0.05"
+                    value="1.0">
+                <button class="hud-btn" id="statusBtnZoomIn" style="width:20px;height:20px;" title="放大">
+                    <cgo-icon name="zoom-in" size="12"></cgo-icon>
+                </button>
+                <span id="zoomPercentLabel">100%</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 隐藏文件输入框 -->
+    <input type="file" id="fileInputProject" accept=".json,application/json" style="display:none">
+    <input type="file" id="fileInputGhost" accept="image/*,.svg" style="display:none">
+    <input type="file" id="fileInputPdf" accept=".pdf,.ai,application/pdf" style="display:none">
+
+    <!-- =====================================================================
+         5. 模态弹窗系统 (基于 CGoUI 官方 <cgo-modal> 液态玻璃 Web Components)
+         ===================================================================== -->
+    <!-- 1. 新建画布弹窗 -->
+    <cgo-modal id="modalNewCanvas" title="新建工程画布" max-width="420px">
+        <div class="form-row">
+            <span class="form-label">画布宽度:</span>
+            <input type="number" class="form-input" id="newCanvasWidth" value="2000" min="500" max="8000" step="100">
+        </div>
+        <div class="form-row">
+            <span class="form-label">画布高度:</span>
+            <input type="number" class="form-input" id="newCanvasHeight" value="1500" min="500" max="8000" step="100">
+        </div>
+        <div class="form-row">
+            <span class="form-label">统一夹角:</span>
+            <select class="form-select" id="newCanvasSlope">
+                <option value="1:1">1:1 (标准 45° 体系 - 大多数城市)</option>
+                <option value="2:1">2:1 (香港 26.6° 体系)</option>
+                <option value="3:2">3:2 (沈阳 33.7° 体系)</option>
+                <option value="1:2">1:2 (垂直向 63.4° 体系)</option>
+            </select>
+        </div>
+        <div class="dialog-buttons">
+            <button class="ribbon-btn-sm" data-close="modalNewCanvas" style="width:auto;padding:5px 14px;">取消</button>
+            <button class="ribbon-btn-sm" id="btnConfirmNewCanvas" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">创建画布</button>
+        </div>
+    </cgo-modal>
+
+    <!-- 2. 百科批量放站弹窗 -->
+    <cgo-modal id="modalBatchStation" title="百科 HTML 表格提取与批量放站" max-width="580px">
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;line-height:1.5;">
+            粘贴维基百科或百度百科线路词条中的「车站列表」HTML 表格源码，系统将自动清洗出中英文站名并按指定间距与走向批量排入画布。
+        </div>
+        <textarea class="form-textarea" id="batchHtmlInput" placeholder="在此粘贴 <table>...</table> 源码..."
+            style="height: 120px;"></textarea>
+        <div class="form-row">
+            <span class="form-label">所属线路:</span>
+            <select class="form-select" id="batchTargetLine"></select>
+        </div>
+        <div class="form-row">
+            <span class="form-label">排列方向:</span>
+            <select class="form-select" id="batchDirection">
+                <option value="horizontal">向右水平排列 (X+)</option>
+                <option value="vertical">向下垂直排列 (Y+)</option>
+                <option value="diagonal">斜向右下排列 (X+, Y+)</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <span class="form-label">站点步长:</span>
+            <input type="number" class="form-input" id="batchStepDistance" value="60" min="20" max="300" step="5">
+        </div>
+        <div id="batchPreviewStatus" style="font-size: 11px; color: var(--office-primary); font-weight: 600;"></div>
+        <div class="dialog-buttons">
+            <button class="ribbon-btn-sm" data-close="modalBatchStation" style="width:auto;padding:5px 14px;">取消</button>
+            <button class="ribbon-btn-sm" id="btnApplyBatchStation" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">批量放置</button>
+        </div>
+    </cgo-modal>
+
+    <!-- 3. 实际站间距管理弹窗 -->
+    <cgo-modal id="modalMileage" title="实际运营里程与站间距 (distances) 管理" max-width="620px">
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;line-height:1.5;">
+            按行录入区间实际运营里程（支持「起点站 终点站 里程(米)」、逐站里程或累计里程格式）。导出时将优先写入实际里程，未录入区间可按几何反算或留空占位。
+        </div>
+        <div class="form-row">
+            <span class="form-label">目标线路:</span>
+            <select class="form-select" id="mileageTargetLine"></select>
+            <span class="form-label" style="min-width:auto;margin-left:8px;">模式:</span>
+            <select class="form-select" id="mileageMode">
+                <option value="real">实际里程优先 (几何兜底)</option>
+                <option value="none">留空占位 (distances: [])</option>
+                <option value="calc">纯几何反算</option>
+            </select>
+        </div>
+        <textarea class="form-textarea" id="mileageRawInput" placeholder="苹果园 古城 1470&#10;古城 八角游乐园 1921..."
+            style="height: 160px; font-family: monospace;"></textarea>
+        <div id="mileageParseStatus" style="font-size: 11px; color: var(--office-primary);"></div>
+        <div class="dialog-buttons">
+            <button class="ribbon-btn-sm" data-close="modalMileage" style="width:auto;padding:5px 14px;">关闭</button>
+            <button class="ribbon-btn-sm" id="btnSaveMileage" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">保存站间距配置</button>
+        </div>
+    </cgo-modal>
+
+    <!-- 4. DeepSeek 视觉模型配置弹窗 -->
+    <cgo-modal id="modalDeepseekSettings" title="DeepSeek-Vision 视觉模型配置" max-width="520px">
+        <div style="background: rgba(0, 96, 152, 0.12); border: 1px solid rgba(0, 96, 152, 0.35); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.5; color: var(--text-secondary);">
+            <div style="font-weight: 600; color: #58a6ff; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="payment" size="13"></cgo-icon> 资费明细与官方计费说明</span>
+                <span style="background: #238636; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px;">纯前端无服务器中转</span>
+            </div>
+            <div>1. 官方计费：底层采用 DeepSeek 官方 <code>deepseek-v4-flash-vision-exp</code>，单次整网地图识别通常约 0.01 ~ 0.05 元，实际以 DeepSeek 账单为准。</div>
+            <div>2. 密钥安全：API Key 仅保存在浏览器本地 localStorage，由浏览器直连 DeepSeek 官方接口，绝不经由第三方服务器。</div>
+        </div>
+        <form id="formDeepseekConfig" onsubmit="return false;" style="margin:0;padding:0;">
+            <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true">
+            <div class="form-row">
+                <span class="form-label">API Key:</span>
+                <div style="display:flex;gap:6px;flex:1;">
+                    <input type="password" class="form-input" id="deepseekApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="new-password">
+                    <button type="button" class="ribbon-btn-sm" id="btnToggleApiKeyVis" style="width:32px;padding:0;display:flex;align-items:center;justify-content:center;" title="显示/隐藏密钥">
+                        <cgo-icon name="eye" size="14"></cgo-icon>
+                    </button>
+                </div>
+            </div>
+            <div class="form-row">
+                <span class="form-label">Base URL:</span>
+                <input type="text" class="form-input" id="deepseekBaseUrl" value="https://api.deepseek.com">
+            </div>
+            <div class="form-row">
+                <span class="form-label">模型名称:</span>
+                <input type="text" class="form-input" id="deepseekModel" value="deepseek-v4-flash-vision-exp">
+            </div>
+        </form>
+        <div id="deepseekStatusText" style="font-size:11px;min-height:18px;margin-top:6px;"></div>
+        <div class="dialog-buttons" style="display:flex;justify-content:space-between;align-items:center;">
+            <button class="ribbon-btn-sm" id="btnDeepseekClear" style="width:auto;padding:5px 12px;background:#30363d;color:#e6edf3;" title="清除本地保存的 Key">清除本地 Key</button>
+            <div style="display:flex;gap:8px;">
+                <button class="ribbon-btn-sm" id="btnDeepseekTest" style="width:auto;padding:5px 14px;">测试连接</button>
+                <button class="ribbon-btn-sm" id="btnDeepseekSave" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">保存配置</button>
+            </div>
+        </div>
+    </cgo-modal>
+
+    <!-- 5. 导出 OpenMap 城市工程包弹窗 -->
+    <cgo-modal id="modalExportPackage" title="导出 CGo OpenMap 标准城市工程包" max-width="560px">
+        <div class="form-row">
+            <span class="form-label">城市 ID:</span>
+            <input type="text" class="form-input" id="exportCityId" placeholder="例如: fuzhou, sydney">
+            <span class="form-label" style="min-width:auto;margin-left:8px;">中文名:</span>
+            <input type="text" class="form-input" id="exportCityName" placeholder="例如: 福州, 悉尼">
+        </div>
+        <div class="form-row">
+            <span class="form-label">主题色:</span>
+            <input type="text" class="form-input" id="exportThemeColor" value="#00263b">
+            <span class="form-label" style="min-width:auto;margin-left:8px;">线路前缀:</span>
+            <input type="text" class="form-input" id="exportLinePrefix" value="M">
+        </div>
+        <div class="form-row">
+            <span class="form-label">运营公司:</span>
+            <input type="text" class="form-input" id="exportCompany" placeholder="例如: 福州地铁">
+            <span class="form-label" style="min-width:auto;margin-left:8px;">米/像素:</span>
+            <input type="number" class="form-input" id="exportPxMeter" value="25" step="1">
+        </div>
+        <div id="exportValidationSummary" style="font-size:11px;padding:8px;background:var(--office-hover);border-radius:6px;margin-top:8px;"></div>
+        <div class="dialog-buttons">
+            <button class="ribbon-btn-sm" data-close="modalExportPackage" style="width:auto;padding:5px 14px;">取消</button>
+            <button class="ribbon-btn-sm" id="btnConfirmDownloadZip" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">打包下载 ZIP</button>
+        </div>
+    </cgo-modal>
+
+    <!-- =====================================================================
+         6. 模块加载脚本链 (按 Section 3.2 依赖顺序)
+         ===================================================================== -->
+    <!-- CGoUI Web Components -->
+    <script type="module" src="../core/cgo-ui.js?v=261022.223300"></script>
+
+    <!-- 共享底层算法与真源 -->
+    <script src="../core/path-geometry.js?v=261022.223300"></script>
+    <script src="../core/station-icons.js?v=261022.223300"></script>
+    <script src="../city/data.js?v=261022.223300"></script>
+
+    <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+
+    <!-- Core 核心数据与读写 -->
+    <script src="js/core/project-model.js"></script>
+    <script src="js/core/history-manager.js"></script>
+    <script src="js/core/city-project-io.js"></script>
+
+    <!-- Algorithms 纯算法层 -->
+    <script src="js/algorithms/segment-router.js"></script>
+    <script src="js/algorithms/data-sanitizer.js"></script>
+    <script src="js/algorithms/align-solver.js"></script>
+    <script src="js/algorithms/topology-tracer.js"></script>
+
+    <!-- Layers 图层与渲染控制器 -->
+    <script src="js/layers/viewport.js"></script>
+    <script src="js/layers/grid-layer.js"></script>
+    <script src="js/layers/ghost-transformer.js"></script>
+    <script src="js/layers/scattered-layer.js"></script>
+    <script src="js/layers/water-layer.js"></script>
+    <script src="js/layers/text-scattered-layer.js"></script>
+    <script src="js/layers/vector-route-layer.js"></script>
+    <script src="js/layers/not-open-layer.js"></script>
+    <script src="js/layers/virtual-connector-layer.js"></script>
+    <script src="js/layers/station-layer.js"></script>
+
+    <!-- Tools 生产力工具 -->
+    <script src="js/tools/pdf-vector-extractor.js"></script>
+    <script src="js/tools/deepseek-vision.js"></script>
+    <script src="js/tools/knowledge-matcher.js"></script>
+    <script src="js/tools/batch-station-tool.js"></script>
+    <script src="js/tools/mileage-manager.js"></script>
+    <script src="js/tools/bundle-exporter.js"></script>
+
+    <!-- Pipelines 业务工作流 -->
+    <script src="js/pipelines/pipeline-ingest.js"></script>
+    <script src="js/pipelines/pipeline-surgical.js"></script>
+    <script src="js/pipelines/pipeline-draw.js"></script>
+
+    <!-- UI 控制器与视图 -->
+    <script src="js/ui/ribbon-controller.js"></script>
+    <script src="js/ui/nav-tree-view.js"></script>
+    <script src="js/ui/inspector-view.js"></script>
+
+    <!-- 主入口集成脚本 -->
+    <script src="js/editor-app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,704 @@
+/**
+ * 开放地图编辑器 (OpenMap Editor) - 专用组件与检视面板样式
+ * 包含 8 方向文字轮盘、图层大纲树、表单组件与模态框
+ */
+
+/* ==========================================================================
+   1. 8 方向锚点轮盘组件 (.cgo-align-wheel) - Section 6 规划沉淀
+   ========================================================================== */
+.cgo-align-wheel-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    background: var(--office-hover);
+    border: 1px solid var(--office-border);
+    border-radius: 8px;
+}
+
+.cgo-align-wheel-label {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.cgo-align-wheel {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--card-bg, #ffffff);
+    border: 2px solid var(--office-border);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+    padding: 3px;
+    box-sizing: border-box;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.wheel-sector-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-light);
+    font-size: var(--font-size-2xs, 9px);
+    font-weight: 700;
+    transition: all var(--dur-fast) var(--ease-out);
+}
+
+.wheel-sector-btn cgo-icon {
+    pointer-events: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.wheel-sector-btn:hover {
+    background: var(--office-hover);
+    color: var(--text-main);
+    border-color: var(--office-border);
+}
+
+.wheel-sector-btn:active {
+    transform: scale(0.92);
+}
+
+.wheel-sector-btn.active {
+    background: var(--office-primary);
+    color: #ffffff;
+    border-color: var(--office-primary);
+    box-shadow: 0 0 6px rgba(0, 38, 59, 0.35);
+}
+
+[data-theme="dark"] .wheel-sector-btn.active {
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.wheel-center-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--office-primary);
+    pointer-events: none;
+}
+
+/* ==========================================================================
+   2. 检视器表单与折叠区 (Inspector Sections & Forms)
+   ========================================================================== */
+.inspector-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid var(--office-border);
+    padding-bottom: 12px;
+}
+
+.inspector-section:last-child {
+    border-bottom: none;
+}
+
+.inspector-section-title {
+    font-size: var(--font-size-base-sub, 12px);
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.form-label {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-light);
+    min-width: 64px;
+    flex-shrink: 0;
+}
+
+.form-input, .form-select, .form-textarea {
+    flex: 1;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-sm, 6px);
+    padding: 5px 9px;
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-main);
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color var(--dur-fast, 140ms) ease, box-shadow var(--dur-fast, 140ms) ease, background-color var(--dur-fast, 140ms) ease;
+}
+
+[data-theme='dark'] .form-input,
+[data-theme='dark'] .form-select,
+[data-theme='dark'] .form-textarea {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--text-main);
+}
+
+.form-select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 24px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23636f75' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 13px 13px;
+}
+
+[data-theme='dark'] .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a0b0b9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 3px rgba(0, 96, 152, 0.16);
+}
+
+[data-theme='dark'] .form-input:focus,
+[data-theme='dark'] .form-select:focus,
+[data-theme='dark'] .form-textarea:focus {
+    border-color: var(--primary-color, #4dabf7);
+    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.22);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 48px;
+}
+
+.btn-group-toggle {
+    display: inline-flex;
+    border: 1px solid var(--office-border);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--office-hover);
+}
+
+.toggle-btn {
+    border: none;
+    background: transparent;
+    padding: 3px 8px;
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all var(--dur-fast) ease;
+}
+
+.toggle-btn.active {
+    background: var(--office-primary);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   3. 左侧大纲树状图 (Topology & Layers Tree Explorer)
+   ========================================================================== */
+.nav-tree-search-bar {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--office-border);
+    margin-bottom: 4px;
+    flex-shrink: 0;
+}
+
+.tree-search-input {
+    width: 100%;
+    height: 24px;
+    padding: 0 22px 0 24px;
+    border: 1px solid var(--office-border);
+    border-radius: 4px;
+    font-size: var(--font-size-xs, 11px);
+    background: var(--office-hover);
+    color: var(--text-main);
+    outline: none;
+    transition: all var(--dur-fast) ease;
+    box-sizing: border-box;
+}
+
+.tree-search-input:focus {
+    border-color: var(--office-primary);
+    background: var(--card-bg, #ffffff);
+    box-shadow: 0 0 0 2px var(--office-primary-light);
+}
+
+.tree-search-icon {
+    position: absolute;
+    left: 14px;
+    pointer-events: none;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+}
+
+.tree-search-clear {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-light);
+    padding: 2px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+}
+
+.tree-search-clear:hover {
+    color: var(--text-main);
+    background: var(--office-hover);
+}
+
+.nav-tree-quick-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 8px 6px 8px;
+    border-bottom: 1px dashed var(--office-border);
+    margin-bottom: 6px;
+    flex-shrink: 0;
+}
+
+.tree-quick-stat {
+    font-size: 10px;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.tree-quick-btns {
+    display: flex;
+    gap: 2px;
+}
+
+.tree-quick-btn {
+    border: none;
+    background: transparent;
+    padding: 2px 4px;
+    border-radius: 3px;
+    color: var(--text-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--dur-fast) ease;
+}
+
+.tree-quick-btn:hover {
+    background: var(--office-hover);
+    color: var(--text-main);
+}
+
+.nav-tree-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.nav-tree-branch {
+    margin-bottom: 3px;
+}
+
+.nav-tree-branch-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: var(--font-size-xs, 11px);
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color var(--dur-fast) ease;
+    gap: 4px;
+}
+
+.nav-tree-branch-header:hover {
+    background: var(--office-hover);
+}
+
+.tree-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: var(--text-light);
+    transition: transform var(--dur-fast) cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.nav-tree-branch.expanded > .nav-tree-branch-header .tree-chevron {
+    transform: rotate(90deg);
+}
+
+.tree-branch-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-children {
+    display: none;
+    position: relative;
+    padding-left: 14px;
+    margin-left: 6px;
+    border-left: 1px dashed var(--office-border);
+}
+
+.nav-tree-branch.expanded > .tree-children {
+    display: block;
+}
+
+.tree-leaf-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3.5px 6px;
+    border-radius: 4px;
+    font-size: var(--font-size-xs, 11px);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all var(--dur-fast) ease;
+    gap: 6px;
+    position: relative;
+    user-select: none;
+    margin-top: 1px;
+}
+
+.tree-leaf-item:hover {
+    background: var(--office-hover);
+}
+
+.tree-leaf-item.active {
+    background: var(--office-primary-light);
+    color: var(--office-primary);
+    font-weight: 600;
+}
+
+.tree-leaf-item.active::before {
+    content: '';
+    position: absolute;
+    left: -15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 12px;
+    background: var(--office-primary);
+    border-radius: 2px;
+}
+
+.tree-line-swatch {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+.tree-leaf-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.tree-leaf-sub {
+    font-size: 10px;
+    color: var(--text-light);
+    font-weight: normal;
+}
+
+.tree-leaf-badge {
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: var(--office-hover);
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+.tree-leaf-item.active .tree-leaf-badge {
+    background: rgba(0, 120, 212, 0.15);
+    color: var(--office-primary);
+}
+
+.tree-match {
+    background: rgba(255, 213, 79, 0.4);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+.tree-empty-hint {
+    font-size: 10px;
+    color: var(--text-light);
+    padding: 4px 6px;
+    font-style: italic;
+}
+
+.nav-item-icon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.nav-item-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-item-badge {
+    font-size: var(--font-size-2xs, 9px);
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--office-hover);
+    color: var(--text-light);
+}
+
+/* ==========================================================================
+   4. CGoUI 原生 <cgo-modal> 弹窗内容排版微调 (消灭私有 Modal 与 Toast 冗余)
+   ========================================================================== */
+cgo-modal .form-row {
+    margin-bottom: 10px;
+}
+
+cgo-modal .dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+/* ==========================================================================
+   6. 画布与主地图渲染规格对齐 (100% WYSIWYG Standard Alignment with main.html)
+   ========================================================================== */
+
+/* 画布背景色统一为地图基准底色 --map-bg，确保外描边切线与底色浑然一体防粘连 */
+.workbench-canvas-viewport,
+#editorSvg {
+    background-color: var(--map-bg, #ffffff) !important;
+}
+
+/* 线路双层平滑描边与交互规范 */
+.line-visual-outer,
+.line-visual-inner {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+    transition: stroke var(--dur-fast, 140ms) ease;
+}
+
+.line-visual-outer {
+    stroke: var(--map-bg, #ffffff);
+    stroke-width: 7px;
+}
+
+.line-visual-inner {
+    stroke-width: 5.4px;
+}
+
+.line-visual-overlay {
+    fill: none;
+    stroke-linecap: butt;
+    pointer-events: none;
+}
+
+.line-visual-notopen {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+.line-interaction {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 15px;
+    cursor: pointer;
+    pointer-events: stroke;
+}
+
+/* 车站文字排版规范 (严格对齐主地图 main.html / css/style.css) */
+foreignObject {
+    overflow: visible;
+}
+
+.label-group {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: transform 0.2s;
+}
+
+.stacn {
+    font-size: 11.5px;
+    color: var(--text-main, #00263b) !important;
+    display: block;
+    line-height: 13.8px;
+    font-weight: 500;
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    paint-order: stroke fill;
+    white-space: nowrap;
+}
+
+.staen {
+    font-size: 6.65px;
+    color: var(--text-main, #00263b) !important;
+    display: block;
+    margin-top: 0;
+    line-height: 6.35px;
+    white-space: nowrap;
+    font-family: 'Arimo', 'Arial', sans-serif;
+    font-weight: 500;
+    paint-order: stroke fill;
+}
+
+.label-group.type-no .stacn,
+.label-group.type-no .staen {
+    color: var(--not-open-color, #94a3b8) !important;
+}
+
+/* 选中高亮态 */
+.label-group.active {
+    z-index: 35;
+}
+
+.label-group.active .stacn {
+    color: #d0021b !important;
+    transform: scale(1.1);
+    transform-origin: inherit;
+    font-size: 15px;
+    line-height: 15px;
+    font-weight: 700;
+    -webkit-text-stroke: var(--sta-stroke-width-cn, 1px) var(--map-bg, #ffffff);
+}
+
+.label-group.active .staen {
+    color: #d0021b !important;
+    font-size: 9px;
+    line-height: 8px;
+    font-weight: 700;
+    -webkit-text-stroke: var(--sta-stroke-width-en, 0.5px) var(--map-bg, #ffffff);
+}
+
+/* ==========================================================================
+   7. 网格与坐标刻度图层规范 (Grid & Coordinate Axes Layer)
+   ========================================================================== */
+#gridLayer {
+    pointer-events: none;
+    user-select: none;
+}
+
+.grid-canvas-boundary {
+    fill: none;
+    stroke: var(--office-border, #cbd5e1);
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+}
+
+.grid-minor-path {
+    fill: none;
+    stroke: var(--office-border, #94a3b8);
+    opacity: 0.22;
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+}
+
+.grid-major-path {
+    fill: none;
+    stroke: var(--office-border, #64748b);
+    opacity: 0.45;
+    stroke-width: 1.25px;
+    vector-effect: non-scaling-stroke;
+}
+
+.grid-axis-line {
+    stroke-width: 1.6px;
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: square;
+}
+
+.grid-axis-line.x-axis {
+    stroke: #ef4444;
+    opacity: 0.85;
+}
+
+.grid-axis-line.y-axis {
+    stroke: #10b981;
+    opacity: 0.85;
+}
+
+.grid-axis-text {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+    pointer-events: none;
+    letter-spacing: -0.01em;
+}
+
+.grid-axis-text.x-axis {
+    fill: #ef4444;
+    font-weight: 700;
+}
+
+.grid-axis-text.y-axis {
+    fill: #10b981;
+    font-weight: 700;
+}
+
+.grid-axis-text.tick {
+    fill: var(--text-light, #64748b);
+    font-weight: 500;
+}
+
+.grid-axis-origin-point {
+    fill: #ef4444;
+}
+
+[data-theme="dark"] .grid-minor-path {
+    stroke: #475569;
+    opacity: 0.35;
+}
+
+[data-theme="dark"] .grid-major-path {
+    stroke: #64748b;
+    opacity: 0.65;
+}
+
+[data-theme="dark"] .grid-axis-text.tick {
+    fill: #94a3b8;
+}
+
+
