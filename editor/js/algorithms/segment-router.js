@@ -1,11 +1,12 @@
-/**
- * 开放地图编辑器 (OpenMap Editor) - 算法层: 走线与折角几何路由器
- * 纯函数实现：负责 135° 折角、90° 直角、斜 90°、比例斜率折点反算与自动选型判定
- */
-
-window.OpenMapEditor = window.OpenMapEditor || {};
-
-window.OpenMapEditor.SegmentRouter = (function () {
+(function (root, factory) {
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = factory();
+    } else {
+        root.OpenMapEditor = root.OpenMapEditor || {};
+        root.OpenMapEditor.SegmentRouter = factory();
+        root.SegmentRouter = root.OpenMapEditor.SegmentRouter;
+    }
+})(typeof window !== 'undefined' ? window : globalThis, function () {
     'use strict';
 
     var AUTO = {
@@ -245,6 +246,89 @@ window.OpenMapEditor.SegmentRouter = (function () {
         return [{ x: round2(a.x), y: round2(a.y) }, { x: round2(b.x), y: round2(b.y) }];
     }
 
+    /**
+     * 端点移动时的正交导轨协同推移求解
+     * 保持 90°、135°、水平/垂直连线形态不畸变
+     * @param {Array<{x:number, y:number, nid?:string, r?:number}>} pts 折线点阵
+     * @param {number} draggedIdx 被拖动的端点下标 (0 或 pts.length - 1)
+     * @param {{x:number, y:number}} oldPos 移动前坐标
+     * @param {{x:number, y:number}} newPos 移动后目标坐标
+     * @param {string} [segType] 走线类型 (seg90, seg135, seg90d, segaxis...)
+     * @param {Object} [slopeRatio] 斜率比例 (默认 {m:1, n:1})
+     * @returns {boolean} 是否成功应用了协同推移
+     */
+    function preserveOrthogonalShift(pts, draggedIdx, oldPos, newPos, segType, slopeRatio) {
+        if (!pts || pts.length < 3) return false;
+        var dx = newPos.x - oldPos.x;
+        var dy = newPos.y - oldPos.y;
+        if (Math.abs(dx) < 1e-4 && Math.abs(dy) < 1e-4) return false;
+
+        // 若为标准 3 点折角线段且指定了 routed 类型，基于新端点重算中间折角并保持原有折角朝向
+        if (pts.length === 3 && segType && segType !== 'segaxis') {
+            var startPt = draggedIdx === 0 ? newPos : pts[0];
+            var endPt = draggedIdx === 2 ? newPos : pts[2];
+
+            if (segType === 'seg90') {
+                var firstLegWasHoriz = Math.abs(pts[0].y - pts[1].y) <= AUTO.axisTol;
+                var reRouted90 = buildRectPath(startPt, endPt, firstLegWasHoriz ? 'horizontal' : 'vertical');
+                if (reRouted90 && reRouted90.length === 3) {
+                    pts[1].x = reRouted90[1].x;
+                    pts[1].y = reRouted90[1].y;
+                    return true;
+                }
+            } else if (segType === 'seg135') {
+                var firstLegWasDiag = Math.abs(Math.abs(pts[0].x - pts[1].x) - Math.abs(pts[0].y - pts[1].y)) <= AUTO.axisTol;
+                var reRouted135 = buildDiagPath(startPt, endPt, firstLegWasDiag ? 'diagonal' : 'axis');
+                if (reRouted135 && reRouted135.length === 3) {
+                    pts[1].x = reRouted135[1].x;
+                    pts[1].y = reRouted135[1].y;
+                    return true;
+                }
+            } else {
+                var reRouted = routeBetweenByType(startPt, endPt, segType, false, slopeRatio);
+                if (reRouted && reRouted.length === 3) {
+                    pts[1].x = reRouted[1].x;
+                    pts[1].y = reRouted[1].y;
+                    return true;
+                }
+            }
+        }
+
+        // 通用多折点正交保持：检测相邻连线形态
+        var adjIdx = (draggedIdx === 0) ? 1 : pts.length - 2;
+        var nextIdx = (draggedIdx === 0) ? 2 : pts.length - 3;
+        var adj = pts[adjIdx];
+        if (adj && !adj.nid) {
+            var isHoriz = Math.abs(oldPos.y - adj.y) <= AUTO.axisTol;
+            var isVert = Math.abs(oldPos.x - adj.x) <= AUTO.axisTol;
+            var isDiag = Math.abs(Math.abs(oldPos.x - adj.x) - Math.abs(oldPos.y - adj.y)) <= AUTO.axisTol;
+
+            if (isHoriz && !isVert) {
+                adj.y = newPos.y;
+                return true;
+            } else if (isVert && !isHoriz) {
+                adj.x = newPos.x;
+                return true;
+            } else if (isDiag && pts[nextIdx]) {
+                var next = pts[nextIdx];
+                var nextIsHoriz = Math.abs(adj.y - next.y) <= AUTO.axisTol;
+                var nextIsVert = Math.abs(adj.x - next.x) <= AUTO.axisTol;
+                if (nextIsHoriz) {
+                    var signX = (oldPos.x >= adj.x) ? 1 : -1;
+                    var diagLen = Math.abs(newPos.y - adj.y);
+                    adj.x = newPos.x - signX * diagLen;
+                    return true;
+                } else if (nextIsVert) {
+                    var signY = (oldPos.y >= adj.y) ? 1 : -1;
+                    var diagLen2 = Math.abs(newPos.x - adj.x);
+                    adj.y = newPos.y - signY * diagLen2;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     return {
         buildRectPath: buildRectPath,
         pickRectPath: pickRectPath,
@@ -258,9 +342,7 @@ window.OpenMapEditor.SegmentRouter = (function () {
         flippedPoints: flippedPoints,
         flipSegmentCorner: flipSegmentCorner,
         autoRouteBetween: autoRouteBetween,
-        routeBetweenByType: routeBetweenByType
+        routeBetweenByType: routeBetweenByType,
+        preserveOrthogonalShift: preserveOrthogonalShift
     };
-})();
-
-// 保留全局别名兼容
-window.SegmentRouter = window.OpenMapEditor.SegmentRouter;
+});

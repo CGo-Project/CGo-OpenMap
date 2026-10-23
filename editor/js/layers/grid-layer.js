@@ -309,13 +309,100 @@ window.OpenMapEditor.GridLayer = (function () {
         dom.layer.appendChild(frag);
     }
 
+    /**
+     * 渲染智能对齐参考线 (Smart Alignment Guides)
+     * @param {Array<{type:'h'|'v', pos:number, from?:number, to?:number, label?:string}>} guides
+     * @param {{width:number, height:number}} [canvasSize]
+     */
+    function renderSmartGuides(guides, canvasSize) {
+        var handleLayer = document.getElementById('handleLayer');
+        if (!handleLayer) return;
+
+        var el = document.getElementById('editorSmartGuides');
+        if (!guides || guides.length === 0) {
+            if (el) el.remove();
+            return;
+        }
+
+        if (!el) {
+            el = document.createElementNS(NS, 'g');
+            el.id = 'editorSmartGuides';
+            el.setAttribute('pointer-events', 'none');
+            handleLayer.appendChild(el);
+        }
+        el.innerHTML = '';
+
+        var cw = (canvasSize && canvasSize.width) || (state.canvasSize && state.canvasSize.width) || 2000;
+        var ch = (canvasSize && canvasSize.height) || (state.canvasSize && state.canvasSize.height) || 1500;
+
+        guides.forEach(function (g) {
+            var guideG = document.createElementNS(NS, 'g');
+            guideG.setAttribute('class', 'smart-guide-item');
+
+            var line = document.createElementNS(NS, 'line');
+            line.setAttribute('stroke', '#0284c7');
+            line.setAttribute('stroke-width', '1.2');
+            line.setAttribute('stroke-dasharray', '4,3');
+            line.setAttribute('opacity', '0.85');
+
+            if (g.type === 'v') {
+                line.setAttribute('x1', String(g.pos));
+                line.setAttribute('x2', String(g.pos));
+                line.setAttribute('y1', String(g.from !== undefined ? g.from : 0));
+                line.setAttribute('y2', String(g.to !== undefined ? g.to : ch));
+            } else {
+                line.setAttribute('y1', String(g.pos));
+                line.setAttribute('y2', String(g.pos));
+                line.setAttribute('x1', String(g.from !== undefined ? g.from : 0));
+                line.setAttribute('x2', String(g.to !== undefined ? g.to : cw));
+            }
+            guideG.appendChild(line);
+
+            if (g.label) {
+                var badgeG = document.createElementNS(NS, 'g');
+                var bx = g.type === 'v' ? g.pos + 6 : (g.from !== undefined ? g.from + 10 : 20);
+                var by = g.type === 'v' ? (g.from !== undefined ? g.from + 16 : 20) : g.pos - 6;
+
+                var rect = document.createElementNS(NS, 'rect');
+                rect.setAttribute('x', String(bx - 3));
+                rect.setAttribute('y', String(by - 10));
+                rect.setAttribute('width', String(g.label.length * 6.5 + 8));
+                rect.setAttribute('height', '14');
+                rect.setAttribute('rx', '3');
+                rect.setAttribute('fill', '#0284c7');
+                rect.setAttribute('opacity', '0.9');
+
+                var txt = document.createElementNS(NS, 'text');
+                txt.setAttribute('x', String(bx + 1));
+                txt.setAttribute('y', String(by));
+                txt.setAttribute('fill', '#ffffff');
+                txt.setAttribute('font-size', '9.5');
+                txt.setAttribute('font-family', 'var(--cgo-font-mono, monospace)');
+                txt.textContent = g.label;
+
+                badgeG.appendChild(rect);
+                badgeG.appendChild(txt);
+                guideG.appendChild(badgeG);
+            }
+
+            el.appendChild(guideG);
+        });
+    }
+
+    function clearSmartGuides() {
+        var el = document.getElementById('editorSmartGuides');
+        if (el) el.remove();
+    }
+
     return {
         init: init,
         render: render,
         setVisible: setVisible,
         isVisible: isVisible,
         setGridSize: setGridSize,
-        getGridSize: getGridSize
+        getGridSize: getGridSize,
+        renderSmartGuides: renderSmartGuides,
+        clearSmartGuides: clearSmartGuides
     };
 })();
 

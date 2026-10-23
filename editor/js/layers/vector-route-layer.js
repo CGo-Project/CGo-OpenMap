@@ -177,19 +177,79 @@ window.OpenMapEditor.VectorRouteLayer = (function () {
             pathHit.style.cursor = 'pointer';
             interactionLayer.appendChild(pathHit);
 
-            // 7. 选中的线段渲染折点控制手柄
+            // 7. 选中的线段渲染折点控制手柄与中点添加手柄
             if (isSelected && dom.handleLayer) {
+                var selPtIdx = (opt.selectedPointIdx !== undefined && opt.selectedPointIdx !== null) ? Number(opt.selectedPointIdx) : -1;
+
+                // 7.1 先渲染各线段中点添加手柄 (Midpoint Add Handle)
+                for (var mi = 0; mi < pts.length - 1; mi++) {
+                    var pA = pts[mi], pB = pts[mi + 1];
+                    var mx = (pA.x + pB.x) / 2;
+                    var my = (pA.y + pB.y) / 2;
+
+                    var midGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    midGroup.setAttribute('class', 'segment-midpoint-handle');
+                    midGroup.setAttribute('data-seg-id', seg.id);
+                    midGroup.setAttribute('data-insert-after', String(mi));
+                    midGroup.style.cursor = 'pointer';
+
+                    var midCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    midCircle.setAttribute('cx', String(mx));
+                    midCircle.setAttribute('cy', String(my));
+                    midCircle.setAttribute('r', '4');
+                    midCircle.setAttribute('fill', '#ffffff');
+                    midCircle.setAttribute('stroke', '#0284c7');
+                    midCircle.setAttribute('stroke-width', '1.5');
+                    midCircle.setAttribute('opacity', '0.85');
+
+                    var midDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    midDot.setAttribute('cx', String(mx));
+                    midDot.setAttribute('cy', String(my));
+                    midDot.setAttribute('r', '1.5');
+                    midDot.setAttribute('fill', '#0284c7');
+
+                    var titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                    titleEl.textContent = '点击在中段增加折点 (快捷增点)';
+                    midGroup.appendChild(titleEl);
+                    midGroup.appendChild(midCircle);
+                    midGroup.appendChild(midDot);
+                    dom.handleLayer.appendChild(midGroup);
+                }
+
+                // 7.2 渲染所有折点与端点控制手柄 (Vertex Handles)
                 pts.forEach(function (p, pIdx) {
+                    var isPtActive = (pIdx === selPtIdx);
+
+                    if (isPtActive) {
+                        var activeHalo = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        activeHalo.setAttribute('cx', p.x);
+                        activeHalo.setAttribute('cy', p.y);
+                        activeHalo.setAttribute('r', '9');
+                        activeHalo.setAttribute('fill', 'none');
+                        activeHalo.setAttribute('stroke', '#f59e0b');
+                        activeHalo.setAttribute('stroke-width', '1.5');
+                        activeHalo.setAttribute('stroke-dasharray', '2,2');
+                        activeHalo.setAttribute('pointer-events', 'none');
+                        dom.handleLayer.appendChild(activeHalo);
+                    }
+
                     var handle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                     handle.setAttribute('cx', p.x);
                     handle.setAttribute('cy', p.y);
-                    handle.setAttribute('r', pIdx === 0 || pIdx === pts.length - 1 ? '5' : '4');
-                    handle.setAttribute('fill', p.nid ? '#10b981' : '#ffffff');
-                    handle.setAttribute('stroke', '#0284c7');
+                    handle.setAttribute('class', 'segment-point-handle');
+                    handle.setAttribute('r', isPtActive ? '6' : (p.nid || pIdx === 0 || pIdx === pts.length - 1 ? '5' : '4.5'));
+                    handle.setAttribute('fill', isPtActive ? '#f59e0b' : (p.nid ? '#10b981' : '#ffffff'));
+                    handle.setAttribute('stroke', isPtActive ? '#b45309' : (p.nid ? '#047857' : '#0284c7'));
                     handle.setAttribute('stroke-width', '2');
                     handle.setAttribute('data-seg-id', seg.id);
-                    handle.setAttribute('data-point-idx', pIdx);
+                    handle.setAttribute('data-point-idx', String(pIdx));
                     handle.style.cursor = 'grab';
+
+                    var pTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                    pTitle.textContent = (p.nid ? ('车站折点: ' + p.nid) : ('拐角折点 #' + pIdx + (p.r !== undefined ? ' (r:' + p.r + ')' : ''))) +
+                        '\n可拖拽移动；按 Delete 可删除折点拉直';
+                    handle.appendChild(pTitle);
+
                     dom.handleLayer.appendChild(handle);
                 });
             }

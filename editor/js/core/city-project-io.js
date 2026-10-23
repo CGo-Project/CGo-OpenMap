@@ -527,7 +527,15 @@ window.CityProjectIO = (function () {
         const append = ops.append || [];
 
         const byKey = new Map();
-        entries.forEach(e => byKey.set(String(e.key != null ? e.key : e.index), e));
+        entries.forEach(e => {
+            byKey.set(String(e.key != null ? e.key : e.index), e);
+            if (e.raw && e.raw.charCodeAt(0) === 123) {
+                const mId = e.raw.match(/["']?id["']?\s*:\s*["']([^"']+)["']/);
+                if (mId && mId[1]) {
+                    byKey.set(mId[1], e);
+                }
+            }
+        });
 
         // 参考风格：取第一条既有条目
         const sample = entries.length ? entries[0] : null;

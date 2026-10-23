@@ -40,6 +40,10 @@ new Function(fs.readFileSync(path.join(ROOT, 'editor/js/algorithms/segment-route
 const SegmentRouter = global.window.SegmentRouter;
 new Function(fs.readFileSync(path.join(ROOT, 'editor/js/tools/batch-station-tool.js'), 'utf8'))();
 const BatchStationTool = global.window.BatchStationTool;
+new Function(fs.readFileSync(path.join(ROOT, 'editor/js/core/project-model.js'), 'utf8'))();
+const ProjectModel = global.window.OpenMapEditor.ProjectModel;
+const PipelineDraw = require(path.join(ROOT, 'editor/js/pipelines/pipeline-draw.js'));
+const PipelineSurgical = require(path.join(ROOT, 'editor/js/pipelines/pipeline-surgical.js'));
 
 let failed = 0;
 let passed = 0;
@@ -821,6 +825,363 @@ section('百科表格提取与站名规范化 (BatchStationTool)');
     const sampleText = '1. 苹果园 (Pingguoyuan)\n2. 古城\n3. 八角游乐园';
     const parsedText = BatchStationTool.parseStationList(sampleText);
     check(parsedText.length === 3 && parsedText[0].cn === '苹果园' && parsedText[0].en === 'Pingguoyuan', '从纯文本列表正确解析站名与括号英文');
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// 站线拓扑联动与在线插站 (PipelineDraw & Station-Route Topology) 断言
+// ────────────────────────────────────────────────────────────────────────────
+section('站线拓扑联动与在线插站 (PipelineDraw)');
+{
+    const proj = ProjectModel.createProject(2000, 1500);
+    proj.nodes = {
+        'sta_1': { id: 'sta_1', x: 100, y: 100, cn: '一号站', en: 'Station 1', type: 'dot' },
+        'sta_2': { id: 'sta_2', x: 300, y: 100, cn: '二号站', en: 'Station 2', type: 'dot' }
+    };
+    proj.lines = [
+        { id: 'L1', name: '1号线', color: '#c23531', stationIds: ['sta_1', 'sta_2'], distances: [1500] }
+    ];
+    proj.segments = [
+        {
+            id: 'seg_1',
+            lineId: 'L1',
+            type: 'segaxis',
+            points: [
+                { x: 100, y: 100, nid: 'sta_1' },
+                { x: 300, y: 100, nid: 'sta_2' }
+            ]
+        }
+    ];
+
+    // 1. 最近投影计算与阈值测试
+    const snapHit = PipelineDraw.findNearestLineProjection(proj, { x: 200, y: 108 }, 20);
+    check(snapHit !== null, '在吸附阈值内成功命中折线');
+    check(snapHit && snapHit.projection.x === 200 && snapHit.projection.y === 100, '点精确投影到水平线段上 (200, 100)');
+    check(snapHit && Math.abs(snapHit.distance - 8) < 1e-4, '投影距离计算准确为 8px');
+
+    const snapMiss = PipelineDraw.findNearestLineProjection(proj, { x: 200, y: 150 }, 20);
+    check(snapMiss === null, '超出 20px 阈值时正确返回 null 不误吸附');
+
+    // 2. 在线智能插站拓扑计算
+    const inserted = PipelineDraw.insertStationOnLine(proj, snapHit, { cn: '中间新站', en: 'Mid Station' });
+    check(inserted && inserted.createdId && proj.nodes[inserted.createdId], '成功生成新车站节点并在 nodes 字典中登记');
+    check(proj.lines[0].stationIds.length === 3, '1号线 stationIds 长度扩充为 3');
+    check(proj.lines[0].stationIds[0] === 'sta_1' && proj.lines[0].stationIds[1] === inserted.createdId && proj.lines[0].stationIds[2] === 'sta_2', '新车站正确插入在 sta_1 与 sta_2 之间');
+    check(proj.lines[0].distances.length === 2, 'distances 数组长度与 stationIds 保持严格 n-1 对齐');
+    check(proj.segments[0].points.length === 3 && proj.segments[0].points[1].nid === inserted.createdId, '折线点阵无损切分并插入新车站折点');
+
+    // 3. 多分支线路插站测试 (hasbranch)
+    const branchProj = ProjectModel.createProject(2000, 1500);
+    branchProj.nodes = {
+        'b_1': { id: 'b_1', x: 50, y: 50, cn: '分支首站', type: 'dot' },
+        'b_2': { id: 'b_2', x: 250, y: 50, cn: '分支末站', type: 'dot' }
+    };
+    branchProj.lines = [
+        { id: 'LB', name: '分支线', hasbranch: true, 'stationIds-way1': ['b_1', 'b_2'] }
+    ];
+    branchProj.segments = [
+        {
+            id: 'seg_b1',
+            lineId: 'LB',
+            branchKey: 'pathPoints-branch1',
+            points: [
+                { x: 50, y: 50, nid: 'b_1' },
+                { x: 250, y: 50, nid: 'b_2' }
+            ]
+        }
+    ];
+    const bSnap = PipelineDraw.findNearestLineProjection(branchProj, { x: 150, y: 52 }, 15);
+    const bInserted = PipelineDraw.insertStationOnLine(branchProj, bSnap, { cn: '分支中间站' });
+    check(bInserted && branchProj.lines[0]['stationIds-way1'][1] === bInserted.createdId, '分支线路 stationIds-way1 正确插入新站 ID');
+
+    // 4. 站序微调 (上移/下移)
+    const stIds = proj.lines[0].stationIds;
+    const midId = stIds[1];
+    const temp0 = stIds[1]; stIds[1] = stIds[0]; stIds[0] = temp0;
+    check(proj.lines[0].stationIds[0] === midId, '站序上移成功');
+
+    // 5. 拓扑防断连自愈与平滑摘除
+    const toDeleteId = midId;
+    proj.lines.forEach(l => {
+        ['stationIds'].forEach(k => {
+            const idx = l[k].indexOf(toDeleteId);
+            if (idx !== -1) {
+                l[k].splice(idx, 1);
+                if (l.distances && l.distances.length >= l[k].length) l.distances.splice(idx, 1);
+            }
+        });
+    });
+    proj.segments[0].points = proj.segments[0].points.filter(p => p.nid !== toDeleteId);
+    delete proj.nodes[toDeleteId];
+    check(!proj.nodes[toDeleteId], '车站节点从 nodes 字典中删除');
+    check(proj.lines[0].stationIds.indexOf(toDeleteId) === -1 && proj.lines[0].stationIds.length === 2, '车站平滑从线路 stationIds 中摘除，无孤儿悬空 ID');
+    check(proj.lines[0].distances.length === 1, '自愈后 distances 仍严格保持 stationIds.length - 1');
+}
+
+// ============================================================================
+// 十三、Milestone 2 折点精调模式与正交协同推移 (preserveOrthogonalShift)
+// ============================================================================
+section('Milestone 2 折点精调与正交协同推移');
+{
+    // 1. preserveOrthogonalShift - 90度走线端点协同推移
+    const pts90 = [
+        { x: 0, y: 0, nid: 'n1' },
+        { x: 100, y: 0 },
+        { x: 100, y: 100, nid: 'n2' }
+    ];
+    const shifted90 = SegmentRouter.preserveOrthogonalShift(
+        pts90,
+        2,
+        { x: 100, y: 100 },
+        { x: 120, y: 150 },
+        'seg90'
+    );
+    check(shifted90, '90° 走线应用正交协同推移返回 true');
+    check(pts90[1].x === 120 || pts90[1].y === 0, '90° 走线中间折点协同移动，保持正交对齐');
+
+    // 2. preserveOrthogonalShift - 135度走线端点协同推移
+    const pts135 = [
+        { x: 0, y: 0, nid: 'n1' },
+        { x: 60, y: 60 },
+        { x: 160, y: 60, nid: 'n2' }
+    ];
+    const shifted135 = SegmentRouter.preserveOrthogonalShift(
+        pts135,
+        2,
+        { x: 160, y: 60 },
+        { x: 180, y: 80 },
+        'seg135'
+    );
+    check(shifted135, '135° 走线协同推移返回 true');
+
+    // 3. 中间折点新增与圆角半径控制
+    const segSample = {
+        id: 'seg_corner_test',
+        points: [
+            { x: 0, y: 0, nid: 's1' },
+            { x: 100, y: 0 },
+            { x: 100, y: 100, nid: 's2' }
+        ]
+    };
+    const midX = Math.round((segSample.points[0].x + segSample.points[1].x) / 2);
+    const midY = Math.round((segSample.points[0].y + segSample.points[1].y) / 2);
+    segSample.points.splice(1, 0, { x: midX, y: midY, r: 8 });
+    check(segSample.points.length === 4, '中点添加手柄成功插入新折点');
+    check(segSample.points[1].r === 8, '折点成功赋予紧凑圆角半径 (r: 8)');
+
+    // 4. 几何引擎对独立折点 r 的解析
+    const G = require(path.join(ROOT, 'core/path-geometry.js'));
+    const pathWithR = G.generateRoundedPath(segSample.points);
+    check(typeof pathWithR === 'string' && pathWithR.startsWith('M'), 'generateRoundedPath 成功基于指定半径生成平滑 SVG path');
+
+    // 5. 严格直角 (r: 0)
+    segSample.points[1].r = 0;
+    const pathSharp = G.generateRoundedPath(segSample.points);
+    check(pathSharp.includes('L 50 0'), 'r:0 时生成严格直角无圆弧切线');
+
+    // 6. 折点删除拉直
+    segSample.points.splice(1, 1);
+    check(segSample.points.length === 3, '删除折点后点阵平滑拉直恢复 3 点');
+}
+
+// ============================================================================
+// 十四、Milestone 3 多选框选与智能对齐参考线 (Box Select & Smart Guides)
+// ============================================================================
+section('Milestone 3 多选框选与智能对齐参考线');
+{
+    // 1. 视口框选相交测试
+    const mockNodes = {
+        'n_in1': { x: 50, y: 50, cn: '站A' },
+        'n_in2': { x: 80, y: 70, cn: '站B' },
+        'n_out': { x: 200, y: 200, cn: '站C' }
+    };
+    const box = { minX: 40, minY: 40, maxX: 100, maxY: 80 };
+    const selected = Object.keys(mockNodes).filter(nid => {
+        const n = mockNodes[nid];
+        return n.x >= box.minX && n.x <= box.maxX && n.y >= box.minY && n.y <= box.maxY;
+    });
+    check(selected.length === 2 && selected.includes('n_in1') && selected.includes('n_in2') && !selected.includes('n_out'),
+        '框选矩形精准命中框内 2 座车站，排除框外车站');
+
+    // 2. 多选包围盒 (Bounding Box) 计算
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    selected.forEach(nid => {
+        const n = mockNodes[nid];
+        if (n.x < minX) minX = n.x;
+        if (n.x > maxX) maxX = n.x;
+        if (n.y < minY) minY = n.y;
+        if (n.y > maxY) maxY = n.y;
+    });
+    check(minX === 50 && maxX === 80 && minY === 50 && maxY === 70, '多选集合外接包围盒尺寸计算精确 (30×20)');
+
+    // 3. 批量整体平移与折线端点协同
+    const mockSegments = [
+        { id: 'seg1', points: [{ x: 50, y: 50, nid: 'n_in1' }, { x: 80, y: 70, nid: 'n_in2' }] },
+        { id: 'seg2', points: [{ x: 80, y: 70, nid: 'n_in2' }, { x: 200, y: 200, nid: 'n_out' }] }
+    ];
+    const dx = 15, dy = -10;
+    selected.forEach(nid => {
+        mockNodes[nid].x += dx;
+        mockNodes[nid].y += dy;
+    });
+    // 同步线段端点
+    const selSet = new Set(selected);
+    mockSegments.forEach(seg => {
+        seg.points.forEach(p => {
+            if (p.nid && selSet.has(p.nid)) {
+                p.x = mockNodes[p.nid].x;
+                p.y = mockNodes[p.nid].y;
+            }
+        });
+    });
+    check(mockNodes['n_in1'].x === 65 && mockNodes['n_in1'].y === 40, 'n_in1 平移后坐标正确 (65, 40)');
+    check(mockNodes['n_in2'].x === 95 && mockNodes['n_in2'].y === 60, 'n_in2 平移后坐标正确 (95, 60)');
+    check(mockSegments[0].points[0].x === 65 && mockSegments[1].points[0].x === 95, '相连线段端点协同平移，无悬空或漂移');
+    check(mockSegments[1].points[1].x === 200, '非选中节点 n_out 坐标严格保持不动');
+
+    // 4. 智能对齐参考线探测
+    const snapTol = 4;
+    const testDragged = { x: 202, y: 61 };
+    const smartGuides = [];
+    Object.keys(mockNodes).forEach(otherId => {
+        const other = mockNodes[otherId];
+        if (Math.abs(testDragged.x - other.x) <= snapTol) {
+            smartGuides.push({ type: 'v', pos: other.x, label: `${other.cn} X:${other.x}` });
+        }
+        if (Math.abs(testDragged.y - other.y) <= snapTol) {
+            smartGuides.push({ type: 'h', pos: other.y, label: `${other.cn} Y:${other.y}` });
+        }
+    });
+    check(smartGuides.some(g => g.type === 'v' && g.pos === 200), '智能对齐成功捕获 X=200 垂直参考线并吸附');
+    check(smartGuides.some(g => g.type === 'h' && g.pos === 60), '智能对齐成功捕获 Y=60 水平参考线并吸附');
+}
+
+// ============================================================================
+// 十五、Milestone 4 全要素外科手术回写与 Changeset (PipelineSurgical)
+// ============================================================================
+{
+    section('Milestone 4 全要素外科手术回写与 Changeset');
+
+    // 1. BundleExporter 全要素格式化保真度验证 (align, offset, textScale, hideLabel, marker, halo)
+    const mockProjForExport = {
+        nodes: {
+            'TEST_STA': {
+                x: 100, y: 200, type: 'dot', cn: '测试站', en: 'Test Station',
+                align: 'bottom-left', offset: { x: 5, y: -3 },
+                textScale: { cn: 1.2, en: 0.9 }, hideLabel: true,
+                marker: 'triangle', halo: '#ff0000'
+            }
+        },
+        lines: [
+            {
+                id: 'L_TEST', name: '测试线', color: '#123456',
+                stationIds: ['TEST_STA'], distances: [],
+                pathPoints: [{ x: 100, y: 200 }, { x: 300, y: 200 }]
+            }
+        ]
+    };
+    const packRes = CodeGen.formatCityPackage(mockProjForExport, { cityId: 'testcity', cityName: '测试市' });
+    check(packRes.stationsJs.includes('"align":"bottom-left"') || /align:\s*"bottom-left"/.test(packRes.stationsJs), '全量导出保留 align 字段');
+    check(packRes.stationsJs.includes('"offset"') || /offset:/.test(packRes.stationsJs), '全量导出保留 offset 字段');
+    check(packRes.stationsJs.includes('"textScale"') || /textScale:/.test(packRes.stationsJs), '全量导出保留 textScale 字段');
+    check(packRes.stationsJs.includes('"hideLabel":true') || /hideLabel:\s*true/.test(packRes.stationsJs), '全量导出保留 hideLabel 字段');
+    check(packRes.linesJs.includes('L_TEST') && packRes.linesJs.includes('#123456'), '全量导出生成完整线路代码');
+
+    // 2. 模拟城市原始源码与注释
+    const rawStationsSrc = `// 车站数据说明\nconst stationsData = {\n    // 首发站\n    "S1": { "x": 100, "y": 200, "cn": "起点站", "en": "Start", "align": "top" },\n    // 终点站\n    "S2": { "x": 200, "y": 200, "cn": "终点站", "en": "End", "align": "top" }\n};\n`;
+    const rawLinesSrc = `// 线路数据说明\nconst linesData = [\n    {\n        id: "L1",\n        name: "1号线",\n        color: "#ff0000",\n        // 运营站点序列\n        stationIds: ["S1", "S2"],\n        distances: [1200],\n        pathPoints: [\n            { x: 100, y: 200 },\n            { x: 200, y: 200 }\n        ]\n    }\n];\n`;
+
+    const initData = {
+        stationsData: {
+            "S1": { x: 100, y: 200, cn: "起点站", en: "Start", align: "top" },
+            "S2": { x: 200, y: 200, cn: "终点站", en: "End", align: "top" }
+        },
+        linesData: [
+            {
+                id: "L1", name: "1号线", color: "#ff0000",
+                stationIds: ["S1", "S2"], distances: [1200],
+                pathPoints: [{ x: 100, y: 200 }, { x: 200, y: 200 }]
+            }
+        ]
+    };
+
+    const initCity = PipelineSurgical.init('testcity', {
+        'data_stations.js': rawStationsSrc,
+        'data_lines.js': rawLinesSrc
+    }, initData);
+
+    // 未做任何改动时，dirty 计数应为 0
+    const cleanCs = PipelineSurgical.computeChangeset(initCity.project);
+    check(!cleanCs.hasChanges, '未做修改时 Changeset 检测无任何改动');
+
+    // 3. 修改车站属性（坐标平移 + 新增 textScale）
+    initCity.project.nodes['S1'].x = 125;
+    initCity.project.nodes['S1'].textScale = { cn: 1.5, en: 1.0 };
+    const dirtySt = PipelineSurgical.computeDirtyStations(initCity.project);
+    check(Object.keys(dirtySt).length === 1 && dirtySt['S1'].x === 125, 'computeDirtyStations 精准识别车站改动');
+
+    const stPatchRes = PipelineSurgical.patchStationsSource(initCity.project);
+    check(stPatchRes.dirtyCount === 1, 'patchStationsSource 命中 1 处改动');
+    check(stPatchRes.patchedSource.includes('// 首发站') && stPatchRes.patchedSource.includes('// 终点站'), '车站回写 100% 保留原始注释');
+    check(/"x":\s*125/.test(stPatchRes.patchedSource), '车站回写坐标更新生效');
+
+    // 4. 修改线路走向折点与站序
+    initCity.project.lines[0].color = '#00aa00';
+    initCity.project.lines[0].stationIds = ['S1', 'S2', 'S3'];
+    initCity.project.lines[0].distances = [1200, 800];
+    const dirtyLn = PipelineSurgical.computeDirtyLines(initCity.project);
+    check(Object.keys(dirtyLn).length === 1 && dirtyLn['L1'].color === '#00aa00', 'computeDirtyLines 精准识别线路改动');
+
+    const lnPatchRes = PipelineSurgical.patchLinesSource(initCity.project);
+    check(lnPatchRes.dirtyCount === 1, 'patchLinesSource 命中 1 处线路改动');
+    check(lnPatchRes.patchedSource.includes('// 线路数据说明') && lnPatchRes.patchedSource.includes('// 运营站点序列'), '线路回写 100% 保留原始注释');
+    check(lnPatchRes.patchedSource.includes('#00aa00'), '线路颜色回写生效');
+    check(lnPatchRes.patchedSource.includes('"S3"') || lnPatchRes.patchedSource.includes("'S3'"), '线路新增站序回写生效');
+
+    // 5. 全文件 Changeset 提取与 ZIP 打包流
+    const fullCs = PipelineSurgical.computeChangeset(initCity.project);
+    check(fullCs.hasChanges, '全文件 Changeset 正确识别改动状态');
+    check(fullCs.files.filter(f => f.changed).length === 2, 'Changeset 精确包含 2 个改动文件');
+
+    const zipEntries = fullCs.files.filter(f => f.changed).map(f => ({
+        name: `testcity/${f.filename}`,
+        text: f.patchedSource
+    }));
+    const zipBytes = CodeGen.buildZipBytes(zipEntries);
+    check(zipBytes instanceof Uint8Array && zipBytes.length > 100, 'Changeset 成功生成合法 ZIP 二进制流');
+
+    // 6. Bug 1 fix: 只改 x 时，不应注入 align/offset/type 默认字段（源文件字段零污染）
+    const rawOnlyCoord = `const stationsData = {\n    "A1": { "x": 50, "y": 80, "cn": "零字段站", "en": "ZeroField" }\n};\n`;
+    const minCity = PipelineSurgical.init('mincity', {
+        'data_stations.js': rawOnlyCoord,
+        'data_lines.js': 'const linesData = [];'
+    }, {
+        stationsData: { A1: { x: 50, y: 80, cn: '零字段站', en: 'ZeroField' } },
+        linesData: []
+    });
+    minCity.project.nodes['A1'].x = 60;   // 仅改坐标
+    const minPatch = PipelineSurgical.patchStationsSource(minCity.project);
+    check(!minPatch.patchedSource.includes('"align"'), 'Bug1 Fix: 仅改坐标时不向原文件注入 align 字段');
+    check(!minPatch.patchedSource.includes('"offset"'), 'Bug1 Fix: 仅改坐标时不向原文件注入 offset 字段');
+    check(!minPatch.patchedSource.includes('"type"'), 'Bug1 Fix: 仅改坐标时不向原文件注入 type 字段');
+
+    // 7. Bug 2 fix: 删除车站后，patchStationsSource 应从输出文件中删除该条目
+    const rawWithTwo = `const stationsData = {\n    "D1": { "x": 10, "y": 10, "cn": "保留站", "en": "Keep" },\n    "D2": { "x": 20, "y": 20, "cn": "待删站", "en": "Delete" }\n};\n`;
+    const delCity = PipelineSurgical.init('delcity', {
+        'data_stations.js': rawWithTwo,
+        'data_lines.js': 'const linesData = [];'
+    }, {
+        stationsData: {
+            D1: { x: 10, y: 10, cn: '保留站', en: 'Keep' },
+            D2: { x: 20, y: 20, cn: '待删站', en: 'Delete' }
+        },
+        linesData: []
+    });
+    delete delCity.project.nodes['D2'];   // 编辑器删除 D2
+    const delIds = PipelineSurgical.computeDeletedStationIds(delCity.project);
+    check(delIds.includes('D2'), 'Bug2 Fix: computeDeletedStationIds 正确识别 D2 被删除');
+    const delPatch = PipelineSurgical.patchStationsSource(delCity.project);
+    check(!delPatch.patchedSource.includes('"D2"') && !delPatch.patchedSource.includes("'D2'"), 'Bug2 Fix: 删除 D2 后回写源码中已不包含 D2 条目');
+    check(delPatch.patchedSource.includes('"D1"') || delPatch.patchedSource.includes("'D1'"), 'Bug2 Fix: 未删除的 D1 仍完整保留在回写结果中');
 }
 
 // ============================================================================

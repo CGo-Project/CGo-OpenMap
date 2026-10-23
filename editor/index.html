@@ -108,7 +108,7 @@
             </div>
             <div class="office-doc-title">
                 <span class="app-brand">OpenMap Editor</span>
-                <span class="doc-sep">Beta2 /</span>
+                <span class="doc-sep">Beta3 /</span>
                 <span class="doc-name" id="currentDocLabel">未打开工程</span>
             </div>
         </div>
@@ -120,9 +120,12 @@
                 <cgo-icon name="add" size="15"></cgo-icon>
             </button>
             <button class="title-bar-btn" id="btnHeaderOpenFile" title="打开/导入工程文件">
+                <cgo-icon name="preset" size="15"></cgo-icon>
+            </button>
+            <button class="title-bar-btn" id="btnHeaderLinkDir" title="关联本地城市目录 (File System Access API 原地直存)">
                 <cgo-icon name="folder" size="15"></cgo-icon>
             </button>
-            <button class="title-bar-btn" id="btnHeaderSave" title="导出工程完整 JSON 归档包 (服务器端只读保护：仅允许导出，禁止覆盖服务器)">
+            <button class="title-bar-btn" id="btnHeaderSave" title="保存改动 (Ctrl+S，若关联本地目录则直接原地保存)">
                 <cgo-icon name="save" size="15"></cgo-icon>
             </button>
             <cgo-theme-toggle></cgo-theme-toggle>
@@ -173,6 +176,10 @@
                             <div class="ribbon-icon"><cgo-icon name="touch" size="18"></cgo-icon></div>
                             <span class="btn-text">选择</span>
                         </button>
+                        <button class="ribbon-action-btn-lg" id="toolBtn_box" title="框选多选模式 (B)">
+                            <div class="ribbon-icon"><cgo-icon name="view-grid" size="18"></cgo-icon></div>
+                            <span class="btn-text">框选</span>
+                        </button>
                         <button class="ribbon-action-btn-lg" id="toolBtn_station" title="放置车站节点 (S)">
                             <div class="ribbon-icon"><cgo-icon name="add" size="18"></cgo-icon></div>
                             <span class="btn-text">添加车站</span>
@@ -180,6 +187,10 @@
                         <button class="ribbon-action-btn-lg" id="toolBtn_temp" title="放置辅助临时节点 (T)">
                             <div class="ribbon-icon"><cgo-icon name="pin" size="18"></cgo-icon></div>
                             <span class="btn-text">临时节点</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="toolBtn_points" title="折点精调模式 (P)">
+                            <div class="ribbon-icon"><cgo-icon name="edit" size="18"></cgo-icon></div>
+                            <span class="btn-text">折点编辑</span>
                         </button>
                     </div>
                     <div class="ribbon-group-label">基础图元</div>
@@ -310,21 +321,27 @@
                 <!-- 存量城市读写 -->
                 <div class="ribbon-group">
                     <div class="ribbon-group-controls">
-                        <div class="ribbon-param-box" style="width: 180px; min-width: 180px;">
+                        <div class="ribbon-param-box" style="width: 170px; min-width: 170px;">
                             <div class="param-label-row"><span>在线城市库</span></div>
                             <cgo-toolbar-select id="selectCityToLoad" value="" placeholder="载入城市工程..."
                                 style="width: 100%;">
                                 <cgo-toolbar-option value="">载入城市工程...</cgo-toolbar-option>
                             </cgo-toolbar-select>
                         </div>
-                        <button class="ribbon-action-btn-lg" id="btnSurgicalPatchSave"
-                            title="根据已修改车站条目安全生成增量补丁文件 (data_stations.patched.js) 并下载。服务器端只读保护：禁止直接覆盖服务端生产文件">
-                            <div class="ribbon-icon"><cgo-icon name="save" size="18"></cgo-icon></div>
-                            <span class="btn-text">导出车站补丁</span>
+                        <button class="ribbon-action-btn-lg" id="btnLinkLocalDir"
+                            title="通过 File System Access API 关联本地 city/<city_id>/ 目录，实现 Ctrl+S 直接原地保存">
+                            <div class="ribbon-icon"><cgo-icon name="folder" size="18"></cgo-icon></div>
+                            <span class="btn-text" id="btnLinkLocalDirText">关联本地目录</span>
                         </button>
-                        <button class="ribbon-action-btn-lg" id="btnExportPatchFiles" title="单条目增量补丁打包导出">
+                        <button class="ribbon-action-btn-lg" id="btnSurgicalPatchSave"
+                            title="审查全要素条目改动并导出外科手术式补丁 (Changeset)">
+                            <div class="ribbon-icon"><cgo-icon name="save" size="18"></cgo-icon></div>
+                            <span class="btn-text">导出改动补丁</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg" id="btnExportPatchFiles"
+                            title="打包下载仅含改动文件的 Changeset ZIP 压缩包">
                             <div class="ribbon-icon"><cgo-icon name="export-zip" size="18"></cgo-icon></div>
-                            <span class="btn-text">导出增量补丁</span>
+                            <span class="btn-text">导出改动 ZIP</span>
                         </button>
                     </div>
                     <div class="ribbon-group-label">存量城市无损维护</div>
@@ -685,6 +702,34 @@
                 style="width:auto;padding:5px 14px;">取消</button>
             <button class="ribbon-btn-sm" id="btnConfirmDownloadZip"
                 style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">打包下载 ZIP</button>
+        </div>
+    </cgo-modal>
+
+    <!-- 6. 导出改动补丁 (Changeset) 弹窗 -->
+    <cgo-modal id="modalChangeset" title="城市全要素改动补丁 (Changeset)" max-width="580px">
+        <div style="font-size:12px;margin-bottom:12px;color:var(--office-text-muted);">
+            检测到当前城市工程与原始源码的条目级差异。外科手术式回写将仅对变动的车站与线路代码段进行无损替换，其余原始注释与缩进 100% 逐字节保留。
+        </div>
+        <div id="changesetCityStatus"
+            style="font-size:12px;font-weight:600;padding:8px 12px;background:var(--office-hover);border-radius:6px;margin-bottom:10px;">
+            当前城市: <span id="changesetCityName">--</span>
+        </div>
+        <div id="changesetFilesList"
+            style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:220px;overflow-y:auto;">
+            <!-- 动态渲染文件清单 -->
+        </div>
+        <div id="changesetFsNotice"
+            style="font-size:11px;color:var(--office-text-muted);margin-bottom:12px;padding:6px 10px;background:rgba(0,120,212,0.06);border-left:3px solid var(--office-primary);border-radius:4px;">
+            提示: 若已通过「关联本地目录」授权本地 city 目录，保存时将直接原地写回对应文件；发布上线前请记得将 sw.js 的 CACHE_NAME 递增版本号。
+        </div>
+        <div class="dialog-buttons" style="display:flex;justify-content:space-between;align-items:center;">
+            <button class="ribbon-btn-sm" data-close="modalChangeset" style="width:auto;padding:5px 14px;">关闭</button>
+            <div style="display:flex;gap:8px;">
+                <button class="ribbon-btn-sm" id="btnChangesetDownloadZip" style="width:auto;padding:5px 14px;">下载
+                    Changeset ZIP</button>
+                <button class="ribbon-btn-sm" id="btnChangesetDirectSave"
+                    style="width:auto;padding:5px 16px;background:var(--office-primary);color:#fff;">直接写回本地目录</button>
+            </div>
         </div>
     </cgo-modal>
 
