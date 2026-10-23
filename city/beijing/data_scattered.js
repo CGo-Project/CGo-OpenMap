@@ -31,8 +31,8 @@ const SCATTERED_DATA = [
     {
         id: "compass",
         file: "./city/beijing/assets/compass.svg",
-        x: 200,
-        y: 75,
+        x: 171.8663330078125,
+        y: 93.97570037841797,
         width: 100,
         height: 100,
         opacity: 1,
@@ -41,10 +41,10 @@ const SCATTERED_DATA = [
     {
         id: "gate",
         file: "./city/beijing/assets/gate.svg",
-        x: 895,
-        y: 695,
-        width: 60,
-        height: 60,
+        x: 866.2892600657855,
+        y: 689.4351551123722,
+        width: 63,
+        height: 63,
         opacity: 1,
         zIndex: 5
     },
