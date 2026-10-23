@@ -357,14 +357,29 @@ body[data-header-mode="floating"] .tool-header:not([header-mode="classic"]):not(
    - 顶部=视窗顶部，底部=悬浮标题栏底部，左右贯通
    - 层级规范：正文内容 < 顶部渐变 (z-index: 900) < 悬浮标题栏与左侧面板 (z-index: 1000)
    - 颜色规范：顶部 100% 不透明度，底部 0%
-   - 普通版标题栏不添加渐变
-   ========================================================================== */
-:root:not([header-mode="classic"]):not([data-header-mode="classic"]) body:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
-:root[header-mode="floating"] body:not(.office-app-shell)::before,
-:root[data-header-mode="floating"] body:not(.office-app-shell)::before,
-body[header-mode="floating"]:not(.office-app-shell)::before,
-body[data-header-mode="floating"]:not(.office-app-shell)::before,
-.floating-header-scrim {
+/* 经典吸顶模式或工作台应用严格禁止顶部遮罩渐变与悬浮干扰 */
+:root[header-mode="classic"] body::before,
+:root[data-header-mode="classic"] body::before,
+body[header-mode="classic"]::before,
+body[data-header-mode="classic"]::before,
+body.office-app-shell::before,
+:root[header-mode="classic"] .floating-header-scrim,
+body.office-app-shell .floating-header-scrim,
+body.office-app-shell .mobile-status-bar-fill {
+    display: none !important;
+    content: none !important;
+    background: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    height: 0 !important;
+}
+
+:root[header-mode="floating"] body:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
+:root[data-header-mode="floating"] body:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
+body[header-mode="floating"]:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
+body[data-header-mode="floating"]:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
+.floating-header-scrim:not([header-mode="classic"]) {
     content: '';
     position: fixed;
     top: 0;

@@ -1536,13 +1536,21 @@ function initLegendPin() {
     const overlay = document.getElementById('legend-overlay');
     if (!pinBtn || !overlay) return;
 
+    const isLegendPinnedInStorage = () => (localStorage.getItem('cgo_openmap_legend_pinned') || localStorage.getItem('nal_legend_pinned')) === 'true';
+    const setLegendPinnedInStorage = (pinned) => {
+        try {
+            localStorage.setItem('cgo_openmap_legend_pinned', pinned ? 'true' : 'false');
+            localStorage.setItem('nal_legend_pinned', pinned ? 'true' : 'false');
+        } catch (e) {}
+    };
+
     // Attach listener unconditionally so it works after resize
     pinBtn.addEventListener('click', (e) => {
         if (window.innerWidth <= 640) return;
         e.stopPropagation();
-        const currentState = localStorage.getItem('nal_legend_pinned') === 'true';
+        const currentState = isLegendPinnedInStorage();
         const isPinned = !currentState;
-        localStorage.setItem('nal_legend_pinned', isPinned);
+        setLegendPinnedInStorage(isPinned);
         updateBtnUI(isPinned);
         if (isPinned) {
             document.body.classList.add('legend-pinned');
@@ -1611,11 +1619,11 @@ function initLegendPin() {
         document.body.classList.remove('legend-pinned');
         document.body.classList.remove('pinned-hidden');
         pinBtn.style.display = 'none';
-        updateBtnUI(localStorage.getItem('nal_legend_pinned') === 'true');
+        updateBtnUI(isLegendPinnedInStorage());
         return;
     }
 
-    const startPinned = localStorage.getItem('nal_legend_pinned') === 'true';
+    const startPinned = isLegendPinnedInStorage();
     updateBtnUI(startPinned);
     if (startPinned) {
         document.body.classList.add('legend-pinned');
@@ -3658,7 +3666,10 @@ function dockStationPanel(station, forcePin = false) {
     if (isDesktop && forcePin && !isPinnedNow) {
         document.body.classList.add('legend-pinned');
         document.body.classList.remove('pinned-hidden');
-        localStorage.setItem('nal_legend_pinned', 'true');
+        try {
+            localStorage.setItem('cgo_openmap_legend_pinned', 'true');
+            localStorage.setItem('nal_legend_pinned', 'true');
+        } catch (e) {}
         const pinBtn = document.getElementById('legend-pin-btn');
         if (pinBtn) {
             pinBtn.classList.add('active');
@@ -3673,7 +3684,7 @@ function dockStationPanel(station, forcePin = false) {
     const panel = document.getElementById('info-panel');
     const dynamicContainer = document.getElementById('sidebar-dynamic-content');
     if (!panel || !dynamicContainer || !station) return;
-    const savedLimit = localStorage.getItem('nal_sidebar_history_limit');
+    const savedLimit = localStorage.getItem('cgo_openmap_history_limit') || localStorage.getItem('nal_sidebar_history_limit');
     const MAX_HISTORY_LIMIT = savedLimit ? parseInt(savedLimit, 10) : 5;
     let delayTime = 0;
     if (!window.STATION_HISTORY.includes(station.id) && window.STATION_HISTORY.length >= MAX_HISTORY_LIMIT) {
@@ -3802,7 +3813,7 @@ function initInputControls() {
             zoomToPoint(currentScale + zoomStep, e.clientX, e.clientY);
             return;
         }
-        const wheelMode = localStorage.getItem('nal_pref_wheel_mode') || 'smart';
+        const wheelMode = localStorage.getItem('cgo_openmap_wheel_mode') || localStorage.getItem('nal_pref_wheel_mode') || 'smart';
         const doPan = () => {
             panMap(-e.deltaX * 1.5, -e.deltaY * 1.5);
         };
@@ -3997,7 +4008,7 @@ init();
         const isActuallyActive = activeStationId && domNode && domNode.classList.contains('active');
         const activeStation = isActuallyActive && processedStations ? processedStations[activeStationId] : null;
 
-        const userWantsPin = localStorage.getItem('nal_legend_pinned') === 'true';
+        const userWantsPin = (localStorage.getItem('cgo_openmap_legend_pinned') || localStorage.getItem('nal_legend_pinned')) === 'true';
         const overlay = document.getElementById('legend-overlay');
         const infoPanel = document.getElementById('info-panel');
         const pinBtn = document.getElementById('legend-pin-btn');

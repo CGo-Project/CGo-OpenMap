@@ -20,11 +20,20 @@
         })();
     </script>
 
-    <!-- 0. 防闪烁主题脚本 (Anti-Flicker，最先执行) -->
+    <!-- 0. 防闪烁主题与模式强隔离脚本 (Anti-Flicker，最先执行) -->
     <script>
         (function () {
+            // 1. 全局深浅色主题同步
             var t = localStorage.getItem('app-theme') || localStorage.getItem('cgo-theme');
             document.documentElement.setAttribute('data-theme', t || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+            // 2. 页面特性严格由页面自身决定：编辑器为全屏生产力工作台，强锁定经典吸顶无渐变模式
+            document.documentElement.setAttribute('header-mode', 'classic');
+            try {
+                localStorage.setItem('openmap_editor_header_mode', 'classic');
+                // 清理历史可能残留的全局污染键，杜绝打架
+                localStorage.removeItem('cgo_header_mode');
+            } catch (e) {}
         })();
     </script>
 
@@ -36,11 +45,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261022.223300">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261022.223300">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261022.223300">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261022.223300">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261022.223300">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261023.122500">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261023.122500">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261023.122500">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261023.122500">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261023.122500">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">

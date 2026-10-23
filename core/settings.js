@@ -135,8 +135,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (prefWheel) {
-        prefWheel.value = localStorage.getItem('nal_pref_wheel_mode') || 'smart';
+        prefWheel.value = localStorage.getItem('cgo_openmap_wheel_mode') || localStorage.getItem('nal_pref_wheel_mode') || 'smart';
         prefWheel.addEventListener('cgo-change', (e) => {
+            localStorage.setItem('cgo_openmap_wheel_mode', e.detail.value);
             localStorage.setItem('nal_pref_wheel_mode', e.detail.value);
         });
     }
@@ -162,9 +163,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (prefHistory) {
-        prefHistory.value = localStorage.getItem('nal_sidebar_history_limit') || '5';
+        prefHistory.value = localStorage.getItem('cgo_openmap_history_limit') || localStorage.getItem('nal_sidebar_history_limit') || '5';
         prefHistory.addEventListener('cgo-change', (e) => {
             const newLimit = parseInt(e.detail.value, 10);
+            localStorage.setItem('cgo_openmap_history_limit', newLimit);
             localStorage.setItem('nal_sidebar_history_limit', newLimit);
             if (window.STATION_HISTORY?.length > newLimit) {
                 window.STATION_HISTORY.splice(0, window.STATION_HISTORY.length - newLimit);

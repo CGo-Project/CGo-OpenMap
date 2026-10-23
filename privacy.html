@@ -4,17 +4,23 @@
 <head>
     <script>
         (function () {
-            var t = localStorage.getItem('app-theme');
+            // 1. 全局深浅色主题同步
+            var t = localStorage.getItem('app-theme') || localStorage.getItem('cgo-theme');
             if (t) document.documentElement.setAttribute('data-theme', t);
-            var hm = localStorage.getItem('root_cgo_header_mode') || localStorage.getItem('cgo_header_mode');
-            if (hm === 'classic') {
-                localStorage.removeItem('root_cgo_header_mode');
+
+            // 2. 彻底清理历史全局无前缀污染键，杜绝跨项目混用打架
+            try {
                 localStorage.removeItem('cgo_header_mode');
+                localStorage.removeItem('root_cgo_header_mode');
                 localStorage.removeItem('main_cgo_header_mode');
-                localStorage.setItem('cgo_header_mode', 'floating');
-                hm = 'floating';
-            }
-            if (hm) document.documentElement.setAttribute('header-mode', hm);
+            } catch (e) {}
+
+            // 3. 页面特性严格由页面自身决定：privacy.html 专属双岛浮动标题栏
+            var pageKey = 'openmap_privacy_header_mode';
+            var hm = localStorage.getItem(pageKey) || 'floating';
+            document.documentElement.setAttribute('header-mode', hm);
+
+            // 4. 液态玻璃模式
             var gm = localStorage.getItem('cgo_glass_mode');
             if (gm) document.documentElement.setAttribute('glass-mode', gm);
         })();
@@ -28,12 +34,12 @@
     <link rel="apple-touch-icon" href="./assets/icons/mapicon2.png">
 
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.120200">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.120200">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261023.120200">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.120200">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261023.120200">
-    <script type="module" src="core/cgo-ui.js?v=261023.120200"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261023.122500">
+    <script type="module" src="core/cgo-ui.js?v=261023.122500"></script>
 
     <style>
         body {

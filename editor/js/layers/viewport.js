@@ -247,7 +247,9 @@ window.OpenMapEditor.ViewportLayer = (function () {
             return;
         }
 
-        var mode = localStorage.getItem('nal_pref_wheel_mode') || 'smart';
+        var mode = localStorage.getItem('openmap_editor_wheel_mode') ||
+            localStorage.getItem('cgo_openmap_wheel_mode') ||
+            localStorage.getItem('nal_pref_wheel_mode') || 'smart';
         var doPan = function () { panBy(-e.deltaX * 1.5, -e.deltaY * 1.5); };
         var doZoom = function () { zoomToPoint(state.scale * factorFor(ZOOM_K_WHEEL), e.clientX, e.clientY); };
 

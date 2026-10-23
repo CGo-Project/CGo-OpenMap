@@ -10,12 +10,16 @@
  */
 
 window.DeepSeekVision = (function () {
-    // 存储键名常量
+    // 存储键名常量 (优先使用 openmap_editor_* 专属命名空间，防止跨项目打架，同时向下兼容 drunk_*)
     const STORAGE_KEYS = {
-        API_KEY: 'drunk_deepseek_api_key',
-        API_BASE: 'drunk_deepseek_api_base',
-        MODEL: 'drunk_deepseek_model',
-        NO_CONFIRM: 'drunk_deepseek_no_confirm'
+        API_KEY: 'openmap_editor_deepseek_api_key',
+        LEGACY_API_KEY: 'drunk_deepseek_api_key',
+        API_BASE: 'openmap_editor_deepseek_api_base',
+        LEGACY_API_BASE: 'drunk_deepseek_api_base',
+        MODEL: 'openmap_editor_deepseek_model',
+        LEGACY_MODEL: 'drunk_deepseek_model',
+        NO_CONFIRM: 'openmap_editor_deepseek_no_confirm',
+        LEGACY_NO_CONFIRM: 'drunk_deepseek_no_confirm'
     };
 
     const DEFAULT_API_BASE = 'https://api.deepseek.com';
@@ -23,27 +27,42 @@ window.DeepSeekVision = (function () {
 
     // 状态配置
     function getApiKey() {
-        return (localStorage.getItem(STORAGE_KEYS.API_KEY) || '').trim();
+        const val = localStorage.getItem(STORAGE_KEYS.API_KEY) || localStorage.getItem(STORAGE_KEYS.LEGACY_API_KEY);
+        return (val || '').trim();
     }
 
     function setApiKey(key) {
-        localStorage.setItem(STORAGE_KEYS.API_KEY, (key || '').trim());
+        const trimmed = (key || '').trim();
+        try {
+            localStorage.setItem(STORAGE_KEYS.API_KEY, trimmed);
+            localStorage.setItem(STORAGE_KEYS.LEGACY_API_KEY, trimmed);
+        } catch (e) {}
     }
 
     function getApiBase() {
-        return (localStorage.getItem(STORAGE_KEYS.API_BASE) || DEFAULT_API_BASE).trim();
+        const val = localStorage.getItem(STORAGE_KEYS.API_BASE) || localStorage.getItem(STORAGE_KEYS.LEGACY_API_BASE);
+        return (val || DEFAULT_API_BASE).trim();
     }
 
     function setApiBase(base) {
-        localStorage.setItem(STORAGE_KEYS.API_BASE, (base || DEFAULT_API_BASE).trim());
+        const trimmed = (base || DEFAULT_API_BASE).trim();
+        try {
+            localStorage.setItem(STORAGE_KEYS.API_BASE, trimmed);
+            localStorage.setItem(STORAGE_KEYS.LEGACY_API_BASE, trimmed);
+        } catch (e) {}
     }
 
     function getModel() {
-        return (localStorage.getItem(STORAGE_KEYS.MODEL) || DEFAULT_MODEL).trim();
+        const val = localStorage.getItem(STORAGE_KEYS.MODEL) || localStorage.getItem(STORAGE_KEYS.LEGACY_MODEL);
+        return (val || DEFAULT_MODEL).trim();
     }
 
     function setModel(model) {
-        localStorage.setItem(STORAGE_KEYS.MODEL, (model || DEFAULT_MODEL).trim());
+        const trimmed = (model || DEFAULT_MODEL).trim();
+        try {
+            localStorage.setItem(STORAGE_KEYS.MODEL, trimmed);
+            localStorage.setItem(STORAGE_KEYS.LEGACY_MODEL, trimmed);
+        } catch (e) {}
     }
 
     function hasApiKey() {
@@ -718,7 +737,10 @@ window.DeepSeekVision = (function () {
      */
     function clearSettings() {
         if (confirm('确认清除本地保存的 DeepSeek API Key 吗？')) {
-            localStorage.removeItem(STORAGE_KEYS.API_KEY);
+            try {
+                localStorage.removeItem(STORAGE_KEYS.API_KEY);
+                localStorage.removeItem(STORAGE_KEYS.LEGACY_API_KEY);
+            } catch (e) {}
             const { keyInput, statusMsg } = getModalElements();
             if (keyInput) keyInput.value = '';
             if (statusMsg) statusMsg.innerHTML = '<span style="color: #e3b341;">已清除本地 API Key</span>';

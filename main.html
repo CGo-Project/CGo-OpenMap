@@ -4,19 +4,26 @@
 <head>
     <script>
         (function () {
-            var t = localStorage.getItem('app-theme');
+            // 1. 全局深浅色主题同步
+            var t = localStorage.getItem('app-theme') || localStorage.getItem('cgo-theme');
             if (t) document.documentElement.setAttribute('data-theme', t);
-            var hm = localStorage.getItem('root_cgo_header_mode') || localStorage.getItem('cgo_header_mode');
-            if (hm === 'classic') {
-                localStorage.removeItem('root_cgo_header_mode');
+
+            // 2. 彻底清理历史全局无前缀污染键，杜绝跨项目混用打架
+            try {
                 localStorage.removeItem('cgo_header_mode');
+                localStorage.removeItem('root_cgo_header_mode');
                 localStorage.removeItem('main_cgo_header_mode');
-                localStorage.setItem('cgo_header_mode', 'floating');
-                hm = 'floating';
-            }
-            if (hm) document.documentElement.setAttribute('header-mode', hm);
+            } catch (e) {}
+
+            // 3. 页面特性严格由页面自身决定：main.html 专属双岛浮动标题栏
+            var pageKey = 'openmap_main_header_mode';
+            var hm = localStorage.getItem(pageKey) || 'floating';
+            document.documentElement.setAttribute('header-mode', hm);
+
+            // 4. 液态玻璃模式
             var gm = localStorage.getItem('cgo_glass_mode');
             if (gm) document.documentElement.setAttribute('glass-mode', gm);
+
             // 从邻城切换过来时先隐藏地图，由 core/city-neighbors.js 对齐视口后再淡入
             if (/[?&]nbfrom=/.test(location.search)) document.documentElement.classList.add('nb-arrive');
         })();
@@ -56,12 +63,12 @@
     <!-- style.css: 地图引擎核心样式、图层布局、动画与手势响应                          -->
     <!-- ========================================================================== -->
     <!-- CGoUI 核心 JS 模块预编译与最高优先级预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.120200">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.120200">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261023.120200">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.120200">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261023.120200">
-    <link rel="stylesheet" href="css/style.css?v=261023.120200">
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261023.122500">
+    <link rel="stylesheet" href="css/style.css?v=261023.122500">
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -348,27 +355,27 @@
     <!--    - data_timetable.js: 首末班车时刻                                         -->
     <!--    - data_notopen.js: 在建线路虚线                                            -->
     <!-- 3. 核心引擎 (core/script.js) 读取上述数据并统一渲染                           -->
-    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js?v=261023.120200) -->
+    <!-- 4. UI 模块 (core/help.js, core/settings.js, core/notice.js, core/cgo-ui.js?v=261023.122500) -->
     <!-- ========================================================================== -->
     <!-- 折线倒角几何算法 (引擎与 Drunk 编辑模式共用，必须早于 core/script.js) -->
-    <script src="core/path-geometry.js?v=261023.120200"></script>
+    <script src="core/path-geometry.js?v=261023.122500"></script>
     <!-- 车站图元模板与尺寸 (引擎与 Drunk 编辑模式共用，必须早于 core/script.js) -->
-    <script src="core/mobile-sheet.js?v=261023.120200"></script>
-    <script src="core/panel-tab-swipe.js?v=261023.120200"></script>
-    <script src="core/station-icons.js?v=261023.120200"></script>
+    <script src="core/mobile-sheet.js?v=261023.122500"></script>
+    <script src="core/panel-tab-swipe.js?v=261023.122500"></script>
+    <script src="core/station-icons.js?v=261023.122500"></script>
     <!-- 无障碍与文本转义公共工具 (须早于 core/station-board.js 与 core/script.js) -->
-    <script src="core/a11y.js?v=261023.120200"></script>
+    <script src="core/a11y.js?v=261023.122500"></script>
     <!-- 城市注册总线与基础元数据 -->
-    <script src="city/data.js?v=261023.120200"></script>
+    <script src="city/data.js?v=261023.122500"></script>
     <!-- 车站信息板模块注册与渲染引擎 (多城市通用) -->
-    <script src="core/station-board.js?v=261023.120200"></script>
+    <script src="core/station-board.js?v=261023.122500"></script>
     <!-- 动态按序加载当前激活城市的专属业务与全套数据文件 (根据 URL ?city= 或 LocalStorage 判定) -->
     <script>
         (function () {
             var city = window.CityDataManager ? window.CityDataManager.getCurrentCity() : null;
             var folder = (city && city.folder) ? city.folder : "./city/beijing";
             var cityId = (city && city.id) ? city.id : "beijing";
-            var v = "261023.120200";
+            var v = "261023.122500";
             // 供城市脚本追加同版本号（如 city/<id>/style.css），避免样式表被浏览器长期缓存
             window.CGO_ASSET_VERSION = v;
 
@@ -401,24 +408,24 @@
         })();
     </script>
     <!-- 核心地图渲染引擎 -->
-    <script type="module" src="core/script.js?v=261023.120200"></script>
+    <script type="module" src="core/script.js?v=261023.122500"></script>
     <!-- 邻城衔接（影子、上拉进入与双城并看；仅对声明了 neighbors 的城市生效，须晚于 core/script.js） -->
-    <script type="module" src="core/city-neighbors.js?v=261023.120200"></script>
+    <script type="module" src="core/city-neighbors.js?v=261023.122500"></script>
     <!-- 辅助面板逻辑 -->
-    <script src="core/help.js?v=261023.120200"></script>
-    <script src="core/settings.js?v=261023.120200"></script>
+    <script src="core/help.js?v=261023.122500"></script>
+    <script src="core/settings.js?v=261023.122500"></script>
     <script>
         // 动态加载公告与运营通知系统
         // 版本号与其余资源同批：公告内容更新时随批次串一起升级，不再用时间戳绕过缓存
         // （时间戳会让 Service Worker 每次访问都写入一条新的缓存条目）
         (function () {
             var script = document.createElement('script');
-            script.src = "core/notice.js?v=261023.120200";
+            script.src = "core/notice.js?v=261023.122500";
             document.body.appendChild(script);
         })();
     </script>
     <!-- CGoUI Web Components 基础组件库 -->
-    <script type="module" src="core/cgo-ui.js?v=261023.120200"></script>
+    <script type="module" src="core/cgo-ui.js?v=261023.122500"></script>
     <script>
         // 图片加载完毕后添加 loaded 类，配合 CSS 实现平滑淡入
         document.addEventListener('DOMContentLoaded', function () {
