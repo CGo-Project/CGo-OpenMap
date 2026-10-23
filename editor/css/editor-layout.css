@@ -51,7 +51,8 @@
 }
 
 /* ==========================================================================
-   0. App Shell 容器
+   0. App Shell 容器与顶部遮罩禁用
+   - 编辑器采用吸顶 Title Bar 与 Ribbon 工作台，禁用主站悬浮标题栏的顶部渐变遮罩 (Scrim Gradient)
    ========================================================================== */
 body.office-app-shell {
     font-family: var(--font-sans);
@@ -65,6 +66,18 @@ body.office-app-shell {
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
+}
+
+body.office-app-shell::before,
+body.office-app-shell .mobile-status-bar-fill,
+.office-app-shell + .mobile-status-bar-fill {
+    display: none !important;
+    content: none !important;
+    background: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    height: 0 !important;
 }
 
 /* ==========================================================================

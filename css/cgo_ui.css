@@ -359,11 +359,11 @@ body[data-header-mode="floating"] .tool-header:not([header-mode="classic"]):not(
    - 颜色规范：顶部 100% 不透明度，底部 0%
    - 普通版标题栏不添加渐变
    ========================================================================== */
-:root:not([header-mode="classic"]):not([data-header-mode="classic"]) body:has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
-:root[header-mode="floating"] body::before,
-:root[data-header-mode="floating"] body::before,
-body[header-mode="floating"]::before,
-body[data-header-mode="floating"]::before,
+:root:not([header-mode="classic"]):not([data-header-mode="classic"]) body:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
+:root[header-mode="floating"] body:not(.office-app-shell)::before,
+:root[data-header-mode="floating"] body:not(.office-app-shell)::before,
+body[header-mode="floating"]:not(.office-app-shell)::before,
+body[data-header-mode="floating"]:not(.office-app-shell)::before,
 .floating-header-scrim {
     content: '';
     position: fixed;

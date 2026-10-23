@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" glass-mode="liquid">
+<html lang="zh-CN" glass-mode="liquid" header-mode="classic">
 
 <head>
     <meta charset="UTF-8">
@@ -48,6 +48,19 @@
     <link rel="stylesheet" href="css/editor-components.css">
 
     <style>
+        /* 彻底移除主站悬浮标题栏顶部渐变遮罩 (Scrim Gradient) 与移动端状态栏渐变 */
+        body.office-app-shell::before,
+        body.office-app-shell .mobile-status-bar-fill,
+        .floating-header-scrim {
+            display: none !important;
+            content: none !important;
+            background: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            height: 0 !important;
+        }
+
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined),
         cgo-button:not(:defined),
