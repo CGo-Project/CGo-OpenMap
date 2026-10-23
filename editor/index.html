@@ -33,7 +33,7 @@
                 localStorage.setItem('openmap_editor_header_mode', 'classic');
                 // 清理历史可能残留的全局污染键，杜绝打架
                 localStorage.removeItem('cgo_header_mode');
-            } catch (e) {}
+            } catch (e) { }
         })();
     </script>
 
@@ -312,7 +312,8 @@
                     <div class="ribbon-group-controls">
                         <div class="ribbon-param-box" style="width: 180px; min-width: 180px;">
                             <div class="param-label-row"><span>在线城市库</span></div>
-                            <cgo-toolbar-select id="selectCityToLoad" value="" placeholder="载入城市工程..." style="width: 100%;">
+                            <cgo-toolbar-select id="selectCityToLoad" value="" placeholder="载入城市工程..."
+                                style="width: 100%;">
                                 <cgo-toolbar-option value="">载入城市工程...</cgo-toolbar-option>
                             </cgo-toolbar-select>
                         </div>
@@ -490,9 +491,9 @@
             <span class="status-indicator-dot" id="healthStatusDot"></span>
             <span id="healthStatusText">系统就绪</span>
             <span class="safe-mode-pill" id="safeModeIndicator"
-                style="display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:3px;font-size:10px;background:rgba(0,38,59,0.06);color:var(--text-light);cursor:help;"
+                style="display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:3px;font-size:10px;background:rgba(0,38,59,0.06);color:var(--text-light);"
                 title="服务器端安全模式：纯客户端沙盒运行，已禁止直接在服务器上覆盖写入，所有修改仅允许导出到本地文件。">
-                <cgo-icon name="protect" size="11"></cgo-icon>
+                <cgo-icon name="lock" size="11"></cgo-icon>
                 <span>服务器只读保护 · 仅允许导出</span>
             </span>
         </div>
@@ -544,7 +545,8 @@
         </div>
         <div class="dialog-buttons">
             <button class="ribbon-btn-sm" data-close="modalNewCanvas" style="width:auto;padding:5px 14px;">取消</button>
-            <button class="ribbon-btn-sm" id="btnConfirmNewCanvas" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">创建画布</button>
+            <button class="ribbon-btn-sm" id="btnConfirmNewCanvas"
+                style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">创建画布</button>
         </div>
     </cgo-modal>
 
@@ -573,8 +575,10 @@
         </div>
         <div id="batchPreviewStatus" style="font-size: 11px; color: var(--office-primary); font-weight: 600;"></div>
         <div class="dialog-buttons">
-            <button class="ribbon-btn-sm" data-close="modalBatchStation" style="width:auto;padding:5px 14px;">取消</button>
-            <button class="ribbon-btn-sm" id="btnApplyBatchStation" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">批量放置</button>
+            <button class="ribbon-btn-sm" data-close="modalBatchStation"
+                style="width:auto;padding:5px 14px;">取消</button>
+            <button class="ribbon-btn-sm" id="btnApplyBatchStation"
+                style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">批量放置</button>
         </div>
     </cgo-modal>
 
@@ -598,18 +602,24 @@
         <div id="mileageParseStatus" style="font-size: 11px; color: var(--office-primary);"></div>
         <div class="dialog-buttons">
             <button class="ribbon-btn-sm" data-close="modalMileage" style="width:auto;padding:5px 14px;">关闭</button>
-            <button class="ribbon-btn-sm" id="btnSaveMileage" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">保存站间距配置</button>
+            <button class="ribbon-btn-sm" id="btnSaveMileage"
+                style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">保存站间距配置</button>
         </div>
     </cgo-modal>
 
     <!-- 4. DeepSeek 视觉模型配置弹窗 -->
     <cgo-modal id="modalDeepseekSettings" title="DeepSeek-Vision 视觉模型配置" max-width="520px">
-        <div style="background: rgba(0, 96, 152, 0.12); border: 1px solid rgba(0, 96, 152, 0.35); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.5; color: var(--text-secondary);">
-            <div style="font-weight: 600; color: #58a6ff; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
-                <span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="payment" size="13"></cgo-icon> 资费明细与官方计费说明</span>
-                <span style="background: #238636; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px;">纯前端无服务器中转</span>
+        <div
+            style="background: rgba(0, 96, 152, 0.12); border: 1px solid rgba(0, 96, 152, 0.35); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.5; color: var(--text-secondary);">
+            <div
+                style="font-weight: 600; color: #58a6ff; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="payment"
+                        size="13"></cgo-icon> 资费明细与官方计费说明</span>
+                <span
+                    style="background: #238636; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 3px;">纯前端无服务器中转</span>
             </div>
-            <div>1. 官方计费：底层采用 DeepSeek 官方 <code>deepseek-v4-flash-vision-exp</code>，单次整网地图识别通常约 0.01 ~ 0.05 元，实际以 DeepSeek 账单为准。</div>
+            <div>1. 官方计费：底层采用 DeepSeek 官方 <code>deepseek-v4-flash-vision-exp</code>，单次整网地图识别通常约 0.01 ~ 0.05 元，实际以
+                DeepSeek 账单为准。</div>
             <div>2. 密钥安全：API Key 仅保存在浏览器本地 localStorage，由浏览器直连 DeepSeek 官方接口，绝不经由第三方服务器。</div>
         </div>
         <form id="formDeepseekConfig" onsubmit="return false;" style="margin:0;padding:0;">
@@ -617,8 +627,11 @@
             <div class="form-row">
                 <span class="form-label">API Key:</span>
                 <div style="display:flex;gap:6px;flex:1;">
-                    <input type="password" class="form-input" id="deepseekApiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="new-password">
-                    <button type="button" class="ribbon-btn-sm" id="btnToggleApiKeyVis" style="width:32px;padding:0;display:flex;align-items:center;justify-content:center;" title="显示/隐藏密钥">
+                    <input type="password" class="form-input" id="deepseekApiKey"
+                        placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="new-password">
+                    <button type="button" class="ribbon-btn-sm" id="btnToggleApiKeyVis"
+                        style="width:32px;padding:0;display:flex;align-items:center;justify-content:center;"
+                        title="显示/隐藏密钥">
                         <cgo-icon name="eye" size="14"></cgo-icon>
                     </button>
                 </div>
@@ -634,10 +647,13 @@
         </form>
         <div id="deepseekStatusText" style="font-size:11px;min-height:18px;margin-top:6px;"></div>
         <div class="dialog-buttons" style="display:flex;justify-content:space-between;align-items:center;">
-            <button class="ribbon-btn-sm" id="btnDeepseekClear" style="width:auto;padding:5px 12px;background:#30363d;color:#e6edf3;" title="清除本地保存的 Key">清除本地 Key</button>
+            <button class="ribbon-btn-sm" id="btnDeepseekClear"
+                style="width:auto;padding:5px 12px;background:#30363d;color:#e6edf3;" title="清除本地保存的 Key">清除本地
+                Key</button>
             <div style="display:flex;gap:8px;">
                 <button class="ribbon-btn-sm" id="btnDeepseekTest" style="width:auto;padding:5px 14px;">测试连接</button>
-                <button class="ribbon-btn-sm" id="btnDeepseekSave" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">保存配置</button>
+                <button class="ribbon-btn-sm" id="btnDeepseekSave"
+                    style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">保存配置</button>
             </div>
         </div>
     </cgo-modal>
@@ -662,10 +678,13 @@
             <span class="form-label" style="min-width:auto;margin-left:8px;">米/像素:</span>
             <input type="number" class="form-input" id="exportPxMeter" value="25" step="1">
         </div>
-        <div id="exportValidationSummary" style="font-size:11px;padding:8px;background:var(--office-hover);border-radius:6px;margin-top:8px;"></div>
+        <div id="exportValidationSummary"
+            style="font-size:11px;padding:8px;background:var(--office-hover);border-radius:6px;margin-top:8px;"></div>
         <div class="dialog-buttons">
-            <button class="ribbon-btn-sm" data-close="modalExportPackage" style="width:auto;padding:5px 14px;">取消</button>
-            <button class="ribbon-btn-sm" id="btnConfirmDownloadZip" style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">打包下载 ZIP</button>
+            <button class="ribbon-btn-sm" data-close="modalExportPackage"
+                style="width:auto;padding:5px 14px;">取消</button>
+            <button class="ribbon-btn-sm" id="btnConfirmDownloadZip"
+                style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">打包下载 ZIP</button>
         </div>
     </cgo-modal>
 
