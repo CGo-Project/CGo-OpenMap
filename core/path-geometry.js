@@ -145,7 +145,15 @@
             ['pathPoints-branch1', 'seg-way1'],
             ['pathPoints-branch2', 'seg-way2']].forEach(([key, cls]) => {
                 const points = line[key];
-                if (Array.isArray(points) && points.length >= 2) out.push({ cls, points });
+                if (Array.isArray(points) && points.length >= 2) out.push({ cls, points, key });
+            });
+            Object.keys(line).forEach(k => {
+                if (/^pathPoints-/.test(k) && k !== 'pathPoints-main' && k !== 'pathPoints-branch1' && k !== 'pathPoints-branch2') {
+                    const points = line[k];
+                    if (Array.isArray(points) && points.length >= 2) {
+                        out.push({ cls: 'seg-' + k.replace('pathPoints-', ''), points, key: k });
+                    }
+                }
             });
             return out;
         }
@@ -153,11 +161,13 @@
         let points = line.pathPoints;
         if (!points || points.length === 0) {
             points = (line.stationIds || [])
-                .map(sid => stations && stations[sid])
-                .filter(Boolean)
-                .map(s => ({ x: s.x, y: s.y }));
+                .map(sid => {
+                    const s = stations && stations[sid];
+                    return s ? { x: s.x, y: s.y, nid: sid } : null;
+                })
+                .filter(Boolean);
         }
-        if (points.length >= 2) out.push({ cls: 'seg-main', points });
+        if (points.length >= 2) out.push({ cls: 'seg-main', points, key: 'pathPoints' });
         return out;
     }
 
