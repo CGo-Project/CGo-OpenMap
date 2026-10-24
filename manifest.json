@@ -180,10 +180,6 @@
       ]
     },
     {
-      "name": "呼和浩特轨道交通",
-      "short_name": "呼和浩特",
-      "description": "查看呼和浩特地铁 1、2 号线线网图",
-      "url": "./main.html?city=hohhot",
       "name": "石家庄地铁",
       "short_name": "石家庄",
       "description": "查看石家庄地铁线网图和附近景点（公园）",
@@ -195,7 +191,71 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "三亚轨道交通",
+      "short_name": "三亚",
+      "description": "查看三亚轨道交通线路图",
+      "url": "./main.html?city=sanya",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "南平轨道交通",
+      "short_name": "南平",
+      "description": "查看南平轨道交通线路图",
+      "url": "./main.html?city=nanping",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "辽源轨道交通",
+      "short_name": "辽源",
+      "description": "查看辽源轨道交通线路图",
+      "url": "./main.html?city=liaoyuan",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "文山轨道交通",
+      "short_name": "文山",
+      "description": "查看文山轨道交通线路图",
+      "url": "./main.html?city=wenshan",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "澳門轨道交通",
+      "short_name": "澳門",
+      "description": "查看澳門轨道交通线路图",
+      "url": "./main.html?city=macau",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
-
