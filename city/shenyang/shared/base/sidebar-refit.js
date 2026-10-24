@@ -341,12 +341,41 @@
     const AUTOCLEAN_ROW_ID = "cgo-sb-autoclean-row";
     const AUTOCLEAN_SWITCH_ID = "cgo-sb-autoclean";
 
+    /**
+     * 本次会话内的权威状态。
+     *
+     * localStorage 可能整体不可用（隐私模式、配额写满、被浏览器策略禁用），此时
+     * 「读不到」与「没关过」无法区分：读取会回落到默认开启，用户刚点的「关闭」被
+     * 静默丢弃，界面显示已关、清理队列却照跑。故一旦用户动过开关，就以这里的
+     * 内存值为准，存储只作为跨会话的持久化副本。
+     * null = 本次会话还没点过，回落到存储值。
+     */
+    let autoCleanSession = null;
+
     /** 默认开启（历史行为不变）；只有显式存过 off 才视为关闭 */
-    function autoCleanEnabled() {
+    function readAutoCleanPref() {
         try {
             return localStorage.getItem(AUTOCLEAN_KEY) !== "off";
         } catch {
             return true;
+        }
+    }
+
+    function autoCleanEnabled() {
+        return autoCleanSession === null ? readAutoCleanPref() : autoCleanSession;
+    }
+
+    /**
+     * 写入偏好并同步内存值。
+     * @returns {boolean} 是否成功持久化（false 表示仅本次会话生效）
+     */
+    function writeAutoCleanPref(on) {
+        autoCleanSession = on;
+        try {
+            localStorage.setItem(AUTOCLEAN_KEY, on ? "on" : "off");
+            return true;
+        } catch {
+            return false;
         }
     }
 
@@ -385,10 +414,15 @@
             sync(autoCleanEnabled());
             sw.addEventListener("click", () => {
                 const on = !autoCleanEnabled();
-                try {
-                    localStorage.setItem(AUTOCLEAN_KEY, on ? "on" : "off");
-                } catch { }
+                // 内存值先落，界面与清理行为立刻对齐；持久化失败只影响下次打开
+                const saved = writeAutoCleanPref(on);
                 sync(on);
+                if (!saved) {
+                    window.CGO?.showToast?.(
+                        `设置未能保存，本次${on ? "开启" : "关闭"}仅对当前会话生效`,
+                        "warning"
+                    );
+                }
                 // 从关到开：立刻重评当前展开窗口；从开到关：正在跑的队列会在下一步自行停下
                 if (on) scheduleSectionRefit();
             });
