@@ -87,6 +87,49 @@ Object.entries(SYMTC_OFFICIAL_STATION_ID_RULES).forEach(([lineId, rules]) => {
 });
 
 /**
+ * 浑南现代有轨电车实时到站查询（盛京通 / mtii.cn）。
+ *
+ * 官网已把车站详情统一到 arrival.html，参数为：
+ *   mode=simple   精简展示
+ *   line          官网线路号（不带 HNT 前缀）
+ *   station       官网站名，必须与官网配置逐字全等，否则页面会回落到末站
+ * 例：https://www.mtii.cn/shengjingtong_API/arrival.html?mode=simple&line=5&station=奥体游泳馆
+ *
+ * 官网 1/3/5 号线的站名与本地 data_stations.js 的 cn 完全一致（2026-10 逐站核对），
+ * 故直接以本地站名拼参。日后若本地改名，须同步官网节点名称，否则该站链接会失准。
+ */
+const MTII_TRAM_ARRIVAL_BASE = "https://www.mtii.cn/shengjingtong_API/arrival.html";
+
+/** 本地有轨线路 ID → 官网线路号 */
+const SHENYANG_TRAM_OFFICIAL_LINE_MAP = {
+    HNT1: "1",
+    HNT3: "3",
+    HNT5: "5"
+};
+
+Object.entries(SHENYANG_TRAM_OFFICIAL_LINE_MAP).forEach(([lineId, officialLineId]) => {
+    const line = linesData.find((item) => item.id === lineId);
+    if (!line) return;
+
+    const stationIds = line.hasbranch
+        ? [...new Set([...(line["stationIds-way1"] || []), ...(line["stationIds-way2"] || [])])]
+        : (line.stationIds || []);
+
+    stationIds.forEach((stationId) => {
+        const station = stationsData[stationId];
+        if (!station?.cn) return;
+
+        const params = new URLSearchParams({
+            mode: "simple",
+            line: officialLineId,
+            station: station.cn
+        });
+        (GLOBAL_SCHEDULE_DATA[lineId] ||= {})[stationId]
+            = `${MTII_TRAM_ARRIVAL_BASE}?${params.toString()}`;
+    });
+});
+
+/**
  * 有轨电车固定运营时刻。
  * 该表只记录线路端点站发车时刻，不区分工作日/节假日或夏令时/冬令时。
  * HNT1、HNT3 的端点站名先保留为待线路数据接入时使用，当前地图仅配置 HNT5。

@@ -15,8 +15,10 @@
  * 字段说明：
  * - id: 唯一编号，已读状态记录于 localStorage (`nal_notice_read_ids`)
  * - active: 是否启用该通知 (true/false)
- * - startTime: 可选，开始展示时间 ("YYYY-MM-DD HH:mm:ss")；未到时间不展示，缺省视为立即开始
- * - deadline: 有效期截止时间 ("YYYY-MM-DD HH:mm:ss" 或 "permanent")，控制帮助弹窗中的展示
+ * - startTime: 可选，开始展示时间 ("YYYY-MM-DD HH:mm:ss" 或 "YYYY-MM-DD")；未到时间不展示，缺省视为立即开始
+ * - deadline: 有效期截止时间 ("YYYY-MM-DD HH:mm:ss" / "YYYY-MM-DD" 或 "permanent")，控制帮助弹窗中的展示
+ * - 时间一律按**浏览器本地时区**解释；填写了但解析不出来的时间按「本条公告无效」处理（不展示），
+ *   并在控制台给出一次警告——不要指望写错的日期被当成「永久有效」蒙混过关
  * - city: 可选，限定生效城市 ID（如 "shenyang"）；缺省为全城通用
  * - pushWindowDays: 可选，浮动卡片的推送窗口天数，默认 30 天（从 startTime 起算）；
  *   超过窗口后不再弹卡，但仍可在「帮助与关于」中查看，直到 deadline
@@ -42,10 +44,36 @@
         || ''
     );
 
+    /**
+     * 解析公告的时间字段。返回值刻意区分三种情形：
+     *   null      —— 字段未填写 / 为 "permanent"，即不设限（历史兼容口径，缺省照旧）
+     *   Date      —— 合法时间，**一律按浏览器本地时区**解释
+     *   undefined —— 填了但解析不出来（配置错误），调用方必须当作「无效」而非「永久有效」
+     */
     function parseLocalTime(value) {
-        if (!value || value === 'permanent') return null;
-        const date = new Date(String(value).replace(' ', 'T'));
-        return Number.isNaN(date.getTime()) ? null : date;
+        if (value === null || value === undefined) return null;
+        const raw = String(value).trim();
+        if (!raw || raw === 'permanent') return null;
+        // 纯日期会被 Date 规范当作 UTC 零点（比北京时间早 8 小时），这里补成本地零点，
+        // 让 "YYYY-MM-DD" 与 "YYYY-MM-DD HH:mm:ss" 两种写法保持同一时区口径。
+        const text = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+            ? `${raw}T00:00:00`
+            : raw.replace(' ', 'T');
+        const date = new Date(text);
+        return Number.isNaN(date.getTime()) ? undefined : date;
+    }
+
+    /** 无效时间字段只提示一次，避免每次渲染刷屏 */
+    const warnedInvalidTime = new Set();
+
+    function warnInvalidTime(item, field) {
+        const key = `${item.id}:${field}`;
+        if (warnedInvalidTime.has(key)) return;
+        warnedInvalidTime.add(key);
+        console.warn(
+            `[NAL_NOTICE] 公告 ${item.id} 的 ${field} 无法解析（${item[field]}），本条按无效处理、不会展示；`
+            + `请填写 "YYYY-MM-DD HH:mm:ss" 或 "permanent"。`
+        );
     }
 
     function checkValidity(item) {
@@ -54,11 +82,15 @@
         const city = currentCityId();
         if (item.city && city && item.city !== city) return false;
 
-        const now = Date.now();
+        // 填了却解析不出来的时间一律判为无效公告：宁可漏展，也不能提前放出（startTime 写错）
+        // 或永久挂着（deadline 写错）——运营公告的时效性比「尽量都显示」更重要。
         const start = parseLocalTime(item.startTime);
-        if (start && now < start.getTime()) return false;
-
+        if (start === undefined) { warnInvalidTime(item, 'startTime'); return false; }
         const end = parseLocalTime(item.deadline);
+        if (end === undefined) { warnInvalidTime(item, 'deadline'); return false; }
+
+        const now = Date.now();
+        if (start && now < start.getTime()) return false;
         return !end || now <= end.getTime();
     }
 
@@ -68,6 +100,7 @@
      */
     function isWithinPushWindow(item) {
         const start = parseLocalTime(item.startTime);
+        // 未填写 = 立即进入推送窗口；无效值已在 checkValidity 里拦下，不会走到这里
         if (!start) return true;
         const days = Number(item.pushWindowDays) > 0
             ? Number(item.pushWindowDays)

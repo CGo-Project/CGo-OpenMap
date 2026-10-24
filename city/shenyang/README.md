@@ -43,6 +43,8 @@
 
 `data_timetable.js` 按沈阳地铁官网的线路站序生成 `GLOBAL_SCHEDULE_DATA`，为每个线路/车站组合提供 `stationInfo2` 查询地址。核心信息板会据此统一渲染标准的“官网查询”按钮；首页城市卡片的“官方参考”链接则由城市注册信息中的 `officialMapUrl` 提供，指向沈阳地铁移动端线路查询页。
 
+有轨电车（HNT1 / HNT3 / HNT5）的“官网查询”指向浑南现代有轨电车的实时到站页 `https://www.mtii.cn/shengjingtong_API/arrival.html?mode=simple&line={线路号}&station={站名}`；`station` 必须与官网站名逐字一致，否则页面会回落到末站。官网 1 / 3 / 5 号线站名与本地 `data_stations.js` 的 `cn` 已逐站核对一致（2026-10），本地改名时须同步官网节点名称。有轨线路的按钮图标改用浑南有轨电车单色标志（`assets/hntram.svg`，由 `shenyang.js` 内联为 `HNT_ICON` 以便吃 `currentColor`），不再沿用沈阳地铁城市徽标。
+
 ## 开通沿革（线网发展史）
 
 `data_opening_history.js` 的 `CGO_OPENING_HISTORY` 记录沈阳地铁逐段开通、单站补开与更名的时间线，由共享层 `shared/tools/opening-history.js` 渲染成「地图小工具 → 线网发展史」的动态演示（把线网逐段长出来，可播放 / 跳看任一年份）。

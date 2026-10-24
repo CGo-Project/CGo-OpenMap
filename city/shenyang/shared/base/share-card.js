@@ -152,8 +152,16 @@
             const script = document.createElement("script");
             script.src = url.href;
             script.onload = () => resolve(typeof window.qrcode === "function");
-            script.onerror = () => resolve(false);
+            script.onerror = () => {
+                script.remove();           // 失败的标签留在 head 里没有意义，移除后重试才会插入新的一份
+                resolve(false);
+            };
             document.head.appendChild(script);
+        }).then((ok) => {
+            // 失败态不缓存：脚本 404 / 断网时若把 rejected 结果一直挂着，
+            // 恢复网络后再打开分享卡也永远不会重试。清空后下次调用会重新注入。
+            if (!ok) qrcodeLoading = null;
+            return ok;
         });
         return qrcodeLoading;
     }
@@ -553,7 +561,9 @@
         if (!current || typeof window.CGoPoster?.render !== "function") return;
         btn.toggleAttribute("disabled", true);
         try {
-            await current.ready;                       // 二维码是异步注入的，出图前等它落位
+            // 二维码是异步注入的，出图前等它落位。失败不阻断出图（图仍然有分享价值），
+            // 但绝不能报「已保存」了事——否则用户会以为手里这张图是带可扫码的完整卡。
+            const qrState = await current.ready;
             let canvas = await renderPoster(current.card);
             // 裁掉四周透明空白（字体没内联上时底部会多出一条「黑边」，见 CGoPoster.trim）
             if (typeof window.CGoPoster?.trim === "function") canvas = window.CGoPoster.trim(canvas);
@@ -567,7 +577,8 @@
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 1000);
-            toast("分享卡已保存为图片");
+            if (qrState === "ok") toast("分享卡已保存为图片");
+            else toast("二维码未能生成，已保存不含二维码的分享卡", "warning");
         } catch (err) {
             console.warn("[CGoShareCard] 出图失败", err);
             toast("出图失败，可改用「复制链接」分享", "error");
@@ -600,7 +611,11 @@
         warnTestLink("share");
         if (typeof navigator.share === "function") {
             navigator.share({ title: current.shareTitle, url: current.link })
-                .catch(() => copyLink());       // 用户取消也会走到这里，退化成复制，不打扰
+                .catch((err) => {
+                    // 用户主动取消（AbortError）不是失败：此时替他复制链接反而像「点取消却动了剪贴板」
+                    if (err && err.name === "AbortError") return;
+                    copyLink();
+                });
             return;
         }
         copyLink();
