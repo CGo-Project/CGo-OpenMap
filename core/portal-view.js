@@ -330,6 +330,8 @@
                     } else {
                         maintainerSnippet = `主理: ${city.maintainers[0].name}`;
                     }
+                } else {
+                    maintainerSnippet = '主理人招募中';
                 }
 
                 return `
@@ -544,6 +546,8 @@
                 } else {
                     maintainerSnippet = `主理: ${city.maintainers[0].name}`;
                 }
+            } else {
+                maintainerSnippet = '主理人招募中';
             }
 
             return `
@@ -557,12 +561,14 @@
                             <div class="compact-city-title">
                                 <span class="compact-city-name">${city.name}</span>
                                 <span class="compact-city-code">${city.id.toUpperCase()}</span>
+                            </div>
+                            <div class="compact-meta-maintainer">${maintainerSnippet}</div>
+                            <div class="compact-badge-row">
                                 <span class="compact-meta-badge compact-dist-badge" title="与您的直线距离">
                                     <cgo-icon name="location" size="10"></cgo-icon>
                                     <span>${distFormatted}</span>
                                 </span>
                             </div>
-                            ${maintainerSnippet ? `<div class="compact-meta-maintainer">${maintainerSnippet}</div>` : ''}
                         </div>
                     </div>
                     <div class="compact-action">
@@ -729,6 +735,8 @@
                     } else {
                         maintainerSnippet = `主理: ${city.maintainers[0].name}`;
                     }
+                } else {
+                    maintainerSnippet = '主理人招募中';
                 }
 
                 return `
@@ -742,12 +750,14 @@
                                 <div class="compact-city-title">
                                     <span class="compact-city-name">${city.name}</span>
                                     <span class="compact-city-code">${city.id.toUpperCase()}</span>
+                                </div>
+                                <div class="compact-meta-maintainer">${maintainerSnippet}</div>
+                                <div class="compact-badge-row">
                                     <span class="compact-meta-badge compact-time-badge" title="最近访问时间">
                                         <cgo-icon name="time" size="10"></cgo-icon>
                                         <span>${timeFormatted}</span>
                                     </span>
                                 </div>
-                                ${maintainerSnippet ? `<div class="compact-meta-maintainer">${maintainerSnippet}</div>` : ''}
                             </div>
                         </div>
                         <div class="compact-action">
