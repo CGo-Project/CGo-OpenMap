@@ -41,14 +41,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261023.122500">
-    <script type="module" src="core/cgo-ui.js?v=261023.122500"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261024.202500">
+    <script type="module" src="core/cgo-ui.js?v=261024.202500"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261023.122500">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261023.122500">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261023.122500">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261023.122500">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261024.202500">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261024.202500">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261024.202500">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261024.202500">
 
     <style>
         html {
@@ -68,24 +68,27 @@
 
         /* 核心内容区约束（浮动标题栏避让留白与骨架已由 CGoUI .tool-container 全权接管） */
         .portal-content {
-            max-width: 1200px;
+            max-width: min(1800px, 94vw);
+            width: 100%;
             padding-bottom: 56px;
         }
 
         .section-headline {
             display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 14px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
             margin-bottom: 24px;
-            padding-bottom: 14px;
+            padding-bottom: 16px;
             border-bottom: 1px solid var(--border-color);
+            text-align: center;
         }
 
         .section-title-group {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
         }
 
@@ -102,23 +105,351 @@
             margin: 0;
         }
 
-        .section-subtitle {
-            font-size: 13px;
+        /* 视图与排序切换器（第二行居中放置） */
+        .view-switch-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-switch-box .tab-pill-group {
+            padding: 3px;
+            border-radius: var(--radius-full, 9999px);
+        }
+
+        .view-switch-box .tab-btn {
+            border-radius: var(--radius-full, 9999px);
+            padding: 5px 14px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .view-switch-box .tab-btn.active {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        /* 字母紧凑列表容器 */
+        .city-alpha-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        /* 字母列表顶部快速检索条 */
+        .alpha-quickbar {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            position: sticky;
+            top: 72px;
+            z-index: 100;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        .alpha-letter-nav {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .alpha-nav-item {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 26px;
+            height: 26px;
+            padding: 0 5px;
+            border-radius: var(--radius-xs);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 700;
             color: var(--text-light);
-            margin: 0;
+            background: transparent;
+            border: 1px solid transparent;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+
+        .alpha-nav-item:hover {
+            color: var(--primary-color);
+            background: var(--btn-info-bg);
+            border-color: var(--border-color);
+        }
+
+        .alpha-nav-item.active {
+            color: #ffffff;
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        /* 字母检索栏右侧搜索框：全面遵循 CGoUI §5 标准 .search-input-wrapper 与 .form-control */
+        .alpha-search-box {
+            position: relative;
+            min-width: 240px;
+        }
+
+        .alpha-search-box .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            z-index: 2;
+        }
+
+        .alpha-search-box .form-control {
+            height: 32px;
+            padding: 0 30px 0 32px;
+            font-size: 12.5px;
+            border-radius: var(--radius-sm, 6px);
+        }
+
+        .alpha-search-box .form-control::placeholder {
+            color: var(--text-light);
+            opacity: 0.75;
+        }
+
+        .alpha-search-box .search-clear-btn {
+            z-index: 2;
+        }
+
+        /* 字母分组网格（多列并排压缩空间：一行显示 2~4 个字母） */
+        .alpha-groups-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px 20px;
+            align-items: start;
+        }
+
+        .alpha-group {
+            scroll-margin-top: 130px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .alpha-group-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .alpha-letter-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: var(--radius-xs, 4px);
+            background: var(--btn-info-bg);
+            border: 1px solid var(--border-color);
+            color: var(--primary-color);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        [data-theme="dark"] .alpha-letter-badge {
+            color: #60a5fa;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .alpha-group-count {
+            font-size: 11px;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .alpha-group-items {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        /* 多城市字母组：独立占满整行，内部城市在宽屏下横向多列网格展开；仅含1个城市的字母组则在同屏并排 */
+        .alpha-group.alpha-group-multi {
+            grid-column: 1 / -1;
+        }
+
+        .alpha-group.alpha-group-multi .alpha-group-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px 16px;
+        }
+
+        /* 紧凑城市条目卡片 (高度极致压缩精炼) */
+        .city-compact-item {
+            padding: 7px 12px;
+            border-radius: var(--radius-sm, 6px);
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                        box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1)),
+                        border-color 0.2s ease;
+            min-height: 42px;
+        }
+
+        .city-compact-item:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary-color);
+        }
+
+        .compact-main-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .compact-emblem {
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-xs, 4px);
+            background: var(--btn-info-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] .compact-emblem {
+            color: #60a5fa;
+        }
+
+        .city-compact-item:hover .compact-emblem {
+            background: var(--primary-color);
+            color: #ffffff;
+        }
+
+        .compact-emblem svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        .compact-text-box {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .compact-city-title {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            line-height: 1.2;
+        }
+
+        .compact-city-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.2px;
+        }
+
+        .compact-city-code {
+            font-family: var(--font-mono);
+            font-size: 10.5px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
+        }
+
+        .compact-meta-maintainer {
+            font-size: 11px;
+            color: var(--text-light);
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+
+        .compact-action {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        /* 紧凑列表中的进入按钮：遵循 CGoUI .btn.btn-primary 标准实心彩色填充与液态玻璃反射微光 */
+        .compact-enter-btn {
+            height: 28px;
+            padding: 0 10px;
+            font-size: 11.5px;
+            font-weight: 600;
+            gap: 4px;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+
+        .compact-enter-btn span {
+            display: inline !important;
+            color: #ffffff !important;
+        }
+
+        .compact-enter-arrow {
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .city-compact-item:hover .compact-enter-arrow {
+            transform: translateX(3px);
+        }
+
+        /* 字母检索无结果空状态 */
+        .alpha-empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 13.5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
         }
 
         /* 城市主体卡片网格 */
         .city-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            gap: 20px;
             margin-bottom: 40px;
         }
 
         /* 大气城市卡片：基于 CGoUI .glass-card 规范 */
         .city-card {
-            padding: 24px;
+            padding: 20px 22px;
             text-decoration: none;
             color: inherit;
             display: flex;
@@ -417,6 +748,51 @@
 
         /* 响应式适配 (CGoUI 640px 唯一断点规范) */
         @media (max-width: 640px) {
+            .section-headline {
+                flex-direction: column;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .view-switch-box {
+                width: 100%;
+                display: flex;
+                justify-content: center;
+            }
+
+            .view-switch-box .tab-pill-group {
+                width: 100%;
+                max-width: 320px;
+                display: flex;
+            }
+
+            .view-switch-box .tab-btn {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .alpha-quickbar {
+                position: static;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 12px;
+            }
+
+            .alpha-letter-nav {
+                justify-content: center;
+            }
+
+            .alpha-search-box {
+                min-width: 100%;
+                width: 100%;
+            }
+
+            .alpha-groups-list {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+
             .city-grid {
                 grid-template-columns: 1fr;
                 gap: 16px;
@@ -636,11 +1012,27 @@
                 </div>
                 <span class="badge badge-info" id="city-count-badge">加载中...</span>
             </div>
-            <p class="section-subtitle">点击选择城市卡片，即刻进入对应的全屏交互式线路图：</p>
+            <div class="view-switch-box">
+                <div class="tab-pill-group" role="tablist" aria-label="城市排序方式">
+                    <button class="tab-btn active" id="view-mode-time" role="tab" aria-selected="true" title="按录入时间排序（卡片视图）">
+                        <cgo-icon name="time" size="14"></cgo-icon>
+                        <span>按时间排序</span>
+                    </button>
+                    <button class="tab-btn" id="view-mode-alpha" role="tab" aria-selected="false" title="按字母 A-Z 排序（紧凑列表）">
+                        <cgo-icon name="sort" size="14"></cgo-icon>
+                        <span>按字母排序</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <!-- 城市卡片网格 -->
+        <!-- 视图 1：城市卡片网格 (按时间排序) -->
         <div class="city-grid" id="city-grid">
+            <!-- 由脚本读取城市注册表动态渲染 -->
+        </div>
+
+        <!-- 视图 2：城市字母紧凑列表 (按字母排序，方便快速查找) -->
+        <div class="city-alpha-container" id="city-alpha-container" style="display: none;">
             <!-- 由脚本读取城市注册表动态渲染 -->
         </div>
 
@@ -708,8 +1100,8 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=261023.122500"></script>
-    <script src="core/tool-theme.js?v=261023.122500"></script>
+    <script src="city/data.js?v=261024.202500"></script>
+    <script src="core/tool-theme.js?v=261024.202500"></script>
 
     <!-- 动态城市渲染与数据绑定 -->
     <script>
@@ -736,6 +1128,42 @@
                 // 常用别名兼容
                 'xianggang', 'taibei', 'gaoxiong', 'haerbin', 'xi-an'
             ]);
+
+            // 城市拼音元数据与快速检索缩写对照表
+            const CITY_LETTER_DATA = {
+                'beijing': { letter: 'B', pinyin: 'Beijing', zh: '北京', pyInitials: 'bj' },
+                'changchun': { letter: 'C', pinyin: 'Changchun', zh: '长春', pyInitials: 'cc' },
+                'dalian': { letter: 'D', pinyin: 'Dalian', zh: '大连', pyInitials: 'dl' },
+                'fuzhou': { letter: 'F', pinyin: 'Fuzhou', zh: '福州', pyInitials: 'fz' },
+                'harbin': { letter: 'H', pinyin: 'Harbin', zh: '哈尔滨', pyInitials: 'heb,hrb' },
+                'hohhot': { letter: 'H', pinyin: 'Hohhot', zh: '呼和浩特', pyInitials: 'hhht' },
+                'hongkong': { letter: 'H', pinyin: 'Hong Kong (Xianggang)', zh: '香港', pyInitials: 'hk,xg' },
+                'lanzhou': { letter: 'L', pinyin: 'Lanzhou', zh: '兰州', pyInitials: 'lz' },
+                'liaoyuan': { letter: 'L', pinyin: 'Liaoyuan', zh: '辽源', pyInitials: 'ly' },
+                'macau': { letter: 'M', pinyin: 'Macau (Aomen)', zh: '澳門', pyInitials: 'am,mo,mac' },
+                'nanping': { letter: 'N', pinyin: 'Nanping', zh: '南平', pyInitials: 'np' },
+                'qingdao': { letter: 'Q', pinyin: 'Qingdao', zh: '青岛', pyInitials: 'qd' },
+                'sanya': { letter: 'S', pinyin: 'Sanya', zh: '三亚', pyInitials: 'sy' },
+                'shanghai': { letter: 'S', pinyin: 'Shanghai', zh: '上海', pyInitials: 'sh' },
+                'shenzhen': { letter: 'S', pinyin: 'Shenzhen', zh: '深圳', pyInitials: 'sz' },
+                'shenyang': { letter: 'S', pinyin: 'Shenyang', zh: '沈阳', pyInitials: 'sy' },
+                'shijiazhuang': { letter: 'S', pinyin: 'Shijiazhuang', zh: '石家庄', pyInitials: 'sjz' },
+                'sydney': { letter: 'S', pinyin: 'Sydney (Xini)', zh: '悉尼', pyInitials: 'xn,syd' },
+                'wenshan': { letter: 'W', pinyin: 'Wenshan', zh: '文山', pyInitials: 'ws' }
+            };
+
+            function getCityMeta(city) {
+                const id = (city.id || '').toLowerCase();
+                const matched = CITY_LETTER_DATA[id];
+                if (matched) return matched;
+                const letter = (city.id || '#')[0].toUpperCase();
+                return {
+                    letter: letter >= 'A' && letter <= 'Z' ? letter : '#',
+                    pinyin: city.id || '',
+                    zh: city.name || '',
+                    pyInitials: (city.id || '').slice(0, 3)
+                };
+            }
 
             function formatCityLogoSvg(cityOrSvg) {
                 if (!cityOrSvg) return '<cgo-icon name="train" size="22"></cgo-icon>';
@@ -784,27 +1212,45 @@
                 return svg;
             }
 
-            function render() {
+            // 视图切换模式管理：'time'（默认按时间排序卡片网格）| 'alpha'（按字母排序紧凑列表）
+            const VIEW_MODE_KEY = 'cgo_openmap_city_sort_mode';
+            let currentViewMode = localStorage.getItem(VIEW_MODE_KEY) || 'time';
+
+            function updateViewModeUI(mode) {
+                currentViewMode = mode;
+                try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch (e) { }
+
+                const timeBtn = document.getElementById('view-mode-time');
+                const alphaBtn = document.getElementById('view-mode-alpha');
+                const gridView = document.getElementById('city-grid');
+                const alphaView = document.getElementById('city-alpha-container');
+
+                if (mode === 'alpha') {
+                    if (timeBtn) { timeBtn.classList.remove('active'); timeBtn.setAttribute('aria-selected', 'false'); }
+                    if (alphaBtn) { alphaBtn.classList.add('active'); alphaBtn.setAttribute('aria-selected', 'true'); }
+                    if (gridView) gridView.style.display = 'none';
+                    if (alphaView) alphaView.style.display = 'flex';
+                } else {
+                    if (timeBtn) { timeBtn.classList.add('active'); timeBtn.setAttribute('aria-selected', 'true'); }
+                    if (alphaBtn) { alphaBtn.classList.remove('active'); alphaBtn.setAttribute('aria-selected', 'false'); }
+                    if (gridView) gridView.style.display = 'grid';
+                    if (alphaView) alphaView.style.display = 'none';
+                }
+            }
+
+            // 渲染视图 1：按时间排序的卡片网格
+            function renderTimeView(cities) {
                 const grid = document.getElementById('city-grid');
                 if (!grid) return;
 
-                const registry = window.CITY_REGISTRY || {};
-                // 仅展示有效上线城市；暂未达标下架或标记隐藏的城市（如合肥）不在门户展示，但保留全部底层程序代码与路由
-                const cities = Object.values(registry).filter(city => !city.hidden && city.status !== 'delisted' && city.id !== 'hefei');
-
-                const countBadge = document.getElementById('city-count-badge');
-                if (countBadge) {
-                    countBadge.textContent = `已收录 ${cities.length} 个城市`;
-                }
-
                 // 按 registerDate 升序排序
-                cities.sort((a, b) => {
+                const sorted = [...cities].sort((a, b) => {
                     const timeA = new Date(a.registerDate || '1970-01-01').getTime();
                     const timeB = new Date(b.registerDate || '1970-01-01').getTime();
                     return timeA - timeB;
                 });
 
-                grid.innerHTML = cities.map(city => {
+                grid.innerHTML = sorted.map(city => {
                     const isRecruiting = city.status === 'recruiting' || (city.maintainers && city.maintainers.some(m => m.isRecruiting));
                     const badgeClass = isRecruiting ? 'badge-warning' : 'badge-success';
                     const badgeIcon = isRecruiting ? 'sparkle' : 'check-circle';
@@ -912,9 +1358,216 @@
                         </div>
                     `;
                 }).join('');
+            }
+
+            // 渲染视图 2：按字母排序的紧凑列表
+            function renderAlphaView(cities) {
+                const container = document.getElementById('city-alpha-container');
+                if (!container) return;
+
+                // 字母排序：A-Z 首字母优先，同字母按 pinyin/id 排序
+                const sorted = [...cities].sort((a, b) => {
+                    const metaA = getCityMeta(a);
+                    const metaB = getCityMeta(b);
+                    if (metaA.letter !== metaB.letter) {
+                        return metaA.letter.localeCompare(metaB.letter);
+                    }
+                    return (metaA.pinyin || a.id).localeCompare(metaB.pinyin || b.id);
+                });
+
+                // 按首字母分桶归组
+                const groups = {};
+                sorted.forEach(city => {
+                    const letter = getCityMeta(city).letter;
+                    if (!groups[letter]) groups[letter] = [];
+                    groups[letter].push(city);
+                });
+
+                const letters = Object.keys(groups).sort();
+
+                // 1. 顶部快速索引条 (A-Z 导航按钮与实时检索输入框)
+                const navButtonsHtml = letters.map(letter => `
+                    <button type="button" class="alpha-nav-item" data-letter="${letter}" title="跳转到字母 ${letter}">
+                        ${letter}
+                    </button>
+                `).join('');
+
+                const quickbarHtml = `
+                    <div class="alpha-quickbar glass-surface">
+                        <div class="alpha-letter-nav" id="alpha-letter-nav">
+                            ${navButtonsHtml}
+                        </div>
+                        <div class="search-input-wrapper alpha-search-box">
+                            <span class="search-icon">
+                                <cgo-icon name="search" size="14"></cgo-icon>
+                            </span>
+                            <input type="text" id="alpha-search-input" class="form-control" placeholder="输入拼音/缩写/城市名快速查找..." autocomplete="off" spellcheck="false" aria-label="搜索城市">
+                            <button type="button" class="search-clear-btn" id="alpha-search-clear" title="清空搜索" style="display: none;" aria-label="清空搜索">
+                                <cgo-icon name="close" size="14"></cgo-icon>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // 2. 字母分组及其紧凑条目
+                const groupsHtml = letters.map(letter => {
+                    const groupCities = groups[letter];
+                    const itemsHtml = groupCities.map(city => {
+                        const meta = getCityMeta(city);
+                        const isRecruiting = city.status === 'recruiting' || (city.maintainers && city.maintainers.some(m => m.isRecruiting));
+                        const searchKeys = `${city.name} ${city.id} ${meta.pinyin} ${meta.pyInitials || ''}`.toLowerCase();
+
+                        // 主理团队摘要（仅展示中英文与主理人，去除已上线状态与多余拼音英文）
+                        let maintainerSnippet = '';
+                        if (Array.isArray(city.maintainers) && city.maintainers.length > 0) {
+                            if (city.maintainers[0].isRecruiting) {
+                                maintainerSnippet = '主理人招募中';
+                            } else {
+                                maintainerSnippet = `主理: ${city.maintainers[0].name}`;
+                            }
+                        }
+
+                        return `
+                            <div class="city-compact-item glass-card" onclick="window.enterCity('${city.id}')" title="进入 ${city.name} 线路图" data-city-id="${city.id}" data-search-keys="${searchKeys}" tabindex="0" role="button">
+                                <div class="liquid-glass-effect"></div>
+                                <div class="compact-main-info">
+                                    <div class="compact-emblem">
+                                        ${formatCityLogoSvg(city)}
+                                    </div>
+                                    <div class="compact-text-box">
+                                        <div class="compact-city-title">
+                                            <span class="compact-city-name">${city.name}</span>
+                                            <span class="compact-city-code">${city.id.toUpperCase()}</span>
+                                        </div>
+                                        ${maintainerSnippet ? `<div class="compact-meta-maintainer">${maintainerSnippet}</div>` : ''}
+                                    </div>
+                                </div>
+                                <div class="compact-action">
+                                    <span class="btn btn-primary compact-enter-btn"${city.themeColor ? ` style="background-color: ${city.themeColor}; border-color: ${city.themeColor};"` : ''}>
+                                        <span>进入</span>
+                                        <cgo-icon name="arrow-right" size="12" class="compact-enter-arrow"></cgo-icon>
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    const isMulti = groupCities.length > 1;
+                    return `
+                        <div class="alpha-group${isMulti ? ' alpha-group-multi' : ''}" id="alpha-group-${letter}" data-letter="${letter}">
+                            <div class="alpha-group-header">
+                                <span class="alpha-letter-badge">${letter}</span>
+                                <span class="alpha-group-count">${groupCities.length} 个城市</span>
+                            </div>
+                            <div class="alpha-group-items">
+                                ${itemsHtml}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                container.innerHTML = `
+                    ${quickbarHtml}
+                    <div class="alpha-groups-list" id="alpha-groups-list">
+                        ${groupsHtml}
+                    </div>
+                    <div class="alpha-empty-state" id="alpha-empty-state" style="display: none;">
+                        <cgo-icon name="help" size="32"></cgo-icon>
+                        <p>未找到匹配的城市，可尝试搜索其他拼音或中文名</p>
+                    </div>
+                `;
+
+                // 绑定快速跳转事件
+                container.querySelectorAll('.alpha-nav-item').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const letter = btn.dataset.letter;
+                        const groupEl = document.getElementById('alpha-group-' + letter);
+                        if (groupEl) {
+                            groupEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    });
+                });
+
+                // 绑定实时过滤搜索
+                const searchInput = document.getElementById('alpha-search-input');
+                const clearBtn = document.getElementById('alpha-search-clear');
+                const emptyState = document.getElementById('alpha-empty-state');
+                const groupEls = container.querySelectorAll('.alpha-group');
+                const allItems = container.querySelectorAll('.city-compact-item');
+
+                function filterCities() {
+                    const q = (searchInput.value || '').trim().toLowerCase();
+                    if (clearBtn) clearBtn.style.display = q ? 'flex' : 'none';
+
+                    let totalVisible = 0;
+                    groupEls.forEach(group => {
+                        const items = group.querySelectorAll('.city-compact-item');
+                        let groupVisible = 0;
+                        items.forEach(item => {
+                            const keys = item.dataset.searchKeys || '';
+                            const match = !q || keys.includes(q);
+                            item.style.display = match ? 'flex' : 'none';
+                            if (match) groupVisible++;
+                        });
+                        group.style.display = groupVisible > 0 ? '' : 'none';
+                        totalVisible += groupVisible;
+                    });
+
+                    if (emptyState) emptyState.style.display = totalVisible === 0 ? 'flex' : 'none';
+                }
+
+                if (searchInput) {
+                    searchInput.addEventListener('input', filterCities);
+                }
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', () => {
+                        if (searchInput) {
+                            searchInput.value = '';
+                            searchInput.focus();
+                            filterCities();
+                        }
+                    });
+                }
+
+                // 键盘辅助 (Enter 打开城市)
+                allItems.forEach(item => {
+                    item.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            const cityId = item.dataset.cityId;
+                            if (cityId) window.enterCity(cityId);
+                        }
+                    });
+                });
+            }
+
+            function render() {
+                const registry = window.CITY_REGISTRY || {};
+                // 仅展示有效上线城市；暂未达标下架或标记隐藏的城市（如合肥）不在门户展示，但保留全部底层程序代码与路由
+                const cities = Object.values(registry).filter(city => !city.hidden && city.status !== 'delisted' && city.id !== 'hefei');
+
+                const countBadge = document.getElementById('city-count-badge');
+                if (countBadge) {
+                    countBadge.textContent = `已收录 ${cities.length} 个城市`;
+                }
+
+                // 渲染两套视图
+                renderTimeView(cities);
+                renderAlphaView(cities);
+
+                // 绑定排序与视图切换按钮
+                const timeBtn = document.getElementById('view-mode-time');
+                const alphaBtn = document.getElementById('view-mode-alpha');
+                if (timeBtn) timeBtn.addEventListener('click', () => updateViewModeUI('time'));
+                if (alphaBtn) alphaBtn.addEventListener('click', () => updateViewModeUI('alpha'));
+
+                // 初始化当前选中的视图
+                updateViewModeUI(currentViewMode);
+
                 // 为去 viewBox 的自定义 SVG 图标执行边界校准 (自动校准为精确图形外包围盒，彻底兼容各种缩放基准)
                 requestAnimationFrame(() => {
-                    document.querySelectorAll('.city-emblem svg').forEach(svg => {
+                    document.querySelectorAll('.city-emblem svg, .compact-emblem svg').forEach(svg => {
                         if (!svg.classList.contains('cgo-icon')) {
                             try {
                                 const bbox = svg.getBBox();
