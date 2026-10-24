@@ -914,7 +914,7 @@ function renderLegend() {
  */
 function processData() {
     if (typeof stationsData === 'undefined' || typeof linesData === 'undefined') {
-        alert("数据加载失败");
+        showToast("数据加载失败", "error");
         return;
     }
     for (let key in stationsData) {
@@ -2777,14 +2777,14 @@ async function initGeoSystem() {
  */
 function findNearestStation() {
     if (!isGeoLoaded) {
-        alert("地图数据加载中，请稍后再试...");
+        showToast("地图数据加载中，请稍后再试...", "warning");
         return;
     }
     const btn = document.getElementById('locate-btn');
     const originalIcon = `<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>`;
     btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;animation:spin 1s linear infinite;"><path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z"/></svg>`;
     if (!navigator.geolocation) {
-        alert("您的浏览器不支持定位功能");
+        showToast("您的浏览器不支持定位功能", "warning");
         btn.innerHTML = originalIcon;
         return;
     }
@@ -2819,12 +2819,10 @@ function findNearestStation() {
         btn.innerHTML = originalIcon;
         if (nearestSid) {
             let distText = minDist < 1000 ? `${Math.round(minDist)}米` : `${(minDist / 1000).toFixed(1)}公里`;
-            if (minDist > 50000) {
-                if (!confirm(`离您最近的车站是【${nearestName}】，距离 ${distText}。\n距离较远，是否跳转？`)) return;
-            }
+            showToast(`离您最近的车站是【${nearestName}】(约 ${distText})`, "info");
             selectStation(nearestSid);
         } else {
-            alert("无法定位最近车站 (数据匹配失败)");
+            showToast("无法定位最近车站 (数据匹配失败)", "warning");
         }
     };
     const errorCallback = (error) => {
@@ -2836,7 +2834,7 @@ function findNearestStation() {
             case 2: msg = "位置不可用 (请检查 GPS 或网络)"; break;
             case 3: msg = "定位请求超时 (请在开阔地带重试)"; break;
         }
-        alert(msg);
+        showToast(msg, "warning");
     };
     watchId = navigator.geolocation.watchPosition(successCallback, errorCallback, geoOptions);
 }

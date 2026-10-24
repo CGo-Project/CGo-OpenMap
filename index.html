@@ -13,7 +13,7 @@
                 localStorage.removeItem('cgo_header_mode');
                 localStorage.removeItem('root_cgo_header_mode');
                 localStorage.removeItem('main_cgo_header_mode');
-            } catch (e) {}
+            } catch (e) { }
 
             // 3. 页面特性严格由页面自身决定：index.html 门户专属双岛浮动标题栏
             var pageKey = 'openmap_index_header_mode';
@@ -41,14 +41,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261024.202500">
-    <script type="module" src="core/cgo-ui.js?v=261024.202500"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261024.210000">
+    <script type="module" src="core/cgo-ui.js?v=261024.210000"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261024.202500">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261024.202500">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261024.202500">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261024.202500">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261024.210000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261024.210000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261024.210000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261024.210000">
 
     <style>
         html {
@@ -130,8 +130,10 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
-        /* 字母紧凑列表容器 */
-        .city-alpha-container {
+        /* 字母、距离与最近浏览紧凑列表容器 */
+        .city-alpha-container,
+        .city-distance-container,
+        .city-recent-container {
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -307,8 +309,8 @@
             gap: 10px;
             cursor: pointer;
             transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-                        box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1)),
-                        border-color 0.2s ease;
+                box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1)),
+                border-color 0.2s ease;
             min-height: 42px;
         }
 
@@ -437,6 +439,152 @@
             flex-direction: column;
             align-items: center;
             gap: 8px;
+        }
+
+        /* 距离与最近浏览紧凑条目元信息徽章 */
+        .compact-meta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 7px;
+            border-radius: var(--radius-full, 9999px);
+            background: var(--btn-info-bg);
+            color: var(--primary-color);
+            flex-shrink: 0;
+            line-height: 1.3;
+        }
+
+        [data-theme="dark"] .compact-meta-badge {
+            color: #60a5fa;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .compact-dist-badge {
+            color: var(--primary-color);
+        }
+
+        [data-theme="dark"] .compact-dist-badge {
+            color: #60a5fa;
+        }
+
+        .compact-time-badge {
+            color: #059669;
+        }
+
+        [data-theme="dark"] .compact-time-badge {
+            color: #34d399;
+        }
+
+        .distance-loc-info,
+        .recent-bar-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-main);
+            font-weight: 500;
+            flex-wrap: wrap;
+        }
+
+        .relocate-btn,
+        .recent-clear-all-btn {
+            height: 26px;
+            padding: 0 8px;
+            font-size: 11.5px;
+            border-radius: var(--radius-xs, 4px);
+            gap: 4px;
+        }
+
+        /* 距离列表紧凑网格 */
+        .distance-items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px 16px;
+        }
+
+        /* 定位状态卡片与脉冲动效 */
+        .distance-state-box {
+            padding: 40px 24px;
+            border-radius: var(--radius-md, 8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .distance-loading-content,
+        .distance-error-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            max-width: 480px;
+            z-index: 1;
+        }
+
+        .distance-state-text h4 {
+            margin: 0 0 6px 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .distance-state-text p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        @keyframes locationPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.85;
+            }
+
+            50% {
+                transform: scale(1.15);
+                opacity: 1;
+                color: var(--primary-color);
+            }
+        }
+
+        .location-pulse-icon {
+            animation: locationPulse 1.6s ease-in-out infinite;
+            color: var(--primary-color);
+        }
+
+        .recent-group-badge {
+            width: 22px;
+            height: 22px;
+        }
+
+        @media (max-width: 640px) {
+            .view-switch-box .tab-btn {
+                padding: 5px 8px;
+                font-size: 12px;
+                gap: 3px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .view-switch-box .tab-pill-group {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2px;
+            }
+
+            .view-switch-box .tab-btn {
+                justify-content: center;
+            }
         }
 
         /* 城市主体卡片网格 */
@@ -1014,13 +1162,24 @@
             </div>
             <div class="view-switch-box">
                 <div class="tab-pill-group" role="tablist" aria-label="城市排序方式">
-                    <button class="tab-btn active" id="view-mode-time" role="tab" aria-selected="true" title="按录入时间排序（卡片视图）">
-                        <cgo-icon name="time" size="14"></cgo-icon>
-                        <span>按时间排序</span>
+                    <button class="tab-btn active" id="view-mode-time" role="tab" aria-selected="true"
+                        title="按录入时间排序（卡片视图）">
+                        <cgo-icon name="view-grid" size="14"></cgo-icon>
+                        <span>总览</span>
                     </button>
-                    <button class="tab-btn" id="view-mode-alpha" role="tab" aria-selected="false" title="按字母 A-Z 排序（紧凑列表）">
+                    <button class="tab-btn" id="view-mode-alpha" role="tab" aria-selected="false"
+                        title="按字母 A-Z 排序（紧凑列表）">
                         <cgo-icon name="sort" size="14"></cgo-icon>
-                        <span>按字母排序</span>
+                        <span>字母排序</span>
+                    </button>
+                    <button class="tab-btn" id="view-mode-distance" role="tab" aria-selected="false"
+                        title="按距您由近到远排序（紧凑列表）">
+                        <cgo-icon name="location" size="14"></cgo-icon>
+                        <span>距离排序</span>
+                    </button>
+                    <button class="tab-btn" id="view-mode-recent" role="tab" aria-selected="false"
+                        title="最近浏览过的城市（按时间区间分类）">
+                        <cgo-icon name="time" size="14"></cgo-icon>
                     </button>
                 </div>
             </div>
@@ -1034,6 +1193,16 @@
         <!-- 视图 2：城市字母紧凑列表 (按字母排序，方便快速查找) -->
         <div class="city-alpha-container" id="city-alpha-container" style="display: none;">
             <!-- 由脚本读取城市注册表动态渲染 -->
+        </div>
+
+        <!-- 视图 3：按距离由近到远紧凑列表 -->
+        <div class="city-distance-container" id="city-distance-container" style="display: none;">
+            <!-- 由脚本动态渲染 -->
+        </div>
+
+        <!-- 视图 4：最近浏览紧凑列表 (按时间区间分类) -->
+        <div class="city-recent-container" id="city-recent-container" style="display: none;">
+            <!-- 由脚本动态渲染 -->
         </div>
 
         <!-- 移植与贡献横幅 (Tier B 不可交互底板) -->
@@ -1100,509 +1269,27 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=261024.202500"></script>
-    <script src="core/tool-theme.js?v=261024.202500"></script>
+    <script src="city/data.js?v=261024.210000"></script>
+    <script src="core/tool-theme.js?v=261024.210000"></script>
+    <script src="core/portal-data.js?v=261024.210000"></script>
+    <script src="core/portal-view.js?v=261024.210000"></script>
 
-    <!-- 动态城市渲染与数据绑定 -->
+    <!-- 离线 Service Worker 注册 -->
     <script>
-        /**
-         * 进入指定城市的线路图。
-         * 先把选择写入本地偏好再跳转：部分静态服务器（如 npx serve 默认的 cleanUrls）
-         * 会把 /main.html?city=xxx 重定向为 /main 并丢掉查询串，
-         * 此时 city/data.js 会用本地偏好兜底，仍能打开正确城市而不是回退到北京。
-         */
-        window.enterCity = function (cityId) {
-            if (!cityId) return;
-            try { localStorage.setItem('cgo_openmap_city', String(cityId)); } catch (e) { /* ignore */ }
-            window.location.href = './main.html?city=' + encodeURIComponent(cityId);
-        };
-        (function () {
-            // 规范化并包装城市徽标；优先使用 CGoUI 官方原生收录城市图标（已内置 42+ 座城市），缺失时回退自定义 SVG 或通用列车图标。
-            const CGO_BUILTIN_CITY_ICONS = new Set([
-                'beijing', 'changchun', 'dalian', 'fuzhou', 'hefei', 'qingdao', 'shanghai', 'shenyang',
-                'changsha', 'changzhou', 'chengdu', 'chongqing', 'dongguan', 'foshan', 'guangzhou', 'guiyang',
-                'hangzhou', 'harbin', 'hongkong', 'jinan', 'kaohsiung', 'kunming', 'lanzhou', 'nanchang',
-                'nanjing', 'nanning', 'nantong', 'ningbo', 'shijiazhuang', 'shenzhen', 'suzhou', 'taipei',
-                'taiyuan', 'taoyuan', 'tianjin', 'wenzhou', 'wuhan', 'wuhu', 'wuxi', 'xiamen',
-                'xian', 'zhengzhou',
-                // 常用别名兼容
-                'xianggang', 'taibei', 'gaoxiong', 'haerbin', 'xi-an'
-            ]);
-
-            // 城市拼音元数据与快速检索缩写对照表
-            const CITY_LETTER_DATA = {
-                'beijing': { letter: 'B', pinyin: 'Beijing', zh: '北京', pyInitials: 'bj' },
-                'changchun': { letter: 'C', pinyin: 'Changchun', zh: '长春', pyInitials: 'cc' },
-                'dalian': { letter: 'D', pinyin: 'Dalian', zh: '大连', pyInitials: 'dl' },
-                'fuzhou': { letter: 'F', pinyin: 'Fuzhou', zh: '福州', pyInitials: 'fz' },
-                'harbin': { letter: 'H', pinyin: 'Harbin', zh: '哈尔滨', pyInitials: 'heb,hrb' },
-                'hohhot': { letter: 'H', pinyin: 'Hohhot', zh: '呼和浩特', pyInitials: 'hhht' },
-                'hongkong': { letter: 'H', pinyin: 'Hong Kong (Xianggang)', zh: '香港', pyInitials: 'hk,xg' },
-                'lanzhou': { letter: 'L', pinyin: 'Lanzhou', zh: '兰州', pyInitials: 'lz' },
-                'liaoyuan': { letter: 'L', pinyin: 'Liaoyuan', zh: '辽源', pyInitials: 'ly' },
-                'macau': { letter: 'M', pinyin: 'Macau (Aomen)', zh: '澳門', pyInitials: 'am,mo,mac' },
-                'nanping': { letter: 'N', pinyin: 'Nanping', zh: '南平', pyInitials: 'np' },
-                'qingdao': { letter: 'Q', pinyin: 'Qingdao', zh: '青岛', pyInitials: 'qd' },
-                'sanya': { letter: 'S', pinyin: 'Sanya', zh: '三亚', pyInitials: 'sy' },
-                'shanghai': { letter: 'S', pinyin: 'Shanghai', zh: '上海', pyInitials: 'sh' },
-                'shenzhen': { letter: 'S', pinyin: 'Shenzhen', zh: '深圳', pyInitials: 'sz' },
-                'shenyang': { letter: 'S', pinyin: 'Shenyang', zh: '沈阳', pyInitials: 'sy' },
-                'shijiazhuang': { letter: 'S', pinyin: 'Shijiazhuang', zh: '石家庄', pyInitials: 'sjz' },
-                'sydney': { letter: 'S', pinyin: 'Sydney (Xini)', zh: '悉尼', pyInitials: 'xn,syd' },
-                'wenshan': { letter: 'W', pinyin: 'Wenshan', zh: '文山', pyInitials: 'ws' }
-            };
-
-            function getCityMeta(city) {
-                const id = (city.id || '').toLowerCase();
-                const matched = CITY_LETTER_DATA[id];
-                if (matched) return matched;
-                const letter = (city.id || '#')[0].toUpperCase();
-                return {
-                    letter: letter >= 'A' && letter <= 'Z' ? letter : '#',
-                    pinyin: city.id || '',
-                    zh: city.name || '',
-                    pyInitials: (city.id || '').slice(0, 3)
-                };
-            }
-
-            function formatCityLogoSvg(cityOrSvg) {
-                if (!cityOrSvg) return '<cgo-icon name="train" size="22"></cgo-icon>';
-                let cityId = '';
-                let rawSvg = '';
-                if (typeof cityOrSvg === 'object') {
-                    cityId = (cityOrSvg.id || '').toLowerCase();
-                    rawSvg = cityOrSvg.svglogo || '';
-                } else if (typeof cityOrSvg === 'string') {
-                    rawSvg = cityOrSvg;
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(function (reg) { reg.update().catch(function () { }); })
+                    .catch(function () { });
+            });
+            var hadController = Boolean(navigator.serviceWorker.controller);
+            navigator.serviceWorker.addEventListener('controllerchange', function () {
+                if (!hadController) { hadController = true; return; }
+                if (window.CGO && typeof window.CGO.showToast === 'function') {
+                    window.CGO.showToast('已更新，刷新后生效', 'info');
                 }
-                const hasBuiltin = (name) => {
-                    if (!name) return false;
-                    if (CGO_BUILTIN_CITY_ICONS.has(name)) return true;
-                    if (window.CGO && typeof window.CGO.iconList === 'function') {
-                        return window.CGO.iconList().includes(name);
-                    }
-                    return false;
-                };
-
-                if (cityId && hasBuiltin(cityId)) {
-                    return `<cgo-icon name="${cityId}" size="22"></cgo-icon>`;
-                }
-                if (!rawSvg || typeof rawSvg !== 'string' || !rawSvg.trim()) {
-                    return '<cgo-icon name="train" size="22"></cgo-icon>';
-                }
-                let svg = rawSvg.trim();
-                // 移除 XML 声明及 DOCTYPE (如果有)
-                svg = svg.replace(/<\?xml[\s\S]*?\?>/gi, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '').trim();
-                // 若收录时去除了 viewBox，根据坐标特征智能赋予初始视口 (1000 级 vs 100 级)
-                if (!/viewBox\s*=/i.test(svg)) {
-                    const pathDMatch = svg.match(/\bd=["']([^"']+)["']/i);
-                    const pathD = pathDMatch ? pathDMatch[1] : '';
-                    const nums = pathD.match(/-?\d+(?:\.\d+)?/g);
-                    const isLarge = nums && nums.some(n => Math.abs(parseFloat(n)) > 150);
-                    const initVb = isLarge ? '0 0 1024 1024' : '0 0 100 100';
-                    svg = svg.replace(/<svg\b/i, `<svg viewBox="${initVb}"`);
-                }
-                // 统一设置 width="22" height="22" fill="currentColor"，并剥离写死的固定尺寸和填充色
-                svg = svg.replace(/<svg\b([^>]*)>/i, (match, attrs) => {
-                    let cleanAttrs = attrs
-                        .replace(/\s+(width|height|fill)\s*=\s*["'][^"']*["']/gi, '')
-                        .trim();
-                    return `<svg width="22" height="22" fill="currentColor" ${cleanAttrs}>`;
-                });
-                return svg;
-            }
-
-            // 视图切换模式管理：'time'（默认按时间排序卡片网格）| 'alpha'（按字母排序紧凑列表）
-            const VIEW_MODE_KEY = 'cgo_openmap_city_sort_mode';
-            let currentViewMode = localStorage.getItem(VIEW_MODE_KEY) || 'time';
-
-            function updateViewModeUI(mode) {
-                currentViewMode = mode;
-                try { localStorage.setItem(VIEW_MODE_KEY, mode); } catch (e) { }
-
-                const timeBtn = document.getElementById('view-mode-time');
-                const alphaBtn = document.getElementById('view-mode-alpha');
-                const gridView = document.getElementById('city-grid');
-                const alphaView = document.getElementById('city-alpha-container');
-
-                if (mode === 'alpha') {
-                    if (timeBtn) { timeBtn.classList.remove('active'); timeBtn.setAttribute('aria-selected', 'false'); }
-                    if (alphaBtn) { alphaBtn.classList.add('active'); alphaBtn.setAttribute('aria-selected', 'true'); }
-                    if (gridView) gridView.style.display = 'none';
-                    if (alphaView) alphaView.style.display = 'flex';
-                } else {
-                    if (timeBtn) { timeBtn.classList.add('active'); timeBtn.setAttribute('aria-selected', 'true'); }
-                    if (alphaBtn) { alphaBtn.classList.remove('active'); alphaBtn.setAttribute('aria-selected', 'false'); }
-                    if (gridView) gridView.style.display = 'grid';
-                    if (alphaView) alphaView.style.display = 'none';
-                }
-            }
-
-            // 渲染视图 1：按时间排序的卡片网格
-            function renderTimeView(cities) {
-                const grid = document.getElementById('city-grid');
-                if (!grid) return;
-
-                // 按 registerDate 升序排序
-                const sorted = [...cities].sort((a, b) => {
-                    const timeA = new Date(a.registerDate || '1970-01-01').getTime();
-                    const timeB = new Date(b.registerDate || '1970-01-01').getTime();
-                    return timeA - timeB;
-                });
-
-                grid.innerHTML = sorted.map(city => {
-                    const isRecruiting = city.status === 'recruiting' || (city.maintainers && city.maintainers.some(m => m.isRecruiting));
-                    const badgeClass = isRecruiting ? 'badge-warning' : 'badge-success';
-                    const badgeIcon = isRecruiting ? 'sparkle' : 'check-circle';
-                    const badgeText = isRecruiting ? '招募主理人' : (city.isDefault ? '核心范例 (已上线)' : '已上线');
-
-                    // 主理团队展示
-                    let maintainersHtml = '';
-                    const maintainers = Array.isArray(city.maintainers) ? city.maintainers : [];
-
-                    if (isRecruiting && maintainers.length === 1 && maintainers[0].isRecruiting) {
-                        maintainersHtml = `
-                            <div class="maintainer-recruiting-bar">
-                                <div class="recruiting-tag">
-                                    <cgo-icon name="sparkle" size="13"></cgo-icon>
-                                    <span>城市主理人虚位以待</span>
-                                </div>
-                                <a href="${maintainers[0].github || 'https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md'}" target="_blank" class="recruiting-link" onclick="event.stopPropagation()">
-                                    <span>认领该城市</span>
-                                    <cgo-icon name="arrow-right" size="11"></cgo-icon>
-                                </a>
-                            </div>
-                        `;
-                    } else {
-                        maintainersHtml = `
-                            <div class="maintainers-list">
-                                ${maintainers.map(m => {
-                            const ghBtn = m.github ? `
-                                        <a href="${m.github}" target="_blank" class="maintainer-gh" title="${m.name} 的 GitHub" onclick="event.stopPropagation()">
-                                            <cgo-icon name="code" size="12"></cgo-icon>
-                                            <span>GitHub</span>
-                                        </a>
-                                    ` : '';
-                            return `
-                                        <div class="maintainer-item">
-                                            <div class="maintainer-profile">
-                                                <span class="maintainer-name">${m.name}</span>
-                                                ${m.role ? `<span class="maintainer-role">${m.role}</span>` : ''}
-                                            </div>
-                                            ${ghBtn}
-                                        </div>
-                                    `;
-                        }).join('')}
-                            </div>
-                        `;
-                    }
-
-                    // 官方参考链接
-                    const officialLinkHtml = city.officialMapUrl ? `
-                        <a href="${city.officialMapUrl}" target="_blank" class="city-meta-link" title="官方地铁运营单位线网参考" onclick="event.stopPropagation()">
-                            <cgo-icon name="external" size="12"></cgo-icon>
-                            <span>官方参考</span>
-                        </a>
-                    ` : '';
-
-                    const targetUrl = `./main.html?city=${city.id}`;
-
-                    return `
-                        <div class="city-card glass-card" onclick="window.enterCity('${city.id}')" title="进入 ${city.name} 交互线路图">
-                            <div class="liquid-glass-effect"></div>
-                            <div>
-                                <div class="city-card-header">
-                                    <div class="city-identity">
-                                        <span class="city-name">${city.name}</span>
-                                        <span class="city-code-tag">${city.id.toUpperCase()}</span>
-                                    </div>
-                                    <div class="city-badges-box">
-                                        <span class="badge ${badgeClass}">
-                                            <cgo-icon name="${badgeIcon}" size="12"></cgo-icon>
-                                            <span>${badgeText}</span>
-                                        </span>
-                                        <div class="city-emblem">
-                                            ${formatCityLogoSvg(city)}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="city-meta">
-                                    <div class="city-meta-item">
-                                        <cgo-icon name="calendar" size="13"></cgo-icon>
-                                        <span>录入时间：${city.registerDate || '近期'}</span>
-                                    </div>
-                                    ${officialLinkHtml}
-                                </div>
-
-                                <p class="city-desc">${city.description || '暂无城市线网描述。'}</p>
-                            </div>
-
-                            <div>
-                                <div class="city-maintainers-box">
-                                    <div class="maintainers-header">
-                                        <cgo-icon name="user" size="13"></cgo-icon>
-                                        <span>主理团队</span>
-                                    </div>
-                                    ${maintainersHtml}
-                                </div>
-
-                                <div class="card-action">
-                                    <!-- 键盘入口：真实链接；点击仍冒泡到卡片的 enterCity（先写本地偏好再跳转） -->
-                                    <a class="btn btn-primary btn-enter" href="${targetUrl}" onclick="event.preventDefault()"${city.themeColor ? ` style="background-color: ${city.themeColor}; border-color: ${city.themeColor};"` : ''}>
-                                        <span>探索 ${city.name} 线路图</span>
-                                        <cgo-icon name="arrow-right" size="15" class="enter-arrow"></cgo-icon>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            // 渲染视图 2：按字母排序的紧凑列表
-            function renderAlphaView(cities) {
-                const container = document.getElementById('city-alpha-container');
-                if (!container) return;
-
-                // 字母排序：A-Z 首字母优先，同字母按 pinyin/id 排序
-                const sorted = [...cities].sort((a, b) => {
-                    const metaA = getCityMeta(a);
-                    const metaB = getCityMeta(b);
-                    if (metaA.letter !== metaB.letter) {
-                        return metaA.letter.localeCompare(metaB.letter);
-                    }
-                    return (metaA.pinyin || a.id).localeCompare(metaB.pinyin || b.id);
-                });
-
-                // 按首字母分桶归组
-                const groups = {};
-                sorted.forEach(city => {
-                    const letter = getCityMeta(city).letter;
-                    if (!groups[letter]) groups[letter] = [];
-                    groups[letter].push(city);
-                });
-
-                const letters = Object.keys(groups).sort();
-
-                // 1. 顶部快速索引条 (A-Z 导航按钮与实时检索输入框)
-                const navButtonsHtml = letters.map(letter => `
-                    <button type="button" class="alpha-nav-item" data-letter="${letter}" title="跳转到字母 ${letter}">
-                        ${letter}
-                    </button>
-                `).join('');
-
-                const quickbarHtml = `
-                    <div class="alpha-quickbar glass-surface">
-                        <div class="alpha-letter-nav" id="alpha-letter-nav">
-                            ${navButtonsHtml}
-                        </div>
-                        <div class="search-input-wrapper alpha-search-box">
-                            <span class="search-icon">
-                                <cgo-icon name="search" size="14"></cgo-icon>
-                            </span>
-                            <input type="text" id="alpha-search-input" class="form-control" placeholder="输入拼音/缩写/城市名快速查找..." autocomplete="off" spellcheck="false" aria-label="搜索城市">
-                            <button type="button" class="search-clear-btn" id="alpha-search-clear" title="清空搜索" style="display: none;" aria-label="清空搜索">
-                                <cgo-icon name="close" size="14"></cgo-icon>
-                            </button>
-                        </div>
-                    </div>
-                `;
-
-                // 2. 字母分组及其紧凑条目
-                const groupsHtml = letters.map(letter => {
-                    const groupCities = groups[letter];
-                    const itemsHtml = groupCities.map(city => {
-                        const meta = getCityMeta(city);
-                        const isRecruiting = city.status === 'recruiting' || (city.maintainers && city.maintainers.some(m => m.isRecruiting));
-                        const searchKeys = `${city.name} ${city.id} ${meta.pinyin} ${meta.pyInitials || ''}`.toLowerCase();
-
-                        // 主理团队摘要（仅展示中英文与主理人，去除已上线状态与多余拼音英文）
-                        let maintainerSnippet = '';
-                        if (Array.isArray(city.maintainers) && city.maintainers.length > 0) {
-                            if (city.maintainers[0].isRecruiting) {
-                                maintainerSnippet = '主理人招募中';
-                            } else {
-                                maintainerSnippet = `主理: ${city.maintainers[0].name}`;
-                            }
-                        }
-
-                        return `
-                            <div class="city-compact-item glass-card" onclick="window.enterCity('${city.id}')" title="进入 ${city.name} 线路图" data-city-id="${city.id}" data-search-keys="${searchKeys}" tabindex="0" role="button">
-                                <div class="liquid-glass-effect"></div>
-                                <div class="compact-main-info">
-                                    <div class="compact-emblem">
-                                        ${formatCityLogoSvg(city)}
-                                    </div>
-                                    <div class="compact-text-box">
-                                        <div class="compact-city-title">
-                                            <span class="compact-city-name">${city.name}</span>
-                                            <span class="compact-city-code">${city.id.toUpperCase()}</span>
-                                        </div>
-                                        ${maintainerSnippet ? `<div class="compact-meta-maintainer">${maintainerSnippet}</div>` : ''}
-                                    </div>
-                                </div>
-                                <div class="compact-action">
-                                    <span class="btn btn-primary compact-enter-btn"${city.themeColor ? ` style="background-color: ${city.themeColor}; border-color: ${city.themeColor};"` : ''}>
-                                        <span>进入</span>
-                                        <cgo-icon name="arrow-right" size="12" class="compact-enter-arrow"></cgo-icon>
-                                    </span>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-
-                    const isMulti = groupCities.length > 1;
-                    return `
-                        <div class="alpha-group${isMulti ? ' alpha-group-multi' : ''}" id="alpha-group-${letter}" data-letter="${letter}">
-                            <div class="alpha-group-header">
-                                <span class="alpha-letter-badge">${letter}</span>
-                                <span class="alpha-group-count">${groupCities.length} 个城市</span>
-                            </div>
-                            <div class="alpha-group-items">
-                                ${itemsHtml}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                container.innerHTML = `
-                    ${quickbarHtml}
-                    <div class="alpha-groups-list" id="alpha-groups-list">
-                        ${groupsHtml}
-                    </div>
-                    <div class="alpha-empty-state" id="alpha-empty-state" style="display: none;">
-                        <cgo-icon name="help" size="32"></cgo-icon>
-                        <p>未找到匹配的城市，可尝试搜索其他拼音或中文名</p>
-                    </div>
-                `;
-
-                // 绑定快速跳转事件
-                container.querySelectorAll('.alpha-nav-item').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const letter = btn.dataset.letter;
-                        const groupEl = document.getElementById('alpha-group-' + letter);
-                        if (groupEl) {
-                            groupEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                    });
-                });
-
-                // 绑定实时过滤搜索
-                const searchInput = document.getElementById('alpha-search-input');
-                const clearBtn = document.getElementById('alpha-search-clear');
-                const emptyState = document.getElementById('alpha-empty-state');
-                const groupEls = container.querySelectorAll('.alpha-group');
-                const allItems = container.querySelectorAll('.city-compact-item');
-
-                function filterCities() {
-                    const q = (searchInput.value || '').trim().toLowerCase();
-                    if (clearBtn) clearBtn.style.display = q ? 'flex' : 'none';
-
-                    let totalVisible = 0;
-                    groupEls.forEach(group => {
-                        const items = group.querySelectorAll('.city-compact-item');
-                        let groupVisible = 0;
-                        items.forEach(item => {
-                            const keys = item.dataset.searchKeys || '';
-                            const match = !q || keys.includes(q);
-                            item.style.display = match ? 'flex' : 'none';
-                            if (match) groupVisible++;
-                        });
-                        group.style.display = groupVisible > 0 ? '' : 'none';
-                        totalVisible += groupVisible;
-                    });
-
-                    if (emptyState) emptyState.style.display = totalVisible === 0 ? 'flex' : 'none';
-                }
-
-                if (searchInput) {
-                    searchInput.addEventListener('input', filterCities);
-                }
-                if (clearBtn) {
-                    clearBtn.addEventListener('click', () => {
-                        if (searchInput) {
-                            searchInput.value = '';
-                            searchInput.focus();
-                            filterCities();
-                        }
-                    });
-                }
-
-                // 键盘辅助 (Enter 打开城市)
-                allItems.forEach(item => {
-                    item.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            const cityId = item.dataset.cityId;
-                            if (cityId) window.enterCity(cityId);
-                        }
-                    });
-                });
-            }
-
-            function render() {
-                const registry = window.CITY_REGISTRY || {};
-                // 仅展示有效上线城市；暂未达标下架或标记隐藏的城市（如合肥）不在门户展示，但保留全部底层程序代码与路由
-                const cities = Object.values(registry).filter(city => !city.hidden && city.status !== 'delisted' && city.id !== 'hefei');
-
-                const countBadge = document.getElementById('city-count-badge');
-                if (countBadge) {
-                    countBadge.textContent = `已收录 ${cities.length} 个城市`;
-                }
-
-                // 渲染两套视图
-                renderTimeView(cities);
-                renderAlphaView(cities);
-
-                // 绑定排序与视图切换按钮
-                const timeBtn = document.getElementById('view-mode-time');
-                const alphaBtn = document.getElementById('view-mode-alpha');
-                if (timeBtn) timeBtn.addEventListener('click', () => updateViewModeUI('time'));
-                if (alphaBtn) alphaBtn.addEventListener('click', () => updateViewModeUI('alpha'));
-
-                // 初始化当前选中的视图
-                updateViewModeUI(currentViewMode);
-
-                // 为去 viewBox 的自定义 SVG 图标执行边界校准 (自动校准为精确图形外包围盒，彻底兼容各种缩放基准)
-                requestAnimationFrame(() => {
-                    document.querySelectorAll('.city-emblem svg, .compact-emblem svg').forEach(svg => {
-                        if (!svg.classList.contains('cgo-icon')) {
-                            try {
-                                const bbox = svg.getBBox();
-                                if (bbox && bbox.width > 0 && bbox.height > 0) {
-                                    // 自动校准为图形真实外边界
-                                    svg.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
-                                }
-                            } catch (e) { }
-                        }
-                    });
-                });
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', render);
-            } else {
-                render();
-            }
-
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function () {
-                    navigator.serviceWorker.register('./sw.js')
-                        .then(function (reg) { reg.update().catch(function () { }); })
-                        .catch(function () { });
-                });
-                // 新版 Service Worker 接管后提示刷新（首次安装没有旧版本，不提示；不自动刷新）
-                var hadController = Boolean(navigator.serviceWorker.controller);
-                navigator.serviceWorker.addEventListener('controllerchange', function () {
-                    if (!hadController) { hadController = true; return; }
-                    if (window.CGO && typeof window.CGO.showToast === 'function') {
-                        window.CGO.showToast('已更新，刷新后生效', 'info');
-                    }
-                });
-            }
-        })();
+            });
+        }
     </script>
 
     <!-- 硬件加速 SVG 折射滤镜定义（液态玻璃标准物理折射） -->

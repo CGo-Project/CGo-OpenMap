@@ -28,7 +28,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261024.202500';
+const CACHE_NAME = 'cgo-openmap-v261024.210000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -36,6 +36,8 @@ const ASSETS_TO_CACHE = [
     './',
     './index.html',
     './main.html',
+    './core/portal-data.js',
+    './core/portal-view.js',
     './core/mobile-sheet.js',
     './core/panel-tab-swipe.js',
     './readme.html',
@@ -89,6 +91,8 @@ const ASSETS_TO_CACHE = [
     // 核心通用 JS 库
     './core/cgo-ui.js',
     './core/tool-theme.js',
+    './core/portal-data.js',
+    './core/portal-view.js',
     './core/station-board.js',
     './core/script.js',
     './core/city-neighbors.js',
