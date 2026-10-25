@@ -28,7 +28,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261025.000541';
+const CACHE_NAME = 'cgo-openmap-v261026.031000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -668,6 +668,31 @@ const ASSETS_TO_CACHE = [
     './city/shijiazhuang/stacard/script.js',
     './city/shijiazhuang/style.css',
 
+
+    // 城市配置与业务数据 (南京)
+    './city/nanjing/nanjing.js',
+    './city/nanjing/data_stations.js',
+    './city/nanjing/data_lines.js',
+    './city/nanjing/data_virtual_transfers.js',
+    './city/nanjing/data_scattered.js',
+    './city/nanjing/data_legend.js',
+    './city/nanjing/data_timetable.js',
+    './city/nanjing/data_notopen.js',
+    './city/nanjing/stacard/script.js',
+    './city/nanjing/staname.csv',
+    './city/nanjing/amap_data.json',
+    './city/nanjing/assets/nanjing_sea.svg',
+    './city/nanjing/assets/railway.svg',
+
+    // 南京线路徽标（Beijing S1 样式文字徽标）
+    './assets/svg/icon@S1.svg',
+    './assets/svg/icon@S2.svg',
+    './assets/svg/icon@S3.svg',
+    './assets/svg/icon@S6.svg',
+    './assets/svg/icon@S7.svg',
+    './assets/svg/icon@S8.svg',
+    './assets/svg/icon@S9.svg',
+    './assets/svg/icon@NMA.svg',
     // 图标与清单素材
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',

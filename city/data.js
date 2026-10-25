@@ -565,8 +565,30 @@
                 { name: "已码凉", role: "城市主理人", github: "https://github.com/Yimaliang" }
             ],
             isDefault: false
-        }
-    };
+        },
+        "nanjing": {
+                    id: "nanjing",
+                    name: "南京",
+                    themeColor: null, // 未设置，使用系统默认色
+                    svglogo: null, // 已接入 CGoUI 内置 nanjing 官方矢量图标
+                    folder: "./city/nanjing",
+                    mainLogic: "./city/nanjing/nanjing.js",
+                    center: { x: 1400, y: 1900 },
+                    defaultScale: 0.6,
+                    mapSize: { width: 2800, height: 3900 },
+                    searchCity: "南京",
+                    title: "CGo OpenMap - 南京轨道交通线路图",
+                    keywords: "CGo OpenMap, 南京地铁, 南京轨道交通, 线路图",
+                    description: "由 CGo OpenMap 驱动的南京轨道交通智能交互线路图（依据南京地铁官方线网图与 .ai 矢量原稿整理）。",
+                    officialMapUrl: "https://www.njmetro.com.cn/",
+                    registerDate: "2026-09-30",
+                    status: "active",
+                    maintainers: [
+                        { name: "ohuihuipu", role: "城市主理人", github: "https://github.com/ohuihuipu" }
+                    ],
+                    isDefault: false
+                },
+};
 
     // ==========================================================================
     // 城市激活与状态解析 (City Resolution Logic)
