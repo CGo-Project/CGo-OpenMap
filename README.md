@@ -318,7 +318,7 @@ openmap/
 - **香港线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人；非官方复刻，支持同台换乘指南与行程规划）
 - **深圳线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人；按深圳市交通运输局公布的官方运营线路网络图非官方复刻，与香港线路图衔接，口岸车站提供通关信息）
 - **哈尔滨线网**：城市主理人虚位以待，欢迎当地贡献者认领（[社区贡献与城市主理人指南](./CONTRIBUTING.md)）
-- **南京线网**：[ohuihuipu](https://github.com/ohuihuipu)（城市主理人；覆盖 1–7、10 号线与 S1/S3/S6/S7/S8/S9 及宁马线，共 16 条线 259 站）
+- **南京线网**：[ohuihuipu](https://github.com/ohuihuipu)（城市主理人；覆盖 1–7、10 号线与 S1/S3/S6/S7/S8/S9 及宁马线，共 16 条线 259 站） · 文昌路的轨道（原稿资源支持）
 - **平台架构**：[NaL](https://github.com/NokiaimuL/) & [Ryan](https://github.com/ryan-si)
 - **地理数据**：[高德地图开放平台](https://lbs.amap.com/)
 

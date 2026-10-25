@@ -584,7 +584,8 @@
                     registerDate: "2026-09-30",
                     status: "active",
                     maintainers: [
-                        { name: "ohuihuipu", role: "城市主理人", github: "https://github.com/ohuihuipu" }
+                        { name: "ohuihuipu", role: "城市主理人", github: "https://github.com/ohuihuipu" },
+                        { name: "文昌路的轨道", role: "原稿资源支持" }
                     ],
                     isDefault: false
                 },
