@@ -1,0 +1,35 @@
+/**
+ * CGo OpenMap - 天水 车站数据库 (city/tianshui/data_stations.js)
+ */
+
+const stationsData = {
+    "TI01": { type: "dot", x: 115.6, y: 84.2, cn: "景坤西郡三中", en: "Jingkun Xijun Sanzhong", align: "top", offset: { x: 0, y: -2 } },
+    "TI02": { type: "dot", x: 157.5, y: 84.2, cn: "机电学院", en: "Jidian Xueyuan", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI03": { type: "dot", x: 199.4, y: 84.2, cn: "西十里", en: "Xishili", align: "top", offset: { x: 0, y: -2 } },
+    "TI04": { type: "dot", x: 241.3, y: 84.2, cn: "赤峪路", en: "Chiyulu", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI05": { type: "dot", x: 283.2, y: 84.2, cn: "天水师大", en: "Tianshui Shida", align: "top", offset: { x: 0, y: -2 } },
+    "TI06": { type: "dot", x: 325.1, y: 84.2, cn: "伏羲庙", en: "Fuximiao", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI07": { type: "dot", x: 367.0, y: 84.2, cn: "兰天广场", en: "Lantian Guangchang", align: "top", offset: { x: 0, y: -2 } },
+    "TI08": { type: "dot", x: 408.9, y: 84.2, cn: "农发行", en: "Nongfa Hang", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI09": { type: "dot", x: 450.8, y: 84.2, cn: "诸葛军垒", en: "Zhugejunlei", align: "top", offset: { x: 0, y: -2 } },
+    "TI10": { type: "dot", x: 492.7, y: 84.2, cn: "工业博物馆", en: "Gongyebowuguan", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI11": { type: "dot", x: 534.6, y: 84.2, cn: "五里铺", en: "Wulipu", align: "top", offset: { x: 0, y: -2 } },
+    "TI12": { type: "dot", x: 576.5, y: 84.2, cn: "闫河村", en: "Yanhecun", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI13": { type: "dot", x: 618.4, y: 84.2, cn: "县家路", en: "Xianji Road", align: "top", offset: { x: 0, y: -2 } },
+    "TI14": { type: "dot", x: 660.3, y: 84.2, cn: "成纪新城", en: "Chengjixincheng", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI15": { type: "dot", x: 702.2, y: 84.2, cn: "天秀大桥", en: "Tianxiudaqiao", align: "top", offset: { x: 0, y: -2 } },
+    "TI16": { type: "dot", x: 744.1, y: 84.2, cn: "藉河景观公园", en: "Xihejingguangongyuan", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI17": { type: "dot", x: 786.0, y: 84.2, cn: "阳坡东", en: "Yangpodong", align: "top", offset: { x: 0, y: -2 } },
+    "TI18": { type: "dot", x: 842.2, y: 84.2, cn: "铺经九路", en: "Pujingjiu Road", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI19": { type: "dot", x: 885.5, y: 84.2, cn: "市一中", en: "Shiyizhong", align: "top", offset: { x: 0, y: -2 } },
+    "TI20": { type: "dot", x: 950.5, y: 84.2, cn: "成纪新家园", en: "Chengjixinjiayuan", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI21": { type: "dot", x: 1016.0, y: 84.2, cn: "麦积公交总站", en: "Maiji Busstation", align: "top", offset: { x: 0, y: -2 } },
+    "TI22": { type: "dot", x: 1080.5, y: 84.2, cn: "天水火车站", en: "Tianshui Train Station", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI23": { type: "dot", x: 1080.5, y: 141.3, cn: "分路口", en: "Fenlukou", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI24": { type: "dot", x: 1037.2, y: 141.3, cn: "花牛", en: "Huaniu", align: "top", offset: { x: 0, y: -2 } },
+    "TI25": { type: "dot", x: 993.8, y: 141.3, cn: "天水机场", en: "Tianshui Jichang", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI26": { type: "no", x: 950.5, y: 141.3, cn: "高铁新城", en: "Gaotie Xincheng", align: "top", offset: { x: 0, y: -2 } },
+    "TI27": { type: "dot", x: 907.2, y: 141.3, cn: "天水南站", en: "Tianshui Nanzhan", align: "bottom", offset: { x: 0, y: 2 } },
+    "TI28": { type: "dot", x: 863.9, y: 141.3, cn: "白崖村", en: "Baiyacun", align: "top", offset: { x: 0, y: -2 } },
+    "TI29": { type: "dot", x: 820.5, y: 141.3, cn: "东二十里埔", en: "Dong Ershilipu", align: "bottom", offset: { x: 0, y: 2 } },
+};

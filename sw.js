@@ -122,6 +122,72 @@ const ASSETS_TO_CACHE = [
     './city/beijing/assets/gate.svg',
 
 
+
+    // 城市配置与业务数据 (taizhou)
+    './city/taizhou/taizhou.js',
+    './city/taizhou/data_stations.js',
+    './city/taizhou/data_lines.js',
+    './city/taizhou/data_legend.js',
+    './city/taizhou/data_notopen.js',
+    './city/taizhou/data_scattered.js',
+    './city/taizhou/data_timetable.js',
+    './city/taizhou/data_virtual_transfers.js',
+    './city/taizhou/staname.csv',
+    './city/taizhou/assets/logo.svg',
+    './city/taizhou/stacard/script.js',
+
+    // 城市配置与业务数据 (huangshi)
+    './city/huangshi/huangshi.js',
+    './city/huangshi/data_stations.js',
+    './city/huangshi/data_lines.js',
+    './city/huangshi/data_legend.js',
+    './city/huangshi/data_notopen.js',
+    './city/huangshi/data_scattered.js',
+    './city/huangshi/data_timetable.js',
+    './city/huangshi/data_virtual_transfers.js',
+    './city/huangshi/staname.csv',
+    './city/huangshi/assets/logo.svg',
+    './city/huangshi/stacard/script.js',
+
+    // 城市配置与业务数据 (huaian)
+    './city/huaian/huaian.js',
+    './city/huaian/data_stations.js',
+    './city/huaian/data_lines.js',
+    './city/huaian/data_legend.js',
+    './city/huaian/data_notopen.js',
+    './city/huaian/data_scattered.js',
+    './city/huaian/data_timetable.js',
+    './city/huaian/data_virtual_transfers.js',
+    './city/huaian/staname.csv',
+    './city/huaian/assets/logo.svg',
+    './city/huaian/stacard/script.js',
+
+    // 城市配置与业务数据 (tianshui)
+    './city/tianshui/tianshui.js',
+    './city/tianshui/data_stations.js',
+    './city/tianshui/data_lines.js',
+    './city/tianshui/data_legend.js',
+    './city/tianshui/data_notopen.js',
+    './city/tianshui/data_scattered.js',
+    './city/tianshui/data_timetable.js',
+    './city/tianshui/data_virtual_transfers.js',
+    './city/tianshui/staname.csv',
+    './city/tianshui/assets/logo.svg',
+    './city/tianshui/stacard/script.js',
+
+    // 城市配置与业务数据 (jiaxing)
+    './city/jiaxing/jiaxing.js',
+    './city/jiaxing/data_stations.js',
+    './city/jiaxing/data_lines.js',
+    './city/jiaxing/data_legend.js',
+    './city/jiaxing/data_notopen.js',
+    './city/jiaxing/data_scattered.js',
+    './city/jiaxing/data_timetable.js',
+    './city/jiaxing/data_virtual_transfers.js',
+    './city/jiaxing/staname.csv',
+    './city/jiaxing/assets/logo.svg',
+    './city/jiaxing/stacard/script.js',
+
     // 城市配置与业务数据 (示例：三亚)
     './city/sanya/sanya.js',
     './city/sanya/data_legend.js',
@@ -131,7 +197,6 @@ const ASSETS_TO_CACHE = [
     './city/sanya/data_stations.js',
     './city/sanya/data_timetable.js',
     './city/sanya/data_virtual_transfers.js',
-    './city/sanya/assets/badge-t1.svg',
     './city/sanya/assets/logo.svg',
     './city/sanya/stacard/script.js',
 
@@ -144,7 +209,6 @@ const ASSETS_TO_CACHE = [
     './city/nanping/data_stations.js',
     './city/nanping/data_timetable.js',
     './city/nanping/data_virtual_transfers.js',
-    './city/nanping/assets/badge-t1.svg',
     './city/nanping/assets/logo.svg',
     './city/nanping/stacard/script.js',
 
