@@ -41,14 +41,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261024.210000">
-    <script type="module" src="core/cgo-ui.js?v=261024.210000"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261024.211000">
+    <script type="module" src="core/cgo-ui.js?v=261024.211000"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261024.210000">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261024.210000">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261024.210000">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261024.210000">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261024.211000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261024.211000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261024.211000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261024.211000">
 
     <style>
         html {
@@ -363,13 +363,14 @@
             min-width: 0;
             flex: 1;
             justify-content: center;
+            gap: 2px;
         }
 
         .compact-city-title {
             display: flex;
             align-items: baseline;
             gap: 6px;
-            line-height: 1.2;
+            line-height: 1.25;
         }
 
         .compact-city-name {
@@ -392,11 +393,18 @@
         .compact-meta-maintainer {
             font-size: 11px;
             color: var(--text-light);
-            margin-top: 1px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.2;
+            line-height: 1.25;
+            opacity: 0.85;
+        }
+
+        /* 紧凑条目独立第三行指标胶囊行 */
+        .compact-badge-row {
+            display: flex;
+            align-items: center;
+            margin-top: 2px;
         }
 
         .compact-action {
@@ -1269,10 +1277,10 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=261024.210000"></script>
-    <script src="core/tool-theme.js?v=261024.210000"></script>
-    <script src="core/portal-data.js?v=261024.210000"></script>
-    <script src="core/portal-view.js?v=261024.210000"></script>
+    <script src="city/data.js?v=261024.211000"></script>
+    <script src="core/tool-theme.js?v=261024.211000"></script>
+    <script src="core/portal-data.js?v=261024.211000"></script>
+    <script src="core/portal-view.js?v=261024.211000"></script>
 
     <!-- 离线 Service Worker 注册 -->
     <script>
