@@ -4,7 +4,7 @@
 
 const stationsData = {
     "LY01": {"x":307.7,"y":41.2,"cn":"辽矿","en":"LiaoKuang","align":"top"},
-    "LY02": { type: "tsf", x: 356.5, y: 189.0, cn: "鹿鸣湖", en: "LuMingHu", align: "right", offset: { x: 2, y: 0 } },
+    "LY02": { type: "tsf", x: 356.5, y: 189.0, cn: "鹿鸣湖", en: "LuMingHu", align: "right", offset: { x: 4, y: 0 } },
     "LY03": {"x":361.4,"y":264.1,"cn":"泰信","en":"TaiXin","align":"right","type":"no"},
     "LY04": {"x":361.4,"y":316,"cn":"体育中心","en":"TiYuZhongXin","align":"right","type":"no"},
     "LY05": {"x":270.5,"y":396.3,"cn":"山语城","en":"ShanYuCheng","align":"bottom"},

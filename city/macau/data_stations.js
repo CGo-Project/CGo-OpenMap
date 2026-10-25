@@ -15,8 +15,8 @@ const stationsData = {
     "MC09": { type: "dot", x: 272.6, y: 271.5, cn: "路氹東", en: "Cotai Leste<br>Cotai East", align: "right", offset: { x: 2, y: 0 } },
     "MC10": { type: "dot", x: 171.0, y: 303.1, cn: "路氹西", en: "Cotai Oeste<br>Cotai West", align: "left", offset: { x: -2, y: 0 } },
     "MC11": { type: "dot", x: 272.6, y: 303.1, cn: "東亞運", en: "Jogos da Ásia Oriental<br>East Asian Games", align: "right", offset: { x: 2, y: 0 } },
-    "MC12": { type: "tsf", x: 190.3, y: 331.0, cn: "蓮花", en: "Lótus<br>Lotus", align: "bottom", offset: { x: 0, y: 2 } },
-    "MC13": { type: "tsf", x: 243.2, y: 325.6, cn: "協和醫院", en: "Hospital Union<br>Union Hospital", align: "bottom-right", offset: { x: -2, y: -2 } },
+    "MC12": { type: "tsf", x: 190.3, y: 331.0, cn: "蓮花", en: "Lótus<br>Lotus", align: "bottom", offset: { x: 0, y: 4 } },
+    "MC13": { type: "tsf", x: 243.2, y: 325.6, cn: "協和醫院", en: "Hospital Union<br>Union Hospital", align: "bottom-right", offset: { x: 0, y: 0 } },
     "MC14": { type: "dot", x: 39.4, y: 336.8, cn: "橫琴", en: "Hengqin<br>Hengqin", align: "top", offset: { x: 0, y: -2 } },
     "MC15": { type: "dot", x: 190.2, y: 385.3, cn: "石排灣", en: "Seac Pai Van<br>Seac Pai Van", align: "bottom", offset: { x: 0, y: 2 } },
 };
