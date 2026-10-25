@@ -579,7 +579,7 @@
                     searchCity: "南京",
                     title: "CGo OpenMap - 南京轨道交通线路图",
                     keywords: "CGo OpenMap, 南京地铁, 南京轨道交通, 线路图",
-                    description: "由 CGo OpenMap 驱动的南京轨道交通智能交互线路图（依据南京地铁官方线网图与 .ai 矢量原稿整理）。",
+                    description: "包含所有已开通运营并接入南京主线网的线路，在建/规划线路（9/11/12/15 号线/外埠宁滁线等）尚未绘制",
                     officialMapUrl: "https://www.njmetro.com.cn/",
                     registerDate: "2026-09-30",
                     status: "active",
