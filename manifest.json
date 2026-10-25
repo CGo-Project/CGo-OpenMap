@@ -50,6 +50,71 @@
   ],
   "shortcuts": [
     {
+      "name": "台州轨道交通",
+      "short_name": "台州",
+      "description": "查看台州轨道交通线网图",
+      "url": "./main.html?city=taizhou",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "黄石轨道交通",
+      "short_name": "黄石",
+      "description": "查看黄石轨道交通线网图",
+      "url": "./main.html?city=huangshi",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "淮安轨道交通",
+      "short_name": "淮安",
+      "description": "查看淮安轨道交通线网图",
+      "url": "./main.html?city=huaian",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "天水轨道交通",
+      "short_name": "天水",
+      "description": "查看天水轨道交通线网图",
+      "url": "./main.html?city=tianshui",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "嘉兴轨道交通",
+      "short_name": "嘉兴",
+      "description": "查看嘉兴轨道交通线网图",
+      "url": "./main.html?city=jiaxing",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "北京轨道交通",
       "short_name": "北京",
       "description": "查看北京轨道交通与市郊铁路线网图",

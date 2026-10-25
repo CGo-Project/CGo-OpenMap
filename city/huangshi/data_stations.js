@@ -1,0 +1,36 @@
+/**
+ * CGo OpenMap - 黄石 车站数据库 (city/huangshi/data_stations.js)
+ */
+
+const stationsData = {
+    "HU01": {"type":"dot","x":468.6,"y":49.7,"cn":"黄石大道","en":"Huangshi Ave.","align":"top-right","offset": { x: -2, y: 2 }},
+    "HU02": {"x":437.1,"y":81.3,"cn":"师范大学","en":"Hubei Normal University","align":"bottom-right","offset": { x: -2, y: -2 },"type":"no"},
+    "HU03": {"type":"dot","x":382,"y":118.7,"cn":"湖滨大道","en":"Hubin Ave.","align":"bottom","offset": { x: 0, y: 2 }},
+    "HU04": {"type":"dot","x":330.6,"y":118.7,"cn":"桂花路","en":"Guihua Rd.","align":"top","offset": { x: 0, y: -2 }},
+    "HU05": {"type":"dot","x":279.2,"y":118.7,"cn":"江家湾","en":"Jiangjiawan","align":"bottom","offset": { x: 0, y: 2 }},
+    "HU06": {"type":"dot","x":227.8,"y":118.7,"cn":"楠竹林","en":"Nanzhulin","align":"top","offset": { x: 0, y: -2 }},
+    "HU07": {"type":"dot","x":176.4,"y":118.7,"cn":"饶家垄","en":"Raojialong","align":"bottom","offset": { x: 0, y: 2 }},
+    "HU08": {"type":"dot","x":134.3,"y":132.4,"cn":"理工学院","en":"Hubei Polytechnic University","align":"top-left","offset": { x: 2, y: 2 }},
+    "HU09": {"type":"dot","x":115.3,"y":151.4,"cn":"桂林北路","en":"Guilin North Rd.","align":"bottom-right","offset": { x: -2, y: -2 }},
+    "HU10": {"type":"dot","x":96.3,"y":170.4,"cn":"黄石北站","en":"Huangshibei Railway Station","align":"top-left","offset": { x: 2, y: 2 }},
+    "HU11": {"type":"dot","x":85,"y":205.2,"cn":"大泉路","en":"Daquan Rd.","align":"left","offset": { x: -2, y: 0 }},
+    "HU12": {"type":"dot","x":85,"y":235.6,"cn":"杭州西路","en":"Hangzhou West Rd.","align":"left","offset": { x: -2, y: 0 }},
+    "HU13": {"type":"dot","x":107.2,"y":265.5,"cn":"磁湖路","en":"Cihu Rd.","align":"bottom","offset": { x: 0, y: 2 }},
+    "HU14": {"type":"dot","x":137.8,"y":265.5,"cn":"大畈路","en":"Dafan Rd.","align":"top","offset": { x: 0, y: -2 }},
+    "HU15": {"type":"dot","x":168.5,"y":265.5,"cn":"白马路","en":"Baima Rd.","align":"bottom","offset": { x: 0, y: 2 }},
+    "HU16": {"type":"dot","x":199.2,"y":265.5,"cn":"黄石二中","en":"No.2 Senior High School","align":"top","offset": { x: 0, y: -2 }},
+    "HU17": {"type":"dot","x":227.8,"y":293,"cn":"桂林南路","en":"Guilin South Rd.","align":"right","offset": { x: 2, y: 0 }},
+    "HU18": {"type":"dot","x":260.7,"y":318.4,"cn":"黄石西站","en":"Huangshixi Railway Station","align":"bottom","offset": { x: 0, y: 2 }},
+    "HU19": {"type":"dot","x":309,"y":318.4,"cn":"胡家湾","en":"Hujiawan","align":"top","offset": { x: 0, y: -2 }},
+    "HU20": {"type":"dot","x":339.6,"y":385.2,"cn":"钟山大道","en":"Zhongshan Ave.","align":"right","offset": { x: 2, y: 0 }},
+    "HU21": {"type":"dot","x":339.6,"y":415.9,"cn":"金山大道","en":"Jinshan Ave.","align":"right","offset": { x: 2, y: 0 }},
+    "HU22": {"type":"dot","x":339.6,"y":446.6,"cn":"鹏程大道","en":"Pengcheng Ave.","align":"right","offset": { x: 2, y: 0 }},
+    "HU23": {"type":"dot","x":339.6,"y":477.2,"cn":"科技城","en":"Science City","align":"right","offset": { x: 2, y: 0 }},
+    "HU24": {"type":"dot","x":326.4,"y":508.3,"cn":"奥体中心","en":"Olympic Center","align":"bottom-right","offset": { x: -2, y: -2 }},
+    "HU25": {"type":"dot","x":293.3,"y":541.3,"cn":"经三路","en":"Jingsan Rd.","align":"top-left","offset": { x: 2, y: 2 }},
+    "HU26": {"type":"dot","x":284.5,"y":592.8,"cn":"园博大道","en":"Yuanbo Ave.","align":"bottom-left","offset": { x: 2, y: -2 }},
+    "HU27": {"type":"dot","x":323.3,"y":613.7,"cn":"矿博馆","en":"Kuangboguan","align":"bottom","offset": { x: 0, y: 2 }},
+    "HU28": {"type":"dot","x":390,"y":613.7,"cn":"园博园","en":"Yuanboyuan","align":"bottom","offset": { x: 0, y: 2 }},
+    "HU29": {"type":"dot","x":427.5,"y":592,"cn":"市民之家","en":"Shimin Zhijia","align":"right","offset": { x: 2, y: 0 }},
+    "HU30": {"type":"dot","x":401.7,"y":570,"cn":"奥体公园","en":"Olympic Park","align":"top","offset": { x: 0, y: -2 }},
+};
