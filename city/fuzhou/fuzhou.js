@@ -19,9 +19,20 @@
         name: "福州",
         themeColor: "#079445",
         searchCity: "福州",
-        center: { x: 1250, y: 800 },
+        center: { x: 1150, y: 780 },
         defaultScale: 1.0,
-        mapSize: { width: 2200, height: 1800 },
+        /**
+         * 画布尺寸（world 坐标）。引擎 localEnforceBoundaries() 按它算平移钳制范围，
+         * **不裁剪绘制** —— 画布外的内容拖不到、看不见，所以必须覆盖全部内容。
+         *
+         * 内容外接盒 x [34, 2272] y [91, 1458]（含站名文字，按 align 伸展方向估算）：
+         * 滨海快线东段 机场 / 文岭 在 x=2220，站名 align:right 再向右约 52px 到 2272。
+         * 故宽度取 2320，右侧留 48px 余量；高度 1800 相对内容下缘 1458 已有 342px 余量。
+         *
+         * ⚠️ 改动此值须同步修改 city/data.js 里 fuzhou 注册项的 mapSize / center
+         *    （city/fuzhou/tools/fuzhou_check.js 第 ⑪ 节会核对两处一致、且内容不越界）。
+         */
+        mapSize: { width: 2320, height: 1800 },
         /**
          * 官网线路查询入口（首页城市卡片的「官方参考」链接）。
          * 与 city/data.js 的注册项保持一致；两处都写是因为各城 {city}.js 末尾的

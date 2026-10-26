@@ -829,6 +829,129 @@ section("⑩ 城市专属模块与登记一致性");
     process.stdout.write(`  启用：${enabledIds.join("、")}\n`);
 }
 
+/* ── 11. 画布边界：内容不得越出 mapSize ───────────────────────────── */
+section("⑪ 画布边界与视口一致性");
+{
+    /**
+     * 引擎 `core/script.js` 的 localEnforceBoundaries() 用 mapSize 算**平移钳制范围**
+     * （mapW = mapSize.width × scale），它**不裁剪绘制** —— 画布外的内容永远拖不到、看不见。
+     *
+     * 于是「把车站排到画布边缘外」不会报错、也不会渲染异常，只是那片区域消失。
+     * 福州已发生过两次（滨海快线东段整体右移后，机场 / 文岭跑到 x=2220 而画布只有 2200），
+     * 故在此钉住：内容外接盒必须完整落在 mapSize 内，且 city/data.js 与 fuzhou.js 两处
+     * 的 mapSize / center 必须一致（引擎按 Object.assign(registry, engineCity) 取值，
+     * 只改一处会出现「首页卡片与地图不一致」的诡异现象）。
+     */
+    const engineCity = sandbox.window.FUZHOU_CITY || {};
+    const engineMapSize = engineCity.mapSize;
+    const engineCenter = engineCity.center;
+
+    check("fuzhou.js 声明了 mapSize", Boolean(engineMapSize), "缺 mapSize");
+    const W = engineMapSize ? engineMapSize.width : 0;
+    const H = engineMapSize ? engineMapSize.height : 0;
+    check("mapSize 为正整数", Number.isInteger(W) && Number.isInteger(H) && W > 0 && H > 0,
+        `实际 ${W}×${H}`);
+
+    // city/data.js 的注册项必须与 fuzhou.js 一致
+    const regSrc = fs.readFileSync(path.join(ROOT, "city", "data.js"), "utf8");
+    const ri = regSrc.indexOf('"fuzhou"');
+    check("city/data.js 中存在 fuzhou 注册项", ri >= 0);
+    if (ri >= 0) {
+        let depth = 0, end = ri;
+        for (let i = regSrc.indexOf("{", ri); i < regSrc.length; i += 1) {
+            if (regSrc[i] === "{") depth += 1;
+            else if (regSrc[i] === "}") { depth -= 1; if (depth === 0) { end = i; break; } }
+        }
+        const blk = regSrc.slice(ri, end + 1);
+        const m = /mapSize\s*:\s*\{\s*width\s*:\s*(\d+)\s*,\s*height\s*:\s*(\d+)/.exec(blk);
+        const c = /center\s*:\s*\{\s*x\s*:\s*(-?[\d.]+)\s*,\s*y\s*:\s*(-?[\d.]+)/.exec(blk);
+        check("city/data.js 的 mapSize 与 fuzhou.js 一致",
+            Boolean(m) && Number(m[1]) === W && Number(m[2]) === H,
+            m ? `data.js ${m[1]}×${m[2]} ≠ fuzhou.js ${W}×${H}` : "data.js 缺 mapSize");
+        check("city/data.js 的 center 与 fuzhou.js 一致",
+            Boolean(c) && engineCenter
+            && Number(c[1]) === Number(engineCenter.x) && Number(c[2]) === Number(engineCenter.y),
+            c && engineCenter
+                ? `data.js (${c[1]},${c[2]}) ≠ fuzhou.js (${engineCenter.x},${engineCenter.y})`
+                : "任一侧缺 center");
+    }
+
+    /**
+     * 内容外接盒估算。站名宽度按「中文 12px/字、英文 6.2px/字母」估，实际字体略窄，
+     * 故这是**偏保守的上界**：通过了就一定不越界；没通过也值得人工看一眼。
+     * 伸展方向严格按 align 判断（right → 向右、top → 向上…），与引擎排版一致。
+     */
+    const ICON_HALF = 9;          // tsf 17.5 / dot 10，取上界
+    const CN_W = 12, EN_W = 6.2;
+    const LABEL_GAP = 24;         // 站名相对站心的纵向间距（上/下方对齐时）
+    const labelWidth = (s) => Math.max(
+        String(s.cn || "").replace(/[（）()]/g, "").length * CN_W,
+        String(s.en || "").replace(/[（）()]/g, "").length * EN_W
+    );
+    const extentsOf = (s) => {
+        const w = labelWidth(s);
+        const a = String(s.align || "right");
+        const ox = (s.offset && s.offset.x) || 0;
+        const oy = (s.offset && s.offset.y) || 0;
+        let x0 = -ICON_HALF, x1 = ICON_HALF, y0 = -ICON_HALF, y1 = ICON_HALF;
+        if (/right/.test(a)) x1 = ICON_HALF + ox + w;
+        else if (/left/.test(a)) x0 = -ICON_HALF + ox - w;
+        else { x0 = -w / 2; x1 = w / 2; }
+        if (/^top/.test(a)) y0 = -ICON_HALF - LABEL_GAP + oy;
+        else if (/^bottom/.test(a)) y1 = ICON_HALF + LABEL_GAP + oy;
+        return { x0, x1, y0, y1 };
+    };
+
+    const overRight = [], overLeft = [], overTop = [], overBottom = [];
+    Object.entries(stationsData).forEach(([id, s]) => {
+        if (!Number.isFinite(s.x) || !Number.isFinite(s.y)) return;
+        const e = extentsOf(s);
+        const tag = `${id}(${s.cn})`;
+        if (s.x + e.x1 > W) overRight.push(`${tag} 右缘 ${(s.x + e.x1).toFixed(0)} > ${W}`);
+        if (s.x + e.x0 < 0) overLeft.push(`${tag} 左缘 ${(s.x + e.x0).toFixed(0)} < 0`);
+        if (s.y + e.y0 < 0) overTop.push(`${tag} 上缘 ${(s.y + e.y0).toFixed(0)} < 0`);
+        if (s.y + e.y1 > H) overBottom.push(`${tag} 下缘 ${(s.y + e.y1).toFixed(0)} > ${H}`);
+    });
+
+    check("车站与站名未越出右边界", overRight.length === 0, overRight.join("；"));
+    check("车站与站名未越出左边界", overLeft.length === 0, overLeft.join("；"));
+    check("车站与站名未越出上边界", overTop.length === 0, overTop.join("；"));
+    check("车站与站名未越出下边界", overBottom.length === 0, overBottom.join("；"));
+
+    // 水域底图横向应盖住整幅画布
+    const scatteredList = sandbox.SCATTERED_DATA || [];
+    const sea = scatteredList.find((item) => item && item.id === "fuzhou-sea");
+    if (sea) {
+        check("水域底图横向覆盖画布",
+            (sea.x + sea.width / 2) >= W && (sea.x - sea.width / 2) <= 0,
+            `水域 x [${(sea.x - sea.width / 2).toFixed(0)}, ${(sea.x + sea.width / 2).toFixed(0)}] vs 画布宽 ${W}`);
+    }
+
+    // 枢纽徽标应贴着它对应的车站（中心距 = 图标边长/2 + 间隔，取 18~34px 区间）
+    const HUB_STATION = {
+        "fuzhou-railway-main": "M104",
+        "fuzhou-railway-south": "M121",
+        "fuzhou-airport": "BE02",
+        "fuzhou-railway-changle": "BE06"
+    };
+    Object.entries(HUB_STATION).forEach(([badgeId, sid]) => {
+        const badge = scatteredList.find((item) => item && item.id === badgeId);
+        if (!badge) { check(`徽标 ${badgeId} 存在`, false, "SCATTERED_DATA 中找不到"); return; }
+        const st = stationsData[sid];
+        if (!st) { check(`徽标 ${badgeId} 对应车站存在`, false, `找不到 ${sid}`); return; }
+        const d = Math.hypot(badge.x - st.x, badge.y - st.y);
+        check(`徽标 ${badgeId} 贴合车站 ${sid}`, d >= 18 && d <= 34,
+            `中心距 ${d.toFixed(0)}px，应落在 18~34px（车站 (${st.x},${st.y}) 徽标 (${badge.x},${badge.y})）`);
+    });
+
+    process.stdout.write(`  画布 ${W}×${H}  center (${engineCenter ? engineCenter.x : "?"}, ${engineCenter ? engineCenter.y : "?"})\n`);
+    const rights = Object.entries(stationsData)
+        .filter(([, s]) => Number.isFinite(s.x))
+        .map(([id, s]) => ({ id, cn: s.cn, right: s.x + extentsOf(s).x1 }))
+        .sort((a, b) => b.right - a.right).slice(0, 3);
+    process.stdout.write(`  右缘最外：${rights.map((r) => `${r.id}(${r.cn}) ${r.right.toFixed(0)}`).join("  ")}\n`);
+}
+
 /* ── 汇总 ─────────────────────────────────────────────────────────── */
 process.stdout.write(`\n${"─".repeat(60)}\n`);
 if (failures.length === 0) {

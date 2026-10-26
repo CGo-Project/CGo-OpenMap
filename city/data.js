@@ -513,9 +513,13 @@
             svglogo: null, // 已接入 CGoUI 内置 fuzhou 官方矢量图标
             folder: "./city/fuzhou",
             mainLogic: "./city/fuzhou/fuzhou.js",
-            center: { x: 1183, y: 898 },
-            defaultScale: 0.6,
-            mapSize: { width: 2200, height: 1800 },
+            // 视口与画布：须与 city/fuzhou/fuzhou.js 的 FuzhouCity 保持一致
+            // （引擎按 Object.assign({}, registryCity, activeEngineCity) 取值，运行时以 fuzhou.js 为准）
+            // 内容外接盒 x [34, 2272]：滨海快线东段（机场 / 文岭）到 x=2220，站名 align:right
+            // 再向右约 52px，故画布宽度取 2320，右侧留 48px 余量。
+            center: { x: 1150, y: 780 },
+            defaultScale: 1.0,
+            mapSize: { width: 2320, height: 1800 },
             searchCity: "福州",
             title: "CGo OpenMap - 福州轨道交通线路图",
             keywords: "CGo OpenMap, 福州, 轨道交通, 线路图",

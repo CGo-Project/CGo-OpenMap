@@ -22,3 +22,4 @@ drunk/tools/_tmp_fare_matrix.json
 # city/fuzhou/data_official_fare.js 与 city/fuzhou/tools/fuzhou_check.js，不需要入库
 drunk/tools/_tmp_*.js
 city/fuzhou/tools/_tmp_*.js
+快速启动.bat
