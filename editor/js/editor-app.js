@@ -58,6 +58,60 @@
     /**
      * 全局统一重绘
      */
+    /**
+     * 实时草稿预览：把「已定起点 → 当前鼠标」按当前折角类型路由后画在 #draftLayer 上。
+     * 用的是与最终落笔完全相同的 SegmentRouter.routeBetweenByType，因此所见即所得。
+     */
+    function renderDraftLayer() {
+        var layer = document.getElementById('draftLayer');
+        if (!layer) return;
+        layer.innerHTML = '';
+
+        var pd = window.OpenMapEditor.PipelineDraw;
+        if (!pd || !app.project || !/^seg/.test(app.activeTool)) return;
+        if (typeof pd.hasDraft !== 'function' || !pd.hasDraft()) return;
+
+        var pts = (typeof pd.getDraftPreviewPoints === 'function')
+            ? pd.getDraftPreviewPoints(app.project, app.project.slope)
+            : [];
+        if (!pts || pts.length < 2) return;
+
+        var line = (app.project.lines || []).find(function (l) { return l.id === app.activeLineId; }) ||
+            (app.project.lines || [])[0];
+        var color = (line && line.color) || '#0284c7';
+        var d = pts.map(function (p, i) {
+            return (i === 0 ? 'M' : 'L') + roundCoord(p.x) + ' ' + roundCoord(p.y);
+        }).join(' ');
+
+        // 与正式线段同样的「粗底色 + 彩色内芯」双层描边，深浅底都看得清
+        [{ stroke: 'var(--map-bg, #ffffff)', width: 7 },
+         { stroke: color, width: 5.4, opacity: '0.85' }].forEach(function (spec) {
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', spec.stroke);
+            path.setAttribute('stroke-width', String(spec.width));
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
+            path.setAttribute('pointer-events', 'none');
+            if (spec.opacity) path.setAttribute('opacity', spec.opacity);
+            layer.appendChild(path);
+        });
+
+        // 起点（实心）与当前指针端（空心），让"下一段从哪开始"一眼看清
+        [[pts[0], 4, color], [pts[pts.length - 1], 3, 'var(--map-bg, #ffffff)']].forEach(function (item) {
+            var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            c.setAttribute('cx', roundCoord(item[0].x));
+            c.setAttribute('cy', roundCoord(item[0].y));
+            c.setAttribute('r', String(item[1]));
+            c.setAttribute('fill', item[2]);
+            c.setAttribute('stroke', color);
+            c.setAttribute('stroke-width', '1.5');
+            c.setAttribute('pointer-events', 'none');
+            layer.appendChild(c);
+        });
+    }
+
     function renderAll() {
         if (!app.project) return;
 
@@ -92,6 +146,9 @@
             selectedLineId: app.activeLineId,
             selectedPointIdx: selSegPtIdx
         });
+
+        // 2.4 走线过程中的实时预览（还没落笔的那一段）
+        renderDraftLayer();
 
         // 2.5 在建与规划走向 (包含白线描边等样式)
         if (window.OpenMapEditor.NotOpenLayer) {
@@ -234,6 +291,9 @@
 
         // 8. 更新数据健康状态栏
         updateHealthBadge();
+
+        // 9. 触发会话自动保存（内部防抖 1.2s，拖拽过程中不会狂写）
+        scheduleSaveSession();
     }
 
     function updateNavCounts() {
@@ -257,6 +317,13 @@
             var seg = (app.project.segments || []).find(function (s) { return s.id === app.selected.id; });
             if (seg) {
                 window.OpenMapEditor.InspectorView.renderSegmentInspector(seg, app.project, { selectedPointIdx: app.selected.pointIdx });
+            } else {
+                window.OpenMapEditor.InspectorView.renderEmpty();
+            }
+        } else if (app.selected.type === 'line') {
+            var selLine = (app.project.lines || []).find(function (l) { return l.id === app.selected.id; });
+            if (selLine) {
+                window.OpenMapEditor.InspectorView.renderLineInspector(selLine, app.project);
             } else {
                 window.OpenMapEditor.InspectorView.renderEmpty();
             }
@@ -400,6 +467,21 @@
         } else if (app.selected.type === 'multi') {
             var nList = app.selected.nodeIds || [];
             var tList = app.selected.textIds || [];
+            // 批量入线路：分支线路逐个 way 列出，选哪个就写哪个站序
+            var multiLineExtraHtml = '<div class="form-row"><span class="form-label">目标站序:</span>' +
+                '<select class="form-select" id="multiLineTarget" style="flex:1;">' +
+                ((app.project.lines || []).map(function (l) {
+                    var name = l.name || l.id;
+                    if (!l.hasbranch) return '<option value="' + l.id + '">' + name + '</option>';
+                    var keys = Object.keys(l).filter(function (k) { return /^stationIds(-|$)/.test(k); });
+                    if (!keys.length) keys = ['stationIds'];
+                    return keys.map(function (k) {
+                        var suffix = (k === 'stationIds') ? '' : (' · ' + k.replace('stationIds-', ''));
+                        return '<option value="' + l.id + '|' + k + '">' + name + suffix + '</option>';
+                    }).join('');
+                }).join('') || '<option value="">（当前没有线路）</option>') +
+                '</select></div>';
+
             window.OpenMapEditor.InspectorView.renderGenericInspector(
                 '多选图元集合 (' + (nList.length + tList.length) + ')',
                 'view-grid',
@@ -450,6 +532,46 @@
                         }
                     },
                     {
+                        label: '水平等距', icon: 'sort',
+                        onClick: function () { distributeNodesEvenly('x'); }
+                    },
+                    {
+                        label: '垂直等距', icon: 'align',
+                        onClick: function () { distributeNodesEvenly('y'); }
+                    },
+                    {
+                        label: '加入线路', icon: 'add',
+                        onClick: function () {
+                            var pick = readMultiLinePick();
+                            if (!pick) return;
+                            window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                            var res = addStationsToLine(nList, pick.lineId, pick.groupKey);
+                            renderAll();
+                            if (res.added) {
+                                showToast('已把 ' + res.added + ' 座车站加入「' + pick.label + '」' +
+                                    (res.skipped ? ('（' + res.skipped + ' 座已在该线或已失效，跳过）') : ''), 'success');
+                            } else {
+                                showToast('所选车站都已在「' + pick.label + '」的站序里', 'info');
+                            }
+                        }
+                    },
+                    {
+                        label: '移出线路', icon: 'close', danger: true,
+                        onClick: function () {
+                            var pick = readMultiLinePick();
+                            if (!pick) return;
+                            window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                            var res = removeStationsFromLine(nList, pick.lineId, pick.groupKey);
+                            renderAll();
+                            if (res.removed) {
+                                showToast('已把 ' + res.removed + ' 座车站移出「' + pick.label + '」' +
+                                    (res.skipped ? ('（' + res.skipped + ' 座本来就不在该线）') : ''), 'success');
+                            } else {
+                                showToast('所选车站都不在「' + pick.label + '」的站序里', 'info');
+                            }
+                        }
+                    },
+                    {
                         label: '批量删除', danger: true, icon: 'delete',
                         onClick: function () {
                             if (!confirm('确定要删除选中的 ' + nList.length + ' 座车站吗？')) return;
@@ -478,7 +600,8 @@
                             showToast('已批量删除 ' + nList.length + ' 座车站');
                         }
                     }
-                ]
+                ],
+                multiLineExtraHtml
             );
         } else {
             window.OpenMapEditor.InspectorView.renderEmpty();
@@ -508,6 +631,8 @@
         if (!app.project) return;
         if (type === 'line') {
             app.activeLineId = id;
+            // 选中这条线路，让右侧检视面板切到「线路属性」（名称 / 标志色 / 运营公司）
+            app.selected = { type: 'line', id: id };
             if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.setActiveLine) {
                 window.OpenMapEditor.PipelineDraw.setActiveLine(id);
             }
@@ -651,6 +776,182 @@
                 dirtyBadge.title = '数据完整性通过';
             }
         } catch (e) { /* 校验工具未加载则静默跳过 */ }
+    }
+
+    /**
+     * 从工程里彻底删除一座车站：摘出所有线路站序（含分支 way）与配套站距、
+     * 解除折线端点的 nid 绑定（保留原走向，避免线网被拉变形）、移除虚拟换乘，
+     * 最后删除节点本身。车站删除的单选 / 多选 / 折线端头三条路径共用它。
+     * @returns {boolean} 是否真的删掉了
+     */
+    function deleteStationById(nodeId) {
+        if (!app.project || !app.project.nodes || !app.project.nodes[nodeId]) return false;
+
+        (app.project.lines || []).forEach(function (l) {
+            var idsKeys = Object.keys(l).filter(function (k) { return /^stationIds(-|$)/.test(k); });
+            idsKeys.forEach(function (idsKey) {
+                if (!Array.isArray(l[idsKey])) return;
+                var idx = l[idsKey].indexOf(nodeId);
+                if (idx === -1) return;
+                l[idsKey].splice(idx, 1);
+                var distKey = idsKey === 'stationIds' ? 'distances' : ('distances-' + idsKey.replace('stationIds-', ''));
+                if (Array.isArray(l[distKey]) && l[distKey].length >= l[idsKey].length) {
+                    l[distKey].splice(Math.min(idx, l[distKey].length - 1), 1);
+                }
+            });
+        });
+
+        // 只解除绑定、不删折点：折点是走向的一部分，删掉会让线路变形
+        (app.project.segments || []).forEach(function (seg) {
+            (seg.points || []).forEach(function (p) {
+                if (p.nid === nodeId) delete p.nid;
+            });
+        });
+
+        app.project.virtualConnectors = (app.project.virtualConnectors || []).filter(function (conn) {
+            return conn.from !== nodeId && conn.to !== nodeId;
+        });
+
+        delete app.project.nodes[nodeId];
+        return true;
+    }
+
+    /**
+     * 判断删除线段上某个折点该怎么落地（纯函数，便于自检）：
+     *   'interior' 中间折点 → 直接删，两端拉直
+     *   'station'  端头折点上是车站 → 要删的其实是那座车站
+     *   'splice'   端头自由折点 → 直接删（删完仍剩 ≥2 点）
+     *   'refuse'   端头自由折点但删完只剩 1 点 → 拒绝，应改删整条线段
+     *   'invalid'  索引越界
+     */
+    function planPointDeletion(seg, idx) {
+        var pts = (seg && seg.points) || [];
+        if (typeof idx !== 'number' || idx < 0 || idx >= pts.length) return 'invalid';
+        if (idx !== 0 && idx !== pts.length - 1) return 'interior';
+        if (pts[idx] && pts[idx].nid) return 'station';
+        return pts.length > 2 ? 'splice' : 'refuse';
+    }
+
+    /**
+     * 坐标统一保留 2 位小数。
+     * 城市数据里本来就有小数坐标（如 742.86 / 1033.89），编辑器必须能编辑这种值：
+     * 取整到整数会让「拖一点、输个 .5」全部失效，并把这些坐标永久抹平。
+     * 保留 2 位既贴合源文件书写精度，又能去掉浮点噪声（742.8600000000001）。
+     */
+    function roundCoord(v) {
+        return Math.round(Number(v) * 100) / 100;
+    }
+
+    /**
+     * 把一批车站加入某条线路的站序（分支安全）。
+     *
+     * 插入位置优先按几何投影判定「落在哪两站之间」，插在该位置；
+     * 拿不到几何（线路还没画走向）时追加到末尾。
+     * 若该线路的 distances 原本与站数配套，则在同位置插入 0 占位，维持长度校验。
+     *
+     * @param {string[]} nodeIds
+     * @param {string} lineId
+     * @param {string} [groupKey] stationIds / stationIds-way1 ...
+     * @returns {{added:number, skipped:number, idsKey:string}}
+     */
+    function addStationsToLine(nodeIds, lineId, groupKey) {
+        var out = { added: 0, skipped: 0, idsKey: '' };
+        var line = (app.project.lines || []).find(function (l) { return l.id === lineId; });
+        if (!line || !Array.isArray(nodeIds) || !nodeIds.length) return out;
+
+        var idsKey = groupKey || (line.hasbranch ? 'stationIds-way1' : 'stationIds');
+        if (!Array.isArray(line[idsKey])) line[idsKey] = [];
+        var distKey = idsKey === 'stationIds' ? 'distances' : ('distances-' + idsKey.replace('stationIds-', ''));
+        var ids = line[idsKey];
+        // 站距只在「原本就配套」时才补占位，缺失状态保持缺失（属合法待补）
+        var pairedDistances = Array.isArray(line[distKey]) && line[distKey].length === Math.max(0, ids.length - 1);
+
+        nodeIds.forEach(function (nid) {
+            var node = app.project.nodes[nid];
+            if (!node || ids.indexOf(nid) !== -1) { out.skipped++; return; }
+
+            var insertAt = ids.length;
+            var snap = null;
+            try {
+                if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.findNearestLineProjection) {
+                    var scale = window.OpenMapEditor.ViewportLayer && window.OpenMapEditor.ViewportLayer.getScale
+                        ? window.OpenMapEditor.ViewportLayer.getScale() : 1;
+                    snap = window.OpenMapEditor.PipelineDraw.findNearestLineProjection(
+                        app.project, { x: node.x, y: node.y }, 80 / (scale || 1));
+                }
+            } catch (e) { snap = null; }
+
+            if (snap && snap.segment && snap.segment.lineId === line.id) {
+                var pts = snap.segment.points || [];
+                var prevNid = null, nextNid = null;
+                for (var bi = Math.min(snap.pointIndex == null ? pts.length - 1 : snap.pointIndex, pts.length - 1); bi >= 0; bi--) {
+                    if (pts[bi] && pts[bi].nid && ids.indexOf(pts[bi].nid) !== -1) { prevNid = pts[bi].nid; break; }
+                }
+                for (var fi = (snap.pointIndex == null ? 0 : snap.pointIndex) + 1; fi < pts.length; fi++) {
+                    if (pts[fi] && pts[fi].nid && ids.indexOf(pts[fi].nid) !== -1) { nextNid = pts[fi].nid; break; }
+                }
+                if (prevNid) insertAt = ids.indexOf(prevNid) + 1;
+                else if (nextNid) insertAt = ids.indexOf(nextNid);
+            }
+
+            ids.splice(insertAt, 0, nid);
+            if (pairedDistances) line[distKey].splice(insertAt, 0, 0);
+            out.added++;
+        });
+
+        out.idsKey = idsKey;
+        return out;
+    }
+
+    /**
+     * 把一批车站从某条线路的站序里移出（分支安全，站距同步摘除）。
+     */
+    function removeStationsFromLine(nodeIds, lineId, groupKey) {
+        var out = { removed: 0, skipped: 0, idsKey: '' };
+        var line = (app.project.lines || []).find(function (l) { return l.id === lineId; });
+        if (!line || !Array.isArray(nodeIds) || !nodeIds.length) return out;
+
+        var idsKey = groupKey || (line.hasbranch ? 'stationIds-way1' : 'stationIds');
+        var ids = line[idsKey];
+        if (!Array.isArray(ids)) return out;
+        var distKey = idsKey === 'stationIds' ? 'distances' : ('distances-' + idsKey.replace('stationIds-', ''));
+        var pairedDistances = Array.isArray(line[distKey]) && line[distKey].length === Math.max(0, ids.length - 1);
+
+        nodeIds.forEach(function (nid) {
+            var idx = ids.indexOf(nid);
+            if (idx === -1) { out.skipped++; return; }
+            ids.splice(idx, 1);
+            if (pairedDistances && Array.isArray(line[distKey]) && line[distKey].length > 0) {
+                line[distKey].splice(Math.min(idx, line[distKey].length - 1), 1);
+            }
+            out.removed++;
+        });
+
+        out.idsKey = idsKey;
+        return out;
+    }
+
+    /**
+     * 读取多选面板里选中的「线路 + 站序分组」。
+     * 下拉的 value 形如 "L1"（普通线）或 "L2|stationIds-way1"（分支线的某个 way）。
+     */
+    function readMultiLinePick() {
+        var sel = document.getElementById('multiLineTarget');
+        if (!sel || !sel.value) {
+            showToast('当前没有可用的线路站序', 'warning');
+            return null;
+        }
+        var parts = String(sel.value).split('|');
+        var lineId = parts[0];
+        var groupKey = parts[1] || '';
+        var line = (app.project.lines || []).find(function (l) { return l.id === lineId; });
+        if (!line) return null;
+        return {
+            lineId: lineId,
+            groupKey: groupKey,
+            label: (line.name || line.id) +
+                (groupKey && groupKey !== 'stationIds' ? (' · ' + groupKey.replace('stationIds-', '')) : '')
+        };
     }
 
     /**
@@ -834,9 +1135,75 @@
                     showToast('已删除折点并拉直线段');
                 }
             }
+        } else if (targetType === 'line') {
+            var lineTarget = (app.project.lines || []).find(function (l) { return l.id === targetId; });
+            if (!lineTarget) return;
+
+            if (prop === 'name') {
+                lineTarget.name = String(value == null ? '' : value).trim() || lineTarget.id;
+                showToast('线路名称已改为「' + lineTarget.name + '」');
+            } else if (prop === 'color') {
+                var hex = normalizeHexColor(value);
+                if (!hex) { showToast('色号格式不对，请用 #RRGGBB 或 #RGB', 'error'); }
+                else {
+                    lineTarget.color = hex;
+                    showToast('标志色已改为 ' + hex);
+                }
+            } else if (prop === 'company') {
+                var company = String(value == null ? '' : value).trim();
+                if (company) lineTarget.company = company;
+                else delete lineTarget.company;
+            } else if (prop === 'useStrictRounding') {
+                if (value) lineTarget.useStrictRounding = true;
+                else delete lineTarget.useStrictRounding;
+            } else if (prop === 'focus') {
+                // 视口定位到该线路的首站或首个折点
+                var focusX = null, focusY = null;
+                var firstStId = null;
+                (window.OpenMapEditor.CityProjectIO && window.OpenMapEditor.CityProjectIO.lineStationGroups
+                    ? window.OpenMapEditor.CityProjectIO.lineStationGroups(lineTarget)
+                    : []).forEach(function (g) {
+                        if (firstStId === null && g.ids && g.ids.length) firstStId = g.ids[0];
+                    });
+                if (firstStId && app.project.nodes[firstStId]) {
+                    focusX = app.project.nodes[firstStId].x;
+                    focusY = app.project.nodes[firstStId].y;
+                } else {
+                    var fSeg = (app.project.segments || []).find(function (s) { return s.lineId === lineTarget.id; });
+                    if (fSeg && fSeg.points && fSeg.points.length) {
+                        focusX = fSeg.points[0].x;
+                        focusY = fSeg.points[0].y;
+                    }
+                }
+                if (focusX !== null) window.OpenMapEditor.ViewportLayer.centerOn(focusX, focusY);
+            } else if (prop === 'selectStations') {
+                // 选中该线路全部车站（分支安全 + 去重）
+                var allIds = window.OpenMapEditor.CityProjectIO && window.OpenMapEditor.CityProjectIO.lineAllStationIds
+                    ? window.OpenMapEditor.CityProjectIO.lineAllStationIds(lineTarget)
+                    : [];
+                allIds = allIds.filter(function (sid) { return !!app.project.nodes[sid]; });
+                if (!allIds.length) { showToast('这条线路还没有可用的车站'); return; }
+                app.selected = { type: 'multi', nodeIds: allIds };
+                showToast('已选中「' + (lineTarget.name || lineTarget.id) + '」的 ' + allIds.length + ' 座车站');
+            }
         }
 
         renderAll();
+    }
+
+    /**
+     * 标准化色号：#RGB → #RRGGBB，统一大写；无效返回 null。
+     * 与源文件里 #E4002B 这类写法保持一致。
+     */
+    function normalizeHexColor(input) {
+        var v = String(input || '').trim();
+        if (!v) return null;
+        if (v.charAt(0) !== '#') v = '#' + v;
+        if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+            v = '#' + v.charAt(1) + v.charAt(1) + v.charAt(2) + v.charAt(2) + v.charAt(3) + v.charAt(3);
+        }
+        if (!/^#[0-9a-fA-F]{6}$/.test(v)) return null;
+        return v.toUpperCase();
     }
 
     /**
@@ -959,11 +1326,19 @@
         // 6. 模态框与弹窗事件
         bindModals();
 
+        // 关闭/刷新页面前同步落盘，避免丢掉最后 1 秒内的改动
+        window.addEventListener('beforeunload', function () { saveSessionNow(); });
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') saveSessionNow();
+        });
+
         // 7. 填充已有城市列表
         populateCitySelect();
 
-        // 8. 默认新建空白工程
-        createDefaultProject();
+        // 8. 优先恢复上次会话（F5 / 崩溃后不丢工作），没有才新建空白工程
+        if (!restoreSessionIfAny()) {
+            createDefaultProject();
+        }
 
         // 9. 解析 URL 参数
         parseUrlParams();
@@ -978,6 +1353,120 @@
         document.getElementById('currentDocLabel').textContent = '未命名空白工程';
         window.OpenMapEditor.ViewportLayer.fitCanvas(2000, 1500);
         renderAll();
+    }
+
+    // ==========================================================================
+    // 会话自动保存与启动恢复（F5 / 崩溃后不丢工作）
+    // ==========================================================================
+    //
+    // 存什么：工程本体 + 当前线路/工具 + （城市维护模式下）原始源码与载入时快照。
+    // 为什么要存源码：没有 rawSources 就只能"另存新文件"，无法再做条目级无损回写。
+    // 存哪里：localStorage（纯前端，无后端）。工程 + 城市源码通常几百 KB，远低于 5MB 配额；
+    //         万一超额则降级为"只存工程本体"，至少不丢画的东西。
+    var SESSION_KEY = 'openmap_editor_session_v1';
+    var sessionTimer = null;
+
+    function buildSessionPayload() {
+        if (!app.project) return null;
+        var payload = {
+            v: 1,
+            savedAt: Date.now(),
+            activeLineId: app.activeLineId || null,
+            activeTool: app.activeTool || 'select',
+            project: app.project
+        };
+        var surg = window.OpenMapEditor.PipelineSurgical;
+        var city = surg && typeof surg.getCurrentLoadedCity === 'function' ? surg.getCurrentLoadedCity() : null;
+        if (city && city.id) {
+            payload.cityId = city.id;
+            payload.cityName = city.name;
+            payload.meta = city.meta || null;
+            payload.base = city.base || '';
+            payload.sources = surg.getRawSources ? surg.getRawSources() : null;
+            payload.snapshot = surg.getSessionSnapshot ? surg.getSessionSnapshot() : null;
+        }
+        return payload;
+    }
+
+    function saveSessionNow() {
+        var payload = buildSessionPayload();
+        if (!payload) return;
+        try {
+            localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+            return;
+        } catch (e) {
+            // 多半是配额不足：丢掉源码与快照再试一次，保住工程本体
+            try {
+                var slim = buildSessionPayload();
+                if (!slim) return;
+                delete slim.sources;
+                delete slim.snapshot;
+                localStorage.setItem(SESSION_KEY, JSON.stringify(slim));
+            } catch (e2) {
+                console.warn('[Editor] 自动保存失败（可能是隐私模式或配额不足）：', e2);
+            }
+        }
+    }
+
+    /** 防抖：连续操作只在停下 1.2s 后落一次盘 */
+    function scheduleSaveSession() {
+        if (sessionTimer) return;
+        sessionTimer = setTimeout(function () {
+            sessionTimer = null;
+            saveSessionNow();
+        }, 1200);
+    }
+
+    function clearSession() {
+        try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+    }
+
+    /**
+     * 启动时尝试恢复上次会话。
+     * @returns {boolean} 是否恢复成功（失败则由调用方新建空白工程）
+     */
+    function restoreSessionIfAny() {
+        var raw = null;
+        try { raw = localStorage.getItem(SESSION_KEY); } catch (e) { return false; }
+        if (!raw) return false;
+
+        var data = null;
+        try { data = JSON.parse(raw); } catch (e) {
+            console.warn('[Editor] 自动保存数据损坏，已忽略');
+            clearSession();
+            return false;
+        }
+        var proj = data && data.project;
+        if (!proj || !proj.nodes || !Array.isArray(proj.lines) || !proj.canvas ||
+            !(proj.canvas.width > 0) || !(proj.canvas.height > 0)) {
+            return false;
+        }
+
+        var surg = window.OpenMapEditor.PipelineSurgical;
+        var cityRestored = false;
+        if (data.cityId && data.sources && surg && typeof surg.restoreSession === 'function') {
+            try { cityRestored = surg.restoreSession(data); } catch (e) { cityRestored = false; }
+        }
+
+        app.project = proj;
+        app.activeLineId = data.activeLineId || (proj.lines[0] && proj.lines[0].id) || null;
+        if (app.activeLineId && window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.setActiveLine) {
+            window.OpenMapEditor.PipelineDraw.setActiveLine(app.activeLineId);
+        }
+        if (data.activeTool) setTool(data.activeTool);
+
+        var label = document.getElementById('currentDocLabel');
+        if (label) {
+            label.textContent = (cityRestored
+                ? ('城市维护：' + (data.cityName || data.cityId))
+                : '未命名空白工程') + '（已恢复上次进度）';
+        }
+        window.OpenMapEditor.ViewportLayer.fitCanvas(proj.canvas.width, proj.canvas.height);
+        renderAll();
+        showToast('已恢复上次的编辑进度' +
+            (cityRestored ? '（城市源码已还原，可继续无损写回）' : '') +
+            '；要清空重来请点「新建画布」', 'success');
+        return true;
     }
 
     function bindToolbarButtons() {
@@ -1189,6 +1678,13 @@
                     try {
                         var parsed = JSON.parse(ev.target.result);
                         if (!parsed || !parsed.nodes) throw new Error('不是有效的工程 JSON 文件');
+                        // 导入的 JSON 与当前城市无关：清掉维护上下文，避免写回错城市
+                        if (window.OpenMapEditor.PipelineSurgical && window.OpenMapEditor.PipelineSurgical.resetContext) {
+                            window.OpenMapEditor.PipelineSurgical.resetContext();
+                        }
+                        if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.cancelDraft) {
+                            window.OpenMapEditor.PipelineDraw.cancelDraft();
+                        }
                         app.project = parsed;
                         app.activeLineId = (parsed.lines && parsed.lines[0]) ? parsed.lines[0].id : null;
                         if (app.activeLineId) window.OpenMapEditor.PipelineDraw.setActiveLine(app.activeLineId);
@@ -1795,6 +2291,39 @@
             var coordEl = document.getElementById('cursorCoordinates');
             if (coordEl) coordEl.textContent = 'X: ' + Math.round(world.x) + ', Y: ' + Math.round(world.y);
 
+            // 走线工具：把指针位置写进草稿并即时重画预览（只重画草稿层，不整屏重绘）
+            // 按住 Shift 时方向锁到 45° 的整数倍（含水平 / 垂直），长度仍跟手
+            // 平移（中键 / 空格 + 拖动）期间不更新草稿指针：
+            // 否则预览线会跟着平移指针乱跑，看起来像"中键按一下就在放点"。
+            var pdMove = window.OpenMapEditor.PipelineDraw;
+            if (!viewportEl.classList.contains('panning') &&
+                /^seg/.test(app.activeTool) && pdMove &&
+                typeof pdMove.updateDraftPointer === 'function') {
+                // 先按网格吸附，再（按 Shift 时）锁方向；两者同时开启时约束函数会把长度量化到网格，
+                // 这样预览端点与最终落点**都落在网格线上**。
+                var movePt = (app.snapEnabled && !e.altKey && window.OpenMapEditor.ViewportLayer.snapPoint)
+                    ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
+                    : { x: roundCoord(world.x), y: roundCoord(world.y) };
+                if (e.shiftKey && typeof pdMove.hasDraft === 'function' && pdMove.hasDraft() &&
+                    typeof pdMove.constrainTo45 === 'function') {
+                    var draftNow = pdMove.getDraft();
+                    if (draftNow) {
+                        var snapStep = (window.OpenMapEditor.ViewportLayer.getSnapStep)
+                            ? window.OpenMapEditor.ViewportLayer.getSnapStep()
+                            : 0;
+                        movePt = pdMove.constrainTo45(draftNow.startPoint, movePt, app.snapEnabled ? snapStep : 0);
+                    }
+                }
+                if (pdMove.updateDraftPointer(movePt)) {
+                    renderDraftLayer();
+                    // 绘制过程中在坐标读数后面提示怎么收尾，避免用户不知道要按什么
+                    var coordHint = document.getElementById('cursorCoordinates');
+                    if (coordHint && typeof pdMove.hasDraft === 'function' && pdMove.hasDraft()) {
+                        coordHint.textContent += ' · Enter / 右键 结束绘制';
+                    }
+                }
+            }
+
             // 车站模式下的智能吸附高亮投影
             if (app.activeTool === 'station') {
                 var scale = window.OpenMapEditor.ViewportLayer.getScale() || 1;
@@ -2190,11 +2719,28 @@
                 }
                 var snapped = app.snapEnabled
                     ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
-                    : { x: world.x, y: world.y };
-                var result = window.OpenMapEditor.PipelineDraw.handleCanvasClick(app.project, snapped, null);
+                    : { x: roundCoord(world.x), y: roundCoord(world.y) };
+                // 按住 Shift：落点也约束到 45° 方向，保证与预览一致
+                var pdClick = window.OpenMapEditor.PipelineDraw;
+                if (e.shiftKey && pdClick && typeof pdClick.hasDraft === 'function' && pdClick.hasDraft() &&
+                    typeof pdClick.constrainTo45 === 'function') {
+                    var draft5 = pdClick.getDraft();
+                    var step5 = (window.OpenMapEditor.ViewportLayer.getSnapStep)
+                        ? window.OpenMapEditor.ViewportLayer.getSnapStep() : 0;
+                    if (draft5) snapped = pdClick.constrainTo45(draft5.startPoint, snapped, app.snapEnabled ? step5 : 0);
+                }
+                var result = window.OpenMapEditor.PipelineDraw.handleCanvasClick(app.project, snapped, null, { button: e.button });
                 if (result.updated) {
-                    if (result.createdId) app.selected = { type: 'node', id: result.createdId };
+                    // create_segment 返回的是线段 id，不能当节点 id 选中
+                    if (result.action === 'create_segment' || result.action === 'extend_segment') {
+                        app.selected = { type: 'segment', id: result.createdId };
+                    } else if (result.createdId) {
+                        app.selected = { type: 'node', id: result.createdId };
+                    }
                     renderAll();
+                } else {
+                    // 首击（起点已定）/ 原地重复点击：也刷新一次，让预览立刻出现
+                    renderDraftLayer();
                 }
                 return;
             }
@@ -2207,12 +2753,42 @@
                 var targetNodeEl = e.target.closest('[data-node-id]');
                 var targetNid = targetNodeEl ? targetNodeEl.getAttribute('data-node-id') : null;
 
-                window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
-                var result = window.OpenMapEditor.PipelineDraw.handleCanvasClick(app.project, snapped, targetNid);
-                if (result.updated) {
-                    if (result.createdId) app.selected = { type: 'node', id: result.createdId };
-                    renderAll();
+                // 走线工具的首击只是"定起点"，不该占一个撤销步
+                var pdRef = window.OpenMapEditor.PipelineDraw;
+                var isDraftStart = /^seg/.test(app.activeTool) && pdRef &&
+                    typeof pdRef.hasDraft === 'function' && !pdRef.hasDraft();
+                if (!isDraftStart) window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                // 按住 Shift：落点约束到 45° 方向（命中节点时仍以节点为准）
+                var pdClick2 = window.OpenMapEditor.PipelineDraw;
+                if (e.shiftKey && !targetNid && pdClick2 && typeof pdClick2.hasDraft === 'function' && pdClick2.hasDraft() &&
+                    typeof pdClick2.constrainTo45 === 'function') {
+                    var draft6 = pdClick2.getDraft();
+                    var step6 = (window.OpenMapEditor.ViewportLayer.getSnapStep)
+                        ? window.OpenMapEditor.ViewportLayer.getSnapStep() : 0;
+                    if (draft6) snapped = pdClick2.constrainTo45(draft6.startPoint, snapped, app.snapEnabled ? step6 : 0);
                 }
+                var result = window.OpenMapEditor.PipelineDraw.handleCanvasClick(app.project, snapped, targetNid, { button: e.button });
+                if (result.updated) {
+                    if (result.action === 'create_segment' || result.action === 'extend_segment') {
+                        app.selected = { type: 'segment', id: result.createdId };
+                    } else if (result.createdId) {
+                        app.selected = { type: 'node', id: result.createdId };
+                    }
+                    renderAll();
+                } else {
+                    renderDraftLayer();
+                }
+            }
+        });
+
+        // 右键结束连续绘制（CAD 习惯），不必切换工具才能停
+        viewportEl.addEventListener('contextmenu', function (e) {
+            var pd = window.OpenMapEditor.PipelineDraw;
+            if (/^seg/.test(app.activeTool) && pd && typeof pd.hasDraft === 'function' && pd.hasDraft()) {
+                e.preventDefault();
+                pd.cancelDraft();
+                renderAll();
+                showToast('已结束连续绘制（起点已清除）');
             }
         });
 
@@ -2328,6 +2904,17 @@
                         handlePropertyChange(app.selected.type, app.selected.id, 'delete', true);
                         showToast('已删除选中图元');
                     }
+                }
+            } else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
+                // Enter：立即结束当前连续绘制（保留已经画好的线段，且不切换工具，
+                // 方便马上开始下一条走线）；没有草稿时交还给浏览器默认行为。
+                var pdEnter = window.OpenMapEditor.PipelineDraw;
+                if (/^seg/.test(app.activeTool) && pdEnter &&
+                    typeof pdEnter.hasDraft === 'function' && pdEnter.hasDraft()) {
+                    e.preventDefault();
+                    pdEnter.cancelDraft();
+                    renderAll();
+                    showToast('已结束连续绘制（Enter）');
                 }
             } else if (e.code === 'Escape') {
                 setTool('select');
@@ -2448,6 +3035,15 @@
             var h = parseInt(document.getElementById('newCanvasHeight').value, 10) || 1500;
             var slope = (document.getElementById('newCanvasSlope').value || '1:1').split(':');
 
+            // 新工程与旧城市无关：先清掉维护上下文与旧存档，避免误写回 / 误恢复
+            if (window.OpenMapEditor.PipelineSurgical && window.OpenMapEditor.PipelineSurgical.resetContext) {
+                window.OpenMapEditor.PipelineSurgical.resetContext();
+            }
+            // 旧的走线草稿属于上一个工程，必须清掉（否则下一个工程的第一次点击会被当成"第二击"）
+            if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.cancelDraft) {
+                window.OpenMapEditor.PipelineDraw.cancelDraft();
+            }
+            clearSession();
             app.project = window.OpenMapEditor.ProjectModel.createProject(w, h);
             app.project.slope = { m: parseInt(slope[0], 10) || 1, n: parseInt(slope[1], 10) || 1 };
             app.project.lines.push({ id: 'L1', name: '1号线', color: '#c23531' });
@@ -2468,6 +3064,10 @@
                 try {
                     showToast('正在载入城市: ' + cityId + '...', 'info');
                     var res = await window.OpenMapEditor.PipelineSurgical.loadCity(cityId);
+                    // 换了工程：上一个工程遗留的走线草稿必须清掉，否则首次点击会被当成"第二击"
+                    if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.cancelDraft) {
+                        window.OpenMapEditor.PipelineDraw.cancelDraft();
+                    }
                     app.project = res.project;
                     var cName = (res.city && res.city.name) ? res.city.name : cityId;
                     var cId = (res.city && res.city.id) ? res.city.id : cityId;
@@ -2586,46 +3186,276 @@
             showToast('已保存线路「' + lineId + '」站间距 ' + parsed.count + ' 条', 'success');
         });
 
-        // 百科批量放站弹窗
+        // ------------------------------------------------------------------
+        // 新增线路：创建后设为「当前绘制线路」，并选中它（右侧立刻显示线路属性）
+        // ------------------------------------------------------------------
+        function suggestLineId() {
+            var maxN = 0;
+            (app.project.lines || []).forEach(function (l) {
+                var m = /(\d+)\s*$/.exec(String(l.id || ''));
+                if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+            });
+            var prefix = 'M';
+            var first = (app.project.lines || [])[0];
+            if (first && first.id) {
+                var pm = /^([A-Za-z]+)/.exec(String(first.id));
+                if (pm) prefix = pm[1];
+            }
+            return { id: prefix + (maxN + 1), name: (maxN + 1) + '号线' };
+        }
+
+        function openNewLineModal() {
+            if (!app.project) { showToast('请先新建画布或载入城市', 'warning'); return; }
+            var sug = suggestLineId();
+            var idEl = document.getElementById('newLineId');
+            var nameEl = document.getElementById('newLineName');
+            var colorEl = document.getElementById('newLineColor');
+            var colorTextEl = document.getElementById('newLineColorText');
+            var companyEl = document.getElementById('newLineCompany');
+            var loopEl = document.getElementById('newLineIsLoop');
+            var branchEl = document.getElementById('newLineHasBranch');
+            if (idEl) idEl.value = sug.id;
+            if (nameEl) nameEl.value = sug.name;
+            if (colorEl) colorEl.value = '#0284C7';
+            if (colorTextEl) colorTextEl.value = '#0284C7';
+            if (companyEl) companyEl.value = '';
+            if (loopEl) loopEl.checked = false;
+            if (branchEl) branchEl.checked = false;
+            document.getElementById('modalNewLine')?.classList.add('open');
+            setTimeout(function () { if (idEl) { idEl.focus(); idEl.select(); } }, 30);
+        }
+
+        function createLineFromModal() {
+            if (!app.project) return;
+            var id = String((document.getElementById('newLineId') || {}).value || '').trim();
+            var name = String((document.getElementById('newLineName') || {}).value || '').trim();
+            var color = normalizeHexColor(
+                (document.getElementById('newLineColorText') || {}).value ||
+                (document.getElementById('newLineColor') || {}).value);
+            var company = String((document.getElementById('newLineCompany') || {}).value || '').trim();
+            var isLoop = !!(document.getElementById('newLineIsLoop') || {}).checked;
+            var hasBranch = !!(document.getElementById('newLineHasBranch') || {}).checked;
+
+            if (!id) { showToast('请填写线路 ID', 'warning'); return; }
+            if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+                showToast('线路 ID 只能包含字母、数字、下划线与短横线', 'warning');
+                return;
+            }
+            if ((app.project.lines || []).some(function (l) { return l.id === id; })) {
+                showToast('线路 ID「' + id + '」已存在，请换一个', 'error');
+                return;
+            }
+
+            window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+
+            var line = { id: id, name: name || id, color: color || '#0284C7' };
+            if (company) line.company = company;
+            if (isLoop) line.isLoop = true;
+            if (hasBranch) {
+                line.hasbranch = true;
+                line['stationIds-way1'] = [];
+                line['stationIds-way2'] = [];
+            } else {
+                line.stationIds = [];
+            }
+            app.project.lines = app.project.lines || [];
+            app.project.lines.push(line);
+
+            // 设为当前绘制线路：之后画的线段都会挂到这条线上
+            app.activeLineId = id;
+            if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.setActiveLine) {
+                window.OpenMapEditor.PipelineDraw.setActiveLine(id);
+            }
+            // 选中它，右侧立即显示「线路属性」，可继续改名称/色号
+            app.selected = { type: 'line', id: id };
+
+            document.getElementById('modalNewLine')?.classList.remove('open');
+            renderAll();
+            showToast('已新增线路「' + line.name + '」（' + id + '），已设为当前绘制线路', 'success');
+        }
+
+        var btnNewLineEl = document.getElementById('btnNewLine');
+        if (btnNewLineEl) btnNewLineEl.addEventListener('click', openNewLineModal);
+        var btnConfirmNewLineEl = document.getElementById('btnConfirmNewLine');
+        if (btnConfirmNewLineEl) btnConfirmNewLineEl.addEventListener('click', createLineFromModal);
+        var newLineColorEl = document.getElementById('newLineColor');
+        var newLineColorTextEl = document.getElementById('newLineColorText');
+        if (newLineColorEl && newLineColorTextEl) {
+            newLineColorEl.addEventListener('input', function () {
+                newLineColorTextEl.value = String(this.value || '').toUpperCase();
+            });
+            newLineColorTextEl.addEventListener('change', function () {
+                var hex = normalizeHexColor(this.value);
+                if (hex) { this.value = hex; newLineColorEl.value = hex; }
+                else { this.value = newLineColorEl.value; }
+            });
+        }
+
+        // ------------------------------------------------------------------
+        // 百科表格批量放站：解析 → 逐行校对 → 选是否连线 → 确认导入
+        // ------------------------------------------------------------------
+        var batchPreviewRows = [];   // [{ cn, en, checked }]
+
+        function escapeBatchAttr(v) {
+            return String(v == null ? '' : v)
+                .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function renderBatchPreview() {
+            var wrap = document.getElementById('batchPreviewWrap');
+            var body = document.getElementById('batchPreviewBody');
+            if (!wrap || !body) return;
+            if (!batchPreviewRows.length) {
+                wrap.hidden = true;
+                body.innerHTML = '';
+                return;
+            }
+            wrap.hidden = false;
+            body.innerHTML = batchPreviewRows.map(function (r, i) {
+                return '<tr>' +
+                    '<td style="text-align:center;color:var(--text-light);">' + (i + 1) + '</td>' +
+                    '<td><input class="form-input batch-cell-cn" data-idx="' + i + '" value="' + escapeBatchAttr(r.cn) + '"></td>' +
+                    '<td><input class="form-input batch-cell-en" data-idx="' + i + '" value="' + escapeBatchAttr(r.en) + '"></td>' +
+                    '<td style="text-align:center;"><input type="checkbox" class="batch-cell-use" data-idx="' + i + '"' +
+                    (r.checked ? ' checked' : '') + '></td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        function doParseBatch() {
+            var inputEl = document.getElementById('batchHtmlInput');
+            var status = document.getElementById('batchParseStatus');
+            var raw = inputEl ? String(inputEl.value || '') : '';
+            if (!raw.trim()) {
+                showToast('请先粘贴百科表格源码', 'warning');
+                return;
+            }
+            var parsed = { rows: [], skipped: 0 };
+            try {
+                parsed = window.OpenMapEditor.BatchStationTool.parseStationTable(raw);
+            } catch (e) {
+                console.warn('[Batch] 表格解析失败，退化按纯文本处理：', e);
+            }
+            var rows = (parsed.rows || []).map(function (r) { return { cn: r.cn, en: r.en || '', checked: true }; });
+
+            if (!rows.length) {
+                // 退化：用户可能直接粘了一段站名列表
+                var plain = window.OpenMapEditor.BatchStationTool.parseStationList(raw) || [];
+                rows = plain.map(function (r) { return { cn: r.cn, en: r.en || '', checked: true }; });
+            }
+
+            if (!rows.length) {
+                batchPreviewRows = [];
+                renderBatchPreview();
+                if (status) status.textContent = '没有解析到站名';
+                showToast('没有解析到站名：请确认粘贴的是表格源码（<table>…</table>）', 'error');
+                return;
+            }
+
+            batchPreviewRows = rows;
+            renderBatchPreview();
+            if (status) {
+                status.textContent = '解析到 ' + rows.length + ' 座车站' +
+                    (parsed.skipped ? ('（已跳过 ' + parsed.skipped + ' 行非站名内容）') : '') +
+                    '，请逐行校对后确认';
+            }
+        }
+
         var btnOpenBatch = document.getElementById('btnOpenBatchStationModal');
         if (btnOpenBatch) {
             btnOpenBatch.addEventListener('click', function () {
-                var sel = document.getElementById('batchTargetLine');
-                if (sel && app.project) {
-                    sel.innerHTML = app.project.lines.map(function (l) {
-                        return '<option value="' + l.id + '">' + (l.name || l.id) + '</option>';
-                    }).join('');
+                if (!app.project) {
+                    showToast('请先新建画布或载入城市', 'warning');
+                    return;
                 }
+                var sel = document.getElementById('batchTargetLine');
+                if (sel) {
+                    sel.innerHTML = (app.project.lines || []).map(function (l) {
+                        return '<option value="' + l.id + '">' + (l.name || l.id) + '</option>';
+                    }).join('') || '<option value="">（当前没有线路）</option>';
+                }
+                // 每次打开都清空上一次的解析结果，避免误把旧预览当新结果导入
+                batchPreviewRows = [];
+                renderBatchPreview();
+                var status = document.getElementById('batchParseStatus');
+                if (status) status.textContent = '';
                 document.getElementById('modalBatchStation')?.classList.add('open');
+            });
+        }
+
+        var btnParseBatch = document.getElementById('btnParseBatchStation');
+        if (btnParseBatch) btnParseBatch.addEventListener('click', doParseBatch);
+
+        var batchBody = document.getElementById('batchPreviewBody');
+        if (batchBody) {
+            // 输入即写回预览数据（改动在点「确认导入」时才生效）
+            batchBody.addEventListener('input', function (e) {
+                var el = e.target;
+                var idx = parseInt(el.getAttribute('data-idx'), 10);
+                if (!(idx >= 0) || !batchPreviewRows[idx]) return;
+                if (el.classList.contains('batch-cell-cn')) batchPreviewRows[idx].cn = el.value;
+                else if (el.classList.contains('batch-cell-en')) batchPreviewRows[idx].en = el.value;
+            });
+            batchBody.addEventListener('change', function (e) {
+                var el = e.target;
+                var idx = parseInt(el.getAttribute('data-idx'), 10);
+                if (!(idx >= 0) || !batchPreviewRows[idx]) return;
+                if (el.classList.contains('batch-cell-use')) batchPreviewRows[idx].checked = el.checked;
+            });
+        }
+
+        var btnBatchAll = document.getElementById('btnBatchCheckAll');
+        if (btnBatchAll) {
+            btnBatchAll.addEventListener('click', function () {
+                batchPreviewRows.forEach(function (r) { r.checked = true; });
+                renderBatchPreview();
+            });
+        }
+        var btnBatchNone = document.getElementById('btnBatchUncheckAll');
+        if (btnBatchNone) {
+            btnBatchNone.addEventListener('click', function () {
+                batchPreviewRows.forEach(function (r) { r.checked = false; });
+                renderBatchPreview();
             });
         }
 
         var btnApplyBatch = document.getElementById('btnApplyBatchStation');
         if (btnApplyBatch) {
             btnApplyBatch.addEventListener('click', function () {
-                var input = document.getElementById('batchHtmlInput').value;
-                var lineId = document.getElementById('batchTargetLine').value;
-                var dir = document.getElementById('batchDirection').value;
-                var step = parseInt(document.getElementById('batchStepDistance').value, 10) || 60;
+                if (!app.project) { showToast('请先新建画布或载入城市', 'warning'); return; }
 
-                var stations = window.OpenMapEditor.BatchStationTool.extractStationsFromHtml(input);
-                if (!stations.length) {
-                    stations = window.OpenMapEditor.BatchStationTool.parseStationList(input);
+                var usable = batchPreviewRows.filter(function (r) {
+                    return r.checked && String(r.cn || '').trim();
+                });
+                if (!usable.length) {
+                    showToast('请先点「解析站名」，并至少勾选一座车站（中文站名不能为空）', 'warning');
+                    return;
                 }
 
-                if (!stations.length) {
-                    showToast('未能从输入文本中识别出车站');
+                var lineId = (document.getElementById('batchTargetLine') || {}).value || '';
+                var connect = !!(document.getElementById('batchAutoConnect') || {}).checked;
+                var dir = (document.getElementById('batchDirection') || {}).value || 'horizontal';
+                var step = parseInt((document.getElementById('batchStepDistance') || {}).value, 10) || 60;
+
+                if (connect && !lineId) {
+                    showToast('要自动连线，请先在「目标线路」里选一条线；或取消勾选「连线」只放站', 'warning');
                     return;
                 }
 
                 window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
-                var created = window.OpenMapEditor.BatchStationTool.batchCreateStations(app.project, lineId, stations, {
-                    startX: 200, startY: 200, step: step, direction: dir, autoConnect: true
-                });
+                var created = window.OpenMapEditor.BatchStationTool.batchCreateStations(
+                    app.project,
+                    connect ? lineId : '',
+                    usable.map(function (r) { return { cn: String(r.cn).trim(), en: String(r.en || '').trim() }; }),
+                    { startX: 200, startY: 200, step: step, direction: dir, autoConnect: connect }
+                );
 
                 document.getElementById('modalBatchStation')?.classList.remove('open');
+                batchPreviewRows = [];
+                renderBatchPreview();
                 renderAll();
-                showToast('已批量放置 ' + created.length + ' 座车站并连线', 'success');
+                showToast('已导入 ' + created.length + ' 座车站' + (connect ? '并写入线路站序（站距用 0 占位，请在「里程管理」补齐）' : '（未连线）'), 'success');
             });
         }
 

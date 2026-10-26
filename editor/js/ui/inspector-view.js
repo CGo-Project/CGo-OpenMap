@@ -347,7 +347,13 @@ window.OpenMapEditor.InspectorView = (function () {
             html += '<option value="' + l.id + '"' + (l.id === segment.lineId ? ' selected' : '') + '>' + (l.name || l.id) + '</option>';
         });
 
-        html += '</select></div>' +
+        html += '</select>' +
+            (segment.lineId
+                ? '<button type="button" class="ribbon-btn-sm" id="btnEditSegLine" style="flex:0 0 auto;margin-left:4px;"' +
+                  ' title="打开所属线路的属性面板（线路名称 / 标志色 / 运营公司）">' +
+                  '<cgo-icon name="edit" size="12"></cgo-icon><span>编辑线路</span></button>'
+                : '') +
+            '</div>' +
             '<div class="form-row">' +
             '<span class="form-label">走线类型:</span>' +
             '<select class="form-select" id="propSegType">' +
@@ -498,12 +504,25 @@ window.OpenMapEditor.InspectorView = (function () {
 
         var delBtn = document.getElementById('btnDeleteSelected');
         if (delBtn) delBtn.addEventListener('click', function () { fireChange('segment', segment.id, 'delete', true); });
+
+        var editSegLineBtn = document.getElementById('btnEditSegLine');
+        if (editSegLineBtn) {
+            editSegLineBtn.addEventListener('click', function () {
+                fireChange('segment', segment.id, 'open_line', segment.lineId);
+            });
+        }
     }
 
     /**
      * 通用图元检视面板（用于虚拟换乘、在建走向、地点地标、水域、文本等）
      */
-    function renderGenericInspector(title, iconName, fields, actions) {
+    /** 坐标显示：最多 2 位小数，整数不带 ".0" */
+    function fmtCoord(v) {
+        var n = Math.round(Number(v) * 100) / 100;
+        return isFinite(n) ? String(n) : '0';
+    }
+
+    function renderGenericInspector(title, iconName, fields, actions, extraHtml) {
         if (!dom.body) return;
         var html = '<div class="inspector-section">' +
             '<div class="inspector-section-title" style="display:flex;align-items:center;gap:6px;">' +
@@ -517,6 +536,9 @@ window.OpenMapEditor.InspectorView = (function () {
                 '<span style="font-size:11px;color:var(--text-main);word-break:break-all;flex:1;">' + (f.value !== undefined ? f.value : '') + '</span>' +
                 '</div>';
         });
+
+        // 调用方自定义控件（如多选时的「批量入线路」下拉）
+        if (extraHtml) html += extraHtml;
 
         if (actions && actions.length) {
             html += '<div class="form-row" style="margin-top:12px;gap:6px;">';
@@ -551,10 +573,161 @@ window.OpenMapEditor.InspectorView = (function () {
             '<div>点击画布或左侧大纲中的车站、折线、要素进行属性检视与微调</div></div>';
     }
 
+    /**
+     * 线路属性检视面板
+     *
+     * 只负责这条线路条目里的少数字段（名称 / 标志色 / 运营公司 / 严格倒角），
+     * 写回时由 CityProjectIO.patchEntries 做条目级最小编辑——
+     * 改一个色号只会在源文件里产生一行 diff，不会动到 stationIds / pathPoints。
+     */
+    function renderLineInspector(line, project) {
+        if (!dom.body || !line) return;
+
+        // 分支安全统计（不能直接读 line.stationIds.length，分支线会 undefined）
+        var stationCount = 0, poiCount = 0;
+        var io = window.OpenMapEditor && window.OpenMapEditor.CityProjectIO;
+        if (io) {
+            if (typeof io.lineStationGroups === 'function') {
+                io.lineStationGroups(line).forEach(function (g) { stationCount += (g.ids || []).length; });
+            }
+            if (typeof io.linePathGroups === 'function') {
+                io.linePathGroups(line).forEach(function (g) { poiCount += (g.points || []).length; });
+            }
+        }
+        var segCount = (project && project.segments ? project.segments.filter(function (s) { return s.lineId === line.id; }) : []).length;
+        var color = line.color || '#0284c7';
+
+        var html = '<div class="inspector-section">' +
+            '<div class="inspector-section-title">' +
+            '<span style="display:inline-flex;align-items:center;gap:6px;">' +
+            '<span style="width:10px;height:10px;border-radius:50%;background:' + color +
+            ';box-shadow:0 0 0 1px var(--office-border,#cbd5e1);"></span>' +
+            '<span>线路属性</span></span>' +
+            '<span class="cgo-badge">' + line.id + '</span>' +
+            '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">线路 ID:</span>' +
+            '<span style="font-size:11px;font-family:monospace;color:var(--text-light);flex:1;">' + line.id + '</span>' +
+            '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">线路名称:</span>' +
+            '<input type="text" class="form-input" id="propLineName" value="' + (line.name || '') + '" style="flex:1;">' +
+            '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">标志色:</span>' +
+            '<input type="color" class="form-input" id="propLineColorPicker" value="' + color + '" style="flex:0 0 36px;width:36px;padding:2px;">' +
+            '<input type="text" class="form-input" id="propLineColorText" value="' + color + '" style="flex:1;font-family:monospace;">' +
+            '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">运营公司:</span>' +
+            '<input type="text" class="form-input" id="propLineCompany" value="' + (line.company || '') + '" style="flex:1;" placeholder="（可留空）">' +
+            '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">倒角:</span>' +
+            '<label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;flex:1;">' +
+            '<input type="checkbox" id="propLineStrict"' + (line.useStrictRounding ? ' checked' : '') + '>' +
+            '<span>严格倒角 (useStrictRounding)</span></label>' +
+            '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">规模:</span>' +
+            '<span style="font-size:11px;color:var(--text-main);flex:1;">' +
+            stationCount + ' 站 · ' + poiCount + ' 折点 · ' + segCount + ' 线段' +
+            (line.hasbranch ? ' · 分支线' : '') + (line.isLoop ? ' · 环线' : '') +
+            '</span></div>' +
+
+            '<div class="form-row" style="gap:6px;margin-top:8px;">' +
+            '<button type="button" class="ribbon-btn-sm" id="btnLineFocus" style="flex:1;" title="把视口定位到这条线路">' +
+            '<cgo-icon name="target" size="12"></cgo-icon><span>定位线路</span></button>' +
+            '<button type="button" class="ribbon-btn-sm" id="btnLineSelectStations" style="flex:1;" title="选中这条线路的全部车站（含分支）">' +
+            '<cgo-icon name="location" size="12"></cgo-icon><span>选中全线车站</span></button>' +
+            '</div>' +
+
+            '<div style="font-size:10px;color:var(--text-light);margin-top:8px;line-height:1.6;">' +
+            '改动只写回这条线路条目里真正变更的字段；站序与折点仍请在画布或点编辑模式下调整。' +
+            '</div>' +
+            '</div>';
+
+        dom.body.innerHTML = html;
+
+        var nameInput = document.getElementById('propLineName');
+        if (nameInput) {
+            nameInput.addEventListener('change', function () {
+                fireChange('line', line.id, 'name', this.value);
+            });
+        }
+
+        var colorPicker = document.getElementById('propLineColorPicker');
+        var colorText = document.getElementById('propLineColorText');
+        var applyColor = function (raw) {
+            var hex = normalizeHex(raw);
+            if (!hex) {
+                if (colorText) colorText.value = line.color || '';
+                return;
+            }
+            fireChange('line', line.id, 'color', hex);
+        };
+        if (colorPicker) {
+            colorPicker.addEventListener('input', function () {
+                if (colorText) colorText.value = this.value;
+                applyColor(this.value);
+            });
+        }
+        if (colorText) {
+            colorText.addEventListener('change', function () {
+                var hex = normalizeHex(this.value);
+                if (!hex) { this.value = line.color || ''; return; }
+                this.value = hex;
+                if (colorPicker) colorPicker.value = hex;
+                applyColor(hex);
+            });
+        }
+
+        var companyInput = document.getElementById('propLineCompany');
+        if (companyInput) {
+            companyInput.addEventListener('change', function () {
+                fireChange('line', line.id, 'company', this.value);
+            });
+        }
+
+        var strictInput = document.getElementById('propLineStrict');
+        if (strictInput) {
+            strictInput.addEventListener('change', function () {
+                fireChange('line', line.id, 'useStrictRounding', this.checked);
+            });
+        }
+
+        var focusBtn = document.getElementById('btnLineFocus');
+        if (focusBtn) focusBtn.addEventListener('click', function () { fireChange('line', line.id, 'focus', true); });
+        var selStBtn = document.getElementById('btnLineSelectStations');
+        if (selStBtn) selStBtn.addEventListener('click', function () { fireChange('line', line.id, 'selectStations', true); });
+    }
+
+    /**
+     * 标准化颜色输入：#RGB → #RRGGBB，去空格，统一大写。
+     * 与源文件里 #E4002B 这种写法对齐；无效输入返回 null。
+     */
+    function normalizeHex(input) {
+        var v = String(input || '').trim();
+        if (!v) return null;
+        if (v.charAt(0) !== '#') v = '#' + v;
+        if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+            v = '#' + v.charAt(1) + v.charAt(1) + v.charAt(2) + v.charAt(2) + v.charAt(3) + v.charAt(3);
+        }
+        if (!/^#[0-9a-fA-F]{6}$/.test(v)) return null;
+        return v.toUpperCase();
+    }
+
     return {
         init: init,
         renderNodeInspector: renderNodeInspector,
         renderSegmentInspector: renderSegmentInspector,
+        renderLineInspector: renderLineInspector,
         renderGenericInspector: renderGenericInspector,
         renderEmpty: renderEmpty
     };
