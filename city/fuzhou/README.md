@@ -130,7 +130,7 @@ OSM 缺站台节点的车站改用高德 GCJ-02 站坐标转 WGS-84 后投影到
 | 模块 | 状态 | 说明 |
 | :--- | :--- | :--- |
 | `fuzhou_timetable.js` | **已挂载** | 首末班车，`stationBoard.modules` 中为 `fuzhou-line-timetable`，挂「线路」页签 |
-| `fuzhou_site_space.js` | **已挂载** | 车站空间示意图与出入口，`fuzhou-station-space`，挂「车站信息」页签。点示意图在**本页浮层**里看大图（`<cgo-modal>`，宽度上限 `min(1560px, 94vw)` 随分辨率变化，图片 `max-height:84vh` + `object-fit:contain`），点浮层以外的遮罩或按 Esc 退出；浮层里另有「官网原图」外链备用 |
+| `fuzhou_site_space.js` | **已挂载** | 车站空间示意图与出入口，`fuzhou-station-space`，挂「车站信息」页签。点示意图或「查看大图」看大图，**按设备分两条路径**（`isTouchFirst()`，判据是 `(pointer: coarse)`，带触屏但以鼠标为主的笔记本仍算桌面）：**桌面**沿用 `<cgo-modal>` 卡片浮层（宽度上限 `min(1560px, 94vw)`、图片 `max-height:84vh`），宽屏观感已合适；**触屏**走自制全屏查看器（`position:fixed; inset:0` 铺满视口，图片按 contain 贴合后以 `transform` 缩放）—— 单指拖动、双指捏合、双击在「适应屏幕／约 3 倍」间切换，带平移钳制。手机上不用 `cgo-modal` 的原因：它的 Shadow DOM 遮罩是全屏 `backdrop-filter`，捏合时每帧重算整屏模糊会严重掉帧，且 `84vh` 把图压得只比缩略图大一点、还没有平移能力（详见该文件头注释） |
 | `fuzhou_cultural.js` | **已挂载** | 文化名胜指引，`fuzhou-cultural-tip`，挂「车站信息」页签、`order` 14。**只给有 A 级景区或大型公园的车站出卡片**（判定依据是 `data_attractions.js` 的 `tier` 字段），不给每座车站硬加指引；点景点即前往服务它的车站 |
 | `fuzhou_airport.js` | **已挂载** | 机场联络，`fuzhou-airport-tip`，挂「车站信息」页签、`order` 16。**只挂机场站（BE02）**，说明两座航站楼到出发大厅的步行距离与时间（T1 约 500m/6 分、T2 约 700m/9 分），以及两座航站楼分别办理哪些航司与航班 |
 | `fuzhou_railway.js` | **已挂载** | 国铁联络，`fuzhou-railway-tip`，挂「车站信息」页签、`order` 17。**只挂与国铁直接接驳的三站**：福州火车站（M104）→ 国铁**福州站**、福州火车南站（M121）→ 国铁**福州南站**、首占（BE06）→ 国铁**长乐站**。地铁站名与国铁站名并不一致（福州火车站 ≠ 福州站），卡片把两套名称对上，并给出 12306 余票查询入口（口径同北京 `getRailway12306Url`，本项目只作跳转、不提供票务） |
@@ -143,24 +143,64 @@ OSM 缺站台节点的车站改用高德 GCJ-02 站坐标转 WGS-84 后投影到
 
 ## 自检
 
-本目录的 `tools/` 下有两个**福州专属**的 Node 端核对脚本（零依赖、不需要浏览器、不联网）：
+本目录的 `tools/` 下有三个**福州专属**的 Node 端核对脚本（零依赖、不需要浏览器、不联网）：
 
 ```bash
 node city/fuzhou/tools/fuzhou_check.js           # 城市数据 ↔ 城市配置 契约
 node city/fuzhou/tools/fuzhou_network_check.js   # 端到端：真建一次网络
+node city/fuzhou/tools/fuzhou_viewer_check.js    # 车站空间示意图查看器的缩放/平移算法
 ```
 
 - **`fuzhou_check.js`**（快，不依赖共享层）：车站引用完整性、站距长度、时刻链终点站解析、
   里程口径对照、官方票价表完整性与规则命中、「查不到必须返回 null」、站外换乘步行时间表、
   站内换乘方式表（键必须是真实换乘站、取值合法、`pairs` 覆盖自洽、帝封江三条线路对钉住），
-  共 **51 项断言**。
+  另有 ⑩ 节核对「模块三处登记」一致性与 ⑪ 节核对**画布边界**（内容外接盒不得越出 `mapSize`，
+  且 `city/data.js` 与 `fuzhou.js` 的 `mapSize` / `center` 必须一致）。
 - **`fuzhou_network_check.js`**（慢一点，会拉起共享层建图）：验证那些**只有内核读得懂**、
   写错了不会报错只会静默回落的配置 —— 逐对打印网络里实际的步行分钟数、逐站逐线路对
   （区分方向）打印换乘用时与方式、列出哪些区间来自时刻表实测、并抽样实算路径确认
   换乘方式进了结果步骤。
+- **`fuzhou_viewer_check.js`**：用一份最小 DOM 桩直接驱动真实的 `fuzhou_site_space.js`。一是**分派**：
+  把 `matchMedia` 分别设成「粗指针」与「精确指针」，断言桌面创建的是 `<cgo-modal>` 卡片（含
+  `min(1560px, 94vw)` 与 `84vh`）、触屏创建的是全屏查看器（且不出现 `cgo-modal` / `84vh` /
+  `backdrop-filter`）。二是**几何算法**：适应屏幕的 contain 与居中、双指捏合的锚点不漂移、
+  拖动到底的钳制边界、缩放下限收敛、横竖屏切换后重新收敛。这些错在浏览器里只表现为
+  「桌面多出一个全屏浮层」「手机上还是压扁的卡片」「图跑偏」「拖到底留白」，都不会报错，
+  靠手感很难发现回归。
 
-改动本目录任何数据或 `fuzhou.js` 后两个都请跑通；
-`drunk/tools/selfcheck.js`（Drunk 纯函数层，跨城市通用）与本二者互补，互不替代。
+改动本目录任何数据或 `fuzhou.js` 后前两个都请跑通；改了 `modules/fuzhou_site_space.js`
+还要跑第三个。`editor/tests/selfcheck.js`（编辑器纯函数层，跨城市通用）与这三者互补，互不替代。
 
 重新抓取官方票价表所需的接口、参数、站点清单来源与并发建议，写在
 `tools/fuzhou_check.js` 的文件头；抓完请同步递增 `sw.js` 的 `CACHE_NAME`。
+
+## 在电脑上验证手机端的全屏查看器
+
+看大图按设备分两条路径，判定用 `(pointer: coarse)`。**DevTools 的设备模拟不一定会让这个
+媒体查询成真**（取决于浏览器版本与是否真的开了触屏模拟），所以最可靠的验证方式是用 URL
+参数强制覆盖：
+
+```
+http://localhost:8080/main.html?city=fuzhou&fzviewer=touch      # 强制走手机端全屏查看器
+http://localhost:8080/main.html?city=fuzhou&fzviewer=desktop    # 强制走桌面卡片浮层
+http://localhost:8080/main.html?city=fuzhou                     # 不带参数：按设备自动判定
+```
+
+打开后**点任一车站 → 「车站信息」页签 → 点示意图或「查看大图」**即可。
+
+强制成 `touch` 后，鼠标可以完整走一遍手势链路（查看器用的是 pointer 事件，不只认触摸）：
+
+| 操作 | 效果 |
+| :--- | :--- |
+| 按住拖动 | 平移（放大后可左右上下移动） |
+| 滚轮 | 以光标位置为锚点缩放 |
+| 双击 | 在「适应屏幕」与「约 3 倍」之间切换 |
+| 「适应屏幕」按钮 | 回到居中贴合 |
+| 关闭 / Esc | 退出 |
+
+只有**双指捏合**必须真机验证 —— 它需要两个同时存在的 pointer，鼠标给不出来。
+但捏合的数学与「缩放锚点不漂移」已由 `tools/fuzhou_viewer_check.js` 断言覆盖，
+电脑上验的是布局、观感与单指链路。
+
+> 想在手机上看：让静态服务器监听 `0.0.0.0`（如 `npx serve -l 8080` 或
+> `python -m http.server 8080`），手机与电脑连同一 Wi-Fi，访问 `http://<电脑内网IP>:8080/main.html?city=fuzhou`。
