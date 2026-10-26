@@ -618,9 +618,9 @@
             svglogo: null, // 已接入 CGoUI 内置 shijiazhuang 官方矢量图标
             folder: "./city/shijiazhuang",
             mainLogic: "./city/shijiazhuang/shijiazhuang.js",
-            center: { x: 840, y: 800 },
-            defaultScale: 0.6,
-            mapSize: { width: 1500, height: 1500 },
+            center: { x: 630, y: 600 },
+            defaultScale: 0.8,
+            mapSize: { width: 1125, height: 1125 },
             searchCity: "石家庄",
             title: "CGo OpenMap - 石家庄轨道交通线路图",
             keywords: "CGo OpenMap, 石家庄地铁, 线路图, 轨道交通",
