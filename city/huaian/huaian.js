@@ -18,7 +18,7 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         TRAM_LINES: ["HA-L1"],
-        dataFiles: {},
+        dataFiles: { stanameCsvUrl: "./city/huaian/staname.csv" },
         isTramLine(lineId) { return this.TRAM_LINES.includes(lineId); },
         isTramStation(station) { return Boolean(station?.relatedLines?.some((id) => this.isTramLine(id))); },
         formatOwnerName(raw) { return raw || "淮安市现代有轨电车"; },
