@@ -1,14 +1,14 @@
 /**
- * CGo OpenMap - Drunk 纯函数层回归自检 (drunk/tools/selfcheck.js)
+ * CGo OpenMap - 开放地图编辑器纯函数层回归自检 (editor/tests/selfcheck.js)
  *
  * ==============================================================================
  * 用途
  * ==============================================================================
  * 在项目根目录执行：
  *
- *     node drunk/tools/selfcheck.js
+ *     node editor/tests/selfcheck.js
  *
- * 零依赖、零构建、不需要浏览器。覆盖 Drunk 中两块**纯逻辑**且一旦出错后果最重的代码：
+ * 零依赖、零构建、不需要浏览器。覆盖编辑器中两块**纯逻辑**且一旦出错后果最重的代码：
  *
  * 1. `city_project_io.js` —— 城市工程的条目级无损回写。
  *    这里出错的后果是**静默损毁已经逐像素校准过的城市数据**（悉尼的 marker/halo、
@@ -16,7 +16,7 @@
  *    因此本脚本会拿 `city/` 下**全部真实城市数据**跑往返验证，逐条断言：
  *    改动生效、其余条目零改动、未被改的字段完好、diff 只有一两行。
  *
- * 2. `drunk_sanitizer.js` —— 识别结果净化与整体几何校正。
+ * 2. `data-sanitizer.js` —— 识别结果净化与整体几何校正。
  *
  * 任何一项失败都会以非零状态码退出，便于挂进 CI 或提交前手动跑一遍。
  * ==============================================================================
@@ -247,7 +247,7 @@ section('折线倒角几何 (core/path-geometry.js)');
     const G = require(path.join(ROOT, 'core/path-geometry.js'));
 
     // core/script.js 必须委托给共享模块，不能自己再留一份实现——
-    // 一旦复刻两份，Drunk 的预览就会和线路图的实际渲染悄悄漂移。
+    // 一旦复刻两份，编辑器的预览就会和线路图的实际渲染悄悄漂移。
     const engineSrc = fs.readFileSync(path.join(ROOT, 'core/script.js'), 'utf8');
     check(engineSrc.includes('window.CGoPathGeometry.generateRoundedPath'),
         'core/script.js 委托给共享几何模块');
@@ -298,7 +298,7 @@ section('折线倒角几何 (core/path-geometry.js)');
 // ============================================================================
 // 四点八、isPointOnly：只落站点、不画走向
 // ============================================================================
-// 引擎 renderLines 首行就是 `if (line.isPointOnly) return;`。Drunk 早先没认这个
+// 引擎 renderLines 首行就是 `if (line.isPointOnly) return;`。旧版早先没认这个
 // 标志，退到「按站序直连」兜底，把北京「中国铁路」24 座散布全城的国铁车站
 // 从延庆一路连到大兴，画布上凭空多出一堆横穿全图的长斜线。
 section('isPointOnly 线路不得绘制走向');
@@ -352,7 +352,7 @@ section('车站图元 (core/station-icons.js)');
     const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
 
     // STATION_SIZE 必须与 css/style.css 的 .dot/.tsf 等尺寸一致——
-    // 引擎靠 CSS 定尺寸、Drunk 靠这张表定尺寸，不同步就会一大一小。
+    // 引擎靠 CSS 定尺寸、编辑器靠这张表定尺寸，不同步就会一大一小。
     function cssSizeOf(sel) {
         // 选择器后必须紧跟 { , 或空白——否则 `.tsf` 会先匹配到 `.tsfo`
         const re = new RegExp('(^|\\n)\\.' + sel + '(?=[\\s,{])[^{]*\\{[^}]*?width:\\s*([\\d.]+)px', 'm');

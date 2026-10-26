@@ -1,6 +1,6 @@
 /**
  * CGo OpenMap - 南京图例配置 (city/city_muqufgjd/data_legend.js)
- * 由 Drunk 转换系统自动生成
+ * 由 OpenMap Editor 自动生成
  */
 
 const LEGEND_CONFIG = [

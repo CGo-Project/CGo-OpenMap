@@ -1,10 +1,10 @@
 /**
- * CGo OpenMap - Drunk 识别结果净化与几何校正器 (drunk/js/drunk_sanitizer.js)
+ * CGo OpenMap - 开放地图编辑器识别结果净化与几何校正器 (editor/js/algorithms/data-sanitizer.js)
  *
  * ==============================================================================
  * 为什么需要这一层 (Why)
  * ==============================================================================
- * Drunk 的两条入料链路（DeepSeek 视觉大模型 / PDF·AI 矢量直通）都存在典型的脏数据：
+ * 编辑器的两条入料链路（DeepSeek 视觉大模型 / PDF·AI 矢量直通）都存在典型的脏数据：
  *
  * 1. **噪点当车站**：底图上肉眼不可见的压缩噪点、图例色块、注记文字被当成站点，
  *    极端情况下一张图能「识别」出五六千个车站并互相乱连线；
@@ -14,8 +14,8 @@
  *    整体「歪」一截（这是会上反复提到的现象）；
  * 5. **退化线路**：只有 0~1 个站、或与另一条线完全重复的线路。
  *
- * 本模块把这些清理动作从 `drunk_pipeline.js` 中抽出来，做成**纯函数**，
- * 既可在两条链路上复用，也便于用 Node 直接跑回归自检（见 tools/ 目录说明）。
+ * 本模块把这些清理动作从流水线中抽出来，做成**纯函数**，
+ * 既可在两条链路上复用，也便于用 Node 直接跑回归自检（见 tests/ 目录说明）。
  *
  * ==============================================================================
  * 对外 API
@@ -29,7 +29,8 @@
 
 (function (root, factory) {
     const api = factory();
-    root.DrunkSanitizer = api;
+    root.DataSanitizer = api;
+    root.DrunkSanitizer = api; // 向后兼容
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
     'use strict';
@@ -514,5 +515,5 @@
 
 if (typeof window !== 'undefined') {
     window.OpenMapEditor = window.OpenMapEditor || {};
-    window.OpenMapEditor.DataSanitizer = window.DrunkSanitizer;
+    window.OpenMapEditor.DataSanitizer = window.DataSanitizer;
 }

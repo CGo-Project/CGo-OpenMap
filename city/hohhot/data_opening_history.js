@@ -35,7 +35,7 @@
  *   呼和浩特地铁集团公告《注意！名称有变！呼和浩特地铁这三座车站更名啦！》
  *   （2023-10-25 发布、2023-11-01 生效）；同城 data_stations.js 文件头亦收录
  *
- * 自检：drunk/tools/selfcheck.js「开通沿革时间线」一节。
+ * 自检：editor/tests/selfcheck.js「开通沿革时间线」一节。
  */
 
 const CGO_OPENING_HISTORY = [

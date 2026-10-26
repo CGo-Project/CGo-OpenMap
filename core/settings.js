@@ -1,21 +1,5 @@
 /**
  * CGo OpenMap - 偏好设置面板管理模块 (core/settings.js)
- * 
- * ==============================================================================
- * 偏好设置系统说明 (User Preference Manager)
- * ==============================================================================
- * 作用：管理用户偏好设置面板与持久化配置，包括：
- * 1. 城市切换 (City Switch)：自动读取 CityDataManager 注册的所有城市列表；
- * 2. 颜色模式 (Theme Mode)：支持跟随系统 (System)、亮色 (Light)、暗色 (Dark)；
- * 3. 滚轮与触控板 (Wheel Mode)：支持智能兼容 (Smart)、缩放 (Zoom)、平移 (Pan)；
- * 4. 侧边栏历史记录条数 (Sidebar History Limit)：控制常驻侧边栏保留的车站卡片数量 (1~9条)。
- * 
- * 存储键 (LocalStorage Keys):
- * - `cgo_openmap_city`: 当前激活的城市 ID
- * - `app-theme`: 用户选定的主题模式
- * - `nal_pref_wheel_mode`: 鼠标滚轮/触控板工作模式
- * - `nal_sidebar_history_limit`: 侧边栏常驻历史条数上限
- * ==============================================================================
  */
 
 document.addEventListener('DOMContentLoaded', function () {

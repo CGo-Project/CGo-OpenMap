@@ -45,11 +45,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261026.134000">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261026.134000">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261026.134000">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261026.134000">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261026.134000">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261026.232300">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261026.232300">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261026.232300">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261026.232300">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261026.232300">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -98,9 +98,7 @@
         </defs>
     </svg>
 
-    <!-- =====================================================================
-         1. 顶部标题栏 (Title Bar)
-         ===================================================================== -->
+    <!-- 顶部标题栏 -->
     <header class="office-title-bar">
         <div class="title-bar-left">
             <div class="office-app-icon" title="开放地图编辑器 (OpenMap Editor)">
@@ -132,9 +130,7 @@
         </div>
     </header>
 
-    <!-- =====================================================================
-         2. Ribbon 功能区 (Ribbon Container)
-         ===================================================================== -->
+    <!-- Ribbon 功能区 -->
     <nav class="office-ribbon-container" id="officeRibbonContainer">
         <!-- 选项卡切换行 -->
         <div class="ribbon-tabs-row" id="ribbonTabsRow">
@@ -167,7 +163,7 @@
         <!-- Ribbon 工具栏主体内容 -->
         <div class="ribbon-toolbar-body" id="ribbonToolbarBody">
 
-            <!-- ==================== TAB 1: 开始 (Home) ==================== -->
+            <!-- TAB 1: 开始 (Home) -->
             <div class="ribbon-tab-content-group active" data-tab="home" id="ribbonGroupSet_home">
                 <!-- 常用编辑工具组 -->
                 <div class="ribbon-group">
@@ -277,7 +273,7 @@
                 </div>
             </div>
 
-            <!-- ==================== TAB 2: 智能转换 (Ingest) ==================== -->
+            <!-- TAB 2: 智能转换 (Ingest) -->
             <div class="ribbon-tab-content-group" data-tab="ingest" id="ribbonGroupSet_ingest">
                 <!-- 导入流水线 -->
                 <div class="ribbon-group">
@@ -321,7 +317,7 @@
                 </div>
             </div>
 
-            <!-- ==================== TAB 3: 城市维护 (Surgical) ==================== -->
+            <!-- TAB 3: 城市维护 (Surgical) -->
             <div class="ribbon-tab-content-group" data-tab="surgical" id="ribbonGroupSet_surgical">
                 <!-- 存量城市读写 -->
                 <div class="ribbon-group">
@@ -370,7 +366,7 @@
                 </div>
             </div>
 
-            <!-- ==================== TAB 4: 数据与工具 (Tools) ==================== -->
+            <!-- TAB 4: 数据与工具 (Tools) -->
             <div class="ribbon-tab-content-group" data-tab="tools" id="ribbonGroupSet_tools">
                 <!-- 批量生产力 -->
                 <div class="ribbon-group">
@@ -414,9 +410,7 @@
         </div>
     </nav>
 
-    <!-- =====================================================================
-         3. 三栏主工作区 (Workbench)
-         ===================================================================== -->
+    <!-- 三栏主工作区 -->
     <main class="editor-main-workbench" id="editorWorkbench">
         <!-- 左侧图层/拓扑大纲抽屉 -->
         <aside class="workbench-nav-tree" id="workbenchNavDrawer">
@@ -506,9 +500,7 @@
         </aside>
     </main>
 
-    <!-- =====================================================================
-         4. 底部状态指示栏 (Status Bar)
-         ===================================================================== -->
+    <!-- 底部状态指示栏 -->
     <footer class="office-status-bar" id="officeStatusBar">
         <div class="status-bar-left">
             <span class="status-indicator-dot" id="healthStatusDot"></span>
@@ -544,9 +536,7 @@
     <input type="file" id="fileInputGhost" accept="image/*,.svg" style="display:none">
     <input type="file" id="fileInputPdf" accept=".pdf,.ai,application/pdf" style="display:none">
 
-    <!-- =====================================================================
-         5. 模态弹窗系统 (基于 CGoUI 官方 <cgo-modal> 液态玻璃 Web Components)
-         ===================================================================== -->
+    <!-- 模态弹窗系统 (基于 CGoUI <cgo-modal>) -->
     <!-- 1. 新建画布弹窗 -->
     <cgo-modal id="modalNewCanvas" title="新建工程画布" max-width="420px">
         <div class="form-row">
@@ -819,16 +809,11 @@
         </div>
     </cgo-modal>
 
-    <!-- =====================================================================
-         6. 模块加载脚本链 (按 Section 3.2 依赖顺序)
-         ===================================================================== -->
-    <!-- CGoUI Web Components -->
-    <script type="module" src="../core/cgo-ui.js?v=261022.223300"></script>
-
-    <!-- 共享底层算法与真源 -->
-    <script src="../core/path-geometry.js?v=261022.223300"></script>
-    <script src="../core/station-icons.js?v=261022.223300"></script>
-    <script src="../city/data.js?v=261022.223300"></script>
+    <!-- 模块脚本加载链 -->
+    <script type="module" src="../core/cgo-ui.js?v=261026.232300"></script>
+    <script src="../core/path-geometry.js?v=261026.232300"></script>
+    <script src="../core/station-icons.js?v=261026.232300"></script>
+    <script src="../city/data.js?v=261026.232300"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

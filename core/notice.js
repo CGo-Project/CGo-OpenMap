@@ -1,30 +1,5 @@
 /**
  * CGo OpenMap - 动态运营公告与通知系统 (core/notice.js)
- * 
- * ==============================================================================
- * 公告系统规范说明 (Notice & Announcement System)
- * ==============================================================================
- * 作用：在地图启动时弹出轻量卡片通知，并集成至“帮助与关于”弹窗中展示。
- * 
- * 分类标识 (Categories):
- * - `ops`: 运营调整/新线开通信息 (橙色)
- * - `app`: 地图功能与版本更新说明 (蓝色)
- * - `msg`: 作者留言与公告 (灰色)
- * - `ads`: 推广与社群交流信息 (绿色)
- * 
- * 字段说明：
- * - id: 唯一编号，已读状态记录于 localStorage (`nal_notice_read_ids`)
- * - active: 是否启用该通知 (true/false)
- * - startTime: 可选，开始展示时间 ("YYYY-MM-DD HH:mm:ss" 或 "YYYY-MM-DD")；未到时间不展示，缺省视为立即开始
- * - deadline: 有效期截止时间 ("YYYY-MM-DD HH:mm:ss" / "YYYY-MM-DD" 或 "permanent")，控制帮助弹窗中的展示
- * - 时间一律按**浏览器本地时区**解释；填写了但解析不出来的时间按「本条公告无效」处理（不展示），
- *   并在控制台给出一次警告——不要指望写错的日期被当成「永久有效」蒙混过关
- * - city: 可选，限定生效城市 ID（如 "shenyang"）；缺省为全城通用
- * - pushWindowDays: 可选，浮动卡片的推送窗口天数，默认 30 天（从 startTime 起算）；
- *   超过窗口后不再弹卡，但仍可在「帮助与关于」中查看，直到 deadline
- * - summary: 浮动卡片展示的简明摘要
- * - detail: 帮助弹窗中展示的详细正文 (支持富文本与详情图片)
- * ==============================================================================
  */
 
 (function () {
@@ -133,7 +108,6 @@
                 active: true,
                 category: 'app',
                 deadline: 'permanent',
-                image: './assets/images/qq.png',
                 summary: "欢迎加入 CGo OpenMap 官方交流群",
                 detail: "官方 QQ 交流群（群号：619357751）现已开放！欢迎轨道交通爱好者、前端开发者及城市主理人加入交流线网规划与城市移植。<br><a href='https://qm.qq.com/q/nHfgBDS68o' target='_blank' style='color:#12b7f5; text-decoration:underline; font-weight:600; display:inline-flex; align-items:center; gap:4px;'><cgo-icon name='arrow-right' size='12'></cgo-icon><span>点击一键加入官方 QQ 群</span></a>"
             },

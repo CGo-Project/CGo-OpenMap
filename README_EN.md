@@ -23,7 +23,7 @@
 <p align="center">
   <a href="#overview">Overview</a> •
   <a href="#key-features">Key Features</a> •
-  <a href="#drunk-intelligent-map-conversion-workbench">Drunk Workbench</a> •
+  <a href="#openmap-editor-transit-map-editor">OpenMap Editor</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#documentation">Documentation</a> •
   <a href="#project-architecture">Architecture</a> •
@@ -62,14 +62,14 @@ The repository currently includes complete or reference implementations for **Be
 > - **Maintenance Status**: The Hefei transit network (`city/hefei/`) is currently undergoing layout orthogonality alignment and distance data verification, and is temporarily not featured on the portal cards. All underlying code and data are fully preserved and accessible directly via `main.html?city=hefei`.
 > - **Community Collaboration**: The maintainer tenure for [Evin](https://github.com/walternie) is maintained. Community contributors and transit enthusiasts are welcome to collaborate and refine the network per quality guidelines!
 
-The project also includes **Drunk**, an intelligent transit-map conversion workbench. It can take a high-resolution image, vector PDF, or Adobe Illustrator project and help convert it into CGo OpenMap city data through vector parsing, AI-assisted topology recognition, knowledge-base matching, visual editing, and code export.
+The project also includes **OpenMap Editor**, a modern transit-map editor and conversion workbench. It can take a high-resolution image, vector PDF, or Adobe Illustrator project and help convert it into CGo OpenMap city data through vector parsing, AI-assisted topology recognition, knowledge-base matching, visual editing, and code export.
 
 ---
 
 ## Key Features
 
 - **Pure front-end, zero framework dependency** — built with HTML5, native SVG, Vanilla JavaScript, Web Components, and CSS variables. No bundler or build pipeline is required for the core application.
-- **Drunk intelligent conversion workbench** — a full or semi-automatic mapping workspace under `drunk/`. It supports raster images, vector/scanned PDFs, and Adobe Illustrator files, plus AI-assisted topology recognition, Wikipedia-based station-name correction, an eight-direction label placement control, 45°/90° snapping, and standardized city-code export.
+- **OpenMap Editor** — a full-featured visual mapping workspace under `editor/`. It supports raster images, vector/scanned PDFs, and Adobe Illustrator files, plus AI-assisted topology recognition, Wikipedia-based station-name correction, an eight-direction label placement control, 45°/90° snapping, and standardized city-code export.
 - **Native vector interaction** — smooth zooming, free panning, viewport boundary control, mouse-wheel support, and mobile multi-touch gestures, all rendered through SVG.
 - **Light and dark themes** — automatically follows system preferences or can be manually locked to a theme, with crisp vector rendering on high-DPI displays.
 - **Multi-dimensional station search** — supports Chinese and English station names, full Pinyin, Pinyin initials, polyphonic characters, aliases, and former station names.
@@ -120,18 +120,18 @@ Visit `http://localhost:8080`, or the port shown by your static server.
 
 ---
 
-## Drunk: Intelligent Map Conversion Workbench
+## OpenMap Editor: Transit Map Editor & Conversion Workbench
 
-> [!WARNING]
-> **Early development / validation status:** Drunk is currently in an early Beta stage and should be treated as an experimental tool. Recognition algorithms, layer parsing, and data structures are still evolving, and exported results should be manually reviewed. Contributions to its algorithms and interactions are very welcome.
+> [!TIP]
+> **Modern Productivity Workbench:** **OpenMap Editor (`editor/`) is CGo OpenMap's official map editor and conversion workspace**. Built with the CGoUI Ribbon layout and Liquid Glass styling, it supports vector parsing, AI-assisted recognition, and surgical lossless code export.
 
-**Drunk** is CGo OpenMap's map vectorization, migration, and visual editing workbench. After starting a local static server, open `http://localhost:8080/drunk/`.
+**OpenMap Editor** is CGo OpenMap's map vectorization, editing, and migration workbench. After starting a local static server, open `http://localhost:8080/editor/`.
 
 ### What problem does it solve?
 
 Traditionally, porting a city requires manually measuring hundreds or thousands of station coordinates, adjusting label alignment station by station, and connecting every line by hand.
 
-Drunk turns that workflow into:
+OpenMap Editor turns that workflow into:
 
 **Upload source map → intelligent extraction → visual adjustment → one-click project export**
 
@@ -146,13 +146,13 @@ Drunk turns that workflow into:
 
 ### Edit mode for existing cities
 
-Drunk is also the visual editor for any registered OpenMap city.
+OpenMap Editor is also the visual editor for any registered OpenMap city.
 
 You can enter edit mode from:
 
 - **More → Preferences → Edit this map → Open edit mode** on the transit map;
-- the city selector in the Drunk toolbar, followed by **Edit this map**;
-- `drunk/index.html?city={city_id}`.
+- the city selector in the editor toolbar, followed by **Load city**;
+- `editor/index.html?city={city_id}`.
 
 **Stations:** drag stations, edit Chinese/English names, switch station types, rotate label placement with the eight-direction control, fine-tune label offsets with `Alt + arrow keys`, or delete a station.
 
@@ -171,7 +171,7 @@ Keyboard shortcuts: **Ctrl/Cmd + Z** to undo, **Ctrl/Cmd + S** to export, and **
 | Audience / task | Resource | Description |
 | :--- | :--- | :--- |
 | New users | [QUICKSTART.md](./QUICKSTART.md) | Beginner-friendly environment setup and AI-assisted development guide |
-| Intelligent conversion and visual editing | [Drunk Workbench](./drunk/index.html) | Raster/vector conversion, AI-assisted extraction, and editing existing cities |
+| Intelligent conversion and visual editing | [OpenMap Editor](./editor/index.html) | Raster/vector conversion, AI-assisted extraction, and editing existing cities |
 | AI-assisted development | [AGENTS.md](./AGENTS.md) | Architecture rules, decoupling requirements, and data conventions for coding agents |
 | Porting city data | [PORTING.md](./PORTING.md) | City data structures, coordinates, lines, and legend configuration |
 | Contributing | [CONTRIBUTING.md](./CONTRIBUTING.md) | Contribution workflow, city-maintainer model, and pull-request checklist |
@@ -182,7 +182,7 @@ The supporting documents are currently primarily written in Chinese. English tra
 
 ## Project Architecture
 
-The repository separates the core engine, conversion/editing tools, and city data.
+The repository separates the core engine, editor/conversion tools, and city data.
 
 ```text
 openmap/
@@ -199,7 +199,7 @@ openmap/
 ├── privacy.html                # Privacy notice
 ├── manifest.json               # PWA manifest
 ├── sw.js                       # Service Worker
-├── drunk/                      # Conversion workbench and city editor
+├── editor/                     # OpenMap Editor (Ribbon productivity workbench)
 ├── core/                       # Shared multi-city rendering engine
 ├── city/                       # City-specific data and behavior
 │   ├── data.js                 # CITY_REGISTRY
@@ -222,9 +222,9 @@ openmap/
 
 There are two supported workflows.
 
-### Recommended: use Drunk
+### Recommended: use OpenMap Editor
 
-1. Start a local static server and open `http://localhost:8080/drunk/`.
+1. Start a local static server and open `http://localhost:8080/editor/`.
 2. Upload an official transit-map image, PDF, or Illustrator file.
 3. Run visual recognition or vector parsing.
 4. Adjust stations and labels on the canvas and use snapping where appropriate.
@@ -233,7 +233,7 @@ There are two supported workflows.
 7. Add required offline assets and increment the cache version in `sw.js`.
 8. Review the generated result manually before submitting.
 
-After a city is online, the same Drunk workbench can be used for day-to-day maintenance such as moving stations, correcting names, or adjusting label directions.
+After a city is online, the same OpenMap Editor can be used for day-to-day maintenance such as moving stations, correcting names, or adjusting label directions.
 
 ### Traditional manual workflow
 

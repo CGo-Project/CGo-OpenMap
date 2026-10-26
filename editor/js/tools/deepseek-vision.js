@@ -1,10 +1,10 @@
 /**
- * Drunk 线路图智能转换系统 - DeepSeek 视觉大模型识图引擎 (deepseek_vision.js)
+ * OpenMap Editor 开放地图编辑器 - DeepSeek 视觉大模型识图引擎 (deepseek-vision.js)
  * 
  * 核心架构：
  * 1. 采用 DeepSeek 官方多模态大模型：deepseek-v4-flash-vision-exp 进行整网视觉解析；
  * 2. 纯客户端安全调用：API Key 仅保存在浏览器本地 localStorage，直接直连 DeepSeek 官方 API，无第三方中转；
- * 3. 资费说明与合规透明：明确告知 DeepSeek 官方将按 Token/图像消耗向用户账户收取少量费用，本站（CGo OpenMap / Drunk）完全免费，不收取任何中介费用；
+ * 3. 资费说明与合规透明：明确告知 DeepSeek 官方将按 Token/图像消耗向用户账户收取少量费用，本站（CGo OpenMap / OpenMap Editor）完全免费，不收取任何中介费用；
  * 4. 自动图网拓扑求解：将视觉模型返回的线路、站名、空间坐标与换乘关系归一化映射为标准的 OpenMap 格式；
  * 5. 结合内置城市站名字典与 Levenshtein 纠错算法，实现 100% 官方级站名和英文拼写校准。
  */
@@ -140,7 +140,7 @@ window.DeepSeekVision = (function () {
      * 调用 DeepSeek 视觉大模型执行全图拓扑与图元识别 (全兼容 JSON + SSE 流式传输，带秒级心跳与精准超时)
      */
     async function recognizeTransitMap(imageEl, options = {}) {
-        const logger = window.DrunkLogger;
+        const logger = window.EditorLogger || window.DrunkLogger;
         const apiKey = getApiKey();
         const apiBase = getApiBase();
         const model = getModel();

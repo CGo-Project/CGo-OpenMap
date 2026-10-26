@@ -1,8 +1,7 @@
 /**
- * CGo OpenMap - 北京城市专属自定义模块：历史文化与名胜古迹指引 (city/shijiazhuang/modules/shijiazhuang_cultural.js)
- * 
- * ==============================================================================
+ * CGo OpenMap - 石家庄城市专属模块：历史文化与名胜指引 (city/shijiazhuang/modules/shijiazhuang_cultural.js)
  */
+
 
 (function () {
     const TIPS = {

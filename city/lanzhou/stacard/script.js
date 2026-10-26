@@ -1,30 +1,7 @@
 /**
- * CGo OpenMap - 车站卡片系统与展示引擎 (city/beijing/stacard/script.js)
- * 
- * ==============================================================================
- * ️ StaCard 系统架构与多模式展示规范 (StaCard API & Architecture)
- * ==============================================================================
- * 作用：在车站详情面板中提供多样化的高清微缩视窗。支持 4 种展示模式：
- * 
- * 【模式 A：车站立体结构渲染接口 (Structure Renderer)】
- *   若 station 对象包含 `structure: { type: '3d-layout' }`，引擎会调用已注册的结构渲染器
- *   通过 `BeijingStaCard.registerStructureRenderer(type, fn)` 即可无缝接入自定义站台结构图。
- * 
- * 【模式 B：自定义富文本 HTML 展示 (Custom HTML)】
- *   若 station 对象包含 `cardHtml` 或 `customHtml`，直接嵌入渲染自定义 HTML。
- * 
- * 【模式 C：实景照片/示意图片展示 (Custom Image)】
- *   若 station 对象包含 `cardImg` 或 `image`，自动生成图片自适应卡片。
- * 
- * 【模式 D：高德切片微缩地图视窗 (Amap Slippy Minimap)】
- *   默认根据车站名称从 `amap_data.json` 检索真实地理经纬度，
- *   使用 Web 墨卡托投影算法即时渲染高德全要素矢量切片，支持多级原地缩放。
- * 
- * ️ 移植指南 (Porting Guide):
- * 1. 移植新城市时，只需替换 `geoDataUrl` 为该城市的 `amap_data.json`；
- * 2. 如需扩展车站结构图，使用 `registerStructureRenderer` 注册渲染函数。
- * ==============================================================================
+ * CGo OpenMap - 兰州车站卡片系统与展示引擎 (city/lanzhou/stacard/script.js)
  */
+
 
 // ==========================================
 // 1. Web 墨卡托投影算法工具 (EPSG:3857)
@@ -83,10 +60,10 @@ export const AMapTile = {
 };
 
 // ==========================================
-// 3. BeijingStaCard 核心实现
+// 3. LanzhouStaCard 核心实现
 // ==========================================
-export const BeijingStaCard = {
-    name: "BeijingStaCard",
+export const LanzhouStaCard = {
+    name: "LanzhouStaCard",
     basePath: "./city/lanzhou/stacard/",
     geoDataUrl: "./city/lanzhou/amap_data.json",
     geoMapByName: {},
@@ -111,22 +88,22 @@ export const BeijingStaCard = {
             try {
                 // 1. 尝试从传入选项、全局数据或本地文件加载
                 let data = options.data || null;
-                if (!data && typeof window !== 'undefined' && window.BEIJING_AMAP_DATA) {
-                    data = window.BEIJING_AMAP_DATA;
-                } else if (!data && typeof globalThis !== 'undefined' && globalThis.BEIJING_AMAP_DATA) {
-                    data = globalThis.BEIJING_AMAP_DATA;
+                if (!data && typeof window !== 'undefined' && window.LANZHOU_AMAP_DATA) {
+                    data = window.LANZHOU_AMAP_DATA;
+                } else if (!data && typeof globalThis !== 'undefined' && globalThis.LANZHOU_AMAP_DATA) {
+                    data = globalThis.LANZHOU_AMAP_DATA;
                 } else if (!data && this.geoDataUrl && typeof fetch === 'function') {
                     try {
                         const res = await fetch(this.geoDataUrl);
                         if (res.ok) {
                             data = await res.json();
                             if (typeof window !== 'undefined') {
-                                window.BEIJING_AMAP_DATA = data;
+                                window.LANZHOU_AMAP_DATA = data;
                             }
                         }
                     } catch (fetchErr) {
                         // 浏览器环境下通常正常，非浏览器环境如果报错则继续向下 fallback
-                        console.warn("[BeijingStaCard] fetch 坐标文件提示:", fetchErr.message);
+                        console.warn("[LanzhouStaCard] fetch 坐标文件提示:", fetchErr.message);
                     }
                 }
 
@@ -157,9 +134,9 @@ export const BeijingStaCard = {
 
                 this.isInitialized = true;
                 const pointCount = Object.keys(this.geoMapByName).length;
-                console.log(`[BeijingStaCard] 高德切片地图卡片模块加载成功，共索引 ${pointCount} 个车站坐标。`);
+                console.log(`[LanzhouStaCard] 高德切片地图卡片模块加载成功，共索引 ${pointCount} 个车站坐标。`);
             } catch (err) {
-                console.warn("[BeijingStaCard] 地理坐标数据索引加载异常:", err);
+                console.warn("[LanzhouStaCard] 地理坐标数据索引加载异常:", err);
                 this.isInitialized = true;
             }
             return this;
@@ -215,7 +192,7 @@ export const BeijingStaCard = {
     registerStructureRenderer(type, renderer) {
         if (typeof renderer === 'function') {
             this.structureRenderers[type] = renderer;
-            console.log(`[BeijingStaCard] 注册车站结构渲染器: ${type}`);
+            console.log(`[LanzhouStaCard] 注册车站结构渲染器: ${type}`);
         }
     },
 
@@ -352,7 +329,7 @@ export const BeijingStaCard = {
             });
 
         } catch (err) {
-            console.error("[BeijingStaCard] 渲染车站卡片失败:", err);
+            console.error("[LanzhouStaCard] 渲染车站卡片失败:", err);
             container.innerHTML = `
                 <div class="stacard-empty-box" style="color:var(--text-light, #999);">
                     <span>卡片内容加载失败</span>
@@ -495,5 +472,6 @@ export const BeijingStaCard = {
     }
 };
 
-window.BeijingStaCard = BeijingStaCard;
-window.StaCard = BeijingStaCard;
+window.LanzhouStaCard = LanzhouStaCard;
+window.BeijingStaCard = LanzhouStaCard;
+window.StaCard = LanzhouStaCard;

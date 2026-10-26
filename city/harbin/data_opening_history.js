@@ -46,7 +46,7 @@
  *   '凯盛源广场站'"）；新晚报微博（2019-01-27）
  * - 哈尔滨北站 2015-08-17：随哈齐高铁开通
  *
- * 自检：drunk/tools/selfcheck.js「开通沿革时间线」一节。
+ * 自检：editor/tests/selfcheck.js「开通沿革时间线」一节。
  */
 
 const CGO_OPENING_HISTORY = [

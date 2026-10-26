@@ -4,7 +4,7 @@
  * ⚠️ 本文件由脚本生成，请勿手工编辑。
  *   基础数据（name / lines / buses / landmarks / closed）沿用原有来源；
  *   方位字段（desc / roads / bearing）由开发期离线工具补齐：
- *   drunk/tools/facilities/fetch_city_exits_around.js（抓高德出口）
+ *   tools/facilities/fetch_city_exits_around.js（抓高德出口）
  *   → fetch_exit_bearings.js（逆地理编码算方位）→ patch_city_exits_bearing.js（本脚本合并）。
  *   方位数据来源：高德地图开放平台 Web 服务 API，著作权归高德所有。
  *

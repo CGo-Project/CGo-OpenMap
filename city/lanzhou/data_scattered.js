@@ -1,24 +1,5 @@
 /**
  * CGo OpenMap - 兰州散点与底图装饰元素 (city/lanzhou/data_scattered.js)
- *
- * ==============================================================================
- * 数据结构规范 (Scattered Item Schema)
- * ------------------------------------------------------------------------------
- * - id      {string} 装饰物唯一标识
- * - file    {string} SVG 资源路径（须以 "./" 开头，getSvgPath 才会原样放行）
- * - x / y   {number} 装饰物中心点画布坐标（.scattered-item 带 translate(-50%,-50%)）
- * - width   {number} 渲染宽度 (px)
- * - height  {number} 渲染高度 (px)
- * - opacity {number} 不透明度
- * - rotation{number} 旋转角度 (deg，可选)
- * - zIndex  {number} 同层内堆叠顺序（#scattered-layer 整体为 z-index:5）
- *
- * 图层叠序说明 (css/style.css)：
- *   #scattered-layer 5  <  #lines-layer 10  <  #not-open-layer 12
- *   <  #stations-layer 20  <  #labels-layer 30
- *   → 因此本层元素天然位于所有线路与车站「下方」，且 pointer-events:none
- *     不会拦截站点点击。
- * ==============================================================================
  */
 const SCATTERED_DATA = [
     {

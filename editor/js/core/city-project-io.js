@@ -1,11 +1,11 @@
 /**
- * CGo OpenMap - Drunk 城市工程读写层 (drunk/js/city_project_io.js)
+ * CGo OpenMap - 开放地图编辑器城市工程读写层 (editor/js/core/city-project-io.js)
  *
  * ==============================================================================
  * 模块作用与架构定位 (Architecture Overview)
  * ==============================================================================
- * 本模块让 Drunk 工作台可以把 `city/{city_id}/` 下的**已有城市**原样读进来编辑，
- * 编辑完再原样写回去，从而使 Drunk 成为 OpenMap 任意城市线路图的「编辑模式」。
+ * 本模块让编辑器工作台可以把 `city/{city_id}/` 下的**已有城市**原样读进来编辑，
+ * 编辑完再原样写回去，成为 OpenMap 任意城市线路图的无损编辑层。
  *
  * 核心设计原则 —— 外科手术式回写 (Surgical Patch)：
  * 1. 读入时保留 `data_stations.js` / `data_lines.js` 的**原始源码文本**；
@@ -65,7 +65,7 @@ window.CityProjectIO = (function () {
 
     /**
      * 城市注册表里的 folder 形如 "./city/beijing"，是相对**站点根目录**的路径；
-     * Drunk 工作台自身位于 /drunk/ 子目录，故需要回退一级。
+     * 编辑器工作台位于 /editor/ 子目录，故需要回退一级。
      */
     function resolveFolder(folder, cityId) {
         const raw = folder || `./city/${cityId}`;
@@ -110,7 +110,7 @@ window.CityProjectIO = (function () {
 
         if (typeof location !== 'undefined' && location.protocol === 'file:') {
             return `无法读取 ${target}：当前以 file:// 协议打开，浏览器禁止本地文件 fetch。\n` +
-                `请在项目根目录启动静态服务（如 python3 -m http.server 8777），再访问 http://127.0.0.1:8777/drunk/。`;
+                `请在项目根目录启动静态服务（如 python3 -m http.server 8777），再访问 http://127.0.0.1:8777/editor/。`;
         }
 
         if (reason && reason.kind === 'http') {
@@ -146,7 +146,7 @@ window.CityProjectIO = (function () {
         };
 
         for (const entry of DATA_FILES) {
-            const url = `${base}/${entry.file}?_drunk=${Date.now()}`;
+            const url = `${base}/${entry.file}?_editor=${Date.now()}`;
             let text = null;
             let reason = null;
             try {
@@ -412,7 +412,7 @@ window.CityProjectIO = (function () {
 
     /**
      * 把一条数据对象序列化为源码字面量。
-     * 以 `_` 开头的键被视为 Drunk 运行期私有字段，不会写入文件。
+     * 以 `_` 开头的键被视为编辑器运行期私有字段，不会写入文件。
      */
     function formatEntryValue(obj, opts) {
         const { multiline, quoteKeys, indent } = opts || {};

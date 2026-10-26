@@ -1,7 +1,7 @@
 /**
- * Drunk 线路图智能转换系统 - 智能 OCR 与语义排版引擎 (ocr_align_solver.js)
+ * OpenMap Editor 开放地图编辑器 - 智能 OCR 与语义排版引擎 (align-solver.js)
  * 
- * 核心升级：
+ * 核心功能：
  * 1. 内置主流城市官方轨道交通站名字典与拼音库（天津、长沙、北京、上海）；
  * 2. 智能 OCR 模糊匹配与字符纠错算法（Levenshtein 容错纠错，彻底告别乱码站名）；
  * 3. 图例语义解析器（Legend Semantic Parser）：识别图例中的线路编号与颜色映射；
@@ -9,7 +9,7 @@
  * 5. 换乘站语义合并与标准 Station ID 编码生成。
  */
 
-window.DrunkOcrAlignSolver = (function () {
+const AlignSolver = (function () {
 
     // ──────────────────────────────────────────────────────────────
     // 8 方向枚举标准定义
@@ -323,5 +323,6 @@ window.DrunkOcrAlignSolver = (function () {
 })();
 
 window.OpenMapEditor = window.OpenMapEditor || {};
-window.OpenMapEditor.AlignSolver = window.DrunkOcrAlignSolver;
-window.AlignSolver = window.DrunkOcrAlignSolver;
+window.OpenMapEditor.AlignSolver = AlignSolver;
+window.AlignSolver = AlignSolver;
+window.DrunkOcrAlignSolver = AlignSolver; // 向后兼容挂载

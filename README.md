@@ -23,7 +23,7 @@
 <p align="center">
   <a href="#项目简介">项目简介</a> •
   <a href="#核心特性">核心特性</a> •
-  <a href="#drunk-线路图智能转换系统">Drunk 转换系统</a> •
+  <a href="#openmap-editor-开放地图编辑器">OpenMap Editor</a> •
   <a href="#快速上手">快速上手</a> •
   <a href="#开发文档">开发文档</a> •
   <a href="#项目架构">项目架构</a> •
@@ -60,14 +60,14 @@
 > - **维护状态说明**：合肥线网（`city/hefei/`）目前正处于排版几何规整与数据完善阶段，暂缓在首页门户卡片中展示；仓库中完整保留了合肥的全部工程代码与底层数据，支持直接通过路由（`main.html?city=hefei`）查阅；
 > - **社区共建与主理人机制**：目前仍保留现任城市主理人 [Evin](https://github.com/walternie) 的席位与署名。欢迎原主理人与广大社区开发者依照质量规范共同协作完善更新！
 
-项目配套提供 **Drunk 线路图智能转换系统**，无需手动测量繁重的站点坐标，通过上传高清图片、矢量 PDF 或 Adobe Illustrator 工程，即可借助 AI 视觉大模型与矢量解析引擎一键生成符合规范的标准城市代码。
+项目配套提供 **OpenMap Editor 开放地图编辑器**，无需手动测量繁重的站点坐标，通过上传高清图片、矢量 PDF 或 Adobe Illustrator 工程，即可借助 AI 视觉大模型与矢量解析引擎一键生成符合规范的标准城市代码，亦可直接载入已有城市进行条目级无损编辑维护。
 
 ---
 
 ## 核心特性
 
 - **纯前端与零框架依赖**：纯原生 Web 标准构建（HTML5、SVG、Vanilla JS、Web Components、CSS 变量）。**项目所有内容必须为纯前端**（除监控车站、监控网页等后台任务可破例外，**其他所有主要地图功能一律严格禁止破例**），无需任何打包构建工具，直接以静态资源方式即拷即用。
-- **Drunk 智能转换工作台**：内置面向零基础小白与开发者的全自动/半自动制图工作台（`drunk/`）。支持底图图片、矢量 PDF 及 Adobe Illustrator (`.ai`) 工程直通解析，支持 DeepSeek 视觉多模态大模型拓扑识别、维基百科动态知识库自动校对、8 方向文字排版轮盘、45°/90° 正交网格吸附与标准城市代码一键导出。
+- **OpenMap Editor 开放地图编辑器**：内置面向零基础小白与开发者的现代化制图工作台（`editor/`）。支持底图图片、矢量 PDF 及 Adobe Illustrator (`.ai`) 工程直通解析，支持 DeepSeek 视觉多模态大模型拓扑识别、维基百科动态知识库自动校对、8 方向文字排版轮盘、45°/90° 正交网格吸附与标准城市代码一键导出。
 - **原生矢量图形交互**：基于原生 SVG 渲染，支持无级平滑缩放、自由平移漫游与视口边界控制，原生适配桌面端鼠标滚轮及移动端多触点缩放手势。
 - **深浅色主题适配**：内置深色（Dark）与浅色（Light）两套主题，支持跟随系统色彩偏好自动切换或手动锁定；高分屏下文字与矢量元素均保真呈现。
 - **多维车站检索**：支持站名中英文、拼音全拼与首字母简拼、多音字及历史站名别名模糊匹配；检索命中后支持视口平滑定位与聚焦动效。
@@ -112,16 +112,14 @@
 
 ---
 
-## Drunk 线路图智能转换系统
+## OpenMap Editor 开放地图编辑器
 
-> [!WARNING]
-> **早期开发验证阶段声明**：  
-> **Drunk 转换系统目前处于早期开发验证阶段（Beta 1），仅供测试使用**。识别算法、图层解析与数据结构仍在持续迭代演进，导出结果建议人工复核。**热烈欢迎广大开发者、前端工程师与交通图爱好者共同参与核心算法与交互的协同开发！**（欢迎查阅 [CONTRIBUTING.md](./CONTRIBUTING.md) 提交 Pull Request 或 Issue 交流）
-
-**Drunk** 是 CGo OpenMap 配套研发的轨道交通线路图全自动矢量化与移植转换工作台（位于 `drunk/` 目录，启动本地服务后直接访问 `http://localhost:8080/drunk/` 即可使用）。
+> [!TIP]
+> **现代化生产力工具体系说明**：  
+> **OpenMap Editor（`editor/`）是 CGo OpenMap 官方统一的开放地图编辑器**。采用现代化 CGoUI Ribbon 生产力工作台布局，集成了矢量 PDF/AI 直通提取、DeepSeek 视觉多模态大模型识图、条目级外科手术式源码无损回写、CAD自由规划与 8 方向文字避让排版。（启动本地静态服务后直接访问 `http://localhost:8080/editor/` 即可使用）
 
 ### 解决的核心痛点
-在以往手动移植新城市时，开发者需要人工丈量成百上千个车站的 `(x, y)` 坐标、逐站调整文字对齐方式（`align`）并逐条连通线路，耗时耗力。Drunk 将繁重的人工制图流程革命性地优化为：**上传底图 ➔ 智能提取 ➔ 可视微调 ➔ 一键导出**。
+在以往手动移植新城市时，开发者需要人工丈量成百上千个车站的 `(x, y)` 坐标、逐站调整文字对齐方式（`align`）并逐条连通线路，耗时耗力。OpenMap Editor 将繁重的人工制图流程革命性地优化为：**上传底图 ➔ 智能提取 ➔ 可视微调 ➔ 一键导出**，同时全面支持直接载入已有城市进行日常增改与维护。
 
 ### 核心功能亮点
 - **多格式底图直通**：支持 PNG/JPG 高清图片，更支持**矢量/扫描版 PDF 及 Adobe Illustrator (`.ai`) 工程**原生解析，直通提取 OCG 矢量图层、XMP 色板及中英文文字层。
@@ -131,7 +129,7 @@
 - **CGo OpenMap 标准工程导出**：内置数据完整性自检，一键生成开箱即用的 `data_stations.js`、`data_lines.js`、`data_legend.js` 及城市主逻辑文件。
 - **识别结果自动净化**：自动剔除被误识别成车站的底图噪点（极端情况下一张图能「识别」出五六千个车站）、清洗脏站名、合并同名换乘站、剔除退化线路；再通过**墨迹吸附 + 最小二乘相似变换**把整体歪斜的识别结果拉回底图线条上。
 
-### 编辑模式：Drunk 同时是任意已有城市的可视化编辑器
+### 编辑模式：OpenMap Editor 同时是任意已有城市的可视化编辑器
 
 除了做新城市，OpenMap Editor 也是 **OpenMap 任意已注册城市的编辑模式**。入口如下：
 
@@ -158,7 +156,7 @@
 | 读者场景 | 推荐文档 | 说明 |
 | :--- | :--- | :--- |
 | 初学者入门 | [QUICKSTART.md](./QUICKSTART.md) | 面向零基础用户的开发环境配置与 AI 辅助开发指南 |
-| 线路图智能转换与编辑 | [Drunk 工作台](./drunk/index.html) | 底图矢量化、PDF/AI 直通、AI 视觉拓扑提取，以及**已有城市的可视化编辑模式**（**早期测试阶段**） |
+| 线路图智能转换与编辑 | [OpenMap Editor 工作台](./editor/index.html) | 底图矢量化、PDF/AI 直通、AI 视觉拓扑提取，以及已有城市的可视化编辑维护 |
 | AI 辅助开发 | [AGENTS.md](./AGENTS.md) | 面向各类 AI Coding Agent 的项目架构、解耦规范与数据标准 |
 | 多城共享机制 | [城市共享层](./city/shenyang/shared/README.md) | 沈阳 / 大连 / 长春共用的共享层机制清单，含**持续更新中的模块**与开通时刻约定 |
 | 城市数据移植 | [PORTING.md](./PORTING.md) | 城市线网数据结构、站点坐标与线路图例配置说明 |
@@ -168,7 +166,7 @@
 
 ## 项目架构
 
-项目目录采用引擎、转换工具与数据分层设计：
+项目目录采用引擎、编辑器与数据分层设计：
 
 ```text
 openmap/
@@ -184,20 +182,18 @@ openmap/
 ├── privacy.html                # 隐私政策说明
 ├── manifest.json               # PWA 配置文件
 ├── sw.js                       # Service Worker 离线缓存
-├── drunk/                      # Drunk 转换工作台 + OpenMap 城市编辑模式 (早期测试版)
-│   ├── index.html              # 沉浸式暗色工作台 (样式内联，drunk.css 目前未被引用)
-│   ├── css/drunk.css           # 早期样式表，当前未被 index.html 引用
-│   └── js/                     # 转换管道、识别算法与城市工程读写
-│       ├── drunk_pipeline.js   # 交互流程调度总线 (识图/载入城市/编辑/撤销/导出)
-│       ├── city_project_io.js  # 城市工程读写层：条目级无损回写 + 分支线路访问器
-│       ├── drunk_sanitizer.js  # 识别结果净化与几何校正 (纯函数，可 Node 直跑回归)
-│       ├── deepseek_vision.js  # DeepSeek 视觉大模型识图引擎 (客户端直连)
-│       ├── pdf_vector_extractor.js # PDF & AI 矢量图层与 XMP 色板直通解析
-│       ├── city_knowledge_matcher.js # 维基百科知识库动态匹配与 Levenshtein 纠错
-│       ├── ocr_align_solver.js # 智能 OCR 与 8 方向文字排版求解器
-│       ├── topology_tracer.js  # 线网拓扑追踪 (分支/环线/换乘)
-│       ├── openmap_codegen.js  # 标准代码生成器与数据完整性自检
-│       └── drunk_logger.js     # 控制台诊断追踪日志
+├── editor/                     # 开放地图编辑器 (OpenMap Editor / CGoUI Ribbon 生产力工作台)
+│   ├── index.html              # 现代化 Ribbon 工作台页面 (Liquid Glass 折射 + 四分组功能区)
+│   ├── css/                    # 界面布局、Ribbon 工具栏与 8 方向轮盘检视面板样式
+│   ├── js/                     # 模块化流水线、纯函数几何算法与图层系统
+│   │   ├── core/               # 统一工程模型、条目级外科回写 (CityProjectIO) 与撤销栈 (HistoryManager)
+│   │   ├── algorithms/         # 折角反算 (SegmentRouter)、数据清洗 (DataSanitizer)、8方向避让 (AlignSolver)、拓扑连通 (TopologyTracer)
+│   │   ├── layers/             # 统一视口 (Viewport)、参考底图 (GhostTransformer)、线路层、车站层、水域层、自由文本层
+│   │   ├── pipelines/          # 三大流水线：矢量导入 (Ingest)、存量维护 (Surgical)、CAD自由规划 (Draw)
+│   │   ├── tools/              # PDF矢量解析、DeepSeek识图、维基匹配、批量放站、里程管理、零依赖ZIP导出
+│   │   └── ui/                 # Ribbon控制器、属性检视面板与 8 方向轮盘
+│   └── tests/
+│       └── selfcheck.js        # 自动化回归测试（覆盖全网城市与纯函数算法）
 ├── docs/                       # 开发与配置文档
 │   └── STATION_MODULE_GUIDE.md # 车站信息板自定义模块开发与配置指南
 ├── core/                       # 核心通用引擎 (多城市通用)
@@ -272,17 +268,16 @@ openmap/
 
 制作新城市线路图可选择以下两种方式：
 
-### 推荐方式：借助 Drunk 工作台全自动/半自动制图（早期测试版）
-1. 启动本地服务，在浏览器访问 `http://localhost:8080/drunk/`（**必须经由静态服务器访问**，`file://` 协议下浏览器禁止 `fetch`，城市数据读不进来）；
+### 推荐方式：借助 OpenMap Editor 开放地图编辑器可视化制图
+1. 启动本地服务，在浏览器访问 `http://localhost:8080/editor/`（**必须经由静态服务器访问**，`file://` 协议下浏览器禁止 `fetch`，城市数据读不进来）；
 2. 上传该城市的官方线路图底图、PDF 或 Illustrator (`.ai`) 文件；
 3. 点击“视觉识图”或执行矢量解析，系统将自动识别全网拓扑、站点位置并匹配维基百科标准站名；
 4. 在画布上按需微调站点位置，使用 8 方向轮盘调整站名避让，点击“45°/90°吸附”矫正斜角；
 5. 点击“导出城市工程”，将自动生成的代码放入 `city/{city_id}/` 目录；
 6. 在 `city/data.js` 中登记城市信息，在 `sw.js` 中更新缓存版本即可快速上线。
-*(注：Drunk 目前为早期开发验证阶段，生成结果请予以测试复核，欢迎参与共建)*
 
-> 城市上线之后的日常维护（挪站、改字、调站名朝向）同样回到 Drunk：
-> 访问 `drunk/index.html?city={city_id}` 进入编辑模式，改完导出，覆盖回 `city/{city_id}/` 即可。
+> 城市上线之后的日常维护（挪站、改字、调站名朝向）同样在 OpenMap Editor 中进行：
+> 访问 `editor/index.html?city={city_id}` 进入编辑模式，改完导出，覆盖回 `city/{city_id}/` 即可。
 
 ### 传统方式：手动编排配置
 1. **新建城市目录**：在 `city/` 目录下建立对应城市文件夹（例如 `city/shanghai/`），参考 `city/beijing/`、`city/shenyang/`、`city/qingdao/` 或 `city/hefei/` 的数据文件结构。

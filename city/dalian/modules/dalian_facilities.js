@@ -4,7 +4,7 @@
  * 渲染、开合与来源标注都在共享层 `shared/station/facilities.js`（多城共用），本文件只声明
  * 大连的数据在哪、各类设施叫什么、用哪个 CGoUI 图标。
  *
- * 数据：`city/dalian/data_facilities.js`（由 `drunk/tools/facilities/fetch_dalian_facilities.js` 抓取）。
+ * 数据：`city/dalian/data_facilities.js`（由 `tools/facilities/fetch_dalian_facilities.js` 抓取）。
  * 大连官网只给卫生间 / 充值机 / 无障碍电梯三类，且没有站内剖面图，故不配 levelMap。
  *
  * 加载顺序：`dalian.js` 的 loadStationBoardModules() 先 document.write 共享层，

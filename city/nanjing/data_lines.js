@@ -1,6 +1,6 @@
 /**
  * CGo OpenMap - 南京线路数据库与走向配置 (city/city_muqufgjd/data_lines.js)
- * 由 Drunk 转换系统自动生成
+ * 由 OpenMap Editor 自动生成
  */
 
 const linesData = [

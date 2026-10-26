@@ -1,6 +1,6 @@
 /**
  * CGo OpenMap - 南京城市业务逻辑与关系配置 (city/nanjing/nanjing.js)
- * 由 Drunk 转换系统自动生成
+ * 由 OpenMap Editor 自动生成
  */
 
 (function () {

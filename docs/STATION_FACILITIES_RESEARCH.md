@@ -4,9 +4,9 @@
 >
 > 实施口径见 7.1（沈阳）、8.1.1（大连）与 8.2.1（长春）的「实施记录」；沈阳侧代码在
 > `city/shenyang/data_facilities.js`、`city/shenyang/modules/shenyang_facilities.js` 与
-> `drunk/tools/facilities/fetch_shenyang_facilities.js`；大连侧在 `city/dalian/data_facilities.js`、
-> `data_exits.js` 与 `drunk/tools/facilities/fetch_dalian_{facilities,exits}.js`；
-> 长春侧在 `city/changchun/data_facilities.js`（由 `drunk/tools/facilities/gen_changchun_facilities.js`
+> `tools/facilities/fetch_shenyang_facilities.js`；大连侧在 `city/dalian/data_facilities.js`、
+> `data_exits.js` 与 `tools/facilities/fetch_dalian_{facilities,exits}.js`；
+> 长春侧在 `city/changchun/data_facilities.js`（由 `tools/facilities/gen_changchun_facilities.js`
 > 依 `changchun_facilities.transcript.json` 生成）。
 >
 > 起因：上游 CentralGo（`centralgo.site/map`）上线了「出入口与设施」功能。本文核对
@@ -207,7 +207,7 @@
 
 已按上述路径落地，实际口径与调研略有出入，记录如下：
 
-- **抓取脚本**：`drunk/tools/facilities/fetch_shenyang_facilities.js`（Node，零依赖，开发期工具，
+- **抓取脚本**：`tools/facilities/fetch_shenyang_facilities.js`（Node，零依赖，开发期工具，
   不进运行时）。实测 `selectDeviceInfoByDC` 传 `line_id:"00"` 可**一次**返回全部 1431 条，
   不必按线取；重跑该脚本即刷新数据。
 - **落盘数据**：`city/shenyang/data_facilities.js`（约 170 KB 静态常量，由脚本生成，勿手工编辑）。
@@ -326,11 +326,11 @@ commercialBuilding, dynamicNotice, status（"2" = 暂停使用）, statusStr
 ### 8.1.1 实施记录（大连，2026-10-03）
 
 - **抓取脚本**（Node、零依赖的开发期工具，不进运行时，重跑即刷新数据）：
-  - `drunk/tools/facilities/fetch_dalian_facilities.js`：一次 `getDefaultMetroLine.do` 取全站
+  - `tools/facilities/fetch_dalian_facilities.js`：一次 `getDefaultMetroLine.do` 取全站
     `toilet` / `rechargeMachine` / `accessibilityElevator`（`atm` 恒 null 不收录）；
     官网 108 条站点记录按站名映射到本地后收录 **100 座车站 / 272 条位置**
     （官网编号体系之外的车站——国铁、有轨电车等——无法映射，不收录）。
-  - `drunk/tools/facilities/fetch_dalian_exits.js`：逐站 `ShowSite.do`，
+  - `tools/facilities/fetch_dalian_exits.js`：逐站 `ShowSite.do`，
     共 **100 站 / 260 条**出口，按出口字母排序。
 - **落盘数据**：
   - `city/dalian/data_facilities.js`：`本地车站 ID → [{ type, location: [...] }]`，
@@ -364,8 +364,8 @@ commercialBuilding, dynamicNotice, status（"2" = 暂停使用）, statusStr
   7 号线一期 2026-08-26 开通（本城数据 2026-09-14 入库时它已在运营，故既不进未开通表也不进开通时刻表）；
   1 号线南延、3 号线南延在源图发布时尚未运营。**表中没有 5、7 号线不是遗漏。**
 - **取数方式（与沈阳、大连不同）**：官方没有可抓取的设施接口，表格图也无法自动解析，故走
-  「人工转录 → 脚本生成」：转录件 `drunk/tools/changchun_facilities.transcript.json` 只忠实记录原表
-  （列名、格子原文、哪些列未收录），口径全在 `drunk/tools/facilities/gen_changchun_facilities.js`
+  「人工转录 → 脚本生成」：转录件 `tools/facilities/changchun_facilities.transcript.json` 只忠实记录原表
+  （列名、格子原文、哪些列未收录），口径全在 `tools/facilities/gen_changchun_facilities.js`
   （列 → 归一化类型、电梯 / 升降平台归类、站名别名、跨线不合并），产出 `data_facilities.js`。
   **代价**：这是 2025-04 的静态快照，**不会随官网自动刷新**——重跑脚本只重放转录件，不会去抓新数据。
 - **列集不统一**：官方每条线路一张表——1/2/4 号线 8 列（含自助照相机）、3 号线 7 列（末列为 AED）、

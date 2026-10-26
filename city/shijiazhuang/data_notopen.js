@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 在建与规划未开通线路走向数据 (city/shijiazhuang/data_notopen.js)
- * ==============================================================================
  */
+
 
 const NOT_OPEN_LINES = [
     {

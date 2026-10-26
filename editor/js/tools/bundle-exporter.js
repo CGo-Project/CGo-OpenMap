@@ -1,6 +1,6 @@
 /**
  * 开放地图编辑器 (OpenMap Editor) - 统一代码生成、完整性校验与 ZIP 打包器
- * 消解原 city-editor 与 drunk 两套独立实现的导出器
+ * 提供开箱即用的规范数据导出与标准城市资产打包能力
  */
 
 window.OpenMapEditor = window.OpenMapEditor || {};

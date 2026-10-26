@@ -2,7 +2,7 @@
  * CGo OpenMap - 沈阳车站设施数据
  *
  * ⚠️ 本文件由脚本生成，请勿手工编辑。生成脚本是维护者本地的开发期离线工具
- *   （不进运行时、也不入版本库）：drunk/tools/facilities/fetch_shenyang_facilities.js；
+ *   （不进运行时、也不入版本库）：tools/facilities/fetch_shenyang_facilities.js；
  *   重跑方式与取数口径见 docs/STATION_FACILITIES_RESEARCH.md。
  *
  * 数据来源：沈阳地铁官网设施接口

@@ -1,6 +1,6 @@
 /**
  * CGo OpenMap - 上海图例配置 (city/shanghai/data_legend.js)
- * 由 Drunk 转换系统自动生成
+ * 由 OpenMap Editor 自动生成
  */
 
 const LEGEND_CONFIG = [

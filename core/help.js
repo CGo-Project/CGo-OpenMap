@@ -1,14 +1,5 @@
 /**
  * CGo OpenMap - 帮助与关于弹窗逻辑 (core/help.js)
- * 
- * ==============================================================================
- * 模块作用说明 (Help & About Modal)
- * ==============================================================================
- * 作用：处理顶部导航栏“帮助与关于”按钮的点击事件，整合：
- * 1. 动态运营公告 (window.NAL_NOTICE)；
- * 2. 地图手势与检索操作指南说明；
- * 3. 鸣谢名单、数据来源声明与引擎版本展示。
- * ==============================================================================
  */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -26,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const noticeDetails = window.NAL_NOTICE?.getDetailsHtml?.();
         const noticeSectionHtml = noticeDetails ? `<div class="help-data-info2">${noticeDetails}</div>` : '';
-        const appVersionText = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.8.3';
+        const appVersionText = typeof APP_VERSION !== 'undefined' ? APP_VERSION : '1.8.4';
 
         const activeCityId = window.CityDataManager?.getCurrentCityId?.() || 'beijing';
         const registryCity = (window.CITY_REGISTRY && window.CITY_REGISTRY[activeCityId]) || {};
@@ -124,14 +115,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 开源协议：GNU AGPLv3（代码）/ ODbL 1.0（数据）<br>
             </div>
             <div style="text-align: center; font-size: 11px; color: var(--text-light); margin-top: 12px; margin-bottom: 4px; font-family: var(--font-sans);">
-                引擎版本 v${appVersionText} · 双轨开源平台
+                框架引擎版本 - OMPv${appVersionText}
             </div>
         `;
 
         if (window.CGO?.showHelpModal) {
             CGO.showHelpModal({
                 title: 'CGo OpenMap',
-                subtitle: '🍈线路图开放平台 2026.9🍊',
+                subtitle: '🍈开放地图平台 - 2026年10月版本🍊',
                 iconPath: './assets/icons/mapicon.png',
                 branding: {
                     copyright: 'Copyright © 2026 Central Go',

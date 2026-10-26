@@ -2,7 +2,7 @@
  * CGo OpenMap - 大连车站设施数据
  *
  * ⚠️ 本文件由脚本生成，请勿手工编辑。生成脚本是维护者本地的开发期离线工具
- *   （不进运行时、也不入版本库）：drunk/tools/facilities/fetch_dalian_facilities.js；
+ *   （不进运行时、也不入版本库）：tools/facilities/fetch_dalian_facilities.js；
  *   重跑方式与取数口径见 docs/STATION_FACILITIES_RESEARCH.md。
  *
  * 数据来源：大连公共交通建设投资集团官网站点接口

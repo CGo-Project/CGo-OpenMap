@@ -1,6 +1,6 @@
 /**
  * 开放地图编辑器 (OpenMap Editor) - 统一视口漫游与坐标变换层
- * 整合 city-editor CAD 级坐标吸附与 drunk 平滑触控手势，彻底消减双份视口计算
+ * 整合 CAD 级坐标吸附与平滑触控手势，统一视口计算
  */
 
 window.OpenMapEditor = window.OpenMapEditor || {};

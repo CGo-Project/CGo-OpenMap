@@ -1,62 +1,7 @@
 /**
  * CGo OpenMap - 兰州城市业务逻辑与数据关系接口 (city/lanzhou/lanzhou.js)
- * 
- * ==============================================================================
- * 城市数据库文件作用与依赖关系说明 (Database & Data Files Relationship)
- * ==============================================================================
- * 1. data_stations.js
- *    - 作用：定义本城市所有车站的基础点位数据（Station Nodes）。
- *    - 结构：键为 Station ID (如 "M101", "M201")，包含 x, y 坐标、类型 (dot/tsf/no/rdot)、中英文站名、文字对齐 (align)、微调 (offset)、字宽比例 (textScale) 等。
- * 
- * 2. data_lines.js
- *    - 作用：定义本城市各条地铁、市郊铁路、有轨电车线路的基础结构（linesData）与线路元数据配置（LINE_META，包含线路图标与运营单位）。
- *    - 结构：LINE_META 包含各线路对应的 SVG 图标文件名与运营分公司；linesData 包含线路 ID、颜色 (color)、途经车站 ID (stationIds)、站间距 (distances) 等。
- * 
- * 3. data_virtual_transfers.js
- *    - 作用：定义地铁线网中的站外虚拟换乘与出站连通关系。
- *    - 结构：
- *      - VIRTUAL_FREE_TRANSFER_MAP: 电子客票免费出站换乘（兰州暂无此类关系，保留空表）。
- *      - VIRTUAL_TRANSFER_MAP: 付费站外换乘/火车站接驳（如 兰州火车站-兰州、兰州西站北广场-兰州西、陈官营-陈官营等）。
- *      - VIRTUAL_FREE_CONNECT_LINES / VIRTUAL_CONNECT_LINES: 地图渲染换乘虚线连接的端点与偏移。
- * 
- * 4. data_legend.js
- *    - 作用：定义线路图的图例（Legend）结构与线路分组。
- *    - 结构：分网展示（城市轨道交通线网、市郊铁路等），指定图例中各线路对应的 SVG 图标与目标线路 ID。
- * 
- * 5. data_timetable.js
- *    - 作用：全路网各线路、各车站的首末班车发车时刻表（Timetable Data）。
- * 
- * 6. data_notopen.js
- *    - 作用：目前处于规划、在建或暂缓开通状态的线路走向折线点阵（NOT_OPEN_LINES）。
- * 
- * 7. amap_data.json
- *    - 作用：高德地图提取的本城市所有地铁站实际地理经纬度坐标，用于用户定位查找最近车站（LBS）。
- * 
- * 8. staname.csv
- *     - 作用：地铁历史站名沿革及多版本拼音库，用于车站搜索框的智能别名索引。
- * 
- * 9. data_station_names.js
- *     - 作用：全路网逐站「工程名」与「曾用名」资料表（window.LANZHOU_STATION_NAMES），
- *             由车站卡片「车站信息」选项卡只读展示为两行（工程名 / 曾用名）。
- *     - 结构：stations[车站ID] = { engineering, former }，两项各自支持 visible 显隐标记；
- *             前端不提供编辑与显示开关，资料与显隐一律在本文件维护，详见文件头部说明。
- * 
- * 10. stacard/ (车站卡片与扩展展示模块)
- *     - 作用：车站卡片系统（StaCard API），可以自定义显示内容，可显示地图切片、或设计车站结构显示接口。
- *     - 文件：stacard/script.js (地图切片与卡片展示引擎、StaCard API)。
- * ==============================================================================
- * 
- * ️ 开发者移植指南 (Porting Guide):
- * 当为新城市创建业务逻辑文件（如 `city/shanghai/shanghai.js`）时，只需复制此模板，修改对象中的：
- * - id: "shanghai", name: "上海"
- * - LINE_SORT_ORDER: 目标城市的线路展示排序（数字顺序/字母顺序）
- * - LINE_SYNC_GROUPS: 目标城市的贯通运行线路组
- * - SUBURBAN_LINES: 目标城市的市域/市郊铁路线路 ID 列表
- * - MERGE_STATIONS: 跨线合并车站 ID
- * - CROSS_PLATFORM_STATIONS: 同台换乘车站 ID
- * - MAP_12306: 火车站 12306 购票站名映射字典
- * ==============================================================================
  */
+
 
 (function () {
     /** 载入兰州城市专属样式表（未选中站名的白色描边等本城专属排版） */

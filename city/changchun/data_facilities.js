@@ -2,12 +2,12 @@
  * CGo OpenMap - 长春车站设施数据
  *
  * ⚠️ 本文件由脚本生成，请勿手工编辑。生成脚本是维护者本地的开发期离线工具
- *   （不进运行时、也不入版本库）：drunk/tools/facilities/gen_changchun_facilities.js；
+ *   （不进运行时、也不入版本库）：tools/facilities/gen_changchun_facilities.js；
  *   重跑方式与转录 / 取数口径见 docs/STATION_FACILITIES_RESEARCH.md。
  *
  * 数据来源：长春轨道交通官方公众号推送的《车站设施位置一览》表格图（2025-04 发布，此后未再更新）
  *   官方没有可抓取的设施接口，故由人工转录成
- *   drunk/tools/facilities/changchun_facilities.transcript.json，再由该脚本生成此文件；
+ *   tools/facilities/changchun_facilities.transcript.json，再由该脚本生成此文件；
  *   转录口径（列名、格子原文、哪些列未收录）见转录件的 meta。
  *
  * 结构：本地车站 ID → 设施数组，按类型固定顺序；

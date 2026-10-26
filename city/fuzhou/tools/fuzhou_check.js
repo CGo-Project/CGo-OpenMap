@@ -16,11 +16,11 @@
  *   5. 官方票价表：完整性、双向齐备、站名映射覆盖、规则优先命中官方表；
  *   6. 调色与徽标：color 为合法 Hex、svg 模板存在于 assets/svg/。
  *
- * ⚠️ 站点坐标与折线走向的几何自检不在这里（那是 Drunk 净化器的职责），
+ * ⚠️ 站点坐标与折线走向的几何自检不在这里（那是编辑器 DataSanitizer 净化器的职责），
  *    本文件只保证「城市侧配置 ↔ 城市数据」两侧的契约不被改坏。
  *
- * 为什么放在 city/fuzhou/tools/ 而不是 drunk/tools/：它只服务福州一座城市，
- * 而 drunk/tools/selfcheck.js 校验的是 Drunk 的纯函数层（跨城市通用）。
+ * 为什么放在 city/fuzhou/tools/ 而不是 editor/tests/：它只服务福州一座城市，
+ * 而 editor/tests/selfcheck.js 校验的是编辑器的纯函数层（跨城市通用）。
  * 同类先例见 city/fuzhou/stacard/、city/shenyang/modules/ —— 城市专属脚本随城市走。
  * 本文件是 Node 端脚本，浏览器不会请求，故 sw.js 的预缓存清单不需要登记它。
  *
@@ -456,7 +456,7 @@ section("⑦ 站内换乘方式与用时（transferAt）");
         check("pairs 的键都是本站真实线路组合", badPair.length === 0, badPair.join(", "));
 
         // 端到端（内核查表是否真的命中）由共享层自己保证 —— 见
-        // drunk/tools/selfcheck.js 与 city/shenyang/shared/README.md 的 transferAt 小节。
+        // editor/tests/selfcheck.js 与 city/shenyang/shared/README.md 的 transferAt 小节。
         // 本文件只守城市侧的不变量：键、取值、pairs 覆盖是否与线路数据自洽。
         //
         // 帝封江是「同站不同线路对换乘方式不同」的唯一案例，单独钉住：

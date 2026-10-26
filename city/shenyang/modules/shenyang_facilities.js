@@ -4,7 +4,7 @@
  * 渲染、开合与来源标注都在共享层 `shared/station/facilities.js`（多城共用），本文件只声明
  * 沈阳的数据在哪、各类设施叫什么、用哪个 CGoUI 图标，以及官网剖面图地址表。
  *
- * 数据：`city/shenyang/data_facilities.js`（由 `drunk/tools/facilities/fetch_shenyang_facilities.js` 抓取，
+ * 数据：`city/shenyang/data_facilities.js`（由 `tools/facilities/fetch_shenyang_facilities.js` 抓取，
  * 重跑脚本即刷新）；层级图地址表 `SHENYANG_STATION_LEVEL_MAP` 由 `data_timetable.js` 生成。
  *
  * 加载顺序：`shenyang.js` 的 loadStationBoardModules() 先 document.write 共享层，

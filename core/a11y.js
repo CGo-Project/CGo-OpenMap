@@ -1,17 +1,5 @@
 /**
  * CGo OpenMap - 无障碍与通用文本安全工具 (core/a11y.js)
- *
- * ==============================================================================
- * 作用：为核心引擎与各面板提供与城市无关的公共能力，统一挂在 window.CGoA11y：
- * 1. escapeHtml / safeNameHtml：把站名、线路名拼进 innerHTML 前的转义；
- * 2. announce：向常驻的 role="status" 隐藏区域写入一条读屏播报；
- * 3. prefersReducedMotion：读取系统「减少动态效果」偏好；
- * 4. 键盘激活：让 role="button" / role="tab" 的非原生元素响应 Enter / Space；
- * 5. 选项卡 (tablist)、折叠头 (aria-expanded)、下拉菜单状态同步；
- * 6. Service Worker 换代提示（只提示，不自动刷新）。
- *
- * 本文件为普通脚本（非 module），须早于 core/station-board.js 与 core/script.js 加载。
- * ==============================================================================
  */
 (function () {
     'use strict';

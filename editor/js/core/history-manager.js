@@ -1,6 +1,6 @@
 /**
  * 开放地图编辑器 (OpenMap Editor) - 统一撤销与重做历史管理器
- * 消解原 city-editor 与 drunk 两处重复的撤销栈实现
+ * 提供集中、统一的全局撤销与重做历史栈管理
  */
 
 window.OpenMapEditor = window.OpenMapEditor || {};

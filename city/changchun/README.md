@@ -30,9 +30,9 @@
 ## 车站设施
 
 设施位置来自长春轨道交通官方公众号推送的《车站设施位置一览》表格图（**2025 年 4 月发布，此后未更新**）。
-官方没有可抓取的设施接口，故走「人工转录 → 脚本生成」：转录件 `drunk/tools/facilities/changchun_facilities.transcript.json`
+官方没有可抓取的设施接口，故走「人工转录 → 脚本生成」：转录件 `tools/facilities/changchun_facilities.transcript.json`
 只忠实记录原表（列名、格子原文），口径（列 → 类型、电梯/升降平台归类、站名别名、跨线不合并）
-全在 `drunk/tools/facilities/gen_changchun_facilities.js` 里，产出 `data_facilities.js`——**改口径改脚本、改原文改转录件**，别手工编辑数据文件。
+全在 `tools/facilities/gen_changchun_facilities.js` 里，产出 `data_facilities.js`——**改口径改脚本、改原文改转录件**，别手工编辑数据文件。
 
 覆盖 1、2、3、4、6、8 号线的 125 座运营车站；5 号线一期 2026-09-28 才开通、7 号线与各线延伸段
 在源图发布时尚未运营，均无数据，这些站不渲染该模块。与沈阳、大连（有接口、重跑脚本即刷新）不同，

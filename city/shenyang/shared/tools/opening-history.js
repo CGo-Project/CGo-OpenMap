@@ -319,7 +319,7 @@
      *             拆成两截，两截沿路径首尾相接，连起来画就是一笔；
      *   flip   —— 切片恒定按路径正方向取，若该段声明的方向与之相反，整段翻过来画；
      *   edges  —— 该弧覆盖的站距下标（环线按**实际走的那条弧**算，含跨接缝那一节站距）。
-     * 环线取站序更短的那条弧（与 Drunk / 自检 coverOf 同口径）。
+     * 环线取站序更短的那条弧（与 OpenMap Editor / 自检 coverOf 同口径）。
      */
     function arcOf(path, ids, st, line, i, j) {
         const n = ids.length;

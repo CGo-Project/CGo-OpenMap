@@ -41,14 +41,14 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- CGoUI 核心 Web Components 脚本预加载 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261026.134000">
-    <script type="module" src="core/cgo-ui.js?v=261026.134000"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261026.232300">
+    <script type="module" src="core/cgo-ui.js?v=261026.232300"></script>
 
     <!-- 仅引用本地 css/ 样式表以保证项目完全独立性 -->
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261026.134000">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261026.134000">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261026.134000">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261026.134000">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261026.232300">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261026.232300">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261026.232300">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261026.232300">
 
     <style>
         html {
@@ -1193,25 +1193,11 @@
             </div>
         </div>
 
-        <!-- 视图 1：城市卡片网格 (按时间排序) -->
-        <div class="city-grid" id="city-grid">
-            <!-- 由脚本读取城市注册表动态渲染 -->
-        </div>
-
-        <!-- 视图 2：城市字母紧凑列表 (按字母排序，方便快速查找) -->
-        <div class="city-alpha-container" id="city-alpha-container" style="display: none;">
-            <!-- 由脚本读取城市注册表动态渲染 -->
-        </div>
-
-        <!-- 视图 3：按距离由近到远紧凑列表 -->
-        <div class="city-distance-container" id="city-distance-container" style="display: none;">
-            <!-- 由脚本动态渲染 -->
-        </div>
-
-        <!-- 视图 4：最近浏览紧凑列表 (按时间区间分类) -->
-        <div class="city-recent-container" id="city-recent-container" style="display: none;">
-            <!-- 由脚本动态渲染 -->
-        </div>
+        <!-- 城市展示视图 -->
+        <div class="city-grid" id="city-grid"></div>
+        <div class="city-alpha-container" id="city-alpha-container" style="display: none;"></div>
+        <div class="city-distance-container" id="city-distance-container" style="display: none;"></div>
+        <div class="city-recent-container" id="city-recent-container" style="display: none;"></div>
 
         <!-- 移植与贡献横幅 (Tier B 不可交互底板) -->
         <div class="port-banner glass-panel">
@@ -1277,10 +1263,10 @@
     </footer>
 
     <!-- 脚本加载 -->
-    <script src="city/data.js?v=261026.134000"></script>
-    <script src="core/tool-theme.js?v=261026.134000"></script>
-    <script src="core/portal-data.js?v=261026.134000"></script>
-    <script src="core/portal-view.js?v=261026.134000"></script>
+    <script src="city/data.js?v=261026.232300"></script>
+    <script src="core/tool-theme.js?v=261026.232300"></script>
+    <script src="core/portal-data.js?v=261026.232300"></script>
+    <script src="core/portal-view.js?v=261026.232300"></script>
 
     <!-- 离线 Service Worker 注册 -->
     <script>

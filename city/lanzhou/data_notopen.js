@@ -1,6 +1,5 @@
 /**
- * CGo OpenMap - 青岛未开通/在建线路数据
- * 结构与 city/beijing/data_notopen.js 一致；默认使用全局未开通虚线样式。
+ * CGo OpenMap - 兰州未开通/在建线路数据 (city/lanzhou/data_notopen.js)
  */
 const NOT_OPEN_LINES = [
     { // 7号线

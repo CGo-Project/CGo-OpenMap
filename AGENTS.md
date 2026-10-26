@@ -72,6 +72,11 @@
   6. **方向明确防堆砌**：特色功能必须有明确的主攻方向（旅客服务导向 vs 工程规划导向，不超过 2 个），凡提供必须 100% 形成业务闭环无报错，严禁杂乱贪多堆砌半成品；
   7. **自检前置与零污染**：提交前必须在本地运行 `node editor/tests/selfcheck.js` 确保 100% 通过自检，且控制台零报错，严禁单城带病污染全局。
 
+### 🚨 铁律七：注释精简与非北京城市去模板化规范（严禁堆砌长篇教学 Schema 注释）
+- **北京作为示例城市保留详尽注释**：北京（`city/beijing/`）作为 CGo OpenMap 全局唯一的基准与范式标杆城市，各数据文件中保留详尽的 Schema 规范、字段定义、架构依赖与移植教学指南，此设计合规且必要，供主理人与开发者学习参考。
+- **非北京城市生成时严禁照抄教学大段注释**：当 AI Agent 或主理人根据北京（或其它范例）生成/移植新城市时，**绝对禁止盲目照抄复制北京文件里的大段教学模板注释、长篇 Schema 规范字典、结构说明与移植小贴士**（例如严禁在新城市中保留 `city/beijing/...` 路径说明、`company: "北京地铁"` 示例或整屏的字段字典）。
+- **极简原则与去模板化**：新城市所有文件（`data_stations.js`、`data_lines.js`、`data_legend.js`、`{city}.js` 等）必须彻底清理掉冗长复杂的教学外框与介绍段，**只保留本城市真正必需的业务注释**（如本地特有的坐标系说明、图层特殊说明、数据源版次与换算比例等），保持代码与数据文件干净、清晰、纯粹。
+
 ---
 
 ## 3. 项目目录结构速查
@@ -106,13 +111,14 @@ openmap/
 │   └── tests/
 │       └── selfcheck.js        # 自动化回归测试（221项断言覆盖15座城市与纯函数算法）
 ├── docs/                       # 架构设计与二次开发文档
+│   ├── DEVELOPER_GUIDE.md      # 核心架构、图层系统、渲染算法与底层开发手册
 │   └── STATION_MODULE_GUIDE.md # 车站信息板自定义模块开发与配置指南
 ├── core/                       # 核心渲染与交互引擎 (多城市通用)
 │   ├── script.js               # 主引擎：SVG生成、视口矩阵变换、平滑飞跃定位、事件监听
 │   ├── station-board.js        # 车站信息板调度引擎与内置标准模块注册表
 │   ├── cgo-ui.js               # Web Components 组件库 (<cgo-icon> 等)
-│   ├── path-geometry.js        # 折线倒角几何 (引擎与 Drunk 编辑模式共用的唯一真源)
-│   ├── station-icons.js        # 车站图元模板与尺寸 (引擎与 Drunk 共用的唯一真源)
+│   ├── path-geometry.js        # 折线倒角几何 (引擎与 OpenMap Editor 编辑器共用的唯一真源)
+│   ├── station-icons.js        # 车站图元模板与尺寸 (引擎与 OpenMap Editor 共用的唯一真源)
 │   ├── city-neighbors.js       # 邻城衔接：邻城影子、拉到边缘切换城市、缩小后双城并看 (按注册表 neighbors 配置)
 │   ├── settings.js             # 偏好设置面板逻辑 (主题、全屏、清除缓存)
 │   ├── help.js                 # 帮助与关于弹窗逻辑
@@ -312,7 +318,7 @@ const linesData = [
 ## 5. OpenMap Editor (开放地图编辑器) 架构与 Agent 协作指南
 
 > [!NOTE]
-> **OpenMap Editor (`/editor/`)** 是整合了原 `city-editor`（全功能交互编辑、水域河流、自由规划、百科表格放站、里程管理）与 `drunk`（PDF/AI矢量直通提取、DeepSeek视觉识图、条目级外科手术式无损回写、8方向文字避让）的**统一现代化生产力工作台**。界面全面升级为 CGoUI 2.2 Ribbon 效率类布局与 Liquid Glass 折射空间滤镜。
+> **OpenMap Editor (`/editor/`)** 是整合了全功能交互编辑、水域河流、自由规划、百科表格放站、里程管理与智能转换（PDF/AI矢量直通提取、DeepSeek视觉识图、条目级外科手术式无损回写、8方向文字避让）的**统一现代化生产力工作台**。界面全面升级为 CGoUI 2.2 Ribbon 效率类布局与 Liquid Glass 折射空间滤镜。
 
 OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 
@@ -380,12 +386,12 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 4. 都没有 → 按 `stationIds` 顺序取站点坐标连成一段。
 
 > **`core/path-geometry.js` 是倒角算法与走向判定的唯一真源**，`core/script.js` 与
-> `drunk/js/drunk_pipeline.js` 都必须调用它，**严禁任何一方复刻第二份实现**。
-> 这套判定曾经两边各写一份，结果 Drunk 漏了第 1 条，把北京「中国铁路」24 座
+> `editor/js/editor-app.js` 都必须调用它，**严禁任何一方复刻第二份实现**。
+> 这套判定曾经两边各写一份，结果早期编辑器漏了第 1 条，把北京「中国铁路」24 座
 > 散布全城的国铁车站从延庆一路连到大兴，编辑器画布上凭空多出一堆横穿全图的
 > 长斜线；第 4 条又漏了倒角，北京 M11 的走向与线路图对不上。
-> Drunk 是所见即所得编辑器：若编辑器用直角折线预览、引擎渲染时倒了圆角，
-> 用户在 Drunk 里调出来的走向与圆角上线后就是另一个样子。
+> 编辑器是所见即所得编辑器：若编辑器用直角折线预览、引擎渲染时倒了圆角，
+> 用户在编辑器里调出来的走向与圆角上线后就是另一个样子。
 > （站名 `offset` 吃过同样的亏，见 `updateSingleLabelStyle` 的注释。）
 
 `selfcheck.js` 里有结构性断言守着这一点。
@@ -398,9 +404,9 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 （普通站的环色取第一条经停线路的标志色）。
 
 城市可用 `city.renderStationIcon(station, id)` 完全接管画法——上海的短横与
-换乘胶囊、悉尼的 Interchange 底衬即走这条路。Drunk 会在载入城市时尝试接入它。
+换乘胶囊、悉尼的 Interchange 底衬即走这条路。编辑器（OpenMap Editor）会在载入城市时尝试接入它。
 
-> ⚠️ **Drunk 不能无脑注入城市主脚本**：北京 / 合肥 / 青岛的 `{city}.js` 用
+> ⚠️ **编辑器不能无脑注入城市主脚本**：北京 / 合肥 / 青岛的 `{city}.js` 用
 > `document.write` 同步加载专属模块，在 DOMContentLoaded 之后再注入会**直接冲掉
 > 整个文档**。因此先取回源码检查，含 `document.write` 的一律跳过（这几座城市本来
 > 也没实现 `renderStationIcon`）。
@@ -409,7 +415,7 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 
 `_lineColors`（由线路颜色推导）、`_srcCanvasW/H`（PDF 直通的原画布尺寸）这类
 **算出来的、不属于城市数据本身**的字段，必须以 `_` 开头：
-`city_project_io.js` 的序列化与 `drunk_pipeline.js` 的脏判定都按这个前缀过滤。
+`city-project-io.js` 的序列化与编辑器的脏判定都按这个前缀过滤。
 否则一载入城市就会显示「477 处改动」，导出摘要把每座车站都列成改过，
 甚至可能把派生字段写回数据文件。
 
@@ -545,9 +551,10 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
 1. **创建城市目录**：在 `city/` 下新建 `city/{city_id}/`，参考 `city/beijing/`、`city/shenyang/`、`city/qingdao/` 或 `city/hefei/` 准备各个 `data_*.js` 文件。
 2. **注册城市**：在 `city/data.js` 的 `CITY_REGISTRY` 中添加新城市元数据。
 3. **编写车站与线路**：按顺序填充 `data_stations.js` 和 `data_lines.js`。
-4. **引入脚本**：在 `main.html` 底部修改引入的城市脚本路径，或保留动态加载支持（通过 `main.html?city={city_id}` 动态访问）。
-5. **更新离线缓存**：在 `sw.js` 的 `ASSETS_TO_CACHE` 中登记新城市资源并递增 `CACHE_NAME` 版本号。
-6. **验证测试**：启动静态服务验证首页展示、卡片跳转及地图渲染与缩放。
+4. **清理冗余教学注释（极重要）**：严格遵循铁律七，严禁复制北京示例中大段的 Schema 规范、字段字典、介绍段与移植小贴士，只保留新城市必需的业务注释（如坐标系说明），保持文件整洁清爽。
+5. **引入脚本**：在 `main.html` 底部修改引入的城市脚本路径，或保留动态加载支持（通过 `main.html?city={city_id}` 动态访问）。
+6. **更新离线缓存**：在 `sw.js` 的 `ASSETS_TO_CACHE` 中登记新城市资源并递增 `CACHE_NAME` 版本号。
+7. **验证测试**：启动静态服务验证首页展示、卡片跳转及地图渲染与缩放。
 
 ### 任务 B：批量添加/修改站点与调整线路
 1. **添加站点**：在 `data_stations.js` 添加车站对象，设置合理的 `(x, y)` 坐标与 `align` 对齐方式。

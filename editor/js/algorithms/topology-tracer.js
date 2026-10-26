@@ -1,5 +1,5 @@
 /**
- * Drunk 线路图智能转换系统 - 线路骨架追踪与拓扑排序器 (topology_tracer.js)
+ * OpenMap Editor 开放地图编辑器 - 线路骨架追踪与拓扑排序器 (topology-tracer.js)
  * 
  * 核心升级：
  * 1. 废除无上限盲目贪心 TSP，引入距离截断（Distance Cutoff）与方向惯性约束；
@@ -9,7 +9,7 @@
  * 5. 路径点平滑与孤立分支保护。
  */
 
-window.DrunkTopology = (function () {
+const TopologyTracer = (function () {
 
     /**
      * 将无序站点根据几何走向进行单线线性拓扑排序 (带距离与惯性双重防乱拉线约束)
@@ -142,5 +142,6 @@ window.DrunkTopology = (function () {
 })();
 
 window.OpenMapEditor = window.OpenMapEditor || {};
-window.OpenMapEditor.TopologyTracer = window.DrunkTopology;
-window.TopologyTracer = window.DrunkTopology;
+window.OpenMapEditor.TopologyTracer = TopologyTracer;
+window.TopologyTracer = TopologyTracer;
+window.DrunkTopology = TopologyTracer; // 向后兼容挂载

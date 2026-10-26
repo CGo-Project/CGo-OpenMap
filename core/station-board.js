@@ -1,28 +1,5 @@
 /**
  * CGo OpenMap - 车站信息板模块注册与渲染引擎 (core/station-board.js)
- * 
- * ==============================================================================
- * 车站信息板模块化系统架构说明 (Station Board Modular Architecture)
- * ==============================================================================
- * 1. 【模块注册化设计 (Modular Registry)】
- *    车站信息板（#info-panel）的所有功能（中英文标题、经停线路徽标、控制按钮、
- *    各个线路选项卡、高德切片微缩视窗/3D结构图、上一站下一站、换乘走廊、车站详情、
- *    运营商、导航外链等）全面抽象解耦为标准化的“模块 (Module)”。
- * 
- * 2. 【城市主理人高度可配置 (City Maintainer Control)】
- *    城市配置文件 (city/{city_id}/{city_id}.js) 中的 `stationBoard` 字段可按需：
- *    - 开启/关闭任意内置或自定义模块 (enabled: true/false)；
- *    - 自由调节模块显示顺序 (order: 10, 20, ...)；
- *    - 改变模块所挂载的选项卡位置 (targetTab: 'line-tab' / 'station-info' / 自定义tab)；
- *    - 新增城市私有选项卡 (tabs: [{ id: 'xxx', title: 'xxx' }])。
- * 
- * 3. 【零配置默认展示与向下兼容 (Zero-Config Default & 100% Backward Compatibility)】
- *    若城市未配置 `stationBoard`（如已发布的沈阳），系统自动启用全套内置模块与原版
- *    DOM 结构布局，原有的 CSS 类名、DOM 层级、城市私有 MutationObserver 完全无缝兼容。
- * 
- * 4. 【开放式生命周期规范 (Module Lifecycle)】
- *    模块支持 `shouldRender(context)`、`render(context)` 以及 `onMounted(container, context)`。
- * ==============================================================================
  */
 
 (function () {

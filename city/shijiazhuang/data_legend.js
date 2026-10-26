@@ -1,8 +1,7 @@
 /**
  * CGo OpenMap - 图例结构与分组配置 (city/shijiazhuang/data_legend.js)
- * 
- * ==============================================================================
  */
+
 
 
 const LEGEND_CONFIG = [

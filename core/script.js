@@ -1,24 +1,7 @@
 /**
  * CGo OpenMap - 核心矢量渲染与交互引擎 (core/script.js)
- * 
- * ==============================================================================
- * 核心架构与引擎工作流 (Engine Architecture & Workflow)
- * ==============================================================================
- * 本脚本为 CGo OpenMap 的核心中枢，负责：
- * 1. 【城市上下文解耦】读取当前激活城市配置 (getActiveCity)；
- * 2. 【数据解析与拓扑构建】合并重复物理点位、统计换乘关系 (processData)；
- * 3. 【SVG 矢量图形渲染】自动将折线点阵倒角生成 45°/90° 平滑圆角路径 (renderLines, generateRoundedPath)；
- * 4. 【站点与标签布局】根据 align 对齐方式渲染站点圆环与双语标签 (renderStations)；
- * 5. 【手势与漫游系统】支持滚轮缩放、触控板手势、双指捏合缩放、鼠标平移拖拽 (initInputControls)；
- * 6. 【多维车站检索】拼音/汉字/英文/历史别名模糊索引与快速飞跃居中 (bindSearchAndLegendEvents)；
- * 7. 【车站卡片与微缩视窗】StaCard API 动态接入高德切片与立体站台结构 (renderUserModePanel, StaCard)；
- * 8. 【LBS 地理定位】WGS-84 转 GCJ-02 加密坐标算法与最近车站计算 (findNearestStation, wgs2gcj)；
- * 9. 【侧边栏吸附与响应式】移动端底部抽屉与桌面端常驻侧边栏自动切换适配 (dockStationPanel, handleResponsiveSwitch)。
- * 
- * 开发者移植说明：
- * 核心引擎完全通用，制作新城市无需修改本文件任何核心逻辑！
- * ==============================================================================
  */
+
 
 const APP_VERSION = "260903.220000";
 const originalTitle = document.title;
@@ -196,12 +179,12 @@ Object.defineProperty(window, 'LINE_SYNC_GROUPS', {
  * 车站 SVG 图标模板字典
  * 包括：换乘站(tsf)、虚拟换乘站(tsfo)、普通站(dot)、暂缓开通站(no)、国铁火车站(rdot)
  */
-// 车站图元模板的唯一真源在 core/station-icons.js，Drunk 编辑模式共用同一份，
+// 车站图元模板的唯一真源在 core/station-icons.js，OpenMap Editor 编辑器共用同一份，
 // 以保证编辑器画布上的图元尺寸与配色就是线路图上的真实效果。
 const { SVGTemplates } = window.CGoStationIcons;
 
 // 折线倒角算法与半径常量的唯一真源在 core/path-geometry.js，
-// Drunk 编辑模式共用同一份实现以保证「所见即所得」。此处仅取引用。
+// OpenMap Editor 编辑器共用同一份实现以保证「所见即所得」。此处仅取引用。
 const { RADIUS_90, RADIUS_45 } = window.CGoPathGeometry;
 
 // 转义、读屏播报、动效偏好与焦点工具的唯一真源在 core/a11y.js（须早于本文件加载）
@@ -1037,7 +1020,7 @@ function renderLines() {
             });
             layers.interaction.push(pathInteraction);
         };
-        // 走向来源的判定统一在 core/path-geometry.js（Drunk 编辑模式共用同一份），
+        // 走向来源的判定统一在 core/path-geometry.js（与 OpenMap Editor 编辑器共用同一份），
         // 避免两边各写一份判定后悄悄漂移。
         window.CGoPathGeometry.lineSegments(line, processedStations)
             .forEach(seg => drawSegment(seg.points, seg.cls));
@@ -2630,8 +2613,8 @@ function updateShareMeta(station) {
 /**
  * 平滑贝塞尔曲线折线倒角算法 (Corner Rounding & Smoothing Algorithm)
  *
- * 实现已抽至 `core/path-geometry.js`，由本引擎与 Drunk 编辑模式共用——
- * 编辑器预览与实际渲染必须是逐字节相同的 path 指令，否则在 Drunk 里调出来的
+ * 实现已抽至 `core/path-geometry.js`，由本引擎与 OpenMap Editor 编辑器共用——
+ * 编辑器预览与实际渲染必须是逐字节相同的 path 指令，否则在编辑器里调出来的
  * 走向与圆角上线后会是另一个样子。此处保留同名同签名的薄封装，调用方无需改动。
  *
  * @param {Array<{x: number, y: number, r?: number}>} points - 折线点阵坐标数组

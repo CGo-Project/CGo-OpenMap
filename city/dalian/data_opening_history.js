@@ -46,7 +46,7 @@
  * - 大连市人民政府《大连地铁 5 号线正式开通运营》（2023-03-18）
  * - 大连本地宝《大连地铁 3 号线梭鱼湾站开工最新消息》（2021-09-10，3 号线四批开通年月）
  *
- * 自检：drunk/tools/selfcheck.js「开通沿革时间线」一节。
+ * 自检：editor/tests/selfcheck.js「开通沿革时间线」一节。
  */
 
 const CGO_OPENING_HISTORY = [

@@ -1,6 +1,6 @@
 /**
- * Drunk 线路图智能转换系统 - 城市维基百科动态知识库与拓扑位置对齐引擎
- * (city_knowledge_matcher.js)
+ * OpenMap Editor 开放地图编辑器 - 城市维基百科动态知识库与拓扑位置对齐引擎
+ * (knowledge-matcher.js)
  * 
  * 核心设计：
  * 1. 标题与语义城市探测：从底图标题、图例文本或文件名中精准识别城市（如西安、北京、上海、广州、深圳、天津等）；
@@ -229,7 +229,7 @@ window.CityKnowledgeMatcher = (function () {
      * @returns {Promise<Object>} { cityName, enName, lines, stationsByName }
      */
     async function loadCityStationsOnline(cityName) {
-        const logger = window.DrunkLogger;
+        const logger = window.EditorLogger || window.DrunkLogger;
         const cityInfo = detectCityFromText(cityName) || { name: cityName, en: cityName, pinyin: cityName };
         const standardName = cityInfo.name;
 
@@ -514,7 +514,7 @@ window.CityKnowledgeMatcher = (function () {
             }
         }
 
-        const logger = window.DrunkLogger;
+        const logger = window.EditorLogger || window.DrunkLogger;
         if (logger && correctedCount > 0) {
             logger.info(`✨ 维基百科知识库站名对齐完成: 成功校准并对齐了 ${correctedCount} 个车站名称！`);
         }

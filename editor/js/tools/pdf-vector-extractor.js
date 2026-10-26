@@ -1,6 +1,6 @@
 /**
- * Drunk 线路图智能转换系统 - PDF & Adobe Illustrator (.ai) 矢量图层深度解析引擎 v2.0
- * (pdf_vector_extractor.js)
+ * OpenMap Editor 开放地图编辑器 - PDF & Adobe Illustrator (.ai) 矢量图层深度解析引擎 v2.0
+ * (pdf-vector-extractor.js)
  *
  * v2.0 核心修复与升级：
  * 1. 修复 XMP 色板 CMYK 解析 bug（旧版错误使用 RGB 字段名匹配 CMYK 色板）；
@@ -42,7 +42,7 @@ window.PdfVectorExtractor = (function () {
 
     async function ensurePdfJsLoaded() {
         if (window.pdfjsLib) return window.pdfjsLib;
-        const logger = window.DrunkLogger;
+        const logger = window.EditorLogger || window.DrunkLogger;
         if (logger) logger.info('⏳ 正在加载 Mozilla PDF.js 矢量解析引擎...');
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
@@ -708,7 +708,7 @@ window.PdfVectorExtractor = (function () {
 
 
     async function extractPdfData(file, options = {}) {
-        const logger = window.DrunkLogger;
+        const logger = window.EditorLogger || window.DrunkLogger;
         await ensurePdfJsLoaded();
 
         const isAi = isAiFile(file);

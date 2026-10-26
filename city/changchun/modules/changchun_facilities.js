@@ -4,8 +4,8 @@
  * 渲染、逐条开合与来源标注都在共享层 `shared/station/facilities.js`（多城共用），本文件只声明
  * 长春的数据在哪、各类设施叫什么、用哪个 CGoUI 图标。
  *
- * 数据：`city/changchun/data_facilities.js`（由 `drunk/tools/facilities/gen_changchun_facilities.js`
- * 依 `drunk/tools/changchun_facilities.transcript.json` 生成，重跑脚本即刷新）。
+ * 数据：`city/changchun/data_facilities.js`（由 `tools/facilities/gen_changchun_facilities.js`
+ * 依 `tools/facilities/changchun_facilities.transcript.json` 生成，重跑脚本即刷新）。
  * 长春官网没有可抓取的设施接口，设施只出现在官方公众号推送的表格图里
  * （2025-04 发布、此后未更新），故走「人工转录 → 脚本生成」这条路，
  * 与沈阳、大连（有接口可重抓）不同：本城数据不会随官网自动刷新。

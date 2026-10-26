@@ -2,7 +2,7 @@
  * CGo OpenMap - shenyang车站出入口数据
  *
  * ⚠️ 本文件由脚本生成，请勿手工编辑。生成脚本是维护者本地的开发期离线工具
- *   （不进运行时、也不入版本库）：drunk/tools/facilities/ 下的
+ *   （不进运行时、也不入版本库）：tools/facilities/ 下的
  *   fetch_city_exits_around.js（抓出口）→ fetch_exit_bearings.js（算方位）→ build_city_exits.js（总装）。
  *
  * 数据来源：高德地图开放平台 Web 服务 API（周边搜索 + 逆地理编码），
