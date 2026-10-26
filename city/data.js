@@ -17,8 +17,7 @@
  * 2. 在下方 `CITY_REGISTRY` 对象中添加一条新城市配置记录（包含 id, name, center, mapSize, registerDate, maintainers 等；城市图标尽量不使用 SVG，优先使用 CGoUI 内置官方图标并设 `svglogo: null`，未收录时方填自定义 SVG）；
  * 3. 在 `city/{city_id}/` 下编写对应的业务与数据文件（参考 `city/beijing/` 规范）；
  * 4. 在 `main.html` 底部引入新城市脚本，或通过 `main.html?city={city_id}` 动态访问；
- * 5. 在 `manifest.json` 的 `shortcuts` 数组中添加该城市的快捷直达方式；
- * 6. 在 `sw.js` 中将新城市文件加入预缓存列表，并递增 `CACHE_NAME` 版本号。
+ * 5. 在 `sw.js` 中将新城市文件加入预缓存列表，并递增 `CACHE_NAME` 版本号。
  * ==============================================================================
  */
 
@@ -28,6 +27,12 @@
      * 键名为城市唯一标识符 (cityId,如 "beijing", "shanghai")
      * 可选字段 lang：线路图页面的语言标签 (BCP 47，如 "en"、"zh-HK")，由 main.html 写入 <html lang>，
      * 读屏据此选择发音；缺省为 "zh-CN"。
+     *
+     * status 状态字段规范（四档标准）：
+     * - "demo"     : 核心范例。用于北京等系统基准标杆，在门户首屏优先推荐展示。
+     * - "active"   : 已上线。用于质量评定达到 S、A、B 级（≥70分）的成熟可用线路图，在门户正常展示。
+     * - "updating" : 更新中。用于评定为 C 级（预警观察，60~69分）或 D 级（下架维护，<60分）的城市，提示当前处于维护迭代中。
+     * - "offline"  : 不上线。用于特定规划网、实验室测试网或暂不面向门户公开展出的城市（如北京规划 beijing_plan），在概览、距离、首字母、最近使用里均不展示。
      */
     const CITY_REGISTRY = {
         "jiaxing": {
@@ -44,6 +49,8 @@
             description: "嘉兴有轨电车 1 号线交互线路图，共 21 站。",
             keywords: "CGo OpenMap, 嘉兴, 有轨电车, 1号线, 线路图",
             registerDate: "2026-10-25",
+            stationCount: 21,
+            status: "active",
             maintainers: [{ name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }]
         },
 
@@ -61,6 +68,8 @@
             description: "天水有轨电车 1 号线交互线路图，共 29 站。",
             keywords: "CGo OpenMap, 天水, 有轨电车, 1号线, 线路图",
             registerDate: "2026-10-25",
+            stationCount: 29,
+            status: "active",
             maintainers: [{ name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }]
         },
 
@@ -78,6 +87,8 @@
             description: "淮安有轨电车 1 号线交互线路图，共 23 站。",
             keywords: "CGo OpenMap, 淮安, 有轨电车, 1号线, 线路图",
             registerDate: "2026-10-24",
+            stationCount: 23,
+            status: "active",
             maintainers: [{ name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }]
         },
 
@@ -95,6 +106,8 @@
             description: "黄石现代有轨电车 1 号线，共 30 站；师范大学站暂未开通。",
             keywords: "CGo OpenMap, 黄石, 1号线, 线路图, 轨道交通",
             registerDate: "2026-10-24",
+            stationCount: 30,
+            status: "active",
             maintainers: [{ name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }]
         },
 
@@ -112,6 +125,8 @@
             description: "台州市域铁路 S1 线（台州火车站 → 城南），共 15 站。",
             keywords: "CGo OpenMap, 台州, S1线, 线路图, 轨道交通",
             registerDate: "2026-10-24",
+            stationCount: 15,
+            status: "active",
             maintainers: [{ name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }]
         },
 
@@ -127,6 +142,8 @@
             mapSize: { width: 414, height: 736 },
             searchCity: "三亚",
             registerDate: "2026-10-24",
+            stationCount: 23,
+            status: "active",
             maintainers: [{ name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }]
         },
         "nanping": {
@@ -143,6 +160,8 @@
             description: "武夷有轨电车 1 号线（武夷山 → 南平市高铁站），共 10 站。",
             keywords: "CGo OpenMap, 南平, 武夷, 有轨电车, 1号线, 线路图, 轨道交通",
             registerDate: "2026-10-24",
+            stationCount: 10,
+            status: "active",
             maintainers: [{ name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }]
         },
         "liaoyuan": {
@@ -159,7 +178,9 @@
             description: "辽源氢能文旅线 1 号线、2 号线，共 8 站。",
             keywords: "CGo OpenMap, 辽源, 有轨电车, 线路图, 轨道交通",
             registerDate: "2026-10-24",
-            maintainers: [{"name": "Zihuanana", "role": "城市主理人", "github": "https://github.com/Zihuanana"}]
+            stationCount: 8,
+            status: "active",
+            maintainers: [{ "name": "Zihuanana", "role": "城市主理人", "github": "https://github.com/Zihuanana" }]
         },
         "wenshan": {
             id: "wenshan",
@@ -175,7 +196,9 @@
             description: "文山普者黑有轨电车 4 号线、5 号线，共 10 站；人民医院至普者黑高铁站两线共线。",
             keywords: "CGo OpenMap, 文山, 有轨电车, 线路图, 轨道交通",
             registerDate: "2026-10-24",
-            maintainers: [{"name": "Zihuanana", "role": "城市主理人", "github": "https://github.com/Zihuanana"}]
+            stationCount: 10,
+            status: "active",
+            maintainers: [{ "name": "Zihuanana", "role": "城市主理人", "github": "https://github.com/Zihuanana" }]
         },
         "macau": {
             id: "macau",
@@ -191,6 +214,8 @@
             description: "澳門輕軌氹仔線、石排灣線、橫琴線交互線路圖，站名中葡英三語。",
             keywords: "CGo OpenMap, 澳門, 澳門輕軌, Macau LRT, 氹仔線, 石排灣線, 橫琴線",
             registerDate: "2026-10-24",
+            stationCount: 15,
+            status: "active",
             maintainers: [{ name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }]
         },
         "beijing": {
@@ -209,13 +234,39 @@
             description: "由 CGo OpenMap 驱动的北京轨道交通智能交互线路图，全面覆盖北京地铁与市郊铁路线网。",
             officialMapUrl: "https://www.bjsubway.com/station/xltcx/",
             registerDate: "2026-09-03",
-            status: "active",
+            stationCount: 510,
+            status: "demo",
             maintainers: [
                 { name: "NaL", role: "城市主理人", github: "https://github.com/NokiaimuL" },
                 { name: "SierraQin", role: "运营数据支持" },
                 { name: "Freedom Space", role: "市郊铁路校对" }
             ],
             isDefault: true
+        },
+        "beijing_plan": {
+            id: "beijing_plan",
+            name: "北京规划",
+            svglogo: null,
+            folder: "./city/beijing_plan",
+            mainLogic: "./city/beijing_plan/beijing_plan.js",
+            center: { x: 5300, y: 4460 },
+            defaultScale: 0.5,
+            minScale: 0.08,
+            maxScale: 3.5,
+            mapSize: { width: 10600, height: 9600 },
+            searchCity: "北京",
+            title: "CGo OpenMap - 北京规划轨道交通线路图",
+            keywords: "CGo OpenMap, 北京规划, 北京地铁三期规划, 远景规划, 实际走向, 线路图",
+            description: "基于实际地理走向的北京轨道交通规划全网交互线路图，涵盖运营中、建设中、近期规划与远景线网全量线路与站点。",
+            officialMapUrl: "https://maptable.com/s/p/eb54wo4tt5vk/map",
+            registerDate: "2026-10-25",
+            stationCount: 643,
+            status: "offline",
+            maintainers: [
+                { name: "北京交通大作战", role: "数据源原作者", github: "https://maptable.com/s/p/eb54wo4tt5vk/map" },
+                { name: "NaL", role: "城市主理人", github: "https://github.com/NokiaimuL" },
+                { name: "Zihuanana", role: "城市主理人", github: "https://github.com/Zihuanana" }
+            ]
         },
         "shanghai": {
             id: "shanghai",
@@ -233,6 +284,7 @@
             description: "包含 1~18 号线、浦江线、磁浮线与市域机场线，全网拓扑与几何站点对齐官方 D202512 矢量线网图。",
             officialMapUrl: "http://service.shmetro.com/yxxp/index.htm",
             registerDate: "2026-09-04",
+            stationCount: 414,
             status: "active",
             maintainers: [
                 { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
@@ -255,6 +307,7 @@
             description: "包含沈阳地铁1~4、9、10号线及方城文化地标。",
             officialMapUrl: "https://www.symtc.com/wwmhm/pathQuery",
             registerDate: "2026-09-05",
+            stationCount: 224,
             status: "active",
             maintainers: [
                 { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" },
@@ -280,6 +333,7 @@
             description: "包含当前运营的 1、2、3、4、6、8 号线及蓝谷快线、西海岸快线，并包含三期规划在建线路。",
             officialMapUrl: "https://www.qd-metro.com/",
             registerDate: "2026-09-09",
+            stationCount: 262,
             status: "active",
             maintainers: [
                 { name: "YoTra青通", role: "城市主理人", github: "https://github.com/YoTraYoungTraffic" }
@@ -303,8 +357,8 @@
             description: "覆盖 1–8 号线及 S1 线示意。",
             officialMapUrl: "https://www.hfgdjt.com/",
             registerDate: "2026-09-07",
-            status: "delisted",
-            hidden: true,
+            stationCount: 211,
+            status: "updating",
             statusNote: "当前正在进行线网版本维护与数据核对，暂缓在门户主页推荐展示。完整保留全部底层程序代码与独立访问路由（?city=hefei），欢迎原主理人与社区伙伴共同协作迭代完善。",
             maintainers: [
                 { name: "Evin", role: "城市主理人", github: "https://github.com/walternie" }
@@ -329,6 +383,7 @@
             description: "覆盖 T1–T9 铁路干线、M1 地铁及在建的 Sydney Metro West 与西悉尼机场线。",
             officialMapUrl: "https://transportnsw.info/routes/train",
             registerDate: "2026-09-15",
+            stationCount: 198,
             status: "active",
             maintainers: [
                 { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
@@ -352,6 +407,7 @@
             description: "覆盖港铁十条重铁线路、轻铁与高铁香港段，支持同台换乘指南与优先同台换乘的行程规划（非官方）。",
             officialMapUrl: "https://www.mtr.com.hk/ch/customer/services/system_map.html",
             registerDate: "2026-09-24",
+            stationCount: 99,
             status: "active",
             maintainers: [
                 { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
@@ -385,6 +441,7 @@
             description: "覆盖深圳地铁 1~14、16、20 号线及 6 号线支线，与香港线路图衔接，口岸车站提供通关信息（非官方）。",
             officialMapUrl: "https://www.szmc.net/map/",
             registerDate: "2026-09-25",
+            stationCount: 359,
             status: "active",
             maintainers: [
                 { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
@@ -416,6 +473,7 @@
             description: "包含当前运营的 1、2、3、5、12、13 号线及 3 号线支线。",
             officialMapUrl: "https://www.dltransgrp.com/h55/app-h5/metromap/#/?cityId=2102",
             registerDate: "2026-09-08",
+            stationCount: 156,
             status: "active",
             maintainers: [
                 { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" },
@@ -441,6 +499,7 @@
             description: "线路走向依据官方交互线路图整理。",
             officialMapUrl: "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html",
             registerDate: "2026-09-13",
+            stationCount: 203,
             status: "active",
             maintainers: [
                 { name: "jrzhang", role: "城市主理人", github: "https://github.com/beepingflijo" }
@@ -463,6 +522,7 @@
             description: "尝试性的功能，使用线路编辑器直接制作的福州轨道交通线路图。",
             registerDate: "2026-09-16",
             officialMapUrl: "https://www.fzmtr.com/xlcx",
+            stationCount: 105,
             status: "active",
             maintainers: [
                 { name: "福南所CRH1A-A-1186", role: "城市主理人", github: "https://github.com/CRH1A-A-1186" }
@@ -487,6 +547,7 @@
             keywords: "兰州地铁, 线路图, 轨道交通",
             description: "包含已运营1、2号线、中川城际以及规划中3-5、7、8号线",
             registerDate: "2026-09-26",
+            stationCount: 140,
             status: "active",
             maintainers: [
                 { name: "Bingcaowan", role: "城市主理人", github: "https://github.com/icegrassbay" }
@@ -509,14 +570,17 @@
             description: "包含 1、2、3 号线全线（3 号线为环线）与 4 座国铁车站。",
             officialMapUrl: "http://www.harbin-metro.com/",
             registerDate: "2026-09-28",
+            stationCount: 77,
             status: "active",
             // 主理人虚位以待：哈尔滨公开运营信息稀少，本图由提交者代为整理，
             // 不占用主理人身份，面向哈尔滨当地有意长期维护者开放认领。
             // isRecruiting 会被 core/help.js（「关于与帮助」弹窗）、index.html（首页卡片徽标）
             // 与共享层 calligraphy.js（站名题字署名）统一识别为「招募中」。
             maintainers: [
-                { name: "待认领", role: "城市主理人招募中", isRecruiting: true,
-                  github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+                {
+                    name: "待认领", role: "城市主理人招募中", isRecruiting: true,
+                    github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md"
+                }
             ],
             isDefault: false
         },
@@ -536,11 +600,14 @@
             description: "包含运营中的 1、2 号线（共 43 座车站，新华广场为换乘站）与 2 座国铁车站，站序与首末班车取自官方。",
             officialMapUrl: "https://hhhtmetro.com/hsdt/toXlzs",
             registerDate: "2026-10-04",
+            stationCount: 45,
             status: "active",
             // 主理人虚位以待（写法与哈尔滨一致，详见本文件哈尔滨条目的说明）
             maintainers: [
-                { name: "待认领", role: "城市主理人招募中", isRecruiting: true,
-                  github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+                {
+                    name: "待认领", role: "城市主理人招募中", isRecruiting: true,
+                    github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md"
+                }
             ],
             isDefault: false
         },
@@ -560,36 +627,38 @@
             description: "包括1-3号线已开通部分和部分景点（公园）。",
             officialMapUrl: "http://www.sjzmetro.cn/Uploads/Picture/2026/05/08/s69fd5d81962ac.jpg",
             registerDate: "2026-09-26",
-            status: "active",
+            stationCount: 79,
+            status: "updating",
             maintainers: [
                 { name: "已码凉", role: "城市主理人", github: "https://github.com/Yimaliang" }
             ],
             isDefault: false
         },
         "nanjing": {
-                    id: "nanjing",
-                    name: "南京",
-                    themeColor: null, // 未设置，使用系统默认色
-                    svglogo: null, // 已接入 CGoUI 内置 nanjing 官方矢量图标
-                    folder: "./city/nanjing",
-                    mainLogic: "./city/nanjing/nanjing.js",
-                    center: { x: 1400, y: 1900 },
-                    defaultScale: 0.6,
-                    mapSize: { width: 2800, height: 3900 },
-                    searchCity: "南京",
-                    title: "CGo OpenMap - 南京轨道交通线路图",
-                    keywords: "CGo OpenMap, 南京地铁, 南京轨道交通, 线路图",
-                    description: "包含所有已开通运营并接入南京主线网的线路，在建/规划线路（9/11/12/15 号线/外埠宁滁线等）尚未绘制",
-                    officialMapUrl: "https://www.njmetro.com.cn/",
-                    registerDate: "2026-09-30",
-                    status: "active",
-                    maintainers: [
-                        { name: "ohuihuipu", role: "城市主理人", github: "https://github.com/ohuihuipu" },
-                        { name: "文昌路的轨道", role: "原稿资源支持" }
-                    ],
-                    isDefault: false
-                },
-};
+            id: "nanjing",
+            name: "南京",
+            themeColor: null, // 未设置，使用系统默认色
+            svglogo: null, // 已接入 CGoUI 内置 nanjing 官方矢量图标
+            folder: "./city/nanjing",
+            mainLogic: "./city/nanjing/nanjing.js",
+            center: { x: 1400, y: 1900 },
+            defaultScale: 0.6,
+            mapSize: { width: 2800, height: 3900 },
+            searchCity: "南京",
+            title: "CGo OpenMap - 南京轨道交通线路图",
+            keywords: "CGo OpenMap, 南京地铁, 南京轨道交通, 线路图",
+            description: "包含所有已开通运营并接入南京主线网的线路，在建/规划线路（9/11/12/15 号线/外埠宁滁线等）尚未绘制",
+            officialMapUrl: "https://www.njmetro.com.cn/",
+            registerDate: "2026-09-30",
+            stationCount: 259,
+            status: "active",
+            maintainers: [
+                { name: "ohuihuipu", role: "城市主理人", github: "https://github.com/ohuihuipu" },
+                { name: "文昌路的轨道", role: "原稿资源支持" }
+            ],
+            isDefault: false
+        },
+    };
 
     // ==========================================================================
     // 城市激活与状态解析 (City Resolution Logic)

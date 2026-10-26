@@ -26,9 +26,13 @@
         'harbin': { letter: 'H', pinyin: 'Harbin', zh: '哈尔滨', pyInitials: 'heb,hrb' },
         'hohhot': { letter: 'H', pinyin: 'Hohhot', zh: '呼和浩特', pyInitials: 'hhht' },
         'hongkong': { letter: 'H', pinyin: 'Hong Kong (Xianggang)', zh: '香港', pyInitials: 'hk,xg' },
+        'huaian': { letter: 'H', pinyin: 'Huai\'an', zh: '淮安', pyInitials: 'ha' },
+        'huangshi': { letter: 'H', pinyin: 'Huangshi', zh: '黄石', pyInitials: 'hs' },
+        'jiaxing': { letter: 'J', pinyin: 'Jiaxing', zh: '嘉兴', pyInitials: 'jx' },
         'lanzhou': { letter: 'L', pinyin: 'Lanzhou', zh: '兰州', pyInitials: 'lz' },
         'liaoyuan': { letter: 'L', pinyin: 'Liaoyuan', zh: '辽源', pyInitials: 'ly' },
         'macau': { letter: 'M', pinyin: 'Macau (Aomen)', zh: '澳門', pyInitials: 'am,mo,mac' },
+        'nanjing': { letter: 'N', pinyin: 'Nanjing', zh: '南京', pyInitials: 'nj' },
         'nanping': { letter: 'N', pinyin: 'Nanping', zh: '南平', pyInitials: 'np' },
         'qingdao': { letter: 'Q', pinyin: 'Qingdao', zh: '青岛', pyInitials: 'qd' },
         'sanya': { letter: 'S', pinyin: 'Sanya', zh: '三亚', pyInitials: 'sy' },
@@ -37,6 +41,8 @@
         'shenyang': { letter: 'S', pinyin: 'Shenyang', zh: '沈阳', pyInitials: 'sy' },
         'shijiazhuang': { letter: 'S', pinyin: 'Shijiazhuang', zh: '石家庄', pyInitials: 'sjz' },
         'sydney': { letter: 'S', pinyin: 'Sydney (Xini)', zh: '悉尼', pyInitials: 'xn,syd' },
+        'taizhou': { letter: 'T', pinyin: 'Taizhou', zh: '台州', pyInitials: 'tz' },
+        'tianshui': { letter: 'T', pinyin: 'Tianshui', zh: '天水', pyInitials: 'ts' },
         'wenshan': { letter: 'W', pinyin: 'Wenshan', zh: '文山', pyInitials: 'ws' }
     };
 
@@ -128,7 +134,13 @@
         'nanping': { lat: 27.3299, lng: 118.1777 },
         'liaoyuan': { lat: 42.9026, lng: 125.1451 },
         'wenshan': { lat: 23.3692, lng: 104.2440 },
-        'macau': { lat: 22.1987, lng: 113.5439 }
+        'macau': { lat: 22.1987, lng: 113.5439 },
+        'nanjing': { lat: 32.0603, lng: 118.7969 },
+        'jiaxing': { lat: 30.7460, lng: 120.7555 },
+        'tianshui': { lat: 34.5809, lng: 105.7249 },
+        'huaian': { lat: 33.5597, lng: 119.0322 },
+        'huangshi': { lat: 30.2201, lng: 115.0385 },
+        'taizhou': { lat: 28.6564, lng: 121.4208 }
     };
 
     /**
@@ -229,6 +241,47 @@
         return `${Math.floor(days / 365)}年前`;
     }
 
+    // 城市车站总数缓存表（用于概览页面次级排序：车站规模从多到少）
+    const CITY_STATION_COUNTS = {
+        'beijing': 510,
+        'beijing_plan': 643,
+        'shanghai': 414,
+        'shenzhen': 359,
+        'qingdao': 262,
+        'nanjing': 259,
+        'shenyang': 224,
+        'hefei': 211,
+        'changchun': 203,
+        'sydney': 198,
+        'dalian': 156,
+        'lanzhou': 140,
+        'fuzhou': 105,
+        'hongkong': 99,
+        'shijiazhuang': 79,
+        'harbin': 77,
+        'hohhot': 45,
+        'huangshi': 30,
+        'tianshui': 29,
+        'huaian': 23,
+        'sanya': 23,
+        'jiaxing': 21,
+        'taizhou': 15,
+        'macau': 15,
+        'nanping': 10,
+        'wenshan': 10,
+        'liaoyuan': 8
+    };
+
+    /**
+     * 获取城市车站总数
+     */
+    function getCityStationCount(city) {
+        if (!city) return 0;
+        if (typeof city.stationCount === 'number') return city.stationCount;
+        const id = (city.id || '').toLowerCase();
+        return CITY_STATION_COUNTS[id] || 0;
+    }
+
     // 挂载全局与模块对象
     window.recordCityVisit = recordCityVisit;
 
@@ -236,8 +289,10 @@
         CGO_BUILTIN_CITY_ICONS,
         CITY_LETTER_DATA,
         CITY_GEO_COORDS,
+        CITY_STATION_COUNTS,
         RECENT_VIEWS_KEY,
         getCityMeta,
+        getCityStationCount,
         formatCityLogoSvg,
         calculateDistanceKm,
         formatDistance,

@@ -48,9 +48,32 @@
     let locationError = null;
     let cachedCitiesList = [];
 
-    // 视图切换模式管理：'time'（卡片网格）| 'alpha'（字母排序）| 'distance'（距离排序）| 'recent'（最近浏览）
+    // 视图切换模式管理：'time'（卡片网格/概览）| 'alpha'（字母排序）| 'distance'（距离排序）| 'recent'（最近浏览）
     const VIEW_MODE_KEY = 'cgo_openmap_city_sort_mode';
-    let currentViewMode = localStorage.getItem(VIEW_MODE_KEY) || 'time';
+
+    /**
+     * 解析初始视图模式：
+     * 1. 优先读取 URL 查询参数（?tab=xxx、?view=xxx、?sort=xxx）与 hash 锚点（#xxx）；
+     * 2. 若无上述特定参数（如直接点击桌面/启动台应用图标进入），严格遵循默认进入概览页面 ('time')。
+     */
+    function resolveInitialViewMode() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const modeParam = (params.get('tab') || params.get('view') || params.get('sort') || '').toLowerCase();
+            const validModes = ['time', 'alpha', 'distance', 'recent'];
+            if (validModes.includes(modeParam)) return modeParam;
+            if (modeParam === 'letter') return 'alpha';
+            if (modeParam === 'dist') return 'distance';
+
+            const hash = (window.location.hash || '').replace('#', '').trim().toLowerCase();
+            if (validModes.includes(hash)) return hash;
+            if (hash === 'letter') return 'alpha';
+            if (hash === 'dist') return 'distance';
+        } catch (e) { }
+        return 'time';
+    }
+
+    let currentViewMode = resolveInitialViewMode();
 
     // 快捷获取 PortalData 工具方法
     const D = () => window.PortalData || {};
@@ -139,16 +162,45 @@
         );
     }
 
-    // 渲染视图 1：按时间排序的卡片网格
+    // 渲染视图 1：按状态与车站规模排序的卡片网格
     function renderTimeView(cities) {
         const grid = document.getElementById('city-grid');
         if (!grid) return;
 
         const dataTool = D();
         const formatLogo = dataTool.formatCityLogoSvg || ((c) => '<cgo-icon name="train" size="22"></cgo-icon>');
+        const getStationCount = (c) => {
+            if (typeof c.stationCount === 'number') return c.stationCount;
+            if (dataTool.getCityStationCount) return dataTool.getCityStationCount(c);
+            return 0;
+        };
 
-        // 按 registerDate 升序排序
-        const sorted = [...cities].sort((a, b) => {
+        // 状态一级优先级：demo -> active -> updating
+        const STATUS_ORDER = {
+            'demo': 1,
+            'active': 2,
+            'updating': 3
+        };
+        const getStatusRank = (status) => STATUS_ORDER[status] || 99;
+
+        // 过滤掉 offline 城市（不上线）
+        const safeCities = (cities || []).filter(c => c && c.status !== 'offline');
+
+        // 概览页面卡片排序：demo -> active -> updating
+        // active 和 updating 的众多城市里，按照城市车站数目多少进行二级排序 (从多到少降序)
+        const sorted = [...safeCities].sort((a, b) => {
+            const rankA = getStatusRank(a.status);
+            const rankB = getStatusRank(b.status);
+            if (rankA !== rankB) {
+                return rankA - rankB;
+            }
+            // 二级排序：按车站数目从多到少 (降序)
+            const countA = getStationCount(a);
+            const countB = getStationCount(b);
+            if (countB !== countA) {
+                return countB - countA;
+            }
+            // 三级保序：按录入时间升序
             const timeA = new Date(a.registerDate || '1970-01-01').getTime();
             const timeB = new Date(b.registerDate || '1970-01-01').getTime();
             return timeA - timeB;
@@ -156,9 +208,46 @@
 
         grid.innerHTML = sorted.map(city => {
             const isRecruiting = city.status === 'recruiting' || (city.maintainers && city.maintainers.some(m => m.isRecruiting));
-            const badgeClass = isRecruiting ? 'badge-warning' : 'badge-success';
-            const badgeIcon = isRecruiting ? 'sparkle' : 'check-circle';
-            const badgeText = isRecruiting ? '招募主理人' : (city.isDefault ? '核心范例 (已上线)' : '已上线');
+
+            // 根据注册表 status 决定胶囊框内容与视觉样式：
+            // demo - 核心范例
+            // active - 已上线
+            // updating - 更新中
+            // offline - 不显示胶囊
+            let badgeClass = 'badge-success';
+            let badgeIcon = 'check-circle';
+            let badgeText = '已上线';
+            let showBadge = true;
+
+            if (city.status === 'demo') {
+                badgeClass = 'badge-primary';
+                badgeIcon = 'sparkle';
+                badgeText = '核心范例';
+            } else if (city.status === 'updating') {
+                badgeClass = 'badge-warning';
+                badgeIcon = 'refresh';
+                badgeText = '更新中';
+            } else if (city.status === 'offline') {
+                showBadge = false;
+            } else if (city.status === 'active') {
+                badgeClass = 'badge-success';
+                badgeIcon = 'check-circle';
+                badgeText = '已上线';
+            } else if (city.status === 'recruiting') {
+                badgeClass = 'badge-warning';
+                badgeIcon = 'sparkle';
+                badgeText = '招募主理人';
+            } else {
+                if (isRecruiting) {
+                    badgeClass = 'badge-warning';
+                    badgeIcon = 'sparkle';
+                    badgeText = '招募主理人';
+                } else {
+                    badgeClass = 'badge-success';
+                    badgeIcon = 'check-circle';
+                    badgeText = '已上线';
+                }
+            }
 
             // 主理团队展示
             let maintainersHtml = '';
@@ -221,10 +310,11 @@
                                 <span class="city-code-tag">${city.id.toUpperCase()}</span>
                             </div>
                             <div class="city-badges-box">
+                                ${showBadge ? `
                                 <span class="badge ${badgeClass}">
                                     <cgo-icon name="${badgeIcon}" size="12"></cgo-icon>
                                     <span>${badgeText}</span>
-                                </span>
+                                </span>` : ''}
                                 <div class="city-emblem">
                                     ${formatLogo(city)}
                                 </div>
@@ -272,8 +362,11 @@
         const getMeta = dataTool.getCityMeta || (() => ({ letter: '#', pinyin: '', pyInitials: '' }));
         const formatLogo = dataTool.formatCityLogoSvg || ((c) => '<cgo-icon name="train" size="22"></cgo-icon>');
 
+        // 过滤掉 offline 城市（不上线）
+        const safeCities = (cities || []).filter(c => c && c.status !== 'offline');
+
         // 字母排序：A-Z 首字母优先，同字母按 pinyin/id 排序
-        const sorted = [...cities].sort((a, b) => {
+        const sorted = [...safeCities].sort((a, b) => {
             const metaA = getMeta(a);
             const metaB = getMeta(b);
             if (metaA.letter !== metaB.letter) {
@@ -502,8 +595,9 @@
             return;
         }
 
-        // 计算各城市与用户位置的距离并升序排序
-        const sortedWithDist = cachedCitiesList.map(city => {
+        // 过滤掉 offline 城市并计算各城市与用户位置的距离并升序排序
+        const safeCities = (cachedCitiesList || []).filter(c => c && c.status !== 'offline');
+        const sortedWithDist = safeCities.map(city => {
             const coords = coordsMap[city.id];
             let dist = Infinity;
             if (coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
@@ -651,7 +745,7 @@
         const dataTool = D();
         const visits = (dataTool.getRecentVisits ? dataTool.getRecentVisits() : []);
         const cityMap = new Map(cachedCitiesList.map(c => [c.id, c]));
-        const validVisits = visits.filter(v => cityMap.has(v.id));
+        const validVisits = visits.filter(v => cityMap.has(v.id) && cityMap.get(v.id).status !== 'offline');
 
         if (validVisits.length === 0) {
             container.innerHTML = `
@@ -861,8 +955,8 @@
      */
     function initPortal() {
         const registry = window.CITY_REGISTRY || {};
-        // 仅展示有效上线城市；暂未达标下架或标记隐藏的城市（如合肥）不在门户展示，但保留全部底层程序代码与路由
-        const cities = Object.values(registry).filter(city => !city.hidden && city.status !== 'delisted' && city.id !== 'hefei');
+        // 仅展示有效上线与更新中城市；标记隐藏、下架或 offline（不上线）的城市在所有门户视图中均不展示
+        const cities = Object.values(registry).filter(city => !city.hidden && city.status !== 'delisted' && city.status !== 'offline');
         cachedCitiesList = cities;
 
         const countBadge = document.getElementById('city-count-badge');
@@ -885,8 +979,17 @@
         if (distBtn) distBtn.addEventListener('click', () => updateViewModeUI('distance'));
         if (recentBtn) recentBtn.addEventListener('click', () => updateViewModeUI('recent'));
 
-        // 初始化当前选中的视图
+        // 初始化当前选中的视图（支持从 URL 参数或 shortcuts 中直达指定 tab）
+        currentViewMode = resolveInitialViewMode();
         updateViewModeUI(currentViewMode);
+
+        // 监听浏览器前进/后退或 Hash 锚点变化切换对应视图
+        window.addEventListener('popstate', () => {
+            const mode = resolveInitialViewMode();
+            if (mode !== currentViewMode) {
+                updateViewModeUI(mode);
+            }
+        });
 
         // 为去 viewBox 的自定义 SVG 图标执行边界校准 (自动校准为精确图形外包围盒)
         requestAnimationFrame(() => {
