@@ -19,7 +19,7 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         TRAM_LINES: ["LY-M2"],
-        dataFiles: {},
+        dataFiles: { stanameCsvUrl: "./city/liaoyuan/staname.csv" },
 
         isTramLine(lineId) { return this.TRAM_LINES.includes(lineId); },
         isTramStation(station) {

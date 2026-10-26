@@ -26,7 +26,7 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         TRAM_LINES: ["MC-TAIPA", "MC-SEAC", "MC-HENGQIN"],
-        dataFiles: {},
+        dataFiles: { stanameCsvUrl: "./city/macau/staname.csv" },
 
         isTramLine(lineId) { return this.TRAM_LINES.includes(lineId); },
         isTramStation(station) {

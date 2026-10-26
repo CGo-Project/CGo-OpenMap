@@ -26,7 +26,7 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         TRAM_LINES: ["SY-T1"],
-        dataFiles: {},
+        dataFiles: { stanameCsvUrl: "./city/sanya/staname.csv" },
 
         isTramLine(lineId) {
             return this.TRAM_LINES.includes(lineId);
