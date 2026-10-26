@@ -321,6 +321,19 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "南京轨道交通",
+      "short_name": "南京",
+      "description": "查看南京地铁 1–7、10 号线与 S1/S3/S6/S7/S8/S9 及宁马线线网图",
+      "url": "./main.html?city=nanjing",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
