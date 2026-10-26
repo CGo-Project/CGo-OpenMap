@@ -192,10 +192,27 @@ window.OpenMapEditor.ViewportLayer = (function () {
     function snapPoint(x, y) {
         if (!state.snapEnabled) return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
         var g = state.gridSize || 5;
+        // 低缩放时网格会按 LOD 变稀，吸附步长必须跟着变，否则点会落在可见网格线之间
+        if (window.OpenMapEditor && window.OpenMapEditor.GridLayer &&
+            typeof window.OpenMapEditor.GridLayer.getEffectiveGridSize === 'function') {
+            var eff = window.OpenMapEditor.GridLayer.getEffectiveGridSize();
+            if (eff > g) g = eff;
+        }
         return {
             x: Math.round(x / g) * g,
             y: Math.round(y / g) * g
         };
+    }
+
+    /** 当前生效的吸附步长（供绘制工具在 45° 约束后继续对齐网格） */
+    function getSnapStep() {
+        var g = state.gridSize || 5;
+        if (window.OpenMapEditor && window.OpenMapEditor.GridLayer &&
+            typeof window.OpenMapEditor.GridLayer.getEffectiveGridSize === 'function') {
+            var eff = window.OpenMapEditor.GridLayer.getEffectiveGridSize();
+            if (eff > g) g = eff;
+        }
+        return g;
     }
 
     /**
@@ -295,6 +312,50 @@ window.OpenMapEditor.ViewportLayer = (function () {
             }
         });
 
+        dom.viewport.addEventListener('mousedown', function (e) {
+            var wantPan = (e.button === 1) || (e.button === 0 && spaceHeld);
+            if (!wantPan) return;
+            if (e.target.closest('.viewport-hud')) return;
+            panDrag = {
+                startX: e.clientX, startY: e.clientY,
+                panX: state.pan.x, panY: state.pan.y
+            };
+            isPanning = true;
+            setPanCursor(true);
+            e.preventDefault();              // 压掉浏览器中键「自动滚动」圆钮与拖选文字
+        });
+
+        window.addEventListener('mousemove', function (e) {
+            if (!panDrag) return;
+            // 兜底：在窗口外松开鼠标时收不到 mouseup，避免平移「粘住」
+            if (e.buttons === 0) {
+                panDrag = null;
+                isPanning = false;
+                setPanCursor(false);
+                return;
+            }
+            state.pan.x = panDrag.panX + (e.clientX - panDrag.startX);
+            state.pan.y = panDrag.panY + (e.clientY - panDrag.startY);
+            applyTransform();
+        });
+
+        window.addEventListener('mouseup', function (e) {
+            if (!panDrag) return;
+            if (e.button !== 0 && e.button !== 1) return;
+            panDrag = null;
+            isPanning = false;
+            setPanCursor(false);             // 空格仍按住时 setPanCursor 会保留手形光标
+        });
+
+        // 失焦（切标签页、弹窗抢焦点）时如果漏了 keyup，空格会被"卡住"，
+        // 表现为左键点击全被当成平移、画不了东西 —— 这里兜底复位。
+        window.addEventListener('blur', function () {
+            spaceHeld = false;
+            panDrag = null;
+            isPanning = false;
+            if (dom.viewport) dom.viewport.classList.remove('panning');
+        });
+
         // 响应窗口尺寸重排
         window.addEventListener('resize', function () {
             applyTransform();
@@ -317,6 +378,7 @@ window.OpenMapEditor.ViewportLayer = (function () {
         centerOn: centerOn,
         applyTransform: applyTransform,
         snapPoint: snapPoint,
+        getSnapStep: getSnapStep,
         snapPointToRays: snapPointToRays,
         onTransform: onTransform,
         getScale: function () { return state.scale; },

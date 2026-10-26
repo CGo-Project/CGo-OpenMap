@@ -254,8 +254,16 @@
     /**
      * 将 project.segments 的折点最新改动写回对应的 project.lines 属性中
      */
-    function syncSegmentsToLines(currentProject) {
+    /**
+     * 把编辑用的 segments 回代成线路的 pathPoints（走向点阵）。
+     *
+     * opts.onlyExistingPath = true 时，**只回代源码里本来就有 pathPoints 的线路**：
+     * 站序驱动（只有 stationIds）的线路没有点阵，凭空生成 pathPoints 会把它写进源文件，
+     * 并让走向改由点阵决定 —— 那等于悄悄改掉城市数据。
+     */
+    function syncSegmentsToLines(currentProject, opts) {
         if (!currentProject || !currentProject.lines) return;
+        var onlyExistingPath = !!(opts && opts.onlyExistingPath);
         var segs = currentProject.segments || [];
         var segsByLine = {};
         segs.forEach(function (s) {
@@ -268,14 +276,27 @@
             var lineSegs = segsByLine[line.id];
             if (!lineSegs || !lineSegs.length) return;
 
+            if (onlyExistingPath) {
+                var snapLine = null;
+                var snapLines = (originalSnapshot && originalSnapshot.lines) || [];
+                for (var si = 0; si < snapLines.length; si++) {
+                    if (snapLines[si].id === line.id) { snapLine = snapLines[si]; break; }
+                }
+                if (!snapLine) return;
+                var hadPath = Object.keys(snapLine).some(function (k) {
+                    return k === 'pathPoints' || /^pathPoints-/.test(k);
+                });
+                if (!hadPath) return;   // 站序驱动的线路：不生成点阵
+            }
+
             lineSegs.forEach(function (s) {
                 var cleanPts = (s.points || []).map(function (p) {
                     var pt = {
-                        x: Math.round(Number(p.x) * 10) / 10,
-                        y: Math.round(Number(p.y) * 10) / 10
+                        x: Math.round(Number(p.x) * 100) / 100,
+                        y: Math.round(Number(p.y) * 100) / 100
                     };
                     if (p.nid) pt.nid = p.nid;
-                    if (p.r !== undefined && p.r !== 18) pt.r = p.r;
+                    if (p.r !== undefined) pt.r = p.r;
                     return pt;
                 });
 
@@ -298,6 +319,11 @@
         });
     }
 
+    /** 写回坐标统一压到 2 位小数：既是城市数据的书写精度，也避免浮点噪声被写进源文件 */
+    function r2(v) {
+        return Math.round(Number(v) * 100) / 100;
+    }
+
     /**
      * 计算车站改动条目字典 (用于外科手术回写)
      *
@@ -316,7 +342,7 @@
             var orig = origNodes[nid];
             if (!orig) {
                 // 新增车站：只写入非默认的可选字段，保持与源码风格一致
-                var item = { x: curr.x, y: curr.y, cn: curr.cn, en: curr.en };
+                var item = { x: r2(curr.x), y: r2(curr.y), cn: curr.cn, en: curr.en };
                 // align：仅在非默认 'top' 时写入
                 if (curr.align && curr.align !== 'top') item.align = curr.align;
                 // offset：仅在非零时写入
@@ -341,8 +367,11 @@
             var offsetChanged = (currOffX !== origOffX || currOffY !== origOffY);
             var hideLabelChanged = (!!curr.hideLabel !== !!orig.hideLabel);
             var textScaleChanged = (JSON.stringify(curr.textScale || null) !== JSON.stringify(orig.textScale || null));
-            var markerChanged = (curr.marker !== orig.marker);
-            var haloChanged = (curr.halo !== orig.halo);
+            // marker / halo 是对象：必须按值比较。用引用比较时，快照是深拷贝，
+            // curr.marker !== orig.marker 永远成立 → 只要车站带 marker（如悉尼）就全城判脏，
+            // 零编辑也会整份重写源文件，把人工排版全冲掉。
+            var markerChanged = (JSON.stringify(curr.marker || null) !== JSON.stringify(orig.marker || null));
+            var haloChanged = (JSON.stringify(curr.halo || null) !== JSON.stringify(orig.halo || null));
 
             var changed = (curr.x !== orig.x || curr.y !== orig.y ||
                 curr.cn !== orig.cn || curr.en !== orig.en ||
@@ -351,8 +380,10 @@
                 markerChanged || haloChanged);
 
             if (changed) {
-                // 从必须字段开始
-                var patch = { x: curr.x, y: curr.y, cn: curr.cn, en: curr.en };
+                // 稀疏 patch：只带真正需要的字段，其余交给 patchEntries 以「源码原条目」为底合并。
+                // 绝不能在这里以编辑器节点对象为底做全量 patch —— 那是编辑器内部模型，
+                // 带着 id / align 默认值 / textScale:null 等不属于城市数据的字段，会污染源文件。
+                var patch = { x: r2(curr.x), y: r2(curr.y), cn: curr.cn, en: curr.en };
 
                 // align：若原始有非默认值，或当前是非默认值，或用户实际改动了，则写入
                 var origAlignNonDefault = orig.align && orig.align !== 'top';
@@ -376,6 +407,7 @@
                 }
 
                 if (curr.hideLabel) patch.hideLabel = true;
+                else patch.hideLabel = null;      // null = 从源码条目里删掉该字段（取消勾选）
                 if (curr.textScale) patch.textScale = curr.textScale;
                 if (curr.marker) patch.marker = curr.marker;
                 if (curr.halo) patch.halo = curr.halo;
@@ -411,8 +443,20 @@
         }
 
         var origSrc = rawSources['data_stations.js'] || '';
-        var ops = { update: dirty };
+        // 新增的车站在源码里还没有这个键：patchEntries 的 update 找不到键会直接跳过，
+        // 必须改走 append 追加，否则「在线插站」新建的车站会被静默丢弃（站序里留下悬空 ID）。
+        var newKeys = Object.keys(dirty).filter(function (nid) {
+            return !originalSnapshot.nodes || !originalSnapshot.nodes[nid];
+        });
+        var updateOnly = {};
+        Object.keys(dirty).forEach(function (nid) {
+            if (newKeys.indexOf(nid) === -1) updateOnly[nid] = dirty[nid];
+        });
+        var ops = { update: updateOnly };
         if (deleted.length) ops.remove = deleted;
+        if (newKeys.length) {
+            ops.append = newKeys.map(function (nid) { return { key: nid, value: dirty[nid] }; });
+        }
         var patched = io.patchEntries(origSrc, 'stationsData', ops);
         return {
             dirtyCount: dirtyCount,
@@ -425,7 +469,7 @@
      */
     function computeDirtyLines(currentProject) {
         if (!originalSnapshot || !currentProject) return {};
-        syncSegmentsToLines(currentProject);
+        syncSegmentsToLines(currentProject, { onlyExistingPath: true });
 
         var dirty = {};
         var origLines = originalSnapshot.lines || [];
@@ -445,7 +489,9 @@
 
             // 比较属性：color, name, useStrictRounding, isLoop
             var changed = false;
-            if (curr.color !== orig.color || curr.name !== orig.name ||
+            if (String(curr.color || '').toLowerCase() !== String(orig.color || '').toLowerCase() ||
+                curr.name !== orig.name ||
+                String(curr.company || '') !== String(orig.company || '') ||
                 !!curr.useStrictRounding !== !!orig.useStrictRounding ||
                 !!curr.isLoop !== !!orig.isLoop) {
                 changed = true;
@@ -499,8 +545,10 @@
 
             if (changed) {
                 var patch = Object.assign({}, orig);
-                if (curr.color !== orig.color) patch.color = curr.color;
+                // 色号按大小写无关比较：#e4002b 与 #E4002B 视为同一个色，避免无意义的整行 diff
+                if (String(curr.color || '').toLowerCase() !== String(orig.color || '').toLowerCase()) patch.color = curr.color;
                 if (curr.name !== orig.name) patch.name = curr.name;
+                if (String(curr.company || '') !== String(orig.company || '')) patch.company = curr.company;
                 if (curr.useStrictRounding !== orig.useStrictRounding) {
                     if (curr.useStrictRounding) patch.useStrictRounding = true;
                     else delete patch.useStrictRounding;
@@ -539,7 +587,30 @@
         }
 
         var origSrc = rawSources['data_lines.js'] || '';
-        var patched = io.patchEntries(origSrc, 'linesData', { update: dirty });
+
+        // 新增线路在源码里还没有这个下标/键：patchEntries 的 update 找不到会直接跳过，
+        // 必须改走 append 追加，否则「新增线路」在写回时会被静默丢弃。
+        var origLineIds = {};
+        ((originalSnapshot && originalSnapshot.lines) || []).forEach(function (l) {
+            if (l && l.id) origLineIds[l.id] = true;
+        });
+        var newLineKeys = Object.keys(dirty).filter(function (lid) { return !origLineIds[lid]; });
+        var updateOnly = {};
+        Object.keys(dirty).forEach(function (lid) {
+            if (newLineKeys.indexOf(lid) === -1) updateOnly[lid] = dirty[lid];
+        });
+
+        var ops = { update: updateOnly };
+        if (newLineKeys.length) {
+            ops.append = newLineKeys.map(function (lid) {
+                var clean = {};
+                Object.keys(dirty[lid]).forEach(function (k) {
+                    if (k.charAt(0) !== '_') clean[k] = dirty[lid][k];   // 派生字段不写回
+                });
+                return { value: clean };
+            });
+        }
+        var patched = io.patchEntries(origSrc, 'linesData', ops);
         return {
             dirtyCount: dirtyCount,
             patchedSource: patched
@@ -589,6 +660,41 @@
         return handle;
     }
 
+    /**
+     * 从自动保存的会话里恢复「城市维护」上下文。
+     *
+     * 编辑器 F5 之后，工程本身可以从 localStorage 还原，但**原始源码必须一起还原**：
+     * 没有 rawSources 就只能导出新文件，无法再做「条目级无损回写」。
+     */
+    function restoreSession(state) {
+        if (!state || !state.cityId || !state.sources) return false;
+        currentLoadedCity = {
+            id: state.cityId,
+            name: state.cityName || state.cityId,
+            meta: state.meta || null,
+            base: state.base || ''
+        };
+        rawSources = state.sources || {};
+        originalSnapshot = state.snapshot ? JSON.parse(JSON.stringify(state.snapshot)) : null;
+        return true;
+    }
+
+    /**
+     * 清空「城市维护」上下文。
+     * 新建画布 / 导入工程 JSON 之后必须调用：否则后续会把新工程当成旧城市的改动，
+     * 一旦 F5 自动恢复或点「写回城市」，就可能把不相干的数据写进那个城市目录。
+     */
+    function resetContext() {
+        currentLoadedCity = null;
+        rawSources = {};
+        originalSnapshot = null;
+    }
+
+    /** 供自动保存使用：拿到"载入时的原始快照"，恢复后脏判定才有基准 */
+    function getSessionSnapshot() {
+        return originalSnapshot ? JSON.parse(JSON.stringify(originalSnapshot)) : null;
+    }
+
     function getLinkedDirectoryHandle() {
         return linkedDirectoryHandle;
     }
@@ -598,30 +704,52 @@
     }
 
     /**
-     * 智能定位目标城市的根目录（无论用户选择的是 CGo-OpenMap/ 根目录还是 city/ 或 city/<id>/）
+     * 定位写回目标目录：支持用户在 picker 里选 仓库根目录 / city/ / city/<id>/ 三种情况。
+     *
+     * ⚠️ 只在**能确认**「该目录确实是当前城市目录」时才返回：目录名必须是 cityId，
+     * 且里面存在 data_stations.js。绝不能「猜不到就回落到用户选中的目录」——
+     * 那会把某个城市的数据文件写到别的目录（甚至别的城市）里。
      */
     async function resolveCityDir(handle, cityId) {
         if (!handle) return null;
-        if (handle.name === cityId) return handle;
 
-        // 尝试检测是否存在子目录 city/
-        try {
-            var citySubdir = await handle.getDirectoryHandle('city');
-            if (citySubdir && cityId) {
-                try {
-                    return await citySubdir.getDirectoryHandle(cityId);
-                } catch (e) { }
-            }
-        } catch (e) { }
-
-        // 尝试检测根目录下是否存在以 cityId 命名的子目录
-        if (cityId) {
+        async function isCityDir(dir, expectName) {
+            if (!dir) return false;
+            if (expectName && dir.name && dir.name !== expectName) return false;
             try {
-                return await handle.getDirectoryHandle(cityId);
-            } catch (e) { }
+                await dir.getFileHandle('data_stations.js');
+                return true;
+            } catch (e) {
+                return false;   // 这个目录里没有城市数据文件
+            }
         }
 
-        return handle;
+        // 1) 直接选中了 city/<id>/
+        if (cityId && await isCityDir(handle, cityId)) return handle;
+
+        // 2) 选中了仓库根目录：<root>/city/<id>/
+        if (cityId) {
+            try {
+                var citySubdir = await handle.getDirectoryHandle('city');
+                var nested = await citySubdir.getDirectoryHandle(cityId);
+                if (await isCityDir(nested, cityId)) return nested;
+            } catch (e) { /* 没有 city/<id> 这一层，继续试下一种 */ }
+        }
+
+        // 3) 选中了 city/ 目录：<city>/<id>/
+        if (cityId) {
+            try {
+                var direct = await handle.getDirectoryHandle(cityId);
+                if (await isCityDir(direct, cityId)) return direct;
+            } catch (e) { /* 继续 */ }
+        }
+
+        // 4) 认不出来就明确报错，绝不乱写
+        var picked = handle.name || '(未命名目录)';
+        var expect = cityId ? ('city/' + cityId + '/ 或 city/') : 'city/ 目录';
+        throw new Error('无法确认写回目录：你选的是「' + picked + '」，但没在这里找到' +
+            (cityId ? '城市「' + cityId + '」的数据' : '城市数据') +
+            '。请改为选择 ' + expect + '，以免把数据写到其它目录或其它城市。');
     }
 
     /**
@@ -672,8 +800,12 @@
         getLinkedDirectoryHandle: getLinkedDirectoryHandle,
         setLinkedDirectoryHandle: setLinkedDirectoryHandle,
         saveDirectToLocal: saveDirectToLocal,
+        resolveCityDir: resolveCityDir,      // 暴露给自检：验证「只会写进确认过的城市目录」
         getCurrentLoadedCity: function () { return currentLoadedCity; },
         getRawSources: function () { return rawSources; },
+        restoreSession: restoreSession,
+        resetContext: resetContext,
+        getSessionSnapshot: getSessionSnapshot,
         getOriginalSnapshot: function () { return originalSnapshot; }
     };
 });

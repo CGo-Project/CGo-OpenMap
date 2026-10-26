@@ -106,6 +106,16 @@ window.OpenMapEditor.GridLayer = (function () {
     }
 
     /**
+     * 实际画出来的网格步长（低缩放时会按 LOD 倍增以避免摩尔纹）。
+     * 吸附必须用它，否则缩小时吸附到 10px 而画面上的线是每 20px 一条，
+     * 点就会落在两条可见网格线之间，看起来"没吸附上"。
+     * @returns {number}
+     */
+    function getEffectiveGridSize() {
+        return state.lastRenderedStep > 0 ? state.lastRenderedStep : state.gridSize;
+    }
+
+    /**
      * 渲染完整网格与坐标刻度
      * @param {Object} [options]
      * @param {number} [options.width]
@@ -401,6 +411,7 @@ window.OpenMapEditor.GridLayer = (function () {
         isVisible: isVisible,
         setGridSize: setGridSize,
         getGridSize: getGridSize,
+        getEffectiveGridSize: getEffectiveGridSize,
         renderSmartGuides: renderSmartGuides,
         clearSmartGuides: clearSmartGuides
     };

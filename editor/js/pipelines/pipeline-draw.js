@@ -249,8 +249,99 @@
      * @param {string|null} targetNodeId 点击命中的已有节点 ID (若有)
      * @returns {{ updated: boolean, action: string, createdId?: string, lineId?: string }}
      */
-    function handleCanvasClick(project, worldPos, targetNodeId) {
+    /**
+     * 把「起点 → 指针」约束到 45° 的整数倍方向（0/45/90/135…，含水平与垂直）。
+     * 做法是把指针**投影到约束射线**上，所以拖动时距离仍然跟手，方向被锁死。
+     * @returns {{x:number,y:number}} 约束后的点（未给起点时原样返回）
+     */
+    function constrainTo45(start, point, gridSize) {
+        if (!start || !point) return point;
+        var dx = point.x - start.x;
+        var dy = point.y - start.y;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        if (!len) return { x: point.x, y: point.y };
+        var step = Math.PI / 4;
+        var ang = Math.round(Math.atan2(dy, dx) / step) * step;
+        var ux = Math.cos(ang), uy = Math.sin(ang);
+        var proj = dx * ux + dy * uy;
+        if (proj < 0) proj = 0;
+
+        // 同时开着网格吸附时，长度也要量化，才能"既锁方向又落在网格线上"：
+        //   水平/垂直 → 长度取网格倍数；
+        //   45° 对角 → 让 dx、dy 同时是网格倍数（沿对角线的步长是 g·√2）。
+        var g = Number(gridSize) || 0;
+        if (g > 0) {
+            var axisAligned = Math.abs(ux) < 1e-6 || Math.abs(uy) < 1e-6;
+            if (axisAligned) {
+                proj = Math.round(proj / g) * g;
+            } else {
+                proj = Math.round(proj / (g * Math.SQRT2)) * g * Math.SQRT2;
+            }
+        }
+
+        return {
+            x: Math.round((start.x + ux * proj) * 100) / 100,
+            y: Math.round((start.y + uy * proj) * 100) / 100
+        };
+    }
+
+    /**
+     * 草稿状态查询：编辑器据此实时画出"还没落定"的那一段。
+     * @returns {{toolType:string, startNodeId:string|null, startPoint:{x,y}, currentPoint:{x,y}}|null}
+     */
+    function getDraft() {
+        if (!draftSegment) return null;
+        return {
+            toolType: draftSegment.toolType,
+            startNodeId: draftSegment.startNodeId || null,
+            startPoint: { x: draftSegment.startPoint.x, y: draftSegment.startPoint.y },
+            currentPoint: { x: draftSegment.currentPoint.x, y: draftSegment.currentPoint.y }
+        };
+    }
+
+    /** 鼠标移动时更新草稿终点（只动内存，不含渲染） */
+    function updateDraftPointer(worldPos) {
+        if (!draftSegment || !worldPos) return false;
+        draftSegment.currentPoint = { x: worldPos.x, y: worldPos.y };
+        return true;
+    }
+
+    /**
+     * 按当前折角类型把「起点 → 指针」路由成预览折点，与最终落笔用的是**同一个路由函数**，
+     * 因此预览所见即所得。
+     * @returns {Array<{x:number,y:number}>}
+     */
+    function getDraftPreviewPoints(project, slope) {
+        if (!draftSegment) return [];
+        var router = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.SegmentRouter) ||
+            (typeof SegmentRouter !== 'undefined' ? SegmentRouter : null);
+        var p1 = draftSegment.startNodeId && project && project.nodes[draftSegment.startNodeId]
+            ? project.nodes[draftSegment.startNodeId]
+            : draftSegment.startPoint;
+        var p2 = draftSegment.currentPoint;
+        if (!p1 || !p2) return [];
+        var segSlope = slope || (project && project.slope) || null;
+        var pts = (router && typeof router.routeBetweenByType === 'function')
+            ? router.routeBetweenByType(p1, p2, draftSegment.toolType, false, segSlope)
+            : [p1, p2];
+        return (pts || []).map(function (p) { return { x: p.x, y: p.y }; });
+    }
+
+    function hasDraft() {
+        return !!draftSegment;
+    }
+
+    /**
+     * @param {object} [opts]
+     * @param {number} [opts.button] 触发本次点击的鼠标键：只有左键（0）才会落笔。
+     *        中键是漫游键、右键是菜单/结束绘制，绝不能在画布上留下点或线段。
+     */
+    function handleCanvasClick(project, worldPos, targetNodeId, opts) {
         if (!project) return { updated: false, action: 'none' };
+        // 双重保险：即便上层事件守卫被绕过，这里也不让中键/右键落笔
+        if (opts && opts.button !== undefined && opts.button !== null && opts.button !== 0) {
+            return { updated: false, action: 'ignored_button' };
+        }
         var router = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.SegmentRouter) ||
             (typeof SegmentRouter !== 'undefined' ? SegmentRouter : null);
         var pModel = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.ProjectModel) ||
@@ -316,6 +407,39 @@
                 var p1 = draftSegment.startNodeId ? project.nodes[draftSegment.startNodeId] : draftSegment.startPoint;
                 var p2 = targetNodeId ? project.nodes[targetNodeId] : worldPos;
 
+                // 零长度守卫：原地再点一次不算画线，也不打断连续绘制
+                var sameNode = draftSegment.startNodeId && targetNodeId && draftSegment.startNodeId === targetNodeId;
+                var samePoint = Math.hypot((p2.x || 0) - (p1.x || 0), (p2.y || 0) - (p1.y || 0)) < 1;
+                if (sameNode || samePoint) {
+                    return { updated: false, action: 'draft_same_point' };
+                }
+
+                var lineId = activeLineId || (project.lines[0] && project.lines[0].id) || 'L1';
+                var targetLine = (project.lines || []).find(function (l) { return l.id === lineId; });
+                var addStationToLine = function (nid) {
+                    if (!nid || !project.nodes[nid] || project.nodes[nid].type === 'temp') return;
+                    if (!targetLine) return;
+                    if (!Array.isArray(targetLine.stationIds)) targetLine.stationIds = [];
+                    if (targetLine.stationIds.indexOf(nid) === -1) targetLine.stationIds.push(nid);
+                };
+
+                // ---- 自由折线（segaxis）：把新点**追加到当前这条折线**，而不是另起一段 ----
+                // 另起一段时两段只在端点处相切，拐角外侧会留出楔形缺口，看起来就是"端点没连起来"。
+                if (activeTool === 'segaxis' && draftSegment.segmentId) {
+                    var liveSeg = (project.segments || []).find(function (sg) { return sg.id === draftSegment.segmentId; });
+                    if (liveSeg && Array.isArray(liveSeg.points) && liveSeg.points.length >= 2) {
+                        var tail = { x: p2.x, y: p2.y };
+                        if (targetNodeId) tail.nid = targetNodeId;
+                        liveSeg.points.push(tail);
+                        addStationToLine(targetNodeId);
+                        draftSegment.startNodeId = targetNodeId || null;
+                        draftSegment.startPoint = { x: p2.x, y: p2.y };
+                        draftSegment.currentPoint = { x: p2.x, y: p2.y };
+                        return { updated: true, action: 'extend_segment', createdId: liveSeg.id, chained: true };
+                    }
+                }
+
+                // ---- 其余折角类型：按类型路由出一段，再链式继续 ----
                 var routeResult = (router && typeof router.routeBetweenByType === 'function')
                     ? router.routeBetweenByType(p1, p2, activeTool, false, project.slope)
                     : [p1, p2];
@@ -325,7 +449,6 @@
                 if (targetNodeId) segPts[segPts.length - 1].nid = targetNodeId;
 
                 var segId = pModel ? pModel.nextId(project, 'seg_') : ('seg_' + (++project.idSeq || 1));
-                var lineId = activeLineId || (project.lines[0] && project.lines[0].id) || 'L1';
 
                 project.segments.push({
                     id: segId,
@@ -336,20 +459,20 @@
                 });
 
                 // 若首尾为车站节点，自动同步进线路站序
-                var targetLine = (project.lines || []).find(function (l) { return l.id === lineId; });
-                if (targetLine) {
-                    if (!Array.isArray(targetLine.stationIds)) targetLine.stationIds = [];
-                    [draftSegment.startNodeId, targetNodeId].forEach(function (nid) {
-                        if (nid && project.nodes[nid] && project.nodes[nid].type !== 'temp') {
-                            if (targetLine.stationIds.indexOf(nid) === -1) {
-                                targetLine.stationIds.push(nid);
-                            }
-                        }
-                    });
-                }
+                addStationToLine(draftSegment.startNodeId);
+                addStationToLine(targetNodeId);
 
-                draftSegment = null;
-                return { updated: true, action: 'create_segment', createdId: segId };
+                // 连续绘制（CAD 习惯）：不清空草稿，把刚画到的终点当作下一段的起点，
+                // 于是可以一路点下去不断线；要结束就按 Esc 或右键。
+                draftSegment = {
+                    startNodeId: targetNodeId || null,
+                    startPoint: { x: p2.x, y: p2.y },
+                    currentPoint: { x: p2.x, y: p2.y },
+                    toolType: activeTool,
+                    // 自由折线记住这条折线，后续点击就能继续延长它
+                    segmentId: (activeTool === 'segaxis') ? segId : null
+                };
+                return { updated: true, action: 'create_segment', createdId: segId, chained: true };
             }
         }
 
@@ -405,6 +528,11 @@
         setActiveLine: setActiveLine,
         findNearestLineProjection: findNearestLineProjection,
         insertStationOnLine: insertStationOnLine,
+        constrainTo45: constrainTo45,
+        getDraft: getDraft,
+        hasDraft: hasDraft,
+        updateDraftPointer: updateDraftPointer,
+        getDraftPreviewPoints: getDraftPreviewPoints,
         handleCanvasClick: handleCanvasClick,
         cancelDraft: cancelDraft,
         getActiveTool: function () { return activeTool; },

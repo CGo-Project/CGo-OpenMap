@@ -558,12 +558,35 @@ window.CityProjectIO = (function () {
                 original = new Function(`return (${entry.raw});`)();
             } catch (err) { original = null; }
 
-            if (original && typeof original === 'object') {
+            if (original && typeof original === 'object' && !Array.isArray(original)) {
+                // update[key] 视为「对原条目的局部覆盖」：以源码里的原文为底合并，
+                // 而不是整体替换。否则稀疏 patch（例如只带 x/y/cn/en）会因为键数与原条目
+                // 不一致，让 diffContainerEdits 回退成整条重写，把没提及的字段整片删掉 ——
+                // 普通站的 type:"dot" 就是这么丢的，而 type 一丢，引擎就拿不到尺寸类，
+                // 车站圆圈会被 .station svg 的 width:100% 撑成巨大图元。
+                // 约定：值为 null 表示「从条目中删除该字段」。
+                const patchVal = update[key] || {};
+                const merged = {};
+                Object.keys(original).forEach(k => { merged[k] = original[k]; });
+                Object.keys(patchVal).forEach(k => {
+                    if (patchVal[k] === null || patchVal[k] === undefined) delete merged[k];
+                    else merged[k] = patchVal[k];
+                });
+                // _ 前缀是运行期派生字段（_lineColors / _srcCanvasW…），一律不写回源文件
+                Object.keys(merged).forEach(k => { if (k.charAt(0) === '_') delete merged[k]; });
+
                 const nested = [];
-                if (diffContainerEdits(text, entry.valueStart, original, update[key], nested)) {
+                if (diffContainerEdits(text, entry.valueStart, original, merged, nested)) {
                     nested.forEach(e => edits.push(e));
                     return;
                 }
+                const mergedStyle = detectStyle(entry.raw, indentAt(text, entry.entryStart));
+                edits.push({
+                    start: entry.valueStart,
+                    end: entry.valueEnd,
+                    text: formatEntryValue(merged, mergedStyle)
+                });
+                return;
             }
 
             const style = detectStyle(entry.raw, indentAt(text, entry.entryStart));

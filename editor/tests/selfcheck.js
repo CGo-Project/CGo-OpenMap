@@ -1182,6 +1182,259 @@ section('Milestone 3 多选框选与智能对齐参考线');
     const delPatch = PipelineSurgical.patchStationsSource(delCity.project);
     check(!delPatch.patchedSource.includes('"D2"') && !delPatch.patchedSource.includes("'D2'"), 'Bug2 Fix: 删除 D2 后回写源码中已不包含 D2 条目');
     check(delPatch.patchedSource.includes('"D1"') || delPatch.patchedSource.includes("'D1'"), 'Bug2 Fix: 未删除的 D1 仍完整保留在回写结果中');
+
+    // 8. Bug 3 fix: 车站回写曾用「稀疏 patch」（只带 x/y/cn/en）。键数与原条目不一致时
+    //    patchEntries 会回退成整条重写，把没进 patch 的字段整片删掉 —— 尤其是普通站的
+    //    type:"dot"（默认值不会进 patch）。type 一丢，引擎的 className 就没有尺寸类
+    //    （css 里只有 .dot/.tsf 这些类带 width/height），.station svg 的 width:100%
+    //    会把车站圆圈撑成巨大图元。这正是「写回后圆圈异常大」的根因。
+    const rawPlain = `const stationsData = {\n    "P1": {\n        type: "dot",\n        x: 100,\n        y: 200,\n        cn: "普通站",\n        en: "Plain",\n        offset: { x: 0, y: 0 },\n        textScale: { cn: 1.2, en: 1 },\n        marker: { parts: ["A"] }\n    }\n};\n`;
+    const plainCity = PipelineSurgical.init('plaincity', {
+        'data_stations.js': rawPlain,
+        'data_lines.js': 'const linesData = [];'
+    }, {
+        stationsData: {
+            P1: {
+                type: 'dot', x: 100, y: 200, cn: '普通站', en: 'Plain',
+                offset: { x: 0, y: 0 }, textScale: { cn: 1.2, en: 1 }, marker: { parts: ['A'] }
+            }
+        },
+        linesData: []
+    });
+    plainCity.project.nodes['P1'].x = 150;   // 只挪位置
+    const plainPatch = PipelineSurgical.patchStationsSource(plainCity.project);
+    check(/type\s*:\s*["']dot["']/.test(plainPatch.patchedSource),
+        'Bug3 Fix: 仅改坐标时普通站的 type:"dot" 不得丢失（丢失会让圆圈变巨大）');
+    check(/offset\s*:/.test(plainPatch.patchedSource), 'Bug3 Fix: 未改动的 offset 原样保留');
+    check(/textScale\s*:/.test(plainPatch.patchedSource), 'Bug3 Fix: 未改动的 textScale 原样保留');
+    check(/marker\s*:/.test(plainPatch.patchedSource), 'Bug3 Fix: 城市私有字段 marker 原样保留');
+    check(/x\s*:\s*150/.test(plainPatch.patchedSource), 'Bug3 Fix: 坐标改动依然生效');
+    check(!/\bid\s*:/.test(plainPatch.patchedSource) && !/textScale\s*:\s*null/.test(plainPatch.patchedSource),
+        'Bug3 Fix: 不得把编辑器内部字段（id / textScale:null）写进城市数据');
+
+    // 9. Bug 4 fix: 新增车站在源码里还没有键，update 会直接跳过 → 此前被静默丢弃，
+    //    而「在线插站」会同时在站序里插入该 ID，于是留下悬空引用。必须走 append。
+    const appendCity = PipelineSurgical.init('appendcity', {
+        'data_stations.js': rawPlain,
+        'data_lines.js': 'const linesData = [];'
+    }, {
+        stationsData: { P1: { type: 'dot', x: 100, y: 200, cn: '普通站', en: 'Plain' } },
+        linesData: []
+    });
+    appendCity.project.nodes['NEWST'] = { type: 'dot', x: 300, y: 400, cn: '新站', en: 'NewSt' };
+    const appendPatch = PipelineSurgical.patchStationsSource(appendCity.project);
+    check(appendPatch.patchedSource.includes('NEWST'), 'Bug4 Fix: 新增车站会追加写回（此前被静默丢弃）');
+    check(/type\s*:\s*["']dot["']/.test(appendPatch.patchedSource), 'Bug4 Fix: 追加后原有车站的 type 仍在');
+    check(/cn\s*:\s*["']新站["']/.test(appendPatch.patchedSource), 'Bug4 Fix: 追加的车站带上了站名');
+
+    // 10. Bug 5 fix: marker/halo 曾用引用比较（curr.marker !== orig.marker），快照是深拷贝，
+    //     于是只要车站带 marker（悉尼这类城市）就**全城判脏**——零编辑也整份重写源文件，
+    //     把人工排版全冲掉。必须按值比较。
+    const rawMarker = `const stationsData = {\n    "M1": { type: "dot", x: 10, y: 10, cn: "带标记站", en: "Mk", marker: { parts: [{ t: "stop", c: "#123456", w: 7, h: 7 }] } },\n    "M2": { type: "dot", x: 20, y: 20, cn: "无标记站", en: "Plain" }\n};\n`;
+    const markerCity = PipelineSurgical.init('markercity', {
+        'data_stations.js': rawMarker,
+        'data_lines.js': 'const linesData = [];'
+    }, {
+        stationsData: {
+            M1: { type: 'dot', x: 10, y: 10, cn: '带标记站', en: 'Mk', marker: { parts: [{ t: 'stop', c: '#123456', w: 7, h: 7 }] } },
+            M2: { type: 'dot', x: 20, y: 20, cn: '无标记站', en: 'Plain' }
+        },
+        linesData: []
+    });
+    check(Object.keys(PipelineSurgical.computeDirtyStations(markerCity.project)).length === 0,
+        'Bug5 Fix: 未做任何编辑时不得把带 marker 的车站判成脏（引用比较会导致全城重写）');
+    markerCity.project.nodes['M1'].x = 30;
+    const markerDirty = PipelineSurgical.computeDirtyStations(markerCity.project);
+    check(Object.keys(markerDirty).length === 1 && markerDirty['M1'].x === 30,
+        'Bug5 Fix: 真正改了坐标才判脏，且只脏这一座');
+    const markerPatch = PipelineSurgical.patchStationsSource(markerCity.project);
+    check(/marker\s*:/.test(markerPatch.patchedSource), 'Bug5 Fix: marker 字段在回写后仍然存在');
+
+    // 11. Bug 6 fix: 写回目录守卫。旧实现认不出目录时会静默回落到「用户选中的目录」，
+    //     选错文件夹（例如仓库根目录）就会把 data_stations.js 写到别的目录里。
+    //     现在必须先确认「目录名=城市 id 且存在 data_stations.js」，否则报错拒写。
+    const surgSrc = fs.readFileSync(path.join(ROOT, 'editor/js/pipelines/pipeline-surgical.js'), 'utf8');
+    const resolveBody = (surgSrc.match(/async function resolveCityDir[\s\S]*?\n    \}/) || [''])[0];
+    check(/getFileHandle\('data_stations\.js'\)/.test(resolveBody),
+        'Bug6 Fix: 写回前必须确认目标目录里有 data_stations.js');
+    check(/dir\.name !== expectName/.test(resolveBody),
+        'Bug6 Fix: 目标目录名必须与城市 id 一致（不能写进别的城市目录）');
+    check(!/return handle;\s*\n\s*\}\s*$/.test(resolveBody.replace(/\s+$/g, '')),
+        'Bug6 Fix: 认不出目录时不得静默回落到用户选中的目录');
+    check(/resolveCityDir: resolveCityDir/.test(surgSrc),
+        'Bug6 Fix: resolveCityDir 已对外暴露便于回归验证');
+
+    // 12. 网格：图层与开关入口 + 吸附取「实际画出来的步长」（LOD 放大后仍要吸附得上）
+    const editorHtmlSrc = fs.readFileSync(path.join(ROOT, 'editor/index.html'), 'utf8');
+    const editorAppSrc = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    check(/id="hudBtnGrid"/.test(editorHtmlSrc) && /id="gridLayer"/.test(editorHtmlSrc),
+        'Grid: 画布内存在网格图层 #gridLayer 与 HUD 网格开关 hudBtnGrid');
+    check(/GridLayer\.init/.test(editorAppSrc) && /GridLayer\.setVisible/.test(editorAppSrc),
+        'Grid: 开关与图层联动（GridLayer.init / setVisible）');
+    // 吸附必须用「实际画出来的步长」而不是配置值：低缩放时 LOD 会倍增网格步长，
+    // 用配置值会让落点卡在两条可见网格线之间，看起来像没吸附上。
+    const gridLayerSrc = fs.readFileSync(path.join(ROOT, 'editor/js/layers/grid-layer.js'), 'utf8');
+    const viewportLayerSrc = fs.readFileSync(path.join(ROOT, 'editor/js/layers/viewport.js'), 'utf8');
+    check(/function getEffectiveGridSize/.test(gridLayerSrc) && /getEffectiveGridSize: getEffectiveGridSize/.test(gridLayerSrc),
+        'Grid: GridLayer 暴露 getEffectiveGridSize（按 LOD 实际步长吸附）');
+    check(/GridLayer\.getEffectiveGridSize/.test(viewportLayerSrc),
+        'Grid: 视口吸附取的是渲染后的步长，而不是配置值');
+
+    // 13. 线路属性面板（名称 / 标志色 / 运营公司）与写回
+    const inspSrc = fs.readFileSync(path.join(ROOT, 'editor/js/ui/inspector-view.js'), 'utf8');
+    check(/function renderLineInspector/.test(inspSrc) && /renderLineInspector: renderLineInspector/.test(inspSrc),
+        'LineProp: 检视面板提供 renderLineInspector');
+    check(/propLineName/.test(inspSrc) && /propLineColorPicker/.test(inspSrc) && /propLineCompany/.test(inspSrc),
+        'LineProp: 面板含线路名称 / 标志色 / 运营公司输入');
+    check(/renderLineInspector\(selLine/.test(editorAppSrc) && /type: 'line', id: id/.test(editorAppSrc),
+        'LineProp: 点击大纲线路即选中并渲染线路属性面板');
+    check(/targetType === 'line'/.test(editorAppSrc) && /normalizeHexColor/.test(editorAppSrc),
+        'LineProp: handlePropertyChange 支持 line 的 name/color/company/useStrictRounding');
+
+    // 14. 站序驱动的线路不得凭空生成 pathPoints（否则零编辑就全城判脏、并把派生几何写进源文件）
+    const noPathStations = `const stationsData = {\n    "A": { type: "dot", x: 0, y: 0, cn: "甲", en: "A" },\n    "B": { type: "dot", x: 100, y: 0, cn: "乙", en: "B" }\n};\n`;
+    const noPathLines = `const linesData = [\n    { id: "L1", name: "1号线", color: "#E4002B", stationIds: ["A", "B"], distances: [1200] }\n];\n`;
+    const noPathCity = PipelineSurgical.init('nopathcity', {
+        'data_stations.js': noPathStations,
+        'data_lines.js': noPathLines
+    }, {
+        stationsData: { A: { type: 'dot', x: 0, y: 0, cn: '甲', en: 'A' }, B: { type: 'dot', x: 100, y: 0, cn: '乙', en: 'B' } },
+        linesData: [{ id: 'L1', name: '1号线', color: '#E4002B', stationIds: ['A', 'B'], distances: [1200] }]
+    });
+    check(Object.keys(PipelineSurgical.computeDirtyLines(noPathCity.project)).length === 0,
+        'LineProp: 站序驱动的线路未编辑时不得判脏（不得凭空生成 pathPoints）');
+    noPathCity.project.lines[0].color = '#ABCDEF';
+    const colorPatch = PipelineSurgical.patchLinesSource(noPathCity.project);
+    check(/#ABCDEF/i.test(colorPatch.patchedSource) && !/pathPoints/.test(colorPatch.patchedSource),
+        'LineProp: 改色号只写色号，不把派生 pathPoints 写进源文件');
+    check(/company/.test(surgSrc), 'LineProp: 运营公司参与脏判定与回写');
+
+    // 15. 百科表格提取：必须按「行 × 列」解析（rowspan/colspan），
+    //     只按 <td> 顺序抓文本会把「瑶海区」「左侧」误当站名、并且中英文配不上对。
+    const tableHtml = '<table>'
+        + '<tr><th>序号</th><th>车站名称</th><th>英文名称</th><th>站台形式</th><th>所属区域</th></tr>'
+        + '<tr><td>1</td><td>张洼站</td><td>Zhangwa Station</td><td rowspan="3">地下岛式</td><td rowspan="7">瑶海区</td></tr>'
+        + '<tr><td>2</td><td>兴华苑站</td><td>Xinghuayuan Station</td></tr>'
+        + '<tr><td>3</td><td>合肥火车站</td><td>Hefei Railway Station</td></tr>'
+        + '<tr><td colspan="5">截至2026年6月据合肥轨道交通官网显示</td></tr>'
+        + '</table>';
+    const parsedTable = BatchStationTool.parseStationTable(tableHtml);
+    check(parsedTable.rows.length === 3, 'Batch: 按行列解析出 3 座车站（表尾说明与跨行格子被正确跳过）');
+    check(parsedTable.rows[0].cn === '张洼' && parsedTable.rows[0].en === 'Zhangwa',
+        'Batch: 站名去掉「站」后缀，且中英文来自同一行');
+    check(parsedTable.rows[2].cn === '合肥火车站', 'Batch: 「火车站」不被误剥成「合肥」');
+    check(!parsedTable.rows.some(function (r) { return /瑶海区|岛式|左侧/.test(r.cn); }),
+        'Batch: rowspan 的「所属区域 / 站台形式」不会被当成站名');
+
+    // 16. 提取必须先预览校对、再确认导入，并可选是否连线
+    check(/id="btnParseBatchStation"/.test(editorHtmlSrc) && /id="batchPreviewBody"/.test(editorHtmlSrc),
+        'Batch: 弹窗提供「解析站名」与逐行校对表格');
+    check(/id="batchAutoConnect"/.test(editorHtmlSrc), 'Batch: 提供「是否自动连线」选项');
+    check(/batchPreviewRows/.test(editorAppSrc) && /function doParseBatch/.test(editorAppSrc) &&
+        /batch-cell-cn/.test(editorAppSrc),
+        'Batch: 解析结果先进内存预览，用户改完点「确认导入」才落库');
+
+    // 17. 多选批量入线路 / 移出线路
+    check(/function addStationsToLine/.test(editorAppSrc) && /function removeStationsFromLine/.test(editorAppSrc),
+        'MultiLine: 提供批量加入 / 移出线路的实现');
+    check(/id="multiLineTarget"/.test(editorAppSrc) && /function readMultiLinePick/.test(editorAppSrc),
+        'MultiLine: 多选面板提供目标站序下拉（分支线路按 way 分别列出）');
+    check(/label: '加入线路'/.test(editorAppSrc) && /label: '移出线路'/.test(editorAppSrc),
+        'MultiLine: 多选面板提供「加入线路 / 移出线路」按钮');
+    check(/findNearestLineProjection/.test(editorAppSrc) && /stationIds-way1/.test(editorAppSrc),
+        'MultiLine: 插入位置按几何投影判定，且分支线路写对应 way');
+    check(/pairedDistances/.test(editorAppSrc),
+        'MultiLine: 增删站序时同步维护 distances，保持「站距数 = 站数 − 1」');
+
+    // 18. 新增线路：功能区入口 + 创建后设为当前绘制线路 + 写回走 append（此前会被静默丢弃）
+    check(/id="btnNewLine"/.test(editorHtmlSrc) && /id="modalNewLine"/.test(editorHtmlSrc),
+        'NewLine: 基础图元组提供「新增线路」入口与弹窗');
+    check(/function createLineFromModal/.test(editorAppSrc) && /setActiveLine/.test(editorAppSrc),
+        'NewLine: 创建后自动设为当前绘制线路（之后画的线段挂到这条线）');
+    const newLineCity = PipelineSurgical.init('newlinecity', {
+        'data_stations.js': `const stationsData = {\n    "A": { type: "dot", x: 0, y: 0, cn: "甲", en: "A" }\n};\n`,
+        'data_lines.js': `const linesData = [\n    { id: "M1", name: "1号线", color: "#E4002B", stationIds: ["A"], distances: [] }\n];\n`
+    }, {
+        stationsData: { A: { type: 'dot', x: 0, y: 0, cn: '甲', en: 'A' } },
+        linesData: [{ id: 'M1', name: '1号线', color: '#E4002B', stationIds: ['A'], distances: [] }]
+    });
+    newLineCity.project.lines.push({ id: 'NEWL', name: '新线', color: '#123456', stationIds: [], _lineColors: ['#x'] });
+    const newLineOut = PipelineSurgical.patchLinesSource(newLineCity.project).patchedSource;
+    check(/NEWL/.test(newLineOut), 'NewLine: 新增线路会 append 写回（此前被静默丢弃）');
+    const newLineParsed = evalData(newLineOut, 'linesData') || [];
+    check(newLineParsed.length === 2 && newLineParsed[1] && newLineParsed[1].id === 'NEWL',
+        'NewLine: 回写后线路数组含新旧两条');
+    check(!/_lineColors/.test(newLineOut), 'NewLine: 派生字段（_ 前缀）不会被写回源文件');
+
+    // 19. F5 不丢：会话自动保存与启动恢复（城市维护模式还要带上原始源码，否则恢复后无法无损写回）
+    check(/SESSION_KEY/.test(editorAppSrc) && /function saveSessionNow/.test(editorAppSrc) &&
+        /function restoreSessionIfAny/.test(editorAppSrc),
+        'Session: 编辑器提供会话自动保存与启动恢复');
+    check(/if \(!restoreSessionIfAny\(\)\)/.test(editorAppSrc),
+        'Session: 启动时先尝试恢复上次会话，失败才新建空白工程');
+    check(/beforeunload/.test(editorAppSrc) && /visibilitychange/.test(editorAppSrc),
+        'Session: 关闭 / 刷新 / 切后台前同步落盘');
+    check(/function restoreSession/.test(surgSrc) && /function getSessionSnapshot/.test(surgSrc) &&
+        /function resetContext/.test(surgSrc),
+        'Session: 城市维护上下文（原始源码 + 载入快照）可保存 / 恢复 / 清除');
+    check(/PipelineSurgical\.resetContext/.test(editorAppSrc),
+        'Session: 新建画布与导入工程 JSON 会清掉城市上下文，避免把新工程误写回旧城市');
+
+    // 20. CAD 走线：实时预览 + 连续绘制
+    const drawSrc = fs.readFileSync(path.join(ROOT, 'editor/js/pipelines/pipeline-draw.js'), 'utf8');
+    check(/id="draftLayer"/.test(editorHtmlSrc), 'CAD: 画布内存在草稿预览图层 #draftLayer');
+    check(/function renderDraftLayer/.test(editorAppSrc) && /renderDraftLayer\(\);/.test(editorAppSrc),
+        'CAD: 走线时实时渲染待落定的线段（与落笔共用同一路由，所见即所得）');
+    check(/updateDraftPointer/.test(editorAppSrc), 'CAD: 鼠标移动时更新草稿指针');
+    check(/contextmenu/.test(editorAppSrc) && /已结束连续绘制/.test(editorAppSrc),
+        'CAD: 右键可结束连续绘制');
+    check(/chained: true/.test(drawSrc), 'CAD: 成段后不清空草稿（连续绘制可一路点下去）');
+    check(/draft_same_point/.test(drawSrc), 'CAD: 原地重复点击不会产生零长度线段');
+
+    // 21. CAD 手感：Shift 锁定 45°/90°，自由折线连续绘制不断线
+    check(/function constrainTo45/.test(drawSrc) && /constrainTo45: constrainTo45/.test(drawSrc),
+        'CAD: 提供 45°/90° 方向约束（按 Shift）');
+    check(/constrainTo45\(draftNow\.startPoint/.test(editorAppSrc) &&
+        /constrainTo45\(draft5\.startPoint/.test(editorAppSrc),
+        'CAD: 预览与最终落点都套用同一方向约束');
+    check(/extend_segment/.test(drawSrc) && /segmentId: \(activeTool === 'segaxis'\)/.test(drawSrc),
+        'CAD: 自由折线连画时延长同一条折线（不会断成多段而露出拐角缺口）');
+
+    // 22. CAD 端点吸附网格：预览也吸附、Shift 约束后仍对齐、吸附步长跟随可见网格
+    const gridSrc = fs.readFileSync(path.join(ROOT, 'editor/js/layers/grid-layer.js'), 'utf8');
+    const vpSrc = fs.readFileSync(path.join(ROOT, 'editor/js/layers/viewport.js'), 'utf8');
+    check(/function getEffectiveGridSize/.test(gridSrc) && /getEffectiveGridSize: getEffectiveGridSize/.test(gridSrc),
+        'Snap: 网格图层暴露"实际画出来的步长"（低缩放 LOD 变稀时吸附跟随可见网格）');
+    check(/function getSnapStep/.test(vpSrc) && /getEffectiveGridSize/.test(vpSrc),
+        'Snap: 吸附步长与可见网格保持一致');
+    check(/constrainTo45\(start, point, gridSize\)/.test(drawSrc) && /Math\.SQRT2/.test(drawSrc),
+        'Snap: 按住 Shift 锁方向后，长度仍量化到网格（对角按 g·√2，保证 dx=dy 且都落线）');
+    check(/ViewportLayer\.snapPoint\(world\.x, world\.y\)/.test(editorAppSrc) &&
+        /constrainTo45\(draftNow\.startPoint, movePt/.test(editorAppSrc),
+        'Snap: 走线预览端点先吸附网格、再锁方向（预览与落点一致）');
+
+    // 23. 中键只负责平移，绝不能落笔
+    check(/opts\.button !== 0/.test(drawSrc) && /ignored_button/.test(drawSrc),
+        'Button: 绘制流水线自身拒绝非左键（中键/右键不会留下点或线段）');
+    check(/\{ button: e\.button \}/.test(editorAppSrc),
+        'Button: 画布点击把真实按键传给绘制流水线');
+    check(/!viewportEl\.classList\.contains\('panning'\)/.test(editorAppSrc),
+        'Button: 平移期间冻结走线预览（不会看起来像中键在放点）');
+    check(/addEventListener\('blur'/.test(vpSrc) && /spaceHeld = false/.test(vpSrc),
+        'Button: 失焦时复位空格/平移状态，避免左键被永久当成平移');
+    check(/cancelDraft\(\)/.test(editorAppSrc),
+        'Button: 切换工程（新建/导入/载入城市）会清掉遗留草稿');
+
+    // 24. Enter 立即结束自由线段绘制
+    check(/e\.code === 'Enter' \|\| e\.code === 'NumpadEnter'/.test(editorAppSrc),
+        'Enter: 键盘处理里支持 Enter / 小键盘 Enter');
+    check(/Enter[\s\S]{0,400}cancelDraft\(\)[\s\S]{0,120}已结束连续绘制（Enter）/.test(editorAppSrc),
+        'Enter: 有草稿时立刻结束连续绘制并给出提示');
+    const enterBranch = (editorAppSrc.match(/else if \(e\.code === 'Enter'[\s\S]*?\n            \} else if/) || [''])[0];
+    check(enterBranch.length > 0 && !/setTool\(/.test(enterBranch),
+        'Enter: 结束绘制但不擅自切换工具（可马上开始下一条）');
+    check(/Enter \/ 右键 结束绘制/.test(editorAppSrc),
+        'Enter: 绘制过程中在坐标读数上提示收尾快捷键');
 }
 
 // ============================================================================

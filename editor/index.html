@@ -192,6 +192,11 @@
                             <div class="ribbon-icon"><cgo-icon name="edit" size="18"></cgo-icon></div>
                             <span class="btn-text">折点编辑</span>
                         </button>
+                        <button class="ribbon-action-btn-lg" id="btnNewLine"
+                            title="新增一条线路（ID / 名称 / 标志色 / 环线 / 分支）；创建后自动设为当前绘制线路">
+                            <div class="ribbon-icon"><cgo-icon name="route" size="18"></cgo-icon></div>
+                            <span class="btn-text">新增线路</span>
+                        </button>
                     </div>
                     <div class="ribbon-group-label">基础图元</div>
                 </div>
@@ -445,6 +450,7 @@
                     <g id="waterLayer"></g>
                     <g id="gridLayer"></g>
                     <g id="lineLayer"></g>
+                    <g id="draftLayer"></g>
                     <g id="notOpenLayer"></g>
                     <g id="virtualConnectorLayer"></g>
                     <g id="stationLayer"></g>
@@ -568,15 +574,97 @@
     </cgo-modal>
 
     <!-- 2. 百科批量放站弹窗 -->
-    <cgo-modal id="modalBatchStation" title="百科 HTML 表格提取与批量放站" max-width="580px">
-        <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;line-height:1.5;">
-            粘贴维基百科或百度百科线路词条中的「车站列表」HTML 表格源码，系统将自动清洗出中英文站名并按指定间距与走向批量排入画布。
+    <!-- 1.5 新增线路弹窗 -->
+    <cgo-modal id="modalNewLine" title="新增线路" max-width="460px">
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;line-height:1.6;">
+            创建后会自动设为「当前绘制线路」：用绘制工具画的线段都会挂到这条线，
+            也可以用多选面板的「加入线路」把已有车站批量写进它的站序。
+        </div>
+        <div class="form-row">
+            <span class="form-label">线路 ID:</span>
+            <input type="text" class="form-input" id="newLineId" placeholder="如 M1 / L3" style="flex:1;font-family:monospace;">
+        </div>
+        <div class="form-row">
+            <span class="form-label">线路名称:</span>
+            <input type="text" class="form-input" id="newLineName" placeholder="如 1号线" style="flex:1;">
+        </div>
+        <div class="form-row">
+            <span class="form-label">标志色:</span>
+            <input type="color" class="form-input" id="newLineColor" value="#0284C7"
+                style="flex:0 0 40px;width:40px;padding:2px;">
+            <input type="text" class="form-input" id="newLineColorText" value="#0284C7"
+                style="flex:1;font-family:monospace;">
+        </div>
+        <div class="form-row">
+            <span class="form-label">运营公司:</span>
+            <input type="text" class="form-input" id="newLineCompany" placeholder="（可留空）" style="flex:1;">
+        </div>
+        <div class="form-row" style="gap:14px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;">
+                <input type="checkbox" id="newLineIsLoop">
+                <span>环线 (isLoop)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;">
+                <input type="checkbox" id="newLineHasBranch">
+                <span>分支线 (hasbranch，建 way1/way2 两组站序)</span>
+            </label>
+        </div>
+        <div class="dialog-buttons">
+            <button class="ribbon-btn-sm" data-close="modalNewLine"
+                style="width:auto;padding:5px 14px;">取消</button>
+            <button class="ribbon-btn-sm" id="btnConfirmNewLine"
+                style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">创建线路</button>
+        </div>
+    </cgo-modal>
+
+    <cgo-modal id="modalBatchStation" title="百科 HTML 表格提取与批量放站" max-width="820px">        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;line-height:1.6;">
+            ① 粘贴维基/百度百科「车站列表」表格源码 →
+            ② 点「解析站名」，按下表逐行校对（可直接改，取消勾选即不导入）→
+            ③ 选择是否自动连线 → ④「确认导入」。
         </div>
         <textarea class="form-textarea" id="batchHtmlInput" placeholder="在此粘贴 <table>...</table> 源码..."
-            style="height: 120px;"></textarea>
+            style="height: 110px;"></textarea>
+
+        <div class="form-row" style="align-items:center;gap:8px;margin-top:6px;">
+            <button class="ribbon-btn-sm" id="btnParseBatchStation" style="width:auto;padding:5px 14px;">
+                <cgo-icon name="refresh" size="12"></cgo-icon><span>解析站名</span>
+            </button>
+            <span id="batchParseStatus" style="font-size:11px;color:var(--office-primary);font-weight:600;flex:1;"></span>
+        </div>
+
+        <div id="batchPreviewWrap" hidden>
+            <div style="display:flex;align-items:center;gap:6px;margin:4px 0 6px 0;">
+                <span style="font-size:11px;font-weight:600;">逐行校对</span>
+                <span style="font-size:10px;color:var(--text-light);">（序号可留空；英文留空也可以）</span>
+                <span style="flex:1;"></span>
+                <button class="ribbon-btn-sm" id="btnBatchCheckAll" style="width:auto;padding:2px 8px;">全选</button>
+                <button class="ribbon-btn-sm" id="btnBatchUncheckAll" style="width:auto;padding:2px 8px;">全不选</button>
+            </div>
+            <div class="batch-preview-scroll">
+                <table class="batch-preview-table">
+                    <thead>
+                        <tr>
+                            <th style="width:36px;">#</th>
+                            <th>中文站名</th>
+                            <th>英文站名</th>
+                            <th style="width:54px;">导入</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchPreviewBody"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="form-row">
-            <span class="form-label">所属线路:</span>
+            <span class="form-label">目标线路:</span>
             <select class="form-select" id="batchTargetLine"></select>
+        </div>
+        <div class="form-row">
+            <span class="form-label">连线:</span>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;flex:1;">
+                <input type="checkbox" id="batchAutoConnect" checked>
+                <span>按顺序自动连线，并把这些车站写入所选线路的站序</span>
+            </label>
         </div>
         <div class="form-row">
             <span class="form-label">排列方向:</span>
@@ -585,17 +673,15 @@
                 <option value="vertical">向下垂直排列 (Y+)</option>
                 <option value="diagonal">斜向右下排列 (X+, Y+)</option>
             </select>
+            <span class="form-label" style="min-width:auto;margin-left:8px;">站点步长:</span>
+            <input type="number" class="form-input" id="batchStepDistance" value="60" min="5" max="300" step="5"
+                style="flex:0 0 88px;">
         </div>
-        <div class="form-row">
-            <span class="form-label">站点步长:</span>
-            <input type="number" class="form-input" id="batchStepDistance" value="60" min="20" max="300" step="5">
-        </div>
-        <div id="batchPreviewStatus" style="font-size: 11px; color: var(--office-primary); font-weight: 600;"></div>
         <div class="dialog-buttons">
             <button class="ribbon-btn-sm" data-close="modalBatchStation"
                 style="width:auto;padding:5px 14px;">取消</button>
             <button class="ribbon-btn-sm" id="btnApplyBatchStation"
-                style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">批量放置</button>
+                style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">确认导入</button>
         </div>
     </cgo-modal>
 
