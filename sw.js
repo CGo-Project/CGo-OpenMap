@@ -28,7 +28,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261026.135632';
+const CACHE_NAME = 'cgo-openmap-v261026.180216';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
