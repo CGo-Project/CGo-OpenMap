@@ -19,7 +19,7 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         TRAM_LINES: ["WS-M4", "WS-M5"],
-        dataFiles: {},
+        dataFiles: { stanameCsvUrl: "./city/wenshan/staname.csv" },
 
         isTramLine(lineId) { return this.TRAM_LINES.includes(lineId); },
         isTramStation(station) {

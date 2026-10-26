@@ -23,7 +23,7 @@
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: [],
         TRAM_LINES: ["NP-T1"],
-        dataFiles: {},
+        dataFiles: { stanameCsvUrl: "./city/nanping/staname.csv" },
 
         isTramLine(lineId) { return this.TRAM_LINES.includes(lineId); },
         isTramStation(station) {
