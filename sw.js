@@ -28,7 +28,7 @@
  * ==============================================================================
  */
 
-const CACHE_NAME = 'cgo-openmap-v261026.035000';
+const CACHE_NAME = 'cgo-openmap-v261026.134000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -120,6 +120,19 @@ const ASSETS_TO_CACHE = [
     './city/beijing/staname.csv',
     './city/beijing/assets/compass.svg',
     './city/beijing/assets/gate.svg',
+
+    // 城市配置与业务数据 (beijing_plan)
+    './city/beijing_plan/beijing_plan.js',
+    './city/beijing_plan/style.css',
+    './city/beijing_plan/data_stations.js',
+    './city/beijing_plan/data_lines.js',
+    './city/beijing_plan/data_legend.js',
+    './city/beijing_plan/data_notopen.js',
+    './city/beijing_plan/data_scattered.js',
+    './city/beijing_plan/data_timetable.js',
+    './city/beijing_plan/data_virtual_transfers.js',
+    './city/beijing_plan/stacard/script.js',
+    './city/beijing_plan/staname.csv',
 
 
 
@@ -696,6 +709,9 @@ const ASSETS_TO_CACHE = [
     // 图标与清单素材
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',
+    './assets/icons/shortcut-sort.png',
+    './assets/icons/shortcut-location.png',
+    './assets/icons/shortcut-time.png',
     './assets/icons/mapicon.png',
     './assets/icons/mapicon2.png',
     './assets/icons/beian.png',
