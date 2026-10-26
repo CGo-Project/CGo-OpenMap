@@ -103,36 +103,52 @@ if (fs.existsSync(stationsFile)) {
     if (stationsData && typeof stationsData === 'object') {
         const stationKeys = Object.keys(stationsData);
         stationsProcessed = stationKeys.length;
-
-        // 计算缩放前后的核心区站间距统计
-        let totalDist = 0, distCount = 0;
-        const coords = [];
+        // 采用外科手术式无损正则替换：逐站定位顶层 x 和 y 坐标，严格避开 offset: { x, y }
+        let newStationsContent = origStationsText;
+        let matchedCount = 0;
         for (const id of stationKeys) {
             const s = stationsData[id];
-            coords.push({ x: s.x, y: s.y });
-            s.x = Math.round(s.x * scaleFactor * 10) / 10;
-            s.y = Math.round(s.y * scaleFactor * 10) / 10;
-            // offset, textScale, align, type 严格保持不变
+            const newX = Math.round(s.x * scaleFactor * 10) / 10;
+            const newY = Math.round(s.y * scaleFactor * 10) / 10;
+            const escapedId = id.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+            const stationRegex = new RegExp('((?:\\n|^)[ \\t]*[\"\'`]' + escapedId + '[\"\'`]\\s*:\\s*\\{[^{}]*?(?:(?<=[{,\\s])(?:[\"\'`]?x[\"\'`]?))\\s*:\\s*)([0-9.-]+)(\\s*,\\s*(?:[\"\'`]?y[\"\'`]?)\\s*:\\s*)([0-9.-]+)');
+            if (stationRegex.test(newStationsContent)) {
+                newStationsContent = newStationsContent.replace(stationRegex, (m, p1, oldX, p2, oldY) => {
+                    return p1 + newX + p2 + newY;
+                });
+                matchedCount++;
+            }
         }
 
-        // 提取原头部注释
-        const headerMatch = origStationsText.match(/^([\s\S]*?)(const\s+stationsData\s*=|var\s+stationsData\s*=)/);
-        const header = headerMatch ? headerMatch[1].trim() : '/**\n * CGo OpenMap - 车站数据库\n */';
-
-        // 格式化输出 (保持紧凑单行格式，易读且便于 git diff)
-        const entriesLines = stationKeys.map((id, idx) => {
-            const isLast = idx === stationKeys.length - 1;
-            return '    "' + id + '": ' + JSON.stringify(stationsData[id]) + (isLast ? '' : ',');
+        // 同样将预留注释中的待开通车站坐标等比同步缩放，方便未来直接取消注释启用
+        newStationsContent = newStationsContent.replace(/((?:\/\/\s*|\/\*\s*)[\"\'`][^\"\'`]+[\"\'`]\s*:\s*\{[^{}]*?(?:(?<=[{,\\s])(?:[\"\'`]?x[\"\'`]?))\\s*:\\s*)([0-9.-]+)(\\s*,\\s*(?:[\"\'`]?y[\"\'`]?)\\s*:\\s*)([0-9.-]+)/g, (m, p1, oldX, p2, oldY) => {
+            const nx = Math.round(parseFloat(oldX) * scaleFactor * 10) / 10;
+            const ny = Math.round(parseFloat(oldY) * scaleFactor * 10) / 10;
+            return p1 + nx + p2 + ny;
         });
 
-        const newStationsContent = header + '\n\nconst stationsData = {\n' +
-            entriesLines.join('\n') +
-            '\n};\n\nif (typeof module !== "undefined" && module.exports) {\n    module.exports = stationsData;\n}\n';
-
-        if (!isDryRun) {
-            fs.writeFileSync(stationsFile, newStationsContent, 'utf8');
+        if (matchedCount === stationKeys.length) {
+            if (!isDryRun) {
+                fs.writeFileSync(stationsFile, newStationsContent, 'utf8');
+            }
+            console.log('  ✓ 车站坐标已无损缩放: ' + stationsProcessed + ' 座车站 (data_stations.js，100%保留注释与换行)');
+        } else {
+            console.warn('  ⚠️ 部分车站未匹配到单行模式 (' + matchedCount + '/' + stationKeys.length + ')，启用安全格式化回退');
+            // 回退到紧凑格式化
+            const entriesLines = stationKeys.map((id, idx) => {
+                const isLast = idx === stationKeys.length - 1;
+                return '    "' + id + '": ' + JSON.stringify(stationsData[id]) + (isLast ? '' : ',');
+            });
+            const headerMatch = origStationsText.match(/^([\s\S]*?)(const\s+stationsData\s*=|var\s+stationsData\s*=)/);
+            const header = headerMatch ? headerMatch[1].trim() : '/**\n * CGo OpenMap - 车站数据库\n */';
+            const fallbackContent = header + '\n\nconst stationsData = {\n' +
+                entriesLines.join('\n') +
+                '\n};\n\nif (typeof module !== "undefined" && module.exports) {\n    module.exports = stationsData;\n}\n';
+            if (!isDryRun) {
+                fs.writeFileSync(stationsFile, fallbackContent, 'utf8');
+            }
+            console.log('  ✓ 车站坐标已格式化回写: ' + stationsProcessed + ' 座车站');
         }
-        console.log('  ✓ 车站坐标已缩放:   ' + stationsProcessed + ' 座车站 (data_stations.js)');
     } else {
         console.warn('  ⚠️ 无法解析 data_stations.js 中的 stationsData');
     }
@@ -140,53 +156,28 @@ if (fs.existsSync(stationsFile)) {
     console.warn('  ⚠️ 找不到 data_stations.js，跳过车站缩放');
 }
 
-// 3. 处理 data_lines.js (缩放走向折点 pathPoints 及各分支点阵)
+// 3. 处理 data_lines.js (缩放走向折点 pathPoints 及各分支点阵，无损保留 sceneryLines、LINE_META 等所有附加代码)
 const linesFile = path.join(cityDir, 'data_lines.js');
 let pointsScaled = 0;
-let linesCount = 0;
 if (fs.existsSync(linesFile)) {
     const origLinesText = fs.readFileSync(linesFile, 'utf8');
-    const linesData = evalDataFile(origLinesText, 'linesData');
+    const pointRegex = /(\{\s*(?:["'`]?x["'`]?)\s*:\s*)([0-9.-]+)(\s*,\s*(?:["'`]?y["'`]?)\s*:\s*)([0-9.-]+)(?:(\s*,\s*(?:["'`]?r["'`]?)\s*:\s*)([0-9.-]+))?(\s*\})/g;
 
-    if (Array.isArray(linesData)) {
-        linesCount = linesData.length;
-        for (const line of linesData) {
-            if (Array.isArray(line.pathPoints)) {
-                for (const pt of line.pathPoints) {
-                    pt.x = Math.round(pt.x * scaleFactor * 10) / 10;
-                    pt.y = Math.round(pt.y * scaleFactor * 10) / 10;
-                    if (typeof pt.r === 'number') {
-                        pt.r = Math.round(pt.r * scaleFactor * 10) / 10;
-                    }
-                    pointsScaled++;
-                }
-            }
-            ['pathPoints-main', 'pathPoints-branch1', 'pathPoints-branch2'].forEach(key => {
-                if (Array.isArray(line[key])) {
-                    for (const pt of line[key]) {
-                        pt.x = Math.round(pt.x * scaleFactor * 10) / 10;
-                        pt.y = Math.round(pt.y * scaleFactor * 10) / 10;
-                        if (typeof pt.r === 'number') {
-                            pt.r = Math.round(pt.r * scaleFactor * 10) / 10;
-                        }
-                        pointsScaled++;
-                    }
-                }
-            });
+    const newLinesContent = origLinesText.replace(pointRegex, (match, p1, x, p2, y, rPrefix, r, pEnd) => {
+        const nx = Math.round(parseFloat(x) * scaleFactor * 10) / 10;
+        const ny = Math.round(parseFloat(y) * scaleFactor * 10) / 10;
+        pointsScaled++;
+        if (r !== undefined && rPrefix !== undefined) {
+            const nr = Math.round(parseFloat(r) * scaleFactor * 10) / 10;
+            return `${p1}${nx}${p2}${ny}${rPrefix}${nr}${pEnd}`;
         }
+        return `${p1}${nx}${p2}${ny}${pEnd}`;
+    });
 
-        const headerMatch = origLinesText.match(/^([\s\S]*?)(const\s+linesData\s*=|var\s+linesData\s*=)/);
-        const header = headerMatch ? headerMatch[1].trim() : '/**\n * CGo OpenMap - 线路走向数据库\n */';
-
-        const newLinesContent = header + '\n\nconst linesData = ' + JSON.stringify(linesData, null, 4) + ';\n\nif (typeof module !== "undefined" && module.exports) {\n    module.exports = linesData;\n}\n';
-
-        if (!isDryRun) {
-            fs.writeFileSync(linesFile, newLinesContent, 'utf8');
-        }
-        console.log('  ✓ 线路走向折点缩放: ' + pointsScaled + ' 个走向折点，覆盖 ' + linesCount + ' 条线路 (data_lines.js)');
-    } else {
-        console.warn('  ⚠️ 无法解析 data_lines.js 中的 linesData');
+    if (!isDryRun) {
+        fs.writeFileSync(linesFile, newLinesContent, 'utf8');
     }
+    console.log('  ✓ 线路走向折点无损缩放: ' + pointsScaled + ' 个走向折点 (data_lines.js，100%保留附属变量与注释)');
 } else {
     console.warn('  ⚠️ 找不到 data_lines.js，跳过线路折点缩放');
 }
@@ -195,25 +186,24 @@ if (fs.existsSync(linesFile)) {
 const notopenFile = path.join(cityDir, 'data_notopen.js');
 if (fs.existsSync(notopenFile)) {
     const origNotopenText = fs.readFileSync(notopenFile, 'utf8');
-    const notopenData = evalDataFile(origNotopenText, 'NOT_OPEN_LINES');
     let notopenPoints = 0;
-    if (Array.isArray(notopenData)) {
-        for (const item of notopenData) {
-            if (Array.isArray(item.points)) {
-                for (const pt of item.points) {
-                    pt.x = Math.round(pt.x * scaleFactor * 10) / 10;
-                    pt.y = Math.round(pt.y * scaleFactor * 10) / 10;
-                    notopenPoints++;
-                }
-            }
+    const pointRegex = /(\{\s*(?:["'`]?x["'`]?)\s*:\s*)([0-9.-]+)(\s*,\s*(?:["'`]?y["'`]?)\s*:\s*)([0-9.-]+)(?:(\s*,\s*(?:["'`]?r["'`]?)\s*:\s*)([0-9.-]+))?(\s*\})/g;
+
+    const newNotopenContent = origNotopenText.replace(pointRegex, (match, p1, x, p2, y, rPrefix, r, pEnd) => {
+        const nx = Math.round(parseFloat(x) * scaleFactor * 10) / 10;
+        const ny = Math.round(parseFloat(y) * scaleFactor * 10) / 10;
+        notopenPoints++;
+        if (r !== undefined && rPrefix !== undefined) {
+            const nr = Math.round(parseFloat(r) * scaleFactor * 10) / 10;
+            return `${p1}${nx}${p2}${ny}${rPrefix}${nr}${pEnd}`;
         }
-        const newNotopenContent = '/**\n * CGo OpenMap - 未开通线路规划虚线数据库\n */\n\nconst NOT_OPEN_LINES = ' +
-            JSON.stringify(notopenData, null, 4) + ';\n\nif (typeof module !== "undefined" && module.exports) {\n    module.exports = NOT_OPEN_LINES;\n}\n';
-        if (!isDryRun) {
-            fs.writeFileSync(notopenFile, newNotopenContent, 'utf8');
-        }
-        console.log('  ✓ 在建虚线折点缩放: ' + notopenPoints + ' 个折点 (data_notopen.js)');
+        return `${p1}${nx}${p2}${ny}${pEnd}`;
+    });
+
+    if (!isDryRun) {
+        fs.writeFileSync(notopenFile, newNotopenContent, 'utf8');
     }
+    console.log('  ✓ 在建虚线折点无损缩放: ' + notopenPoints + ' 个折点 (data_notopen.js)');
 }
 
 // 5. 更新 city/data.js (画布尺寸 mapSize 与中心点 center)
