@@ -162,25 +162,6 @@ const CITY_REGISTRY = {
      - 自定义 SVG 须遵循：① 去除写死的 `fill` 颜色，引擎自动注入 `currentColor`；② 去除 `viewBox` 与 XML 头部声明（引擎在渲染时自动自适应充满 `22px × 22px` 视口）；
      - 若未填入且 CGoUI 也未收录，系统将安全降级显示经典小火车图标。
 
-> [!TIP]
-> **同步配置 PWA 应用快捷直达方式 (`manifest.json`)**：
-> 完成城市基础信息注册后，请在项目根目录的 `manifest.json` 中，将新城市加入到 `shortcuts` 数组中。这样安装为 PWA 应用的用户即可在桌面端右键图标或在移动设备上长按应用图标，直接唤起新城市的线路图：
-> ```json
-> {
->   "name": "上海轨道交通",
->   "short_name": "上海",
->   "description": "查看上海轨道交通线网图",
->   "url": "./main.html?city=shanghai",
->   "icons": [
->     {
->       "src": "./assets/icons/icon-192.png",
->       "sizes": "192x192",
->       "type": "image/png"
->     }
->   ]
-> }
-> ```
-
 ---
 
 ## 🎨 第二步：准备线路徽标 (`assets/svg/`)
@@ -237,6 +218,14 @@ const stationsData = {
 > 站名排版同样值得逐站对齐官方图：上海的 `align` / `offset` 是把官方矢量图里每条站名的
 > 文本框实测出来后反解出来的，中文字号、字重与行距也一并写进 `city/shanghai/style.css`，
 > 因此渲染结果能与官方图逐像素重合。
+
+> [!TIP]
+> 📐 **新城市排版太挤或太空旷？全局站间距等比伸缩操作指南**  
+> 新城市初版线网常面临“站间距过窄导致文字叠字（如北京规划初期市区站距仅 20px）”或“站距过宽导致大片空洞”的问题。  
+> ⚠️ **切忌通过修改 `defaultScale` 或前端视口缩放来解决**（视口缩放会同比例放大文字和图标，字距相对比例不变，依然叠字）！  
+> 正确做法是等比例拉开或收缩全网站点的物理坐标。项目已提供专用 AI 提示词与一键自动化脚本，初学者只需输入一个缩放倍数即可自动完成：  
+> - 完整操作指引与 DeepSeek 提示词模板：参见 **[《地图全局物理尺度与站距等比伸缩操作指南与 AI 提示词规范》(docs/GLOBAL_SCALE_PROMPT.md)](./docs/GLOBAL_SCALE_PROMPT.md)**；  
+> - 命令行一键执行工具：在终端运行 `node scripts/rescale-city.js {city_id} {scale_factor}`（如 `1.5` 拉大 50%，`0.8` 收紧 20%）。
 
 ### 2. 串联线路走向 (`data_lines.js`)
 
@@ -477,7 +466,6 @@ if (typeof document !== 'undefined' && document.write) {
 - [ ] **搜索测试**：在搜索栏中输入中文、英文或拼音缩写，能否准确定位车站？
 - [ ] **图例联动**：点击图例中的线路，是否能正常高亮对应线路？
 - [ ] **定位功能**：在移动端或浏览器中点击定位按钮，能否正确计算出最近的车站？
-- [ ] **PWA Shortcuts**：已在 `manifest.json` 的 `shortcuts` 列表中登记新城市快捷直达入口？
 - [ ] **Service Worker 缓存**：已在 `sw.js` 中将新城市文件加入预缓存列表，并已更新 `CACHE_NAME` 版本号（避免更改不生效）？
 - [ ] **自动化自检**：已在本地运行 `node drunk/tools/selfcheck.js` 或自检工具确保零错误？
 

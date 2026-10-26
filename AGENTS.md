@@ -193,6 +193,12 @@ const CITY_REGISTRY = {
 > - `svglogo`：收录时**必须去色（移除硬编码 fill）、去 viewBox 并去除 XML 头部**。前端基于 `currentColor` 自动适配亮暗与悬浮反白，并通过 `getBBox()` 自动自适应缩放至与小火车图标一致的 `22px × 22px`。留空则自动降级展示小火车图标。
 
 
+### 4.1.1 全局物理尺度与站距等比缩放规范（针对线网过挤/过散）
+- 当收到用户要求“调整全局尺度”、“拉大/缩小站间距”、“解决文字拥挤叠字”时，**必须严格遵循 [《地图全局物理尺度与站距等比伸缩操作指南与 AI 提示词规范》(docs/GLOBAL_SCALE_PROMPT.md)](docs/GLOBAL_SCALE_PROMPT.md)**；
+- **核心红线**：这是物理坐标等比伸缩，**严禁**只调整 `defaultScale`（视口缩放会放大字号与图标，无法解决遮挡）；
+- **操作范围**：同步等比缩放 `data_stations.js`（所有 `x, y` 坐标，**严禁修改 `offset: { x, y }` 文本微调值**）、`data_lines.js`（折点 `pathPoints` 及各分支点阵）、`data_notopen.js`（若有）、`city/data.js`（`mapSize` 与 `center`），并递增 `sw.js` 缓存版本号；
+- 可直接调用项目内置 CLI 工具：`node scripts/rescale-city.js <city_id> <scaleFactor>`。
+
 ### 4.2 车站定义 (`data_stations.js`)
 
 每个车站以唯一 ID 为 Key：
@@ -540,9 +546,8 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
 2. **注册城市**：在 `city/data.js` 的 `CITY_REGISTRY` 中添加新城市元数据。
 3. **编写车站与线路**：按顺序填充 `data_stations.js` 和 `data_lines.js`。
 4. **引入脚本**：在 `main.html` 底部修改引入的城市脚本路径，或保留动态加载支持（通过 `main.html?city={city_id}` 动态访问）。
-5. **添加 PWA 快捷方式**：在 `manifest.json` 的 `shortcuts` 中登记该城市快捷入口（`url: "./main.html?city={city_id}"`）。
-6. **更新离线缓存**：在 `sw.js` 的 `ASSETS_TO_CACHE` 中登记新城市资源并递增 `CACHE_NAME` 版本号。
-7. **验证测试**：启动静态服务验证首页展示、卡片跳转及地图渲染与缩放。
+5. **更新离线缓存**：在 `sw.js` 的 `ASSETS_TO_CACHE` 中登记新城市资源并递增 `CACHE_NAME` 版本号。
+6. **验证测试**：启动静态服务验证首页展示、卡片跳转及地图渲染与缩放。
 
 ### 任务 B：批量添加/修改站点与调整线路
 1. **添加站点**：在 `data_stations.js` 添加车站对象，设置合理的 `(x, y)` 坐标与 `align` 对齐方式。
