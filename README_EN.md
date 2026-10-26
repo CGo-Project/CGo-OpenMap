@@ -243,7 +243,7 @@ After a city is online, the same Drunk workbench can be used for day-to-day main
 4. Define line sequences, `stationIds`, route geometry, and line colors in `data_lines.js`.
 5. Reuse or add vector route badges in `assets/svg/`.
 6. Optionally create local station-board modules under `city/{city_id}/modules/`.
-7. Add PWA shortcuts and Service Worker assets where required.
+7. Update Service Worker assets and increment cache version where required.
 8. Validate the result locally in both light and dark themes.
 
 For detailed conventions, see [PORTING.md](./PORTING.md).

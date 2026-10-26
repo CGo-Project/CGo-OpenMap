@@ -294,8 +294,7 @@ openmap/
 4. **定制模块化车站信息板（可选）**：
    - 在 `{city}.js` 中通过 `stationBoard` 字段自由开关、排序或新增车站信息模块；
    - 可在 `city/{city_id}/modules/` 下定制注入**文旅名胜**、**运行时刻**、**预计进站时间**、**换乘详情**、**接驳空间**、**站台结构**、**便民设施指南**等专属特色模块（详见 [模块开发指南](docs/STATION_MODULE_GUIDE.md)）。
-5. **配置快捷方式与离线缓存**：
-   - 在 `manifest.json` 的 `shortcuts` 中登记新城市快捷入口（`url: "./main.html?city={city_id}"`）；
+5. **配置离线缓存**：
    - 在 `sw.js` 中将新城市文件登记至 `ASSETS_TO_CACHE`，并递增 `CACHE_NAME` 版本号。**一定要更新 Service Worker，否则更改可能不会生效；若出现怎么修改都不起作用的情况，请优先排查 Service Worker 缓存。**
 6. **本地验证**：启动本地服务器查看首页城市卡片与地图渲染效果，调整站名排版避免遮挡。
 

@@ -50,286 +50,39 @@
   ],
   "shortcuts": [
     {
-      "name": "台州轨道交通",
-      "short_name": "台州",
-      "description": "查看台州轨道交通线网图",
-      "url": "./main.html?city=taizhou",
+      "name": "字母检索",
+      "short_name": "字母检索",
+      "description": "按字母 A-Z 查看入驻城市列表",
+      "url": "./index.html?tab=alpha",
       "icons": [
         {
-          "src": "./assets/icons/icon-192.png",
+          "src": "./assets/icons/shortcut-sort.png",
           "sizes": "192x192",
           "type": "image/png"
         }
       ]
     },
     {
-      "name": "黄石轨道交通",
-      "short_name": "黄石",
-      "description": "查看黄石轨道交通线网图",
-      "url": "./main.html?city=huangshi",
+      "name": "最近城市",
+      "short_name": "最近城市",
+      "description": "按距您由近到远查看城市",
+      "url": "./index.html?tab=distance",
       "icons": [
         {
-          "src": "./assets/icons/icon-192.png",
+          "src": "./assets/icons/shortcut-location.png",
           "sizes": "192x192",
           "type": "image/png"
         }
       ]
     },
     {
-      "name": "淮安轨道交通",
-      "short_name": "淮安",
-      "description": "查看淮安轨道交通线网图",
-      "url": "./main.html?city=huaian",
+      "name": "最近使用",
+      "short_name": "最近使用",
+      "description": "查看最近浏览过的城市线路图",
+      "url": "./index.html?tab=recent",
       "icons": [
         {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "天水轨道交通",
-      "short_name": "天水",
-      "description": "查看天水轨道交通线网图",
-      "url": "./main.html?city=tianshui",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "嘉兴轨道交通",
-      "short_name": "嘉兴",
-      "description": "查看嘉兴轨道交通线网图",
-      "url": "./main.html?city=jiaxing",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "北京轨道交通",
-      "short_name": "北京",
-      "description": "查看北京轨道交通与市郊铁路线网图",
-      "url": "./main.html?city=beijing",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "沈阳地铁",
-      "short_name": "沈阳",
-      "description": "查看沈阳地铁线网图",
-      "url": "./main.html?city=shenyang",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "上海轨道交通",
-      "short_name": "上海",
-      "description": "查看上海轨道交通线网图",
-      "url": "./main.html?city=shanghai",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "合肥轨道交通",
-      "short_name": "合肥",
-      "description": "查看合肥轨道交通线网图",
-      "url": "./main.html?city=hefei",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "青岛轨道交通",
-      "short_name": "青岛",
-      "description": "查看青岛轨道交通线网图",
-      "url": "./main.html?city=qingdao",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "悉尼轨道交通",
-      "short_name": "悉尼",
-      "description": "查看悉尼 Sydney Trains 与 Sydney Metro 线网图",
-      "url": "./main.html?city=sydney",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "香港鐵路",
-      "short_name": "香港",
-      "description": "查看香港鐵路綫路圖與同台換乘指南",
-      "url": "./main.html?city=hongkong",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "深圳轨道交通线路图",
-      "short_name": "深圳",
-      "description": "查看深圳地铁线路图与口岸通关信息",
-      "url": "./main.html?city=shenzhen",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "青岛轨道交通",
-      "short_name": "青岛",
-      "description": "查看青岛轨道交通线网图",
-      "url": "./main.html?city=qingdao",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "哈尔滨轨道交通",
-      "short_name": "哈尔滨",
-      "description": "查看哈尔滨地铁 1、2、3 号线线网图（骨架阶段）",
-      "url": "./main.html?city=harbin",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "石家庄地铁",
-      "short_name": "石家庄",
-      "description": "查看石家庄地铁线网图和附近景点（公园）",
-      "url": "./main.html?city=shijiazhuang",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "三亚轨道交通",
-      "short_name": "三亚",
-      "description": "查看三亚轨道交通线路图",
-      "url": "./main.html?city=sanya",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "南平轨道交通",
-      "short_name": "南平",
-      "description": "查看南平轨道交通线路图",
-      "url": "./main.html?city=nanping",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "辽源轨道交通",
-      "short_name": "辽源",
-      "description": "查看辽源轨道交通线路图",
-      "url": "./main.html?city=liaoyuan",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "文山轨道交通",
-      "short_name": "文山",
-      "description": "查看文山轨道交通线路图",
-      "url": "./main.html?city=wenshan",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "澳門轨道交通",
-      "short_name": "澳門",
-      "description": "查看澳門轨道交通线路图",
-      "url": "./main.html?city=macau",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "南京轨道交通",
-      "short_name": "南京",
-      "description": "查看南京地铁 1–7、10 号线与 S1/S3/S6/S7/S8/S9 及宁马线线网图",
-      "url": "./main.html?city=nanjing",
-      "icons": [
-        {
-          "src": "./assets/icons/icon-192.png",
+          "src": "./assets/icons/shortcut-time.png",
           "sizes": "192x192",
           "type": "image/png"
         }
