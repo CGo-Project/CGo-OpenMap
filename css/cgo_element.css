@@ -931,7 +931,27 @@ body[data-glass-mode='none'] .btn {
 .header-logo-wrapper {
     height: 32px;
     width: 32px;
-    margin-right: 8px;
+    margin-right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--city-theme-color, var(--text-main, #00263b));
+    transition: color 0.3s ease;
+}
+
+.title-city {
+    color: var(--city-theme-color, inherit);
+    transition: color 0.3s ease;
+}
+
+/* 暗色模式下：加载 themeColorDark（默认回退到 #ffffff），平滑过渡 */
+[data-theme="dark"] .header-logo-wrapper {
+    color: var(--city-theme-color-dark, #ffffff);
+}
+
+[data-theme="dark"] .title-city {
+    color: var(--city-theme-color-dark, #ffffff);
 }
 
 .header-logo-wrapper .header-logo {
@@ -2525,7 +2545,7 @@ a.tool-card {
     contain: style;
     box-shadow: var(--glass-shadow);
     transition: transform var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1)),
-                box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1)));
+                box-shadow var(--glass-duration, 0.28s) var(--glass-easing, cubic-bezier(0.32, 0.72, 0, 1));
     cursor: pointer;
 }
 

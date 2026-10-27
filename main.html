@@ -54,12 +54,12 @@
     <title>CGo OpenMap - 城市轨道交通线路图开放平台</title>
 
     <!-- 样式表与 CGoUI 基础库 -->
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261026.232300">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261026.232300">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261026.232300">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261026.232300">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261026.232300">
-    <link rel="stylesheet" href="css/style.css?v=261026.232300">
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261027.104600">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261027.104600">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261027.104600">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261027.104600">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261027.104600">
+    <link rel="stylesheet" href="css/style.css?v=261027.104600">
     <style>
         /* Web Components 自定义元素未注册前的占位与防无样式闪烁 (FOUC) */
         cgo-icon:not(:defined) {
@@ -70,22 +70,8 @@
             opacity: 0.6;
         }
 
-        .title-short {
-            display: none;
-        }
-
         .title-full {
             display: inline;
-        }
-
-        @media (max-width: 640px) {
-            .title-full {
-                display: none;
-            }
-
-            .title-short {
-                display: inline;
-            }
         }
 
         /* 浮动标题栏模式下，地图缩放控件避让顶部悬浮双岛栏（桌面端加大间距） */
@@ -194,32 +180,50 @@
             </div>
             <div class="header-island-divider" aria-hidden="true"></div>
             <div class="header-center">
-                <div class="img-icon-wrapper header-logo-wrapper">
-                    <img src="./assets/icons/mapicon.png" alt="" class="header-logo" loading="lazy" decoding="async"
-                        fetchpriority="low"
-                        onload="this.classList.add('loaded');this.parentElement&&this.parentElement.classList.add('loaded');">
-                    <cgo-icon name="sparkle" class="icon-placeholder"></cgo-icon>
+                <div class="header-logo-wrapper" id="header-city-logo" aria-hidden="true" title="城市官方徽标">
+                    <cgo-icon name="train" size="24"></cgo-icon>
                 </div>
                 <span class="app-title">
-                    <span class="title-full">北京 开放地图</span>
-                    <span class="title-short">开放地图</span>
+                    <span class="title-full"><span class="title-city">北京</span> 开放地图</span>
                 </span>
                 <script>
                     (function () {
                         try {
                             var p = new URLSearchParams(window.location.search);
-                            var cid = p.get('city') || localStorage.getItem('cgo_openmap_city');
+                            var cid = (p.get('city') || localStorage.getItem('cgo_openmap_city') || 'beijing').toLowerCase();
                             var names = {
-                                beijing: "北京", shanghai: "上海", guangzhou: "广州", shenzhen: "深圳",
+                                beijing: "北京", beijing_plan: "北京规划", shanghai: "上海", guangzhou: "广州", shenzhen: "深圳",
                                 chengdu: "成都", wuhan: "武汉", nanjing: "南京", chongqing: "重庆",
                                 hangzhou: "杭州", shenyang: "沈阳", dalian: "大连", changchun: "长春",
                                 harbin: "哈尔滨", lanzhou: "兰州", hefei: "合肥", qingdao: "青岛",
-                                hongkong: "香港", fuzhou: "福州", sydney: "悉尼", hohhot: "呼和浩特"
+                                hongkong: "香港", fuzhou: "福州", sydney: "悉尼", hohhot: "呼和浩特",
+                                shijiazhuang: "石家庄", jiaxing: "嘉兴", tianshui: "天水", huaian: "淮安",
+                                huangshi: "黄石", taizhou: "台州", sanya: "三亚", nanping: "南平",
+                                liaoyuan: "辽源", wenshan: "文山", macau: "澳门"
                             };
-                            if (cid && names[cid]) {
-                                var el = document.querySelector('.title-full');
-                                if (el) el.textContent = names[cid] + ' 开放地图';
+                            var themeColors = {
+                                beijing: "#004060", beijing_plan: "#004060", shanghai: "#b72626", shenyang: "#c60a16",
+                                qingdao: "#275140", hefei: "#e71f24", sydney: "#f7931e", hongkong: "#001F50",
+                                shenzhen: "#009B4D", dalian: "#0031A8", changchun: "#C9062C", tianshui: "#079445",
+                                wenshan: "#19A7FD", harbin: "#E60012", hohhot: "#017FCB", macau: "#79D064",
+                                fuzhou: "#3B49D1", huaian: "#CC2D46", huangshi: "#CC2D46", taizhou: "#8CC63F",
+                                sanya: "#0197D4", nanping: "#39B54A", liaoyuan: "#F15A24", shijiazhuang: "#1359A9",
+                                nanjing: "#7CCACF", jiaxing: "#93D50A"
+                            };
+                            var cityName = names[cid] || '北京';
+                            var clr = themeColors[cid] || '';
+                            var el = document.querySelector('.title-full');
+                            if (el) {
+                                el.innerHTML = '<span class="title-city">' + cityName + '</span> 开放地图';
                             }
+                            var logoEl = document.getElementById('header-city-logo');
+                            if (logoEl && cid) {
+                                logoEl.innerHTML = '<cgo-icon name="' + cid + '" size="24"></cgo-icon>';
+                            }
+                            if (clr) {
+                                document.documentElement.style.setProperty('--city-theme-color', clr);
+                            }
+                            document.documentElement.style.setProperty('--city-theme-color-dark', '#ffffff');
                         } catch (_) { }
                     })();
                 </script>
@@ -318,31 +322,87 @@
 
     <!-- 核心脚本依赖与城市数据加载链 -->
     <!-- 折线倒角几何算法 (引擎与 OpenMap Editor 编辑器共用) -->
-    <script src="core/path-geometry.js?v=261026.232300"></script>
+    <script src="core/path-geometry.js?v=261027.104600"></script>
     <!-- 车站图元模板与尺寸 (引擎与 OpenMap Editor 编辑器共用，必须早于 core/script.js) -->
-    <script src="core/mobile-sheet.js?v=261026.232300"></script>
-    <script src="core/panel-tab-swipe.js?v=261026.232300"></script>
-    <script src="core/station-icons.js?v=261026.232300"></script>
+    <script src="core/mobile-sheet.js?v=261027.104600"></script>
+    <script src="core/panel-tab-swipe.js?v=261027.104600"></script>
+    <script src="core/station-icons.js?v=261027.104600"></script>
     <!-- 无障碍与文本转义公共工具 (须早于 core/station-board.js 与 core/script.js) -->
-    <script src="core/a11y.js?v=261026.232300"></script>
+    <script src="core/a11y.js?v=261027.104600"></script>
     <!-- 城市注册总线与基础元数据 -->
-    <script src="city/data.js?v=261026.232300"></script>
+    <script src="city/data.js?v=261027.104600"></script>
     <!-- 车站信息板模块注册与渲染引擎 (多城市通用) -->
-    <script src="core/station-board.js?v=261026.232300"></script>
+    <script src="core/station-board.js?v=261027.104600"></script>
     <!-- 动态按序加载当前激活城市的专属业务与全套数据文件 (根据 URL ?city= 或 LocalStorage 判定) -->
     <script>
         (function () {
             var city = window.CityDataManager ? window.CityDataManager.getCurrentCity() : null;
             var folder = (city && city.folder) ? city.folder : "./city/beijing";
             var cityId = (city && city.id) ? city.id : "beijing";
-            var v = "261026.232300";
+            var v = "261027.104600";
             // 供城市脚本追加同版本号（如 city/<id>/style.css），避免样式表被浏览器长期缓存
             window.CGO_ASSET_VERSION = v;
 
             var titleFull = document.querySelector('.title-full');
+            var clr = (city && city.themeColor) ? city.themeColor : '';
+            var clrDark = (city && city.themeColorDark) ? city.themeColorDark : '#ffffff';
             if (titleFull && city && city.name) {
-                titleFull.textContent = city.name + ' 开放地图';
+                titleFull.innerHTML = '<span class="title-city">' + city.name + '</span> 开放地图';
             }
+            if (clr) {
+                document.documentElement.style.setProperty('--city-theme-color', clr);
+            } else {
+                document.documentElement.style.removeProperty('--city-theme-color');
+            }
+            if (clrDark) {
+                document.documentElement.style.setProperty('--city-theme-color-dark', clrDark);
+            } else {
+                document.documentElement.style.setProperty('--city-theme-color-dark', '#ffffff');
+            }
+
+            // 动态更新标题栏城市官方徽标 (优先使用 city/data.js 的 svglogo 自定义矢量代码，或 CGoUI 官方收录图标)
+            (function updateCityEmblem() {
+                var logoEl = document.getElementById('header-city-logo');
+                if (!logoEl || !city) return;
+                var rawSvg = city.svglogo;
+                if (rawSvg && typeof rawSvg === 'string' && rawSvg.trim()) {
+                    var svg = rawSvg.trim()
+                        .replace(/<\?xml[\s\S]*?\?>/gi, '')
+                        .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
+                        .trim();
+                    if (!/viewBox\s*=/i.test(svg)) {
+                        var pathDMatch = svg.match(/\bd=["']([^"']+)["']/i);
+                        var pathD = pathDMatch ? pathDMatch[1] : '';
+                        var nums = pathD.match(/-?\d+(?:\.\d+)?/g);
+                        var isLarge = nums && nums.some(function (n) { return Math.abs(parseFloat(n)) > 150; });
+                        var initVb = isLarge ? '0 0 1024 1024' : '0 0 100 100';
+                        svg = svg.replace(/<svg\b/i, '<svg viewBox="' + initVb + '"');
+                    }
+                    svg = svg.replace(/<svg\b([^>]*)>/i, function (match, attrs) {
+                        var cleanAttrs = attrs
+                            .replace(/\s+(width|height|fill)\s*=\s*["'][^"']*["']/gi, '')
+                            .trim();
+                        return '<svg width="24" height="24" fill="currentColor" ' + cleanAttrs + '>';
+                    });
+                    logoEl.innerHTML = svg;
+                    return;
+                }
+                var cid = (city.id || '').toLowerCase();
+                var builtinCitySet = {
+                    beijing: 1, changchun: 1, dalian: 1, fuzhou: 1, hefei: 1, qingdao: 1, shanghai: 1, shenyang: 1,
+                    changsha: 1, changzhou: 1, chengdu: 1, chongqing: 1, dongguan: 1, foshan: 1, guangzhou: 1, guiyang: 1,
+                    hangzhou: 1, harbin: 1, hongkong: 1, jinan: 1, kaohsiung: 1, kunming: 1, lanzhou: 1, nanchang: 1,
+                    nanjing: 1, nanning: 1, nantong: 1, ningbo: 1, shijiazhuang: 1, shenzhen: 1, suzhou: 1, taipei: 1,
+                    taiyuan: 1, taoyuan: 1, tianjin: 1, wenzhou: 1, wuhan: 1, wuhu: 1, wuxi: 1, xiamen: 1,
+                    xian: 1, zhengzhou: 1
+                };
+                if (builtinCitySet[cid] || (window.CGO && window.CGO.Icons && window.CGO.Icons[cid])) {
+                    logoEl.innerHTML = '<cgo-icon name="' + cid + '" size="24"></cgo-icon>';
+                } else {
+                    logoEl.innerHTML = '<cgo-icon name="train" size="24"></cgo-icon>';
+                }
+            })();
+
             // 页面语言随城市切换（注册表可选字段 lang，缺省 zh-CN），读屏据此选择发音
             document.documentElement.lang = (city && city.lang) ? city.lang : 'zh-CN';
             var pageHeading = document.getElementById('page-heading');
@@ -368,24 +428,24 @@
         })();
     </script>
     <!-- 核心地图渲染引擎 -->
-    <script type="module" src="core/script.js?v=261026.232300"></script>
+    <script type="module" src="core/script.js?v=261027.104600"></script>
     <!-- 邻城衔接（影子、上拉进入与双城并看；仅对声明了 neighbors 的城市生效，须晚于 core/script.js） -->
-    <script type="module" src="core/city-neighbors.js?v=261026.232300"></script>
+    <script type="module" src="core/city-neighbors.js?v=261027.104600"></script>
     <!-- 辅助面板逻辑 -->
-    <script src="core/help.js?v=261026.232300"></script>
-    <script src="core/settings.js?v=261026.232300"></script>
+    <script src="core/help.js?v=261027.104600"></script>
+    <script src="core/settings.js?v=261027.104600"></script>
     <script>
         // 动态加载公告与运营通知系统
         // 版本号与其余资源同批：公告内容更新时随批次串一起升级，不再用时间戳绕过缓存
         // （时间戳会让 Service Worker 每次访问都写入一条新的缓存条目）
         (function () {
             var script = document.createElement('script');
-            script.src = "core/notice.js?v=261026.232300";
+            script.src = "core/notice.js?v=261027.104600";
             document.body.appendChild(script);
         })();
     </script>
     <!-- CGoUI Web Components 基础组件库 -->
-    <script type="module" src="core/cgo-ui.js?v=261026.232300"></script>
+    <script type="module" src="core/cgo-ui.js?v=261027.104600"></script>
     <script>
         // 图片加载完毕后添加 loaded 类，配合 CSS 实现平滑淡入
         document.addEventListener('DOMContentLoaded', function () {

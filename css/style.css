@@ -18,15 +18,24 @@
     --sta-stroke-width-en: 1.75px;
 
     /* 无障碍令牌（对比度为 WCAG 相对亮度公式自算值，冒号后为所对的底色） */
-    --focus-ring: #1a73e8;        /* 焦点环：#fff 4.51 / #f8f9fa 4.27 / #e9ecef 3.80 / 面板头 #00263b 3.48 */
-    --not-open-text: #5d7b89;     /* 未开通站名与「暂未开通」文字：#fff 4.51（同色相下满足 4.5:1 的最浅值） */
-    --placeholder-text: #5b7785;  /* 输入框占位文字：#f8f9fa 4.50 / #fff 4.75 */
-    --input-border: #7895a3;      /* 输入框边框：#f8f9fa 3.01 / #fff 3.17 */
-    --slider-track: #7895a3;      /* 缩放滑块轨道：#fff 3.17 */
-    --info-text: #006098;         /* 信息色作文字：#fff 6.72 / --info-bg #e8f0fe 5.86 */
-    --success-text: #298341;      /* 成功色作文字：#fff 4.75 / --success-bg #e6ffed 4.50 */
-    --warning-text: #9f6607;      /* 警告色作文字：#fff 4.80 / --warning-bg≈#fff9e6 4.56 */
-    --danger-text: #d92617;       /* 危险色作文字：#fff 4.95 / --danger-bg #fff1f1 4.51 */
+    --focus-ring: #1a73e8;
+    /* 焦点环：#fff 4.51 / #f8f9fa 4.27 / #e9ecef 3.80 / 面板头 #00263b 3.48 */
+    --not-open-text: #5d7b89;
+    /* 未开通站名与「暂未开通」文字：#fff 4.51（同色相下满足 4.5:1 的最浅值） */
+    --placeholder-text: #5b7785;
+    /* 输入框占位文字：#f8f9fa 4.50 / #fff 4.75 */
+    --input-border: #7895a3;
+    /* 输入框边框：#f8f9fa 3.01 / #fff 3.17 */
+    --slider-track: #7895a3;
+    /* 缩放滑块轨道：#fff 3.17 */
+    --info-text: #006098;
+    /* 信息色作文字：#fff 6.72 / --info-bg #e8f0fe 5.86 */
+    --success-text: #298341;
+    /* 成功色作文字：#fff 4.75 / --success-bg #e6ffed 4.50 */
+    --warning-text: #9f6607;
+    /* 警告色作文字：#fff 4.80 / --warning-bg≈#fff9e6 4.56 */
+    --danger-text: #d92617;
+    /* 危险色作文字：#fff 4.95 / --danger-bg #fff1f1 4.51 */
 }
 
 [data-theme="dark"] {
@@ -46,15 +55,24 @@
     --divider: #333333;
     --list-hover: #373838;
 
-    --focus-ring: #8ab4f8;        /* #1a1a1a 8.26 / #1f2020 7.75 / #373838 5.58 */
-    --not-open-text: #878787;     /* #1a1a1a 4.84 / #1f2020 4.55（满足 4.5:1 的最深灰） */
-    --placeholder-text: #bdcbd2;  /* 沿用原值：#1a1a1a 10.5 */
-    --input-border: #6a6a6a;      /* #1a1a1a 3.22 / #1f2020 3.02 */
-    --slider-track: #6a6a6a;      /* --control-bg #1f2020 3.02 */
-    --info-text: #0095ec;         /* #1f2020 5.06 / --info-bg #1a2a3a 4.53 */
-    --success-text: #38b559;      /* #1f2020 6.16 / --success-bg #1b3e20 4.51 */
-    --warning-text: #f59e0b;      /* 沿用原值：#1f2020 7.61 / --warning-bg≈#2d291a 6.77 */
-    --danger-text: #ec5043;       /* #1f2020 4.51 / --danger-bg #3b0f0f 4.59 */
+    --focus-ring: #8ab4f8;
+    /* #1a1a1a 8.26 / #1f2020 7.75 / #373838 5.58 */
+    --not-open-text: #878787;
+    /* #1a1a1a 4.84 / #1f2020 4.55（满足 4.5:1 的最深灰） */
+    --placeholder-text: #bdcbd2;
+    /* 沿用原值：#1a1a1a 10.5 */
+    --input-border: #6a6a6a;
+    /* #1a1a1a 3.22 / #1f2020 3.02 */
+    --slider-track: #6a6a6a;
+    /* --control-bg #1f2020 3.02 */
+    --info-text: #0095ec;
+    /* #1f2020 5.06 / --info-bg #1a2a3a 4.53 */
+    --success-text: #38b559;
+    /* #1f2020 6.16 / --success-bg #1b3e20 4.51 */
+    --warning-text: #f59e0b;
+    /* 沿用原值：#1f2020 7.61 / --warning-bg≈#2d291a 6.77 */
+    --danger-text: #ec5043;
+    /* #1f2020 4.51 / --danger-bg #3b0f0f 4.59 */
 }
 
 /* 
@@ -790,9 +808,20 @@ html.nb-fadein #map-content {
 }
 
 @keyframes stacard-pulse {
-    0% { transform: scale(0.6); opacity: 0.6; }
-    70% { transform: scale(1.6); opacity: 0; }
-    100% { transform: scale(1.6); opacity: 0; }
+    0% {
+        transform: scale(0.6);
+        opacity: 0.6;
+    }
+
+    70% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
 }
 
 .stacard-pin-label {
@@ -868,8 +897,13 @@ html.nb-fadein #map-content {
 }
 
 @keyframes stacard-spin-anim {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .panel-footer {
@@ -1673,6 +1707,7 @@ html.nb-fadein #map-content {
     body.panel-sheet-collapsed .panel-header {
         border-radius: 20px 20px 0 0 !important;
     }
+
     body.mobile-panel-expanded .panel-header {
         border-radius: 0 !important;
     }
@@ -2801,10 +2836,56 @@ cgo-icon:not(:defined) {
     flex-shrink: 0;
 }
 
+.header-island .header-center,
+.header-center {
+    gap: 1px !important;
+}
+
 .header-logo-wrapper {
     height: 32px;
     width: 32px;
-    margin-right: 8px;
+    margin-right: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--city-theme-color, var(--text-main, #00263b));
+    transition: color 0.3s ease;
+}
+
+.header-logo-wrapper svg {
+    width: 24px;
+    height: 24px;
+    max-width: 28px;
+    max-height: 28px;
+    display: block;
+    fill: currentColor;
+    flex-shrink: 0;
+}
+
+.header-logo-wrapper cgo-icon {
+    font-size: 24px;
+    --cgo-icon-size: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: currentColor;
+    flex-shrink: 0;
+}
+
+.title-city {
+    color: var(--city-theme-color, inherit);
+    transition: color 0.3s ease;
+}
+
+/* 暗色模式下：加载 themeColorDark（默认回退到 #ffffff），平滑过渡 */
+[data-theme="dark"] .header-logo-wrapper {
+    color: var(--city-theme-color-dark, #ffffff);
+}
+
+[data-theme="dark"] .title-city {
+    color: var(--city-theme-color-dark, #ffffff);
 }
 
 .header-logo-wrapper .header-logo {
@@ -2869,9 +2950,11 @@ cgo-icon:not(:defined) {
     transform: translate(-50%, -50%) scale(0.5);
     pointer-events: none !important;
 }
+
 /* 通用移动抽屉：完整布局固定，拖动只改变合成层平移。
    正文占位仅在落档时更新，底部操作栏独立停靠在屏幕底边。 */
 @media (max-width: 640px) {
+
     #info-panel.cgo-mobile-sheet,
     .cgo-rt-panel.cgo-mobile-sheet {
         overflow: hidden !important;
@@ -2879,7 +2962,11 @@ cgo-icon:not(:defined) {
         contain: layout style;
         will-change: transform;
     }
-    .cgo-mobile-sheet .panel-header { touch-action: none; }
+
+    .cgo-mobile-sheet .panel-header {
+        touch-action: none;
+    }
+
     .cgo-mobile-sheet .panel-body {
         overflow-y: auto !important;
         min-height: 0 !important;
@@ -2888,6 +2975,7 @@ cgo-icon:not(:defined) {
         -webkit-overflow-scrolling: touch;
         overflow-anchor: none;
     }
+
     .cgo-mobile-sheet .panel-body::after {
         content: '';
         display: block;
@@ -2896,11 +2984,13 @@ cgo-icon:not(:defined) {
         flex: 0 0 var(--cgo-sheet-resting-offset, 0px);
         pointer-events: none;
     }
+
     body.panel-sheet-collapsed #info-panel.cgo-sheet-moving .panel-body,
     body.panel-sheet-collapsed #info-panel.cgo-sheet-moving .panel-tabs-container,
     .cgo-mobile-sheet.cgo-sheet-moving .panel-body {
         display: block !important;
     }
+
     .cgo-mobile-sheet-dock {
         position: fixed;
         left: 0;
@@ -2909,7 +2999,11 @@ cgo-icon:not(:defined) {
         z-index: 2001;
         background: var(--theme-bg);
     }
-    .cgo-mobile-sheet-dock[hidden] { display: none; }
+
+    .cgo-mobile-sheet-dock[hidden] {
+        display: none;
+    }
+
     .cgo-mobile-sheet-dock .panel-footer {
         margin: 0 !important;
         padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
