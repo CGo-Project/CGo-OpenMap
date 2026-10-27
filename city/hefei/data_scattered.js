@@ -29,8 +29,8 @@ const SCATTERED_DATA = [
     {
         id: "railway-HFX",
         file: "./city/hefei/assets/railway.svg",
-        x: 952,
-        y: 1192,
+        x: 954,
+        y: 1164,
         width: 21,
         height: 21,
         opacity: 1,
