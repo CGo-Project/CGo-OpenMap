@@ -179,6 +179,7 @@ const CITY_REGISTRY = {
         id: "shanghai",
         name: "上海",
         themeColor: "#b72626",          // 城市专属主题色 (Hex，驱动主要按钮、悬浮态与高亮，留空使用默认蓝色)
+        themeColorDark: "#dc3636ff",    // 暗色模式专属主题色 (Hex，驱动暗色模式下标题与Logo高亮，留空默认回退到 #ffffff)
         svglogo: '<svg xmlns="http://www.w3.org/2000/svg"><path d="..."/></svg>', // 城市官方矢量徽标 (收录去色去 viewBox，留空默认显示小火车图标)
         folder: "./city/shanghai",
         mainLogic: "./city/shanghai/shanghai.js",
@@ -195,7 +196,12 @@ const CITY_REGISTRY = {
 ```
 
 > 💡 **城市品牌定制规范**：
-> - `themeColor`：优先使用 6 位 Hex（如 `#b72626`、`#c60a16`），亦兼容 3/8 位 Hex。未设置时自动继承系统经典深蓝（`#00263b`）。不同城市之间色彩完全隔离，杜绝相互污染。
+> - `themeColor`：亮色模式城市专属主题色（优先 6 位 Hex 如 `#b72626`、`#c60a16`，亦兼容 3/8 位 Hex）。未设置时自动继承系统经典深蓝（`#00263b`）。不同城市之间色彩完全隔离，杜绝相互污染。
+> - `themeColorDark`：暗色模式专属主题色（兼容 3/6/8 位 Hex）。驱动暗色模式下顶栏城市标题（`.title-city`）与矢量徽标（`.header-logo-wrapper`）着色。未设置或留空时系统自动安全回退至纯白色（`#ffffff`）。
+> - **城市主理人色彩选定与亮暗调配原则（确保对比度与可读性）**：
+>   - **浅色系主题色**（如亮黄、明绿、浅粉青）：暗色模式（`themeColorDark`）可直接使用；亮色模式（`themeColor`）在白底上容易字迹发虚，需适当调深、加浓或增加饱和度。
+>   - **深色系主题色**（如正红、墨绿、棕褐、深紫）：亮色模式（`themeColor`）可直接使用官方原色；暗色模式（`themeColorDark`）在黑底下容易与背景融为一体，需适当调浅、提亮以增强辨识度。
+>   - **难调深色或特定体系**（如深蓝色、藏青等）：调浅后易产生发灰或脏色，在暗色模式下建议直接使用纯白色（`#ffffff`）。典型标杆如**北京地铁**：亮色模式为深蓝（`themeColor: "#004060"`），暗色模式直接配置为白色（`themeColorDark: "#ffffff"`）。
 > - `svglogo`：收录时**必须去色（移除硬编码 fill）、去 viewBox 并去除 XML 头部**。前端基于 `currentColor` 自动适配亮暗与悬浮反白，并通过 `getBBox()` 自动自适应缩放至与小火车图标一致的 `22px × 22px`。留空则自动降级展示小火车图标。
 
 

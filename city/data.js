@@ -33,6 +33,14 @@
      * - "active"   : 已上线。用于质量评定达到 S、A、B 级（≥70分）的成熟可用线路图，在门户正常展示。
      * - "updating" : 更新中。用于评定为 C 级（预警观察，60~69分）或 D 级（下架维护，<60分）的城市，提示当前处于维护迭代中。
      * - "offline"  : 不上线。用于特定规划网、实验室测试网或暂不面向门户公开展出的城市（如北京规划 beijing_plan），在概览、距离、首字母、最近使用里均不展示。
+     *
+     * themeColor 与 themeColorDark 色彩微调规范（亮暗对比度优先）：
+     * - themeColor: 亮色模式城市专属主色（3/6/8 位 Hex，驱动标题、按钮与高亮，留空默认继承系统深蓝 #00263b）；
+     * - themeColorDark: 暗色模式城市专属主色（驱动顶栏城市名与徽标高亮，留空安全默认回退至 #ffffff）；
+     * - 选色与调配指引：
+     *   1. 浅色系主题色：暗色模式（themeColorDark）可直接使用原色；亮色模式（themeColor）在白底上需适当加深加浓。
+     *   2. 深色系主题色：亮色模式（themeColor）可直接使用官方原色；暗色模式（themeColorDark）在暗底上需适当调浅提亮。
+     *   3. 难调深色（如深蓝、藏青）：暗色模式统一使用白色 "#ffffff"，以北京为例（亮色 #004060，暗色 #ffffff）。
      */
     const CITY_REGISTRY = {
         "jiaxing": {
@@ -413,7 +421,7 @@
             id: "hongkong",
             name: "香港",
             lang: "zh-HK", // 站名为繁体中文
-            themeColor: "#ac3045", // 綫路圖站名深藍
+            themeColor: "#ac3045",
             themeColorDark: "#b8475aff",
             svglogo: null, // 已接入 CGoUI 内置 hongkong 矢量图标
             folder: "./city/hongkong",

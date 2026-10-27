@@ -74,9 +74,8 @@ The project also includes **OpenMap Editor**, a modern transit-map editor and co
 - **Light and dark themes** — automatically follows system preferences or can be manually locked to a theme, with crisp vector rendering on high-DPI displays.
 - **Multi-dimensional station search** — supports Chinese and English station names, full Pinyin, Pinyin initials, polyphonic characters, aliases, and former station names.
 - **Modular station information boards** — the registration-based architecture in `core/station-board.js` allows each city to enable, reorder, or extend modules for tourism guidance, timetables, estimated arrivals, transfer walking guidance, bus/taxi connections, platform layouts, elevators, nursing rooms, AED locations, and other local services.
-- **Detailed station and line models** — supports transfer information, operator information, exits, platform and stair diagrams, first/last train interfaces, time-limited virtual transfers, and geographic-distance-assisted map spacing.
 - **Location-aware assistance** — uses the browser Geolocation API to estimate nearby stations and direct distance, and can hand off to external navigation or railway services.
-- **City-specific branding** — each city can register its own `themeColor` and official vector logo. Theme palettes are derived per city and remain isolated to avoid cross-city style leakage.
+- **City-specific branding** — each city can register its own `themeColor` and dark-mode `themeColorDark` alongside an official vector logo. Theme palettes are derived per city with tailored contrast tuning (light colors deepened for bright backgrounds, deep colors lightened for dark backgrounds, or defaulting to white for hard-to-tune deep blues like Beijing), strictly isolated between cities.
 - **Decoupled multi-city architecture** — the core renderer under `core/` is separated from city-specific configuration under `city/`, making it possible to add a city without modifying the rendering engine.
 - **PWA and offline support** — includes a Service Worker caching strategy and Web App Manifest so the project can be installed and used offline on mainstream desktop and mobile platforms.
 

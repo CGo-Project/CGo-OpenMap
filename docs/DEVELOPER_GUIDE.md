@@ -174,6 +174,15 @@ CGo OpenMap 采用原生 Service Worker 实现完全去服务端的纯静态离�
 - 支持长按（800ms）重置为跟随操作系统外观；
 - 支持父子窗口 `postMessage` 跨页面同步主题。
 
+#### 7.3.1 城市品牌主题色与 CSS 变量体系 (`--city-theme-color`, `--city-theme-color-dark`)
+CGo OpenMap 支持各城市在 `city/data.js` 的 `CITY_REGISTRY` 中声明专属的亮暗双模品牌主色：
+- **亮色变量 (`--city-theme-color`)**：由 `themeColor` 注入根节点 `<html>`，驱动主要操作按钮、悬浮态高亮与顶栏城市名称；
+- **暗色变量 (`--city-theme-color-dark`)**：由 `themeColorDark` 注入根节点，在 `[data-theme="dark"]` 下无缝接管顶栏城市名（`.title-city`）与矢量徽标（`.header-logo-wrapper`）；未设置时自动安全回退至 `#ffffff`；
+- **主理人调配原则（对比度优先）**：
+  1. **偏浅主题色**（明黄、粉青等）：暗色模式直接使用原色，亮色模式需加深加浓，防止白底下发虚；
+  2. **偏深主题色**（正红、墨绿等）：亮色模式直接使用官方原色，暗色模式需调浅提亮，避免暗底隐没；
+  3. **难调深色**（深蓝、藏青等）：暗色模式统一配置为白色（`#ffffff`），标杆范例为北京（亮色深蓝 `#004060`，暗色白色 `#ffffff`）。
+
 ### 7.4 无障碍与安全转义工具 (`core/a11y.js`)
 - 必须优先使用 `CGoA11y.escapeHtml(str)` 对任何拼入 DOM 的外部或用户输入内容进行转义，杜绝 XSS；
 - 读屏播报通过 `CGoA11y.announce(text)` 异步推入常驻 `#cgo-a11y-status` 区域；

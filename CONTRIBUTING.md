@@ -83,8 +83,9 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
 "guangzhou": {
     id: "guangzhou",
     name: "广州",
-    themeColor: null, // 城市专属主题色 (留空使用默认蓝色)
-    svglogo: null,    // 城市图标：优先设为 null 读取 CGoUI 官方图标；若未收录才填入自定义 SVG
+    themeColor: null,     // 城市专属主题色 (留空使用默认蓝色)
+    themeColorDark: null, // 暗色模式专属主题色 (留空默认回退到 #ffffff)
+    svglogo: null,        // 城市图标：优先设为 null 读取 CGoUI 官方图标；若未收录才填入自定义 SVG
     folder: "./city/guangzhou",
     mainLogic: "./city/guangzhou/guangzhou.js",
     center: { x: 900, y: 650 },
@@ -98,6 +99,16 @@ CGo OpenMap 核心引擎正在飞速演进（包括未来规划的换乘寻路�
     ]
 }
 ```
+
+> [!TIP]
+> **🎨 城市主题色亮暗双模选定与微调规范**：
+> - `themeColor`：亮色模式下城市主色（3/6/8 位 Hex，如 `#e71f24`，留空默认继承系统深蓝 `#00263b`）。
+> - `themeColorDark`：暗色模式（Dark Mode）下城市专属主色（如 `#ff373aff`，用于顶栏城市名与徽标高亮，留空默认回退至 `#ffffff`）。
+> - **主理人调配原则**：
+>   1. **偏浅主题色**：暗色模式直接使用原色，亮色模式需适当加深加浓；
+>   2. **偏深主题色**：亮色模式直接使用原色，暗色模式需适当调浅提亮；
+>   3. **难调深色**（如深蓝/藏青）：暗色模式统一配置为白色（`#ffffff`），标杆范例为北京（亮色深蓝 `#004060`，暗色白色 `#ffffff`）。
+
 
 > [!IMPORTANT]
 > **🎨 城市图标核心规范（参与者必须遵循）**：

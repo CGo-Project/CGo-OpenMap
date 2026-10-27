@@ -45,11 +45,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261027.104600">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261027.104600">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261027.104600">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261027.104600">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261027.104600">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261027.111000">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261027.111000">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261027.111000">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261027.111000">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261027.111000">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -760,16 +760,20 @@
             <input type="text" class="form-input" id="exportCityName" placeholder="例如: 福州, 悉尼">
         </div>
         <div class="form-row">
-            <span class="form-label">主题色:</span>
-            <input type="text" class="form-input" id="exportThemeColor" value="#00263b">
-            <span class="form-label" style="min-width:auto;margin-left:8px;">线路前缀:</span>
+            <span class="form-label">主题色(亮):</span>
+            <input type="text" class="form-input" id="exportThemeColor" value="#00263b" placeholder="亮色主色">
+            <span class="form-label" style="min-width:auto;margin-left:8px;">暗色:</span>
+            <input type="text" class="form-input" id="exportThemeColorDark" value="#ffffff" placeholder="暗色主色">
+        </div>
+        <div class="form-row">
+            <span class="form-label">线路前缀:</span>
             <input type="text" class="form-input" id="exportLinePrefix" value="M">
+            <span class="form-label" style="min-width:auto;margin-left:8px;">米/像素:</span>
+            <input type="number" class="form-input" id="exportPxMeter" value="25" step="1">
         </div>
         <div class="form-row">
             <span class="form-label">运营公司:</span>
             <input type="text" class="form-input" id="exportCompany" placeholder="例如: 福州地铁">
-            <span class="form-label" style="min-width:auto;margin-left:8px;">米/像素:</span>
-            <input type="number" class="form-input" id="exportPxMeter" value="25" step="1">
         </div>
         <div id="exportValidationSummary"
             style="font-size:11px;padding:8px;background:var(--office-hover);border-radius:6px;margin-top:8px;"></div>
@@ -810,10 +814,10 @@
     </cgo-modal>
 
     <!-- 模块脚本加载链 -->
-    <script type="module" src="../core/cgo-ui.js?v=261027.104600"></script>
-    <script src="../core/path-geometry.js?v=261027.104600"></script>
-    <script src="../core/station-icons.js?v=261027.104600"></script>
-    <script src="../city/data.js?v=261027.104600"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261027.111000"></script>
+    <script src="../core/path-geometry.js?v=261027.111000"></script>
+    <script src="../core/station-icons.js?v=261027.111000"></script>
+    <script src="../city/data.js?v=261027.111000"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

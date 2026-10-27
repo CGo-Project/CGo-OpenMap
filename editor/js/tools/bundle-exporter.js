@@ -265,6 +265,7 @@ window.OpenMapEditor.BundleExporter = (function () {
             cityId: cityId,
             cityName: cityName,
             themeColor: meta.themeColor || '#00263b',
+            themeColorDark: meta.themeColorDark || '#ffffff',
             linePrefix: meta.linePrefix || 'M',
             company: meta.company || '',
             pixelsPerMeter: meta.pixelsPerMeter || 25

@@ -3466,6 +3466,7 @@
             var cityId = (document.getElementById('exportCityId') || {}).value || 'unnamed';
             var cityName = (document.getElementById('exportCityName') || {}).value || cityId;
             var themeColor = (document.getElementById('exportThemeColor') || {}).value || '#00263b';
+            var themeColorDark = (document.getElementById('exportThemeColorDark') || {}).value || '#ffffff';
             var linePrefix = (document.getElementById('exportLinePrefix') || {}).value || 'M';
             var company = (document.getElementById('exportCompany') || {}).value || '';
             var pxMeter = parseFloat((document.getElementById('exportPxMeter') || {}).value) || 25;
@@ -3476,6 +3477,7 @@
                     cityId: cityId,
                     cityName: cityName,
                     themeColor: themeColor,
+                    themeColorDark: themeColorDark,
                     linePrefix: linePrefix,
                     company: company,
                     pixelsPerMeter: pxMeter
