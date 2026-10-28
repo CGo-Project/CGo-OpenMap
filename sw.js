@@ -3,7 +3,7 @@
  */
 
 
-const CACHE_NAME = 'cgo-openmap-v261028.400000';
+const CACHE_NAME = 'cgo-openmap-v261029.430000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -740,13 +740,39 @@ const ASSETS_TO_CACHE = [
     "./city/yancheng/yancheng.js",
     "./city/yibin/assets/yb_water.svg",
     "./city/yibin/data_legend.js",
-    "./city/yibin/data_lines.bak.js",
     "./city/yibin/data_lines.js",
     "./city/yibin/data_scattered.js",
-    "./city/yibin/data_stations.bak.js",
     "./city/yibin/data_stations.js",
     "./city/yibin/data_virtual_transfers.js",
-    "./city/yibin/yibin.js",];
+    "./city/yibin/yibin.js",
+    "./city/chuanxi/assets/cx-blue.svg",
+    "./city/chuanxi/assets/cx-dual.svg",
+    "./city/chuanxi/assets/cx-dusi.svg",
+    "./city/chuanxi/assets/cx-green.svg",
+    "./city/chuanxi/chuanxi.js",
+    "./city/chuanxi/data_legend.js",
+    "./city/chuanxi/data_lines.js",
+    "./city/chuanxi/data_notopen.js",
+    "./city/chuanxi/data_stations.js",
+    "./city/jinhua/assets/jh-jyd.svg",
+    "./city/jinhua/data_legend.js",
+    "./city/jinhua/data_lines.js",
+    "./city/jinhua/data_stations.js",
+    "./city/jinhua/jinhua.js",
+    "./city/lijiang/assets/lj-line1.svg",
+    "./city/lijiang/data_legend.js",
+    "./city/lijiang/data_lines.js",
+    "./city/lijiang/data_stations.js",
+    "./city/lijiang/lijiang.js",
+    "./city/saigon/assets/saigon-line1.svg",
+    "./city/saigon/data_legend.js",
+    "./city/saigon/data_lines.js",
+    "./city/saigon/data_stations.js",
+    "./city/saigon/saigon.js",
+    "./city/wuhu/data_legend.js",
+    "./city/wuhu/data_lines.js",
+    "./city/wuhu/data_stations.js",
+    "./city/wuhu/wuhu.js",];
 
 /**
  * 预缓存并发上限。

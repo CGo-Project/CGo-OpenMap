@@ -954,10 +954,12 @@ function renderLines() {
             if (!points || points.length < 2) return;
             const d = generateRoundedPath(points, isStrict);
             // 外描边底色（隔离不同相交线路，增强立体可读性）
+            // noOuter：跳过白色外描边。双色并行线路（如川西 M-TR 的左蓝右绿）需要两条描边
+            // 直接贴合，若各自带 7px 白边，后画的一条会把前一条的颜色边缘盖住，露出约 0.8px 的白缝。
             const pathOuter = document.createElementNS("http://www.w3.org/2000/svg", "path");
             pathOuter.setAttribute("d", d);
             pathOuter.setAttribute("class", `line-visual-outer ${segmentClass}`);
-            pathOuter.setAttribute("stroke", "var(--map-bg)");
+            pathOuter.setAttribute("stroke", line.noOuter ? "none" : "var(--map-bg)");
             pathOuter.setAttribute("stroke-width", "7");
             // 内描边（线路实体主题色）
             const pathInner = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -2667,7 +2669,11 @@ function createSvgPath(d, color, width) {
  * 显示线路悬停徽标提示 (Tooltip)
  */
 function handleTooltipShow(lineName) {
-    const meta = getLineSvgMeta(lineName);
+    // 城市可用 getTooltipBadge(lineName) 覆盖悬停徽标，例如双色共线段只挂一个蓝绿标
+    const city = getActiveCity();
+    const override = city && typeof city.getTooltipBadge === 'function'
+        ? city.getTooltipBadge(lineName) : null;
+    const meta = override || getLineSvgMeta(lineName);
     if (meta && meta.svg) {
         lineTooltip.innerHTML = '';
         const span = document.createElement('span');
