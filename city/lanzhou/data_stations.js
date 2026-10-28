@@ -96,7 +96,7 @@ const stationsData = {
     "M313": { type: "no", x: 1800, y: 950, cn: "黄河新城", en: "Yellow River New City", align: "top", offset: { x: 0, y: 0 }, textScale: { cn: 1.0, en: 1.0 } },
     "M314": { type: "no", x: 1715, y: 950, cn: "水源东", en: "Shuiyuan East", align: "top", offset: { x: 0, y: 0 }, textScale: { cn: 1.0, en: 1.0 } },
     "M315": { type: "no", x: 1610, y: 950, cn: "万福城东", en: "Wanfucheng East", align: "bottom-right", offset: { x: 0, y: 0 }, textScale: { cn: 1.0, en: 1.0 } },
-    "M316": { type: "no", x: 1550, y: 950, cn: "万福城", en: "Wanfucheng", align: "down", offset: { x: 0, y: 0 }, textScale: { cn: 1.0, en: 1.0 } },
+    "M316": { type: "no", x: 1550, y: 950, cn: "万福城", en: "Wanfucheng", align: "bottom", offset: { x: 0, y: 0 }, textScale: { cn: 1.0, en: 1.0 } },
     "M317": { type: "no", x: 1520, y: 910, cn: "玄武路", en: "Xuanwu Road", align: "left", offset: { x: 0, y: 0 }, textScale: { cn: 1.0, en: 1.0 } },
     "M318": { type: "no", x: 1520, y: 870, cn: "科学城", en: "Science City", align: "left", offset: { x: 0, y: 0 }, textScale: { cn: 1.0, en: 1.0 } },
 

@@ -2,8 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-
-const CACHE_NAME = 'cgo-openmap-v261027.111000';
+const CACHE_NAME = 'cgo-openmap-v261028.160824';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -25,7 +24,9 @@ const ASSETS_TO_CACHE = [
     './editor/css/editor-components.css',
     './editor/js/core/project-model.js',
     './editor/js/core/history-manager.js',
+    './editor/js/core/startup-policy.js',
     './editor/js/core/city-project-io.js',
+    './editor/js/algorithms/align-45.js',
     './editor/js/algorithms/segment-router.js',
     './editor/js/algorithms/data-sanitizer.js',
     './editor/js/algorithms/align-solver.js',
@@ -558,9 +559,20 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/assets/fuzhou_railway.svg',
     './city/fuzhou/assets/fuzhou_airport.svg',
 
+    // 城市配置与业务数据 (苏州)
+    './city/suzhou/suzhou.js',
+    './city/suzhou/stacard/script.js',
+    './city/suzhou/data_stations.js',
+    './city/suzhou/data_lines.js',
+    './city/suzhou/data_virtual_transfers.js',
+    './city/suzhou/data_scattered.js',
+    './city/suzhou/data_notopen.js',
+    './city/suzhou/data_legend.js',
+    './city/suzhou/data_timetable.js',
+    './city/suzhou/staname.csv',
+
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
-    './assets/svg/icon@01.svg',
-    './assets/svg/icon@02.svg',
+    './assets/svg/icon@01.svg',    './assets/svg/icon@02.svg',
     './assets/svg/icon@03.svg',
     './assets/svg/icon@04.svg',
     './assets/svg/icon@05.svg',
