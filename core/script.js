@@ -968,18 +968,25 @@ function renderLines() {
             layers.outer.push(pathOuter);
             layers.inner.push(pathInner);
             // 叠加虚线/市郊纹理
-            if (line.overlayStyle) {
+            // overlayStyle 为单层（旧写法）；overlayStyles 为多层叠加，按数组顺序自下而上绘制。
+            // 多层用于「底色带 + 白色虚线段 + 同色细芯」这类轨道纹理，单层表达不了。
+            const overlayList = [];
+            if (line.overlayStyle) overlayList.push(line.overlayStyle);
+            if (Array.isArray(line.overlayStyles)) overlayList.push(...line.overlayStyles);
+            overlayList.forEach((ov, ovIndex) => {
+                if (!ov) return;
                 const pathOverlay = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 pathOverlay.setAttribute("d", d);
-                pathOverlay.setAttribute("class", `line-visual-overlay ${segmentClass}`);
-                pathOverlay.setAttribute("stroke", line.overlayStyle.color);
-                pathOverlay.setAttribute("stroke-width", line.overlayStyle.width);
-                pathOverlay.setAttribute("stroke-opacity", line.overlayStyle.opacity);
-                pathOverlay.setAttribute("stroke-dasharray", line.overlayStyle.dashArray);
+                pathOverlay.setAttribute("class",
+                    `line-visual-overlay line-visual-overlay-${ovIndex} ${segmentClass}`);
+                pathOverlay.setAttribute("stroke", ov.color);
+                pathOverlay.setAttribute("stroke-width", ov.width);
+                pathOverlay.setAttribute("stroke-opacity", ov.opacity);
+                pathOverlay.setAttribute("stroke-dasharray", ov.dashArray);
                 pathOverlay.setAttribute("fill", "none");
-                pathOverlay.setAttribute("stroke-linecap", "butt");
+                pathOverlay.setAttribute("stroke-linecap", ov.linecap || "butt");
                 layers.overlay.push(pathOverlay);
-            }
+            });
             // 交互判定层 (透明加宽热区)
             const pathInteraction = document.createElementNS("http://www.w3.org/2000/svg", "path");
             pathInteraction.setAttribute("d", d);
@@ -1853,10 +1860,13 @@ function highlightLine(lineId, currentStationId = null, fromSync = false) {
             const ids2 = lineData['stationIds-way2'] || [];
             const inWay1 = ids1.includes(currentStationId);
             const inWay2 = ids2.includes(currentStationId);
+            // 类名映射见 core/path-geometry.js：主线是 .seg-main，分支依次是 .seg-way1 / .seg-way2。
+            // 之前这里按「way1=.seg-way1 / way2=.seg-way2」来查，主线 .seg-main 永远查不到，
+            // 点支线站时主线不淡出、反而把支线自己调暗，表现为「点支线还是显示主线」。
+            const segMain = el.querySelectorAll('.seg-main');
             const segWay1 = el.querySelectorAll('.seg-way1');
             const segWay2 = el.querySelectorAll('.seg-way2');
-            segWay1.forEach(p => p.style.opacity = '1');
-            segWay2.forEach(p => p.style.opacity = '1');
+            [segMain, segWay1, segWay2].forEach(list => list.forEach(p => p.style.opacity = '1'));
             // 淡化另一条交路时，只停靠该交路的车站也要一起淡化，
             // 否则会出现走向已经变浅、站点与站名却还亮着的割裂感；
             // 若该站还有别的线路经过（那些线路并未淡化），则保持原样。
@@ -1876,10 +1886,12 @@ function highlightLine(lineId, currentStationId = null, fromSync = false) {
             // 车站详情面板判定上/下一站也是先查 way1 再回落 way2，两边保持一致，
             // 否则会出现面板只报主线、图上却把支线也点亮的矛盾。
             if (inWay1) {
-                segWay2.forEach(p => p.style.opacity = '0.1');
+                // 选中主线（含共用主干）→ 淡出所有分支走向
+                [segWay1, segWay2].forEach(list => list.forEach(p => p.style.opacity = '0.1'));
                 dimExclusive(ids2, ids1);
             } else if (inWay2) {
-                segWay1.forEach(p => p.style.opacity = '0.1');
+                // 选中只属于 way2 的站 → 淡出主线与其它分支
+                [segMain, segWay2].forEach(list => list.forEach(p => p.style.opacity = '0.1'));
                 dimExclusive(ids1, ids2);
             }
         }

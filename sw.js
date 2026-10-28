@@ -3,7 +3,7 @@
  */
 
 
-const CACHE_NAME = 'cgo-openmap-v261027.111000';
+const CACHE_NAME = 'cgo-openmap-v261028.400000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -694,7 +694,59 @@ const ASSETS_TO_CACHE = [
     './assets/icons/favicon.ico',
     './assets/images/qq.png',
     './manifest.json',
-];
+
+    "./city/hanoi/assets/hn-2a.svg",
+    "./city/hanoi/assets/hn-3.svg",
+    "./city/hanoi/data_legend.js",
+    "./city/hanoi/data_lines.js",
+    "./city/hanoi/data_stations.js",
+    "./city/hanoi/hanoi.js",
+    "./city/pyongyang/assets/logo.svg",
+    "./city/pyongyang/assets/py-cl.svg",
+    "./city/pyongyang/assets/py-hk.svg",
+    "./city/pyongyang/assets/py-ks.svg",
+    "./city/pyongyang/assets/py-t1.svg",
+    "./city/pyongyang/assets/py-t2.svg",
+    "./city/pyongyang/assets/py-t3.svg",
+    "./city/pyongyang/assets/py_water.svg",
+    "./city/pyongyang/data_legend.js",
+    "./city/pyongyang/data_lines.js",
+    "./city/pyongyang/data_notopen.js",
+    "./city/pyongyang/data_scattered.js",
+    "./city/pyongyang/data_stations.js",
+    "./city/pyongyang/data_timetable.js",
+    "./city/pyongyang/data_virtual_transfers.js",
+    "./city/pyongyang/pyongyang.js",
+    "./city/pyongyang/stacard/script.js",
+    "./city/pyongyang/staname.csv",
+    "./city/taichung/assets/tc-blue.svg",
+    "./city/taichung/assets/tc-green.svg",
+    "./city/taichung/assets/tc-red.svg",
+    "./city/taichung/data_legend.js",
+    "./city/taichung/data_lines.js",
+    "./city/taichung/data_notopen.js",
+    "./city/taichung/data_stations.js",
+    "./city/taichung/data_virtual_transfers.js",
+    "./city/taichung/taichung.js",
+    "./city/xiangxi/assets/xx-maglev.svg",
+    "./city/xiangxi/data_legend.js",
+    "./city/xiangxi/data_lines.js",
+    "./city/xiangxi/data_stations.js",
+    "./city/xiangxi/xiangxi.js",
+    "./city/yancheng/assets/yc-srt1.svg",
+    "./city/yancheng/data_legend.js",
+    "./city/yancheng/data_lines.js",
+    "./city/yancheng/data_stations.js",
+    "./city/yancheng/yancheng.js",
+    "./city/yibin/assets/yb_water.svg",
+    "./city/yibin/data_legend.js",
+    "./city/yibin/data_lines.bak.js",
+    "./city/yibin/data_lines.js",
+    "./city/yibin/data_scattered.js",
+    "./city/yibin/data_stations.bak.js",
+    "./city/yibin/data_stations.js",
+    "./city/yibin/data_virtual_transfers.js",
+    "./city/yibin/yibin.js",];
 
 /**
  * 预缓存并发上限。
