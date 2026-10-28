@@ -45,11 +45,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261027.111000">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261027.111000">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261027.111000">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261027.111000">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261027.111000">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261028.160824">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261028.160824">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261028.160824">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261028.160824">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261028.160824">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -268,6 +268,11 @@
                             <div class="ribbon-icon"><cgo-icon name="refresh" size="18"></cgo-icon></div>
                             <span class="btn-text">刷新线网</span>
                         </button>
+                        <button class="ribbon-action-btn-lg" id="btnAlign45"
+                            title="把整份工程的所有走向折线与车站链一次性对齐到 45°/90°（轴段与斜段），可撤销">
+                            <div class="ribbon-icon"><cgo-icon name="design" size="18"></cgo-icon></div>
+                            <span class="btn-text">45/90 对齐</span>
+                        </button>
                     </div>
                     <div class="ribbon-group-label">历史与重算</div>
                 </div>
@@ -343,6 +348,11 @@
                             title="打包下载仅含改动文件的 Changeset ZIP 压缩包">
                             <div class="ribbon-icon"><cgo-icon name="export-zip" size="18"></cgo-icon></div>
                             <span class="btn-text">导出改动 ZIP</span>
+                        </button>
+                        <button class="ribbon-action-btn-lg danger" id="btnForceWriteBack"
+                            title="危险操作：跳过「有无改动」判定，把当前工程整份无条件写回城市文件（写前自动下载原件备份）">
+                            <div class="ribbon-icon"><cgo-icon name="warning" size="18"></cgo-icon></div>
+                            <span class="btn-text">强制回写</span>
                         </button>
                     </div>
                     <div class="ribbon-group-label">存量城市无损维护</div>
@@ -471,11 +481,8 @@
                 <button class="hud-btn" id="hudBtnFit" title="自适应居中画布 (F)">
                     <cgo-icon name="fullscn" size="14"></cgo-icon>
                 </button>
-                <button class="hud-btn" id="hudBtnGrid" title="切换网格显示 (G)">
+                <button class="hud-btn" id="hudBtnGrid" title="显示网格并自动对齐网格 (G)；关闭则既不显示也不对齐">
                     <cgo-icon name="view-grid" size="14"></cgo-icon>
-                </button>
-                <button class="hud-btn" id="hudBtnSnap" title="网格吸附开关">
-                    <cgo-icon name="link" size="14"></cgo-icon>
                 </button>
                 <div class="hud-divider"></div>
                 <button class="hud-btn active" id="hudBtnToggleInspector" title="切换属性检视面板 (Ctrl+])">
@@ -610,7 +617,9 @@
     <cgo-modal id="modalBatchStation" title="百科 HTML 表格提取与批量放站" max-width="820px">        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;line-height:1.6;">
             ① 粘贴维基/百度百科「车站列表」表格源码 →
             ② 点「解析站名」，按下表逐行校对（可直接改，取消勾选即不导入）→
-            ③ 选择是否自动连线 → ④「确认导入」。
+            ③ 选择是否自动连线 → ④「确认导入」。<br>
+            追加到已有线路时，新站会从原线路末站沿所选方向继续排，并自动补上「末站 → 首座新站」的连线；
+            空线路 / 空白画布仍从默认起点开始。
         </div>
         <textarea class="form-textarea" id="batchHtmlInput" placeholder="在此粘贴 <table>...</table> 源码..."
             style="height: 110px;"></textarea>
@@ -814,10 +823,10 @@
     </cgo-modal>
 
     <!-- 模块脚本加载链 -->
-    <script type="module" src="../core/cgo-ui.js?v=261027.111000"></script>
-    <script src="../core/path-geometry.js?v=261027.111000"></script>
-    <script src="../core/station-icons.js?v=261027.111000"></script>
-    <script src="../city/data.js?v=261027.111000"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261028.160824"></script>
+    <script src="../core/path-geometry.js?v=261028.160824"></script>
+    <script src="../core/station-icons.js?v=261028.160824"></script>
+    <script src="../city/data.js?v=261028.160824"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -830,9 +839,11 @@
     <!-- Core 核心数据与读写 -->
     <script src="js/core/project-model.js"></script>
     <script src="js/core/history-manager.js"></script>
+    <script src="js/core/startup-policy.js"></script>
     <script src="js/core/city-project-io.js"></script>
 
     <!-- Algorithms 纯算法层 -->
+    <script src="js/algorithms/align-45.js"></script>
     <script src="js/algorithms/segment-router.js"></script>
     <script src="js/algorithms/data-sanitizer.js"></script>
     <script src="js/algorithms/align-solver.js"></script>

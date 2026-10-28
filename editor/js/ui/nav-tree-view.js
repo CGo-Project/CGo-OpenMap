@@ -17,7 +17,8 @@ window.OpenMapEditor.NavTreeView = (function () {
     };
 
     var callbacks = {
-        onSelect: null
+        onSelect: null,
+    onDeleteLine: null
     };
 
     // 记录各分类分支的展开状态（默认线路展开，其他可按需展开）
@@ -39,6 +40,9 @@ window.OpenMapEditor.NavTreeView = (function () {
     function init(containerEl, opts) {
         dom.container = containerEl;
         if (!dom.container) return;
+        if (opts && typeof opts.onDeleteLine === 'function') {
+            callbacks.onDeleteLine = opts.onDeleteLine;
+        }
         if (opts && typeof opts.onSelect === 'function') {
             callbacks.onSelect = opts.onSelect;
         }
@@ -241,7 +245,18 @@ window.OpenMapEditor.NavTreeView = (function () {
 
                 item.innerHTML = swatch +
                     '<div class="tree-leaf-text">' + nameHtml + idSub + '</div>' +
-                    countBadge;
+                    countBadge +
+                    '<button type="button" class="tree-leaf-del" data-del-line="' + escapeHtml(line.id) + '" ' +
+                    'title="删除这条线路"><cgo-icon name="delete" size="12"></cgo-icon></button>';
+
+                var delBtn = item.querySelector('[data-del-line]');
+                if (delBtn) {
+                    delBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (callbacks.onDeleteLine) callbacks.onDeleteLine(line.id, line);
+                    });
+                }
 
                 item.addEventListener('click', function (e) {
                     e.stopPropagation();

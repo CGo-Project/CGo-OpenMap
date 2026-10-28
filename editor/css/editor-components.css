@@ -448,6 +448,38 @@
     color: var(--office-primary);
 }
 
+/* 线路行内的删除按钮：默认隐形，hover / 选中行时才显形，避免列表噪音 */
+.tree-leaf-del {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin-left: 2px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.tree-leaf-item:hover .tree-leaf-del,
+.tree-leaf-item.active .tree-leaf-del {
+    display: inline-flex;
+}
+
+.tree-leaf-del:hover {
+    background: rgba(220, 38, 38, 0.14);
+    color: #dc2626;
+}
+
+.tree-leaf-del:active {
+    transform: scale(0.92);
+}
+
 .tree-match {
     background: rgba(255, 213, 79, 0.4);
     color: inherit;
