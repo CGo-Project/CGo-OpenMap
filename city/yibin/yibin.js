@@ -28,7 +28,7 @@
         MERGE_STATIONS: ["YB56"],
         CROSS_PLATFORM_STATIONS: [],
         TRAM_LINES: ["YB-T1", "YB-T1B", "YB-T1C", "YB-T2", "YB-T2B", "YB-T4", "YB-T4B"],
-        dataFiles: { stanameCsvUrl: "./city/yibin/staname.csv" },
+        dataFiles: {},
 
         isTramLine(lineId) { return this.TRAM_LINES.includes(lineId); },
         isTramStation(station) {

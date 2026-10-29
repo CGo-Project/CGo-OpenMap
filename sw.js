@@ -3,7 +3,7 @@
  */
 
 
-const CACHE_NAME = 'cgo-openmap-v261029.430000';
+const CACHE_NAME = 'cgo-openmap-v261029.450000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -772,7 +772,31 @@ const ASSETS_TO_CACHE = [
     "./city/wuhu/data_legend.js",
     "./city/wuhu/data_lines.js",
     "./city/wuhu/data_stations.js",
-    "./city/wuhu/wuhu.js",];
+    "./city/wuhu/wuhu.js",
+    "./city/chuanxi/data_scattered.js",
+    "./city/chuanxi/data_timetable.js",
+    "./city/chuanxi/data_virtual_transfers.js",
+    "./city/chuanxi/stacard/script.js",
+    "./city/jinhua/data_notopen.js",
+    "./city/jinhua/data_scattered.js",
+    "./city/jinhua/data_timetable.js",
+    "./city/jinhua/data_virtual_transfers.js",
+    "./city/jinhua/stacard/script.js",
+    "./city/lijiang/data_notopen.js",
+    "./city/lijiang/data_scattered.js",
+    "./city/lijiang/data_timetable.js",
+    "./city/lijiang/data_virtual_transfers.js",
+    "./city/lijiang/stacard/script.js",
+    "./city/saigon/data_notopen.js",
+    "./city/saigon/data_scattered.js",
+    "./city/saigon/data_timetable.js",
+    "./city/saigon/data_virtual_transfers.js",
+    "./city/saigon/stacard/script.js",
+    "./city/wuhu/data_notopen.js",
+    "./city/wuhu/data_scattered.js",
+    "./city/wuhu/data_timetable.js",
+    "./city/wuhu/data_virtual_transfers.js",
+    "./city/wuhu/stacard/script.js",];
 
 /**
  * 预缓存并发上限。
