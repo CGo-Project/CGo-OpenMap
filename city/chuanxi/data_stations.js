@@ -22,7 +22,7 @@ const stationsData = {
     "CX21": { type: "no", x: 1193.5, y: 407, cn: "文旅城南", en: "South Cultural<br>Tourism City", align: "top-right", offset: { x: -2, y: 2 } },
     "CX22": { type: "no", x: 1246.9, y: 409.4, cn: "金马河西", en: "West Jinma River", align: "bottom-right", offset: { x: -2, y: -2 } },
     "CX23": { type: "no", x: 1293.2, y: 395.3, cn: "金马河东", en: "East Jinma River", align: "top", offset: { x: 0, y: -2 } },
-    "CX24": { type: "tsf", x: 1328.8, y: 412.4, cn: "都江堰快铁", en: "Dujiangyan High-Speed Railway", align: "bottom-right", offset: { x: 0, y: 0 } },
+    "CX24": { type: "tsf", x: 1328.8, y: 412.4, cn: "都江堰快铁站", en: "Dujiangyan High-Speed Railway Station", align: "bottom-right", offset: { x: 0, y: 0 } },
     "CX25": { type: "dot", x: 1328.8, y: 455, cn: "紫荆城", en: "Zijingcheng", align: "bottom", offset: { x: 0, y: 2 } },
     "CXA2": { type: "no", x: 1357.3, y: 215.9, cn: "永丰", en: "Yongfeng", align: "right", offset: { x: 1, y: -2 } },
     "CXA3": { type: "no", x: 1357.3, y: 110.5, cn: "蒲阳", en: "Puyang", align: "right", offset: { x: 1, y: -2 } },
