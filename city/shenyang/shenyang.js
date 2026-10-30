@@ -592,7 +592,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261027.111000";
+        const version = "261030.201108";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -632,6 +632,8 @@
         document.write(`<script src="./city/shenyang/shared/station/tip-card.js?v=${version}"><\/script>`);
         // 呼出线随标签进入 active：按 data-cgo-callout 把站名标签的选中态同步到引线
         document.write(`<script src="./city/shenyang/shared/base/label-active.js?v=${version}"><\/script>`);
+        // 有轨车站站名标签字号缩到 80%（共享机制，按城市 isTramStation / 有轨线路站序判定）
+        document.write(`<script src="./city/shenyang/shared/base/tram-label-scale.js?v=${version}"><\/script>`);
         // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
         document.write(`<script src="./city/shenyang/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station/calligraphy.js?v=${version}"><\/script>`);

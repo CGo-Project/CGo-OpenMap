@@ -46,6 +46,7 @@
 | `station-title.js` | `window.CGoStationTitle.createStationTitleNormalizer` | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈） | 侧栏站名标题归一化（站类判定、标题拼装、MutationObserver 安装与防自触发） |
 | `tip-card.js` | `window.CGoTipCard.render` | classic script（目前仅沈阳引入） | 车站信息板提示卡片 DOM（与上游官方模板结构一致） |
 | `label-active.js` | `window.CGoLabelActive`（`sync`） | classic script，目前仅沈阳在 `{city}.js` 引入 | 呼出线随站名标签同步 active 与淡化（按 `data-cgo-callout` 配对），详见 2.1 |
+| `tram-label-scale.js` | `window.CGoTramLabelScale`（`apply`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长） | 有轨车站站名标签字号缩到 80%：优先按城市 `isTramStation` 判定，兜底按 `HNT` 前缀 / 线路名「有轨·轻轨」/ `tram-*.svg` / 公司名「有轨电车」识别；只改字号与行高，站名重建后自动补做 |
 | `adjacent-jump.js` + `adjacent-jump.css` | 无对外接口（自动注册 `cgo-adjacent-jump` 模块） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼；福州未引入） | 「上一站 / 下一站」点击跳转 + **已拆除站纠正**：面板装配完成后给 `info-value` 反查目标站并绑定跳转，并据 `window.CGO_RETIRED_STATIONS` 把指向已拆除站的邻站改写为沿站序向外第一座活站、滤掉接驳徽标里已拆除的对端（core 零改动），详见 2.1 |
 | `calligraphy.js` + `calligraphy.css` | `window.CGoCalligraphy.register` | classic script（目前仅沈阳引入） | 站名题字渲染机制（沈阳特色，其他城市可选用）；素材缺失时给「投稿 / 反馈」入口，详见 2.1 |
 | `facilities.js` + `facilities.css` | `window.CGoFacilities`（`register` / `registered`） | classic script，接入城市在 `{city}.js` 引入（沈 / 大 / 长 / 呼），须早于城市设施模块 | 车站设施板块（配置驱动，含可选的车站层级图），详见 2.1 |
@@ -476,6 +477,7 @@ needs: {
 | 车站提示卡片 | 共享层出 DOM，城市只写命中判定与文案 | `shared/station/tip-card.js`、`city/shenyang/modules/shenyang_cultural.js` |
 | 站名题字 | 沈阳专属，其他城市可选用 | `shared/station/calligraphy.js`、`city/shenyang/modules/shenyang_calligraphy.js` |
 | **呼出线随标签进入 active** | 沈阳已接入（换乘站的呼出框 + 引线，标签被选中 / 成为路线起终点时引线一同转红，标签被淡化时引线一同淡出）；其他城市给引线元素打 `data-cgo-callout="<车站 ID>"`、给引线层打 `data-cgo-callout-layer`，并在样式表里写 `cgo-callout-active` 的观感即可接入 | `shared/base/label-active.js`、`city/shenyang/modules/shenyang_map.js`、`city/shenyang/style.css` |
+| **有轨车站站名缩字号** | 沈阳、大连、长春已接入（沈阳有轨 5 号线；大连有轨 201 / 202 路；长春有轨 G54 / G55 路）：有轨车站的中英文站名与行高统一缩到基准的 80%，地铁站不变；其他城市在 `{city}.js` 的 `document.write` 列表里加一行 `shared/base/tram-label-scale.js` 即接入，零配置（判定依次取城市 `isTramStation`、`linesData` 中 `HNT` / 「有轨·轻轨」名称 / `tram-*.svg` / 「有轨电车」公司的站序）；比例可用 `window.CGO_TRAM_LABEL_SCALE` 或城市 `tramLabelScale` 覆盖，设 1 即停用 | `shared/base/tram-label-scale.js`、各城 `{city}.js` 引入行 |
 | **上一站 / 下一站点击跳转** | 沈阳、大连、长春、哈尔滨、呼和浩特已接入（点上一站 / 下一站的站名即跳到该站详情并停在同一线路页签，站名反查歧义时保持纯文本不可点）；其他城市在 `{city}.js` 的 `document.write` 列表里加一行 `shared/station/adjacent-jump.js` 即接入，无需任何配置 | `shared/station/adjacent-jump.js`、各城 `{city}.js` 引入行 |
 | **国铁散点标签（演示态·无接驳强制显示）** | 五城（沈 / 大 / 长 / 哈 / 呼）已接入且**零配置**：**演示播放中** rdot 站无轨交接驳时强制显示站名、接驳后隐藏（对端只要未入场即算未接驳；对端集合读三张换乘登记表：免费 / 付费 / 站外连线）；**非演示态一律按数据原意隐藏**（`hideLabel: true` 的站底图上看不到标签）。国铁站按「晚于本城线网首通才登记」的沿革口径入场（大连北站 2012-12-01、哈尔滨北站 2015-08-17、长春西站 2012-12-01 等） | `shared/base/rdot-label.js`（main.html 在数据区之后全局引入）、`shared/tools/opening-history.js` 的 `syncRdotLabels()` |
 | **开通时刻** | 长春已接入（5 号线一期），沈阳、大连为空表待用 | `shared/station/opening-schedule.js`、各城 `data_opening.js` |
