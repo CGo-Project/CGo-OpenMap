@@ -307,7 +307,7 @@
                         <div class="city-card-header">
                             <div class="city-identity">
                                 <span class="city-name">${city.name}</span>
-                                <span class="city-code-tag">${city.id.toUpperCase()}</span>
+                                <span class="city-code-tag">${city.nameEn || city.id.toUpperCase()}</span>
                             </div>
                             <div class="city-badges-box">
                                 ${showBadge ? `
