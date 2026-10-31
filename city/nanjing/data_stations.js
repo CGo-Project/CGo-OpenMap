@@ -221,7 +221,7 @@ const stationsData = {
     "S_215": { type: "dot", x: 904, y: 1559.7, cn: "龙江", en: "LONGJIANG", align: "bottom-right", offset: { x: 0, y: 0 } },
     "S_216": { type: "dot", x: 2477.6, y: 1373.6, cn: "仙林湖", en: "XIANLINHU", align: "top-right", offset: { x: 0, y: 0 } },
     "S_217": { type: "dot", x: 1327.6, y: 2677.4, cn: "九龙湖", en: "JIULONGHU", align: "right", offset: { x: 0, y: 0 } },
-    "S_218": {"x":1031,"y":1715.4,"cn":"汉中门","en":"HANZHONGMEN","align":"bottom","type":"dot"},
+    "S_218": {"x":1031,"y":1715.4,"cn":"汉中门","en":"HANZHONGMEN","align":"top-left","type":"dot"},
     "S_219": { type: "dot", x: 877.3, y: 1875, cn: "南湖", en: "NANHU", align: "right", offset: { x: 0, y: 0 } },
     "S_220": { type: "dot", x: 2164.1, y: 3420.3, cn: "卧龙湖", en: "WOLONGHU", align: "bottom-right", offset: { x: 0, y: 0 } },
     "S_221": { type: "dot", x: 2309.3, y: 3565.5, cn: "中山湖", en: "ZHONGSHANHU", align: "bottom-right", offset: { x: 0, y: 0 } },
