@@ -312,6 +312,15 @@
             maintainers: [
                 { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
             ],
+            // 示意图线宽（线路描边 7px，见 city/shanghai/style.css），供苏州绘制上海影子时换算比例
+            lineWidth: 7,
+            // 与苏州衔接：向左滑可见苏州线网影子，继续左滑进入苏州
+            neighbors: [{
+                id: "suzhou", edge: "left",
+                // 与苏州侧互为逆变换：7 / 5.4 ≈ 1.2963；花桥（85,693）对准苏州花桥（2916,3078）
+                scale: 7 / 5.4, offset: { x: -3695, y: -3297 },
+                title: ["苏州", "Suzhou"]
+            }],
             isDefault: false
         },
         "shenyang": {
@@ -545,13 +554,13 @@
             svglogo: null, // 已接入 CGoUI 内置 fuzhou 官方矢量图标
             folder: "./city/fuzhou",
             mainLogic: "./city/fuzhou/fuzhou.js",
-            // 视口与画布：须与 city/fuzhou/fuzhou.js 的 FuzhouCity 保持一致
-            // （引擎按 Object.assign({}, registryCity, activeEngineCity) 取值，运行时以 fuzhou.js 为准）
-            // 内容外接盒 x [34, 2272]：滨海快线东段（机场 / 文岭）到 x=2220，站名 align:right
-            // 再向右约 52px，故画布宽度取 2320，右侧留 48px 余量。
-            center: { x: 1150, y: 780 },
+            // 首屏视点中心：上藤 / 达道 / 南公园 三站站心的几何中心（台江–鼓楼老城核心），
+            // 与 fuzhou.js 的 center 必须一致（第 ⑪ 节自检会核对两处相等）。
+            // 画布（锁紧 K=0.85 后）：内容外接盒 x [29, 1931]，机场 / 文岭到 x=1887，
+            // 站名 align:right 再向右约 44px，故宽度取 1972、右侧留 41px 余量。
+            center: { x: 745, y: 560 },
             defaultScale: 1.0,
-            mapSize: { width: 2320, height: 1800 },
+            mapSize: { width: 1972, height: 1530 },
             searchCity: "福州",
             title: "CGo OpenMap - 福州轨道交通线路图",
             keywords: "CGo OpenMap, 福州, 轨道交通, 线路图",
@@ -697,6 +706,39 @@
                 { name: "ohuihuipu", role: "城市主理人", github: "https://github.com/ohuihuipu" },
                 { name: "文昌路的轨道", role: "原稿资源支持" }
             ],
+            isDefault: false
+        },
+        "suzhou": {
+            id: "suzhou",
+            name: "苏州",
+            themeColor: "#0c3674", // 苏州轨道交通集团徽标深蓝
+            svglogo: null, // 已接入 CGoUI 内置 suzhou 官方矢量图标
+            folder: "./city/suzhou",
+            mainLogic: "./city/suzhou/suzhou.js",
+            center: { x: 1500, y: 1398 },   // 乐桥（1 / 4 号线换乘，古城核心）
+            defaultScale: 0.72,
+            mapSize: { width: 3084, height: 3120 },
+            searchCity: "苏州",
+            title: "CGo OpenMap - 苏州轨道交通线路图",
+            keywords: "CGo OpenMap, 苏州地铁, 苏州轨道交通, 线路图, 昆山, 11号线",
+            description: "覆盖 1~8 号线与 11 号线，含 11 号线花桥接驳上海地铁 11 号线。",
+            officialMapUrl: "https://www.sz-mtr.com/service/guide/map/index_zh.html",
+            registerDate: "2026-10-28",
+            stationCount: 235,
+            status: "active",
+            maintainers: [
+                { name: "待认领", role: "城市主理人招募中", isRecruiting: true, github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
+            ],
+            // 示意图线宽（线路描边 5.4px），供上海绘制苏州影子时换算比例
+            lineWidth: 5.4,
+            // 与上海衔接：向右滑可见上海线网影子，继续右滑进入上海；缩到很小时两城并看
+            minScale: 0.18,
+            neighbors: [{
+                id: "shanghai", edge: "right",
+                // 两图线宽之比 5.4 / 7 ≈ 0.7714；花桥（2916,3078）对准上海花桥（85,693）
+                scale: 5.4 / 7, offset: { x: 2850.43, y: 2543.4 },
+                title: ["上海", "Shanghai"]
+            }],
             isDefault: false
         },
     };

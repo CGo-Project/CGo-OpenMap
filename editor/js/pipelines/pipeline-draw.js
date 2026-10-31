@@ -14,6 +14,15 @@
     var draftSegment = null; // { startNodeId, startPoint, currentPoint, toolType }
     var draftWater = null;   // { points: [] }
 
+    /**
+     * ProjectModel 不可用时的兜底 ID 生成器。
+     * 同样先兜住非法 idSeq，避免 `++undefined` 拼出 `station_NaN`。
+     */
+    function fallbackNextId(project, prefix) {
+        project.idSeq = (Number(project.idSeq) || 1) + 1;
+        return (prefix || 'item_') + project.idSeq;
+    }
+
     function setTool(toolName) {
         activeTool = toolName;
         draftSegment = null;
@@ -121,7 +130,7 @@
         var projY = snapInfo.projection.y;
 
         // 1. 生成唯一车站 ID 与节点对象
-        var stId = pModel ? pModel.nextId(project, 'station_') : ('station_' + (++project.idSeq || 1));
+        var stId = pModel ? pModel.nextId(project, 'station_') : fallbackNextId(project, 'station_');
         var defaultStation = {
             id: stId,
             x: projX,
@@ -255,6 +264,12 @@
      * @returns {{x:number,y:number}} 约束后的点（未给起点时原样返回）
      */
     function constrainTo45(start, point, gridSize) {
+        // 唯一真源在 algorithms/align-45.js（全局 45°/90° 对齐共用同一套数学）；
+        // 这里仅保留一份等价兜底，防止脚本加载顺序异常时 Shift 方向锁定失效。
+        var A45 = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.Align45) || null;
+        if (A45 && typeof A45.constrainTo45 === 'function') {
+            return A45.constrainTo45(start, point, gridSize);
+        }
         if (!start || !point) return point;
         var dx = point.x - start.x;
         var dy = point.y - start.y;
@@ -364,7 +379,7 @@
             }
 
             // 空白区域落点生成普通车站
-            var stId = pModel ? pModel.nextId(project, 'station_') : ('station_' + (++project.idSeq || 1));
+            var stId = pModel ? pModel.nextId(project, 'station_') : fallbackNextId(project, 'station_');
             project.nodes[stId] = {
                 id: stId,
                 x: worldPos.x,
@@ -380,7 +395,7 @@
 
         // 2. 放置临时节点 (temp)
         if (activeTool === 'temp') {
-            var tempId = pModel ? pModel.nextId(project, 'temp_') : ('temp_' + (++project.idSeq || 1));
+            var tempId = pModel ? pModel.nextId(project, 'temp_') : fallbackNextId(project, 'temp_');
             project.nodes[tempId] = {
                 id: tempId,
                 x: worldPos.x,
@@ -448,7 +463,7 @@
                 if (draftSegment.startNodeId) segPts[0].nid = draftSegment.startNodeId;
                 if (targetNodeId) segPts[segPts.length - 1].nid = targetNodeId;
 
-                var segId = pModel ? pModel.nextId(project, 'seg_') : ('seg_' + (++project.idSeq || 1));
+                var segId = pModel ? pModel.nextId(project, 'seg_') : fallbackNextId(project, 'seg_');
 
                 project.segments.push({
                     id: segId,
@@ -485,7 +500,7 @@
                 draftWater.points.push(worldPos);
                 // 3 点以上闭合
                 if (draftWater.points.length >= 3 && Math.hypot(worldPos.x - draftWater.points[0].x, worldPos.y - draftWater.points[0].y) < 15) {
-                    var wid = pModel ? pModel.nextId(project, 'water_') : ('water_' + (++project.idSeq || 1));
+                    var wid = pModel ? pModel.nextId(project, 'water_') : fallbackNextId(project, 'water_');
                     project.waters.push({
                         id: wid,
                         name: '水域 ' + project.idSeq,
@@ -501,7 +516,7 @@
 
         // 5. 自由文本标注 (text)
         if (activeTool === 'text') {
-            var txtId = pModel ? pModel.nextId(project, 'text_') : ('text_' + (++project.idSeq || 1));
+            var txtId = pModel ? pModel.nextId(project, 'text_') : fallbackNextId(project, 'text_');
             project.texts.push({
                 id: txtId,
                 text: '标注文本',

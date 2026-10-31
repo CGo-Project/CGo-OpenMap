@@ -1,15 +1,13 @@
 /**
  * CGo OpenMap - 福州虚拟换乘与出站连通配置 (city/fuzhou/data_virtual_transfers.js)
+ *
+ * 福州无免费站外换乘；付费虚拟换乘为 水部 ⇄ 闽都、三叉街 ⇄ 三叉街（滨海快线）。
  */
 
-
-// 免费虚拟换乘/站外换乘映射表
 const VIRTUAL_FREE_TRANSFER_MAP = {};
 
-// 免费虚拟换乘连线数组
 const VIRTUAL_FREE_CONNECT_LINES = [];
 
-// 付费/国铁虚拟换乘映射表
 const VIRTUAL_TRANSFER_MAP = {
     // 水部
     "M216": ["BE11"],

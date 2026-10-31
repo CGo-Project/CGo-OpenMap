@@ -768,5 +768,19 @@ const linesData = [
             { x: 467.4, y: 2364.4, r: 0 }, { x: 458.3, y: 2352.6, r: 0 }, { x: 456, y: 2348.2, r: 0 },
             { x: 454.7, y: 2338.3, r: 0 }, { x: 451.1, y: 1525.2, r: 0 }
         ]
+    },
+    {
+        /* 苏州轨道交通 11 号线换乘示意：自花桥引出，接画布左缘的苏州线网影子（foreign 不作为本城线路统计） */
+        id: "SZ11",
+        name: "苏州轨道交通11号线",
+        color: "#f1c6a7",
+        svg: "icon@11.svg",
+        svgclr: "#f1c6a7",
+        svgtext: "#5a3b22",
+        company: "苏州市轨道交通集团",
+        foreign: "suzhou",
+        stationIds: ["SH_1114"],
+        distances: [],
+        pathPoints: [{ x: 0, y: 593.5 }, { x: 85, y: 693 }]
     }
 ];

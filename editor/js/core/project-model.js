@@ -67,15 +67,80 @@ window.OpenMapEditor.ProjectModel = (function () {
     }
 
     /**
-     * 生成唯一图元 ID
+     * 工程里所有「带 id 的集合」：新增图元必须先在这些集合里查重。
+     * 顺序无关，仅用于遍历。
+     */
+    var ID_COLLECTIONS = ['segments', 'lines', 'waters', 'texts', 'virtualTransfers'];
+
+    /** 转义正则元字符（前缀里含 `-` 等字符时也要安全） */
+    function escapeRegExp(text) {
+        return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /** 该 ID 是否已被工程占用（节点字典的键就是节点 ID） */
+    function idExists(project, id) {
+        if (!project || !id) return false;
+        if (project.nodes && Object.prototype.hasOwnProperty.call(project.nodes, id)) return true;
+        for (var i = 0; i < ID_COLLECTIONS.length; i++) {
+            var list = project[ID_COLLECTIONS[i]];
+            if (!Array.isArray(list)) continue;
+            for (var j = 0; j < list.length; j++) {
+                if (list[j] && list[j].id === id) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 量出某个前缀当前用到的最大序号。
+     * 只统计「前缀 + 纯数字」的 ID，因此 `node_5` 得到 5、`node_NaN` 得到 0，
+     * 不会被城市车站 ID（如 `M101`）干扰。
+     */
+    function maxSeqForPrefix(project, prefix) {
+        if (!project) return 0;
+        var re = new RegExp('^' + escapeRegExp(prefix) + '(\\d+)$');
+        var max = 0;
+        var scan = function (id) {
+            var m = re.exec(String(id == null ? '' : id));
+            if (!m) return;
+            var n = parseInt(m[1], 10);
+            if (n > max) max = n;
+        };
+        if (project.nodes) Object.keys(project.nodes).forEach(scan);
+        ID_COLLECTIONS.forEach(function (key) {
+            var list = project[key];
+            if (!Array.isArray(list)) return;
+            list.forEach(function (item) { if (item && item.id !== undefined) scan(item.id); });
+        });
+        return max;
+    }
+
+    /**
+     * 生成唯一图元 ID。
+     *
+     * 不能只写 `++project.idSeq`：旧版 / 手改 / 第三方工具产出的工程 JSON 常常
+     * 缺少 `idSeq`，自增会从 `undefined` 变成 `NaN`，于是整批新节点都叫
+     * `node_NaN` 并互相覆盖。这里同时做三件事：
+     *   1. 非法 / 缺失的 idSeq 视为 1；
+     *   2. 序号至少从「该前缀已有的最大序号」之后开始，避免与旧 ID 撞车；
+     *   3. 逐个查重，已被占用就继续 +1（兜住手工乱写的 ID）。
+     *
      * @param {Object} project
      * @param {string} prefix
      * @returns {string}
      */
     function nextId(project, prefix) {
-        if (!project) return (prefix || 'item_') + Date.now();
-        project.idSeq = (project.idSeq || 1) + 1;
-        return (prefix || 'item_') + project.idSeq;
+        var p = prefix || 'item_';
+        if (!project) return p + Date.now();
+        var seq = Math.max(Number(project.idSeq) || 1, maxSeqForPrefix(project, p));
+        var id = p + seq;
+        // 上界只是防御死循环，正常工程不会走到
+        for (var guard = 0; guard < 100000 && idExists(project, id); guard++) {
+            seq++;
+            id = p + seq;
+        }
+        project.idSeq = seq;
+        return id;
     }
 
     /**
@@ -86,6 +151,28 @@ window.OpenMapEditor.ProjectModel = (function () {
     function clone(project) {
         if (!project) return null;
         return JSON.parse(JSON.stringify(project));
+    }
+
+    /**
+     * 全工程 ID 的最大数字后缀（不区分前缀）。
+     * 用于给缺失 / 偏小的 `idSeq` 兜底，让旧工程导入后的新 ID 尽量单调。
+     */
+    function maxIdSuffix(project) {
+        if (!project) return 0;
+        var max = 0;
+        var scan = function (id) {
+            var m = /(\d+)$/.exec(String(id == null ? '' : id));
+            if (!m) return;
+            var n = parseInt(m[1], 10);
+            if (n > max) max = n;
+        };
+        if (project.nodes) Object.keys(project.nodes).forEach(scan);
+        ID_COLLECTIONS.forEach(function (key) {
+            var list = project[key];
+            if (!Array.isArray(list)) return;
+            list.forEach(function (item) { if (item && item.id !== undefined) scan(item.id); });
+        });
+        return max;
     }
 
     /**
@@ -103,10 +190,15 @@ window.OpenMapEditor.ProjectModel = (function () {
         p.waters = Array.isArray(p.waters) ? p.waters : [];
         p.texts = Array.isArray(p.texts) ? p.texts : [];
         p.virtualTransfers = Array.isArray(p.virtualTransfers) ? p.virtualTransfers : [];
+        p.virtualConnectors = Array.isArray(p.virtualConnectors) ? p.virtualConnectors : [];
+        p.notOpenLines = Array.isArray(p.notOpenLines) ? p.notOpenLines : [];
+        p.scattered = Array.isArray(p.scattered) ? p.scattered : [];
+        p.legend = Array.isArray(p.legend) ? p.legend : [];
         p.waterStyle = Object.assign({}, WATER_DEFAULT, p.waterStyle || {});
         p.slope = Object.assign({}, SLOPE_DEFAULT, p.slope || {});
         p.lineDistances = p.lineDistances || {};
-        p.idSeq = Number(p.idSeq) || 1;
+        // 缺 idSeq 的旧工程不能直接落到 1：若已有 node_5 / seg_9，会生成重复 ID。
+        p.idSeq = Math.max(Number(p.idSeq) || 1, maxIdSuffix(p));
         return p;
     }
 
@@ -115,6 +207,8 @@ window.OpenMapEditor.ProjectModel = (function () {
         nextId: nextId,
         clone: clone,
         normalize: normalize,
+        idExists: idExists,
+        maxIdSuffix: maxIdSuffix,
         WATER_DEFAULT: WATER_DEFAULT,
         SLOPE_DEFAULT: SLOPE_DEFAULT
     };

@@ -106,13 +106,45 @@ window.OpenMapEditor.GridLayer = (function () {
     }
 
     /**
+     * 按基准步长与当前缩放算实际画出来的步长（低缩放时倍增，避免摩尔纹）。
+     * 渲染与吸附共用同一份算法，避免两处口径漂移。
+     * @param {number} baseGrid
+     * @param {number} scale
+     * @returns {number}
+     */
+    function computeGridStep(baseGrid, scale) {
+        var g = Number(baseGrid) > 0 ? Number(baseGrid) : 10;
+        var k = Number(scale) > 0 ? Number(scale) : 1;
+        while (g * k < 8) {
+            g *= 2;
+        }
+        return g;
+    }
+
+    /** 当前视口缩放（取不到时回落到上次渲染记录） */
+    function currentScale() {
+        var vp = window.OpenMapEditor.ViewportLayer;
+        if (vp && typeof vp.getScale === 'function') {
+            var k = Number(vp.getScale());
+            if (k > 0) return k;
+        }
+        return state.lastScale || 1.0;
+    }
+
+    /**
      * 实际画出来的网格步长（低缩放时会按 LOD 倍增以避免摩尔纹）。
      * 吸附必须用它，否则缩小时吸附到 10px 而画面上的线是每 20px 一条，
      * 点就会落在两条可见网格线之间，看起来"没吸附上"。
+     *
+     * 网格隐藏时 `lastRenderedStep` 会停留在上次显示时的旧 LOD（隐藏期间不再重绘），
+     * 因此这里按当前缩放与当前基准步长实时计算，绝不返回陈旧值（issue #56）。
      * @returns {number}
      */
     function getEffectiveGridSize() {
-        return state.lastRenderedStep > 0 ? state.lastRenderedStep : state.gridSize;
+        if (state.visible && state.lastRenderedStep > 0) {
+            return state.lastRenderedStep;
+        }
+        return computeGridStep(state.gridSize, currentScale());
     }
 
     /**
@@ -154,10 +186,7 @@ window.OpenMapEditor.GridLayer = (function () {
         var u = 1 / (k || 1);
 
         // 自适应 LOD 步长计算：若网格像素在屏幕上小于 8px 则倍增，避免视觉摩尔纹与密集过载
-        var g = baseGrid;
-        while (g * k < 8) {
-            g *= 2;
-        }
+        var g = computeGridStep(baseGrid, k);
         var majorStep = g * 5;
         while (majorStep * k < 35) {
             majorStep *= 2;

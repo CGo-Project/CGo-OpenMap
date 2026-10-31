@@ -140,6 +140,18 @@ const LEGEND_CONFIG = [
                     "name": "市域机场线"
           }
 ]
+    },
+    {
+        type: "title",
+        title: "跨省换乘",
+        subtitle: "Intercity Transfer"
+    },
+    {
+        type: "grid",
+        cols: 1,
+        items: [
+            { targets: ["SZ11"], name: "苏州轨道交通11号线 Suzhou Rail Transit Line 11" }
+        ]
     }
 ];
 
