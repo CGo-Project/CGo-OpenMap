@@ -3,7 +3,7 @@
  */
 
 
-const CACHE_NAME = 'cgo-openmap-v261027.111000';
+const CACHE_NAME = 'cgo-openmap-v261031.190000';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -669,7 +669,6 @@ const ASSETS_TO_CACHE = [
     './city/nanjing/stacard/script.js',
     './city/nanjing/staname.csv',
     './city/nanjing/amap_data.json',
-    './city/nanjing/assets/nanjing_sea.svg',
     './city/nanjing/assets/railway.svg',
 
     // 南京线路徽标（Beijing S1 样式文字徽标）
