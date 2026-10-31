@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261031.104103';
+const CACHE_NAME = 'cgo-openmap-v261031.105324';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
