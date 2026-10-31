@@ -1,5 +1,32 @@
 /**
  * CGo OpenMap - 动态运营公告与通知系统 (core/notice.js)
+ * 
+ * ==============================================================================
+ * 公告系统规范说明 (Notice & Announcement System)
+ * ==============================================================================
+ * 作用：在地图启动时弹出轻量卡片通知，并集成至“帮助与关于”弹窗中展示。
+ * 
+ * 分类标识 (Categories):
+ * - `ops`: 运营调整/新线开通信息 (橙色)
+ * - `app`: 地图功能与版本更新说明 (蓝色)
+ * - `msg`: 作者留言与公告 (灰色)
+ * - `ads`: 推广与社群交流信息 (绿色)
+ * 
+ * 字段说明：
+ * - id: 唯一编号，已读状态记录于 localStorage (`nal_notice_read_ids`)
+ * - active: 是否启用该通知 (true/false)
+ * - startTime: 可选，开始展示时间 ("YYYY-MM-DD HH:mm:ss" 或 "YYYY-MM-DD")；未到时间不展示，缺省视为立即开始
+ * - deadline: 有效期截止时间 ("YYYY-MM-DD HH:mm:ss" / "YYYY-MM-DD" 或 "permanent")，控制帮助弹窗中的展示
+ * - 时间按**城市运营时区**解释（取 `city/data.js` 注册项的 `timezone`，为必填城市元数据）；
+ *   `utcOffset` 可按条目手工覆盖（如 "+08:30"），用于某国临时调整时区而设备时区库未更新时钉死口径；
+ *   填写了但格式不对或日期不存在（如 2 月 30 日）时按「本条公告无效」处理（不展示），
+ *   并在控制台给出一次警告——不要指望写错的日期被当成「永久有效」蒙混过关
+ * - city: 可选，限定生效城市 ID（如 "shenyang"）；缺省为全城通用
+ * - pushWindowDays: 可选，浮动卡片的推送窗口天数，默认 30 天（从 startTime 起算）；
+ *   超过窗口后不再弹卡，但仍可在「帮助与关于」中查看，直到 deadline
+ * - summary: 浮动卡片展示的简明摘要
+ * - detail: 帮助弹窗中展示的详细正文 (支持富文本与详情图片)
+ * ==============================================================================
  */
 
 (function () {
@@ -19,23 +46,197 @@
         || ''
     );
 
+    /* ── 时间解析：严格格式 + 城市运营时区 ── */
+
+    /** 只认 "YYYY-MM-DD" 与 "YYYY-MM-DD HH:mm:ss"（T 分隔也接受） */
+    const TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?$/;
+
+    const formatterCache = new Map();
+    const warnedTimeZone = new Set();
+
+    /**
+     * 当前城市的运营时区（IANA 名称）。
+     *
+     * 时区属城市元数据，必须在 `city/data.js` 的注册项里显式声明 `timezone`：
+     * 浏览器没有「按城市名 / 经纬度反查时区」的 API，第三方接口需要联网与密钥，
+     * 与纯静态离线的目标冲突，故一律由城市主理人手工填写（`selfcheck.js` 会拦截漏配）。
+     * 未声明或 IANA 名非法时返回空串，调用方据此把时间判为无效并告警——不猜默认时区。
+     */
+    function cityTimeZone(cityId) {
+        const id = cityId || currentCityId();
+        return window.CityDataManager?.getCity?.(id)?.timezone
+            || window.CURRENT_CITY?.timezone
+            || '';
+    }
+
+    /**
+     * 解析条目的 `utcOffset` 覆盖值（如 "+08:30"、"-05:00"、"9"）。
+     * @returns {undefined} 未填写
+     * @returns {null} 填写了但格式不合法
+     * @returns {number} 相对 UTC 的偏移分钟数
+     */
+    function parseOffsetOverride(value) {
+        if (value === null || value === undefined) return undefined;
+        const raw = String(value).trim();
+        if (!raw) return undefined;
+        const matched = /^([+-])(\d{1,2})(?::?(\d{2}))?$/.exec(raw);
+        if (!matched) return null;
+        const hours = Number(matched[2]);
+        const minutes = Number(matched[3] || 0);
+        if (hours > 14 || minutes > 59) return null;
+        return (matched[1] === '-' ? -1 : 1) * (hours * 60 + minutes);
+    }
+
+    let warnedInvalidOffset = false;
+
+    function warnInvalidOffset() {
+        if (warnedInvalidOffset) return;
+        warnedInvalidOffset = true;
+        console.warn('[NAL_NOTICE] 公告的 utcOffset 格式不合法，已回退为城市时区；请填写 "+08:30" 这类格式。');
+    }
+
+    /**
+     * 取目标时区的格式化器。
+     * **不设默认时区**：漏配或 IANA 名无效时返回 null，让调用方把时间判为无效——
+     * 宁可让带时间的公告不展示并告警，也不猜一个城市时区。
+     */
+    function tzFormatter(timeZone) {
+        if (formatterCache.has(timeZone)) return formatterCache.get(timeZone);
+        let formatter = null;
+        if (timeZone) {
+            try {
+                formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone,
+                    hour12: false,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+            } catch (err) {
+                formatter = null;
+            }
+        }
+        formatterCache.set(timeZone, formatter);
+        return formatter;
+    }
+
+    function warnTimeZone(timeZone) {
+        const key = timeZone || '(未声明)';
+        if (warnedTimeZone.has(key)) return;
+        warnedTimeZone.add(key);
+        console.warn(timeZone
+            ? `[NAL_NOTICE] 城市时区 "${timeZone}" 无效，带时间字段的公告不会展示；请填写合法的 IANA 时区名。`
+            : '[NAL_NOTICE] 当前城市未在 city/data.js 声明 timezone，带时间字段的公告不会展示；请补充 IANA 时区名（如 "Asia/Shanghai"）。');
+    }
+
+    /**
+     * 设备时区库（tzdata）能力探测。
+     *
+     * 取几个**规则已固定**的时间点核对偏移：历史事件（平壤 2015-2018 的 +8:30、中国 1991 年
+     * 夏令时）与已写入 IANA 的未来规则（悉尼 2026 年南半球夏令时 +11）。某些浏览器 / 旧系统会
+     * 裁剪时区数据或长期不更新，导致公告时间整体偏移却毫无提示；这里只在首次解析时跑一次，
+     * 失配只告警、不阻断解析。
+     */
+    const TZ_PROBES = [
+        ['Asia/Pyongyang', '2017-01-01T00:00:00Z', 510],     // +8:30
+        ['Asia/Shanghai', '1991-06-01T00:00:00Z', 540],      // 中国历史夏令时 +9
+        ['Australia/Sydney', '2026-11-01T00:00:00Z', 660]    // 南半球夏令时 +11
+    ];
+    let tzProbeDone = false;
+
+    function probeTimeZoneData() {
+        if (tzProbeDone) return;
+        tzProbeDone = true;
+        const broken = [];
+        TZ_PROBES.forEach(([timeZone, iso, expected]) => {
+            const formatter = tzFormatter(timeZone);
+            if (!formatter) { broken.push(`${timeZone} 缺失`); return; }
+            const actual = tzOffsetMs(Date.parse(iso), formatter) / 60000;
+            if (actual !== expected) broken.push(`${timeZone} 期望 ${expected / 60}h、实得 ${actual / 60}h`);
+        });
+        if (broken.length) {
+            console.warn(`[NAL_NOTICE] 设备时区数据库疑似不完整或过旧，公告时间可能偏移：${broken.join('；')}`);
+        }
+    }
+
+    /** 某时刻在目标时区的墙钟分量（小时对 24 取模：hour12:false 下午夜可能输出 24） */
+    function zonedParts(timestamp, formatter) {
+        const map = {};
+        formatter.formatToParts(new Date(timestamp)).forEach((part) => {
+            if (part.type !== 'literal') map[part.type] = part.value;
+        });
+        return {
+            year: Number(map.year), month: Number(map.month), day: Number(map.day),
+            hour: Number(map.hour) % 24, minute: Number(map.minute), second: Number(map.second)
+        };
+    }
+
+    /** 目标时区相对 UTC 的偏移（毫秒） */
+    function tzOffsetMs(timestamp, formatter) {
+        const p = zonedParts(timestamp, formatter);
+        return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - timestamp;
+    }
+
     /**
      * 解析公告的时间字段。返回值刻意区分三种情形：
      *   null      —— 字段未填写 / 为 "permanent"，即不设限（历史兼容口径，缺省照旧）
-     *   Date      —— 合法时间，**一律按浏览器本地时区**解释
-     *   undefined —— 填了但解析不出来（配置错误），调用方必须当作「无效」而非「永久有效」
+     *   Date      —— 合法时间，按当前城市的运营时区解释
+     *   undefined —— 填了但解析不出来（格式不对、日期不存在或城市未声明时区），调用方必须当作「无效」
+     *
+     * 不能只靠 `getTime()` 是否为 NaN 判定：JS 会把 2026-02-30 进位成 3 月 2 日、
+     * 25:00:00 进位成次日 1 点，V8 下都是合法 Date。故解析后必须在目标时区里逐项回核。
      */
-    function parseLocalTime(value) {
+    function parseLocalTime(value, utcOffset) {
         if (value === null || value === undefined) return null;
         const raw = String(value).trim();
         if (!raw || raw === 'permanent') return null;
-        // 纯日期会被 Date 规范当作 UTC 零点（比北京时间早 8 小时），这里补成本地零点，
-        // 让 "YYYY-MM-DD" 与 "YYYY-MM-DD HH:mm:ss" 两种写法保持同一时区口径。
-        const text = /^\d{4}-\d{2}-\d{2}$/.test(raw)
-            ? `${raw}T00:00:00`
-            : raw.replace(' ', 'T');
-        const date = new Date(text);
-        return Number.isNaN(date.getTime()) ? undefined : date;
+
+        const matched = TIME_PATTERN.exec(raw);
+        if (!matched) return undefined;
+
+        const year = Number(matched[1]);
+        const month = Number(matched[2]);
+        const day = Number(matched[3]);
+        const hour = Number(matched[4] || 0);
+        const minute = Number(matched[5] || 0);
+        const second = Number(matched[6] || 0);
+
+        const wallClockAsUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+
+        // 日历回核（与时区无关）：2 月 30 日、13 月、25 时等会被 Date 静默进位，先挡掉
+        const wall = new Date(wallClockAsUtc);
+        if (wall.getUTCFullYear() !== year || wall.getUTCMonth() !== month - 1
+            || wall.getUTCDate() !== day || wall.getUTCHours() !== hour
+            || wall.getUTCMinutes() !== minute || wall.getUTCSeconds() !== second) {
+            return undefined;
+        }
+
+        // 条目手工钉死的偏移优先于城市时区，用于设备时区库落后于政策变更的情况
+        const override = parseOffsetOverride(utcOffset);
+        if (override === null) warnInvalidOffset();
+        if (typeof override === 'number') {
+            return new Date(wallClockAsUtc - override * 60000);
+        }
+
+        probeTimeZoneData();
+
+        const timeZone = cityTimeZone();
+        const formatter = tzFormatter(timeZone);
+        if (!formatter) { warnTimeZone(timeZone); return undefined; }
+
+        // 把「墙钟时间」当作 UTC 取一次偏移作为初值，再回代一次收敛。时区规则全部来自
+        // Intl 的 IANA tzdata，按**公告所指的那个时刻**取，而非「城市当前偏移」，所以历史
+        // 变更（如平壤 2015-2018 的 +8:30）与未来规则都按各自当时的规则解释。
+        // 夏令时切换日：被拨快的缺失时刻（如悉尼 02:30 不存在）回核对不上 → 判无效；
+        // 被回拨的重复时刻（02:30 出现两次）会稳定收敛到**回拨后**的标准时间那一次。
+        const guess = wallClockAsUtc - tzOffsetMs(wallClockAsUtc, formatter);
+        const timestamp = wallClockAsUtc - tzOffsetMs(guess, formatter);
+
+        const actual = zonedParts(timestamp, formatter);
+        if (actual.year !== year || actual.month !== month || actual.day !== day
+            || actual.hour !== hour || actual.minute !== minute || actual.second !== second) {
+            return undefined;
+        }
+        return new Date(timestamp);
     }
 
     /** 无效时间字段只提示一次，避免每次渲染刷屏 */
@@ -59,9 +260,9 @@
 
         // 填了却解析不出来的时间一律判为无效公告：宁可漏展，也不能提前放出（startTime 写错）
         // 或永久挂着（deadline 写错）——运营公告的时效性比「尽量都显示」更重要。
-        const start = parseLocalTime(item.startTime);
+        const start = parseLocalTime(item.startTime, item.utcOffset);
         if (start === undefined) { warnInvalidTime(item, 'startTime'); return false; }
-        const end = parseLocalTime(item.deadline);
+        const end = parseLocalTime(item.deadline, item.utcOffset);
         if (end === undefined) { warnInvalidTime(item, 'deadline'); return false; }
 
         const now = Date.now();
@@ -74,7 +275,7 @@
      * 只约束弹卡；帮助弹窗的公告列表仍由 checkValidity（deadline）控制。
      */
     function isWithinPushWindow(item) {
-        const start = parseLocalTime(item.startTime);
+        const start = parseLocalTime(item.startTime, item.utcOffset);
         // 未填写 = 立即进入推送窗口；无效值已在 checkValidity 里拦下，不会走到这里
         if (!start) return true;
         const days = Number(item.pushWindowDays) > 0

@@ -429,7 +429,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261027.111000";
+        const version = "261030.201108";
         // 共享层（临时位于 city/shenyang/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./city/shenyang/shared/route/loop-direction.js?v=${version}"><\/script>`);
@@ -437,6 +437,8 @@
         document.write(`<script src="./city/shenyang/shared/base/geo-estimate.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/base/station-title.js?v=${version}"><\/script>`);
+        // 有轨车站站名标签字号缩到 80%（共享机制；有轨 201 / 202 路按 tram-*.svg 识别）
+        document.write(`<script src="./city/shenyang/shared/base/tram-label-scale.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/base/viewport-inset.js?v=${version}"><\/script>`);
         // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
