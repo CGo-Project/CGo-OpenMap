@@ -347,7 +347,7 @@
     };
 
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        const qingdaoResourceVersion = "261031.105324";
+        const qingdaoResourceVersion = "261031.111959";
         document.write('<scr' + 'ipt src="./city/qingdao/data_station_names.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
         document.write('<scr' + 'ipt src="./city/qingdao/data_interval_times.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
         document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_interval_times.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');

@@ -112,7 +112,7 @@
         LINE_SORT_ORDER: [
             "SH1", "SH2", "SH3", "SH4", "SH5", "SH6", "SH7", "SH8", "SH9", "SH10",
             "SH11", "SH12", "SH13", "SH14", "SH15", "SH16", "SH17", "SH18",
-            "SHAPMR", "SHMaglev", "SHAPT", "Rwy", "Rwy2"
+            "SHAPMR", "SHMaglev", "SHAPT", "SZ11", "Rwy", "Rwy2"
         ],
 
         /** 线路同步联动高亮组 */

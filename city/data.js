@@ -312,6 +312,15 @@
             maintainers: [
                 { name: "Ryan Si", role: "城市主理人", github: "https://github.com/ryan-si" }
             ],
+            // 示意图线宽（线路描边 7px，见 city/shanghai/style.css），供苏州绘制上海影子时换算比例
+            lineWidth: 7,
+            // 与苏州衔接：向左滑可见苏州线网影子，继续左滑进入苏州
+            neighbors: [{
+                id: "suzhou", edge: "left",
+                // 与苏州侧互为逆变换：7 / 5.4 ≈ 1.2963；花桥（85,693）对准苏州花桥（2916,3078）
+                scale: 7 / 5.4, offset: { x: -3695, y: -3297 },
+                title: ["苏州", "Suzhou"]
+            }],
             isDefault: false
         },
         "shenyang": {
@@ -706,9 +715,9 @@
             svglogo: null, // 已接入 CGoUI 内置 suzhou 官方矢量图标
             folder: "./city/suzhou",
             mainLogic: "./city/suzhou/suzhou.js",
-            center: { x: 1250, y: 1165 },   // 乐桥（1 / 4 号线换乘，古城核心）
+            center: { x: 1500, y: 1398 },   // 乐桥（1 / 4 号线换乘，古城核心）
             defaultScale: 0.72,
-            mapSize: { width: 2570, height: 2600 },
+            mapSize: { width: 3084, height: 3120 },
             searchCity: "苏州",
             title: "CGo OpenMap - 苏州轨道交通线路图",
             keywords: "CGo OpenMap, 苏州地铁, 苏州轨道交通, 线路图, 昆山, 11号线",
@@ -720,6 +729,16 @@
             maintainers: [
                 { name: "待认领", role: "城市主理人招募中", isRecruiting: true, github: "https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md" }
             ],
+            // 示意图线宽（线路描边 5.4px），供上海绘制苏州影子时换算比例
+            lineWidth: 5.4,
+            // 与上海衔接：向右滑可见上海线网影子，继续右滑进入上海；缩到很小时两城并看
+            minScale: 0.18,
+            neighbors: [{
+                id: "shanghai", edge: "right",
+                // 两图线宽之比 5.4 / 7 ≈ 0.7714；花桥（2916,3078）对准上海花桥（85,693）
+                scale: 5.4 / 7, offset: { x: 2850.43, y: 2543.4 },
+                title: ["上海", "Shanghai"]
+            }],
             isDefault: false
         },
     };

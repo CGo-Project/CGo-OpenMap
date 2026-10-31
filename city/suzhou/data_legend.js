@@ -22,5 +22,17 @@ const LEGEND_CONFIG = [
             { targets: ["M8"], name: "8号线 Line 8" },
             { targets: ["M11"], name: "11号线 Line 11" }
         ]
+    },
+    {
+        type: "title",
+        title: "跨省换乘",
+        subtitle: "Intercity Transfer"
+    },
+    {
+        type: "grid",
+        cols: 1,
+        items: [
+            { targets: ["SH11"], name: "上海地铁11号线 Shanghai Metro Line 11" }
+        ]
     }
 ];

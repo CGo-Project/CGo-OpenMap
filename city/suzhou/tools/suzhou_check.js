@@ -42,12 +42,14 @@ for (const line of lines) {
   }
 }
 
-// 换乘站类型核对
+// 换乘站类型核对（foreign 邻城线只是换乘示意，不计入本城线路成员关系）
+const foreignIds = new Set(lines.filter((l) => l.foreign).map((l) => l.id));
 for (const [id, s] of Object.entries(stations)) {
   const ls = used.get(id) || [];
+  const local = ls.filter((lid) => !foreignIds.has(lid));
   if (!ls.length) warn.push(`${id} ${s.cn} 未被任何线路引用`);
-  if (ls.length > 1 && s.type !== 'tsf') err.push(`${id} ${s.cn} 属于 ${ls.join('/')} 但类型是 ${s.type}`);
-  if (ls.length === 1 && s.type === 'tsf') warn.push(`${id} ${s.cn} 只有一条线却是换乘图元`);
+  if (local.length > 1 && s.type !== 'tsf') err.push(`${id} ${s.cn} 属于 ${local.join('/')} 但类型是 ${s.type}`);
+  if (local.length === 1 && s.type === 'tsf') warn.push(`${id} ${s.cn} 只有一条线却是换乘图元`);
 }
 
 // 坐标重合但未合并的换乘
@@ -111,13 +113,14 @@ for (const [id, s] of Object.entries(stations)) {
   if (/[/\\]/.test(s.cn)) warn.push(`${id} 站名含斜杠: ${s.cn}`);
 }
 
-// 坐标网格：站心与走向折点一律落在 5px 网格上（便于人工核对与增删站）
+// 坐标网格：站心与走向折点一律落在 6px 网格上（全图 ×1.2 缩放后由原 5px 栅格映射而来，便于人工核对与增删站）
+const GRID = 6;
 for (const [id, s] of Object.entries(stations)) {
-  if (s.x % 5 || s.y % 5) err.push(`${id} ${s.cn} 坐标未对齐 5px 网格: (${s.x}, ${s.y})`);
+  if (s.x % GRID || s.y % GRID) err.push(`${id} ${s.cn} 坐标未对齐 ${GRID}px 网格: (${s.x}, ${s.y})`);
 }
 for (const line of lines) {
   for (const p of line.pathPoints) {
-    if (p.x % 5 || p.y % 5) err.push(`${line.id} 折点未对齐 5px 网格: (${p.x}, ${p.y})`);
+    if (p.x % GRID || p.y % GRID) err.push(`${line.id} 折点未对齐 ${GRID}px 网格: (${p.x}, ${p.y})`);
   }
 }
 // 站心到折线的最近投影：d = 垂直距离，s = 沿走向累计长度
