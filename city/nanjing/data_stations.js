@@ -188,7 +188,7 @@ const stationsData = {
     "S_182": { type: "dot", x: 2664.3, y: 2057.8, cn: "句容", en: "JURONG", align: "right", offset: { x: 0, y: 0 } },
     "S_183": { type: "dot", x: 1170.9, y: 2430, cn: "翠屏山", en: "CUIPINGSHAN", align: "left", offset: { x: 0, y: 0 } },
     "S_184": { type: "dot", x: 1170.9, y: 2570, cn: "河海大学·佛城西路", en: "HHU/FOCHENGXILU", align: "left", offset: { x: 0, y: 0 } },
-    "S_185": { type: "tsf", x: 1170.9, y: 2780, cn: "吉印大道", en: "JIYINDADAO", align: "left", offset: { x: -10, y: 0 } },
+    "S_185": { type: "tsf", x: 1170.9, y: 2780, cn: "吉印大道", en: "JIYINDADAO", align: "left", offset: { x: -4, y: 0 } },
     "S_186": { type: "dot", x: 1170.9, y: 2940, cn: "正方中路", en: "ZHENGFANGZHONGLU", align: "left", offset: { x: 0, y: 0 } },
     "S_187": { type: "dot", x: 1170.9, y: 3080, cn: "翔宇路北", en: "XIANGYULUBEI", align: "left", offset: { x: 0, y: 0 } },
     "S_188": { type: "tsf", x: 1170.9, y: 3230, cn: "翔宇路南", en: "XIANGYULUNAN", align: "left", offset: { x: -5, y: 0 } },
