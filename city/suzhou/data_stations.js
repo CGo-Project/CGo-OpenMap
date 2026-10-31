@@ -86,7 +86,7 @@ const stationsData = {
     "M324": {"x":1640,"y":1095,"type":"dot","cn":"烟雨桥","en":"Yanyuqiao","align":"right","offset":{"x":2,"y":0}},
     "M325": {"x":1640,"y":1030,"type":"dot","cn":"倪浜","en":"Nibang","align":"right","offset":{"x":2,"y":0}},
     "M326": {"x":1675,"y":975,"type":"tsf","cn":"唐庄","en":"Tangzhuang","align":"top","offset":{"x":0,"y":-6.5}},
-    "M327": {"x":1800,"y":980,"type":"dot","cn":"跨塘","en":"Kuatang","align":"bottom","offset":{"x":0,"y":2.8}},
+    "M327": {"x":1800,"y":980,"type":"dot","cn":"跨塘","en":"Kuatang","align":"bottom-left","offset":{"x":0,"y":2.8}},
     "M328": {"x":1935,"y":980,"type":"tsf","cn":"苏州园区火车站","en":"Suzhou Yuanqu Railway Station","align":"bottom-left","offset":{"x":-5.8,"y":5.8}},
     "M329": {"x":1990,"y":980,"type":"dot","cn":"方湾街","en":"Fangwanjie","align":"top","offset":{"x":0,"y":-2.8}},
     "M330": {"x":2045,"y":980,"type":"dot","cn":"丰和路","en":"Fenghelu","align":"bottom","offset":{"x":0,"y":2.8}},

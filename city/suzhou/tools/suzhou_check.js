@@ -2,6 +2,7 @@
  * 苏州线网数据自检（零依赖，node city/suzhou/tools/suzhou_check.js）
  *
  * 覆盖：线路站序与站间距长度、车站引用、换乘站图元与所属线路一致性、
+ * 站心是否落在本线走向上、站序是否沿走向单调前进、
  * 坐标重合（漏合并的换乘站）、站名框重叠、图例引用、字段完整性。
  * 改完 data_stations.js / data_lines.js 后跑一遍，0 错误 0 告警再提交。
  */
@@ -12,6 +13,8 @@ const path = require('path');
 
 const dir = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
+// 车站图元的真实尺寸（与 css/style.css 同源），换乘站的走向容差由它推导
+const { STATION_SIZE } = require(path.join(__dirname, '../../../core/station-icons.js'));
 
 const ctx = { window: {}, console };
 vm.createContext(ctx);
@@ -117,12 +120,55 @@ for (const line of lines) {
     if (p.x % 5 || p.y % 5) err.push(`${line.id} 折点未对齐 5px 网格: (${p.x}, ${p.y})`);
   }
 }
-// 站心必须落在本线折点上，否则线路不会经过站点图元
+// 站心到折线的最近投影：d = 垂直距离，s = 沿走向累计长度
+function projectOnPolyline(p, pts) {
+  let best = { d: Infinity, s: 0 };
+  let acc = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    let t = len ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / (len * len) : 0;
+    t = Math.max(0, Math.min(1, t));
+    const d = Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+    if (d < best.d) best = { d, s: acc + t * len };
+    acc += len;
+  }
+  return best;
+}
+
+// 站心必须落在本线走向上（作折点，或落在两折点连线上），线路才会穿过站点图元。
+// 不要求每站一个独立折点：北京、南京等城市过半的车站都直接落在线段中间，
+// 苏州的乐桥、南门、索山桥西同理；要求「一站一折点」会把正确排版大量误判成错误。
+const ON_LINE_TOLERANCE = 0.75; // 半个像素以内，肉眼不可辨
+// 换乘图元是 17.5px 的圆：苏州把并行线路从图元两侧引入（唐庄、西津桥、金尚路、
+// 桑田岛），或让两条线在换乘站两侧各留 5px（苏州新区火车站）；站心落在图元覆盖
+// 范围内即可，属排版手法而非走向错误。
+const TSF_RADIUS = STATION_SIZE.tsf / 2;
 for (const line of lines) {
-  const pts = new Set((line.pathPoints || []).map((p) => `${p.x},${p.y}`));
+  const pts = line.pathPoints || [];
   for (const id of line.stationIds || []) {
     const s = stations[id];
-    if (s && !pts.has(`${s.x},${s.y}`)) err.push(`${line.id} 的折点未经过 ${id} ${s.cn}(${s.x},${s.y})`);
+    if (!s) continue;
+    const { d } = projectOnPolyline(s, pts);
+    const limit = s.type === 'tsf' ? TSF_RADIUS : ON_LINE_TOLERANCE;
+    if (d > limit) err.push(`${line.id} 的走向未经过 ${id} ${s.cn}(${s.x},${s.y})，距折线 ${d.toFixed(1)}px`);
+  }
+}
+
+// 站序必须沿走向单调前进，否则图面走向与 stationIds 顺序脱节（前/后一站会指错方向）。
+// 例：M7 白荡南实际位置在白荡北—板泾之间，站序却曾排在木里之后。
+for (const line of lines) {
+  if (line.isLoop || !Array.isArray(line.pathPoints)) continue;
+  let prevS = null, prevLabel = '';
+  for (const id of line.stationIds || []) {
+    const s = stations[id];
+    if (!s) continue;
+    const pos = projectOnPolyline(s, line.pathPoints).s;
+    if (prevS !== null && pos <= prevS) {
+      err.push(`${line.id} 站序与走向不一致：${prevLabel}(${prevS.toFixed(0)}px) 之后是 ${id} ${s.cn}(${pos.toFixed(0)}px)`);
+    }
+    prevS = pos; prevLabel = `${id} ${s.cn}`;
   }
 }
 
