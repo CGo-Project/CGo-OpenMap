@@ -1,0 +1,16 @@
+const stationsData = {
+    "HCM01": { type: "dot", x: 129.1, y: 819.1, cn: "Bến Thành", en: "滨城<br>Ben Thanh", align: "bottom", offset: { x: 0, y: 2 } },
+    "HCM02": { type: "dot", x: 167, y: 781.2, cn: "Nhà hát Thành phố", en: "歌剧院<br>City Theatre", align: "bottom-right", offset: { x: -2, y: -2 } },
+    "HCM03": { type: "dot", x: 204.9, y: 743.4, cn: "Ba Son", en: "巴松<br>Ba Son", align: "top-left", offset: { x: 2, y: 2 } },
+    "HCM04": { type: "dot", x: 314.5, y: 664.5, cn: "Văn Thánh", en: "范城公园<br>Van Thai", align: "top", offset: { x: 0, y: -2 } },
+    "HCM05": { type: "dot", x: 383.8, y: 664.5, cn: "Tân Cảng", en: "新港<br>Tan Cang", align: "bottom", offset: { x: 0, y: 2 } },
+    "HCM06": { type: "dot", x: 453.0, y: 664.5, cn: "Thảo Điền", en: "草田<br>Thao Dien", align: "top", offset: { x: 0, y: -2 } },
+    "HCM07": { type: "dot", x: 522.3, y: 664.5, cn: "An Phú", en: "安富<br>An Phu", align: "bottom", offset: { x: 0, y: 2 } },
+    "HCM08": { type: "dot", x: 594.2, y: 628.5, cn: "Rạch Chiếc", en: "沥只<br>Rach Chiec", align: "top-left", offset: { x: 2, y: 2 } },
+    "HCM09": { type: "dot", x: 658.9, y: 563.7, cn: "Phước Long", en: "福隆<br>Phuoc Long", align: "bottom-right", offset: { x: -2, y: -2 } },
+    "HCM10": { type: "dot", x: 723.6, y: 499.1, cn: "Bình Thái", en: "平泰<br>Binh Thai", align: "top-left", offset: { x: 2, y: 2 } },
+    "HCM11": { type: "dot", x: 788.4, y: 434.3, cn: "Thủ Đức", en: "守德<br>Thu Duc", align: "bottom-right", offset: { x: -2, y: -2 } },
+    "HCM12": { type: "dot", x: 853, y: 369.6, cn: "Khu Công nghệ cao", en: "高科技园<br>High-tech zone", align: "top-left", offset: { x: 2, y: 2 } },
+    "HCM13": { type: "dot", x: 917.8, y: 304.9, cn: "Đại học Quốc gia", en: "国家大学<br>National University", align: "bottom-right", offset: { x: -2, y: -2 } },
+    "HCM14": { type: "dot", x: 982.5, y: 240.2, cn: "Bến xe Suối Tiên", en: "仙泉客运站<br>Suoi Tien Bus Station", align: "top", offset: { x: 0, y: -2 } },
+};

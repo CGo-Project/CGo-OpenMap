@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2.4 211.7 746.3 331.2">
+  <defs>
+    <linearGradient id="pyWaterFade" gradientUnits="userSpaceOnUse" x1="20.8" y1="0" x2="720.7" y2="0">
+      <stop offset="0" stop-color="#7CCACF" stop-opacity="0"/>
+      <stop offset="0.10" stop-color="#7CCACF" stop-opacity="1"/>
+      <stop offset="0.90" stop-color="#7CCACF" stop-opacity="1"/>
+      <stop offset="1" stop-color="#7CCACF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path d="M20.77,519.72 L414.04,519.72 C447.87,519.72 475.29,492.30 475.29,458.47 L475.29,296.16 C475.29,262.34 502.71,234.91 536.54,234.91 L640.96,234.91 C657.20,234.91 672.78,241.37 684.27,252.85 L720.69,289.27"
+        fill="none" stroke="url(#pyWaterFade)" stroke-width="42.17"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
