@@ -2036,7 +2036,7 @@ section('全城市车站 type 必填 / 合法与字段结构（#57）');
         }
         if (typeof s.x !== 'number' || !isFinite(s.x)) errors.push('x 必须是有限数字');
         if (typeof s.y !== 'number' || !isFinite(s.y)) errors.push('y 必须是有限数字');
-        if (typeof s.cn !== 'string' || !s.cn.trim()) errors.push('cn 必须是非空字符串');
+        if (typeof s.cn !== 'string' || (!s.hideLabel && !s.cn.trim())) errors.push('cn 必须是非空字符串');
         if (s.en !== undefined && typeof s.en !== 'string') errors.push('en 必须是字符串');
         if (s.align !== undefined && !ALIGN_VALUES.has(s.align)) {
             errors.push('align 非法: ' + JSON.stringify(s.align));

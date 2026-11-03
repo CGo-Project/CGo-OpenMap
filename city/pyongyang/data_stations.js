@@ -17,7 +17,7 @@ const stationsData = {
     "PY13": { type: "dot", x: 322.9, y: 231.4, cn: "", en: "", align: "top", offset: { x: 0, y: -2 }, hideLabel: true },
     "PY14": {"type":"dot","x":418.8,"y":239.3,"cn":"개선","en":"凯旋<br>Kaesŏn","align":"right","offset":{"x":0,"y":0}},
     "PY15": { type: "dot", x: 309.6, y: 244.7, cn: "", en: "", align: "top", offset: { x: 0, y: -2 }, hideLabel: true },
-    "PY16": {"type":"dot","x":297.4,"y":259.3,"cn":"","en":"","align":"bottom-right","offset":{"x":-2,"y":-2}},
+    "PY16": {"type":"dot","x":297.4,"y":259.3,"cn":"","en":"","align":"bottom-right","offset":{"x":-2,"y":-2},"hideLabel":true},
     "PY17": {"type":"dot","x":349.9,"y":269.7,"cn":"건설","en":"建设<br>Kŏnsŏl","align":"right","offset":{"x":0,"y":0}},
     "PY18": {"type":"dot","x":546.2,"y":269.7,"cn":"문수","en":"纹绣<br>Munsu","align":"right","offset":{"x":0,"y":0}},
     "PY19": {"type":"dot","x":418.8,"y":286.5,"cn":"모란봉","en":"牡丹峰<br>Moranbong","align":"right","offset":{"x":0,"y":0}},
