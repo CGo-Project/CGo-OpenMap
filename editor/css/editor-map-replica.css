@@ -1,0 +1,232 @@
+/**
+ * OpenMap Editor - 线路图底板复刻样式 (editor/css/editor-map-replica.css)
+ *
+ * 编辑器画布上的车站 / 站名使用与 main.html 相同的 DOM（见 js/layers/station-layer.js），
+ * 这里逐条搬运 css/style.css 中对应的地图元素规则，并限定在 .cgo-map-replica 之内，
+ * 以免 .dot / .no 这类短类名误伤编辑器界面。
+ *
+ * ⚠️ 修改 css/style.css 的车站 / 站名规格时，同步修改本文件。
+ *    城市样式表（city/{id}/style.css）由 CityRenderRuntime 载入，写在本文件之后，自然覆盖这里的默认值。
+ */
+
+.cgo-map-replica-host {
+    overflow: visible;
+    /* 底板铺满整张画布：宿主自身不能吃掉点击，只有车站 / 站名（pointer-events:auto）可被拾取，
+       其余位置穿透到下面的线路热区与空白画布 */
+    pointer-events: none;
+}
+
+.cgo-map-replica {
+    position: relative;
+    overflow: visible;
+    pointer-events: none;
+    /* 与 main.html body 字体栈一致：站名中的西文落在 Arimo，汉字落在 Noto Sans SC */
+    font-family: "Arimo", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--text-main, #00263b);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── 车站图元（css/style.css §车站） ── */
+.cgo-map-replica .station {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cgo-map-replica .station svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.cgo-map-replica .dot,
+.cgo-map-replica .rdot,
+.cgo-map-replica .tsfo {
+    width: 10px;
+    height: 10px;
+    z-index: 15;
+}
+
+.cgo-map-replica .tsf {
+    width: 17.5px;
+    height: 17.5px;
+    z-index: 20;
+}
+
+.cgo-map-replica .no {
+    width: 10px;
+    height: 10px;
+    z-index: 5;
+}
+
+.cgo-map-replica .tsf_pill_h {
+    width: 26px;
+    height: 14px;
+    z-index: 20;
+}
+
+.cgo-map-replica .tsf_pill_v {
+    width: 14px;
+    height: 26px;
+    z-index: 20;
+}
+
+.cgo-map-replica .tsf_pill_d45,
+.cgo-map-replica .tsf_pill_d135 {
+    width: 24px;
+    height: 24px;
+    z-index: 20;
+}
+
+.cgo-map-replica .tsf_dumbbell {
+    width: 32px;
+    height: 14px;
+    z-index: 20;
+}
+
+/* 城市自定义类型（如石家庄 terminus / scenery）没有尺寸类时的兜底 */
+.cgo-map-replica .station:not([style*="width"]) {
+    min-width: 10px;
+    min-height: 10px;
+}
+
+/* ── 车站编号胶囊与综合交通设施徽标 ── */
+.cgo-map-replica .station-code-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 7.5px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 1.5px 4.5px;
+    border-radius: 6px;
+    margin-right: 3px;
+    vertical-align: middle;
+    letter-spacing: 0.2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+}
+
+.cgo-map-replica .station-amenities-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2.5px;
+    margin-left: 3px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+
+.cgo-map-replica .amenity-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 2px;
+    color: var(--text-color, #1e293b);
+    background: var(--map-bg, #ffffff);
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.15));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.cgo-map-replica .amenity-badge svg {
+    display: block;
+    width: 10px;
+    height: 10px;
+}
+
+/* ── 站名（css/style.css §站名） ── */
+.cgo-map-replica .label-group {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.cgo-map-replica .stacn {
+    font-size: 11.5px;
+    color: var(--text-main) !important;
+    display: block;
+    line-height: 13.8px;
+    font-weight: 500;
+    paint-order: stroke fill;
+}
+
+.cgo-map-replica .staen {
+    font-size: 6.65px;
+    color: var(--text-main) !important;
+    display: block;
+    margin-top: 0;
+    line-height: 6.35px;
+    white-space: nowrap;
+    font-family: 'Arimo', 'Arial', sans-serif;
+    font-weight: 500;
+    paint-order: stroke fill;
+}
+
+.cgo-map-replica .label-group.type-no .stacn,
+.cgo-map-replica .label-group.type-no .staen {
+    color: var(--not-open-text, #5d7b89) !important;
+}
+
+.cgo-map-replica .label-group.active {
+    z-index: 35;
+}
+
+.cgo-map-replica .label-group.active .stacn {
+    color: #D0021B !important;
+    transform: scale(1.1);
+    transform-origin: inherit;
+    font-size: 15px;
+    line-height: 15px;
+    font-weight: 700;
+    -webkit-text-stroke: var(--sta-stroke-width-cn, 2px) var(--map-bg);
+}
+
+.cgo-map-replica .label-group.active .staen {
+    color: #D0021B !important;
+    font-size: 9px;
+    line-height: 8px;
+    font-weight: 700;
+    -webkit-text-stroke: var(--sta-stroke-width-en, 1.75px) var(--map-bg);
+}
+
+/* ── 底图装饰（core/script.js renderScatteredObjects） ── */
+.cgo-map-replica .scattered-item {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+/* 线路层 / 未开通层只是为了让城市样式表里的 #lines-layer、#not-open-layer 规则（线帽、叠放）生效；
+   香港在线路图上给图层加的边缘渐隐蒙版依赖整页尺寸，编辑时不需要 */
+#lines-layer,
+#not-open-layer,
+#scattered-layer {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+}
+
+/* ── 编辑器叠加物 ── */
+.cgo-station-selection-halo {
+    fill: none;
+    stroke: #38bdf8;
+    stroke-width: 2.5px;
+    vector-effect: non-scaling-stroke;
+}
+
+/* 画板底色：跟随主题与城市（悉尼米白、深色主题 #1a1a1a…），不写死颜色 */
+#canvasArtboardBackdrop {
+    fill: var(--map-bg, #ffffff);
+    stroke: var(--office-border, #cbd5e1);
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+}

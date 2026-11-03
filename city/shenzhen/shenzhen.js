@@ -466,6 +466,9 @@
         renderStationIcon,
         getStationLabelStyle() { return null; },
 
+        /** OpenMap Editor 渲染钩子：站名按官方墨迹框逐行贴合，与线路图共用 layoutStationLabel */
+        decorateStationLabel(el, station) { layoutStationLabel(el, station); },
+
         stationBoard: {
             modules: {
                 "sz-hk-station": HkStationModule,

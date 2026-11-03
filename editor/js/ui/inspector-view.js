@@ -22,9 +22,9 @@ window.OpenMapEditor.InspectorView = (function () {
         { id: 'left', rot: -90, label: '←', title: '正左 (W)' },
         { id: 'center', rot: 0, label: '•', title: '居中' },
         { id: 'right', rot: 90, label: '→', title: '正右 (E)' },
-        { id: 'bottom-left', rot: -135, label: '左下 (SW)' },
-        { id: 'bottom', rot: 180, label: '正下 (S)' },
-        { id: 'bottom-right', rot: 135, label: '右下 (SE)' }
+        { id: 'bottom-left', rot: -135, label: '↙', title: '左下 (SW)' },
+        { id: 'bottom', rot: 180, label: '↓', title: '正下 (S)' },
+        { id: 'bottom-right', rot: 135, label: '↘', title: '右下 (SE)' }
     ];
 
     function init(panelEl, bodyEl, onChange) {
@@ -43,7 +43,7 @@ window.OpenMapEditor.InspectorView = (function () {
      * 渲染 8 方向锚点轮盘 HTML
      */
     function renderAlignWheelHtml(currentAlign) {
-        var align = currentAlign || 'top';
+        var align = currentAlign || 'bottom';   // 与引擎一致：缺省 align 时站名在下方
         var html = '<div class="cgo-align-wheel-container">' +
             '<div class="cgo-align-wheel-label">站名 8 方向避让锚点</div>' +
             '<div class="cgo-align-wheel" id="inspectorAlignWheel">';
@@ -64,11 +64,277 @@ window.OpenMapEditor.InspectorView = (function () {
         return html;
     }
 
+
+    // ==========================================================================
+    // 车站图元类型选择器：每个选项都按「当前城市的画法」实时预览
+    // ==========================================================================
+
+    /** 通用图元目录（core/station-icons.js 支持的全部类型） */
+    var TYPE_CATALOG = [
+        { id: 'dot', name: '普通站', desc: '单线停靠站' },
+        { id: 'tsf', name: '换乘站', desc: '多线换乘站' },
+        { id: 'tsfo', name: '换乘站 · 单环', desc: '按首条线路色描环' },
+        { id: 'tsf_pill_h', name: '换乘胶囊 · 水平', desc: '两站台左右并列' },
+        { id: 'tsf_pill_v', name: '换乘胶囊 · 垂直', desc: '两站台上下并列' },
+        { id: 'tsf_pill_d45', name: '换乘胶囊 · 45°', desc: '沿右上斜向并列' },
+        { id: 'tsf_pill_d135', name: '换乘胶囊 · 135°', desc: '沿左上斜向并列' },
+        { id: 'tsf_dumbbell', name: '哑铃连杆', desc: '站外通道换乘' },
+        { id: 'rdot', name: '国铁车站', desc: '铁路客运站' },
+        { id: 'no', name: '暂缓开通', desc: '在建 / 未开通车站' }
+    ];
+    /** 城市私有类型（各城市脚本自行绘制）的中文名 */
+    var EXTRA_TYPE_NAMES = {
+        terminus: '终点站',
+        scenery: '景区站',
+        railcity: '城际铁路站'
+    };
+
+    var typePickerState = { node: null, project: null, outsideHandler: null };
+
+    function escAttr(v) {
+        return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function typeMeta(id) {
+        for (var i = 0; i < TYPE_CATALOG.length; i++) {
+            if (TYPE_CATALOG[i].id === id) return TYPE_CATALOG[i];
+        }
+        return { id: id, name: EXTRA_TYPE_NAMES[id] || id, desc: '本城市专属图元' };
+    }
+
+    function currentTypeOf(node) {
+        return node.notOpen ? 'no' : (node.type || 'dot');
+    }
+
+    /** 本工程里各类型的车站数（用于把「本城市在用」的类型排在前面） */
+    function typeUsage(project) {
+        var usage = {};
+        var nodes = (project && project.nodes) || {};
+        Object.keys(nodes).forEach(function (id) {
+            var n = nodes[id];
+            if (!n || n.type === 'temp') return;
+            var t = currentTypeOf(n);
+            usage[t] = (usage[t] || 0) + 1;
+        });
+        return usage;
+    }
+
+    function typeOptions(node, project) {
+        var usage = typeUsage(project);
+        var ids = TYPE_CATALOG.map(function (t) { return t.id; });
+        Object.keys(usage).forEach(function (t) { if (ids.indexOf(t) === -1) ids.push(t); });
+        var cur = currentTypeOf(node);
+        if (ids.indexOf(cur) === -1) ids.push(cur);
+        var used = ids.filter(function (t) { return usage[t]; });
+        var rest = ids.filter(function (t) { return !usage[t]; });
+        return { used: used, rest: rest, usage: usage };
+    }
+
+    /** 预览用的线路方向：取该站所在折线上相邻折点的方向，让短横 / 胶囊与线路的相对关系一目了然 */
+    function previewLineAngle(node, project) {
+        var segs = (project && project.segments) || [];
+        for (var i = 0; i < segs.length; i++) {
+            var pts = segs[i].points || [];
+            for (var j = 0; j < pts.length; j++) {
+                if (pts[j].nid !== node.id) continue;
+                var nb = pts[j + 1] || pts[j - 1];
+                if (!nb) continue;
+                var dx = nb.x - node.x, dy = nb.y - node.y;
+                if (Math.abs(dx) + Math.abs(dy) < 0.01) continue;
+                return Math.atan2(dy, dx) * 180 / Math.PI;
+            }
+        }
+        return 0;
+    }
+
+    function previewLineColor(node, project) {
+        var icons = window.CGoStationIcons;
+        if (icons && typeof icons.engineLineColors === 'function') {
+            var map = icons.engineLineColors((project && project.lines) || []);
+            if (map[node.id] && map[node.id].length) return map[node.id].slice();
+        }
+        var segs = (project && project.segments) || [];
+        var lineColor = {};
+        ((project && project.lines) || []).forEach(function (l) { lineColor[l.id] = l.color; });
+        for (var i = 0; i < segs.length; i++) {
+            if ((segs[i].points || []).some(function (p) { return p.nid === node.id; }) && lineColor[segs[i].lineId]) {
+                return [lineColor[segs[i].lineId]];
+            }
+        }
+        return [];
+    }
+
+    /** 单个类型的预览小样：地图底色 + 一段线路 + 该类型在本城市画法下的图元 */
+    function typeTileHtml(node, project, type) {
+        var layer = window.OpenMapEditor.StationLayer;
+        var colors = previewLineColor(node, project);
+        var station = Object.assign({}, node, { type: type, lineColors: colors });
+        var mk = (layer && typeof layer.previewMarker === 'function')
+            ? layer.previewMarker(station, node.id)
+            : { html: '', width: 10, height: 10, className: '' };
+        var w = mk.width || 10, h = mk.height || 10;
+        var scale = Math.max(0.5, Math.min(1.7, 24 / Math.max(w, h)));
+        var lineColor = type === 'no' ? 'var(--not-open-color, #bdcbd2)' : (colors[0] || 'var(--station-stroke)');
+        var angle = previewLineAngle(node, project);
+        return '<span class="type-tile cgo-map-replica" aria-hidden="true">' +
+            '<svg class="type-tile-line" viewBox="-30 -20 60 40" preserveAspectRatio="xMidYMid slice">' +
+            '<line x1="-60" y1="0" x2="60" y2="0" transform="rotate(' + angle.toFixed(1) + ')"' +
+            ' stroke="' + escAttr(lineColor) + '" stroke-width="' + (5.4 * scale).toFixed(2) + '" stroke-linecap="round"' +
+            (type === 'no' ? ' stroke-dasharray="' + (6 * scale).toFixed(1) + ' ' + (6 * scale).toFixed(1) + '"' : '') + '/></svg>' +
+            '<span class="type-tile-marker" style="transform:scale(' + scale.toFixed(3) + ') translate(-50%,-50%);">' +
+            '<span class="station ' + escAttr(type) + (mk.className ? ' ' + escAttr(mk.className) : '') + '"' +
+            ' style="position:relative;left:auto;top:auto;transform:none;width:' + w + 'px;height:' + h + 'px;">' +
+            mk.html + '</span></span></span>';
+    }
+
+    function renderTypePickerHtml(node, project) {
+        var cur = currentTypeOf(node);
+        var meta = typeMeta(cur);
+        return '<div class="cgo-type-picker" id="propNodeTypePicker" data-current="' + escAttr(cur) + '">' +
+            '<button type="button" class="type-picker-trigger" id="propNodeTypeTrigger" aria-haspopup="listbox" aria-expanded="false"' +
+            ' title="切换车站图元类型（预览按当前城市画法实时生成）">' +
+            '<span class="type-tile-slot" data-type-preview="' + escAttr(cur) + '">' + typeTileHtml(node, project, cur) + '</span>' +
+            '<span class="type-picker-text"><span class="type-picker-name">' + escAttr(meta.name) + '</span>' +
+            '<span class="type-picker-code">' + escAttr(cur) + '</span></span>' +
+            '<cgo-icon name="chevron-down" size="13" class="type-picker-caret"></cgo-icon>' +
+            '</button></div>';
+    }
+
+    function renderTypeMenuHtml(node, project) {
+        var opts = typeOptions(node, project);
+        var cur = currentTypeOf(node);
+        var item = function (t) {
+            var meta = typeMeta(t);
+            var count = opts.usage[t] ? '<span class="type-option-count">' + opts.usage[t] + ' 座</span>' : '';
+            return '<button type="button" class="type-option' + (t === cur ? ' is-current' : '') + '" role="option"' +
+                ' aria-selected="' + (t === cur ? 'true' : 'false') + '" data-type="' + escAttr(t) + '">' +
+                '<span class="type-tile-slot" data-type-preview="' + escAttr(t) + '">' + typeTileHtml(node, project, t) + '</span>' +
+                '<span class="type-option-text"><span class="type-option-name">' + escAttr(meta.name) + count + '</span>' +
+                '<span class="type-option-desc">' + escAttr(meta.desc) + ' · ' + escAttr(t) + '</span></span>' +
+                (t === cur ? '<cgo-icon name="check" size="13" class="type-option-check"></cgo-icon>' : '') +
+                '</button>';
+        };
+        var html = '<div class="type-picker-menu" role="listbox" aria-label="车站图元类型">';
+        var runtime = window.OpenMapEditor.CityRenderRuntime;
+        var cityId = runtime && runtime.getActiveCityId ? runtime.getActiveCityId() : null;
+        var cityName = '';
+        if (cityId && window.CITY_REGISTRY && window.CITY_REGISTRY[cityId]) cityName = window.CITY_REGISTRY[cityId].name || cityId;
+        html += '<div class="type-picker-hint">' + (cityName
+            ? '预览按「' + escAttr(cityName) + '」线路图的实际画法生成'
+            : '预览按通用画法生成') + '</div>';
+        if (opts.used.length) {
+            html += '<div class="type-picker-group">本工程在用</div>' + opts.used.map(item).join('');
+        }
+        if (opts.rest.length) {
+            html += '<div class="type-picker-group">更多图元</div>' + opts.rest.map(item).join('');
+        }
+        // 城市按逐站官方数据画图元时（如悉尼 marker、香港 mk），改类型不会改变图元外观，提前说清楚
+        var layer = window.OpenMapEditor.StationLayer;
+        var colors = previewLineColor(node, project);
+        var sample = opts.used.concat(opts.rest).filter(function (t) { return t !== 'no'; }).map(function (t) {
+            if (!layer || typeof layer.previewMarker !== 'function') return t;
+            var mk = layer.previewMarker(Object.assign({}, node, { type: t, lineColors: colors }), node.id);
+            // 悉尼终点站渐变 id 每次递增，比较前抹掉
+            return String(mk.html).replace(/sydeol\d+/g, '') + '|' + mk.width + 'x' + mk.height;
+        });
+        if (sample.length > 1 && sample.every(function (x) { return x === sample[0]; })) {
+            html += '<div class="type-picker-note"><cgo-icon name="info" size="12"></cgo-icon>' +
+                '<span>本城市的车站图元由逐站官方数据绘制，切换类型只影响站名样式与数据字段。</span></div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function closeTypeMenu() {
+        var picker = document.getElementById('propNodeTypePicker');
+        if (picker) {
+            var menu = picker.querySelector('.type-picker-menu');
+            if (menu) menu.remove();
+            picker.classList.remove('open');
+            var trig = picker.querySelector('.type-picker-trigger');
+            if (trig) trig.setAttribute('aria-expanded', 'false');
+        }
+        if (typePickerState.outsideHandler) {
+            document.removeEventListener('mousedown', typePickerState.outsideHandler, true);
+            typePickerState.outsideHandler = null;
+        }
+    }
+
+    function openTypeMenu(node, project) {
+        var picker = document.getElementById('propNodeTypePicker');
+        if (!picker) return;
+        closeTypeMenu();
+        picker.insertAdjacentHTML('beforeend', renderTypeMenuHtml(node, project));
+        picker.classList.add('open');
+        var trig = picker.querySelector('.type-picker-trigger');
+        if (trig) trig.setAttribute('aria-expanded', 'true');
+        var menu = picker.querySelector('.type-picker-menu');
+        var options = Array.prototype.slice.call(menu.querySelectorAll('.type-option'));
+        var focusAt = function (i) {
+            if (!options.length) return;
+            var k = (i + options.length) % options.length;
+            options[k].focus();
+        };
+        options.forEach(function (btn, i) {
+            btn.addEventListener('click', function () {
+                var t = btn.getAttribute('data-type');
+                closeTypeMenu();
+                if (t !== currentTypeOf(node)) fireChange('node', node.id, 'type', t);
+            });
+            btn.addEventListener('keydown', function (e) {
+                if (e.key === 'ArrowDown') { e.preventDefault(); focusAt(i + 1); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); focusAt(i - 1); }
+                else if (e.key === 'Home') { e.preventDefault(); focusAt(0); }
+                else if (e.key === 'End') { e.preventDefault(); focusAt(options.length - 1); }
+                else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeTypeMenu(); if (trig) trig.focus(); }
+                else if (e.key === 'Tab') { closeTypeMenu(); }
+            });
+        });
+        var curIdx = options.findIndex(function (b) { return b.classList.contains('is-current'); });
+        focusAt(curIdx >= 0 ? curIdx : 0);
+        // 菜单在检视面板内展开：保证完整可见
+        if (menu.scrollIntoView) menu.scrollIntoView({ block: 'nearest' });
+        typePickerState.outsideHandler = function (e) {
+            if (!picker.contains(e.target)) closeTypeMenu();
+        };
+        document.addEventListener('mousedown', typePickerState.outsideHandler, true);
+    }
+
+    function bindTypePicker(node) {
+        typePickerState.node = node;
+        var trig = document.getElementById('propNodeTypeTrigger');
+        if (!trig) return;
+        trig.addEventListener('click', function () {
+            var picker = document.getElementById('propNodeTypePicker');
+            if (picker && picker.classList.contains('open')) closeTypeMenu();
+            else openTypeMenu(node, typePickerState.project);
+        });
+        trig.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                openTypeMenu(node, typePickerState.project);
+            }
+        });
+    }
+
+    /** 城市渲染钩子异步就绪 / 主题切换后，重画检视面板里的图元小样 */
+    function refreshPreviews() {
+        var node = typePickerState.node, project = typePickerState.project;
+        var picker = document.getElementById('propNodeTypePicker');
+        if (!picker || !node || !project) return;
+        picker.querySelectorAll('[data-type-preview]').forEach(function (slot) {
+            slot.innerHTML = typeTileHtml(node, project, slot.getAttribute('data-type-preview'));
+        });
+    }
+
     /**
      * 渲染车站节点属性
      */
     function renderNodeInspector(node, project) {
         if (!dom.body) return;
+        closeTypeMenu();
+        typePickerState.project = project;
+        typePickerState.node = node;
         var isStation = (node.type !== 'temp');
 
         var html = '<div class="inspector-section">' +
@@ -80,29 +346,19 @@ window.OpenMapEditor.InspectorView = (function () {
         if (isStation) {
             html += '<div class="form-row">' +
                 '<span class="form-label">中文站名:</span>' +
-                '<input type="text" class="form-input" id="propNodeCn" value="' + (node.cn || '') + '">' +
+                '<input type="text" class="form-input" id="propNodeCn" value="' + escAttr(node.cn || '') + '">' +
                 '</div>' +
                 '<div class="form-row">' +
                 '<span class="form-label">英文站名:</span>' +
-                '<input type="text" class="form-input" id="propNodeEn" value="' + (node.en || '') + '">' +
+                '<input type="text" class="form-input" id="propNodeEn" value="' + escAttr(node.en || '') + '">' +
                 '</div>' +
                 '<div class="form-row">' +
                 '<span class="form-label">车站编号:</span>' +
-                '<input type="text" class="form-input" id="propNodeCode" placeholder="如 01, M05, A12" value="' + (node.code || '') + '">' +
+                '<input type="text" class="form-input" id="propNodeCode" placeholder="如 01, M05, A12" value="' + escAttr(node.code || '') + '">' +
                 '</div>' +
                 '<div class="form-row">' +
                 '<span class="form-label">图元类型:</span>' +
-                '<select class="form-select" id="propNodeType">' +
-                '<option value="dot"' + (node.type === 'dot' ? ' selected' : '') + '>普通站 (dot)</option>' +
-                '<option value="tsf"' + (node.type === 'tsf' ? ' selected' : '') + '>换乘站 - 双圈 (tsf)</option>' +
-                '<option value="tsf_pill_h"' + (node.type === 'tsf_pill_h' ? ' selected' : '') + '>换乘站 - 水平胶囊 (pill-h)</option>' +
-                '<option value="tsf_pill_v"' + (node.type === 'tsf_pill_v' ? ' selected' : '') + '>换乘站 - 垂直胶囊 (pill-v)</option>' +
-                '<option value="tsf_pill_d45"' + (node.type === 'tsf_pill_d45' ? ' selected' : '') + '>换乘站 - 45°斜胶囊 (pill-d45)</option>' +
-                '<option value="tsf_pill_d135"' + (node.type === 'tsf_pill_d135' ? ' selected' : '') + '>换乘站 - 135°斜胶囊 (pill-d135)</option>' +
-                '<option value="tsf_dumbbell"' + (node.type === 'tsf_dumbbell' ? ' selected' : '') + '>换乘站 - 哑铃连杆 (dumbbell)</option>' +
-                '<option value="rdot"' + (node.type === 'rdot' ? ' selected' : '') + '>国铁站 (rdot)</option>' +
-                '<option value="no"' + (node.notOpen || node.type === 'no' ? ' selected' : '') + '>暂缓开通 (no)</option>' +
-                '</select>' +
+                renderTypePickerHtml(node, project) +
                 '</div>';
 
             // 综合交通设施挂载徽标
@@ -141,7 +397,9 @@ window.OpenMapEditor.InspectorView = (function () {
             amenityKeys.forEach(function (key) {
                 var isActive = curAmenities.indexOf(key) !== -1;
                 html += '<button type="button" class="amenity-chip-btn' + (isActive ? ' active' : '') + '" data-amenity="' + key + '" title="' + amenityLabels[key] + '" style="display:flex;align-items:center;gap:4px;padding:4px 6px;font-size:11px;border-radius:4px;border:1px solid ' + (isActive ? 'var(--theme-accent, #0284c7)' : 'var(--border-light, rgba(0,0,0,0.1))') + ';background:' + (isActive ? 'var(--theme-subtle, rgba(2,132,199,0.12))' : 'var(--bg-subtle, transparent)') + ';color:' + (isActive ? 'var(--theme-accent, #0284c7)' : 'var(--text-color, #334155)') + ';cursor:pointer;transition:all 0.15s;">' +
-                    '<cgo-icon name="' + amenityIcons[key] + '" size="12"></cgo-icon>' +
+                    ((window.CGoStationIcons && window.CGoStationIcons.AMENITY_ICONS && window.CGoStationIcons.AMENITY_ICONS[key])
+                        ? '<span class="amenity-glyph" aria-hidden="true">' + window.CGoStationIcons.AMENITY_ICONS[key] + '</span>'
+                        : '<cgo-icon name="' + amenityIcons[key] + '" size="12"></cgo-icon>') +
                     '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + amenityLabels[key] + '</span>' +
                     '</button>';
             });
@@ -296,8 +554,7 @@ window.OpenMapEditor.InspectorView = (function () {
             });
         });
 
-        var typeSelect = document.getElementById('propNodeType');
-        if (typeSelect) typeSelect.addEventListener('change', function () { fireChange('node', node.id, 'type', this.value); });
+        bindTypePicker(node);
 
         var oxInput = document.getElementById('propNodeOffsetX');
         var oyInput = document.getElementById('propNodeOffsetY');
@@ -763,7 +1020,7 @@ window.OpenMapEditor.InspectorView = (function () {
 
             '<div class="form-row" style="gap:6px;margin-top:8px;">' +
             '<button type="button" class="ribbon-btn-sm" id="btnLineFocus" style="flex:1;" title="把视口定位到这条线路">' +
-            '<cgo-icon name="target" size="12"></cgo-icon><span>定位线路</span></button>' +
+            '<cgo-icon name="location" size="12"></cgo-icon><span>定位线路</span></button>' +
             '<button type="button" class="ribbon-btn-sm" id="btnLineSelectStations" style="flex:1;" title="选中这条线路的全部车站（含分支）">' +
             '<cgo-icon name="location" size="12"></cgo-icon><span>选中全线车站</span></button>' +
             '</div>' +
@@ -1214,6 +1471,7 @@ window.OpenMapEditor.InspectorView = (function () {
     }
 
     return {
+        refreshPreviews: refreshPreviews,
         init: init,
         renderNodeInspector: renderNodeInspector,
         renderSegmentInspector: renderSegmentInspector,

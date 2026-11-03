@@ -59,7 +59,10 @@
     }
 
     function build() {
-        var el = document.getElementById("label_" + SID);
+        decorate(document.getElementById("label_" + SID));
+    }
+
+    function decorate(el) {
         if (!el) return;
         if (el.dataset.cgoDual === "4" && el.innerHTML.indexOf("战胜") !== -1) return;
         el.dataset.cgoDual = "4";
@@ -75,6 +78,14 @@
                   "right:" + GAP + "px;bottom:" + GAP + "px;text-align:right;") +
             block(GREEN, "전승", "战胜", "Chŏnsŭng",
                   "left:" + GAP + "px;top:" + GAP + "px;text-align:left;");
+    }
+
+    // OpenMap Editor 渲染钩子：编辑器按同一 DOM 生成站名后调用，与线路图共用 decorate()
+    var city = window.PYONGYANG_CITY;
+    if (city) {
+        city.decorateStationLabel = function (el, station, sid) {
+            if (sid === SID) decorate(el);
+        };
     }
 
     function start() {

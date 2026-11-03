@@ -184,7 +184,37 @@
         return stations;
     }
 
+    /**
+     * 逐行复刻 core/script.js processData 的经停线路标志色次序，返回 { sid: [color, …] }。
+     *
+     * 注意引擎的次序并不是「线路书写顺序」：普通线路用 unshift（后写的线路排在前面），
+     * 只有 isPointOnly 的线路用 push；分支线路只统计 way1 / way2。普通站的环色取 [0]，
+     * 城市钩子（长春、沈阳……）也按 [0] 上色——次序不一致，编辑器里的站点就会换一种颜色。
+     *
+     * @param {Array} lines 线路数组
+     * @returns {Object<string, string[]>}
+     */
+    function engineLineColors(lines) {
+        const out = {};
+        (lines || []).forEach(line => {
+            if (!line) return;
+            let ids;
+            if (line.hasbranch) {
+                ids = Array.from(new Set([].concat(line['stationIds-way1'] || [], line['stationIds-way2'] || [])));
+            } else {
+                ids = line.stationIds || [];
+            }
+            ids.forEach(sid => {
+                if (!out[sid]) out[sid] = [];
+                if (line.isPointOnly) out[sid].push(line.color);
+                else out[sid].unshift(line.color);
+            });
+        });
+        return out;
+    }
+
     return {
+        engineLineColors,
         SVGTemplates,
         STATION_SIZE,
         STATION_DIMS,

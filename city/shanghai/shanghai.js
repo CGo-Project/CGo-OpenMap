@@ -33,7 +33,9 @@
     /** 站点缺少原图图元数据时，按所属线路折线的切线方向推断短横朝向 */
     const tangentAngleCache = new Map();
     function inferTangentAngle(station, stationId) {
-        if (tangentAngleCache.has(stationId)) return tangentAngleCache.get(stationId);
+        // 缓存键带上坐标：OpenMap Editor 里拖动车站后要按新位置重新推断朝向
+        const cacheKey = `${stationId}@${station.x},${station.y}`;
+        if (tangentAngleCache.has(cacheKey)) return tangentAngleCache.get(cacheKey);
         let angle = 90;
         const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
         let best = null;
@@ -56,7 +58,7 @@
         if (best && best.d <= 12) angle = (Math.atan2(best.dy, best.dx) / RAD) + 90;
         while (angle < 0) angle += 180;
         while (angle >= 180) angle -= 180;
-        return tangentAngleCache.set(stationId, angle), angle;
+        return tangentAngleCache.set(cacheKey, angle), angle;
     }
 
     /** 把 marker 字段规整成统一的 parts 数组（兼容旧的单图元写法） */

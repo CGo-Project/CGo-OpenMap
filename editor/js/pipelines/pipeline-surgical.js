@@ -338,6 +338,30 @@
      * 避免回写时将 align:"top" / offset:{x:0,y:0} / type:"dot" 注入到原本没有这些字段的条目中，
      * 防止 patchEntries diffContainerEdits 因 key 数量变化而回退为整条重写（源文件字段污染）。
      */
+    function shiftBoxes(v, dx, dy) {
+        if (Array.isArray(v)) {
+            if (v.length === 4 && v.every(function (n) { return typeof n === 'number'; })) {
+                return [r2(v[0] + dx), r2(v[1] + dy), r2(v[2] + dx), r2(v[3] + dy)];
+            }
+            return v.map(function (x) { return shiftBoxes(x, dx, dy); });
+        }
+        if (v && typeof v === 'object') {
+            var out = {};
+            Object.keys(v).forEach(function (k) { out[k] = shiftBoxes(v[k], dx, dy); });
+            return out;
+        }
+        return v;
+    }
+
+    /** 车站位移后平移其绝对排版框 lab；没有 lab、没挪动或 lab 已被手工改过时返回 null */
+    function shiftLabWithStation(curr, orig) {
+        if (!curr || !orig || !curr.lab || !orig.lab) return null;
+        var dx = (curr.x || 0) - (orig.x || 0), dy = (curr.y || 0) - (orig.y || 0);
+        if (!dx && !dy) return null;
+        if (JSON.stringify(curr.lab) !== JSON.stringify(orig.lab)) return curr.lab;
+        return shiftBoxes(orig.lab, dx, dy);
+    }
+
     function computeDirtyStations(currentProject) {
         if (!originalSnapshot || !currentProject) return {};
         var dirty = {};
@@ -350,8 +374,9 @@
             if (!orig) {
                 // 新增车站：只写入非默认的可选字段，保持与源码风格一致
                 var item = { x: r2(curr.x), y: r2(curr.y), cn: curr.cn, en: curr.en };
-                // align：仅在非默认 'top' 时写入
-                if (curr.align && curr.align !== 'top') item.align = curr.align;
+                // align：新增条目一律显式写出。引擎缺省 align 时把站名放在「下方」，
+                // 以前省略 'top' 导致编辑器里在上方的站名，导出后跑到了下方。
+                item.align = curr.align || 'bottom';
                 // offset：仅在非零时写入
                 if (curr.offset && (curr.offset.x !== 0 || curr.offset.y !== 0)) {
                     item.offset = { x: curr.offset.x, y: curr.offset.y };
@@ -420,6 +445,10 @@
                 if (curr.textScale) patch.textScale = curr.textScale;
                 if (curr.marker) patch.marker = curr.marker;
                 if (curr.halo) patch.halo = curr.halo;
+                // 香港 / 深圳的站名按绝对坐标的墨迹框（lab）排版：车站挪动后排版框随之平移，
+                // 与画布上看到的一致（StationLayer.followStation 同一算法）
+                var labMoved = shiftLabWithStation(curr, orig);
+                if (labMoved) patch.lab = labMoved;
                 dirty[nid] = patch;
             }
         });

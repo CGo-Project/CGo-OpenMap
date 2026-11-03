@@ -735,8 +735,15 @@ window.DeepSeekVision = (function () {
     /**
      * 清除本地配置
      */
-    function clearSettings() {
-        if (confirm('确认清除本地保存的 DeepSeek API Key 吗？')) {
+    async function clearSettings() {
+        const cd = window.OpenMapEditor && window.OpenMapEditor.ConfirmDialog;
+        const ok = cd ? await cd.ask({
+            title: '清除 DeepSeek API Key？',
+            message: '本机浏览器里保存的 API Key 将被删除，之后使用智能识图需要重新填写。',
+            confirmText: '清除',
+            danger: true
+        }) : confirm('确认清除本地保存的 DeepSeek API Key 吗？');
+        if (ok) {
             try {
                 localStorage.removeItem(STORAGE_KEYS.API_KEY);
                 localStorage.removeItem(STORAGE_KEYS.LEGACY_API_KEY);

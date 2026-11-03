@@ -466,3 +466,18 @@
     outline: none;
     font-family: inherit;
 }
+
+/* CGoUI 图标库没有「折角角度」语义的图标，走线工具用同尺寸、currentColor 描边的内联几何示意 */
+.cgo-inline-icon {
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.cgo-inline-icon circle {
+    fill: currentColor;
+    stroke: none;
+}

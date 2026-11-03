@@ -2213,6 +2213,19 @@
         renderStationIcon,
         getStationLabelStyle() { return null; },
 
+        /** OpenMap Editor 渲染鉤子：站名按墨跡框逐行貼合，與綫路圖共用 layoutStationLabel */
+        decorateStationLabel(el, station, sid) {
+            if (!station) return;
+            if (!useWebFonts && webFontsAvailable()) useWebFonts = true;
+            layoutStationLabel(el, Object.assign({ id: sid }, station));
+        },
+        /** OpenMap Editor 渲染鉤子：等網頁字體就緒後再重排一次，避免以回退字體度量 */
+        prepareRender() {
+            return fontCssReady.then(() => loadFaces(FONT_SAMPLE)).then(() => {
+                if (webFontsAvailable()) useWebFonts = true;
+            }, () => { /* 字體服務不可用：保留系統字體 */ });
+        },
+
         // 資訊板只在香港定制：關閉通用的上一站/下一站、車站類型、運營單位與高德導航，
         // 改用月台方向牌、車站資訊與 Google 地圖；標題模塊換成帶車站代號的版本
         stationBoard: {

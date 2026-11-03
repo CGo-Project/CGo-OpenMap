@@ -314,6 +314,11 @@
         handleLayerEl.appendChild(container);
     }
 
+    /** 图层显隐 / 锁定、线路叠放顺序等调用的重绘入口（与 renderAll 同义，保留旧名） */
+    function renderCanvas() {
+        renderAll();
+    }
+
     function renderAll() {
         if (!app.project) return;
 
@@ -326,14 +331,12 @@
             if (viewLayerEl) viewLayerEl.insertBefore(artboardEl, viewLayerEl.firstChild);
         }
         if (artboardEl && app.project && app.project.canvas) {
-            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            // 底色交给样式表的 var(--map-bg)：随亮 / 暗主题与城市底色（如悉尼米白）即时切换，
+            // 以前在这里按当时主题写死颜色，切换主题后画板仍是旧底色，站名就成了深底深字。
             artboardEl.setAttribute('x', '0');
             artboardEl.setAttribute('y', '0');
             artboardEl.setAttribute('width', String(app.project.canvas.width));
             artboardEl.setAttribute('height', String(app.project.canvas.height));
-            artboardEl.setAttribute('fill', isDark ? '#0f172a' : '#ffffff');
-            artboardEl.setAttribute('stroke', isDark ? '#334155' : '#cbd5e1');
-            artboardEl.setAttribute('stroke-width', '1.5');
             artboardEl.setAttribute('pointer-events', 'none');
         }
 
@@ -388,49 +391,22 @@
         }
 
         // 3. 车站与站名
-        var lineColorsMap = {};
-        if (app.project && app.project.lines) {
-            var io = window.OpenMapEditor.CityProjectIO || window.CityProjectIO;
-            var getAllStationIds = (io && typeof io.lineAllStationIds === 'function')
-                ? io.lineAllStationIds
-                : function (line) {
-                    if (Array.isArray(line.stationIds)) return line.stationIds;
-                    var sids = [];
-                    Object.keys(line || {}).forEach(function (k) {
-                        if (/^stationIds-/.test(k) && Array.isArray(line[k])) {
-                            line[k].forEach(function (sid) { if (sids.indexOf(sid) === -1) sids.push(sid); });
-                        }
-                    });
-                    return sids;
-                };
-
-            (app.project.lines || []).forEach(function (l) {
-                var color = l.color;
-                if (!color) return;
-                var sids = getAllStationIds(l);
-                sids.forEach(function (sid) {
-                    if (!lineColorsMap[sid]) lineColorsMap[sid] = [];
-                    if (lineColorsMap[sid].indexOf(color) === -1) {
-                        lineColorsMap[sid].push(color);
-                    }
-                });
+        // 经停线路标志色的次序必须与引擎 processData 完全一致（普通站环色、城市钩子都取 [0]）
+        var iconsEngine = window.CGoStationIcons;
+        var lineColorsMap = (iconsEngine && typeof iconsEngine.engineLineColors === 'function')
+            ? iconsEngine.engineLineColors(app.project.lines || []) : {};
+        // 编辑器里新画、尚未写出站序的线路：按折线经过的车站补色
+        var segColorById = {};
+        (app.project.lines || []).forEach(function (l) { segColorById[l.id] = l.color; });
+        (app.project.segments || []).forEach(function (seg) {
+            var color = segColorById[seg.lineId];
+            if (!color) return;
+            (seg.points || []).forEach(function (pt) {
+                if (!pt.nid) return;
+                if (!lineColorsMap[pt.nid]) lineColorsMap[pt.nid] = [];
+                if (lineColorsMap[pt.nid].indexOf(color) === -1) lineColorsMap[pt.nid].push(color);
             });
-
-            var lineMap = {};
-            (app.project.lines || []).forEach(function (l) { lineMap[l.id] = l.color; });
-            (app.project.segments || []).forEach(function (seg) {
-                var color = lineMap[seg.lineId];
-                if (!color) return;
-                (seg.points || []).forEach(function (pt) {
-                    if (pt.nid) {
-                        if (!lineColorsMap[pt.nid]) lineColorsMap[pt.nid] = [];
-                        if (lineColorsMap[pt.nid].indexOf(color) === -1) {
-                            lineColorsMap[pt.nid].push(color);
-                        }
-                    }
-                });
-            });
-        }
+        });
 
         var multiNodeIds = [];
         if (app.selected) {
@@ -438,10 +414,15 @@
             else if (app.selected.type === 'multi' && Array.isArray(app.selected.nodeIds)) multiNodeIds = app.selected.nodeIds;
         }
 
+        syncCityRuntime();
+        var surgicalForOrigin = window.OpenMapEditor.PipelineSurgical;
+        var originSnap = (surgicalForOrigin && typeof surgicalForOrigin.getOriginalSnapshot === 'function')
+            ? surgicalForOrigin.getOriginalSnapshot() : null;
         window.OpenMapEditor.StationLayer.render(app.project, {
             selectedNodeId: selNodeId,
             selectedNodeIds: multiNodeIds,
-            lineColorsMap: lineColorsMap
+            lineColorsMap: lineColorsMap,
+            originNodes: originSnap ? originSnap.nodes : null
         });
 
         // 3.5 几何变换外框与 8 方向控制手柄 (VectorCraft Transform Box)
@@ -534,6 +515,56 @@
 
         // 10. 触发会话自动保存（内部防抖 1.2s，拖拽过程中不会狂写）
         scheduleSaveSession();
+    }
+
+    /**
+     * 让画布外观跟随当前工程所属的城市：载入该城市的样式表与渲染钩子（上海短横、悉尼官方图元……）。
+     * 空白画布 / 识图工程没有所属城市，回到通用画法。城市脚本异步就绪后自动重绘一次。
+     */
+    var cityRuntimeBound = false;
+    function syncCityRuntime() {
+        var runtime = window.OpenMapEditor.CityRenderRuntime;
+        if (!runtime) return;
+        if (!cityRuntimeBound) {
+            cityRuntimeBound = true;
+            runtime.onChange(function () {
+                if (app.project) renderCanvas();
+                refreshInspectorPreviews();
+            });
+        }
+        var surg = window.OpenMapEditor.PipelineSurgical;
+        var city = surg && typeof surg.getCurrentLoadedCity === 'function' ? surg.getCurrentLoadedCity() : null;
+        var cityId = city && city.id ? city.id : null;
+        if (runtime.getActiveCityId() !== cityId) runtime.activate(cityId);
+    }
+
+    /**
+     * 亮 / 暗主题切换后整张画布跟着重画：水域、注释文字、标尺这些按主题取色的图层，
+     * 以及检视面板里的图元小样，都只在渲染时读一次主题。
+     */
+    function watchThemeChanges() {
+        if (typeof MutationObserver !== 'function') return;
+        var last = document.documentElement.getAttribute('data-theme');
+        new MutationObserver(function () {
+            var now = document.documentElement.getAttribute('data-theme');
+            if (now === last) return;
+            last = now;
+            if (app.project) renderAll();
+            refreshInspectorPreviews();
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    }
+
+    /** 统一的确认框（基于 <cgo-modal>，见 js/ui/confirm-dialog.js）；组件缺失时回落原生 confirm */
+    function askConfirm(opts) {
+        var cd = window.OpenMapEditor.ConfirmDialog;
+        if (cd && typeof cd.ask === 'function') return cd.ask(opts);
+        var text = [opts.title, opts.message].concat(opts.details || []).concat(opts.note ? [opts.note] : []).filter(Boolean).join('\n');
+        return Promise.resolve(window.confirm(text));
+    }
+
+    function refreshInspectorPreviews() {
+        var iv = window.OpenMapEditor.InspectorView;
+        if (iv && typeof iv.refreshPreviews === 'function') iv.refreshPreviews();
     }
 
     function updateNavCounts() {
@@ -1379,7 +1410,7 @@
                 ],
                 [
                     {
-                        label: '顶端对齐', icon: 'align',
+                        label: '顶端对齐', icon: 'arrow-up',
                         onClick: function () { alignNodes('top'); }
                     },
                     {
@@ -1387,11 +1418,11 @@
                         onClick: function () { alignNodes('center-y'); }
                     },
                     {
-                        label: '底端对齐', icon: 'align',
+                        label: '底端对齐', icon: 'arrow-down',
                         onClick: function () { alignNodes('bottom'); }
                     },
                     {
-                        label: '左端对齐', icon: 'align',
+                        label: '左端对齐', icon: 'arrow-left',
                         onClick: function () { alignNodes('left'); }
                     },
                     {
@@ -1399,7 +1430,7 @@
                         onClick: function () { alignNodes('center-x'); }
                     },
                     {
-                        label: '右端对齐', icon: 'align',
+                        label: '右端对齐', icon: 'arrow-right',
                         onClick: function () { alignNodes('right'); }
                     },
                     {
@@ -1453,12 +1484,7 @@
                     {
                         label: '批量删除', danger: true, icon: 'delete',
                         onClick: function () {
-                            if (!confirm('确定要删除选中的 ' + nList.length + ' 座车站吗？')) return;
-                            window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
-                            // 分支安全：统一走 deleteStationById
-                            nList.forEach(function (nid) { deleteStationById(nid); });
-                            app.selected = null;
-                            renderAll();
+                            confirmDeleteStations(nList);
                         }
                     }
                 ],
@@ -1817,6 +1843,9 @@
     /**
      * 选中属性变更回调
      */
+    /** 异步确认通过后重入 handlePropertyChange 时携带的标记 */
+    var CONFIRMED = { confirmed: true };
+
     function handlePropertyChange(targetType, targetId, prop, value) {
         if (!app.project) return;
 
@@ -1873,10 +1902,20 @@
                 });
                 if (inThis) refLines.push(l);
             });
-            if (refLines.length > 0) {
+            if (refLines.length > 0 && value !== CONFIRMED) {
                 var names = refLines.map(function (l) { return l.name || l.id; }).join('、');
-                var ok = window.confirm('确认删除车站「' + (nodeToDel.cn || targetId) + '」吗？\n该车站属于 ' + refLines.length + ' 条线路（' + names + '）。\n删除后将自动从所有线路站序中平滑摘除，防止产生孤儿悬空 ID。');
-                if (!ok) return;
+                // 确认是异步的：取消时什么都不发生；确认后带着 CONFIRMED 标记重入本函数，再压撤销快照
+                askConfirm({
+                    title: '删除车站「' + String(nodeToDel.cn || targetId).replace(/<[^>]*>/g, '') + '」？',
+                    message: '该车站属于 ' + refLines.length + ' 条线路（' + names + '）。',
+                    details: ['会从这些线路的站序中摘除，相邻站间距自动合并', '相关的虚拟换乘连线一并移除'],
+                    note: '可用 Ctrl+Z 撤销。',
+                    confirmText: '删除车站',
+                    danger: true
+                }).then(function (ok) {
+                    if (ok) handlePropertyChange(targetType, targetId, prop, CONFIRMED);
+                });
+                return;
             }
         }
 
@@ -1975,6 +2014,8 @@
                 node.offset = value;
             } else if (prop === 'type') {
                 node.type = value;
+                // notOpen 是 type === 'no' 的派生态：只改 type 不同步它，「暂缓开通」站改成换乘站后仍画成未开通
+                node.notOpen = (value === 'no');
             } else if (prop === 'cn') {
                 node.cn = value;
             } else if (prop === 'en') {
@@ -2185,6 +2226,33 @@
      * 一批找不到归属的孤儿线段；**车站本身不删** —— 它们可能还被别的线路
      * 或虚拟换乘引用着，要删请到车站列表或多选面板里删。
      */
+    /**
+     * 批量删除车站（先确认、再压撤销快照）。
+     * 分支安全：逐站走 deleteStationById（会处理 stationIds-wayN / distances-wayN / 虚拟换乘）。
+     */
+    function confirmDeleteStations(ids) {
+        var list = (ids || []).filter(function (nid) { return app.project && app.project.nodes[nid]; });
+        if (!list.length) return;
+        var names = list.slice(0, 6).map(function (nid) {
+            var n = app.project.nodes[nid];
+            return (n && n.cn ? String(n.cn).replace(/<[^>]*>/g, '') : nid);
+        });
+        askConfirm({
+            title: '删除 ' + list.length + ' 座车站？',
+            message: '将删除：' + names.join('、') + (list.length > 6 ? ' 等 ' + list.length + ' 座' : '') + '。',
+            details: ['车站会从所有线路的站序中摘除，站间距随之合并', '相关的虚拟换乘连线一并移除'],
+            note: '可用 Ctrl+Z 撤销。',
+            confirmText: '删除 ' + list.length + ' 座车站',
+            danger: true
+        }).then(function (ok) {
+            if (!ok) return;
+            window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+            list.forEach(function (nid) { deleteStationById(nid); });
+            app.selected = null;
+            renderAll();
+        });
+    }
+
     function deleteLineById(lineId) {
         if (!app.project || !Array.isArray(app.project.lines)) return false;
         var idx = app.project.lines.findIndex(function (l) { return l.id === lineId; });
@@ -2201,12 +2269,28 @@
             showToast('这是最后一条线路，删掉后画布就没有线网了；如确实要清空请用「新建画布」', 'warning');
             return false;
         }
-        var msg = '确定删除线路「' + name + '」（' + lineId + '）吗？\n\n' +
-            '· 该线路的站序（' + stationCount + ' 座车站的编排）会被删除\n' +
-            '· 挂在该线路上的 ' + segCount + ' 段走向会被一并删除\n' +
-            '· 车站本身不会被删除，其它线路仍可继续使用\n\n' +
-            '可用 Ctrl+Z 撤销。';
-        if (!confirm(msg)) return false;
+        askConfirm({
+            title: '删除线路「' + name + '」？',
+            message: '线路 ' + lineId + ' 将从工程中移除。',
+            details: [
+                '该线路的站序（' + stationCount + ' 座车站的编排）会被删除',
+                '挂在该线路上的 ' + segCount + ' 段走向会被一并删除',
+                '车站本身不会被删除，其它线路仍可继续使用'
+            ],
+            note: '可用 Ctrl+Z 撤销。',
+            confirmText: '删除线路',
+            danger: true
+        }).then(function (ok) {
+            if (ok) removeLineAt(lineId);
+        });
+        return true;
+    }
+
+    function removeLineAt(lineId) {
+        var idx = app.project.lines.findIndex(function (l) { return l.id === lineId; });
+        if (idx === -1) return false;
+        var line = app.project.lines[idx];
+        var name = line.name || line.id;
 
         window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
 
@@ -2344,6 +2428,7 @@
         var inspectorBodyEl = document.getElementById('inspectorBody');
 
         // 1. 初始化各单例层
+        watchThemeChanges();
         window.OpenMapEditor.RibbonController.init();
         window.OpenMapEditor.ViewportLayer.init(viewportEl, svgEl, viewLayerEl);
         if (window.OpenMapEditor.GridLayer && gridLayerEl) {
@@ -2762,7 +2847,7 @@
          * 先算方案（纯函数，不动数据）再弹确认框，把"要动几条折线、几座车站、最大位移多少"
          * 摊开给用户看；确认后才写入并压撤销栈。网格可见时顺带把长度量化到网格步长。
          */
-        function alignAllTo45() {
+        async function alignAllTo45() {
             if (!app.project) { showToast('请先新建画布或载入城市', 'warning'); return; }
             var A45 = window.OpenMapEditor.Align45;
             if (!A45 || typeof A45.alignProject !== 'function') {
@@ -2789,11 +2874,16 @@
             if (plan.stats.skippedHandTuned) {
                 parts.push('（另有 ' + plan.stats.skippedHandTuned + ' 条手工调过倒角半径的折线将跳过）');
             }
-            var msg = parts.join('，') + '到 45°/90° 方向。\n' +
-                '最大位移 ' + plan.stats.maxShift + ' px' +
-                (gridStep ? '（已同时对网格步长 ' + gridStep + ' px 取整）' : '') + '。\n\n' +
-                '可用 Ctrl+Z 撤销。确定执行？';
-            if (!confirm(msg)) return;
+            var okAlign = await askConfirm({
+                title: '整份工程对齐到 45° / 90°？',
+                message: parts.join('，') + '到 45°/90° 方向。',
+                details: ['最大位移 ' + plan.stats.maxShift + ' px' +
+                    (gridStep ? '（已同时对网格步长 ' + gridStep + ' px 取整）' : '')],
+                note: '可用 Ctrl+Z 撤销。',
+                icon: 'compass',
+                confirmText: '开始对齐'
+            });
+            if (!okAlign) return;
 
             window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
 
@@ -3323,20 +3413,21 @@
                 (info.deletedLines ? ' / 删线 ' + info.deletedLines : '') + '\n' +
                 '当前工程：车站 ' + info.stationTotal + ' 座 / 线路 ' + info.lineTotal + ' 条';
 
-            // 第一次确认：把"危险"讲清楚
-            var first = confirm(
-                '⚠ 危险操作：强制回写\n\n' + summary + '\n\n' +
-                '它和「导出改动补丁」的区别：\n' +
-                '· 跳过"是否有改动"的判定，用当前画布**整份覆盖**城市文件；\n' +
-                '· 不受脏条目限制，即使系统认为"没改动"也会重写；\n' +
-                '· 直接写进本地 city/' + cityId + '/ 目录，磁盘上无法撤销（编辑器内 Ctrl+Z 也救不回来）。\n\n' +
-                '写之前会自动下载一份原件备份 ZIP。\n\n' +
-                '确定继续？');
-            if (!first) return;
-
-            // 第二次确认：防止连点/手滑
-            var second = confirm('请再次确认：真的要强制覆盖 city/' + cityId + '/data_*.js 吗？');
-            if (!second) { showToast('已取消强制回写', 'info'); return; }
+            // 一次讲清楚危险、再要求手动输入城市 ID：比连弹两次原生确认框更不容易「顺手点过去」
+            var okForce = await askConfirm({
+                title: '强制回写 city/' + cityId + '/？',
+                message: '用当前画布整份覆盖城市数据文件。' + summary.replace(/\n/g, '；'),
+                details: [
+                    '跳过「是否有改动」的判定，即使系统认为没改动也会重写',
+                    '直接写进本地 city/' + cityId + '/ 目录，磁盘上无法撤销（编辑器内 Ctrl+Z 也救不回来）',
+                    '写之前会自动下载一份原件备份 ZIP'
+                ],
+                note: '只想提交改动时，请改用「导出改动补丁」。',
+                confirmText: '强制回写',
+                danger: true,
+                requireText: cityId
+            });
+            if (!okForce) { showToast('已取消强制回写', 'info'); return; }
 
             // 关联目录（没有就现在选）
             if (!surgical.getLinkedDirectoryHandle()) {
@@ -4706,13 +4797,7 @@
                         handlePropertyChange('water', app.selected.id, 'delete_point', { pointIdx: app.selected.pointIdx });
                     } else if (app.selected.type === 'multi') {
                         var nListDel = app.selected.nodeIds || [];
-                        if (confirm('确定要删除选中的 ' + nListDel.length + ' 座车站吗？')) {
-                            window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
-                            // 分支安全：走 deleteStationById（会处理 stationIds-wayN / distances-wayN / 虚拟换乘）
-                            nListDel.forEach(function (nid) { deleteStationById(nid); });
-                            app.selected = null;
-                            renderAll();
-                        }
+                        confirmDeleteStations(nListDel);
                     } else if (app.selected.type === 'line') {
                         // 线路删除走专用流程（内部自带确认框与准确提示），
                         // 以前落到下面的通用分支，只弹了「已删除选中图元」而线路纹丝不动。
@@ -4800,7 +4885,7 @@
                     var isHidden = keyInput.type === 'password';
                     keyInput.type = isHidden ? 'text' : 'password';
                     var icon = this.querySelector('cgo-icon');
-                    if (icon) icon.setAttribute('name', isHidden ? 'view' : 'view-disabled');
+                    if (icon) icon.setAttribute('name', isHidden ? 'lock' : 'eye');
                 }
             });
         }
@@ -4938,9 +5023,27 @@
                     typeof window.OpenMapEditor.HistoryManager.getDirtyCount === 'function'
                     ? window.OpenMapEditor.HistoryManager.getDirtyCount() : 0;
                 if (app.project && dirty > 0) {
-                    var ok = window.confirm(
-                        '当前工程有 ' + dirty + ' 处未保存改动，载入城市「' + cityId + '」会覆盖它们。\n确定继续吗？'
-                    );
+                    var cityName = function (id) {
+                        var reg = window.CITY_REGISTRY && window.CITY_REGISTRY[id];
+                        return (reg && reg.name) ? reg.name : id;
+                    };
+                    var fromName = currentId ? '「' + cityName(currentId) + '」' : '当前';
+                    var sameCity = currentId === cityId;
+                    var ok = await askConfirm({
+                        title: sameCity ? '重新载入「' + cityName(cityId) + '」？' : '切换到「' + cityName(cityId) + '」？',
+                        message: fromName + '工程里有 ' + dirty + ' 处修改还没有导出。' +
+                            (sameCity ? '重新载入会恢复为城市的原始数据，' : '切换城市会载入新的线路数据，') +
+                            '这些修改将被丢弃，撤销记录也会清空。',
+                        note: '想保留这些修改：先点下方「导出改动 ZIP」，下载完成后再决定是否切换。',
+                        confirmText: sameCity ? '放弃修改并重新载入' : '放弃修改并切换',
+                        cancelText: '留在当前工程',
+                        danger: true,
+                        extra: document.getElementById('btnExportPatchFiles') ? {
+                            text: '导出改动 ZIP',
+                            icon: 'export-zip',
+                            onClick: function () { document.getElementById('btnExportPatchFiles').click(); }
+                        } : null
+                    });
                     if (!ok) {
                         citySelect.value = currentId || '';
                         if (typeof citySelect.requestUpdate === 'function') citySelect.requestUpdate();

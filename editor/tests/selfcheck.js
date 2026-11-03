@@ -334,6 +334,8 @@ section('车站图元 (core/station-icons.js)');
     const editorStationSrc = fs.existsSync(path.join(ROOT, 'editor/js/layers/station-layer.js')) ?
         fs.readFileSync(path.join(ROOT, 'editor/js/layers/station-layer.js'), 'utf8') : '';
     check(editorStationSrc.includes('iconHtmlFor'), 'OpenMap Editor 画布走同一份图元模板');
+    check(editorStationSrc.includes('renderStationIcon') && editorStationSrc.includes('decorateStationLabel'),
+        'OpenMap Editor 画布优先走城市渲染钩子（renderStationIcon / decorateStationLabel），与线路图同源');
 
     const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
 
@@ -369,6 +371,17 @@ section('车站图元 (core/station-icons.js)');
         && JSON.stringify(st.b._lineColors) === '["#111111","#222222"]'
         && st.a.lineColors === undefined,
         'computeLineColors 可写入 _lineColors 运行期私有字段');
+
+    // 经停线路标志色次序与引擎 processData 一致：普通线路 unshift、isPointOnly push、分支只计 way1/way2
+    const ec = Icons.engineLineColors([
+        { color: '#111111', stationIds: ['a', 'b'] },
+        { color: '#222222', stationIds: ['b'] },
+        { color: '#333333', isPointOnly: true, stationIds: ['b'] },
+        { color: '#444444', hasbranch: true, 'stationIds-way1': ['c'], 'stationIds-way2': ['c', 'd'], 'stationIds-way3': ['e'] }
+    ]);
+    check(JSON.stringify(ec.b) === '["#222222","#111111","#333333"]'
+        && JSON.stringify(ec.c) === '["#444444"]' && ec.e === undefined,
+        'engineLineColors 与引擎 processData 的标志色次序一致');
 
     // 真实数据：统计各城市图元类型分布，确保全部能产出图元
     for (const city of cities) {
@@ -1615,10 +1628,11 @@ section('Milestone 3 多选框选与智能对齐参考线');
         'ForceWriteBack: 存量维护 Tab 提供危险配色的「强制回写」入口');
     check(/\.ribbon-action-btn-lg\.danger/.test(ribbonCss),
         'ForceWriteBack: 危险按钮有独立的红橙色危险态样式');
-    check(/function forceWriteBack/.test(editorAppSrc) && /⚠ 危险操作：强制回写/.test(editorAppSrc),
+    check(/function forceWriteBack/.test(editorAppSrc) && /title: '强制回写 city\/'[\s\S]{0,900}danger: true/.test(editorAppSrc)
+        && /导出改动补丁/.test(editorAppSrc.slice(editorAppSrc.indexOf('function forceWriteBack'))),
         'ForceWriteBack: 弹窗明确标注这是危险操作，并解释与"导出补丁"的区别');
-    check(/请再次确认：真的要强制覆盖/.test(editorAppSrc),
-        'ForceWriteBack: 需要二次确认，防止连点/手滑');
+    check(/title: '强制回写 city\/'[\s\S]{0,1200}requireText: cityId/.test(editorAppSrc),
+        'ForceWriteBack: 需手动输入城市 ID 才能确认，防止连点/手滑');
     check(/function downloadOriginalsBackup/.test(editorAppSrc),
         'ForceWriteBack: 写回前自动下载原件备份 ZIP（磁盘上无法撤销的兜底）');
     check(/opts && opts\.force/.test(surgSrc) && /!f\.changed && !force/.test(surgSrc),
@@ -2396,8 +2410,10 @@ section('全城市车站 type 必填 / 合法与字段结构（#57）');
         'handlePropertyChange 完整覆盖 virtual / notopen / scattered 的删除操作');
     check(/delTargetKey\s*=\s*\(app\.selected\.id\s*!==\s*undefined\)\s*\?\s*app\.selected\.id\s*:\s*app\.selected\.idx/.test(appSrc2),
         'Delete 快捷键兼容 idx 索引型图元（virtual / notopen / scattered）');
-    check(/targetType === 'node' && prop === 'delete'[\s\S]{0,900}window\.confirm[\s\S]{0,400}HistoryManager\.pushSnapshot\(app\.project\)/.test(appSrc2),
+    check(/targetType === 'node' && prop === 'delete'[\s\S]{0,900}askConfirm\([\s\S]{0,900}return;\s*\}\s*\}\s*\n\s*window\.OpenMapEditor\.HistoryManager\.pushSnapshot\(app\.project\)/.test(appSrc2),
         '删除车站的确认弹窗在压入撤销栈之前执行（取消不会污染撤销栈）');
+    check(!/[^.\w]confirm\(|window\.confirm\(/.test(appSrc2.replace(/function askConfirm[\s\S]*?\n    \}/, '')),
+        '编辑器不再直接调用原生 confirm()，统一走 ConfirmDialog（标题 / 后果 / 明确的动作按钮）');
     check(!/CityProjectIO\.nextId/.test(appSrc2),
         '零件盒落子放置等操作使用 ProjectModel.nextId 生成 ID（不调用不存在的 CityProjectIO.nextId）');
     check(/<meta\s+name="mobile-web-app-capable"\s+content="yes">/.test(editorHtml),

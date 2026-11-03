@@ -13,6 +13,16 @@ window.OpenMapEditor = window.OpenMapEditor || {};
 window.OpenMapEditor.AssetDrawer = (function () {
     'use strict';
 
+    /**
+     * 交通设施徽标：优先用 core/station-icons.js 的矢量徽标（与线路图站名旁的徽标同一份），
+     * CGoUI 图标库里没有轮渡、P+R 等语义的图标。
+     */
+    function amenityGlyph(am) {
+        var lib = window.CGoStationIcons && window.CGoStationIcons.AMENITY_ICONS;
+        if (lib && lib[am.id]) return '<span class="amenity-glyph" aria-hidden="true">' + lib[am.id] + '</span>';
+        return '<cgo-icon name="' + am.icon + '" size="14"></cgo-icon>';
+    }
+
     var dom = {
         container: null,
         tabOutlineBtn: null,
@@ -35,8 +45,8 @@ window.OpenMapEditor.AssetDrawer = (function () {
         stations: [
             { id: 'dot', label: '普通圆点', type: 'station', glyph: 'dot', icon: 'dot', desc: '单线常规经停车站' },
             { id: 'tsf', label: '双圈换乘', type: 'station', glyph: 'tsf', icon: 'transfer', desc: '标准同心圆两线换乘' },
-            { id: 'tsf_pill_h', label: '水平胶囊', type: 'station', glyph: 'tsf_pill_h', icon: 'horizontal-flip', desc: '水平跑道圆多线换乘' },
-            { id: 'tsf_pill_v', label: '垂直胶囊', type: 'station', glyph: 'tsf_pill_v', icon: 'vertical-flip', desc: '垂直跑道圆多线换乘' },
+            { id: 'tsf_pill_h', label: '水平胶囊', type: 'station', glyph: 'tsf_pill_h', icon: 'flip-h', desc: '水平跑道圆多线换乘' },
+            { id: 'tsf_pill_v', label: '垂直胶囊', type: 'station', glyph: 'tsf_pill_v', icon: 'flip-v', desc: '垂直跑道圆多线换乘' },
             { id: 'tsf_pill_d45', label: '45°斜向胶囊', type: 'station', glyph: 'tsf_pill_d45', icon: 'design', desc: '45度倾斜跑道圆换乘' },
             { id: 'tsf_pill_d135', label: '135°斜向胶囊', type: 'station', glyph: 'tsf_pill_d135', icon: 'design', desc: '135度倾斜跑道圆换乘' },
             { id: 'tsf_dumbbell', label: '双联哑铃', type: 'station', glyph: 'tsf_dumbbell', icon: 'route', desc: '长通道/大厅双圆连杆换乘' },
@@ -144,7 +154,7 @@ window.OpenMapEditor.AssetDrawer = (function () {
         ASSET_DEFINITIONS.amenities.forEach(function (am) {
             html += '<button type="button" class="asset-tile-btn" data-category="amenity" data-id="' + am.id + '" title="' + am.label + '\n' + am.desc + '" style="display:flex;align-items:center;padding:6px 8px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:6px;transition:all 0.15s;">' +
                 '<div style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:var(--theme-accent, #0284c7);flex-shrink:0;">' +
-                '<cgo-icon name="' + am.icon + '" size="14"></cgo-icon>' +
+                amenityGlyph(am) +
                 '</div>' +
                 '<div style="display:flex;flex-direction:column;min-width:0;text-align:left;">' +
                 '<span style="font-size:11px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + am.label + '</span>' +

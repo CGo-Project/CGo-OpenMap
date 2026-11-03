@@ -164,6 +164,24 @@
         el.style.textAlign = (p.ax === "L") ? "right" : (p.ax === "R" ? "left" : "center");
     }
 
+    /**
+     * 单个站名标签的悉尼式排版（加粗 / 枢纽放大 / 灰粉色调 / 45° 斜排 / 折行 + 锚点留白）。
+     * 线路图由 syncLabels() 逐个调用；OpenMap Editor 通过城市钩子 decorateStationLabel 调用同一实现。
+     */
+    function decorateLabel(el, s) {
+        if (!el || !s) return;
+        if (s.labelSize === "big") el.classList.add("syd-big");
+        if (s.labelBold) el.classList.add("syd-bold");
+        if (s.labelTone === "grey") el.classList.add("syd-grey");
+        if (s.labelTone === "pink") el.classList.add("syd-pink");
+        if (s.rotate) el.classList.add("syd-rot");
+        if (s.labelLines) {
+            const sp = el.querySelector(".stacn");
+            if (sp) sp.innerHTML = s.labelLines.join("<br>");
+        }
+        placeLabel(el, s);
+    }
+
     function syncLabels() {
         const layer = document.getElementById("labels-layer");
         if (!layer || typeof stationsData === "undefined") return;
@@ -171,16 +189,7 @@
             const s = stationsData[el.dataset.sid];
             if (!s || el.dataset.sydDone === "1") return;
             el.dataset.sydDone = "1";
-            if (s.labelSize === "big") el.classList.add("syd-big");
-            if (s.labelBold) el.classList.add("syd-bold");
-            if (s.labelTone === "grey") el.classList.add("syd-grey");
-            if (s.labelTone === "pink") el.classList.add("syd-pink");
-            if (s.rotate) el.classList.add("syd-rot");
-            if (s.labelLines) {
-                const sp = el.querySelector(".stacn");
-                if (sp) sp.innerHTML = s.labelLines.join("<br>");
-            }
-            placeLabel(el, s);
+            decorateLabel(el, s);
         });
     }
 
@@ -193,6 +202,28 @@
      * 两者在官方图上都是压在线路之上、把线路压深一档的半透明色块；
      * 挂在站点图元里没用（图元自身的 transform 会形成隔离组），因此单独成层。
      */
+    /**
+     * 正片叠底底衬的几何（画布坐标，中心点 + 宽高 + 旋转角）：CBD 底板 + 各换乘站灰色胶囊。
+     * 线路图（syncHalos）与 OpenMap Editor（getStationUnderlays 钩子）共用这一份。
+     */
+    function underlayShapes(stations) {
+        const shapes = [{
+            cx: CITY_TINT.x + CITY_TINT.w / 2, cy: CITY_TINT.y + CITY_TINT.h / 2,
+            w: CITY_TINT.w, h: CITY_TINT.h, r: CITY_TINT.r, angle: 0,
+            className: "syd-city-tint", fill: "var(--syd-city-tint)"
+        }];
+        Object.keys(stations || {}).forEach((sid) => {
+            const s = stations[sid];
+            const h = s && s.marker && s.marker.halo;
+            if (!h) return;
+            shapes.push({
+                cx: s.x + h.dx, cy: s.y + h.dy, w: h.w, h: h.h, angle: h.ang || 0,
+                className: "syd-halo", fill: "var(--syd-halo)"
+            });
+        });
+        return shapes;
+    }
+
     function syncHalos() {
         const content = document.getElementById("map-content");
         if (!content || typeof stationsData === "undefined") return;
@@ -205,26 +236,21 @@
         if (layer.dataset.built === "1") return;
         layer.dataset.built = "1";
         const frag = document.createDocumentFragment();
-        const city = document.createElement("div");
-        city.className = "syd-city-tint";
-        city.style.left = CITY_TINT.x + "px";
-        city.style.top = CITY_TINT.y + "px";
-        city.style.width = CITY_TINT.w + "px";
-        city.style.height = CITY_TINT.h + "px";
-        city.style.borderRadius = CITY_TINT.r + "px";
-        frag.appendChild(city);
-        Object.keys(stationsData).forEach((sid) => {
-            const s = stationsData[sid];
-            const h = s.marker && s.marker.halo;
-            if (!h) return;
-            const pill = document.createElement("div");
-            pill.className = "syd-halo";
-            pill.style.left = (s.x + h.dx) + "px";
-            pill.style.top = (s.y + h.dy) + "px";
-            pill.style.width = h.w + "px";
-            pill.style.height = h.h + "px";
-            pill.style.transform = `translate(-50%, -50%) rotate(${h.ang || 0}deg)`;
-            frag.appendChild(pill);
+        underlayShapes(stationsData).forEach((u) => {
+            const div = document.createElement("div");
+            div.className = u.className;
+            if (u.className === "syd-city-tint") {
+                div.style.left = (u.cx - u.w / 2) + "px";
+                div.style.top = (u.cy - u.h / 2) + "px";
+                div.style.borderRadius = u.r + "px";
+            } else {
+                div.style.left = u.cx + "px";
+                div.style.top = u.cy + "px";
+                div.style.transform = `translate(-50%, -50%) rotate(${u.angle}deg)`;
+            }
+            div.style.width = u.w + "px";
+            div.style.height = u.h + "px";
+            frag.appendChild(div);
         });
         layer.appendChild(frag);
     }
@@ -312,6 +338,13 @@
 
         /** 悉尼站点画法：官方图元逐站还原 */
         renderStationIcon,
+
+        /** OpenMap Editor 渲染钩子：与线路图共用 decorateLabel / underlayShapes 的实现 */
+        decorateStationLabel(el, station) { decorateLabel(el, station); },
+        getStationUnderlays(stations) {
+            const dark = document.documentElement.getAttribute("data-theme") === "dark";
+            return underlayShapes(stations).map((u) => Object.assign(u, { blend: dark ? "screen" : "multiply" }));
+        },
 
         /** 站名排版由 syncLabels() 统一处理，这里不再额外下发样式 */
         getStationLabelStyle(station) {

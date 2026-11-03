@@ -1,18 +1,26 @@
 /**
- * 开放地图编辑器 (OpenMap Editor) - 车站交互与标注图层
- * 强制调用 core/station-icons.js 渲染车站图元，并与主地图 main.html 站名文字规范 100% 对齐：
- * 1. 站名间距：distV = 5.2px, distH = 6px, distD = 6px，8 方向精确对齐；
- * 2. 字体与字级：中文 11.5px / line-height 13.8px / weight 500 / "Noto Sans SC"；
- *               英文 6.65px / line-height 6.35px / weight 500 / "Arimo"；
- * 3. 结构与样式：采用主地图标准 .label-group 包含 .stacn 与 .staen；
- * 4. 支持 textScale (cn/en) 字符拉伸与 offset 偏移；
- * 5. 选中态联动高亮，双向捕获点击事件。
+ * 开放地图编辑器 (OpenMap Editor) - 车站与站名图层
+ *
+ * 画布上的车站与站名按 main.html 的 DOM 结构逐元素复刻：
+ *   <foreignObject> 里放一块与地图同尺规的 HTML 底板（.cgo-map-replica），
+ *   车站是绝对定位的 .station.{type}（translate(-50%,-50%) 居中），
+ *   站名是 .label-group.type-{type} > .stacn + .staen，锚点算法与 core/script.js 完全一致。
+ *
+ * 之所以不再用 SVG 自绘：各城市的外观写在 city/{id}/{id}.js 的钩子和 city/{id}/style.css 里，
+ * 它们针对的正是这套 DOM。结构一致之后，城市样式表、renderStationIcon、
+ * decorateStationLabel 这些钩子在编辑器里原样生效（见 js/core/city-render-runtime.js），
+ * 上海的短横与胶囊、悉尼的官方图元与 45° 斜排、香港 / 深圳的墨迹框排版都不必在编辑器里再写一遍。
+ *
+ * 编辑器自己的东西（选中光圈、临时节点 ×）仍是 SVG，叠在底板之上。
  */
 
 window.OpenMapEditor = window.OpenMapEditor || {};
 
 window.OpenMapEditor.StationLayer = (function () {
     'use strict';
+
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var XHTML_NS = 'http://www.w3.org/1999/xhtml';
 
     var dom = {
         stationLayer: null,
@@ -28,8 +36,12 @@ window.OpenMapEditor.StationLayer = (function () {
         return window.CGoStationIcons;
     }
 
+    function getRuntime() {
+        return window.OpenMapEditor.CityRenderRuntime || null;
+    }
+
     function escapeHtml(str) {
-        if (!str) return '';
+        if (str === null || str === undefined) return '';
         return String(str)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -38,110 +50,177 @@ window.OpenMapEditor.StationLayer = (function () {
             .replace(/'/g, '&#039;');
     }
 
+    /** 与 core/a11y.js 的 safeNameHtml 同义：站名里只放行 <br> / <sup> / <sub> */
+    function safeNameHtml(value) {
+        if (window.CGoA11y && typeof window.CGoA11y.safeNameHtml === 'function') {
+            return window.CGoA11y.safeNameHtml(value);
+        }
+        return escapeHtml(value)
+            .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+            .replace(/&lt;(\/?)(sup|sub)&gt;/gi, '<$1$2>');
+    }
+
+    /** 站名里的排版标签去掉后的纯文本（用于标题提示） */
+    function plainName(value) {
+        return String(value == null ? '' : value)
+            .replace(/<br\s*\/?>/gi, ' ')
+            .replace(/<[^>]*>/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
     /**
-     * 计算站名标签的锚点位置与变换 (严格对齐主地图 core/script.js 第 1156~1176 行)
-     * @param {Object} n 车站节点数据
-     * @returns {{ x: number, y: number, transform: string, textAlign: string, transformOriginX: string }}
+     * 站名锚点（逐行对齐 core/script.js renderStations）。
+     * 注意缺省 align 时引擎落在「下方」分支，不是 top。
+     * @returns {{ x, y, transform, textAlign, transformOriginX }}
      */
     function calculateLabelLayout(n) {
-        var distV = 5.2; // 垂直间距 (top / bottom)
-        var distH = 6;   // 水平间距 (left / right)
-        var distD = 6;   // 对角间距 (top-left, top-right, bottom-left, bottom-right)
-
-        var left = n.x || 0;
-        var top = n.y || 0;
-        var transform = "";
-        var textAlign = "center";
-        var transformOriginX = "50%";
-        var align = n.align || 'top';
-
-        switch (align) {
-            case 'top':
-                top -= distV;
-                transform = "translate(-50%, -100%)";
-                textAlign = "center";
-                transformOriginX = "50%";
-                break;
-            case 'bottom':
-                top += distV;
-                transform = "translate(-50%, 0)";
-                textAlign = "center";
-                transformOriginX = "50%";
-                break;
-            case 'left':
-                left -= distH;
-                transform = "translate(-100%, -50%)";
-                textAlign = "right";
-                transformOriginX = "100%";
-                break;
-            case 'right':
-                left += distH;
-                transform = "translate(0, -50%)";
-                textAlign = "left";
-                transformOriginX = "0%";
-                break;
-            case 'top-left':
-                left -= distD;
-                top -= distD;
-                transform = "translate(-100%, -100%)";
-                textAlign = "right";
-                transformOriginX = "100%";
-                break;
-            case 'top-right':
-                left += distD;
-                top -= distD;
-                transform = "translate(0, -100%)";
-                textAlign = "left";
-                transformOriginX = "0%";
-                break;
-            case 'bottom-left':
-                left -= distD;
-                top += distD;
-                transform = "translate(-100%, 0)";
-                textAlign = "right";
-                transformOriginX = "100%";
-                break;
-            case 'bottom-right':
-                left += distD;
-                top += distD;
-                transform = "translate(0, 0)";
-                textAlign = "left";
-                transformOriginX = "0%";
-                break;
-            default:
-                top += distV;
-                transform = "translate(-50%, 0)";
-                textAlign = "center";
-                transformOriginX = "50%";
+        var distV = 5.2, distH = 6, distD = 6;
+        var left = n.x || 0, top = n.y || 0;
+        var transform = '', textAlign = 'center', transformOriginX = '50%';
+        switch (n.align) {
+            case 'top': top -= distV; transform = 'translate(-50%, -100%)'; break;
+            case 'bottom': top += distV; transform = 'translate(-50%, 0)'; break;
+            case 'left': left -= distH; transform = 'translate(-100%, -50%)'; textAlign = 'right'; transformOriginX = '100%'; break;
+            case 'right': left += distH; transform = 'translate(0, -50%)'; textAlign = 'left'; transformOriginX = '0%'; break;
+            case 'top-left': left -= distD; top -= distD; transform = 'translate(-100%, -100%)'; textAlign = 'right'; transformOriginX = '100%'; break;
+            case 'top-right': left += distD; top -= distD; transform = 'translate(0, -100%)'; textAlign = 'left'; transformOriginX = '0%'; break;
+            case 'bottom-left': left -= distD; top += distD; transform = 'translate(-100%, 0)'; textAlign = 'right'; transformOriginX = '100%'; break;
+            case 'bottom-right': left += distD; top += distD; transform = 'translate(0, 0)'; textAlign = 'left'; transformOriginX = '0%'; break;
+            default: top += distV; transform = 'translate(-50%, 0)';
         }
-
         if (n.offset) {
             if (n.offset.x) left += n.offset.x;
             if (n.offset.y) top += n.offset.y;
         }
+        return { x: left, y: top, transform: transform, textAlign: textAlign, transformOriginX: transformOriginX };
+    }
 
-        return {
-            x: left,
-            y: top,
-            transform: transform,
-            textAlign: textAlign,
-            transformOriginX: transformOriginX
-        };
+    /** 保持向后兼容的偏移查询 */
+    function labelOffsetFor(align) {
+        var layout = calculateLabelLayout({ x: 0, y: 0, align: align });
+        return { dx: layout.x, dy: layout.y, anchor: layout.textAlign === 'right' ? 'end' : (layout.textAlign === 'left' ? 'start' : 'middle') };
+    }
+
+    // ==========================================================================
+    // 图元 HTML：城市钩子优先，回落 core/station-icons.js（与引擎同一分支顺序）
+    // ==========================================================================
+
+    /**
+     * @param {Object} s 车站对象（type 已归一、含 lineColors）
+     * @param {string} id 车站 ID
+     * @returns {{ html: string, className: string, width: number|null, height: number|null, zIndex: number|undefined }}
+     */
+    function stationMarkup(s, id) {
+        var runtime = getRuntime();
+        var custom = runtime ? runtime.renderStationIcon(s, id) : null;
+        if (custom && custom.html) {
+            return {
+                html: custom.html,
+                className: custom.className || '',
+                width: custom.width || null,
+                height: custom.height || null,
+                zIndex: custom.zIndex
+            };
+        }
+        var icons = getStationIconsEngine();
+        // 与引擎同一份模板与分支（dot / tsfo 按首条线路色上色，其余按类型，未知类型回落 dot）
+        var html = (icons && typeof icons.iconHtmlFor === 'function') ? icons.iconHtmlFor(s) : '';
+        return { html: html, className: '', width: null, height: null, zIndex: undefined };
     }
 
     /**
-     * 保持向后兼容的偏移查询
+     * 单座车站在本城市画法下的图元（供检视面板的类型选择器做实时预览）。
+     * @returns {{ html: string, width: number, height: number, className: string }}
      */
-    function labelOffsetFor(align) {
-        var dummy = { x: 0, y: 0, align: align };
-        var layout = calculateLabelLayout(dummy);
-        return { dx: layout.x, dy: layout.y, anchor: layout.textAlign === 'right' ? 'end' : (layout.textAlign === 'left' ? 'start' : 'middle') };
+    function previewMarker(station, id) {
+        var s = Object.assign({}, station);
+        var m = stationMarkup(s, id || s.id || '__preview__');
+        var dims = (getStationIconsEngine() && getStationIconsEngine().dimensionsFor)
+            ? getStationIconsEngine().dimensionsFor(s.type) : { width: 10, height: 10 };
+        return {
+            html: m.html,
+            className: m.className,
+            width: m.width || dims.width,
+            height: m.height || dims.height
+        };
+    }
+
+    // ==========================================================================
+    // 墨迹框类站名（香港 / 深圳的 lab）：随车站一起平移
+    // ==========================================================================
+
+    /** 把 [x0, y0, x1, y1] 形式的包围盒（可嵌套）整体平移 */
+    function shiftBoxes(v, dx, dy) {
+        if (Array.isArray(v)) {
+            if (v.length === 4 && v.every(function (n) { return typeof n === 'number'; })) {
+                return [v[0] + dx, v[1] + dy, v[2] + dx, v[3] + dy];
+            }
+            return v.map(function (x) { return shiftBoxes(x, dx, dy); });
+        }
+        if (v && typeof v === 'object') {
+            var out = {};
+            Object.keys(v).forEach(function (k) { out[k] = shiftBoxes(v[k], dx, dy); });
+            return out;
+        }
+        return v;
+    }
+
+    /**
+     * 车站从原位被挪动后，按位移平移它的绝对排版框（lab）。
+     * 导出补丁时 PipelineSurgical 用同一个函数换算，画布所见即导出所得。
+     */
+    function followStation(node, origin) {
+        if (!node || !node.lab || !origin || !origin.lab) return node;
+        var dx = (node.x || 0) - (origin.x || 0);
+        var dy = (node.y || 0) - (origin.y || 0);
+        if (!dx && !dy) return node;
+        if (JSON.stringify(node.lab) !== JSON.stringify(origin.lab)) return node;
+        return Object.assign({}, node, { lab: shiftBoxes(origin.lab, dx, dy) });
+    }
+
+    // ==========================================================================
+    // 渲染
+    // ==========================================================================
+
+    function makeReplica(layerEl, cls, width, height) {
+        var fo = document.createElementNS(SVG_NS, 'foreignObject');
+        fo.setAttribute('x', '0');
+        fo.setAttribute('y', '0');
+        fo.setAttribute('width', String(width));
+        fo.setAttribute('height', String(height));
+        fo.setAttribute('class', 'cgo-map-replica-host');
+        var root = document.createElementNS(XHTML_NS, 'div');
+        root.className = 'cgo-map-replica ' + cls;
+        root.style.width = width + 'px';
+        root.style.height = height + 'px';
+        fo.appendChild(root);
+        layerEl.appendChild(fo);
+        return root;
+    }
+
+    function buildLabelHtml(id, s, isSelected) {
+        var layout = calculateLabelLayout(s);
+        var scaleCn = (s.textScale && s.textScale.cn) || 1;
+        var scaleEn = (s.textScale && s.textScale.en) || 1;
+        var icons = getStationIconsEngine();
+        var primary = (s.lineColors && s.lineColors.length) ? s.lineColors[0] : 'var(--station-stroke)';
+        var codeBadge = (s.code && icons && icons.renderStationCodeBadge) ? icons.renderStationCodeBadge(String(s.code), primary) : '';
+        var amenities = (Array.isArray(s.amenities) && icons && icons.renderAmenitiesHtml) ? icons.renderAmenitiesHtml(s.amenities) : '';
+        var style = 'left:' + layout.x + 'px;top:' + layout.y + 'px;transform:' + layout.transform + ';text-align:' + layout.textAlign + ';';
+        return '<div class="label-group type-' + escapeHtml(s.type) + (isSelected ? ' active' : '') + '"' +
+            ' data-sid="' + escapeHtml(id) + '" data-node-id="' + escapeHtml(id) + '" style="' + style + '"' +
+            ' title="' + escapeHtml(plainName(s.cn)) + '">' +
+            '<span class="stacn" style="transform:scaleX(' + scaleCn + ');transform-origin:' + layout.transformOriginX + ' center;">' +
+            codeBadge + safeNameHtml(s.cn) + amenities + '</span>' +
+            '<span class="staen" lang="en" style="transform:scaleX(' + scaleEn + ');transform-origin:' + layout.transformOriginX + ' center;">' +
+            safeNameHtml(s.en) + '</span></div>';
     }
 
     /**
      * 渲染车站节点与站名文字
      * @param {Object} project 工程数据模型
-     * @param {Object} options { selectedNodeId, selectedNodeIds, lineColorsMap }
+     * @param {Object} options { selectedNodeId, selectedNodeIds, lineColorsMap, originNodes }
      */
     function render(project, options) {
         if (!dom.stationLayer) return;
@@ -150,156 +229,147 @@ window.OpenMapEditor.StationLayer = (function () {
         if (!project || !project.nodes) return;
 
         var opt = options || {};
-        var selectedId = opt.selectedNodeId;
         var selectedSet = new Set(opt.selectedNodeIds || []);
-        var iconsEngine = getStationIconsEngine();
+        if (opt.selectedNodeId) selectedSet.add(opt.selectedNodeId);
+        var colorsMap = opt.lineColorsMap || {};
+        var originNodes = opt.originNodes || null;
+        var runtime = getRuntime();
+        var icons = getStationIconsEngine();
+        var canvasW = (project.canvas && project.canvas.width) || 2000;
+        var canvasH = (project.canvas && project.canvas.height) || 1500;
 
-        // 遍历 nodes 字典
-        Object.keys(project.nodes).forEach(function (nodeId) {
-            var n = project.nodes[nodeId];
+        // 1. 归一化为引擎视角的车站对象
+        var stations = {};
+        var tempIds = [];
+        Object.keys(project.nodes).forEach(function (id) {
+            var n = project.nodes[id];
             if (!n) return;
-
-            var isSelected = (nodeId === selectedId || selectedSet.has(nodeId));
-
-            // 1. 临时辅助节点 (temp) -> 渲染为交叉 ×
-            if (n.type === 'temp') {
-                var tempG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                tempG.setAttribute('data-node-id', nodeId);
-                tempG.style.cursor = 'pointer';
-
-                var l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                l1.setAttribute('x1', n.x - 4); l1.setAttribute('y1', n.y - 4);
-                l1.setAttribute('x2', n.x + 4); l1.setAttribute('y2', n.y + 4);
-                l1.setAttribute('stroke', isSelected ? '#38bdf8' : '#64748b');
-                l1.setAttribute('stroke-width', '2');
-
-                var l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                l2.setAttribute('x1', n.x - 4); l2.setAttribute('y1', n.y + 4);
-                l2.setAttribute('x2', n.x + 4); l2.setAttribute('y2', n.y - 4);
-                l2.setAttribute('stroke', isSelected ? '#38bdf8' : '#64748b');
-                l2.setAttribute('stroke-width', '2');
-
-                tempG.appendChild(l1);
-                tempG.appendChild(l2);
-                dom.stationLayer.appendChild(tempG);
-                return;
-            }
-
-            // 2. 车站节点 (station 图元)
-            var stType = n.notOpen ? 'no' : (n.type || 'dot');
-            var dims = (iconsEngine && typeof iconsEngine.dimensionsFor === 'function')
-                ? iconsEngine.dimensionsFor(stType)
-                : { width: 10, height: 10 };
-            var width = dims.width || 10;
-            var height = dims.height || 10;
-
-            var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            g.setAttribute('transform', 'translate(' + (n.x - width / 2) + ', ' + (n.y - height / 2) + ')');
-            g.setAttribute('data-node-id', nodeId);
-            g.style.cursor = 'pointer';
-
-            // 优先使用 core/station-icons.js 模版
-            var colors = [];
-            if (opt.lineColorsMap && opt.lineColorsMap[nodeId]) {
-                colors = opt.lineColorsMap[nodeId];
-            }
-            if (iconsEngine && typeof iconsEngine.iconHtmlFor === 'function') {
-                var iconHtml = iconsEngine.iconHtmlFor({ type: stType, lineColors: colors });
-                // 彻底剥离外层 <svg...> 与 </svg> 标签，将内部原生图形元素直接填入 <g>
-                var innerShapes = iconHtml
-                    ? iconHtml.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>$/i, '')
-                    : '';
-                g.innerHTML = innerShapes;
-            } else {
-                // 兜底圆形
-                var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', width / 2);
-                circle.setAttribute('cy', height / 2);
-                circle.setAttribute('r', Math.min(width, height) / 2);
-                circle.setAttribute('fill', '#ffffff');
-                circle.setAttribute('stroke', '#00263b');
-                circle.setAttribute('stroke-width', '2');
-                g.appendChild(circle);
-            }
-
-            if (isSelected) {
-                if (width !== height) {
-                    var haloRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    haloRect.setAttribute('x', -3);
-                    haloRect.setAttribute('y', -3);
-                    haloRect.setAttribute('width', width + 6);
-                    haloRect.setAttribute('height', height + 6);
-                    haloRect.setAttribute('rx', Math.min(width, height) / 2 + 3);
-                    haloRect.setAttribute('ry', Math.min(width, height) / 2 + 3);
-                    haloRect.setAttribute('fill', 'none');
-                    haloRect.setAttribute('stroke', '#38bdf8');
-                    haloRect.setAttribute('stroke-width', '2.5');
-                    haloRect.setAttribute('pointer-events', 'none');
-                    g.appendChild(haloRect);
-                } else {
-                    var halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    halo.setAttribute('cx', width / 2);
-                    halo.setAttribute('cy', height / 2);
-                    halo.setAttribute('r', (width / 2) + 4);
-                    halo.setAttribute('fill', 'none');
-                    halo.setAttribute('stroke', '#38bdf8');
-                    halo.setAttribute('stroke-width', '2.5');
-                    halo.setAttribute('pointer-events', 'none');
-                    g.appendChild(halo);
-                }
-            }
-
-            dom.stationLayer.appendChild(g);
-
-            // 3. 站名文字标注 (labelLayer，采用与主地图 100% 相同的 DOM 渲染标准)
-            if (dom.labelLayer && !n.hideLabel && (n.cn || n.en)) {
-                var layout = calculateLabelLayout(n);
-                var scaleCn = (n.textScale && n.textScale.cn) ? n.textScale.cn : 1;
-                var scaleEn = (n.textScale && n.textScale.en) ? n.textScale.en : 1;
-
-                var fo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-                fo.setAttribute('x', String(layout.x));
-                fo.setAttribute('y', String(layout.y));
-                fo.setAttribute('width', '1');
-                fo.setAttribute('height', '1');
-                fo.setAttribute('data-node-id', nodeId);
-                fo.style.overflow = 'visible';
-                fo.style.pointerEvents = 'none';
-
-                var labelDiv = document.createElement('div');
-                labelDiv.className = 'label-group type-' + stType + (isSelected ? ' active' : '');
-                labelDiv.setAttribute('data-node-id', nodeId);
-                labelDiv.style.transform = layout.transform;
-                labelDiv.style.textAlign = layout.textAlign;
-                labelDiv.style.pointerEvents = 'auto';
-                labelDiv.style.cursor = 'pointer';
-
-                var innerHtml = '';
-                var primaryColor = (colors && colors.length > 0) ? colors[0] : '#0284c7';
-
-                // 车站编号徽标 (Station Alphanumeric Code)
-                var codeBadge = (n.code && iconsEngine && typeof iconsEngine.renderStationCodeBadge === 'function')
-                    ? iconsEngine.renderStationCodeBadge(n.code, primaryColor)
-                    : (n.code ? '<span class="station-code-pill" style="background:' + primaryColor + ';">' + escapeHtml(n.code) + '</span>' : '');
-
-                // 综合交通枢纽设施徽标 (Transit Amenities)
-                var amenitiesHtml = (n.amenities && iconsEngine && typeof iconsEngine.renderAmenitiesHtml === 'function')
-                    ? iconsEngine.renderAmenitiesHtml(n.amenities)
-                    : '';
-
-                if (n.cn) {
-                    innerHtml += '<span class="stacn" style="transform:scaleX(' + scaleCn + ');transform-origin:' + layout.transformOriginX + ' center;">' +
-                        codeBadge + escapeHtml(n.cn) + amenitiesHtml + '</span>';
-                }
-                if (n.en) {
-                    innerHtml += '<span class="staen" lang="en" style="transform:scaleX(' + scaleEn + ');transform-origin:' + layout.transformOriginX + ' center;">' + escapeHtml(n.en) + '</span>';
-                }
-
-                labelDiv.innerHTML = innerHtml;
-                fo.appendChild(labelDiv);
-                dom.labelLayer.appendChild(fo);
-            }
+            if (n.type === 'temp') { tempIds.push(id); return; }
+            var s = Object.assign({}, n);
+            s.type = n.notOpen ? 'no' : (n.type || 'dot');
+            s.lineColors = (colorsMap[id] || []).slice();
+            if (originNodes && originNodes[id]) s = followStation(s, originNodes[id]);
+            stations[id] = s;
         });
+
+        // 城市钩子（如上海短横按线路切线定向）读的 linesData 用当前工程的折线
+        if (runtime) {
+            var lineById = {};
+            (project.lines || []).forEach(function (l) { lineById[l.id] = l; });
+            var linesForHooks = (project.segments || []).map(function (seg) {
+                var l = lineById[seg.lineId] || {};
+                return { id: seg.lineId, name: l.name, color: l.color, pathPoints: seg.points || [] };
+            });
+            runtime.syncData(stations, linesForHooks);
+        }
+
+        // 2. 底衬（悉尼换乘站灰色胶囊等）：SVG，正片叠底压在线路之上、车站之下
+        var underlays = runtime ? runtime.getStationUnderlays(stations) : [];
+        if (underlays.length) {
+            var ug = document.createElementNS(SVG_NS, 'g');
+            ug.setAttribute('class', 'cgo-station-underlays');
+            ug.setAttribute('pointer-events', 'none');
+            underlays.forEach(function (u) {
+                var r = document.createElementNS(SVG_NS, 'rect');
+                r.setAttribute('x', String(u.cx - u.w / 2));
+                r.setAttribute('y', String(u.cy - u.h / 2));
+                r.setAttribute('width', String(u.w));
+                r.setAttribute('height', String(u.h));
+                var rad = (u.r !== undefined) ? u.r : Math.min(u.w, u.h) / 2;
+                r.setAttribute('rx', String(rad));
+                r.setAttribute('ry', String(rad));
+                if (u.angle) r.setAttribute('transform', 'rotate(' + u.angle + ' ' + u.cx + ' ' + u.cy + ')');
+                if (u.className) r.setAttribute('class', u.className);
+                r.style.fill = u.fill || 'var(--station-stroke)';
+                if (u.blend) r.style.mixBlendMode = u.blend;
+                ug.appendChild(r);
+            });
+            dom.stationLayer.appendChild(ug);
+        }
+
+        // 3. 车站图元（HTML 底板，结构同 main.html #stations-layer）
+        var stationRoot = makeReplica(dom.stationLayer, 'cgo-replica-stations', canvasW, canvasH);
+        var parts = [];
+        var marks = {};
+        Object.keys(stations).forEach(function (id) {
+            var s = stations[id];
+            var m = stationMarkup(s, id);
+            marks[id] = m;
+            var style = 'left:' + s.x + 'px;top:' + s.y + 'px;';
+            if (m.width) style += 'width:' + m.width + 'px;';
+            if (m.height) style += 'height:' + m.height + 'px;';
+            if (m.zIndex !== undefined) style += 'z-index:' + m.zIndex + ';';
+            parts.push('<div class="station ' + escapeHtml(s.type) + (m.className ? ' ' + escapeHtml(m.className) : '') +
+                (selectedSet.has(id) ? ' is-selected' : '') + '" data-sid="' + escapeHtml(id) + '" data-node-id="' + escapeHtml(id) +
+                '" style="' + style + '">' + m.html + '</div>');
+        });
+        stationRoot.innerHTML = parts.join('');
+
+        // 4. 站名（HTML 底板，结构同 main.html #labels-layer），再交给城市钩子二次排版
+        var labelHost = dom.labelLayer || dom.stationLayer;
+        var labelRoot = makeReplica(labelHost, 'cgo-replica-labels', canvasW, canvasH);
+        var labelParts = [];
+        Object.keys(stations).forEach(function (id) {
+            var s = stations[id];
+            if (s.hideLabel === true) return;
+            if (!s.cn && !s.en) return;
+            labelParts.push(buildLabelHtml(id, s, selectedSet.has(id)));
+        });
+        labelRoot.innerHTML = labelParts.join('');
+        if (runtime && runtime.getCity()) {
+            var labels = labelRoot.children;
+            for (var li = 0; li < labels.length; li++) {
+                var el = labels[li];
+                var sid = el.getAttribute('data-sid');
+                if (stations[sid]) runtime.decorateStationLabel(el, stations[sid], sid);
+            }
+        }
+
+        // 5. 编辑器自己的叠加物：选中光圈、临时节点
+        var overlay = document.createElementNS(SVG_NS, 'g');
+        overlay.setAttribute('class', 'cgo-station-editor-overlay');
+        selectedSet.forEach(function (id) {
+            var s = stations[id];
+            if (!s) return;
+            var m = marks[id] || {};
+            var dims = (icons && icons.dimensionsFor) ? icons.dimensionsFor(s.type) : { width: 10, height: 10 };
+            var w = m.width || dims.width || 10;
+            var h = m.height || dims.height || 10;
+            var halo = document.createElementNS(SVG_NS, 'rect');
+            var pad = 3.5;
+            halo.setAttribute('x', String(s.x - w / 2 - pad));
+            halo.setAttribute('y', String(s.y - h / 2 - pad));
+            halo.setAttribute('width', String(w + pad * 2));
+            halo.setAttribute('height', String(h + pad * 2));
+            var rr = Math.min(w, h) / 2 + pad;
+            halo.setAttribute('rx', String(rr));
+            halo.setAttribute('ry', String(rr));
+            halo.setAttribute('class', 'cgo-station-selection-halo');
+            halo.setAttribute('pointer-events', 'none');
+            overlay.appendChild(halo);
+        });
+        tempIds.forEach(function (id) {
+            var n = project.nodes[id];
+            var sel = selectedSet.has(id);
+            var g = document.createElementNS(SVG_NS, 'g');
+            g.setAttribute('data-node-id', id);
+            g.style.cursor = 'pointer';
+            [[-4, -4, 4, 4], [-4, 4, 4, -4]].forEach(function (d) {
+                var l = document.createElementNS(SVG_NS, 'line');
+                l.setAttribute('x1', String(n.x + d[0])); l.setAttribute('y1', String(n.y + d[1]));
+                l.setAttribute('x2', String(n.x + d[2])); l.setAttribute('y2', String(n.y + d[3]));
+                l.setAttribute('stroke', sel ? '#38bdf8' : '#64748b');
+                l.setAttribute('stroke-width', '2');
+                g.appendChild(l);
+            });
+            // 透明热区：× 的线条太细，点不中
+            var hit = document.createElementNS(SVG_NS, 'circle');
+            hit.setAttribute('cx', String(n.x)); hit.setAttribute('cy', String(n.y)); hit.setAttribute('r', '6');
+            hit.setAttribute('fill', 'transparent');
+            g.appendChild(hit);
+            overlay.appendChild(g);
+        });
+        dom.stationLayer.appendChild(overlay);
     }
 
     return {
@@ -307,10 +377,12 @@ window.OpenMapEditor.StationLayer = (function () {
         render: render,
         calculateLabelLayout: calculateLabelLayout,
         labelOffsetFor: labelOffsetFor,
+        previewMarker: previewMarker,
+        followStation: followStation,
+        shiftBoxes: shiftBoxes,
         getStationIconsEngine: getStationIconsEngine
     };
 })();
 
 // 保留全局别名兼容
 window.StationLayer = window.OpenMapEditor.StationLayer;
-
