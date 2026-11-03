@@ -187,3 +187,33 @@ CGo OpenMap 支持各城市在 `city/data.js` 的 `CITY_REGISTRY` 中声明专�
 - 必须优先使用 `CGoA11y.escapeHtml(str)` 对任何拼入 DOM 的外部或用户输入内容进行转义，杜绝 XSS；
 - 读屏播报通过 `CGoA11y.announce(text)` 异步推入常驻 `#cgo-a11y-status` 区域；
 - 动效必须监听 `CGoA11y.prefersReducedMotion()`，在系统开启减弱动画时自动禁用物理过渡与飞跃效果。
+
+## 8. 门户展示与城市排序引擎 (`core/portal-view.js` & `core/portal-data.js`)
+
+门户首页（`index.html`）提供四种视图切换模式：`'time'`（概览 / 卡片网格）、`'alpha'`（拼音/字母排序列表）、`'distance'`（基于地理测距由近到远列表）与 `'recent'`（最近访问历史分类）。
+
+### 8.1 概览选项卡三级排序算法流水线
+概览选项卡（`renderTimeView`，模式 `'time'`）是用户访问门户时的默认首页，采用**状态优先级 → 车站规模降序 → 录入时间升序**的三级联合排序机制：
+
+1. **前置过滤准则（Filtering Guard）**：
+   - 过滤 `city.hidden === true`（标记隐藏）；
+   - 过滤 `city.status === 'delisted'`（已下架）；
+   - 过滤 `city.status === 'offline'`（未上线 / 离线规划线网，如 `beijing_plan`）。
+2. **一级排序：运营状态权重（Status Rank，升序排列）**：
+   - `'demo'`（Rank 1）：**核心标杆范例**（置顶展示，如北京）；
+   - `'active'`（Rank 2）：**已上线城市**（绝大多数正常提供服务的成熟城市）；
+   - `'updating'`（Rank 3）：**更新中城市**（正在进行大版本改版、站距核算或图面施工的城市，如合肥、石家庄，统一沉底排在已上线之后）；
+   - 缺省或未知状态（Rank 99）：自动兜底排至末尾。
+3. **二级排序：车站数目规模降序（Station Count Descending）**：
+   - 在相同状态等级（如处于 `active` 的各个城市之间，或处于 `updating` 的各个城市之间），**严格按全网车站总数从多到少降序排列**；
+   - 车站数获取顺序：`city.stationCount`（优先取注册表数字） → `PortalData.getCityStationCount(city)`（查 `CITY_STATION_COUNTS` 字典） → 默认 `0`。
+4. **三级保序：录入时间升序（Register Date Ascending）**：
+   - 状态与车站数目完全相同时，按 `city.registerDate` 升序排列（先来后到），缺省默认为 `'1970-01-01'`。
+
+### 8.2 状态胶囊徽章（Status Badge）映射契约
+根据 `city.status` 动态派发卡片顶部的视觉标识：
+- `'demo'`：徽章样式 `badge-primary`，图标 `<cgo-icon name="sparkle">`，文案「核心范例」；
+- `'active'`：徽章样式 `badge-success`，图标 `<cgo-icon name="check-circle">`，文案「已上线」；
+- `'updating'`：徽章样式 `badge-warning`，图标 `<cgo-icon name="refresh">`，文案「更新中」；
+- `'recruiting'`（或 `isRecruiting: true`）：徽章样式 `badge-warning`，图标 `<cgo-icon name="sparkle">`，文案「招募主理人」；
+- `'offline'`：不显示上线胶囊，概览网格不收录。

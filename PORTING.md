@@ -181,6 +181,14 @@ const CITY_REGISTRY = {
      - 自定义 SVG 须遵循：① 去除写死的 `fill` 颜色，引擎自动注入 `currentColor`；② 去除 `viewBox` 与 XML 头部声明（引擎在渲染时自动自适应充满 `22px × 22px` 视口）；
      - 若未填入且 CGoUI 也未收录，系统将安全降级显示经典小火车图标。
 
+#### 🏷️ 城市状态、规模与门户排序规范 (`status` / `stationCount`)：
+门户首页（`index.html`）的**「概览 / 总览」选项卡**（视图模式标识 `time`）采用三级多维排序算法展示已收录城市卡片：
+1. **前置过滤**：`hidden: true`、`status: "delisted"`（已下架）或 `status: "offline"`（未上线/离线规划）的城市自动过滤不予展示；
+2. **一级排序（运营状态）**：`status: "demo"`（核心范例，Rank 1 置顶） → `status: "active"`（已上线，Rank 2） → `status: "updating"`（更新中/重大重构，Rank 3 沉底）；
+3. **二级排序（车站规模）**：在相同状态内部，**按全网车站总数从多到少降序排列**（优先读取注册表中的 `stationCount` 数字，缺省则从 `core/portal-data.js` 的内置常量表匹配）；
+4. **三级保序（入驻时间）**：状态与车站数均相同时，按 `registerDate` 升序排序（早期入驻在前）。
+5. **状态胶囊映射**：`demo` 显示「核心范例」、`active` 显示「已上线」、`updating` 显示「更新中」、`recruiting` 显示「招募主理人」。
+
 ---
 
 ## 🎨 第二步：准备线路徽标 (`assets/svg/`)

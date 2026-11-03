@@ -223,6 +223,30 @@ const CITY_REGISTRY = {
 - **操作范围**：同步等比缩放 `data_stations.js`（所有 `x, y` 坐标，**严禁修改 `offset: { x, y }` 文本微调值**）、`data_lines.js`（折点 `pathPoints` 及各分支点阵）、`data_notopen.js`（若有）、`city/data.js`（`mapSize` 与 `center`），并递增 `sw.js` 缓存版本号；
 - 可直接调用项目内置 CLI 工具：`node scripts/rescale-city.js <city_id> <scaleFactor>`。
 
+### 4.1.2 门户首页（概览）城市状态与卡片排序规则
+门户首页（`index.html`）的**「概览 / 总览」选项卡**（视图模式标识 `time`，由 `core/portal-view.js` 的 `renderTimeView` 驱动）展示已收录城市卡片，Agent 在增改城市元数据（`city/data.js`）时必须严格理解并遵循以下排序与过滤机制：
+
+1. **前置准入与过滤守卫（Filtering Guard）**：
+   - 标记为 `hidden: true`（隐藏）、`status: "delisted"`（已下架）或 `status: "offline"`（未上线 / 离线规划线网，如 `beijing_plan`）的城市，在门户概览视图中**自动过滤，不予渲染展示**；
+   - 只有 `status` 为 `demo`、`active`、`updating` 的城市才进入概览卡片排序流。
+2. **三级联合排序流水线（Three-tier Sorting Pipeline）**：
+   - **一级排序：按运营状态权重（Status Rank，数值越小越靠前）**
+     - `status: "demo"`（权重 1）：**核心标杆范例**（置顶展示，如北京）；
+     - `status: "active"`（权重 2）：**已上线城市**（绝大多数正常提供服务的城市）；
+     - `status: "updating"`（权重 3）：**更新中城市**（正在进行大版本改版、站距核算或图面施工的城市，如合肥、石家庄，统一排在已上线城市之后）；
+     - 其他/未知状态（权重 99）：自动兜底排至最后。
+   - **二级排序：按车站数目降序（Station Count Descending，从多到少）**
+     - 在相同状态内部（如众多的 `active` 城市之间，或多个 `updating` 城市之间），**严格按全网车站总数从多到少降序排列**；
+     - 车站数量获取优先级：优先读取 `city/data.js` 中该城市注册项的 `stationCount`（数字）；若未定义，则自动调用 `PortalData.getCityStationCount(city)` 从 `core/portal-data.js` 的 `CITY_STATION_COUNTS` 常量字典匹配；若仍未匹配则兜底按 0 计。
+   - **三级保序：按录入入驻时间升序（Register Date Ascending，先来后到）**
+     - 若状态等级与车站数完全相同，按 `registerDate`（如 `"2026-10-28"`）升序排序，早期入驻的城市排在前面；若缺省则默认按 `'1970-01-01'` 处理。
+3. **状态胶囊徽章（Status Badge）视觉映射**：
+   - `status: "demo"` → `badge-primary`（主题紫蓝），图标 `<cgo-icon name="sparkle">`，文本「核心范例」；
+   - `status: "active"` → `badge-success`（清新绿），图标 `<cgo-icon name="check-circle">`，文本「已上线」；
+   - `status: "updating"` → `badge-warning`（警示橙），图标 `<cgo-icon name="refresh">`，文本「更新中」；
+   - `status: "recruiting"`（或主理人 `isRecruiting: true`） → `badge-warning`，图标 `<cgo-icon name="sparkle">`，文本「招募主理人」；
+   - `status: "offline"` → 隐藏徽章（在门户中不显示卡片）。
+
 ### 4.2 车站定义 (`data_stations.js`)
 
 每个车站以唯一 ID 为 Key：
