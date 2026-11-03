@@ -329,12 +329,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "05:59", last: "23:29" },
-                    winter: { first: "05:59", last: "22:49" }
+                    winter: { first: "05:50", last: "23:00" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:58", last: "23:27" },
-                    winter: { first: "05:58", last: "22:48" }
+                    winter: { first: "06:10", last: "22:56" }
                 }
             ]
         },
@@ -747,7 +747,7 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-last",
                     summer: { first: "06:10", last: "23:19" },
-                    winter: { first: "06:20", last: "22:39" }
+                    winter: { first: "06:10", last: "22:39" }
                 },
             ]
         },
@@ -764,7 +764,7 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-last",
                     summer: { first: "06:12", last: "23:21" },
-                    winter: { first: "06:22", last: "22:41" }
+                    winter: { first: "06:12", last: "22:41" }
                 },
             ]
         },
@@ -781,7 +781,7 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-last",
                     summer: { first: "06:14", last: "23:23" },
-                    winter: { first: "06:24", last: "22:43" }
+                    winter: { first: "06:14", last: "22:43" }
                 },
             ]
         },
@@ -940,17 +940,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:00", last: "21:42" },
-                    //winter: { first: "06:00", last: "21:42" }
+                    winter: { first: "06:00", last: "21:42" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:00", last: "23:12" },
-                    //winter: { first: "06:00", last: "23:12" }
+                    winter: { first: "06:00", last: "22:32" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:23", last: "23:26" },
-                    //winter: { first: "06:23", last: "23:26" }
+                    winter: { first: "06:23", last: "22:46" }
                 },
             ]
         }
@@ -1210,7 +1210,7 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-last",
                     summer: { first: "05:30", last: "21:30" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:30", last: "21:30" }
                 },
             ]
         },
@@ -1222,12 +1222,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:34", last: "22:33" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:34", last: "22:33" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:32", last: "21:32" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:32", last: "21:32" }
                 },
             ]
         },
@@ -1239,12 +1239,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:30", last: "22:30" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:30", last: "22:30" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:36", last: "21:36" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:36", last: "21:36" }
                 },
             ]
         },
@@ -1256,12 +1256,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:28", last: "22:27" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:28", last: "22:27" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:38", last: "21:38" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:38", last: "21:38" }
                 },
             ]
         },
@@ -1273,12 +1273,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:24", last: "22:23" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:24", last: "22:23" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:42", last: "21:42" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:42", last: "21:42" }
                 },
             ]
         },
@@ -1290,12 +1290,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:21", last: "22:20" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:21", last: "22:20" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:45", last: "21:46" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:45", last: "21:46" }
                 },
             ]
         },
@@ -1307,12 +1307,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:18", last: "22:16" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:18", last: "22:16" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:48", last: "21:49" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:48", last: "21:49" }
                 },
             ]
         },
@@ -1324,12 +1324,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:15", last: "22:13" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:15", last: "22:13" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:51", last: "21:52" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:51", last: "21:52" }
                 },
             ]
         },
@@ -1341,12 +1341,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:13", last: "22:11" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:13", last: "22:11" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:53", last: "21:54" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:53", last: "21:54" }
                 },
             ]
         },
@@ -1358,12 +1358,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:10", last: "22:08" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:10", last: "22:08" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:56", last: "23:00" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:56", last: "22:20" }
                 },
             ]
         },
@@ -1375,17 +1375,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:07", last: "22:05" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:07", last: "22:05" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:07", last: "23:35" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:07", last: "22:55" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "05:59", last: "23:03" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "05:59", last: "22:23" }
                 },
             ]
         },
@@ -1397,17 +1397,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:05", last: "22:03" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:05", last: "22:03" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:05", last: "23:33" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:05", last: "22:53" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:01", last: "23:05" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:01", last: "22:25" }
                 },
             ]
         },
@@ -1419,17 +1419,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:02", last: "22:00" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:02", last: "22:00" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:02", last: "23:30" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:02", last: "22:50" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:04", last: "23:07" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:04", last: "22:27" }
                 },
             ]
         },
@@ -1456,17 +1456,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:00", last: "21:58" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:00", last: "21:58" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:00", last: "23:28" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:00", last: "22:48" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:07", last: "23:10" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:07", last: "22:30" }
                 },
             ]
         },
@@ -1478,17 +1478,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:12", last: "21:55" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:12", last: "21:55" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:12", last: "23:25" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:12", last: "22:45" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:10", last: "23:13" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:10", last: "22:33" }
                 },
             ]
         },
@@ -1500,17 +1500,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:10", last: "21:52" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:10", last: "21:52" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:10", last: "23:22" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:10", last: "22:42" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:12", last: "23:16" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:12", last: "22:36" }
                 },
             ]
         },
@@ -1537,17 +1537,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:07", last: "21:50" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:07", last: "21:50" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:07", last: "23:20" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:07", last: "22:40" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:14", last: "23:18" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:14", last: "22:38" }
                 },
             ]
         },
@@ -1559,17 +1559,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:05", last: "21:48" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:05", last: "21:48" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:05", last: "23:18" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:05", last: "22:38" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:17", last: "23:20" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:17", last: "22:40" }
                 },
             ]
         },
@@ -1581,17 +1581,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:03", last: "21:46" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:03", last: "21:46" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:03", last: "23:16" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:03", last: "22:36" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:18", last: "23:22" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:18", last: "22:42" }
                 },
             ]
         },
@@ -1603,17 +1603,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:01", last: "21:44" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:01", last: "21:44" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:01", last: "23:14" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:01", last: "22:34" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:20", last: "23:24" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:20", last: "22:44" }
                 },
             ]
         },
@@ -1625,17 +1625,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:10", last: "21:40" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:10", last: "21:40" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:10", last: "23:10" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:10", last: "22:30" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:24", last: "23:28" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:24", last: "22:48" }
                 },
             ]
         },
@@ -1647,17 +1647,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:08", last: "21:38" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:08", last: "21:38" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:08", last: "23:08" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:08", last: "22:28" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:26", last: "23:29" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:26", last: "22:49" }
                 },
             ]
         },
@@ -1669,17 +1669,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:06", last: "21:36" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:06", last: "21:36" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:06", last: "23:06" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:06", last: "22:26" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:28", last: "23:31" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:28", last: "22:51" }
                 },
             ]
         },
@@ -1691,17 +1691,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:04", last: "21:34" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:04", last: "21:34" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:04", last: "23:04" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:04", last: "22:24" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:30", last: "23:33" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:30", last: "22:53" }
                 },
             ]
         },
@@ -1713,17 +1713,17 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:02", last: "21:32" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:02", last: "21:32" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:02", last: "23:02" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:02", last: "22:22" }
                 },
                 {
                     destination: "line-last",
                     summer: { first: "06:32", last: "23:36" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:32", last: "22:56" }
                 },
             ]
         },
@@ -1750,12 +1750,12 @@ const SHENYANG_STACARD_DATA = {
                 {
                     destination: "line-first",
                     summer: { first: "06:00", last: "21:30" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:00", last: "21:30" }
                 },
                 {
                     destination: "0310",
                     summer: { first: "06:00", last: "23:00" },
-                    //winter: { first: "05:30", last: "21:30" }
+                    winter: { first: "06:00", last: "22:20" }
                 },
             ]
         },

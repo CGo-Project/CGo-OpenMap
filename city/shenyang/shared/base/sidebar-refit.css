@@ -109,12 +109,13 @@
         --cgo-sb-badge: 16px;
     }
 
-    /* ── 1. 侧栏本体：铺满窗口上下左边缘，内容让开标题栏浮岛 ───────────────────── */
+    /* ── 1. 侧栏本体：左、下贴边，顶部让开标题栏浮岛 ─────────────────────────── */
     body.legend-pinned .legend-modal {
-        /* 整列贴着窗口的左、上、下边缘（右缘＝--cgo-sb-column），
-           内容区顶部再垫一层 --cgo-sb-top 把第一张卡片让到浮岛下方，
-           于是滚动时卡片会滑到浮岛底下（浮岛 z-index 更高且不透明），不算遮挡。 */
-        top: 0 !important;
+        /* 顶边停在 --cgo-sb-top（浮岛底边 + 12px），**不要铺到 top: 0**：
+           侧栏列虽然底色透明，但透明元素照样吃指针事件，一旦盖住 0 ~ 84px 的浮岛区域，
+           标题岛上的按钮就全部点不动（只能靠抬顶栏层级去补救，而上游一改选择器就会复发）。
+           从几何上让开这一区域，共享层就不必再重排核心的 z-index。 */
+        top: var(--cgo-sb-top) !important;
         bottom: 0 !important;
         left: 0 !important;
         width: var(--cgo-sb-column) !important;
@@ -122,7 +123,7 @@
         max-height: none !important;
         /* 侧栏整体不再是通栏：底色、阴影、圆角一并撤掉，改由下面每张区块卡片各自承担。
            圆角也要撤：容器若还带圆角，首尾卡片的圆角会被容器裁掉一角。
-           右缘留一条描边，作为「侧栏列」与画布的分界。 */
+           右缘留一条描边，作为「侧栏列」与画布的分界（从浮岛下方起，不穿过浮岛）。 */
         background: transparent !important;
         border: none !important;
         border-right: 1px solid var(--border-color) !important;
@@ -142,29 +143,11 @@
         width: calc(var(--cgo-sb-column) - var(--cgo-sb-inset) * 2) !important;
     }
 
-    /* ── 1.5 顶栏层级：必须压在侧栏列之上，否则浮岛上的按钮全部点不动 ─────────── */
-    /* 上一节把侧栏列从核心的 top: 60px 抬到了 top: 0，顶上因此多出一段
-       0 ~ --cgo-sb-top 的内边距区，横向又与浮岛同宽（都是侧栏列的宽度）—— 与浮岛完全重合。
-       侧栏列虽然底色透明（见上一节的 background: transparent），但透明背景照样吃指针事件，
-       于是这一段把浮岛的点击整片截走，浮岛上的按钮全部失效。
-
-       层级必须按实测值来，别照基础规则推：核心 style.css 有一条通配规则
-       「div[class*="overlay"], div[id*="overlay"] { z-index: 99999 !important }」，
-       它命中了 #legend-overlay —— 侧栏列的真实层级是 99999，并不是基础规则里写的 9999；
-       而核心顶栏 .tool-header 只有 100（悬浮顶栏 1000）。所以这里把两侧重排一遍：
-         · 侧栏列降到 9000：仍高于画布与地图浮层（#info-panel 2000、行程规划 2100），
-           也仍低于各类弹窗（99999 / 侧栏之上那个 100010），只是让出顶栏这一层；
-         · 顶栏抬到 10000：必须抬 .tool-header 本身 —— 浮岛是它的子元素，翻不出父级
-           层叠上下文；且经典顶栏模式下 .header-island 是 display: contents，
-           设了 z-index 也不生成盒子，没用。
-       浮岛是玻璃面（72% 不透明 + 14px 背景模糊），卡片滚上去照样被它挡住，观感不变。 */
-    body.legend-pinned #legend-overlay {
-        z-index: 9000 !important;
-    }
-
-    body.legend-pinned .tool-header {
-        z-index: 10000 !important;
-    }
+    /* ── 1.5 层级：本层不碰 ───────────────────────────────────────────────── */
+    /* 侧栏列已从几何上让开 0 ~ --cgo-sb-top 的浮岛区域（见上一节），标题岛不会被它截走点击，
+       所以这里**不再重排核心的 z-index**：不降 #legend-overlay，也不抬 .tool-header。
+       早期版本靠「侧栏降到 9000 + 顶栏抬到 10000」压制，依赖上游选择器的特指度，
+       上游一改悬浮顶栏规则就会复发（已实测踩过），不如让这个问题在几何上不成立。 */
 
     /* 顶端的返回按钮与固定按钮一并撤下：返回按钮只在浮层形态里有意义，
        固定按钮由 sidebar-refit.js 搬到浮动缩放条的检索面板按钮位（见下方第 5 节）；
@@ -179,11 +162,11 @@
         display: none !important;
     }
 
-    /* 滚动区的顶部内边距就是「避让标题栏浮岛」的那一层：--cgo-sb-top = 浮岛底边 + 12px，
-       第一张卡片因此落在浮岛下方；四边各留 8px 给卡片投影余地（滚动区 overflow-x 是 hidden，
-       内边距归零时卡片四边的投影正好被裁掉，只剩卡片缝里能看到投影）。 */
+    /* 滚动区不再垫顶部内边距：侧栏列本身已从 --cgo-sb-top（浮岛底边 + 12px）起，
+       第一张卡片天然落在浮岛下方。只留 2px 给首张卡片顶部投影一点余量
+       （滚动区 overflow-x 是 hidden，内边距归零时投影会被裁掉）。 */
     body.legend-pinned #legend-content {
-        padding: var(--cgo-sb-top) var(--cgo-sb-inset) var(--cgo-sb-inset) !important;
+        padding: 2px var(--cgo-sb-inset) var(--cgo-sb-inset) !important;
     }
 
     /* ── 2. 区块：各自是一张浮起的小卡片，卡片之间等距 ────────────────────────── */

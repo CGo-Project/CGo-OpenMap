@@ -294,6 +294,7 @@ const ASSETS_TO_CACHE = [
     './city/shenyang/shared/base/share-card.css',
     './city/shenyang/shared/station/tip-card.js',
     './city/shenyang/shared/base/label-active.js',
+    './city/shenyang/shared/base/tram-label-scale.js',
     './city/shenyang/shared/station/adjacent-jump.js',
     './city/shenyang/shared/station/adjacent-jump.css',
     './city/shenyang/shared/station/calligraphy.js',

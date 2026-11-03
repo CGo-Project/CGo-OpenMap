@@ -632,6 +632,8 @@
         document.write(`<script src="./city/shenyang/shared/station/tip-card.js?v=${version}"><\/script>`);
         // 呼出线随标签进入 active：按 data-cgo-callout 把站名标签的选中态同步到引线
         document.write(`<script src="./city/shenyang/shared/base/label-active.js?v=${version}"><\/script>`);
+        // 有轨车站站名标签字号缩到 80%（共享机制，按城市 isTramStation / 有轨线路站序判定）
+        document.write(`<script src="./city/shenyang/shared/base/tram-label-scale.js?v=${version}"><\/script>`);
         // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
         document.write(`<script src="./city/shenyang/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station/calligraphy.js?v=${version}"><\/script>`);

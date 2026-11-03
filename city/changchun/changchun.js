@@ -481,6 +481,8 @@
         document.write(`<script src="./city/shenyang/shared/base/geo-estimate.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         document.write(`<script src="./city/shenyang/shared/base/station-title.js?v=${version}"><\/script>`);
+        // 有轨车站站名标签字号缩到 80%（共享机制；有轨 G54 / G55 路按 tram-*.svg 识别）
+        document.write(`<script src="./city/shenyang/shared/base/tram-label-scale.js?v=${version}"><\/script>`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./city/shenyang/shared/base/viewport-inset.js?v=${version}"><\/script>`);
         // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
