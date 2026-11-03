@@ -51,11 +51,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261103.112800">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261103.112800">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261103.112800">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261103.112800">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261103.112800">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261103.114600">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261103.114600">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261103.114600">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261103.114600">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261103.114600">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -131,6 +131,9 @@
             </button>
             <button class="title-bar-btn" id="btnHeaderSave" title="保存改动 (Ctrl+S，若关联本地目录则直接原地保存)">
                 <cgo-icon name="save" size="15"></cgo-icon>
+            </button>
+            <button class="title-bar-btn" id="btnHeaderShortcuts" title="键盘快捷键与高效手势速查 (?)">
+                <cgo-icon name="info" size="15"></cgo-icon>
             </button>
             <cgo-theme-toggle></cgo-theme-toggle>
         </div>
@@ -418,6 +421,10 @@
                             <div class="ribbon-icon"><cgo-icon name="image" size="18"></cgo-icon></div>
                             <span class="btn-text">导出SVG</span>
                         </button>
+                        <button class="ribbon-action-btn-lg" id="btnExportRenderedPng" title="导出 2x 超清光栅化 PNG 图片 (免失真印刷与分享)">
+                            <div class="ribbon-icon"><cgo-icon name="download" size="18"></cgo-icon></div>
+                            <span class="btn-text">导出PNG</span>
+                        </button>
                     </div>
                     <div class="ribbon-group-label">成果交付</div>
                 </div>
@@ -484,6 +491,9 @@
                     <cgo-icon name="zoom-in" size="14"></cgo-icon>
                 </button>
                 <div class="hud-divider"></div>
+                <button class="hud-btn" id="hudBtnSearchStation" title="在画布中查找并定位车站 (Ctrl+F)">
+                    <cgo-icon name="search" size="14"></cgo-icon>
+                </button>
                 <button class="hud-btn" id="hudBtnFit" title="自适应居中画布 (F)">
                     <cgo-icon name="fullscn" size="14"></cgo-icon>
                 </button>
@@ -828,11 +838,83 @@
         </div>
     </cgo-modal>
 
+    <!-- 8. 键盘快捷键与高效手势速查弹窗 -->
+    <cgo-modal id="modalShortcuts" title="键盘快捷键与高效手势速查" max-width="660px">
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;">
+            OpenMap Editor 专为对标工业级矢量设计器 (Illustrator / CAD) 设计的高效键鼠操作流：
+        </div>
+
+        <div class="shortcut-category-title"><cgo-icon name="design" size="14"></cgo-icon> 基础图元与绘制工具</div>
+        <div class="shortcut-grid">
+            <div class="shortcut-row"><span class="desc">选择 / 拖拽图元</span><span class="shortcut-kbd">V</span></div>
+            <div class="shortcut-row"><span class="desc">框选多选模式</span><span class="shortcut-kbd">B</span></div>
+            <div class="shortcut-row"><span class="desc">放置车站节点</span><span class="shortcut-kbd">S</span></div>
+            <div class="shortcut-row"><span class="desc">放置辅助临时点</span><span class="shortcut-kbd">T</span></div>
+            <div class="shortcut-row"><span class="desc">折点编辑模式</span><span class="shortcut-kbd">P</span></div>
+            <div class="shortcut-row"><span class="desc">水域多边形/河道</span><span class="shortcut-kbd">W</span></div>
+            <div class="shortcut-row"><span class="desc">自由注释文本</span><span class="shortcut-kbd">X</span></div>
+            <div class="shortcut-row"><span class="desc">网格与对齐开关</span><span class="shortcut-kbd">G</span></div>
+        </div>
+
+        <div class="shortcut-category-title"><cgo-icon name="edit" size="14"></cgo-icon> 剪贴板与几何编辑</div>
+        <div class="shortcut-grid">
+            <div class="shortcut-row"><span class="desc">复制选中图元</span><span class="shortcut-kbd">Ctrl + C</span></div>
+            <div class="shortcut-row"><span class="desc">粘贴至画布</span><span class="shortcut-kbd">Ctrl + V</span></div>
+            <div class="shortcut-row"><span class="desc">原位克隆副本</span><span class="shortcut-kbd">Ctrl + D</span></div>
+            <div class="shortcut-row"><span class="desc">删除选中图元/折点</span><span class="shortcut-kbd">Delete / Backspace</span></div>
+            <div class="shortcut-row"><span class="desc">1px 精密步进移动</span><span class="shortcut-kbd">↑ / ↓ / ← / →</span></div>
+            <div class="shortcut-row"><span class="desc">10px 快速步进移动</span><span class="shortcut-kbd">Shift + 方向键</span></div>
+            <div class="shortcut-row"><span class="desc">追加/反选多选</span><span class="shortcut-kbd">Shift 或 Ctrl + 点击</span></div>
+            <div class="shortcut-row"><span class="desc">双击直接编辑文本</span><span class="shortcut-kbd">双击文字</span></div>
+        </div>
+
+        <div class="shortcut-category-title"><cgo-icon name="sparkle" size="14"></cgo-icon> 走线约束与视口漫游</div>
+        <div class="shortcut-grid">
+            <div class="shortcut-row"><span class="desc">平移视口漫游</span><span class="shortcut-kbd">空格 + 拖动 / 中键拖动</span></div>
+            <div class="shortcut-row"><span class="desc">缩放画布视口</span><span class="shortcut-kbd">滚轮 / 触控板捏合</span></div>
+            <div class="shortcut-row"><span class="desc">自适应全图居中</span><span class="shortcut-kbd">F</span></div>
+            <div class="shortcut-row"><span class="desc">查找并定位车站</span><span class="shortcut-kbd">Ctrl + F</span></div>
+            <div class="shortcut-row"><span class="desc">锁定 45°/90° 正交走向</span><span class="shortcut-kbd">Shift (走线时按住)</span></div>
+            <div class="shortcut-row"><span class="desc">结束当前连续走线</span><span class="shortcut-kbd">Enter</span></div>
+            <div class="shortcut-row"><span class="desc">取消草稿并切回选择</span><span class="shortcut-kbd">Esc</span></div>
+            <div class="shortcut-row"><span class="desc">打开本速查面板</span><span class="shortcut-kbd">?</span></div>
+        </div>
+
+        <div class="shortcut-category-title"><cgo-icon name="save" size="14"></cgo-icon> 历史撤销与面板调度</div>
+        <div class="shortcut-grid">
+            <div class="shortcut-row"><span class="desc">撤销上一步操作</span><span class="shortcut-kbd">Ctrl + Z</span></div>
+            <div class="shortcut-row"><span class="desc">重做下一步操作</span><span class="shortcut-kbd">Ctrl + Y / Ctrl+Shift+Z</span></div>
+            <div class="shortcut-row"><span class="desc">快速原地保存工程</span><span class="shortcut-kbd">Ctrl + S</span></div>
+            <div class="shortcut-row"><span class="desc">打开 / 导入工程</span><span class="shortcut-kbd">Ctrl + O</span></div>
+            <div class="shortcut-row"><span class="desc">折叠/展开图层大纲</span><span class="shortcut-kbd">Ctrl + [</span></div>
+            <div class="shortcut-row"><span class="desc">折叠/展开属性检视</span><span class="shortcut-kbd">Ctrl + ]</span></div>
+        </div>
+
+        <div class="dialog-buttons">
+            <button class="ribbon-btn-sm" data-close="modalShortcuts" style="width:auto;padding:5px 16px;">我知道了</button>
+        </div>
+    </cgo-modal>
+
+    <!-- 9. 快速查找车站定位弹窗 (Ctrl+F) -->
+    <cgo-modal id="modalSearchStation" title="快速查找并定位车站" max-width="460px">
+        <div class="form-row" style="margin-bottom:6px;">
+            <input type="text" class="form-input" id="searchStationInput" placeholder="输入站名、拼音缩写或 ID 回车定位..."
+                style="flex:1;height:32px;font-size:13px;padding:0 10px;">
+        </div>
+        <div id="searchStationResultsBox" class="search-station-results-box" style="display:none;"></div>
+        <div style="font-size:11px;color:var(--text-light);margin-top:6px;">
+            支持上下键选择、Enter 键直接飞跃居中定位至目标车站。
+        </div>
+        <div class="dialog-buttons" style="margin-top:12px;">
+            <button class="ribbon-btn-sm" data-close="modalSearchStation" style="width:auto;padding:5px 14px;">关闭</button>
+        </div>
+    </cgo-modal>
+
     <!-- 模块脚本加载链 -->
-    <script type="module" src="../core/cgo-ui.js?v=261103.112800"></script>
-    <script src="../core/path-geometry.js?v=261103.112800"></script>
-    <script src="../core/station-icons.js?v=261103.112800"></script>
-    <script src="../city/data.js?v=261103.112800"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261103.114600"></script>
+    <script src="../core/path-geometry.js?v=261103.114600"></script>
+    <script src="../core/station-icons.js?v=261103.114600"></script>
+    <script src="../city/data.js?v=261103.114600"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

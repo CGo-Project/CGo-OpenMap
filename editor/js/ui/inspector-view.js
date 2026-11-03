@@ -731,6 +731,269 @@ window.OpenMapEditor.InspectorView = (function () {
     }
 
     /**
+     * 渲染自由注释文本属性面板
+     */
+    function renderTextInspector(textItem, project) {
+        if (!dom.body || !textItem) return;
+
+        var html = '<div class="inspector-section">' +
+            '<div class="inspector-section-title">' +
+            '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="vi-text" size="14"></cgo-icon> 注释文本属性</span>' +
+            '<cgo-badge variant="info">' + textItem.id + '</cgo-badge>' +
+            '</div>';
+
+        // 文本内容
+        html += '<div class="form-row" style="flex-direction:column;align-items:stretch;gap:4px;">' +
+            '<span class="form-label" style="min-width:auto;">文本内容 (支持换行):</span>' +
+            '<textarea class="form-textarea" id="propTextContent" style="height:64px;resize:vertical;font-family:inherit;">' +
+            (textItem.text || '') + '</textarea>' +
+            '</div>';
+
+        // 字号大小 (带预设药丸)
+        var curSize = textItem.size || 14;
+        html += '<div class="form-row">' +
+            '<span class="form-label">字体字号:</span>' +
+            '<input type="number" class="form-input" id="propTextSize" min="8" max="120" step="1" value="' + curSize + '" style="flex:1;">' +
+            '<span style="font-size:11px;color:var(--text-light);margin-left:4px;">px</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:4px;margin-bottom:8px;padding-left:70px;flex-wrap:wrap;">';
+        [12, 14, 16, 20, 24, 32].forEach(function (sz) {
+            html += '<button type="button" class="ribbon-btn-sm btn-text-size-preset" data-sz="' + sz + '" style="padding:1px 6px;font-size:10px;">' + sz + '</button>';
+        });
+        html += '</div>';
+
+        // 粗体 & 锚点对齐
+        var curAnchor = textItem.anchor || 'start';
+        html += '<div class="form-row">' +
+            '<span class="form-label">文字对齐:</span>' +
+            '<select class="form-select" id="propTextAnchor" style="flex:1;">' +
+            '<option value="start"' + (curAnchor === 'start' ? ' selected' : '') + '>居左 (Start)</option>' +
+            '<option value="middle"' + (curAnchor === 'middle' ? ' selected' : '') + '>居中 (Middle)</option>' +
+            '<option value="end"' + (curAnchor === 'end' ? ' selected' : '') + '>居右 (End)</option>' +
+            '</select>' +
+            '</div>' +
+            '<div class="form-row">' +
+            '<span class="form-label">样式:</span>' +
+            '<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;">' +
+            '<input type="checkbox" id="propTextBold"' + (textItem.bold ? ' checked' : '') + '>' +
+            '<span>加粗文本 (Bold)</span>' +
+            '</label>' +
+            '</div>';
+
+        // 旋转角度 Rotate
+        var curRot = Math.round(textItem.rotate || 0);
+        html += '<div class="form-row">' +
+            '<span class="form-label">旋转角度:</span>' +
+            '<input type="range" class="form-range" id="propTextRotateRange" min="-180" max="180" step="5" value="' + curRot + '" style="flex:1;">' +
+            '<input type="number" class="form-input" id="propTextRotateInput" min="-180" max="180" step="1" value="' + curRot + '" style="flex:0 0 52px;text-align:right;">' +
+            '<span style="font-size:11px;color:var(--text-light);margin-left:2px;">°</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:4px;margin-bottom:8px;padding-left:70px;flex-wrap:wrap;">' +
+            '<button type="button" class="ribbon-btn-sm btn-text-rot-preset" data-rot="0" style="padding:1px 6px;font-size:10px;">0° (正)</button>' +
+            '<button type="button" class="ribbon-btn-sm btn-text-rot-preset" data-rot="45" style="padding:1px 6px;font-size:10px;">45°</button>' +
+            '<button type="button" class="ribbon-btn-sm btn-text-rot-preset" data-rot="90" style="padding:1px 6px;font-size:10px;">90°</button>' +
+            '<button type="button" class="ribbon-btn-sm btn-text-rot-preset" data-rot="-45" style="padding:1px 6px;font-size:10px;">-45°</button>' +
+            '</div>';
+
+        // 字体颜色
+        var curColor = textItem.color || '';
+        html += '<div class="form-row">' +
+            '<span class="form-label">字体颜色:</span>' +
+            '<input type="color" class="form-input" id="propTextColorPicker" value="' + (curColor || '#1e293b') + '" style="flex:0 0 36px;width:36px;padding:2px;">' +
+            '<input type="text" class="form-input" id="propTextColorText" value="' + (curColor || '') + '" placeholder="跟随主题" style="flex:1;font-family:monospace;">' +
+            '<button type="button" class="ribbon-btn-sm" id="btnResetTextColor" title="恢复跟随系统主题">默认</button>' +
+            '</div>';
+
+        // 坐标微调
+        html += '<div class="form-row">' +
+            '<span class="form-label">基准坐标:</span>' +
+            '<div style="display:flex;gap:4px;flex:1;">' +
+            '<input type="number" class="form-input" id="propTextPosX" value="' + Math.round(textItem.x || 0) + '">' +
+            '<input type="number" class="form-input" id="propTextPosY" value="' + Math.round(textItem.y || 0) + '">' +
+            '</div>' +
+            '</div>';
+
+        // 操作按钮 (删除)
+        html += '<div style="margin-top:14px;display:flex;gap:6px;justify-content:flex-end;">' +
+            '<button type="button" class="ribbon-btn-sm danger" id="btnDeleteText">' +
+            '<cgo-icon name="delete" size="12"></cgo-icon><span>删除此文本</span>' +
+            '</button>' +
+            '</div>';
+
+        html += '</div>';
+
+        dom.body.innerHTML = html;
+
+        // 绑定事件
+        var contentEl = document.getElementById('propTextContent');
+        if (contentEl) {
+            contentEl.addEventListener('input', function () {
+                fireChange('text', textItem.id, 'text', this.value);
+            });
+        }
+
+        var sizeEl = document.getElementById('propTextSize');
+        if (sizeEl) {
+            sizeEl.addEventListener('change', function () {
+                fireChange('text', textItem.id, 'size', Number(this.value) || 14);
+            });
+        }
+        document.querySelectorAll('.btn-text-size-preset').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var sz = Number(this.getAttribute('data-sz'));
+                if (sizeEl) sizeEl.value = sz;
+                fireChange('text', textItem.id, 'size', sz);
+            });
+        });
+
+        var anchorEl = document.getElementById('propTextAnchor');
+        if (anchorEl) {
+            anchorEl.addEventListener('change', function () {
+                fireChange('text', textItem.id, 'anchor', this.value);
+            });
+        }
+
+        var boldEl = document.getElementById('propTextBold');
+        if (boldEl) {
+            boldEl.addEventListener('change', function () {
+                fireChange('text', textItem.id, 'bold', this.checked);
+            });
+        }
+
+        var rotRange = document.getElementById('propTextRotateRange');
+        var rotInput = document.getElementById('propTextRotateInput');
+        function setRot(deg) {
+            if (rotRange) rotRange.value = deg;
+            if (rotInput) rotInput.value = deg;
+            fireChange('text', textItem.id, 'rotate', deg);
+        }
+        if (rotRange) rotRange.addEventListener('input', function () { setRot(Number(this.value) || 0); });
+        if (rotInput) rotInput.addEventListener('change', function () { setRot(Number(this.value) || 0); });
+        document.querySelectorAll('.btn-text-rot-preset').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                setRot(Number(this.getAttribute('data-rot')) || 0);
+            });
+        });
+
+        var clrPicker = document.getElementById('propTextColorPicker');
+        var clrText = document.getElementById('propTextColorText');
+        if (clrPicker) {
+            clrPicker.addEventListener('input', function () {
+                if (clrText) clrText.value = this.value;
+                fireChange('text', textItem.id, 'color', this.value);
+            });
+        }
+        if (clrText) {
+            clrText.addEventListener('change', function () {
+                var hex = normalizeHex(this.value);
+                if (hex) {
+                    this.value = hex;
+                    if (clrPicker) clrPicker.value = hex;
+                    fireChange('text', textItem.id, 'color', hex);
+                } else if (!this.value.trim()) {
+                    fireChange('text', textItem.id, 'color', null);
+                }
+            });
+        }
+        var btnResetClr = document.getElementById('btnResetTextColor');
+        if (btnResetClr) {
+            btnResetClr.addEventListener('click', function () {
+                if (clrText) clrText.value = '';
+                fireChange('text', textItem.id, 'color', null);
+            });
+        }
+
+        var posX = document.getElementById('propTextPosX');
+        var posY = document.getElementById('propTextPosY');
+        function updatePos() {
+            var x = Number(posX.value) || 0;
+            var y = Number(posY.value) || 0;
+            fireChange('text', textItem.id, 'position', { x: x, y: y });
+        }
+        if (posX) posX.addEventListener('change', updatePos);
+        if (posY) posY.addEventListener('change', updatePos);
+
+        var delBtn = document.getElementById('btnDeleteText');
+        if (delBtn) {
+            delBtn.addEventListener('click', function () {
+                fireChange('text', textItem.id, 'delete', true);
+            });
+        }
+    }
+
+    /**
+     * 渲染水域多边形与河道属性面板
+     */
+    function renderWaterInspector(waterItem, project) {
+        if (!dom.body || !waterItem) return;
+
+        var isPath = (waterItem.type === 'path' || waterItem.type === 'river');
+        var pts = waterItem.points || [];
+
+        var html = '<div class="inspector-section">' +
+            '<div class="inspector-section-title">' +
+            '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="map" size="14"></cgo-icon> ' + (isPath ? '河道线要素' : '水域多边形') + '</span>' +
+            '<cgo-badge variant="info">' + waterItem.id + '</cgo-badge>' +
+            '</div>';
+
+        html += '<div class="form-row">' +
+            '<span class="form-label">要素形态:</span>' +
+            '<select class="form-select" id="propWaterType" style="flex:1;">' +
+            '<option value="polygon"' + (!isPath ? ' selected' : '') + '>闭合多边形面 (Polygon)</option>' +
+            '<option value="river"' + (isPath ? ' selected' : '') + '>河道折线 (River Path)</option>' +
+            '</select>' +
+            '</div>';
+
+        if (isPath) {
+            html += '<div class="form-row">' +
+                '<span class="form-label">河道线宽:</span>' +
+                '<input type="number" class="form-input" id="propWaterWidth" min="2" max="200" step="2" value="' + (waterItem.width || 20) + '" style="flex:1;">' +
+                '<span style="font-size:11px;color:var(--text-light);margin-left:4px;">px</span>' +
+                '</div>';
+        }
+
+        html += '<div class="form-row">' +
+            '<span class="form-label">顶点总数:</span>' +
+            '<span style="font-size:12px;font-weight:600;flex:1;">' + pts.length + ' 个控制顶点</span>' +
+            '</div>' +
+            '<div style="font-size:10px;color:var(--text-light);margin-bottom:8px;line-height:1.5;">' +
+            '可在画布上拖拽任意顶点调整形状，或点击两点中点插入新顶点。' +
+            '</div>';
+
+        // 操作按钮
+        html += '<div style="margin-top:14px;display:flex;gap:6px;justify-content:flex-end;">' +
+            '<button type="button" class="ribbon-btn-sm danger" id="btnDeleteWater">' +
+            '<cgo-icon name="delete" size="12"></cgo-icon><span>删除此水域</span>' +
+            '</button>' +
+            '</div>';
+
+        html += '</div>';
+
+        dom.body.innerHTML = html;
+
+        var typeSel = document.getElementById('propWaterType');
+        if (typeSel) {
+            typeSel.addEventListener('change', function () {
+                fireChange('water', waterItem.id, 'type', this.value);
+            });
+        }
+
+        var widthEl = document.getElementById('propWaterWidth');
+        if (widthEl) {
+            widthEl.addEventListener('change', function () {
+                fireChange('water', waterItem.id, 'width', Number(this.value) || 20);
+            });
+        }
+
+        var delBtn = document.getElementById('btnDeleteWater');
+        if (delBtn) {
+            delBtn.addEventListener('click', function () {
+                fireChange('water', waterItem.id, 'delete', true);
+            });
+        }
+    }
+
+    /**
      * 标准化颜色输入：#RGB → #RRGGBB，去空格，统一大写。
      * 与源文件里 #E4002B 这种写法对齐；无效输入返回 null。
      */
@@ -750,6 +1013,8 @@ window.OpenMapEditor.InspectorView = (function () {
         renderNodeInspector: renderNodeInspector,
         renderSegmentInspector: renderSegmentInspector,
         renderLineInspector: renderLineInspector,
+        renderTextInspector: renderTextInspector,
+        renderWaterInspector: renderWaterInspector,
         renderGenericInspector: renderGenericInspector,
         renderEmpty: renderEmpty
     };

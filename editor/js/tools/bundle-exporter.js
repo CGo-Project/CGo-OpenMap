@@ -294,20 +294,109 @@ window.OpenMapEditor.BundleExporter = (function () {
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
 
-    function exportSvgElement(svgEl, filename) {
-        if (!svgEl) return;
+    /**
+     * 准备纯净的独立矢量 SVG DOM（移除 UI 辅助层、复位视口平移缩放、设置 viewBox）
+     */
+    function prepareCleanSvgClone(svgEl, project, options) {
+        if (!svgEl) return null;
+        var opt = options || {};
         var clone = svgEl.cloneNode(true);
         clone.removeAttribute('style');
-        var xml = new XMLSerializer().serializeToString(clone);
+
+        // 移除网格、底图（除非指定保留）、草稿线、手柄、框选框等编辑辅助图元
+        var removeSelectors = ['#gridLayer', '#draftLayer', '#handleLayer', '#editorRubberBand', '.viewport-hud'];
+        if (!opt.includeGhost) removeSelectors.push('#ghostLayer');
+        removeSelectors.forEach(function (sel) {
+            var el = clone.querySelector(sel);
+            if (el) el.remove();
+        });
+
+        // 视口复位：移除 viewLayer 漫游缩放矩阵，回归世界坐标系原点
+        var viewLayer = clone.querySelector('#viewLayer');
+        if (viewLayer) {
+            viewLayer.removeAttribute('transform');
+        }
+
+        var w = (project && project.canvas && project.canvas.width) || parseInt(svgEl.getAttribute('width'), 10) || 2000;
+        var h = (project && project.canvas && project.canvas.height) || parseInt(svgEl.getAttribute('height'), 10) || 1500;
+
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('width', String(w));
+        clone.setAttribute('height', String(h));
+        clone.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+
+        // 如果需要背景底色（默认导出纯白底色，避免透明背景在某些查看器中变黑）
+        if (opt.backgroundColor !== false) {
+            var bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bgRect.setAttribute('width', String(w));
+            bgRect.setAttribute('height', String(h));
+            bgRect.setAttribute('fill', opt.backgroundColor || '#ffffff');
+            clone.insertBefore(bgRect, clone.firstChild);
+        }
+
+        return { clone: clone, width: w, height: h };
+    }
+
+    function exportSvgElement(svgEl, filename, project, options) {
+        if (!svgEl) return;
+        var prep = prepareCleanSvgClone(svgEl, project, options);
+        if (!prep) return;
+        var xml = new XMLSerializer().serializeToString(prep.clone);
         var src = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
         download(filename || 'openmap-canvas.svg', src, 'image/svg+xml;charset=utf-8');
+    }
+
+    /**
+     * 将 SVG 矢量地图高清光栅化并导出为 PNG 位图
+     * @param {SVGElement} svgEl
+     * @param {string} filename
+     * @param {Object} project
+     * @param {Object} [options] { scale: 2, backgroundColor: '#ffffff', includeGhost: false }
+     */
+    function exportPngElement(svgEl, filename, project, options) {
+        if (!svgEl) return;
+        var opt = options || {};
+        var scale = Number(opt.scale) || 2; // 默认 2x 超采样 (Retina / 300DPI 级别清晰度)
+        var prep = prepareCleanSvgClone(svgEl, project, opt);
+        if (!prep) return;
+
+        var xml = new XMLSerializer().serializeToString(prep.clone);
+        var blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+
+        var img = new Image();
+        img.onload = function () {
+            URL.revokeObjectURL(url);
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.round(prep.width * scale);
+            canvas.height = Math.round(prep.height * scale);
+
+            var ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function (pngBlob) {
+                    if (pngBlob) {
+                        download(filename || 'openmap-export.png', pngBlob, 'image/png');
+                    }
+                }, 'image/png');
+            }
+        };
+        img.onerror = function () {
+            URL.revokeObjectURL(url);
+            console.error('[BundleExporter] SVG 转换为图片失败');
+        };
+        img.src = url;
     }
 
     return {
         validateData: validateData,
         buildZipBytes: buildZipBytes,
         download: download,
+        prepareCleanSvgClone: prepareCleanSvgClone,
         exportSvgElement: exportSvgElement,
+        exportPngElement: exportPngElement,
         formatStationValue: formatStationValue,
         formatStationsData: formatStationsData,
         formatLineValue: function (line) {

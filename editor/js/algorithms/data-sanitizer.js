@@ -29,6 +29,8 @@
 
 (function (root, factory) {
     const api = factory();
+    root.OpenMapEditor = root.OpenMapEditor || {};
+    root.OpenMapEditor.DataSanitizer = api;
     root.DataSanitizer = api;
     root.DrunkSanitizer = api; // 向后兼容
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

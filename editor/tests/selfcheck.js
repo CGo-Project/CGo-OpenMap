@@ -1525,8 +1525,8 @@ section('Milestone 3 多选框选与智能对齐参考线');
         'Align45: 编辑器按序加载角度对齐模块（在绘制流水线之前）');
     check(/id="btnAlign45"/.test(editorHtmlSrc) && /function alignAllTo45/.test(editorAppSrc),
         'Align45: 功能区提供「45/90 对齐」一键入口');
-    check(/\.\/editor\/js\/algorithms\/align-45\.js/.test(swSrc),
-        'Align45: 新模块已登记进 Service Worker 预缓存');
+    check(!/\.\/editor\//.test(swSrc),
+        'SW: 开放地图编辑器已从 Service Worker 预缓存清单中解耦');
     check(/A45\.constrainTo45/.test(drawSrc),
         'Align45: 绘制工具的 45° 约束与该模块共用同一份数学（唯一真源）');
 

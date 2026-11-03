@@ -28,12 +28,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="CGo开放地图">
 
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261103.113000">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261103.113000">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261103.113000">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261103.113000">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261103.113000">
-    <script type="module" src="core/cgo-ui.js?v=261103.113000"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261103.114600">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261103.114600">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261103.114600">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261103.114600">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261103.114600">
+    <script type="module" src="core/cgo-ui.js?v=261103.114600"></script>
+    <script src="city/data.js?v=261103.114600"></script>
 
     <style>
         body {
@@ -163,22 +164,125 @@
             font-size: 12px;
             color: var(--text-secondary, #656d76);
             line-height: 1.5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .cached-cities-card {
+            margin-top: 22px;
+            text-align: left;
+            background: rgba(0, 0, 0, 0.025);
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color, rgba(0, 0, 0, 0.06));
+        }
+
+        [data-theme="dark"] .cached-cities-card {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .cached-cities-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-main, #1f2328);
+        }
+
+        [data-theme="dark"] .cached-cities-header {
+            color: #e6edf3;
+        }
+
+        .cached-cities-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 8px;
+        }
+
+        .cached-city-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+            color: inherit;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        [data-theme="dark"] .cached-city-btn {
+            background: rgba(45, 45, 45, 0.8);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .cached-city-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .cached-city-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .city-badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .reconnect-toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f883d;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            z-index: 9999;
+            animation: toastPop 0.3s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        @keyframes toastPop {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -10px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
         }
     </style>
 </head>
 
 <body>
+    <div id="reconnectToast" class="reconnect-toast" style="display: none;">
+        <cgo-icon name="check-circle" size="18"></cgo-icon>
+        <span>网络已恢复，正在返回主界面...</span>
+    </div>
+
     <div class="offline-card">
-        <div class="offline-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="1" y1="1" x2="23" y2="23"></line>
-                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
-                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
-                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
-                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
-                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-                <line x1="12" y1="20" x2="12.01" y2="20"></line>
-            </svg>
+        <div class="offline-icon" aria-hidden="true">
+            <cgo-icon name="map" size="36"></cgo-icon>
         </div>
         <h1 class="offline-title">网络连接已断开</h1>
         <p class="offline-desc">
@@ -186,36 +290,38 @@
         </p>
 
         <div class="offline-actions">
-            <button class="btn btn-primary" onclick="retryConnection()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 4 23 10 17 10"></polyline>
-                    <polyline points="1 20 1 14 7 14"></polyline>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                </svg>
+            <button class="btn btn-primary" onclick="retryConnection()" aria-label="尝试重新连接网络">
+                <cgo-icon name="refresh" size="16"></cgo-icon>
                 重新连接
             </button>
-            <a href="./index.html" class="btn btn-secondary">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
+            <a href="./index.html" class="btn btn-secondary" aria-label="访问本地已缓存的首页">
+                <cgo-icon name="home" size="16"></cgo-icon>
                 访问本地缓存首页
             </a>
         </div>
 
+        <div id="cachedCitiesContainer" class="cached-cities-card" style="display: none;">
+            <div class="cached-cities-header">
+                <cgo-icon name="location" size="14"></cgo-icon>
+                <span>已离线就绪的城市（点击可直接进入）：</span>
+            </div>
+            <div id="cachedCitiesList" class="cached-cities-grid"></div>
+        </div>
+
         <div class="offline-tips">
-            💡 提示：已缓存的城市（如北京、沈阳、长春等）在离线状态下仍可完整交互、查询时刻表与进行路径计算。
+            <cgo-icon name="info" size="14"></cgo-icon>
+            <span>提示：已缓存的城市在离线状态下仍可完整交互缩放、站点查询与换乘计算。</span>
         </div>
     </div>
 
     <script>
         function retryConnection() {
             if (navigator.onLine) {
-                window.location.reload();
+                showOnlineToastAndRedirect();
             } else {
                 fetch('./index.html', { method: 'HEAD', cache: 'no-store' })
                     .then(function() {
-                        window.location.href = './index.html';
+                        showOnlineToastAndRedirect();
                     })
                     .catch(function() {
                         alert('网络仍未恢复，请检查蜂窝数据或 Wi-Fi 连接。');
@@ -223,9 +329,78 @@
             }
         }
 
+        function showOnlineToastAndRedirect() {
+            var toast = document.getElementById('reconnectToast');
+            if (toast) toast.style.display = 'flex';
+            setTimeout(function() {
+                var target = document.referrer && document.referrer.includes(window.location.host)
+                    ? document.referrer
+                    : './index.html';
+                window.location.href = target;
+            }, 600);
+        }
+
         window.addEventListener('online', function() {
-            window.location.reload();
+            showOnlineToastAndRedirect();
         });
+
+        async function detectCachedCities() {
+            if (!('caches' in window)) return;
+            try {
+                var cacheNames = await caches.keys();
+                var currentCacheName = cacheNames.find(function(n) {
+                    return n.startsWith('cgo-openmap-');
+                });
+                if (!currentCacheName) return;
+                var cache = await caches.open(currentCacheName);
+                var requests = await cache.keys();
+
+                var detectedCityIds = new Set();
+                requests.forEach(function(req) {
+                    var m = req.url.match(/\/city\/([a-z0-9_-]+)\//i);
+                    if (m && m[1]) {
+                        detectedCityIds.add(m[1].toLowerCase());
+                    }
+                });
+
+                var registry = window.CITY_REGISTRY || {};
+                var validCities = [];
+                detectedCityIds.forEach(function(id) {
+                    if (registry[id]) {
+                        validCities.push({
+                            id: id,
+                            name: registry[id].name || id,
+                            color: registry[id].themeColor || '#1a73e8'
+                        });
+                    }
+                });
+
+                if (validCities.length > 0) {
+                    var container = document.getElementById('cachedCitiesContainer');
+                    var list = document.getElementById('cachedCitiesList');
+                    if (container && list) {
+                        list.innerHTML = validCities.map(function(c) {
+                            return '<a href="./main.html?city=' + encodeURIComponent(c.id) + '" class="cached-city-btn" title="进入 ' + c.name + ' 离线地图">' +
+                                '<span class="cached-city-left">' +
+                                    '<span class="city-badge-dot" style="background-color: ' + c.color + '"></span>' +
+                                    '<span>' + c.name + '</span>' +
+                                '</span>' +
+                                '<cgo-icon name="chevron-right" size="12"></cgo-icon>' +
+                            '</a>';
+                        }).join('');
+                        container.style.display = 'block';
+                    }
+                }
+            } catch (err) {
+                console.warn('[Offline] 检测离线缓存城市异常:', err);
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', detectCachedCities);
+        } else {
+            detectCachedCities();
+        }
     </script>
 </body>
 

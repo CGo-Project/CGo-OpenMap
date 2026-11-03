@@ -1,0 +1,38 @@
+name: CI - CGo OpenMap 质量与版本门禁自检
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: 质量与全套自动化回归自检
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js 运行时
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 1. 全站版本号一致性核对 (check-site-version)
+        run: node scripts/check-site-version.mjs
+
+      - name: 2. 预缓存资源存在性与引用校验 (check-cache-assets)
+        run: node scripts/check-cache-assets.mjs
+
+      - name: 3. 全网 39 城拓扑、对齐与几何算法回归自检 (selfcheck)
+        run: node editor/tests/selfcheck.js
+
+      - name: 4. 福州城市专属数据与票价契约自检 (fuzhou_check)
+        run: node city/fuzhou/tools/fuzhou_check.js

@@ -24,6 +24,7 @@ const FILES = [
     'editor/index.html',
     'privacy.html',
     'readme.html',
+    'offline.html',
     'sw.js',
 ];
 

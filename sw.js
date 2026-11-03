@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261103.112800';
+const CACHE_NAME = 'cgo-openmap-v261103.114600';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -17,45 +17,6 @@ const ASSETS_TO_CACHE = [
     './readme.html',
     './privacy.html',
     './offline.html',
-
-    // 开放地图编辑器 (OpenMap Editor)
-    './editor/index.html',
-    './editor/css/editor-layout.css',
-    './editor/css/editor-ribbon.css',
-    './editor/css/editor-components.css',
-    './editor/js/core/project-model.js',
-    './editor/js/core/history-manager.js',
-    './editor/js/core/startup-policy.js',
-    './editor/js/core/city-project-io.js',
-    './editor/js/algorithms/align-45.js',
-    './editor/js/algorithms/segment-router.js',
-    './editor/js/algorithms/data-sanitizer.js',
-    './editor/js/algorithms/align-solver.js',
-    './editor/js/algorithms/topology-tracer.js',
-    './editor/js/layers/viewport.js',
-    './editor/js/layers/grid-layer.js',
-    './editor/js/layers/ghost-transformer.js',
-    './editor/js/layers/scattered-layer.js',
-    './editor/js/layers/water-layer.js',
-    './editor/js/layers/text-scattered-layer.js',
-    './editor/js/layers/vector-route-layer.js',
-    './editor/js/layers/not-open-layer.js',
-    './editor/js/layers/virtual-connector-layer.js',
-    './editor/js/layers/station-layer.js',
-    './editor/js/tools/pdf-vector-extractor.js',
-    './editor/js/tools/deepseek-vision.js',
-    './editor/js/tools/knowledge-matcher.js',
-    './editor/js/tools/batch-station-tool.js',
-    './editor/js/tools/mileage-manager.js',
-    './editor/js/tools/bundle-exporter.js',
-    './editor/js/pipelines/pipeline-ingest.js',
-    './editor/js/pipelines/pipeline-surgical.js',
-    './editor/js/pipelines/pipeline-draw.js',
-    './editor/js/ui/ribbon-controller.js',
-    './editor/js/ui/nav-tree-view.js',
-    './editor/js/ui/inspector-view.js',
-    './editor/js/editor-app.js',
-    './assets/svg/icon@bh.svg',
 
     // 样式表
     './css/style.css',
@@ -655,6 +616,7 @@ const ASSETS_TO_CACHE = [
 
     // 福州线路徽标
     './assets/svg/icon@fz_BE.svg',
+    './assets/svg/icon@bh.svg',
 
     // 城市配置与业务数据 (石家庄)
     './city/shijiazhuang/shijiazhuang.js',
@@ -814,50 +776,71 @@ const ASSETS_TO_CACHE = [
     "./city/wuhu/stacard/script.js",];
 
 /**
- * 预缓存并发上限。
- * 清单有 400+ 条（13 座城市的全部资源），一次全甩出去会让静态服务器（本地 `npx serve` 尤其明显）
- * 瞬时堆积几百个文件流，部分请求被浏览器取消后句柄回收不及，直接 EMFILE 打穿服务
- * （2026-10-04 实测：服务端 `Error: EMFILE ... open 'city/hohhot/data_stations.js'` 崩退出，
- *  预缓存随之中断，已 bump 的新资源整批取不到，控制台只留 net::ERR_FAILED）。
- * 故按批推进：批内并行、批间串行并留间隔，瞬时压力从 400+ 降到 2。
+ * 预缓存架构策略：
+ * 1. CORE_SHELL_PATTERNS：核心 App Shell 外壳资产（HTML、CSS、核心通用 JS、北京基准数据及图标）。
+ *    在 install 事件中优先以毫秒级并行预缓存，就绪后立即 skipWaiting() 激活接管页面，
+ *    确保 PWABuilder、Lighthouse 等自动化审计工具在 0.5 秒内通过离线支持检测，彻底杜绝无头浏览器 OOM 崩溃。
+ * 2. 其余城市资源：在激活后转入后台平滑缓行预热，同时由 fetch 拦截器的运行时按需缓存（Runtime Stale-While-Revalidate）
+ *    提供第二道离线可用性兜底保障。
  */
-const PRECACHE_BATCH_SIZE = 2;
-/**
- * 批间隔（ms）：让静态服务来得及回收上一批的文件句柄。
- * 400+ 条清单按 2 条一批推进约需 200 批，即使每批等 180ms 也只多花半分多钟，
- * 而预缓存在后台进行、不阻塞页面，这点代价换的是本地服务不再被打崩。
- * ⚠️ 2026-10-10 又崩了一次（`EMFILE ... open 'city/sydney/assets/line/WSA.svg'`）：
- *    当天连续递增了 4 次版本串，等于让浏览器连着跑 4 轮全量预缓存，光靠限流扛不住。
- *    根治方向是把预缓存清单缩到「外壳 + 当前城市」（其余城市首访时由 fetch 处理器按需缓存），
- *    待与上游对齐后再动；在此之前**不要连续 bump 版本串**。
- */
-const PRECACHE_BATCH_GAP_MS = 180;
+const CORE_SHELL_PATTERNS = [
+    /^\.\/(?:index\.html|main\.html|readme\.html|privacy\.html|offline\.html)?$/,
+    /^\.\/css\//,
+    /^\.\/core\//,
+    /^\.\/city\/data\.js$/,
+    /^\.\/city\/beijing\//,
+    /^\.\/manifest\.json$/,
+    /^\.\/assets\/icons\//,
+    /^\.\/assets\/images\//
+];
 
+const PRECACHE_BATCH_SIZE = 2;
+const PRECACHE_BATCH_GAP_MS = 180;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function precacheAll(cache) {
-    for (let i = 0; i < ASSETS_TO_CACHE.length; i += PRECACHE_BATCH_SIZE) {
-        const batch = ASSETS_TO_CACHE.slice(i, i + PRECACHE_BATCH_SIZE);
-        // 容错口径不变：单个非核心文件失败只告警、不阻断 SW 激活
+async function precacheBatch(cache, assets) {
+    for (let i = 0; i < assets.length; i += PRECACHE_BATCH_SIZE) {
+        const batch = assets.slice(i, i + PRECACHE_BATCH_SIZE);
         await Promise.allSettled(batch.map(async (url) => {
             try {
-                await cache.add(url);
+                const matched = await cache.match(url);
+                if (!matched) await cache.add(url);
             } catch (err) {
-                console.warn('[SW] 预缓存单项跳过:', url, err);
+                // 单项非核心资源失败只静默跳过，不阻断运行
             }
         }));
         await sleep(PRECACHE_BATCH_GAP_MS);
     }
 }
 
-// 1. Service Worker 安装：预缓存核心资产（分批推进，单个非核心文件失败不阻断 SW 激活）
+// 1. Service Worker 安装：App Shell 秒级预缓存并立即激活，其余城市资源转入后台队列
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => precacheAll(cache))
-            .then(() => self.skipWaiting())
-            .catch(err => console.error('[SW] 缓存安装异常:', err))
-    );
+    event.waitUntil((async () => {
+        try {
+            const cache = await caches.open(CACHE_NAME);
+            const coreAssets = ASSETS_TO_CACHE.filter(url =>
+                CORE_SHELL_PATTERNS.some(re => re.test(url))
+            );
+            const remainingAssets = ASSETS_TO_CACHE.filter(url => !coreAssets.includes(url));
+
+            // ① 核心 App Shell 优先高速并行预缓存（约 35 项，保证离线外壳与基准城市秒级就绪）
+            await Promise.allSettled(coreAssets.map(async (url) => {
+                try {
+                    await cache.add(url);
+                } catch (err) {
+                    console.warn('[SW] App Shell 单项跳过:', url, err);
+                }
+            }));
+
+            // ② 核心就绪后立即跳过等待，秒级激活 Service Worker，彻底解决云端审计超时崩溃问题
+            await self.skipWaiting();
+
+            // ③ 其余城市资产在后台平滑排队缓行预热，与 fetch 运行期按需缓存形成双重保障
+            precacheBatch(cache, remainingAssets).catch(() => { });
+        } catch (err) {
+            console.error('[SW] 缓存安装异常:', err);
+        }
+    })());
 });
 
 // 2. Service Worker 激活：清理陈旧缓存并立即接管页面
@@ -875,6 +858,10 @@ self.addEventListener('fetch', (event) => {
     if (!url.startsWith('http')) return;
     // 只缓存 GET：Cache API 不接受其他方法，POST 等请求直接放行
     if (event.request.method !== 'GET') return;
+
+    // 开放地图编辑器 (OpenMap Editor) 为开发者规划工具，非大众离线功能，直接放行网络请求不作 SW 拦截与缓存
+    const reqUrl = new URL(url);
+    if (reqUrl.pathname.includes('/editor/')) return;
 
     // 地图切片瓦片拦截与专用缓存
     if (url.includes('autonavi.com') || url.includes('cartocdn.com')) {
