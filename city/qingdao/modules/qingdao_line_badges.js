@@ -147,39 +147,14 @@
     // 完整线路徽标 viewBox 高 150、数字色块高 100，因此整体放大到 31.5，
     // 可让数字色块本体恰好显示为 21×21。快线原 SVG 也沿用同一比例。
     const MAP_REFERENCE_ICON_SIZE = 21;
-    const MAP_NUMERIC_BADGE_HEIGHT = BADGE_CONFIG.height * MAP_REFERENCE_ICON_SIZE / BADGE_CONFIG.squareSize; // 31.5
-    const MAP_FAST_BADGE_HEIGHT = MAP_NUMERIC_BADGE_HEIGHT;
     const MAP_FAST_SVG_CACHE = new Map();
-    const MAP_LINE_BADGE_PLACEMENTS = [
-        // 数字线路：原则上两端都放；7 南（QDM07S）按需求只保留一个。
-        // 位移单位按视觉口径微调：1 个色块≈21px，半个色块≈10.5px，一行英文高度≈7.5px。
-        { lineId: "QDM01", at: "start", dx: -21,    dy: -21 },
-        { lineId: "QDM01", at: "end",   dx: -21,    dy:  21.5 },
-        { lineId: "QDM02", at: "start", dx: -36.75, dy: -34 },
-        { lineId: "QDM02", at: "end",   dx: -35.75, dy:  10.5 },
-        { lineId: "QDM03", at: "start", dx:  35,    dy: -42 },
-        { lineId: "QDM03", at: "end",   dx: -42,    dy: -26.5 },
-        { lineId: "QDM04", at: "start", dx:   0,    dy:  41.5 },
-        { lineId: "QDM04", at: "end",   dx:   0,    dy: -34 },
-        { lineId: "QDM05", at: "start", dx:  21,    dy:  41.5 },
-        { lineId: "QDM05", at: "end",   dx:   0,    dy: -34 },
-        { lineId: "QDM06", at: "start", dx:  -8,    dy: -42 },
-        { lineId: "QDM06", at: "end",   dx: -34,    dy:  20 },
-        { lineId: "QDM07N", at: "start", dx:   0,   dy:  34 },
-        { lineId: "QDM07S", at: "start", dx:  44.5, dy:  21 },
-        { lineId: "QDM08", at: "start", dx:   0,    dy: -42 },
-        { lineId: "QDM08", at: "end",   dx:   0,    dy:  44.5 },
-        { lineId: "QDM08B", at: "end",  dx: -34,    dy:   0, displayNumber: "8" },
-        { lineId: "QDM09", at: "start", dx:   0,    dy:  52 },
-        { lineId: "QDM09", at: "end",   dx:   0,    dy: -34 },
-        { lineId: "QDM15", at: "start", dx:   0,    dy: -34 },
-        { lineId: "QDM15", at: "end",   dx:  64.65, dy: -42 },
-        // 快线两端也放，直接复用原本线路徽标。
-        { lineId: "QDM11", at: "start", dx:  92.4,  dy:   0 },
-        { lineId: "QDM11", at: "end",   dx: -56.7,  dy:  34 },
-        { lineId: "QDM13", at: "start", dx:   0,    dy: -34 },
-        { lineId: "QDM13", at: "end",   dx: -34,    dy:  21 }
-    ];
+    // Map placement data lives in data_scattered.js. Badge proportions remain in BADGE_CONFIG.
+    const getMapBadgeConfig = () => window.QINGDAO_MAP_LINE_BADGE_CONFIG || null;
+    const getMapPlacements = () => getMapBadgeConfig()?.placements || [];
+    const getMapBadgeHeight = (placement) =>
+        Number(placement?.height ?? getMapBadgeConfig()?.defaultHeight) ||
+        BADGE_CONFIG.height * MAP_REFERENCE_ICON_SIZE / BADGE_CONFIG.squareSize;
+
 
     function createMapNumericLineBadge(line, displayNumber = null) {
         const number = String(displayNumber || getDisplayNumber(line) || "").trim();
@@ -191,21 +166,21 @@
         return createNumericGroupBadge([syntheticLine]);
     }
 
-    function createMapFastLineBadge(line) {
+    function createMapFastLineBadge(line, height = getMapBadgeHeight()) {
         if (!line?.svg) return null;
         return {
             src: `./assets/svg/${line.svg}`,
             title: line.name,
-            height: MAP_FAST_BADGE_HEIGHT,
+            height,
             // 青岛两款快线原 SVG 均为 270×150。
-            width: MAP_FAST_BADGE_HEIGHT * 270 / 150,
+            width: height * 270 / 150,
             svgclr: line.svgclr || line.color || '#00263b',
             svgtext: line.svgtext || '#ffffff'
         };
     }
 
-    async function hydrateMapFastLineBadge(badge, line) {
-        const fastData = createMapFastLineBadge(line);
+    async function hydrateMapFastLineBadge(badge, line, height) {
+        const fastData = createMapFastLineBadge(line, height);
         if (!fastData) return;
 
         badge.style.height = `${fastData.height}px`;
@@ -277,7 +252,8 @@
         if (!layer) return false;
 
         layer.replaceChildren();
-        MAP_LINE_BADGE_PLACEMENTS.forEach((placement) => {
+        getMapPlacements().forEach((placement) => {
+            const displayHeight = getMapBadgeHeight(placement);
             const line = lineList.find((item) => item?.id === placement.lineId && !item?.isVirtual);
             if (!line) return;
             const points = getLinePathPoints(line);
@@ -298,8 +274,8 @@
             if (isNumericLine(line) || placement.displayNumber) {
                 const badgeData = createMapNumericLineBadge(line, placement.displayNumber);
                 if (!badgeData) return;
-                badge.style.height = `${MAP_NUMERIC_BADGE_HEIGHT}px`;
-                badge.style.width = `${badgeData.width * MAP_NUMERIC_BADGE_HEIGHT / badgeData.height}px`;
+                badge.style.height = `${displayHeight}px`;
+                badge.style.width = `${badgeData.width * displayHeight / badgeData.height}px`;
                 badge.innerHTML = badgeData.svg;
                 const svg = badge.firstElementChild;
                 if (svg) {
@@ -309,14 +285,14 @@
                     svg.style.overflow = 'visible';
                 }
             } else {
-                const fastData = createMapFastLineBadge(line);
+                const fastData = createMapFastLineBadge(line, displayHeight);
                 if (!fastData) return;
                 badge.style.height = `${fastData.height}px`;
                 badge.style.width = `${fastData.width}px`;
             }
             layer.appendChild(badge);
             if (!isNumericLine(line) && !placement.displayNumber) {
-                hydrateMapFastLineBadge(badge, line);
+                hydrateMapFastLineBadge(badge, line, displayHeight);
             }
         });
         return layer.childElementCount > 0;
@@ -474,7 +450,7 @@
         getDisplayNumber,
         createNumericGroupBadge,
         createMapNumericLineBadge,
-        mapPlacements: MAP_LINE_BADGE_PLACEMENTS,
+        get mapPlacements() { return getMapPlacements(); },
         renderMapLineBadges,
         sync: syncQingdaoLineBadges
     };

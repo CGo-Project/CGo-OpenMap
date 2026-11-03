@@ -6,18 +6,18 @@ const SCATTERED_DATA = [
     {
         id: "qingdao-sea",
         file: "./city/qingdao/assets/qingdao_sea.svg",
-        x: 1500,
-        y: 1250,
-        width: 3000,
-        height: 2500,
+        x: 1350,
+        y: 1125,
+        width: 2700,
+        height: 2250,
         opacity: 1,
         zIndex: 1
     },
     {
         id: "compass",
         file: "./city/qingdao/assets/compass.svg",
-        x: 180,
-        y: 95,
+        x: 162,
+        y: 85.5,
         width: 90,
         height: 90,
         opacity: 1,
@@ -26,8 +26,8 @@ const SCATTERED_DATA = [
     {
         id: "railway-qingdao",
         file: "./city/qingdao/assets/China_Railway.svg",
-        x: 1266,
-        y: 1474,
+        x: 1140.2,
+        y: 1325.8,
         width: 21,
         height: 21,
         opacity: 1,
@@ -36,8 +36,8 @@ const SCATTERED_DATA = [
     {
         id: "railway-qingdao-north",
         file: "./city/qingdao/assets/China_Railway.svg",
-        x: 1614,
-        y: 866,
+        x: 1451.8,
+        y: 780.45,
         width: 21,
         height: 21,
         opacity: 1,
@@ -46,8 +46,8 @@ const SCATTERED_DATA = [
     {
         id: "railway-hongdao",
         file: "./city/qingdao/assets/China_Railway.svg",
-        x: 1015,
-        y: 535,
+        x: 912.75,
+        y: 482.25,
         width: 21,
         height: 21,
         opacity: 1,
@@ -56,8 +56,8 @@ const SCATTERED_DATA = [
     {
         id: "railway-jiaozhou-north",
         file: "./city/qingdao/assets/China_Railway.svg",
-        x: 912,
-        y: 220,
+        x: 819.9,
+        y: 198,
         width: 21,
         height: 21,
         opacity: 1,
@@ -66,8 +66,8 @@ const SCATTERED_DATA = [
     {
         id: "railway-dongjiakou",
         file: "./city/qingdao/assets/China_Railway.svg",
-        x: 295,
-        y: 2285,
+        x: 264.75,
+        y: 2063,
         width: 21,
         height: 21,
         opacity: 1,
@@ -76,8 +76,8 @@ const SCATTERED_DATA = [
     {
         id: "airport-jiaodong",
         file: "./city/qingdao/assets/Aircraft.svg",
-        x: 912,
-        y: 320,
+        x: 819.9,
+        y: 288,
         width: 21,
         height: 21,
         opacity: 1,
@@ -86,8 +86,8 @@ const SCATTERED_DATA = [
     {
         id: "railway-jiaodong-airport",
         file: "./city/qingdao/assets/China_Railway.svg",
-        x: 888,
-        y: 320,
+        x: 797.1,
+        y: 288,
         width: 21,
         height: 21,
         opacity: 1,
@@ -96,8 +96,8 @@ const SCATTERED_DATA = [
     {
         id: "coach-liaoyang-east",
         file: "./city/qingdao/assets/Long_Distance_Bus.svg",
-        x: 1955,
-        y: 1110,
+        x: 1758.25,
+        y: 999,
         width: 21,
         height: 21,
         opacity: 1,
@@ -106,8 +106,8 @@ const SCATTERED_DATA = [
     {
         id: "coach-xianjiazhai",
         file: "./city/qingdao/assets/Long_Distance_Bus.svg",
-        x: 1748,
-        y: 560,
+        x: 1574.1,
+        y: 504,
         width: 21,
         height: 21,
         opacity: 1,
@@ -116,8 +116,8 @@ const SCATTERED_DATA = [
     {
         id: "coach-xiaocunzhuang",
         file: "./city/qingdao/assets/Long_Distance_Bus.svg",
-        x: 1512,
-        y: 1200,
+        x: 1359.9,
+        y: 1080,
         width: 21,
         height: 21,
         opacity: 1,
@@ -126,8 +126,8 @@ const SCATTERED_DATA = [
     {
         id: "coach-taihangshan",
         file: "./city/qingdao/assets/Long_Distance_Bus.svg",
-        x: 1050,
-        y: 1818,
+        x: 945,
+        y: 1637.1,
         width: 21,
         height: 21,
         opacity: 1,
@@ -136,8 +136,8 @@ const SCATTERED_DATA = [
     {
         id: "coach-fenghuangshan",
         file: "./city/qingdao/assets/Long_Distance_Bus.svg",
-        x: 510,
-        y: 1898,
+        x: 459,
+        y: 1709.1,
         width: 21,
         height: 21,
         opacity: 1,
@@ -146,8 +146,8 @@ const SCATTERED_DATA = [
     {
         id: "ship-cruise-terminal",
         file: "./city/qingdao/assets/Ship.svg",
-        x: 1295,
-        y: 1345,
+        x: 1166.25,
+        y: 1211.25,
         width: 21,
         height: 21,
         opacity: 1,
@@ -156,8 +156,8 @@ const SCATTERED_DATA = [
     {
         id: "streetcar-agricultural-university",
         file: "./city/qingdao/assets/Streetcar.svg",
-        x: 1765,
-        y: 335,
+        x: 1589.25,
+        y: 302.25,
         width: 21,
         height: 21,
         opacity: 1,
@@ -165,84 +165,42 @@ const SCATTERED_DATA = [
     }
     ];
 
+// Map line badge positions and on-map display height (SVG internal proportions are renderer-owned).
+const QINGDAO_MAP_LINE_BADGE_CONFIG = {
+    defaultHeight: 31.5,
+    placements: [
+        // 数字线路：原则上两端都放；7 南（QDM07S）按需求只保留一个。
+        // 位移单位按视觉口径微调：1 个色块≈21px，半个色块≈10.5px，一行英文高度≈7.5px。
+        { lineId: "QDM01", at: "start", dx: -21,    dy: -21 },
+        { lineId: "QDM01", at: "end",   dx: -21,    dy:  21.5 },
+        { lineId: "QDM02", at: "start", dx: -36.75, dy: -37.5 },
+        { lineId: "QDM02", at: "end",   dx: -35.75, dy:  10.5 },
+        { lineId: "QDM03", at: "start", dx:  35,    dy: -42 },
+        { lineId: "QDM03", at: "end",   dx: -42,    dy: -26.5 },
+        { lineId: "QDM04", at: "start", dx:   0,    dy:  41.5 },
+        { lineId: "QDM04", at: "end",   dx:   0,    dy: -34 },
+        { lineId: "QDM05", at: "start", dx:  21,    dy:  41.5 },
+        { lineId: "QDM05", at: "end",   dx:   0,    dy: -34 },
+        { lineId: "QDM06", at: "start", dx:  -8,    dy: -42 },
+        { lineId: "QDM06", at: "end",   dx: -34,    dy:  20 },
+        { lineId: "QDM07N", at: "start", dx:   0,   dy:  34 },
+        { lineId: "QDM07S", at: "start", dx:  44.5, dy:  21 },
+        { lineId: "QDM08", at: "start", dx:   0,    dy: -42 },
+        { lineId: "QDM08", at: "end",   dx:   0,    dy:  44.5 },
+        { lineId: "QDM08B", at: "end",  dx: -34,    dy:   0, displayNumber: "8" },
+        { lineId: "QDM09", at: "start", dx:   0,    dy:  52 },
+        { lineId: "QDM09", at: "end",   dx:   0,    dy: -34 },
+        { lineId: "QDM15", at: "start", dx:   0,    dy: -34 },
+        { lineId: "QDM15", at: "end",   dx:  64.65, dy: -42 },
+        // 快线两端也放，直接复用原本线路徽标。
+        { lineId: "QDM11", at: "start", dx:  92.4,  dy:   0 },
+        { lineId: "QDM11", at: "end",   dx: -56.7,  dy:  34 },
+        { lineId: "QDM13", at: "start", dx:   0,    dy: -34 },
+        { lineId: "QDM13", at: "end",   dx: -34,    dy:  21 }
+    ]
+};
 
-if (typeof document !== "undefined") {
-    // Sea theme colors. Manual app theme wins; when no data-theme exists yet,
-    // follow the operating-system color scheme as a startup fallback.
-    const styleId = "qingdao-sea-theme-style";
-    if (!document.getElementById(styleId)) {
-        const style = document.createElement("style");
-        style.id = styleId;
-        style.textContent = `
-            :root { --qingdao-sea-color: #dceff4; }
-            html[data-theme="light"] { --qingdao-sea-color: #dceff4; }
-            html[data-theme="dark"] { --qingdao-sea-color: #17323b; }
-            @media (prefers-color-scheme: dark) {
-                html:not([data-theme]) { --qingdao-sea-color: #17323b; }
-            }
-            #scattered-layer .qingdao-sea-inline {
-                width: 100%;
-                height: 100%;
-                display: block;
-                color: var(--qingdao-sea-color);
-                pointer-events: none;
-            }
-            #scattered-layer .qingdao-sea-inline .sea {
-                fill: var(--qingdao-sea-color) !important;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    // SCATTERED_DATA normally renders external SVG files as <img>. For the sea only,
-    // replace that image with an inline SVG after it appears. This lets the SVG use
-    // page-level CSS variables, like the project's inline line badges do.
-    const inlineQingdaoSea = async () => {
-        const img = document.querySelector('#scattered-layer img[src*="qingdao_sea.svg"]');
-        if (!img || img.dataset.qingdaoInlining === "1") return false;
-        img.dataset.qingdaoInlining = "1";
-        try {
-            const response = await fetch(img.src);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const text = await response.text();
-            const parsed = new DOMParser().parseFromString(text, "image/svg+xml");
-            const sourceSvg = parsed.documentElement;
-            if (!sourceSvg || sourceSvg.nodeName.toLowerCase() !== "svg") {
-                throw new Error("Invalid SVG");
-            }
-            const svg = document.importNode(sourceSvg, true);
-            svg.classList.add("qingdao-sea-inline");
-            svg.setAttribute("aria-hidden", "true");
-            svg.removeAttribute("width");
-            svg.removeAttribute("height");
-            img.replaceWith(svg);
-            return true;
-        } catch (error) {
-            // Keep the original external SVG as a graceful fallback. Its own
-            // prefers-color-scheme rule still follows the system theme.
-            img.removeAttribute("data-qingdao-inlining");
-            console.warn("[Qingdao] Sea SVG inline injection failed:", error);
-            return false;
-        }
-    };
-
-    const startSeaObserver = () => {
-        inlineQingdaoSea().then(done => {
-            if (done) return;
-            const observer = new MutationObserver(async () => {
-                if (await inlineQingdaoSea()) observer.disconnect();
-            });
-            observer.observe(document.documentElement, { childList: true, subtree: true });
-        });
-    };
-
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", startSeaObserver, { once: true });
-    } else {
-        startSeaObserver();
-    }
-}
-
-if (typeof window !== "undefined") {
+if (typeof window !== 'undefined') {
     window.SCATTERED_DATA = SCATTERED_DATA;
+    window.QINGDAO_MAP_LINE_BADGE_CONFIG = QINGDAO_MAP_LINE_BADGE_CONFIG;
 }

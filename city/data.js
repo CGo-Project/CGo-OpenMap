@@ -603,9 +603,9 @@
             svglogo: null, // 已接入 CGoUI 内置 qingdao 官方矢量图标
             folder: "./city/qingdao",
             mainLogic: "./city/qingdao/qingdao.js",
-            center: { x: 1500, y: 1250 },
+            center: { x: 1350, y: 1125 },
             defaultScale: 1.45,
-            mapSize: { width: 3000, height: 2500 },
+            mapSize: { width: 2700, height: 2250 },
             searchCity: "青岛",
             title: "CGo OpenMap - 青岛轨道交通线路图",
             keywords: "CGo OpenMap, 青岛地铁, 青岛轨道交通, 线路图",
