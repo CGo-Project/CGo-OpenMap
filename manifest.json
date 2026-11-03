@@ -1,18 +1,104 @@
 {
   "name": "CGo OpenMap 线路图开放平台",
-  "short_name": "CGo OpenMap",
-  "description": "轻量、现代化的开源城市轨道交通智能交互线路图平台",
+  "short_name": "CGo开放地图",
+  "description": "轻量、现代化的共建开源城市轨道交通智能交互线路图平台，支持离线查询、时刻表与交互规划。",
   "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
+  "dir": "ltr",
+  "lang": "zh-CN",
   "display": "standalone",
   "display_override": [
+    "window-controls-overlay",
     "standalone",
     "minimal-ui",
     "browser"
   ],
-  "orientation": "portrait",
+  "orientation": "any",
+  "theme_color": "#ffffff",
   "background_color": "#ffffff",
+  "categories": [
+    "navigation",
+    "travel",
+    "utilities"
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://openmap.centralgo.site/manifest.json",
+      "id": "./index.html"
+    }
+  ],
+  "iarc_rating_id": "e84b0053-a6b6-4258-a70b-47e16d3a043d",
+  "scope_extensions": [
+    {
+      "type": "origin",
+      "origin": "https://*.centralgo.site"
+    },
+    {
+      "type": "origin",
+      "origin": "https://centralgo.site"
+    }
+  ],
+  "launch_handler": {
+    "client_mode": [
+      "navigate-existing",
+      "auto"
+    ]
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "file_handlers": [
+    {
+      "action": "./editor/index.html?action=open-file",
+      "name": "CGo OpenMap 地图数据包",
+      "accept": {
+        "application/json": [
+          ".json"
+        ],
+        "text/plain": [
+          ".txt"
+        ]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+openmap",
+      "url": "./index.html?link=%s"
+    }
+  ],
+  "share_target": {
+    "action": "./index.html?action=share",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "widgets": [
+    {
+      "name": "CGo OpenMap 快速定位",
+      "short_name": "地图定位",
+      "description": "快速查看就近轨道交通线路与车站",
+      "tag": "cgo-openmap-widget",
+      "template": "widget-template",
+      "ms_ac_template": "widget-ms.json",
+      "data": "widget-data.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "./assets/images/screenshot-mobile.png",
+          "sizes": "750x1334",
+          "label": "Widget Preview"
+        }
+      ]
+    }
+  ],
   "icons": [
     {
       "src": "./assets/icons/icon-192.png",
@@ -37,15 +123,34 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "./assets/icons/mapicon.png",
+      "sizes": "300x300",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icons/mapicon2.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "screenshots": [
     {
       "src": "./assets/images/screenshot-1.png",
-      "sizes": "6000x4500",
+      "sizes": "2000x1500",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "首页地图展示"
+      "label": "CGo OpenMap 线路图开放平台 - 桌面端城市全景展示"
+    },
+    {
+      "src": "./assets/images/screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "CGo OpenMap 线路图开放平台 - 移动端便捷浏览与导航"
     }
   ],
   "shortcuts": [

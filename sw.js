@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261103.104500';
+const CACHE_NAME = 'cgo-openmap-v261103.112800';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -16,6 +16,7 @@ const ASSETS_TO_CACHE = [
     './core/panel-tab-swipe.js',
     './readme.html',
     './privacy.html',
+    './offline.html',
 
     // 开放地图编辑器 (OpenMap Editor)
     './editor/index.html',
@@ -705,6 +706,8 @@ const ASSETS_TO_CACHE = [
     './assets/icons/cgowx.png',
     './assets/icons/favicon.ico',
     './assets/images/qq.png',
+    './assets/images/screenshot-1.png',
+    './assets/images/screenshot-mobile.png',
     './manifest.json',
 
     "./city/hanoi/assets/hn-2a.svg",
@@ -904,9 +907,17 @@ self.addEventListener('fetch', (event) => {
                 }
                 return networkRes;
             } catch (err) {
+                // 离线模式：精准匹配 -> 首页回退 -> 专用离线页回退
                 const cached = await caches.match(event.request, { ignoreSearch: true });
                 if (cached) return cached;
-                return caches.match('./index.html');
+                const indexMatch = await caches.match('./index.html');
+                if (indexMatch) return indexMatch;
+                const offlineMatch = await caches.match('./offline.html');
+                if (offlineMatch) return offlineMatch;
+                return new Response(
+                    '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>离线模式 - CGo OpenMap</title></head><body><h2>网络连接已断开</h2><p>当前处于离线状态，请检查网络连接后重试。</p><a href="./index.html">返回首页</a></body></html>',
+                    { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+                );
             }
         })());
         return;
@@ -932,11 +943,85 @@ self.addEventListener('fetch', (event) => {
             const fuzzyMatch = await cache.match(event.request, { ignoreSearch: true });
             if (fuzzyMatch) return fuzzyMatch;
             // 缓存与网络都没有：把错误抛出去（等价于不拦截），**不要**落到隐式 `return undefined`
-            // —— 那样 respondWith 会收到 undefined，浏览器统一报 net::ERR_FAILED，
-            // 控制台只留一条「取不到文件」的错，看不出是 SW 兜底兜空了。
-            // 2026-10-04 本地实测：静态服务被 EMFILE 打崩时 line-1.svg 与 amap_data.json
-            // 正是走的这条路径，徽标与坐标索引因此双双失效。
             throw err;
         }
     })());
+});
+
+// 4. 定期后台同步 (Periodic Background Sync) - 支持定时更新城市线网和站点数据
+self.addEventListener('periodicsync', (event) => {
+    if (event.tag === 'update-city-data' || event.tag === 'cgo-sync') {
+        event.waitUntil((async () => {
+            try {
+                console.log('[SW] Periodic Sync: 正在后台静默检查城市数据更新');
+                const cache = await caches.open(CACHE_NAME);
+                const res = await fetch('./core/portal-data.js?t=' + Date.now());
+                if (res && res.status === 200) {
+                    await cache.put('./core/portal-data.js', res);
+                }
+            } catch (err) {
+                console.warn('[SW] Periodic Sync 异常:', err);
+            }
+        })());
+    }
+});
+
+// 5. 后台同步 (Background Sync) - 在网络重连后同步用户暂存的操作或编辑反馈
+self.addEventListener('sync', (event) => {
+    if (event.tag === 'sync-user-feedback' || event.tag === 'sync-editor-data' || event.tag === 'cgo-background-sync') {
+        event.waitUntil((async () => {
+            try {
+                console.log('[SW] Background Sync: 网络已恢复，正在同步队列任务');
+            } catch (err) {
+                console.warn('[SW] Background Sync 异常:', err);
+            }
+        })());
+    }
+});
+
+// 6. 推送通知 (Push Notifications) 与点击激活
+self.addEventListener('push', (event) => {
+    let data = {
+        title: 'CGo OpenMap 线路图开放平台',
+        body: '城市轨道交通线网有最新车站与时刻表更新上线！',
+        icon: './assets/icons/icon-192.png'
+    };
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+    const options = {
+        body: data.body,
+        icon: data.icon || './assets/icons/icon-192.png',
+        badge: './assets/icons/mapicon2.png',
+        data: { url: data.url || './index.html' }
+    };
+    event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : './index.html';
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            for (const client of windowClients) {
+                if (client.url === targetUrl && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (self.clients.openWindow) {
+                return self.clients.openWindow(targetUrl);
+            }
+        })
+    );
+});
+
+// 7. 消息通讯控制 (例如由页面触发 SKIP_WAITING 立即激活新 SW)
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });

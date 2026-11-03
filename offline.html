@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN" glass-mode="liquid" header-mode="floating">
+
+<head>
+    <script>
+        (function () {
+            // 全局深浅色主题同步
+            var t = localStorage.getItem('app-theme') || localStorage.getItem('cgo-theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+
+            var pageKey = 'openmap_offline_header_mode';
+            var hm = localStorage.getItem(pageKey) || 'floating';
+            document.documentElement.setAttribute('header-mode', hm);
+
+            var gm = localStorage.getItem('cgo_glass_mode');
+            if (gm) document.documentElement.setAttribute('glass-mode', gm);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <title>离线模式 - CGo OpenMap 线路图开放平台</title>
+    <link rel="shortcut icon" href="./assets/icons/favicon.ico">
+    <link rel="apple-touch-icon" href="./assets/icons/mapicon2.png">
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CGo开放地图">
+
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261103.113000">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261103.113000">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261103.113000">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261103.113000">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261103.113000">
+    <script type="module" src="core/cgo-ui.js?v=261103.113000"></script>
+
+    <style>
+        body {
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            box-sizing: border-box;
+            background-color: var(--bg-color, #f8f9fa);
+            color: var(--text-main, #1f2328);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+        }
+
+        .offline-card {
+            width: 100%;
+            max-width: 480px;
+            background: var(--card-bg, #ffffff);
+            border-radius: 20px;
+            padding: 36px 28px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+        }
+
+        [data-theme="dark"] body {
+            background-color: #121212;
+            color: #e6edf3;
+        }
+
+        [data-theme="dark"] .offline-card {
+            background: rgba(30, 30, 30, 0.85);
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+        }
+
+        .offline-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: rgba(234, 67, 53, 0.1);
+            color: #ea4335;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .offline-icon svg {
+            width: 36px;
+            height: 36px;
+            stroke-width: 2;
+        }
+
+        .offline-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 10px;
+        }
+
+        .offline-desc {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-secondary, #656d76);
+            margin: 0 0 24px;
+        }
+
+        [data-theme="dark"] .offline-desc {
+            color: #8b949e;
+        }
+
+        .offline-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: #1a73e8;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #1557b0;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            color: inherit;
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .offline-tips {
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+            font-size: 12px;
+            color: var(--text-secondary, #656d76);
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="offline-card">
+        <div class="offline-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+        </div>
+        <h1 class="offline-title">网络连接已断开</h1>
+        <p class="offline-desc">
+            检测到当前处于离线状态。CGo OpenMap 支持 PWA 离线运行，您可以直接返回已缓存的首页或查看此前已下载的城市线路图。
+        </p>
+
+        <div class="offline-actions">
+            <button class="btn btn-primary" onclick="retryConnection()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                重新连接
+            </button>
+            <a href="./index.html" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                访问本地缓存首页
+            </a>
+        </div>
+
+        <div class="offline-tips">
+            💡 提示：已缓存的城市（如北京、沈阳、长春等）在离线状态下仍可完整交互、查询时刻表与进行路径计算。
+        </div>
+    </div>
+
+    <script>
+        function retryConnection() {
+            if (navigator.onLine) {
+                window.location.reload();
+            } else {
+                fetch('./index.html', { method: 'HEAD', cache: 'no-store' })
+                    .then(function() {
+                        window.location.href = './index.html';
+                    })
+                    .catch(function() {
+                        alert('网络仍未恢复，请检查蜂窝数据或 Wi-Fi 连接。');
+                    });
+            }
+        }
+
+        window.addEventListener('online', function() {
+            window.location.reload();
+        });
+    </script>
+</body>
+
+</html>
+

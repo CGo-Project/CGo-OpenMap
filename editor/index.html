@@ -8,6 +8,12 @@
     <meta name="description" content="开放地图编辑器 OpenMap Editor，全功能轨道交通地图编辑工作台">
     <title>开放地图编辑器 OpenMap Editor</title>
     <link rel="shortcut icon" href="../assets/icons/favicon.ico">
+    <link rel="apple-touch-icon" href="../assets/icons/mapicon2.png">
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="OpenMap Editor">
 
     <!-- 0. 路径自愈脚本 (避免静态服务结尾无斜杠导致相对路径 404) -->
     <script>
@@ -45,11 +51,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261103.104500">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261103.104500">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261103.104500">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261103.104500">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261103.104500">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261103.112800">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261103.112800">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261103.112800">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261103.112800">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261103.112800">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -823,10 +829,10 @@
     </cgo-modal>
 
     <!-- 模块脚本加载链 -->
-    <script type="module" src="../core/cgo-ui.js?v=261103.104500"></script>
-    <script src="../core/path-geometry.js?v=261103.104500"></script>
-    <script src="../core/station-icons.js?v=261103.104500"></script>
-    <script src="../city/data.js?v=261103.104500"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261103.112800"></script>
+    <script src="../core/path-geometry.js?v=261103.112800"></script>
+    <script src="../core/station-icons.js?v=261103.112800"></script>
+    <script src="../city/data.js?v=261103.112800"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
