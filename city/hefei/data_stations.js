@@ -39,7 +39,7 @@ const stationsData = {
         x: 1362,
         y: 1147,
         cn: "合肥火车站",
-        en: "Hefei Railway Station<br>(Hefei Railway Station)",
+        en: "Hefei Huochezhan<br>(Hefei Railway Station)",
         align: "bottom-right",
         offset: { x: 6, y: 6 },
         textScale: { cn: 1.0, en: 1.0 }

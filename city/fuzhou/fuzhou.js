@@ -275,7 +275,7 @@
        route-data → route-planner → route-panel 顺序不可颠倒，sidebar-refit / map-tools 须晚于 route-panel */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261103.114600";
+        const version = "261103.134843";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
