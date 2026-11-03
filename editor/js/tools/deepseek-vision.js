@@ -724,11 +724,11 @@ window.DeepSeekVision = (function () {
 
         closeSettingsModal();
         if (window.OpenMapEditor && window.OpenMapEditor.showToast) {
-            window.OpenMapEditor.showToast('🎉 DeepSeek API Key 与设置已保存在本地！');
+            window.OpenMapEditor.showToast('DeepSeek API Key 与设置已保存在本地', 'success');
         } else if (window.DrunkPipeline && window.DrunkPipeline.showNotification) {
-            window.DrunkPipeline.showNotification('🎉 DeepSeek API Key 与设置已保存在本地！');
+            window.DrunkPipeline.showNotification('DeepSeek API Key 与设置已保存在本地');
         } else {
-            alert('DeepSeek API Key 与设置已保存在本地！');
+            alert('DeepSeek API Key 与设置已保存在本地');
         }
     }
 

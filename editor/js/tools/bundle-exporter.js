@@ -354,11 +354,17 @@ window.OpenMapEditor.BundleExporter = (function () {
      * @param {Object} [options] { scale: 2, backgroundColor: '#ffffff', includeGhost: false }
      */
     function exportPngElement(svgEl, filename, project, options) {
-        if (!svgEl) return;
         var opt = options || {};
+        if (!svgEl) {
+            if (typeof opt.onError === 'function') opt.onError(new Error('SVG 元素不存在'));
+            return;
+        }
         var scale = Number(opt.scale) || 2; // 默认 2x 超采样 (Retina / 300DPI 级别清晰度)
         var prep = prepareCleanSvgClone(svgEl, project, opt);
-        if (!prep) return;
+        if (!prep) {
+            if (typeof opt.onError === 'function') opt.onError(new Error('SVG 准备失败'));
+            return;
+        }
 
         var xml = new XMLSerializer().serializeToString(prep.clone);
         var blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
@@ -373,19 +379,30 @@ window.OpenMapEditor.BundleExporter = (function () {
 
             var ctx = canvas.getContext('2d');
             if (ctx) {
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob(function (pngBlob) {
-                    if (pngBlob) {
-                        download(filename || 'openmap-export.png', pngBlob, 'image/png');
-                    }
-                }, 'image/png');
+                try {
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(function (pngBlob) {
+                        if (pngBlob) {
+                            download(filename || 'openmap-export.png', pngBlob, 'image/png');
+                            if (typeof opt.onSuccess === 'function') opt.onSuccess(pngBlob);
+                        } else if (typeof opt.onError === 'function') {
+                            opt.onError(new Error('PNG 编码返回空结果'));
+                        }
+                    }, 'image/png');
+                } catch (err) {
+                    console.error('[BundleExporter] Canvas 光栅化异常:', err);
+                    if (typeof opt.onError === 'function') opt.onError(err);
+                }
+            } else if (typeof opt.onError === 'function') {
+                opt.onError(new Error('无法创建 2D Canvas 上下文'));
             }
         };
-        img.onerror = function () {
+        img.onerror = function (err) {
             URL.revokeObjectURL(url);
             console.error('[BundleExporter] SVG 转换为图片失败');
+            if (typeof opt.onError === 'function') opt.onError(err || new Error('SVG 转换为图片失败'));
         };
         img.src = url;
     }

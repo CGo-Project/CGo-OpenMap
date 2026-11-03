@@ -51,11 +51,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261103.114600">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261103.114600">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261103.114600">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261103.114600">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261103.114600">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261103.144300">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261103.144300">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261103.144300">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261103.144300">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261103.144300">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -112,7 +112,7 @@
             </div>
             <div class="office-doc-title">
                 <span class="app-brand">OpenMap Editor</span>
-                <span class="doc-sep">Beta3 /</span>
+                <span class="doc-sep">Beta4 /</span>
                 <span class="doc-name" id="currentDocLabel">未打开工程</span>
             </div>
         </div>
@@ -189,19 +189,27 @@
                             <div class="ribbon-icon"><cgo-icon name="add" size="18"></cgo-icon></div>
                             <span class="btn-text">添加车站</span>
                         </button>
-                        <button class="ribbon-action-btn-lg" id="toolBtn_temp" title="放置辅助临时节点 (T)">
-                            <div class="ribbon-icon"><cgo-icon name="pin" size="18"></cgo-icon></div>
-                            <span class="btn-text">临时节点</span>
-                        </button>
-                        <button class="ribbon-action-btn-lg" id="toolBtn_points" title="折点精调模式 (P)">
-                            <div class="ribbon-icon"><cgo-icon name="edit" size="18"></cgo-icon></div>
-                            <span class="btn-text">折点编辑</span>
-                        </button>
-                        <button class="ribbon-action-btn-lg" id="btnNewLine"
-                            title="新增一条线路（ID / 名称 / 标志色 / 环线 / 分支）；创建后自动设为当前绘制线路">
-                            <div class="ribbon-icon"><cgo-icon name="route" size="18"></cgo-icon></div>
-                            <span class="btn-text">新增线路</span>
-                        </button>
+                        <div class="ribbon-v-stack">
+                            <button class="ribbon-btn-sm" id="toolBtn_temp" title="放置辅助临时节点 (T)">
+                                <div class="ribbon-icon"><cgo-icon name="pin" size="18"></cgo-icon></div>
+                                <span class="btn-text">临时节点</span>
+                            </button>
+                            <button class="ribbon-btn-sm" id="toolBtn_points" title="折点精调模式 (P)">
+                                <div class="ribbon-icon"><cgo-icon name="edit" size="18"></cgo-icon></div>
+                                <span class="btn-text">折点编辑</span>
+                            </button>
+                        </div>
+                        <div class="ribbon-v-stack">
+                            <button class="ribbon-btn-sm" id="toolBtn_eyedropper" title="吸管取色工具 (I)">
+                                <div class="ribbon-icon"><cgo-icon name="palette" size="18"></cgo-icon></div>
+                                <span class="btn-text">吸管取色</span>
+                            </button>
+                            <button class="ribbon-btn-sm" id="btnNewLine"
+                                title="新增一条线路（ID / 名称 / 标志色 / 环线 / 分支）；创建后自动设为当前绘制线路">
+                                <div class="ribbon-icon"><cgo-icon name="route" size="18"></cgo-icon></div>
+                                <span class="btn-text">新增线路</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="ribbon-group-label">基础图元</div>
                 </div>
@@ -273,6 +281,10 @@
                                 <cgo-icon name="redo" size="12"></cgo-icon><span>重做</span>
                             </button>
                         </div>
+                        <button class="ribbon-action-btn-lg" id="btnHistoryPanel" title="查看操作历史记录与快速回退 (Ctrl+H)">
+                            <div class="ribbon-icon"><cgo-icon name="time" size="18"></cgo-icon></div>
+                            <span class="btn-text">历史记录</span>
+                        </button>
                         <button class="ribbon-action-btn-lg" id="btnRefreshAutoSegments" title="按最新车站布局批量重算所有自动走线线段">
                             <div class="ribbon-icon"><cgo-icon name="refresh" size="18"></cgo-icon></div>
                             <span class="btn-text">刷新线网</span>
@@ -421,7 +433,8 @@
                             <div class="ribbon-icon"><cgo-icon name="image" size="18"></cgo-icon></div>
                             <span class="btn-text">导出SVG</span>
                         </button>
-                        <button class="ribbon-action-btn-lg" id="btnExportRenderedPng" title="导出 2x 超清光栅化 PNG 图片 (免失真印刷与分享)">
+                        <button class="ribbon-action-btn-lg" id="btnExportRenderedPng"
+                            title="导出 2x 超清光栅化 PNG 图片 (免失真印刷与分享)">
                             <div class="ribbon-icon"><cgo-icon name="download" size="18"></cgo-icon></div>
                             <span class="btn-text">导出PNG</span>
                         </button>
@@ -435,16 +448,35 @@
 
     <!-- 三栏主工作区 -->
     <main class="editor-main-workbench" id="editorWorkbench">
-        <!-- 左侧图层/拓扑大纲抽屉 -->
+        <!-- 左侧图层/拓扑大纲与轨交资产零件盒抽屉 -->
         <aside class="workbench-nav-tree" id="workbenchNavDrawer">
-            <div class="drawer-header">
-                <span id="navTreeTitle">图层与拓扑大纲</span>
-                <button class="panel-collapse-btn" id="btnToggleNavDrawer" title="收起大纲">
+            <div class="drawer-header"
+                style="padding: 4px 6px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                <div class="nav-drawer-header-tabs" style="display:flex;gap:4px;flex:1;">
+                    <button type="button" class="nav-tab-pill active" id="tabNavOutline" title="图层与拓扑大纲"
+                        style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1px solid var(--office-border, #cbd5e1);background:var(--card-bg, #ffffff);color:var(--text-color, #1e293b);cursor:pointer;">
+                        <cgo-icon name="layer" size="12"></cgo-icon>
+                        <span>大纲</span>
+                    </button>
+                    <button type="button" class="nav-tab-pill" id="tabNavAssets" title="轨交资产零件盒 (所见即所得图元库)"
+                        style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1px solid transparent;background:transparent;color:var(--text-light, #64748b);cursor:pointer;">
+                        <cgo-icon name="train" size="12"></cgo-icon>
+                        <span>零件盒</span>
+                    </button>
+                </div>
+                <button class="panel-collapse-btn" id="btnToggleNavDrawer" title="收起左侧面板">
                     <cgo-icon name="chevron-left" size="14"></cgo-icon>
                 </button>
             </div>
-            <div class="drawer-body" id="navTreeContent" style="padding: 4px;">
-                <!-- 由 NavTreeView 动态构建文件资源管理器风格树状大纲 -->
+            <!-- 统一大纲与图层树状图容器 -->
+            <div class="nav-outline-wrapper" id="navOutlineWrapper" style="display:flex;flex-direction:column;flex:1;min-height:0;height:calc(100% - 38px);">
+                <div class="drawer-body" id="navTreeContent" style="padding: 4px; flex:1; overflow-y:auto; min-height:0;">
+                    <!-- 由 NavTreeView 动态构建统一图层与拓扑大纲树 (含显隐、锁定、选择、排序) -->
+                </div>
+            </div>
+            <!-- 轨交资产零件盒模式容器 -->
+            <div class="nav-asset-drawer-wrapper" id="navAssetDrawerWrapper"
+                style="display:none;overflow-y:auto;height:calc(100% - 38px);">
             </div>
         </aside>
 
@@ -460,6 +492,18 @@
                 <cgo-icon name="chevron-left" size="13"></cgo-icon>
             </button>
 
+            <!-- 坐标轴标尺系统 (Rulers) -->
+            <div class="canvas-ruler-corner" id="rulerCorner" style="display:none;" title="标尺原点 (px)">px</div>
+            <canvas class="canvas-ruler horizontal" id="rulerHorizontal" style="display:none;" height="20"></canvas>
+            <canvas class="canvas-ruler vertical" id="rulerVertical" style="display:none;" width="20"></canvas>
+            <div class="ruler-guide-marker x" id="rulerGuideMarkerX"></div>
+            <div class="ruler-guide-marker y" id="rulerGuideMarkerY"></div>
+
+            <!-- 自由文本原地内联编辑框 (Inline Text Editor) -->
+            <div class="inline-text-editor-popup" id="inlineTextEditorPopup">
+                <textarea id="inlineTextEditorInput" spellcheck="false" placeholder="输入注释文字..."></textarea>
+            </div>
+
             <svg id="editorSvg" xmlns="http://www.w3.org/2000/svg">
                 <g id="viewLayer">
                     <g id="ghostLayer"></g>
@@ -473,6 +517,7 @@
                     <g id="stationLayer"></g>
                     <g id="labelLayer"></g>
                     <g id="textLayer"></g>
+                    <g id="smartGuidesLayer"></g>
                     <g id="handleLayer"></g>
                 </g>
             </svg>
@@ -499,6 +544,15 @@
                 </button>
                 <button class="hud-btn" id="hudBtnGrid" title="显示网格并自动对齐网格 (G)；关闭则既不显示也不对齐">
                     <cgo-icon name="view-grid" size="14"></cgo-icon>
+                </button>
+                <button class="hud-btn active" id="hudBtnSmartGuides" title="智能参考线与磁吸对齐 (Ctrl+U)">
+                    <cgo-icon name="sparkle" size="14"></cgo-icon>
+                </button>
+                <button class="hud-btn active" id="hudBtnParallelTracks" title="多线共线平行走线显示 (Parallel Tracks)">
+                    <cgo-icon name="route" size="14"></cgo-icon>
+                </button>
+                <button class="hud-btn" id="hudBtnRuler" title="显示/隐藏坐标标尺 (R)">
+                    <cgo-icon name="design" size="14"></cgo-icon>
                 </button>
                 <div class="hud-divider"></div>
                 <button class="hud-btn active" id="hudBtnToggleInspector" title="切换属性检视面板 (Ctrl+])">
@@ -595,7 +649,8 @@
         </div>
         <div class="form-row">
             <span class="form-label">线路 ID:</span>
-            <input type="text" class="form-input" id="newLineId" placeholder="如 M1 / L3" style="flex:1;font-family:monospace;">
+            <input type="text" class="form-input" id="newLineId" placeholder="如 M1 / L3"
+                style="flex:1;font-family:monospace;">
         </div>
         <div class="form-row">
             <span class="form-label">线路名称:</span>
@@ -623,14 +678,14 @@
             </label>
         </div>
         <div class="dialog-buttons">
-            <button class="ribbon-btn-sm" data-close="modalNewLine"
-                style="width:auto;padding:5px 14px;">取消</button>
+            <button class="ribbon-btn-sm" data-close="modalNewLine" style="width:auto;padding:5px 14px;">取消</button>
             <button class="ribbon-btn-sm" id="btnConfirmNewLine"
                 style="width:auto;padding:5px 18px;background:var(--office-primary);color:#fff;">创建线路</button>
         </div>
     </cgo-modal>
 
-    <cgo-modal id="modalBatchStation" title="百科 HTML 表格提取与批量放站" max-width="820px">        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;line-height:1.6;">
+    <cgo-modal id="modalBatchStation" title="百科 HTML 表格提取与批量放站" max-width="820px">
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;line-height:1.6;">
             ① 粘贴维基/百度百科「车站列表」表格源码 →
             ② 点「解析站名」，按下表逐行校对（可直接改，取消勾选即不导入）→
             ③ 选择是否自动连线 → ④「确认导入」。<br>
@@ -644,7 +699,8 @@
             <button class="ribbon-btn-sm" id="btnParseBatchStation" style="width:auto;padding:5px 14px;">
                 <cgo-icon name="refresh" size="12"></cgo-icon><span>解析站名</span>
             </button>
-            <span id="batchParseStatus" style="font-size:11px;color:var(--office-primary);font-weight:600;flex:1;"></span>
+            <span id="batchParseStatus"
+                style="font-size:11px;color:var(--office-primary);font-weight:600;flex:1;"></span>
         </div>
 
         <div id="batchPreviewWrap" hidden>
@@ -851,9 +907,11 @@
             <div class="shortcut-row"><span class="desc">放置车站节点</span><span class="shortcut-kbd">S</span></div>
             <div class="shortcut-row"><span class="desc">放置辅助临时点</span><span class="shortcut-kbd">T</span></div>
             <div class="shortcut-row"><span class="desc">折点编辑模式</span><span class="shortcut-kbd">P</span></div>
+            <div class="shortcut-row"><span class="desc">吸管取色工具</span><span class="shortcut-kbd">I</span></div>
             <div class="shortcut-row"><span class="desc">水域多边形/河道</span><span class="shortcut-kbd">W</span></div>
             <div class="shortcut-row"><span class="desc">自由注释文本</span><span class="shortcut-kbd">X</span></div>
             <div class="shortcut-row"><span class="desc">网格与对齐开关</span><span class="shortcut-kbd">G</span></div>
+            <div class="shortcut-row"><span class="desc">智能参考线与磁吸</span><span class="shortcut-kbd">Ctrl + U</span></div>
         </div>
 
         <div class="shortcut-category-title"><cgo-icon name="edit" size="14"></cgo-icon> 剪贴板与几何编辑</div>
@@ -861,20 +919,26 @@
             <div class="shortcut-row"><span class="desc">复制选中图元</span><span class="shortcut-kbd">Ctrl + C</span></div>
             <div class="shortcut-row"><span class="desc">粘贴至画布</span><span class="shortcut-kbd">Ctrl + V</span></div>
             <div class="shortcut-row"><span class="desc">原位克隆副本</span><span class="shortcut-kbd">Ctrl + D</span></div>
-            <div class="shortcut-row"><span class="desc">删除选中图元/折点</span><span class="shortcut-kbd">Delete / Backspace</span></div>
-            <div class="shortcut-row"><span class="desc">1px 精密步进移动</span><span class="shortcut-kbd">↑ / ↓ / ← / →</span></div>
-            <div class="shortcut-row"><span class="desc">10px 快速步进移动</span><span class="shortcut-kbd">Shift + 方向键</span></div>
-            <div class="shortcut-row"><span class="desc">追加/反选多选</span><span class="shortcut-kbd">Shift 或 Ctrl + 点击</span></div>
+            <div class="shortcut-row"><span class="desc">删除选中图元/折点</span><span class="shortcut-kbd">Delete /
+                    Backspace</span></div>
+            <div class="shortcut-row"><span class="desc">1px 精密步进移动</span><span class="shortcut-kbd">↑ / ↓ / ← /
+                    →</span></div>
+            <div class="shortcut-row"><span class="desc">10px 快速步进移动</span><span class="shortcut-kbd">Shift + 方向键</span>
+            </div>
+            <div class="shortcut-row"><span class="desc">追加/反选多选</span><span class="shortcut-kbd">Shift 或 Ctrl +
+                    点击</span></div>
             <div class="shortcut-row"><span class="desc">双击直接编辑文本</span><span class="shortcut-kbd">双击文字</span></div>
         </div>
 
         <div class="shortcut-category-title"><cgo-icon name="sparkle" size="14"></cgo-icon> 走线约束与视口漫游</div>
         <div class="shortcut-grid">
-            <div class="shortcut-row"><span class="desc">平移视口漫游</span><span class="shortcut-kbd">空格 + 拖动 / 中键拖动</span></div>
+            <div class="shortcut-row"><span class="desc">平移视口漫游</span><span class="shortcut-kbd">空格 + 拖动 / 中键拖动</span>
+            </div>
             <div class="shortcut-row"><span class="desc">缩放画布视口</span><span class="shortcut-kbd">滚轮 / 触控板捏合</span></div>
             <div class="shortcut-row"><span class="desc">自适应全图居中</span><span class="shortcut-kbd">F</span></div>
             <div class="shortcut-row"><span class="desc">查找并定位车站</span><span class="shortcut-kbd">Ctrl + F</span></div>
-            <div class="shortcut-row"><span class="desc">锁定 45°/90° 正交走向</span><span class="shortcut-kbd">Shift (走线时按住)</span></div>
+            <div class="shortcut-row"><span class="desc">锁定 45°/90° 正交走向</span><span class="shortcut-kbd">Shift
+                    (走线时按住)</span></div>
             <div class="shortcut-row"><span class="desc">结束当前连续走线</span><span class="shortcut-kbd">Enter</span></div>
             <div class="shortcut-row"><span class="desc">取消草稿并切回选择</span><span class="shortcut-kbd">Esc</span></div>
             <div class="shortcut-row"><span class="desc">打开本速查面板</span><span class="shortcut-kbd">?</span></div>
@@ -883,11 +947,17 @@
         <div class="shortcut-category-title"><cgo-icon name="save" size="14"></cgo-icon> 历史撤销与面板调度</div>
         <div class="shortcut-grid">
             <div class="shortcut-row"><span class="desc">撤销上一步操作</span><span class="shortcut-kbd">Ctrl + Z</span></div>
-            <div class="shortcut-row"><span class="desc">重做下一步操作</span><span class="shortcut-kbd">Ctrl + Y / Ctrl+Shift+Z</span></div>
+            <div class="shortcut-row"><span class="desc">重做下一步操作</span><span class="shortcut-kbd">Ctrl + Y /
+                    Ctrl+Shift+Z</span></div>
+            <div class="shortcut-row"><span class="desc">操作历史步骤面板</span><span class="shortcut-kbd">Ctrl + H</span></div>
+            <div class="shortcut-row"><span class="desc">显示/隐藏坐标标尺</span><span class="shortcut-kbd">R</span></div>
             <div class="shortcut-row"><span class="desc">快速原地保存工程</span><span class="shortcut-kbd">Ctrl + S</span></div>
-            <div class="shortcut-row"><span class="desc">打开 / 导入工程</span><span class="shortcut-kbd">Ctrl + O</span></div>
-            <div class="shortcut-row"><span class="desc">折叠/展开图层大纲</span><span class="shortcut-kbd">Ctrl + [</span></div>
-            <div class="shortcut-row"><span class="desc">折叠/展开属性检视</span><span class="shortcut-kbd">Ctrl + ]</span></div>
+            <div class="shortcut-row"><span class="desc">打开 / 导入工程</span><span class="shortcut-kbd">Ctrl + O</span>
+            </div>
+            <div class="shortcut-row"><span class="desc">折叠/展开图层大纲</span><span class="shortcut-kbd">Ctrl + [</span>
+            </div>
+            <div class="shortcut-row"><span class="desc">折叠/展开属性检视</span><span class="shortcut-kbd">Ctrl + ]</span>
+            </div>
         </div>
 
         <div class="dialog-buttons">
@@ -906,15 +976,65 @@
             支持上下键选择、Enter 键直接飞跃居中定位至目标车站。
         </div>
         <div class="dialog-buttons" style="margin-top:12px;">
-            <button class="ribbon-btn-sm" data-close="modalSearchStation" style="width:auto;padding:5px 14px;">关闭</button>
+            <button class="ribbon-btn-sm" data-close="modalSearchStation"
+                style="width:auto;padding:5px 14px;">关闭</button>
+        </div>
+    </cgo-modal>
+
+    <!-- 10. 操作历史记录与快速跳转面板 (Ctrl+H) -->
+    <cgo-modal id="modalHistoryStack" title="操作历史记录与快速跳转" max-width="460px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:11px;color:var(--text-light);">点击任意历史步可直接回退/前进到该时刻</span>
+            <span class="cgo-badge" id="historyStepsCount">0 步</span>
+        </div>
+        <div class="history-list-timeline" id="historyTimelineList"
+            style="max-height:280px;overflow-y:auto;padding-right:2px;"></div>
+        <div class="dialog-buttons" style="display:flex;justify-content:space-between;margin-top:12px;">
+            <button class="ribbon-btn-sm danger" id="btnClearHistoryStack" style="width:auto;padding:5px 12px;"
+                title="清空历史撤销栈">
+                <cgo-icon name="delete" size="12"></cgo-icon><span>清空历史</span>
+            </button>
+            <button class="ribbon-btn-sm" data-close="modalHistoryStack"
+                style="width:auto;padding:5px 14px;">关闭</button>
+        </div>
+    </cgo-modal>
+
+    <!-- 11. 智能识图拓扑确认与合并对话框 -->
+    <cgo-modal id="modalVisionConfirm" title="智能识图拓扑确认" max-width="540px">
+        <div style="font-size:12px;color:var(--text-light);margin-bottom:10px;">
+            DeepSeek Vision 已成功提取线路图拓扑。请核对识别出的要素清单并选择合并方式：
+        </div>
+        <div id="visionSummaryBanner"
+            style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;border-radius:6px;background:var(--office-hover, rgba(2,132,199,0.06));font-size:12px;">
+            <span id="visionStatLines" style="font-weight:600;color:var(--office-primary);">0 条线路</span>
+            <span id="visionStatStations" style="font-weight:600;color:var(--text-main);">0 座车站</span>
+        </div>
+        <div id="visionLinesList"
+            style="max-height:220px;overflow-y:auto;border:1px solid var(--office-border);border-radius:6px;padding:4px;">
+        </div>
+        <div class="dialog-buttons"
+            style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+            <button class="ribbon-btn-sm" data-close="modalVisionConfirm"
+                style="width:auto;padding:5px 12px;">取消</button>
+            <div style="display:flex;gap:8px;">
+                <button class="ribbon-btn-sm" id="btnAppendVisionProject" style="width:auto;padding:5px 14px;"
+                    title="保留画布已有内容，将识别结果作为增量合并追加">
+                    <cgo-icon name="add" size="12"></cgo-icon><span>追加合并</span>
+                </button>
+                <button class="ribbon-btn-sm primary" id="btnReplaceVisionProject"
+                    style="width:auto;padding:5px 16px;background:var(--office-primary);color:#fff;"
+                    title="用识别结果替换整个工程画布">
+                    <cgo-icon name="refresh" size="12"></cgo-icon><span>替换当前工程</span>
+                </button>
+            </div>
         </div>
     </cgo-modal>
 
     <!-- 模块脚本加载链 -->
-    <script type="module" src="../core/cgo-ui.js?v=261103.114600"></script>
-    <script src="../core/path-geometry.js?v=261103.114600"></script>
-    <script src="../core/station-icons.js?v=261103.114600"></script>
-    <script src="../city/data.js?v=261103.114600"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261103.144300"></script>
+    <script src="../core/path-geometry.js?v=261103.144300"></script>
+    <script src="../core/station-icons.js?v=261103.144300"></script>
+    <script src="../city/data.js?v=261103.144300"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -936,6 +1056,10 @@
     <script src="js/algorithms/data-sanitizer.js"></script>
     <script src="js/algorithms/align-solver.js"></script>
     <script src="js/algorithms/topology-tracer.js"></script>
+    <script src="js/algorithms/transform-engine.js"></script>
+    <script src="js/algorithms/smart-guides.js"></script>
+    <script src="js/algorithms/polygon-boolean.js"></script>
+    <script src="js/algorithms/parallel-corridor.js"></script>
 
     <!-- Layers 图层与渲染控制器 -->
     <script src="js/layers/viewport.js"></script>
@@ -956,6 +1080,8 @@
     <script src="js/tools/batch-station-tool.js"></script>
     <script src="js/tools/mileage-manager.js"></script>
     <script src="js/tools/bundle-exporter.js"></script>
+    <script src="js/tools/swatches-palette.js"></script>
+    <script src="js/tools/agent-api.js"></script>
 
     <!-- Pipelines 业务工作流 -->
     <script src="js/pipelines/pipeline-ingest.js"></script>
@@ -966,6 +1092,7 @@
     <script src="js/ui/ribbon-controller.js"></script>
     <script src="js/ui/nav-tree-view.js"></script>
     <script src="js/ui/inspector-view.js"></script>
+    <script src="js/ui/asset-drawer.js"></script>
 
     <!-- 主入口集成脚本 -->
     <script src="js/editor-app.js"></script>

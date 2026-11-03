@@ -187,22 +187,23 @@ window.OpenMapEditor.StationLayer = (function () {
 
             // 2. 车站节点 (station 图元)
             var stType = n.notOpen ? 'no' : (n.type || 'dot');
-            var size = 10;
-            if (iconsEngine && iconsEngine.STATION_SIZE) {
-                size = iconsEngine.STATION_SIZE[stType] || 10;
-            }
+            var dims = (iconsEngine && typeof iconsEngine.dimensionsFor === 'function')
+                ? iconsEngine.dimensionsFor(stType)
+                : { width: 10, height: 10 };
+            var width = dims.width || 10;
+            var height = dims.height || 10;
 
             var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            g.setAttribute('transform', 'translate(' + (n.x - size / 2) + ', ' + (n.y - size / 2) + ')');
+            g.setAttribute('transform', 'translate(' + (n.x - width / 2) + ', ' + (n.y - height / 2) + ')');
             g.setAttribute('data-node-id', nodeId);
             g.style.cursor = 'pointer';
 
             // 优先使用 core/station-icons.js 模版
+            var colors = [];
+            if (opt.lineColorsMap && opt.lineColorsMap[nodeId]) {
+                colors = opt.lineColorsMap[nodeId];
+            }
             if (iconsEngine && typeof iconsEngine.iconHtmlFor === 'function') {
-                var colors = [];
-                if (opt.lineColorsMap && opt.lineColorsMap[nodeId]) {
-                    colors = opt.lineColorsMap[nodeId];
-                }
                 var iconHtml = iconsEngine.iconHtmlFor({ type: stType, lineColors: colors });
                 // 彻底剥离外层 <svg...> 与 </svg> 标签，将内部原生图形元素直接填入 <g>
                 var innerShapes = iconHtml
@@ -212,9 +213,9 @@ window.OpenMapEditor.StationLayer = (function () {
             } else {
                 // 兜底圆形
                 var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', size / 2);
-                circle.setAttribute('cy', size / 2);
-                circle.setAttribute('r', size / 2);
+                circle.setAttribute('cx', width / 2);
+                circle.setAttribute('cy', height / 2);
+                circle.setAttribute('r', Math.min(width, height) / 2);
                 circle.setAttribute('fill', '#ffffff');
                 circle.setAttribute('stroke', '#00263b');
                 circle.setAttribute('stroke-width', '2');
@@ -222,15 +223,30 @@ window.OpenMapEditor.StationLayer = (function () {
             }
 
             if (isSelected) {
-                var halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                halo.setAttribute('cx', size / 2);
-                halo.setAttribute('cy', size / 2);
-                halo.setAttribute('r', (size / 2) + 4);
-                halo.setAttribute('fill', 'none');
-                halo.setAttribute('stroke', '#38bdf8');
-                halo.setAttribute('stroke-width', '2.5');
-                halo.setAttribute('pointer-events', 'none');
-                g.appendChild(halo);
+                if (width !== height) {
+                    var haloRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    haloRect.setAttribute('x', -3);
+                    haloRect.setAttribute('y', -3);
+                    haloRect.setAttribute('width', width + 6);
+                    haloRect.setAttribute('height', height + 6);
+                    haloRect.setAttribute('rx', Math.min(width, height) / 2 + 3);
+                    haloRect.setAttribute('ry', Math.min(width, height) / 2 + 3);
+                    haloRect.setAttribute('fill', 'none');
+                    haloRect.setAttribute('stroke', '#38bdf8');
+                    haloRect.setAttribute('stroke-width', '2.5');
+                    haloRect.setAttribute('pointer-events', 'none');
+                    g.appendChild(haloRect);
+                } else {
+                    var halo = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    halo.setAttribute('cx', width / 2);
+                    halo.setAttribute('cy', height / 2);
+                    halo.setAttribute('r', (width / 2) + 4);
+                    halo.setAttribute('fill', 'none');
+                    halo.setAttribute('stroke', '#38bdf8');
+                    halo.setAttribute('stroke-width', '2.5');
+                    halo.setAttribute('pointer-events', 'none');
+                    g.appendChild(halo);
+                }
             }
 
             dom.stationLayer.appendChild(g);
@@ -259,8 +275,21 @@ window.OpenMapEditor.StationLayer = (function () {
                 labelDiv.style.cursor = 'pointer';
 
                 var innerHtml = '';
+                var primaryColor = (colors && colors.length > 0) ? colors[0] : '#0284c7';
+
+                // 车站编号徽标 (Station Alphanumeric Code)
+                var codeBadge = (n.code && iconsEngine && typeof iconsEngine.renderStationCodeBadge === 'function')
+                    ? iconsEngine.renderStationCodeBadge(n.code, primaryColor)
+                    : (n.code ? '<span class="station-code-pill" style="background:' + primaryColor + ';">' + escapeHtml(n.code) + '</span>' : '');
+
+                // 综合交通枢纽设施徽标 (Transit Amenities)
+                var amenitiesHtml = (n.amenities && iconsEngine && typeof iconsEngine.renderAmenitiesHtml === 'function')
+                    ? iconsEngine.renderAmenitiesHtml(n.amenities)
+                    : '';
+
                 if (n.cn) {
-                    innerHtml += '<span class="stacn" style="transform:scaleX(' + scaleCn + ');transform-origin:' + layout.transformOriginX + ' center;">' + escapeHtml(n.cn) + '</span>';
+                    innerHtml += '<span class="stacn" style="transform:scaleX(' + scaleCn + ');transform-origin:' + layout.transformOriginX + ' center;">' +
+                        codeBadge + escapeHtml(n.cn) + amenitiesHtml + '</span>';
                 }
                 if (n.en) {
                     innerHtml += '<span class="staen" lang="en" style="transform:scaleX(' + scaleEn + ');transform-origin:' + layout.transformOriginX + ' center;">' + escapeHtml(n.en) + '</span>';

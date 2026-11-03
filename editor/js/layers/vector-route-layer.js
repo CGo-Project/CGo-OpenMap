@@ -53,6 +53,13 @@ window.OpenMapEditor.VectorRouteLayer = (function () {
             lineMap[l.id] = l;
         });
 
+        // 多线共线平行走线计算 (若开启，自动为共享重合通道的多条线路计算法向平行偏移)
+        var parallelMap = {};
+        var router = window.OpenMapEditor && window.OpenMapEditor.ParallelCorridorRouter;
+        if (opt.enableParallelCorridor !== false && router && typeof router.computeParallelOffsets === 'function') {
+            parallelMap = router.computeParallelOffsets(project.segments, { spacing: opt.corridorSpacing || 5.4 });
+        }
+
         // 分层收集器：外描边底色 -> 未开通层 -> 实体主题层 -> 叠加纹理层 -> 交互与高亮层
         // 确保所有外描边在最底层，绝不会在 Y 形分歧处遮挡先画线段留下白缝
         var outerLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -74,7 +81,7 @@ window.OpenMapEditor.VectorRouteLayer = (function () {
         interactionLayer.setAttribute('class', 'lines-interaction-group');
 
         project.segments.forEach(function (seg) {
-            var pts = seg.points || [];
+            var pts = (parallelMap && parallelMap[seg.id]) ? parallelMap[seg.id] : (seg.points || []);
             if (pts.length < 2) return;
 
             var lineConf = lineMap[seg.lineId] || {};
@@ -108,25 +115,33 @@ window.OpenMapEditor.VectorRouteLayer = (function () {
                 pathNotOpen.setAttribute('fill', 'none');
                 notOpenLayer.appendChild(pathNotOpen);
             } else {
-                // 2. 常规线路：底层 7px 外描边 (主地图规范：隔离不同相交线路，增强立体可读性)
+                var baseWidth = (lineConf.strokeWidth !== undefined && lineConf.strokeWidth !== null && !isNaN(parseFloat(lineConf.strokeWidth)))
+                    ? parseFloat(lineConf.strokeWidth)
+                    : 5.4;
+                var outerWidth = Math.round((baseWidth + 1.6) * 10) / 10;
+
+                // 2. 常规线路：底层外描边 (主地图规范：隔离不同相交线路，增强立体可读性)
                 var pathOuter = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 pathOuter.setAttribute('d', pathD);
                 pathOuter.setAttribute('class', 'line-visual-outer');
                 pathOuter.setAttribute('stroke', 'var(--map-bg, #ffffff)');
-                pathOuter.setAttribute('stroke-width', '7');
+                pathOuter.setAttribute('stroke-width', String(outerWidth));
                 pathOuter.setAttribute('stroke-linecap', 'round');
                 pathOuter.setAttribute('stroke-linejoin', 'round');
                 pathOuter.setAttribute('fill', 'none');
                 outerLayer.appendChild(pathOuter);
 
-                // 3. 常规线路：表层 5.4px 实体主题色描边 (主地图规范)
+                // 3. 常规线路：表层实体主题色描边 (主地图规范)
                 var pathInner = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 pathInner.setAttribute('d', pathD);
                 pathInner.setAttribute('class', 'line-visual-inner');
                 pathInner.setAttribute('stroke', lineConf.color || '#00263b');
-                pathInner.setAttribute('stroke-width', '5.4');
-                pathInner.setAttribute('stroke-linecap', 'round');
-                pathInner.setAttribute('stroke-linejoin', 'round');
+                pathInner.setAttribute('stroke-width', String(baseWidth));
+                pathInner.setAttribute('stroke-linecap', lineConf.strokeLinecap || 'round');
+                pathInner.setAttribute('stroke-linejoin', lineConf.strokeLinejoin || 'round');
+                if (lineConf.strokeDasharray) {
+                    pathInner.setAttribute('stroke-dasharray', lineConf.strokeDasharray);
+                }
                 pathInner.setAttribute('fill', 'none');
                 innerLayer.appendChild(pathInner);
 
@@ -251,6 +266,35 @@ window.OpenMapEditor.VectorRouteLayer = (function () {
                     handle.appendChild(pTitle);
 
                     dom.handleLayer.appendChild(handle);
+
+                    // 7.4 选中折点的内圈动态圆角手柄 (Live Corner Radius Handle)
+                    if (isPtActive && !p.nid && pIdx > 0 && pIdx < pts.length - 1) {
+                        var pPrev = pts[pIdx - 1], pNext = pts[pIdx + 1];
+                        var v1x = pPrev.x - p.x, v1y = pPrev.y - p.y;
+                        var v2x = pNext.x - p.x, v2y = pNext.y - p.y;
+                        var l1 = Math.hypot(v1x, v1y) || 1;
+                        var l2 = Math.hypot(v2x, v2y) || 1;
+                        var bx = (v1x / l1 + v2x / l2);
+                        var by = (v1y / l2 + v2y / l2);
+                        var blen = Math.hypot(bx, by);
+                        if (blen > 0.01) {
+                            var curR = (p.r !== undefined && p.r !== null) ? p.r : 18;
+                            var offsetDist = Math.max(10, Math.min(curR, 26));
+                            var chX = p.x + (bx / blen) * offsetDist;
+                            var chY = p.y + (by / blen) * offsetDist;
+                            var cornerHandle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                            cornerHandle.setAttribute('cx', String(Math.round(chX)));
+                            cornerHandle.setAttribute('cy', String(Math.round(chY)));
+                            cornerHandle.setAttribute('r', '4');
+                            cornerHandle.setAttribute('class', 'live-corner-handle');
+                            cornerHandle.setAttribute('data-seg-id', seg.id);
+                            cornerHandle.setAttribute('data-point-idx', String(pIdx));
+                            var cTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                            cTitle.textContent = '拖动微调倒角圆角半径 (当前: ' + curR + 'px)';
+                            cornerHandle.appendChild(cTitle);
+                            dom.handleLayer.appendChild(cornerHandle);
+                        }
+                    }
                 });
             }
         });

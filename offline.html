@@ -28,13 +28,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="CGo开放地图">
 
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261103.114600">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261103.114600">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261103.114600">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261103.114600">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261103.114600">
-    <script type="module" src="core/cgo-ui.js?v=261103.114600"></script>
-    <script src="city/data.js?v=261103.114600"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261103.144300">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261103.144300">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261103.144300">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261103.144300">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261103.144300">
+    <script type="module" src="core/cgo-ui.js?v=261103.144300"></script>
+    <script src="city/data.js?v=261103.144300"></script>
 
     <style>
         body {
@@ -266,6 +266,7 @@
                 opacity: 0;
                 transform: translate(-50%, -10px);
             }
+
             to {
                 opacity: 1;
                 transform: translate(-50%, 0);
@@ -320,10 +321,10 @@
                 showOnlineToastAndRedirect();
             } else {
                 fetch('./index.html', { method: 'HEAD', cache: 'no-store' })
-                    .then(function() {
+                    .then(function () {
                         showOnlineToastAndRedirect();
                     })
-                    .catch(function() {
+                    .catch(function () {
                         alert('网络仍未恢复，请检查蜂窝数据或 Wi-Fi 连接。');
                     });
             }
@@ -332,7 +333,7 @@
         function showOnlineToastAndRedirect() {
             var toast = document.getElementById('reconnectToast');
             if (toast) toast.style.display = 'flex';
-            setTimeout(function() {
+            setTimeout(function () {
                 var target = document.referrer && document.referrer.includes(window.location.host)
                     ? document.referrer
                     : './index.html';
@@ -340,7 +341,7 @@
             }, 600);
         }
 
-        window.addEventListener('online', function() {
+        window.addEventListener('online', function () {
             showOnlineToastAndRedirect();
         });
 
@@ -348,7 +349,7 @@
             if (!('caches' in window)) return;
             try {
                 var cacheNames = await caches.keys();
-                var currentCacheName = cacheNames.find(function(n) {
+                var currentCacheName = cacheNames.find(function (n) {
                     return n.startsWith('cgo-openmap-');
                 });
                 if (!currentCacheName) return;
@@ -356,7 +357,7 @@
                 var requests = await cache.keys();
 
                 var detectedCityIds = new Set();
-                requests.forEach(function(req) {
+                requests.forEach(function (req) {
                     var m = req.url.match(/\/city\/([a-z0-9_-]+)\//i);
                     if (m && m[1]) {
                         detectedCityIds.add(m[1].toLowerCase());
@@ -365,7 +366,7 @@
 
                 var registry = window.CITY_REGISTRY || {};
                 var validCities = [];
-                detectedCityIds.forEach(function(id) {
+                detectedCityIds.forEach(function (id) {
                     if (registry[id]) {
                         validCities.push({
                             id: id,
@@ -379,14 +380,14 @@
                     var container = document.getElementById('cachedCitiesContainer');
                     var list = document.getElementById('cachedCitiesList');
                     if (container && list) {
-                        list.innerHTML = validCities.map(function(c) {
+                        list.innerHTML = validCities.map(function (c) {
                             return '<a href="./main.html?city=' + encodeURIComponent(c.id) + '" class="cached-city-btn" title="进入 ' + c.name + ' 离线地图">' +
                                 '<span class="cached-city-left">' +
-                                    '<span class="city-badge-dot" style="background-color: ' + c.color + '"></span>' +
-                                    '<span>' + c.name + '</span>' +
+                                '<span class="city-badge-dot" style="background-color: ' + c.color + '"></span>' +
+                                '<span>' + c.name + '</span>' +
                                 '</span>' +
                                 '<cgo-icon name="chevron-right" size="12"></cgo-icon>' +
-                            '</a>';
+                                '</a>';
                         }).join('');
                         container.style.display = 'block';
                     }
@@ -405,4 +406,3 @@
 </body>
 
 </html>
-

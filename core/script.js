@@ -3,7 +3,7 @@
  */
 
 
-const APP_VERSION = "261103.114600";
+const APP_VERSION = "261103.144300";
 const originalTitle = document.title;
 const originalDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || "CGo OpenMap";
 
@@ -1168,8 +1168,10 @@ function renderStations() {
         labelDiv.style.textAlign = textAlign;
         let scaleCn = s.textScale?.cn || 1;
         let scaleEn = s.textScale?.en || 1;
+        const codeBadge = s.code ? (window.CGoStationIcons?.renderStationCodeBadge?.(s.code, s.lineColors?.[0]) || `<span class="station-code-pill" style="background:${s.lineColors?.[0] || 'var(--station-stroke)'};">${s.code}</span>`) : '';
+        const amenitiesHtml = (s.amenities && Array.isArray(s.amenities)) ? (window.CGoStationIcons?.renderAmenitiesHtml?.(s.amenities) || '') : '';
         labelDiv.innerHTML = `
-            <span class="stacn" style="transform:scaleX(${scaleCn});transform-origin:${transformOriginX} center;">${safeNameHtml(s.cn)}</span>
+            <span class="stacn" style="transform:scaleX(${scaleCn});transform-origin:${transformOriginX} center;">${codeBadge}${safeNameHtml(s.cn)}${amenitiesHtml}</span>
             <span class="staen" lang="en" style="transform:scaleX(${scaleEn});transform-origin:${transformOriginX} center;">${safeNameHtml(s.en)}</span>
         `;
         labelsLayer.appendChild(labelDiv);

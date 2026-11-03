@@ -2104,6 +2104,302 @@ section('全城市车站 type 必填 / 合法与字段结构（#57）');
     }, noCustom).length === 0, '合法站点不会被误报');
 }
 
+// ----------------------------------------------------------------------------
+// VectorCraft 升级专项自检：矢量几何变换、智能参考线、多边形布尔与 Agent API
+// ----------------------------------------------------------------------------
+{
+    section('VectorCraft 变换引擎：AABB 包围盒、8 方向手柄、缩放与定角旋转');
+    const TransformEngine = require(path.join(ROOT, 'editor/js/algorithms/transform-engine.js'));
+
+    const bEmpty = TransformEngine.computeBounds([]);
+    check(bEmpty.width === 0 && bEmpty.height === 0, '空点集 AABB 包围盒宽高归零');
+
+    const pts = [{ x: 100, y: 200 }, { x: 300, y: 600 }];
+    const b = TransformEngine.computeBounds(pts);
+    check(b.minX === 100 && b.maxX === 300 && b.minY === 200 && b.maxY === 600 && b.cx === 200 && b.cy === 400,
+        '多点 AABB 包围盒与中心点计算精确');
+
+    const handles = TransformEngine.getHandlePositions(b);
+    check(handles.nw.x === 100 && handles.nw.y === 200 && handles.se.x === 300 && handles.se.y === 600,
+        '8 方向手柄坐标计算精确');
+
+    // 缩放：拉伸东南手柄到 (500, 1000)
+    const scaled = TransformEngine.scalePoints(pts, b, 'se', { x: 500, y: 1000 }, { isShift: false, isAlt: false });
+    check(scaled[0].x === 100 && scaled[0].y === 200 && scaled[1].x === 500 && scaled[1].y === 1000,
+        '东南手柄非等比自由缩放');
+
+    // 缩放：按住 Shift 等比缩放
+    const scaledShift = TransformEngine.scalePoints(pts, b, 'se', { x: 500, y: 700 }, { isShift: true, isAlt: false });
+    const ratioX = (scaledShift[1].x - 100) / (300 - 100);
+    const ratioY = (scaledShift[1].y - 200) / (600 - 200);
+    check(Math.abs(ratioX - ratioY) < 0.05, 'Shift 约束缩放保持宽高比例一致');
+
+    // 旋转：绕 (100, 100) 顺时针旋转 90°
+    const rotPts = TransformEngine.rotatePoints([{ x: 200, y: 100 }], { x: 100, y: 100 }, Math.PI / 2, { isShift: false });
+    check(rotPts[0].x === 100 && rotPts[0].y === 200, '绕指定中心点自由旋转 90° 计算精确');
+
+    // 旋转：按住 Shift 15° 步进吸附
+    const rotShift = TransformEngine.rotatePoints([{ x: 200, y: 100 }], { x: 100, y: 100 }, (16 * Math.PI) / 180, { isShift: true });
+    const expAngle = (15 * Math.PI) / 180;
+    const expX = Math.round(100 + 100 * Math.cos(expAngle));
+    const expY = Math.round(100 + 100 * Math.sin(expAngle));
+    check(rotShift[0].x === expX && rotShift[0].y === expY, 'Shift 约束旋转精准吸附到 15° 步进');
+}
+
+{
+    section('VectorCraft 智能参考线：磁吸吸附、导轨射线与等间距检测');
+    const SmartGuides = require(path.join(ROOT, 'editor/js/algorithms/smart-guides.js'));
+
+    const targets = [
+        { id: 's1', x: 200, y: 500, label: '站点1' },
+        { id: 's2', x: 800, y: 300, label: '站点2' }
+    ];
+
+    // X 轴磁吸 (当前 x=202，在 5px 阈值内)
+    const alignX = SmartGuides.computeAlignment({ x: 202, y: 350 }, targets, 5);
+    check(alignX.snapped.x === 200 && alignX.snapped.y === 350 && alignX.guides.length === 1 && alignX.guides[0].type === 'vertical',
+        'X 轴在容差内精准磁吸并生成垂直参考线导轨');
+
+    // 阈值外不吸附
+    const noAlign = SmartGuides.computeAlignment({ x: 220, y: 350 }, targets, 5);
+    check(noAlign.snapped.x === 220 && noAlign.guides.length === 0, '超出容差范围时不发生误吸附');
+
+    // 等间距检测
+    const spacing = SmartGuides.detectEqualSpacing(
+        { x: 300, y: 100 },
+        [{ x: 100, y: 100 }, { x: 500, y: 100 }],
+        2
+    );
+    check(spacing !== null && spacing.dist === 200 && spacing.axis === 'x', '连续三站等间距步长成功侦测');
+}
+
+{
+    section('VectorCraft 路径布尔运算：点在多边形、相交、并集与差集');
+    const PolygonBoolean = require(path.join(ROOT, 'editor/js/algorithms/polygon-boolean.js'));
+
+    const squareA = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }];
+    const squareB = [{ x: 50, y: 0 }, { x: 150, y: 0 }, { x: 150, y: 100 }, { x: 50, y: 100 }];
+
+    check(PolygonBoolean.isPointInPolygon({ x: 50, y: 50 }, squareA) === true, '点在多边形内部判定准确');
+    check(PolygonBoolean.isPointInPolygon({ x: 150, y: 50 }, squareA) === false, '点在多边形外部判定准确');
+
+    const isect = PolygonBoolean.getLineIntersection({ x: 0, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }, { x: 100, y: 0 });
+    check(isect && isect.x === 50 && isect.y === 50, '正交对角线交点计算精确');
+
+    const u = PolygonBoolean.union(squareA, squareB);
+    check(Array.isArray(u) && u.length >= 4, '两个重叠矩形并集 (Union) 生成外轮廓多边形');
+
+    const sub = PolygonBoolean.subtract(squareA, [{ x: 20, y: 20 }, { x: 80, y: 20 }, { x: 80, y: 80 }, { x: 20, y: 80 }]);
+    check(Array.isArray(sub) && sub.length >= 4, '多边形差集 (Subtract) 镂空生成有效轮廓');
+
+    const inter = PolygonBoolean.intersect(squareA, squareB);
+    check(Array.isArray(inter) && inter.length >= 3, '多边形交集 (Intersect) 提取重合区域');
+}
+
+{
+    section('VectorCraft 轨交色板与吸管取色系统');
+    const SwatchesPalette = require(path.join(ROOT, 'editor/js/tools/swatches-palette.js'));
+
+    const testProj = {
+        lines: [{ color: '#0284c7' }, { color: '#c23531' }],
+        texts: [{ color: '#0284C7' }],
+        waterStyle: { fill: '#B0D4F1' }
+    };
+    const extracted = SwatchesPalette.extractProjectSwatches(testProj);
+    check(extracted.length === 3 && extracted.indexOf('#0284C7') !== -1 && extracted.indexOf('#C23531') !== -1,
+        '从工程线路、文本与水域样式中去重提取全色板');
+}
+
+{
+    section('VectorCraft Agent-Native 编程式开放通道 (AgentAPI)');
+    const AgentAPI = require(path.join(ROOT, 'editor/js/tools/agent-api.js'));
+
+    // 注入模拟 app 上下文验证无头自省与批量操作
+    const mockApp = {
+        project: {
+            canvas: { width: 1000, height: 800 },
+            nodes: { s1: { x: 100, y: 100, cn: '站1' } },
+            lines: [{ id: 'L1', name: '1号线', color: '#0284c7' }],
+            texts: []
+        },
+        selected: null
+    };
+    global.window.OpenMapEditor = global.window.OpenMapEditor || {};
+    global.window.OpenMapEditor._appContext = mockApp;
+    global.window.OpenMapEditor.HistoryManager = {
+        pushSnapshot: function () {}
+    };
+
+    const snap = AgentAPI.getSnapshot();
+    check(snap && snap.nodes && snap.nodes.s1.cn === '站1', 'AgentAPI 成功获取工程完整结构化快照');
+
+    const execRes = AgentAPI.execute([
+        { type: 'moveNode', id: 's1', x: 180, y: 220 },
+        { type: 'updateLine', id: 'L1', name: '核心主干线', strokeWidth: 6.5 },
+        { type: 'addText', text: '换乘通道', x: 200, y: 250 }
+    ]);
+    check(execRes.success && execRes.executedCount === 3, 'AgentAPI 成功执行原子命令批处理');
+    check(mockApp.project.nodes.s1.x === 180 && mockApp.project.lines[0].strokeWidth === 6.5 && mockApp.project.texts.length === 1,
+        'AgentAPI 批处理命令数据已写入当前画布工程');
+}
+
+// ============================================================================
+// 轨交专属专业图元体系与零件盒 (对标 RMP 战役)
+// ============================================================================
+{
+    console.log('\n══ 轨交图元进阶：胶囊/哑铃换乘、交通枢纽徽标与车站编号 ══');
+    const Icons = require(path.join(ROOT, 'core/station-icons.js'));
+
+    // 1. 换乘胶囊与哑铃图元
+    check(Icons.SVGTemplates.tsf_pill_h && Icons.SVGTemplates.tsf_pill_h.includes('rx="7"'), '支持水平跑道圆胶囊换乘 (tsf_pill_h)');
+    check(Icons.SVGTemplates.tsf_pill_v && Icons.SVGTemplates.tsf_pill_v.includes('viewBox="0 0 14 26"'), '支持垂直跑道圆胶囊换乘 (tsf_pill_v)');
+    check(Icons.SVGTemplates.tsf_dumbbell && Icons.SVGTemplates.tsf_dumbbell.includes('viewBox="0 0 32 14"'), '支持长通道哑铃双联换乘 (tsf_dumbbell)');
+
+    const pillHDims = Icons.dimensionsFor('tsf_pill_h');
+    check(pillHDims.width === 26 && pillHDims.height === 14, '水平胶囊尺寸定义精确 (26x14px)');
+    const dumbDims = Icons.dimensionsFor('tsf_dumbbell');
+    check(dumbDims.width === 32 && dumbDims.height === 14, '哑铃换乘尺寸定义精确 (32x14px)');
+
+    // 2. 交通枢纽设施徽标系统 (Transit Hub Amenities)
+    const requiredAmenities = ['airport', 'crh', 'railway', 'ferry', 'maglev', 'tram', 'pr', 'accessible'];
+    const allAmenitiesPresent = requiredAmenities.every(k => !!Icons.AMENITY_ICONS[k]);
+    check(allAmenitiesPresent, '8 大交通枢纽设施原生矢量徽标完整收录 (机场/高铁/国铁/轮渡/磁浮/电车/P+R/无障碍)');
+
+    const amenitiesHtml = Icons.renderAmenitiesHtml(['airport', 'crh']);
+    check(amenitiesHtml.includes('amenity-airport') && amenitiesHtml.includes('amenity-crh'), '交通设施徽标组 HTML 渲染准确');
+
+    // 3. 车站编号徽标 (Station Alphanumeric Code)
+    const codeBadge = Icons.renderStationCodeBadge('01', '#E4002B');
+    check(codeBadge.includes('class="station-code-pill"') && codeBadge.includes('background:#E4002B') && codeBadge.includes('>01<'),
+        '车站编号胶囊徽章渲染准确');
+}
+
+// ============================================================================
+// 多线共线平行走线路由器 (ParallelCorridorRouter)
+// ============================================================================
+{
+    console.log('\n══ 多线共线平行走线路由器 (ParallelCorridorRouter) ══');
+    global.window = global.window || {};
+    require(path.join(ROOT, 'editor/js/algorithms/parallel-corridor.js'));
+    const Router = global.window.OpenMapEditor.ParallelCorridorRouter;
+
+    // 1. 单位法向量计算
+    const n = Router.segmentNormal({ x: 0, y: 0 }, { x: 100, y: 0 });
+    check(Math.abs(n.x) < 1e-4 && Math.abs(n.y - 1.0) < 1e-4, '水平线段法向量计算精准 (0, 1)');
+
+    // 2. 平行偏移计算
+    const basePts = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+    const shifted = Router.offsetPolyline(basePts, 5.4);
+    check(shifted[0].y === 5.4 && shifted[1].y === 5.4, '直线段法向等距平移精确 (y=5.4)');
+
+    // 3. 共享通道聚类与多线对称偏移
+    const segments = [
+        { id: 'seg1', lineId: 'L1', points: [{ x: 10, y: 20 }, { x: 100, y: 20 }] },
+        { id: 'seg2', lineId: 'L2', points: [{ x: 10, y: 20 }, { x: 100, y: 20 }] }
+    ];
+    const groups = Router.detectCorridorGroups(segments);
+    check(groups.length === 1 && groups[0].length === 2, '自动识别两条线路的共享重合走线通道');
+
+    const offsets = Router.computeParallelOffsets(segments, { spacing: 5.4 });
+    check(offsets.seg1 && offsets.seg2, '为共享通道的所有线段计算平行偏移点');
+    const y1 = offsets.seg1[0].y;
+    const y2 = offsets.seg2[0].y;
+    check(Math.abs(Math.abs(y1 - y2) - 5.4) < 1e-3, '两线共线时按标准轨距 5.4px 对称平行分开');
+}
+
+// ============================================================================
+// 轨交资产零件盒 (AssetDrawer) 资产库自检
+// ============================================================================
+{
+    console.log('\n══ 轨交资产零件盒 (AssetDrawer) 资产目录 ══');
+    require(path.join(ROOT, 'editor/js/ui/asset-drawer.js'));
+    const AssetDrawer = global.window.OpenMapEditor.AssetDrawer;
+
+    check(AssetDrawer && AssetDrawer.ASSET_DEFINITIONS, 'AssetDrawer 模块与资产清单成功导出');
+    check(AssetDrawer.ASSET_DEFINITIONS.stations.length >= 8, '零件盒车站与换乘图元类别充足 (>= 8 种)');
+    check(AssetDrawer.ASSET_DEFINITIONS.amenities.length >= 8, '零件盒交通设施徽标类别充足 (>= 8 种)');
+}
+
+// ============================================================================
+// 统一图层与拓扑大纲树状图 (NavTreeView) 显示/锁定/选择/排序自检
+// ============================================================================
+{
+    console.log('\n══ 统一图层与拓扑大纲树状图 (NavTreeView) ══');
+
+    // 1. 结构完整性：旧顶置层已被移除，由全高大纲容器接管
+    const editorHtml = fs.readFileSync(path.join(ROOT, 'editor/index.html'), 'utf8');
+    check(!editorHtml.includes('id="navLayersControlBar"'), '原独立图层条 (#navLayersControlBar) 已彻底移除并合流');
+    check(editorHtml.includes('id="navOutlineWrapper"') && editorHtml.includes('id="navTreeContent"'), '全高大纲容器结构完备');
+
+    // 2. 样式类定义自检
+    const editorCss = fs.readFileSync(path.join(ROOT, 'editor/css/editor-components.css'), 'utf8');
+    check(editorCss.includes('.tree-branch-actions') && editorCss.includes('.tree-action-btn'), '图层行内显隐/锁定按钮样式完整');
+    check(editorCss.includes('.tree-btn-eye') && editorCss.includes('.tree-btn-lock'), '图层眼睛与锁眼按钮专用选择器具备');
+    check(editorCss.includes('.layer-hidden') && editorCss.includes('.layer-locked'), '图层隐藏与锁定挂载类及交互禁用样式完备');
+    check(editorCss.includes('.btn-reorder-up') && editorCss.includes('.btn-reorder-down'), '线路图层内上移与下移排序按钮样式完备');
+
+    // 3. NavTreeView 脚本与 API 接口
+    const prevWindow = global.window;
+    global.window = global.window || {};
+    try {
+        require(path.join(ROOT, 'editor/js/ui/nav-tree-view.js'));
+        const NavTree = global.window.OpenMapEditor.NavTreeView;
+        check(NavTree && typeof NavTree.init === 'function', 'NavTreeView 导出并包含 init 接口');
+        check(NavTree && typeof NavTree.render === 'function', 'NavTreeView 包含 render 渲染入口');
+        check(NavTree && typeof NavTree.syncSelection === 'function', 'NavTreeView 包含 syncSelection 双向选中接口');
+    } finally {
+        global.window = prevWindow;
+    }
+
+    // 4. 线路在图层栈中的重排序算法校验
+    const mockLines = [
+        { id: 'line_1', name: '1号线' },
+        { id: 'line_2', name: '2号线' },
+        { id: 'line_3', name: '3号线' }
+    ];
+
+    function simulateReorder(lines, lineId, dir) {
+        const idx = lines.findIndex(l => l.id === lineId);
+        if (idx === -1) return false;
+        const newIdx = idx + dir;
+        if (newIdx < 0 || newIdx >= lines.length) return false;
+        const target = lines[idx];
+        lines.splice(idx, 1);
+        lines.splice(newIdx, 0, target);
+        return true;
+    }
+
+    // 第一项不可再上移
+    check(simulateReorder(mockLines, 'line_1', -1) === false, '首条线路无法继续上移 (越界拦截有效)');
+    // 最后一项不可再下移
+    check(simulateReorder(mockLines, 'line_3', 1) === false, '末尾线路无法继续下移 (越界拦截有效)');
+    // 2. 3号线上移，或 2号线上移，与1号线交换位置
+    const reordered = simulateReorder(mockLines, 'line_2', -1);
+    check(reordered === true && mockLines[0].id === 'line_2' && mockLines[1].id === 'line_1', '中段线路成功上移并与前序置换渲染次序');
+
+    // 5. 搜索过滤态下排序按钮禁用依据真实全局下标，且折叠按钮使用 chevron-up
+    const navTreeSrc2 = fs.readFileSync(path.join(ROOT, 'editor/js/ui/nav-tree-view.js'), 'utf8');
+    check(/realIdx\s*=\s*lines\.indexOf\(line\)/.test(navTreeSrc2) &&
+        /isFirst\s*=\s*\(realIdx\s*===\s*0\)/.test(navTreeSrc2) &&
+        /isLast\s*=\s*\(realIdx\s*===\s*lines\.length\s*-\s*1\)/.test(navTreeSrc2),
+        'NavTreeView 线路上移/下移禁用态按 lines 真实下标判定（搜索过滤时不误判边界）');
+    check(/id="btnTreeCollapseAll"[\s\S]{0,120}name="chevron-up"/.test(navTreeSrc2),
+        'NavTreeView 全部折叠按钮图标使用语义一致的 chevron-up');
+
+    // 6. 虚拟换乘 / 在建走向 / 地标散点删除统一走 handlePropertyChange（先压栈后删除）与 Delete 键兼容
+    const appSrc2 = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    check(!/app\.project\.(?:virtualConnectors|notOpenLines|scattered)\.splice[\s\S]{0,120}HistoryManager\.pushSnapshot/.test(appSrc2),
+        'virtual / notopen / scattered 删除不再先 splice 后压栈（修复撤销一步失效）');
+    check(/targetType === 'virtual'/.test(appSrc2) &&
+        /targetType === 'notopen'/.test(appSrc2) &&
+        /targetType === 'scattered'/.test(appSrc2),
+        'handlePropertyChange 完整覆盖 virtual / notopen / scattered 的删除操作');
+    check(/delTargetKey\s*=\s*\(app\.selected\.id\s*!==\s*undefined\)\s*\?\s*app\.selected\.id\s*:\s*app\.selected\.idx/.test(appSrc2),
+        'Delete 快捷键兼容 idx 索引型图元（virtual / notopen / scattered）');
+    check(/targetType === 'node' && prop === 'delete'[\s\S]{0,900}window\.confirm[\s\S]{0,400}HistoryManager\.pushSnapshot\(app\.project\)/.test(appSrc2),
+        '删除车站的确认弹窗在压入撤销栈之前执行（取消不会污染撤销栈）');
+}
+
 // ============================================================================
 console.log('\n' + '─'.repeat(64));
 if (failed === 0) {

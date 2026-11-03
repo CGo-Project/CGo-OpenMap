@@ -379,28 +379,33 @@ window.OpenMapEditor.GridLayer = (function () {
             guideG.setAttribute('class', 'smart-guide-item');
 
             var line = document.createElementNS(NS, 'line');
-            line.setAttribute('stroke', '#0284c7');
+            line.setAttribute('stroke', '#ec4899');
             line.setAttribute('stroke-width', '1.2');
             line.setAttribute('stroke-dasharray', '4,3');
-            line.setAttribute('opacity', '0.85');
+            line.setAttribute('opacity', '0.9');
 
-            if (g.type === 'v') {
-                line.setAttribute('x1', String(g.pos));
-                line.setAttribute('x2', String(g.pos));
-                line.setAttribute('y1', String(g.from !== undefined ? g.from : 0));
-                line.setAttribute('y2', String(g.to !== undefined ? g.to : ch));
+            var isVert = (g.type === 'v' || g.type === 'vertical');
+            if (isVert) {
+                var px = g.pos !== undefined ? g.pos : g.x;
+                line.setAttribute('x1', String(px));
+                line.setAttribute('x2', String(px));
+                line.setAttribute('y1', String(g.from !== undefined ? g.from : (g.y1 !== undefined ? g.y1 : 0)));
+                line.setAttribute('y2', String(g.to !== undefined ? g.to : (g.y2 !== undefined ? g.y2 : ch)));
             } else {
-                line.setAttribute('y1', String(g.pos));
-                line.setAttribute('y2', String(g.pos));
-                line.setAttribute('x1', String(g.from !== undefined ? g.from : 0));
-                line.setAttribute('x2', String(g.to !== undefined ? g.to : cw));
+                var py = g.pos !== undefined ? g.pos : g.y;
+                line.setAttribute('y1', String(py));
+                line.setAttribute('y2', String(py));
+                line.setAttribute('x1', String(g.from !== undefined ? g.from : (g.x1 !== undefined ? g.x1 : 0)));
+                line.setAttribute('x2', String(g.to !== undefined ? g.to : (g.x2 !== undefined ? g.x2 : cw)));
             }
             guideG.appendChild(line);
 
             if (g.label) {
                 var badgeG = document.createElementNS(NS, 'g');
-                var bx = g.type === 'v' ? g.pos + 6 : (g.from !== undefined ? g.from + 10 : 20);
-                var by = g.type === 'v' ? (g.from !== undefined ? g.from + 16 : 20) : g.pos - 6;
+                var pxVal = g.pos !== undefined ? g.pos : (g.x !== undefined ? g.x : 0);
+                var pyVal = g.pos !== undefined ? g.pos : (g.y !== undefined ? g.y : 0);
+                var bx = isVert ? pxVal + 6 : (g.from !== undefined ? g.from + 10 : (g.x1 !== undefined ? g.x1 + 10 : 20));
+                var by = isVert ? (g.from !== undefined ? g.from + 16 : (g.y1 !== undefined ? g.y1 + 16 : 20)) : pyVal - 6;
 
                 var rect = document.createElementNS(NS, 'rect');
                 rect.setAttribute('x', String(bx - 3));
@@ -408,8 +413,8 @@ window.OpenMapEditor.GridLayer = (function () {
                 rect.setAttribute('width', String(g.label.length * 6.5 + 8));
                 rect.setAttribute('height', '14');
                 rect.setAttribute('rx', '3');
-                rect.setAttribute('fill', '#0284c7');
-                rect.setAttribute('opacity', '0.9');
+                rect.setAttribute('fill', '#ec4899');
+                rect.setAttribute('opacity', '0.95');
 
                 var txt = document.createElementNS(NS, 'text');
                 txt.setAttribute('x', String(bx + 1));

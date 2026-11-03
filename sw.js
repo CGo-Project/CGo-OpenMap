@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261103.114600';
+const CACHE_NAME = 'cgo-openmap-v261103.144300';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -535,7 +535,7 @@ const ASSETS_TO_CACHE = [
     './city/suzhou/staname.csv',
 
     // 青岛线路徽标（核心统一从根目录 assets/svg/ 读取）
-    './assets/svg/icon@01.svg',    './assets/svg/icon@02.svg',
+    './assets/svg/icon@01.svg', './assets/svg/icon@02.svg',
     './assets/svg/icon@03.svg',
     './assets/svg/icon@04.svg',
     './assets/svg/icon@05.svg',

@@ -87,14 +87,66 @@ window.OpenMapEditor.InspectorView = (function () {
                 '<input type="text" class="form-input" id="propNodeEn" value="' + (node.en || '') + '">' +
                 '</div>' +
                 '<div class="form-row">' +
+                '<span class="form-label">车站编号:</span>' +
+                '<input type="text" class="form-input" id="propNodeCode" placeholder="如 01, M05, A12" value="' + (node.code || '') + '">' +
+                '</div>' +
+                '<div class="form-row">' +
                 '<span class="form-label">图元类型:</span>' +
                 '<select class="form-select" id="propNodeType">' +
                 '<option value="dot"' + (node.type === 'dot' ? ' selected' : '') + '>普通站 (dot)</option>' +
-                '<option value="tsf"' + (node.type === 'tsf' ? ' selected' : '') + '>换乘站 (tsf)</option>' +
+                '<option value="tsf"' + (node.type === 'tsf' ? ' selected' : '') + '>换乘站 - 双圈 (tsf)</option>' +
+                '<option value="tsf_pill_h"' + (node.type === 'tsf_pill_h' ? ' selected' : '') + '>换乘站 - 水平胶囊 (pill-h)</option>' +
+                '<option value="tsf_pill_v"' + (node.type === 'tsf_pill_v' ? ' selected' : '') + '>换乘站 - 垂直胶囊 (pill-v)</option>' +
+                '<option value="tsf_pill_d45"' + (node.type === 'tsf_pill_d45' ? ' selected' : '') + '>换乘站 - 45°斜胶囊 (pill-d45)</option>' +
+                '<option value="tsf_pill_d135"' + (node.type === 'tsf_pill_d135' ? ' selected' : '') + '>换乘站 - 135°斜胶囊 (pill-d135)</option>' +
+                '<option value="tsf_dumbbell"' + (node.type === 'tsf_dumbbell' ? ' selected' : '') + '>换乘站 - 哑铃连杆 (dumbbell)</option>' +
                 '<option value="rdot"' + (node.type === 'rdot' ? ' selected' : '') + '>国铁站 (rdot)</option>' +
                 '<option value="no"' + (node.notOpen || node.type === 'no' ? ' selected' : '') + '>暂缓开通 (no)</option>' +
                 '</select>' +
                 '</div>';
+
+            // 综合交通设施挂载徽标
+            var curAmenities = Array.isArray(node.amenities) ? node.amenities : [];
+            var amenityKeys = ['airport', 'crh', 'railway', 'ferry', 'maglev', 'tram', 'pr', 'accessible'];
+            var amenityLabels = {
+                airport: '民航机场',
+                crh: '高速铁路',
+                railway: '国家铁路',
+                ferry: '客运码头',
+                maglev: '磁悬浮',
+                tram: '有轨电车',
+                pr: 'P+R停车',
+                accessible: '无障碍设施'
+            };
+            var amenityIcons = {
+                airport: 'plane',
+                crh: 'crh',
+                railway: 'railway',
+                ferry: 'ferry',
+                maglev: 'monorail',
+                tram: 'tram',
+                pr: 'pr',
+                accessible: 'elevator'
+            };
+
+            html += '<div style="margin: 8px 0; padding: 6px 0; border-top: 1px dashed var(--border-color,#e2e8f0); border-bottom: 1px dashed var(--border-color,#e2e8f0);">' +
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+                '<span style="font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;">' +
+                '<cgo-icon name="map" size="12"></cgo-icon><span>交通设施徽标挂载</span>' +
+                '</span>' +
+                '<span style="font-size:10px;color:var(--text-light);">' + curAmenities.length + ' 项已激活</span>' +
+                '</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px;">';
+
+            amenityKeys.forEach(function (key) {
+                var isActive = curAmenities.indexOf(key) !== -1;
+                html += '<button type="button" class="amenity-chip-btn' + (isActive ? ' active' : '') + '" data-amenity="' + key + '" title="' + amenityLabels[key] + '" style="display:flex;align-items:center;gap:4px;padding:4px 6px;font-size:11px;border-radius:4px;border:1px solid ' + (isActive ? 'var(--theme-accent, #0284c7)' : 'var(--border-light, rgba(0,0,0,0.1))') + ';background:' + (isActive ? 'var(--theme-subtle, rgba(2,132,199,0.12))' : 'var(--bg-subtle, transparent)') + ';color:' + (isActive ? 'var(--theme-accent, #0284c7)' : 'var(--text-color, #334155)') + ';cursor:pointer;transition:all 0.15s;">' +
+                    '<cgo-icon name="' + amenityIcons[key] + '" size="12"></cgo-icon>' +
+                    '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + amenityLabels[key] + '</span>' +
+                    '</button>';
+            });
+
+            html += '</div></div>';
 
             // 嵌入 8 方向轮盘
             html += renderAlignWheelHtml(node.align);
@@ -225,6 +277,24 @@ window.OpenMapEditor.InspectorView = (function () {
 
         var enInput = document.getElementById('propNodeEn');
         if (enInput) enInput.addEventListener('change', function () { fireChange('node', node.id, 'en', this.value); });
+
+        var codeInput = document.getElementById('propNodeCode');
+        if (codeInput) codeInput.addEventListener('change', function () { fireChange('node', node.id, 'code', this.value.trim() || null); });
+
+        // 绑定交通设施徽标挂载点击
+        document.querySelectorAll('.amenity-chip-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var key = this.getAttribute('data-amenity');
+                var list = Array.isArray(node.amenities) ? node.amenities.slice() : [];
+                var idx = list.indexOf(key);
+                if (idx === -1) {
+                    list.push(key);
+                } else {
+                    list.splice(idx, 1);
+                }
+                fireChange('node', node.id, 'amenities', list.length > 0 ? list : null);
+            });
+        });
 
         var typeSelect = document.getElementById('propNodeType');
         if (typeSelect) typeSelect.addEventListener('change', function () { fireChange('node', node.id, 'type', this.value); });
@@ -642,11 +712,47 @@ window.OpenMapEditor.InspectorView = (function () {
             '</div>' +
 
             '<div class="form-row">' +
+            '<span class="form-label">线宽:</span>' +
+            '<input type="number" class="form-input" id="propLineStrokeWidth" value="' + ((line.strokeWidth !== undefined && line.strokeWidth !== null) ? line.strokeWidth : 5.4) + '" step="0.5" min="1" max="24" style="flex:0 0 54px;width:54px;">' +
+            '<span style="font-size:11px;color:var(--text-light);margin-right:auto;">px</span>' +
+            '<div style="display:flex;gap:4px;">' +
+            '<button type="button" class="btn-line-sw-preset" data-sw="3.5" style="padding:2px 6px;font-size:10px;border-radius:4px;border:1px solid var(--office-border);background:var(--card-bg);cursor:pointer;" title="细线 (有轨电车/单轨)">细 3.5</button>' +
+            '<button type="button" class="btn-line-sw-preset" data-sw="5.4" style="padding:2px 6px;font-size:10px;border-radius:4px;border:1px solid var(--office-border);background:var(--card-bg);cursor:pointer;" title="标准 (标准地铁)">标 5.4</button>' +
+            '<button type="button" class="btn-line-sw-preset" data-sw="8" style="padding:2px 6px;font-size:10px;border-radius:4px;border:1px solid var(--office-border);background:var(--card-bg);cursor:pointer;" title="粗线 (机场快线/城际线)">粗 8</button>' +
+            '</div>' +
+            '</div>' +
+
+            '<div class="form-row">' +
             '<span class="form-label">倒角:</span>' +
             '<label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;flex:1;">' +
             '<input type="checkbox" id="propLineStrict"' + (line.useStrictRounding ? ' checked' : '') + '>' +
             '<span>严格倒角 (useStrictRounding)</span></label>' +
             '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">端点 (Cap):</span>' +
+            '<select class="form-select" id="propLineCap" style="flex:1;">' +
+            '<option value="round"' + ((line.strokeLinecap || 'round') === 'round' ? ' selected' : '') + '>圆头 (Round)</option>' +
+            '<option value="butt"' + (line.strokeLinecap === 'butt' ? ' selected' : '') + '>平头 (Butt)</option>' +
+            '<option value="square"' + (line.strokeLinecap === 'square' ? ' selected' : '') + '>方头 (Square)</option>' +
+            '</select>' +
+            '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">转角 (Join):</span>' +
+            '<select class="form-select" id="propLineJoin" style="flex:1;">' +
+            '<option value="round"' + ((line.strokeLinejoin || 'round') === 'round' ? ' selected' : '') + '>圆角 (Round)</option>' +
+            '<option value="miter"' + (line.strokeLinejoin === 'miter' ? ' selected' : '') + '>尖角 (Miter)</option>' +
+            '<option value="bevel"' + (line.strokeLinejoin === 'bevel' ? ' selected' : '') + '>斜角 (Bevel)</option>' +
+            '</select>' +
+            '</div>' +
+
+            '<div class="form-row">' +
+            '<span class="form-label">虚线分段:</span>' +
+            '<input type="text" class="form-input" id="propLineDash" value="' + (line.strokeDasharray || '') + '" placeholder="如 10,6 或留空为实线" style="flex:1;font-family:monospace;">' +
+            '</div>' +
+
+            '<div id="lineSwatchesContainer"></div>' +
 
             '<div class="form-row">' +
             '<span class="form-label">规模:</span>' +
@@ -715,10 +821,58 @@ window.OpenMapEditor.InspectorView = (function () {
             });
         }
 
+        var swInput = document.getElementById('propLineStrokeWidth');
+        if (swInput) {
+            swInput.addEventListener('change', function () {
+                var val = parseFloat(this.value);
+                if (isNaN(val) || val <= 0) val = 5.4;
+                fireChange('line', line.id, 'strokeWidth', val);
+            });
+        }
+        var swPresets = dom.body.querySelectorAll('.btn-line-sw-preset');
+        swPresets.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var val = parseFloat(this.getAttribute('data-sw'));
+                if (swInput) swInput.value = val;
+                fireChange('line', line.id, 'strokeWidth', val);
+            });
+        });
+
         var strictInput = document.getElementById('propLineStrict');
         if (strictInput) {
             strictInput.addEventListener('change', function () {
                 fireChange('line', line.id, 'useStrictRounding', this.checked);
+            });
+        }
+
+        var capInput = document.getElementById('propLineCap');
+        if (capInput) {
+            capInput.addEventListener('change', function () {
+                fireChange('line', line.id, 'strokeLinecap', this.value);
+            });
+        }
+
+        var joinInput = document.getElementById('propLineJoin');
+        if (joinInput) {
+            joinInput.addEventListener('change', function () {
+                fireChange('line', line.id, 'strokeLinejoin', this.value);
+            });
+        }
+
+        var dashInput = document.getElementById('propLineDash');
+        if (dashInput) {
+            dashInput.addEventListener('change', function () {
+                fireChange('line', line.id, 'strokeDasharray', this.value.trim());
+            });
+        }
+
+        // 轨交色板渲染与选取
+        var swContainer = dom.body.querySelector('#lineSwatchesContainer');
+        if (swContainer && window.OpenMapEditor.SwatchesPalette) {
+            window.OpenMapEditor.SwatchesPalette.renderSwatches(swContainer, project, function (hex) {
+                if (colorText) colorText.value = hex;
+                if (colorPicker) colorPicker.value = hex;
+                applyColor(hex);
             });
         }
 
@@ -802,7 +956,8 @@ window.OpenMapEditor.InspectorView = (function () {
             '<input type="color" class="form-input" id="propTextColorPicker" value="' + (curColor || '#1e293b') + '" style="flex:0 0 36px;width:36px;padding:2px;">' +
             '<input type="text" class="form-input" id="propTextColorText" value="' + (curColor || '') + '" placeholder="跟随主题" style="flex:1;font-family:monospace;">' +
             '<button type="button" class="ribbon-btn-sm" id="btnResetTextColor" title="恢复跟随系统主题">默认</button>' +
-            '</div>';
+            '</div>' +
+            '<div id="textSwatchesContainer"></div>';
 
         // 坐标微调
         html += '<div class="form-row">' +
@@ -903,6 +1058,15 @@ window.OpenMapEditor.InspectorView = (function () {
             });
         }
 
+        var textSwContainer = dom.body.querySelector('#textSwatchesContainer');
+        if (textSwContainer && window.OpenMapEditor.SwatchesPalette) {
+            window.OpenMapEditor.SwatchesPalette.renderSwatches(textSwContainer, project, function (hex) {
+                if (clrText) clrText.value = hex;
+                if (clrPicker) clrPicker.value = hex;
+                fireChange('text', textItem.id, 'color', hex);
+            });
+        }
+
         var posX = document.getElementById('propTextPosX');
         var posY = document.getElementById('propTextPosY');
         function updatePos() {
@@ -960,6 +1124,27 @@ window.OpenMapEditor.InspectorView = (function () {
             '可在画布上拖拽任意顶点调整形状，或点击两点中点插入新顶点。' +
             '</div>';
 
+        // 路径查找器布尔运算 (仅限多边形要素)
+        var otherWaters = (project && project.waters ? project.waters.filter(function (w) { return w.id !== waterItem.id && w.type !== 'path' && w.type !== 'river'; }) : []);
+        if (!isPath && otherWaters.length > 0) {
+            html += '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border-color,#e2e8f0);">' +
+                '<div style="font-weight:600;font-size:12px;margin-bottom:6px;display:flex;align-items:center;gap:4px;">' +
+                '<cgo-icon name="design" size="13"></cgo-icon><span>路径查找器 (布尔运算)</span>' +
+                '</div>' +
+                '<div class="form-row">' +
+                '<span class="form-label">运算目标:</span>' +
+                '<select class="form-select" id="propWaterBoolTarget" style="flex:1;">';
+            otherWaters.forEach(function (ow) {
+                html += '<option value="' + ow.id + '">' + ow.id + ' (' + (ow.points ? ow.points.length : 0) + ' 顶点)</option>';
+            });
+            html += '</select></div>' +
+                '<div style="display:flex;gap:4px;margin-top:6px;">' +
+                '<button type="button" class="ribbon-btn-sm" id="btnWaterUnion" style="flex:1;" title="合并两水域为一个连续轮廓">并集</button>' +
+                '<button type="button" class="ribbon-btn-sm" id="btnWaterSubtract" style="flex:1;" title="从当前水域中减去目标水域 (镂空/抠除)">差集</button>' +
+                '<button type="button" class="ribbon-btn-sm" id="btnWaterIntersect" style="flex:1;" title="保留两个水域的交叠重合部分">交集</button>' +
+                '</div></div>';
+        }
+
         // 操作按钮
         html += '<div style="margin-top:14px;display:flex;gap:6px;justify-content:flex-end;">' +
             '<button type="button" class="ribbon-btn-sm danger" id="btnDeleteWater">' +
@@ -989,6 +1174,26 @@ window.OpenMapEditor.InspectorView = (function () {
         if (delBtn) {
             delBtn.addEventListener('click', function () {
                 fireChange('water', waterItem.id, 'delete', true);
+            });
+        }
+
+        var boolTargetSel = document.getElementById('propWaterBoolTarget');
+        var btnUnion = document.getElementById('btnWaterUnion');
+        if (btnUnion && boolTargetSel) {
+            btnUnion.addEventListener('click', function () {
+                fireChange('water', waterItem.id, 'boolean_op', { op: 'union', targetId: boolTargetSel.value });
+            });
+        }
+        var btnSub = document.getElementById('btnWaterSubtract');
+        if (btnSub && boolTargetSel) {
+            btnSub.addEventListener('click', function () {
+                fireChange('water', waterItem.id, 'boolean_op', { op: 'subtract', targetId: boolTargetSel.value });
+            });
+        }
+        var btnInt = document.getElementById('btnWaterIntersect');
+        if (btnInt && boolTargetSel) {
+            btnInt.addEventListener('click', function () {
+                fireChange('water', waterItem.id, 'boolean_op', { op: 'intersect', targetId: boolTargetSel.value });
             });
         }
     }

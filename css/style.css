@@ -325,6 +325,78 @@ html.nb-fadein #map-content {
     z-index: 5;
 }
 
+.tsf_pill_h {
+    width: 26px;
+    height: 14px;
+    z-index: 20;
+}
+
+.tsf_pill_v {
+    width: 14px;
+    height: 26px;
+    z-index: 20;
+}
+
+.tsf_pill_d45,
+.tsf_pill_d135 {
+    width: 24px;
+    height: 24px;
+    z-index: 20;
+}
+
+.tsf_dumbbell {
+    width: 32px;
+    height: 14px;
+    z-index: 20;
+}
+
+/* 车站编号胶囊与综合交通设施徽标 */
+.station-code-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 7.5px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 1.5px 4.5px;
+    border-radius: 6px;
+    margin-right: 3px;
+    vertical-align: middle;
+    letter-spacing: 0.2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+}
+
+.station-amenities-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 2.5px;
+    margin-left: 3px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+
+.amenity-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 2px;
+    color: var(--text-color, #1e293b);
+    background: var(--map-bg, #ffffff);
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.15));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.amenity-badge svg {
+    display: block;
+    width: 10px;
+    height: 10px;
+}
+
 .diy {
     position: absolute;
     transform: translate(-50%, -50%);
