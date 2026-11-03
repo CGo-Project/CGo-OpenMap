@@ -48,8 +48,8 @@
 
     /* ── 时间解析：严格格式 + 城市运营时区 ── */
 
-    /** 只认 "YYYY-MM-DD" 与 "YYYY-MM-DD HH:mm:ss"（T 分隔也接受） */
-    const TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?$/;
+    /** 接受 "YYYY-MM-DD"、"YYYY-MM-DD HH:mm" 与 "YYYY-MM-DD HH:mm:ss"（T 分隔也接受） */
+    const TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 
     const formatterCache = new Map();
     const warnedTimeZone = new Set();
@@ -220,6 +220,9 @@
         probeTimeZoneData();
 
         const timeZone = cityTimeZone();
+        if (!timeZone) {
+            return new Date(year, month - 1, day, hour, minute, second, 0);
+        }
         const formatter = tzFormatter(timeZone);
         if (!formatter) { warnTimeZone(timeZone); return undefined; }
 
@@ -285,6 +288,8 @@
     }
 
     window.NAL_NOTICE = {
+        _parseLocalTime: parseLocalTime,
+        _checkValidity: checkValidity,
         getDetailsHtml: function () {
             const validItems = this.items.filter(checkValidity);
             if (!validItems.length) return null;
