@@ -682,7 +682,6 @@ const ASSETS_TO_CACHE = [
     './city/nanjing/stacard/script.js',
     './city/nanjing/staname.csv',
     './city/nanjing/amap_data.json',
-    './city/nanjing/assets/nanjing_sea.svg',
     './city/nanjing/assets/railway.svg',
 
     // 南京线路徽标（Beijing S1 样式文字徽标）
