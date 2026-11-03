@@ -1,37 +1,15 @@
 /**
  * CGo OpenMap - 福州城市数据与行程规划配置自检 (city/fuzhou/tools/fuzhou_check.js)
  *
- * 零依赖、零构建、不需要浏览器：直接在 Node 里按浏览器的经典脚本语义加载同目录上的
- * 福州数据文件，断言「城市侧薄配置」与数据对得上。用法（在仓库根目录执行）：
+ * 用法：node city/fuzhou/tools/fuzhou_check.js
  *
- *     node city/fuzhou/tools/fuzhou_check.js
+ * 断言「城市侧薄配置 ↔ 城市数据」的契约：车站引用与孤立站、站距长度、终点站解析、
+ * 时刻链差值、官方票价表完整性与命中顺序、调色与徽标模板。几何走向不在本文件范围
+ * （那是编辑器 DataSanitizer 的职责）；Node 端脚本，不需登记进 sw.js。
  *
- * 覆盖内容
- *   1. 车站引用完整性：linesData 引用的车站必须在 stationsData 中有定义，反之不能有孤立站；
- *   2. 站距长度：单线 distances.length === stationIds.length - 1（环线为 stationIds.length）；
- *   3. 终点站解析：window.CGO_ROUTE_CONFIG.reader() 给出的 dest 必须是车站 ID，
- *      或 "line-first" / "line-last" 端点代号 —— 这是共享层 chainDirection 的硬契约，
- *      给错了整条时刻链会被丢弃（区间用时只能退化成坐标模型估算）；
- *   4. 时刻链可用性：按共享层同口径逐链算站间差值，落不到 (0, HOP_MAX] 的差值应为 0；
- *   5. 官方票价表：完整性、双向齐备、站名映射覆盖、规则优先命中官方表；
- *   6. 调色与徽标：color 为合法 Hex、svg 模板存在于 assets/svg/。
- *
- * ⚠️ 站点坐标与折线走向的几何自检不在这里（那是编辑器 DataSanitizer 净化器的职责），
- *    本文件只保证「城市侧配置 ↔ 城市数据」两侧的契约不被改坏。
- *
- * 为什么放在 city/fuzhou/tools/ 而不是 editor/tests/：它只服务福州一座城市，
- * 而 editor/tests/selfcheck.js 校验的是编辑器的纯函数层（跨城市通用）。
- * 同类先例见 city/fuzhou/stacard/、city/shenyang/modules/ —— 城市专属脚本随城市走。
- * 本文件是 Node 端脚本，浏览器不会请求，故 sw.js 的预缓存清单不需要登记它。
- *
- * 官方票价表（同目录的 data_official_fare.js）的重新抓取方式：
- *   官网「票价线路查询」页面本身是前端渲染、不含票价，票价由下面的同源接口给出：
- *     GET https://www.fzmtr.com/api/system/way/list
- *         ?pageNum=1&pageSize=10&startStation={站名}&endStation={站名}
- *   站点清单取自 https://www.fzmtr.com/services/routeQuery 的 Astro SSR props
- *   （component-url 含 RouteQuery 的 astro-island 的 props.lines[].stationList）。
- *   逐对枚举 102 站的两两组合（约 1.03 万次请求，并发 4 约 8 分钟），
- *   把结果写成 "起点ID|终点ID": 票价 即可。抓完请递增 sw.js 的 CACHE_NAME。
+ * 官方票价表重新抓取：GET https://www.fzmtr.com/api/system/way/list
+ *   ?pageNum=1&pageSize=10&startStation={站名}&endStation={站名}
+ *   站点清单取自 /services/routeQuery 的 Astro props，逐对枚举后写成 "起点ID|终点ID": 票价。
  */
 "use strict";
 
@@ -877,29 +855,49 @@ section("⑪ 画布边界与视口一致性");
     }
 
     /**
-     * 内容外接盒估算。站名宽度按「中文 12px/字、英文 6.2px/字母」估，实际字体略窄，
-     * 故这是**偏保守的上界**：通过了就一定不越界；没通过也值得人工看一眼。
-     * 伸展方向严格按 align 判断（right → 向右、top → 向上…），与引擎排版一致。
+     * 内容外接盒估算 —— **必须与引擎真实排版一致**，否则会误报越界。
+     *
+     * 事实来源：
+     *   css/style.css  .stacn font-size 11.5px / line-height 13.8px
+     *                  .staen font-size 6.65px / line-height 6.35px  → 文字盒高 20.15px
+     *   core/script.js L1156-1172  distV=5.2 / distH=6 / distD=6，配合 transform 与 textAlign
+     *
+     * ⚠️ 早先这里按「中文 12px/字、英文 6.2px/字母」粗估，把英文宽度**高估近 80%**
+     *    （`.staen` 是 6.65px 字号，字母实际约 3.46px），于是把 M206(董屿·福建师大)
+     *    这种英文长站名误报成左缘 -1px 越界。改按真实字号后与实际渲染一致。
      */
-    const ICON_HALF = 9;          // tsf 17.5 / dot 10，取上界
-    const CN_W = 12, EN_W = 6.2;
-    const LABEL_GAP = 24;         // 站名相对站心的纵向间距（上/下方对齐时）
+    const CN_FONT = 11.5;                        // .stacn font-size
+    const CN_LINE = 13.8;                        // .stacn line-height
+    const EN_FONT = 6.65;                        // .staen font-size
+    const EN_LINE = 6.35;                        // .staen line-height
+    const EN_ADV = EN_FONT * 0.52;               // Latin 平均字宽 ≈ 0.52em
+    const LABEL_H = CN_LINE + EN_LINE;           // 20.15
+    const DIST_V = 5.2, DIST_H = 6, DIST_D = 6;  // 引擎的锚点间隙
+
     const labelWidth = (s) => Math.max(
-        String(s.cn || "").replace(/[（）()]/g, "").length * CN_W,
-        String(s.en || "").replace(/[（）()]/g, "").length * EN_W
+        String(s.cn || "").replace(/[（）()·]/g, "").length * CN_FONT,
+        String(s.en || "").length * EN_ADV
     );
+
+    /** 相对站心的文字盒，逐字照搬引擎的 8 种 align 分支 */
     const extentsOf = (s) => {
         const w = labelWidth(s);
-        const a = String(s.align || "right");
+        const a = String(s.align || "bottom");
         const ox = (s.offset && s.offset.x) || 0;
         const oy = (s.offset && s.offset.y) || 0;
-        let x0 = -ICON_HALF, x1 = ICON_HALF, y0 = -ICON_HALF, y1 = ICON_HALF;
-        if (/right/.test(a)) x1 = ICON_HALF + ox + w;
-        else if (/left/.test(a)) x0 = -ICON_HALF + ox - w;
-        else { x0 = -w / 2; x1 = w / 2; }
-        if (/^top/.test(a)) y0 = -ICON_HALF - LABEL_GAP + oy;
-        else if (/^bottom/.test(a)) y1 = ICON_HALF + LABEL_GAP + oy;
-        return { x0, x1, y0, y1 };
+        let x0, x1, y0, y1;
+        switch (a) {
+            case "top": x0 = -w / 2; x1 = w / 2; y1 = -DIST_V; y0 = y1 - LABEL_H; break;
+            case "bottom": x0 = -w / 2; x1 = w / 2; y0 = DIST_V; y1 = y0 + LABEL_H; break;
+            case "left": x1 = -DIST_H; x0 = x1 - w; y0 = -LABEL_H / 2; y1 = y0 + LABEL_H; break;
+            case "right": x0 = DIST_H; x1 = x0 + w; y0 = -LABEL_H / 2; y1 = y0 + LABEL_H; break;
+            case "top-left": x1 = -DIST_D; x0 = x1 - w; y1 = -DIST_D; y0 = y1 - LABEL_H; break;
+            case "top-right": x0 = DIST_D; x1 = x0 + w; y1 = -DIST_D; y0 = y1 - LABEL_H; break;
+            case "bottom-left": x1 = -DIST_D; x0 = x1 - w; y0 = DIST_D; y1 = y0 + LABEL_H; break;
+            case "bottom-right": x0 = DIST_D; x1 = x0 + w; y0 = DIST_D; y1 = y0 + LABEL_H; break;
+            default: x0 = -w / 2; x1 = w / 2; y0 = DIST_V; y1 = y0 + LABEL_H; break;
+        }
+        return { x0: x0 + ox, x1: x1 + ox, y0: y0 + oy, y1: y1 + oy };
     };
 
     const overRight = [], overLeft = [], overTop = [], overBottom = [];

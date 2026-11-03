@@ -20,22 +20,52 @@
     );
 
     /**
+     * 公告时间字段的唯一合法格式：`YYYY-MM-DD` 或 `YYYY-MM-DD HH:mm[:ss]`（也接受 `T` 分隔）。
+     * 纯日期按**本地零点**解释，与带时间写法保持同一时区口径。
+     */
+    const LOCAL_TIME_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
+
+    /**
      * 解析公告的时间字段。返回值刻意区分三种情形：
      *   null      —— 字段未填写 / 为 "permanent"，即不设限（历史兼容口径，缺省照旧）
      *   Date      —— 合法时间，**一律按浏览器本地时区**解释
-     *   undefined —— 填了但解析不出来（配置错误），调用方必须当作「无效」而非「永久有效」
+     *   undefined —— 填了但格式或日历日期不合法（配置错误），调用方必须当作「无效」而非「永久有效」
+     *
+     * 为什么不能只靠 `new Date(text)` + `isNaN`：V8 会自动进位，
+     * `2026-02-30` 被解析成 3 月 2 日、`23:59:60` 被进位到次日零点，
+     * 于是写错的运营公告会静默地在错误日期展示。这里先做格式匹配，
+     * 再用 `new Date(y, m - 1, d, ...)` 构造后逐项回核年月日时分秒。
+     *
+     * 时区口径：当前统一按**浏览器本地时区**解释。按城市注册项声明 IANA 时区
+     * （`CITY_REGISTRY[].timezone`）是后续扩展方向，尚未落地，故此处不做猜测。
      */
     function parseLocalTime(value) {
         if (value === null || value === undefined) return null;
         const raw = String(value).trim();
         if (!raw || raw === 'permanent') return null;
-        // 纯日期会被 Date 规范当作 UTC 零点（比北京时间早 8 小时），这里补成本地零点，
-        // 让 "YYYY-MM-DD" 与 "YYYY-MM-DD HH:mm:ss" 两种写法保持同一时区口径。
-        const text = /^\d{4}-\d{2}-\d{2}$/.test(raw)
-            ? `${raw}T00:00:00`
-            : raw.replace(' ', 'T');
-        const date = new Date(text);
-        return Number.isNaN(date.getTime()) ? undefined : date;
+
+        const m = LOCAL_TIME_RE.exec(raw);
+        if (!m) return undefined;
+
+        const year = Number(m[1]);
+        const month = Number(m[2]);
+        const day = Number(m[3]);
+        const hour = m[4] === undefined ? 0 : Number(m[4]);
+        const minute = m[5] === undefined ? 0 : Number(m[5]);
+        const second = m[6] === undefined ? 0 : Number(m[6]);
+        if (month < 1 || month > 12 || day < 1 || day > 31 ||
+            hour > 23 || minute > 59 || second > 59) {
+            return undefined;
+        }
+
+        const date = new Date(year, month - 1, day, hour, minute, second, 0);
+        // 回核：任何被 JS 自动进位的字段都说明原始日期不存在
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 ||
+            date.getDate() !== day || date.getHours() !== hour ||
+            date.getMinutes() !== minute || date.getSeconds() !== second) {
+            return undefined;
+        }
+        return date;
     }
 
     /** 无效时间字段只提示一次，避免每次渲染刷屏 */
@@ -47,7 +77,7 @@
         warnedInvalidTime.add(key);
         console.warn(
             `[NAL_NOTICE] 公告 ${item.id} 的 ${field} 无法解析（${item[field]}），本条按无效处理、不会展示；`
-            + `请填写 "YYYY-MM-DD HH:mm:ss" 或 "permanent"。`
+            + `请填写 "YYYY-MM-DD" 或 "YYYY-MM-DD HH:mm:ss"，不设限请用 "permanent"。`
         );
     }
 
@@ -102,6 +132,9 @@
             }).join('');
         },
         autoDismissDuration: 6000,
+        /** 内部纯函数，供 Node 端回归自检调用（下划线前缀 = 非公开 API） */
+        _parseLocalTime: parseLocalTime,
+        _checkValidity: checkValidity,
         items: [
             {
                 id: '20260915_qq',

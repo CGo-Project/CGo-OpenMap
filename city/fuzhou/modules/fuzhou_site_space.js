@@ -533,12 +533,13 @@
             if (!ready) return;
             const wasFitted = Math.abs(st.scale - st.min) < 1e-6;
             measure();
-            const prevMin = st.min;
             computeLimits();
-            // 原本就贴合屏幕的，跟着新的舞台尺寸重新贴合；否则只钳制范围
-            st.scale = wasFitted || Math.abs(prevMin - st.min) < 1e-6
-                ? st.min
-                : clampNum(st.scale, st.min, st.max);
+            // 只有「本来就贴合屏幕」的图片才随新尺寸重新贴合；已经放大的保留当前比例，
+            // 仅在超出新的缩放范围时钳制，并重新约束平移。
+            // 注意不能拿「调整前后 min 相同」当贴合判据：用户放大后，只要舞台尺寸变化
+            // 没有改变 min（例如 min 被 1:1 上限钉住，或只改高度而宽度仍是约束），
+            // 它就会把放大状态误判成适配状态、把图片缩回适应屏幕（issue #54）。
+            st.scale = wasFitted ? st.min : clampNum(st.scale, st.min, st.max);
             clampPan();
             apply();
         }

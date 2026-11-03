@@ -35,6 +35,29 @@ window.OpenMapEditor.ViewportLayer = (function () {
     var lastPointer = { x: 0, y: 0 };
     var activePointers = new Map();
     var lastPinchDist = 0;
+    // 空格拖拽平移状态：keydown 置位、keyup / blur 复位。
+    // 必须在 IIFE 内显式声明 —— 否则 mousedown 读它会抛 ReferenceError，
+    // 普通左键点击也一并失效（严格模式下未声明变量不可读取）。
+    var spaceHeld = false;
+    // 平移拖拽会话：{ startX, startY, panX, panY }。窗口外松开鼠标时靠它兜底。
+    var panDrag = null;
+
+    /** 当前焦点是否在输入类控件上（此时空格属于正常输入，不能当平移快捷键） */
+    function isTypingTarget(target) {
+        if (!target || typeof target.matches !== 'function') return false;
+        try {
+            return target.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
+        } catch (err) {
+            return false;
+        }
+    }
+
+    /** 平移光标：空格按住或正在拖拽时显示手形 */
+    function setPanCursor(on) {
+        if (!dom.viewport) return;
+        if (on || spaceHeld) dom.viewport.classList.add('panning');
+        else dom.viewport.classList.remove('panning');
+    }
 
     function notify() {
         var info = {
@@ -301,21 +324,21 @@ window.OpenMapEditor.ViewportLayer = (function () {
 
         // 漫游拖拽支持（中键或按住空格拖拽）
         window.addEventListener('keydown', function (e) {
-            if (e.code === 'Space' && !e.target.matches('input, textarea, select')) {
-                dom.viewport.classList.add('panning');
-            }
+            if (e.code !== 'Space' || isTypingTarget(e.target)) return;
+            spaceHeld = true;
+            setPanCursor(true);
         });
 
         window.addEventListener('keyup', function (e) {
-            if (e.code === 'Space') {
-                dom.viewport.classList.remove('panning');
-            }
+            if (e.code !== 'Space') return;
+            spaceHeld = false;
+            setPanCursor(!!panDrag);
         });
 
         dom.viewport.addEventListener('mousedown', function (e) {
             var wantPan = (e.button === 1) || (e.button === 0 && spaceHeld);
             if (!wantPan) return;
-            if (e.target.closest('.viewport-hud')) return;
+            if (e.target && typeof e.target.closest === 'function' && e.target.closest('.viewport-hud')) return;
             panDrag = {
                 startX: e.clientX, startY: e.clientY,
                 panX: state.pan.x, panY: state.pan.y
@@ -388,6 +411,8 @@ window.OpenMapEditor.ViewportLayer = (function () {
         isGridVisible: function () { return !!state.gridVisible; },
         setGrid: function (visible) {
             state.gridVisible = !!visible;
+            // 显示网格 = 对齐网格；隐藏 = 不对齐（两者共用一个状态，不可能自相矛盾）
+            state.snapEnabled = state.gridVisible;
             if (window.OpenMapEditor.GridLayer) {
                 window.OpenMapEditor.GridLayer.setVisible(state.gridVisible);
             }

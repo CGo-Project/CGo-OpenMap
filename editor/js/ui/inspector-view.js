@@ -566,11 +566,25 @@ window.OpenMapEditor.InspectorView = (function () {
     /**
      * 空白提示态
      */
-    function renderEmpty() {
+    /**
+     * 空选择状态。
+     * @param {{activeLine?: Object}} [ctx] 当前绘制线路（取消选中后仍需知道新画的线挂到哪条线上）
+     */
+    function renderEmpty(ctx) {
         if (!dom.body) return;
+        var hint = '<div>点击画布或左侧大纲中的车站、折线、要素进行属性检视与微调</div>';
+        var activeLine = ctx && ctx.activeLine;
+        if (activeLine) {
+            var color = activeLine.color || '#0284c7';
+            var name = activeLine.name || activeLine.id;
+            hint = '<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:6px;">' +
+                '<span style="width:10px;height:10px;border-radius:50%;display:inline-block;background:' + color + ';"></span>' +
+                '<span style="font-size:11px;color:var(--text-main);">当前绘制线路：' + name + '</span>' +
+                '</div>' + hint;
+        }
         dom.body.innerHTML = '<div style="text-align: center; color: var(--text-light); padding: 40px 10px; font-size: 12px;">' +
             '<cgo-icon name="touch" size="24" style="opacity:0.4;margin-bottom:8px;"></cgo-icon>' +
-            '<div>点击画布或左侧大纲中的车站、折线、要素进行属性检视与微调</div></div>';
+            hint + '</div>';
     }
 
     /**
@@ -651,6 +665,12 @@ window.OpenMapEditor.InspectorView = (function () {
             '<div style="font-size:10px;color:var(--text-light);margin-top:8px;line-height:1.6;">' +
             '改动只写回这条线路条目里真正变更的字段；站序与折点仍请在画布或点编辑模式下调整。' +
             '</div>' +
+
+            '<div class="form-row" style="gap:6px;margin-top:10px;">' +
+            '<button type="button" class="ribbon-btn-sm danger" id="btnLineDelete" style="flex:1;width:100%;" ' +
+            'title="删除这条线路（车站本身不会被删除，其它线路仍可继续使用）">' +
+            '<cgo-icon name="delete" size="12"></cgo-icon><span>删除线路</span></button>' +
+            '</div>' +
             '</div>';
 
         dom.body.innerHTML = html;
@@ -706,6 +726,8 @@ window.OpenMapEditor.InspectorView = (function () {
         if (focusBtn) focusBtn.addEventListener('click', function () { fireChange('line', line.id, 'focus', true); });
         var selStBtn = document.getElementById('btnLineSelectStations');
         if (selStBtn) selStBtn.addEventListener('click', function () { fireChange('line', line.id, 'selectStations', true); });
+        var delLineBtn = document.getElementById('btnLineDelete');
+        if (delLineBtn) delLineBtn.addEventListener('click', function () { fireChange('line', line.id, 'delete_line', true); });
     }
 
     /**

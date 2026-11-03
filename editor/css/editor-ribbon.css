@@ -338,6 +338,21 @@
     color: var(--office-primary);
 }
 
+.ribbon-action-btn-lg.danger .ribbon-icon,
+.ribbon-action-btn-lg.danger .btn-text {
+    color: var(--danger-color, #dc3545);
+}
+
+.ribbon-action-btn-lg.danger {
+    border-color: rgba(220, 53, 69, 0.45);
+    background: rgba(220, 53, 69, 0.08);
+}
+
+.ribbon-action-btn-lg.danger:hover {
+    background: rgba(220, 53, 69, 0.16);
+    border-color: var(--danger-color, #dc3545);
+}
+
 .ribbon-btn-sm.danger:hover {
     color: var(--danger-color, #dc3545);
     background: rgba(220, 53, 69, 0.1);

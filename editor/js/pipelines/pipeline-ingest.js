@@ -80,7 +80,8 @@ window.OpenMapEditor.PipelineIngest = (function () {
             }
 
             segs.forEach(function (s) {
-                var segId = 'seg_' + (++project.idSeq);
+                // 统一 ID 生成器：不直接自增 idSeq（异常工程会拼出 seg_NaN）
+                var segId = window.OpenMapEditor.ProjectModel.nextId(project, 'seg_');
                 project.segments.push({
                     id: segId,
                     lineId: lid,

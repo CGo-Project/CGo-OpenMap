@@ -320,6 +320,10 @@ function pointer(type, id, x, y) {
         clientX: stage._rect.left + x, clientY: stage._rect.top + y
     });
 }
+/** 触发一次窗口尺寸变化（模块监听在 window 上） */
+function fireResize() {
+    (state.windowHandlers.resize || []).slice().forEach((fn) => fn());
+}
 
 const minFit = Math.min(PHONE.width / IMG_W, PHONE.height / IMG_H, 1);
 const maxFit = Math.max(1, minFit * 2);
@@ -404,6 +408,48 @@ section("⑨ 舞台尺寸变化（横竖屏切换）");
     check("横屏后图片仍完整可见",
         IMG_W * t.s <= 700 + 0.5 && IMG_H * t.s <= 380 + 0.5,
         `${(IMG_W * t.s).toFixed(0)}×${(IMG_H * t.s).toFixed(0)}`);
+}
+
+/* ======================================================================
+ * 十、已放大时尺寸变化但最小缩放不变：必须保留放大状态（issue #54）
+ * ==================================================================== */
+section("⑩ 已放大 + 尺寸变化但 min 不变：保留放大状态（#54）");
+{
+    // 回到竖屏，让 scale 重新贴合
+    stage._rect = { ...PHONE };
+    fireResize();
+    const minPortrait = Math.min(PHONE.width / IMG_W, PHONE.height / IMG_H, 1);
+
+    // 滚轮放大两档
+    stage.dispatch("wheel", { preventDefault() { }, clientX: 195, clientY: 300, deltaY: -100 });
+    stage.dispatch("wheel", { preventDefault() { }, clientX: 195, clientY: 300, deltaY: -100 });
+    const zoomed = tf().s;
+    check("前提：已放大到适应屏幕之上", zoomed > minPortrait + 1e-6,
+        `${zoomed} ≤ ${minPortrait}`);
+
+    // 只加高舞台：宽度仍是 390，contain 的 min 不变
+    stage._rect = { left: 0, top: 0, width: PHONE.width, height: PHONE.height + 240 };
+    fireResize();
+    const t = tf();
+    const minAfter = Math.min(PHONE.width / IMG_W, (PHONE.height + 240) / IMG_H, 1);
+    check("前提：调整前后最小缩放比例相同", Math.abs(minAfter - minPortrait) < 1e-9,
+        `${minPortrait} → ${minAfter}`);
+    check("放大状态被保留，不再意外缩回适应屏幕", Math.abs(t.s - zoomed) < 1e-6,
+        `${zoomed} → ${t.s}`);
+    const maxAfter = Math.max(1, minAfter * 2);
+    check("保留后的缩放仍在合法区间", t.s >= minAfter - 1e-6 && t.s <= maxAfter + 1e-6,
+        `${t.s} ∉ [${minAfter}, ${maxAfter}]`);
+
+    // 对照：原本就贴合屏幕的，尺寸变化后应继续贴合（不能把这条行为改坏）
+    root.querySelector('[data-act="reset"]').dispatch("click", {});
+    check("对照：点「适应屏幕」后回到 min", Math.abs(tf().s - minAfter) < 1e-6,
+        `${tf().s} vs ${minAfter}`);
+
+    stage._rect = { left: 0, top: 0, width: 330, height: PHONE.height };
+    fireResize();
+    const minNarrow = Math.min(330 / IMG_W, PHONE.height / IMG_H, 1);
+    check("原本贴合的图片随新尺寸重新贴合", Math.abs(tf().s - minNarrow) < 1e-6,
+        `${tf().s} vs ${minNarrow}`);
 }
 
 /* ======================================================================

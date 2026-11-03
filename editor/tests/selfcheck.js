@@ -1,25 +1,11 @@
 /**
  * CGo OpenMap - 开放地图编辑器纯函数层回归自检 (editor/tests/selfcheck.js)
  *
- * ==============================================================================
- * 用途
- * ==============================================================================
- * 在项目根目录执行：
+ * 用法：node editor/tests/selfcheck.js（零依赖、零构建、不需要浏览器）
  *
- *     node editor/tests/selfcheck.js
- *
- * 零依赖、零构建、不需要浏览器。覆盖编辑器中两块**纯逻辑**且一旦出错后果最重的代码：
- *
- * 1. `city_project_io.js` —— 城市工程的条目级无损回写。
- *    这里出错的后果是**静默损毁已经逐像素校准过的城市数据**（悉尼的 marker/halo、
- *    北京的 textScale、线路的 pathPoints 折点等），且往往要等到渲染时才被发现。
- *    因此本脚本会拿 `city/` 下**全部真实城市数据**跑往返验证，逐条断言：
- *    改动生效、其余条目零改动、未被改的字段完好、diff 只有一两行。
- *
- * 2. `data-sanitizer.js` —— 识别结果净化与整体几何校正。
- *
- * 任何一项失败都会以非零状态码退出，便于挂进 CI 或提交前手动跑一遍。
- * ==============================================================================
+ * 覆盖两块出错后果最重的纯逻辑：city-project-io.js 的条目级无损回写（拿 city/ 下全部
+ * 真实城市数据跑往返，断言改动生效、其余条目零改动、未被改字段完好），以及
+ * data-sanitizer.js 的净化与几何校正。失败以非零状态码退出，便于挂 CI。
  */
 
 'use strict';
@@ -1166,7 +1152,7 @@ section('Milestone 3 多选框选与智能对齐参考线');
 
     // 7. Bug 2 fix: 删除车站后，patchStationsSource 应从输出文件中删除该条目
     const rawWithTwo = `const stationsData = {\n    "D1": { "x": 10, "y": 10, "cn": "保留站", "en": "Keep" },\n    "D2": { "x": 20, "y": 20, "cn": "待删站", "en": "Delete" }\n};\n`;
-    const delCity = PipelineSurgical.init('delcity', {
+    const lineDelCity = PipelineSurgical.init('delcity', {
         'data_stations.js': rawWithTwo,
         'data_lines.js': 'const linesData = [];'
     }, {
@@ -1176,10 +1162,10 @@ section('Milestone 3 多选框选与智能对齐参考线');
         },
         linesData: []
     });
-    delete delCity.project.nodes['D2'];   // 编辑器删除 D2
-    const delIds = PipelineSurgical.computeDeletedStationIds(delCity.project);
+    delete lineDelCity.project.nodes['D2'];   // 编辑器删除 D2
+    const delIds = PipelineSurgical.computeDeletedStationIds(lineDelCity.project);
     check(delIds.includes('D2'), 'Bug2 Fix: computeDeletedStationIds 正确识别 D2 被删除');
-    const delPatch = PipelineSurgical.patchStationsSource(delCity.project);
+    const delPatch = PipelineSurgical.patchStationsSource(lineDelCity.project);
     check(!delPatch.patchedSource.includes('"D2"') && !delPatch.patchedSource.includes("'D2'"), 'Bug2 Fix: 删除 D2 后回写源码中已不包含 D2 条目');
     check(delPatch.patchedSource.includes('"D1"') || delPatch.patchedSource.includes("'D1'"), 'Bug2 Fix: 未删除的 D1 仍完整保留在回写结果中');
 
@@ -1370,7 +1356,8 @@ section('Milestone 3 多选框选与智能对齐参考线');
     check(/SESSION_KEY/.test(editorAppSrc) && /function saveSessionNow/.test(editorAppSrc) &&
         /function restoreSessionIfAny/.test(editorAppSrc),
         'Session: 编辑器提供会话自动保存与启动恢复');
-    check(/if \(!restoreSessionIfAny\(\)\)/.test(editorAppSrc),
+    check(/var sessionRestored = restoreSessionIfAny\(\)/.test(editorAppSrc) &&
+        /if \(!sessionRestored\)/.test(editorAppSrc),
         'Session: 启动时先尝试恢复上次会话，失败才新建空白工程');
     check(/beforeunload/.test(editorAppSrc) && /visibilitychange/.test(editorAppSrc),
         'Session: 关闭 / 刷新 / 切后台前同步落盘');
@@ -1435,6 +1422,686 @@ section('Milestone 3 多选框选与智能对齐参考线');
         'Enter: 结束绘制但不擅自切换工具（可马上开始下一条）');
     check(/Enter \/ 右键 结束绘制/.test(editorAppSrc),
         'Enter: 绘制过程中在坐标读数上提示收尾快捷键');
+
+    // 25. 画布按键分工：只有左键参与选中 / 框选（这条守卫曾整段丢失，导致三个键都在框选）
+    check(/if \(e\.button !== 0 \|\| viewportEl\.classList\.contains\('panning'\)\) return;/.test(editorAppSrc),
+        'Pointer: mousedown 只接受左键（中键=漫游、右键=结束绘制/菜单，不参与框选）');
+    check(/isBoxSelecting = true/.test(editorAppSrc) &&
+        /app\.activeTool === 'select' \|\| app\.activeTool === 'box'\) && !targetNodeEl && !targetSegEl/.test(editorAppSrc),
+        'Pointer: 框选只在「选择 / 框选」工具的空白处启动');
+    check(/wantPan = \(e\.button === 1\) \|\| \(e\.button === 0 && spaceHeld\)/.test(vpSrc),
+        'Pointer: 中键（或空格+左键）才是平移');
+
+    // 26. 线路删除：三条入口 + 写回走 remove（曾经「提示已删除但线路还在」）
+    const navTreeSrc = fs.readFileSync(path.join(ROOT, 'editor/js/ui/nav-tree-view.js'), 'utf8');
+    const inspectorSrc = fs.readFileSync(path.join(ROOT, 'editor/js/ui/inspector-view.js'), 'utf8');
+    check(/function deleteLineById/.test(editorAppSrc) && /delete_line/.test(editorAppSrc),
+        'LineDelete: 线路删除有专用流程（确认框 + 站序/走向段数提示 + 可撤销）');
+    check(/app\.selected\.type === 'line'[\s\S]{0,220}deleteLineById/.test(editorAppSrc),
+        'LineDelete: 选中线路按 Delete 走删除流程（不再只弹「已删除选中图元」）');
+    check(/onDeleteLine/.test(navTreeSrc) && /onDeleteLine/.test(editorAppSrc) && /btnLineDelete/.test(inspectorSrc),
+        'LineDelete: 大纲行内按钮 / 线路属性面板 / Delete 键三个入口齐全');
+    check(/function computeDeletedLineIds/.test(surgSrc) && /ops\.remove = deletedLineIds/.test(surgSrc),
+        'LineDelete: 被删线路通过 patchEntries.remove 真正从源码消失');
+    check(/deleteStationById\(nid\)/.test(editorAppSrc),
+        'LineDelete: 批量删站改走分支安全实现（stationIds-wayN / distances-wayN 不再残留悬空 ID）');
+
+    const lnDelCity = PipelineSurgical.init('delcity', {
+        'data_stations.js': `const stationsData = {\n    "A": { type: "dot", x: 0, y: 0, cn: "甲", en: "A" },\n    "B": { type: "dot", x: 100, y: 0, cn: "乙", en: "B" }\n};\n`,
+        'data_lines.js': `const linesData = [\n    { id: "M1", name: "1号线", color: "#E4002B", stationIds: ["A"], distances: [] },\n    { id: "M2", name: "2号线", color: "#00AA00", stationIds: ["B"], distances: [] }\n];\n`
+    }, {
+        stationsData: { A: { type: 'dot', x: 0, y: 0, cn: '甲', en: 'A' }, B: { type: 'dot', x: 100, y: 0, cn: '乙', en: 'B' } },
+        linesData: [
+            { id: 'M1', name: '1号线', color: '#E4002B', stationIds: ['A'], distances: [] },
+            { id: 'M2', name: '2号线', color: '#00AA00', stationIds: ['B'], distances: [] }
+        ]
+    });
+    lnDelCity.project.lines = lnDelCity.project.lines.filter(function (l) { return l.id !== 'M2'; });
+    check(PipelineSurgical.computeDeletedLineIds(lnDelCity.project).join(',') === 'M2',
+        'LineDelete: 能识别出源码里存在、工程里已删除的线路');
+    const lnDelOut = PipelineSurgical.patchLinesSource(lnDelCity.project).patchedSource;
+    const lnDelParsed = evalData(lnDelOut, 'linesData') || [];
+    check(lnDelParsed.length === 1 && lnDelParsed[0].id === 'M1',
+        'LineDelete: 写回后源码里只剩未删除的线路（M2 真正消失）');
+    check(!/,\s*,/.test(lnDelOut),
+        'LineDelete: 删除后不会留下孤立逗号 / 空条目');
+
+    // 27. 撤销：跳过"无变化"快照 + 双阈值裁剪历史（曾经"撤销没反应 / 退不到最初"）
+    const histSrc = fs.readFileSync(path.join(ROOT, 'editor/js/core/history-manager.js'), 'utf8');
+    check(/candidate !== currentJson/.test(histSrc),
+        'Undo: 撤销时跳过与当前状态完全相同的快照');
+    check(/undoStack\[undoStack\.length - 1\] === snapshot/.test(histSrc),
+        'Undo: 重复压入同一状态会被去重，不白占撤销额度');
+    check(/function trimStacks/.test(histSrc) && /MAX_TOTAL_CHARS/.test(histSrc),
+        'Undo: 历史按「步数 + 总字符预算」双阈值裁剪，小工程能一直退到最初一步');
+    check(/已回到最早状态/.test(editorAppSrc) && /已经在最新状态/.test(editorAppSrc),
+        'Undo: 撤销 / 重做到底时给出明确提示');
+
+    const histSandbox = { window: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('window', histSrc)(histSandbox.window);
+    const H2 = histSandbox.window.OpenMapEditor.HistoryManager;
+    H2.clear();
+    let hs = { v: 0 };
+    H2.pushSnapshot(hs);            // 改动前
+    hs = { v: 1 };                  // 改动
+    H2.pushSnapshot(hs);            // 只是点了一下选中（无变化）
+    const hu = H2.undo(hs);
+    check(hu && hu.v === 0, 'Undo: 一次撤销就跳过无变化快照，落到真正的上一步');
+    check(H2.canRedo() === true, 'Undo: 撤销后仍可重做');
+    const hr = H2.redo(hu);
+    check(hr && hr.v === 1, 'Undo: 重做回到编辑后的状态（无变化快照未被复活）');
+
+    // 28. 网格与对齐合并：显示网格 = 显示 + 对齐；隐藏 = 不显示 + 不对齐
+    check(/function setGridVisible\(visible, silent\)/.test(editorAppSrc) &&
+        /app\.snapEnabled = !!visible/.test(editorAppSrc),
+        'Grid: 一个开关同时决定"显示网格"与"对齐网格"（共用一个状态）');
+    check(!/hudBtnSnap/.test(editorHtmlSrc) && !/hudBtnSnap/.test(editorAppSrc),
+        'Grid: 独立的吸附开关已移除（不再可能出现"看得到网格却不对齐"）');
+    check(/state\.snapEnabled = state\.gridVisible;/.test(vpSrc),
+        'Grid: 视口 setGrid 同步吸附状态，两边不会打架');
+    check(/openmap_editor_grid_visible/.test(editorAppSrc),
+        'Grid: 网格开关状态会持久化，刷新后保持一致');
+
+    const vpSandbox = { window: { OpenMapEditor: { GridLayer: {
+        getEffectiveGridSize: function () { return 10; },
+        setVisible: function () {}, setGridSize: function () {}, render: function () {}
+    } } } };
+    // eslint-disable-next-line no-new-func
+    new Function('window', vpSrc)(vpSandbox.window);
+    const VPtest = vpSandbox.window.OpenMapEditor.ViewportLayer;
+    VPtest.setGridSize(10);
+    VPtest.setGrid(true);
+    const gridOn = VPtest.snapPoint(297, 113);
+    VPtest.setGrid(false);
+    const gridOff = VPtest.snapPoint(297, 113);
+    check(gridOn.x === 300 && gridOn.y === 110, 'Grid: 显示网格时落点自动对齐到网格');
+    check(gridOff.x === 297 && gridOff.y === 113, 'Grid: 隐藏网格时落点不再对齐（回到任意小数位置）');
+
+    // 29. 全局 45°/90° 对齐（algorithms/align-45.js）
+    const align45Src = fs.readFileSync(path.join(ROOT, 'editor/js/algorithms/align-45.js'), 'utf8');
+    const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+    check(/js\/algorithms\/align-45\.js/.test(editorHtmlSrc),
+        'Align45: 编辑器按序加载角度对齐模块（在绘制流水线之前）');
+    check(/id="btnAlign45"/.test(editorHtmlSrc) && /function alignAllTo45/.test(editorAppSrc),
+        'Align45: 功能区提供「45/90 对齐」一键入口');
+    check(/\.\/editor\/js\/algorithms\/align-45\.js/.test(swSrc),
+        'Align45: 新模块已登记进 Service Worker 预缓存');
+    check(/A45\.constrainTo45/.test(drawSrc),
+        'Align45: 绘制工具的 45° 约束与该模块共用同一份数学（唯一真源）');
+
+    const a45sandbox = { window: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('window', align45Src)(a45sandbox.window);
+    const A45t = a45sandbox.window.OpenMapEditor.Align45;
+    const skewed = [{ x: 100, y: 100 }, { x: 300, y: 114 }, { x: 500, y: 320 }, { x: 514, y: 620 }];
+    check(A45t.isChainOn45(skewed, 0.5) === false, 'Align45: 能识别出歪斜折线');
+    const alignedRes = A45t.alignChain(skewed);
+    check(A45t.isChainOn45(alignedRes.points, 0.5) === true, 'Align45: 对齐后每一段都落在 45°/90°');
+    check(alignedRes.points[0].x === 100 && alignedRes.points[0].y === 100, 'Align45: 折线首点固定不动');
+    check(alignedRes.points.length === skewed.length && skewed[1].y === 114,
+        'Align45: 只挪位置不增删点，且不修改入参（纯函数）');
+    check(A45t.alignChain(alignedRes.points).changed === false, 'Align45: 幂等，已对齐的折线不再变动');
+
+    const a45plan = A45t.alignProject({
+        nodes: { A: { x: 0, y: 0 }, B: { x: 200, y: 9 }, C: { x: 500, y: 500 }, D: { x: 700, y: 512 } },
+        segments: [{ id: 'S1', lineId: 'L1', points: [{ x: 0, y: 0, nid: 'A' }, { x: 200, y: 9, nid: 'B' }] }],
+        lines: [{ id: 'L1', stationIds: ['A', 'B'] }, { id: 'L2', stationIds: ['C', 'D'] }],
+        notOpenLines: [{ id: 'N1', points: [{ x: 0, y: 1000 }, { x: 300, y: 1010 }] }]
+    }, {});
+    check(a45plan.stats.polylineCount === 2 && a45plan.stats.stationChainCount === 1,
+        'Align45: 一次覆盖走向折线、在建虚线与站序线路');
+    check(!!a45plan.nodes.B && !!a45plan.nodes.D,
+        'Align45: 折线锚点车站与站序车站都会跟随移动');
+
+    // 29.1 车站必须跟着折点走（pathPoints 城市没有 nid 锚点，曾出现"折点过去了车站没跟"）
+    check(/function findStationAt/.test(align45Src) && /claimedStations/.test(align45Src),
+        'Align45: 对齐前先认领折点上的车站，对齐后车站一起搬');
+    check(/vertexMoved/.test(align45Src),
+        'Align45: 只有折点真的移动时才搬车站（避免把"只是靠近折点"的站硬拽过去）');
+    check(/function isHandTunedPolyline/.test(align45Src) && /useStrictRounding/.test(align45Src),
+        'Align45: 手工调过倒角半径（逐点 r / useStrictRounding）的折线一律跳过');
+    check(/Math\.abs\(aligned\.x - srcX\) < 0\.01/.test(align45Src),
+        'Align45: 已对齐的点保持原值，重复执行严格幂等');
+
+    const a45snap = { window: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('window', align45Src)(a45snap.window);
+    const A45s = a45snap.window.OpenMapEditor.Align45;
+    const snapProj = {
+        nodes: { X: { x: 100, y: 100 }, Y: { x: 300, y: 114 }, Z: { x: 400, y: 400 } },
+        segments: [{ id: 'S1', lineId: 'L1', points: [{ x: 100, y: 100 }, { x: 300, y: 114 }, { x: 500, y: 320 }] }],
+        lines: [{ id: 'L1', stationIds: ['X', 'Y'] }]
+    };
+    const snapPlan = A45s.alignProject(snapProj, {});
+    check(snapPlan.nodes.Y && Math.abs(snapPlan.nodes.Y.x - snapPlan.segments[0].points[1].x) < 0.01,
+        'Align45: 无 nid 折线上的车站会对齐到折点新位置');
+    check(!snapPlan.nodes.Z, 'Align45: 离折线很远的车站不会被误拽');
+    check(A45s.alignProject(snapProj, {}).stats.changed === true, 'Align45: 未应用的方案再次计算仍有变化（原工程未被改）');
+    check(/skippedHandTuned/.test(editorAppSrc),
+        'Align45: 确认框会告知有多少条手工倒角折线被跳过');
+
+    // 30. 线路高亮只跟随"选中"，不跟随"当前绘制线路"
+    check(/selectedLineId:\s*selLineId/.test(editorAppSrc) && !/selectedLineId:\s*app\.activeLineId/.test(editorAppSrc),
+        'Highlight: 线路高亮由选中状态决定（点空白处取消选中后不再常亮）');
+    check(/\(app\.selected && app\.selected\.type === 'line'\) \? app\.selected\.id : null/.test(editorAppSrc),
+        'Highlight: 只有选中线路时才高亮整条线');
+    check(/function renderEmptyInspector\(\)/.test(editorAppSrc) &&
+        /renderEmpty\(\{ activeLine: activeLine \}\)/.test(editorAppSrc),
+        'Highlight: 空选择面板仍显示"当前绘制线路"，不会让人忘记新线挂哪');
+
+    // 31. 新增车站写回必须带 type（否则引擎没有尺寸类 → 巨大空心圆）
+    check(/item\.type = curr\.type \|\| 'dot'/.test(surgSrc),
+        'WriteBack: 新增车站走 append 时强制写入 type（不再因"默认 dot"省略）');
+    const typeCity = PipelineSurgical.init('typecity', {
+        'data_stations.js': 'const stationsData = {\n    "A": { type: "dot", x: 0, y: 0, cn: "甲", en: "A" }\n};\n',
+        'data_lines.js': 'const linesData = [];\n'
+    }, {
+        stationsData: { A: { type: 'dot', x: 0, y: 0, cn: '甲', en: 'A' } },
+        linesData: []
+    });
+    typeCity.project.nodes.NEW = { x: 10, y: 20, cn: '新站', en: 'New', align: 'top' };
+    const typeOut = PipelineSurgical.patchStationsSource(typeCity.project).patchedSource;
+    // append 的写法跟随样例条目风格：可能写成 type: "dot"，也可能是紧凑 JSON 的 "type":"dot"
+    check(/NEW[\s\S]{0,240}"?type"?\s*:\s*"?dot"?/.test(typeOut),
+        'WriteBack: 新增车站条目里确实写出了 type: "dot"');
+    const typeParsed = evalData(typeOut, 'stationsData') || {};
+    check(typeParsed.NEW && typeParsed.NEW.type === 'dot',
+        'WriteBack: 回写后新车站解析出来带合法 type（不会退化成巨大空心圆）');
+
+    // 32. 存量城市「强制回写」（危险操作）
+    const ribbonCss = fs.readFileSync(path.join(ROOT, 'editor/css/editor-ribbon.css'), 'utf8');
+    check(/id="btnForceWriteBack"/.test(editorHtmlSrc) && /ribbon-action-btn-lg danger/.test(editorHtmlSrc),
+        'ForceWriteBack: 存量维护 Tab 提供危险配色的「强制回写」入口');
+    check(/\.ribbon-action-btn-lg\.danger/.test(ribbonCss),
+        'ForceWriteBack: 危险按钮有独立的红橙色危险态样式');
+    check(/function forceWriteBack/.test(editorAppSrc) && /⚠ 危险操作：强制回写/.test(editorAppSrc),
+        'ForceWriteBack: 弹窗明确标注这是危险操作，并解释与"导出补丁"的区别');
+    check(/请再次确认：真的要强制覆盖/.test(editorAppSrc),
+        'ForceWriteBack: 需要二次确认，防止连点/手滑');
+    check(/function downloadOriginalsBackup/.test(editorAppSrc),
+        'ForceWriteBack: 写回前自动下载原件备份 ZIP（磁盘上无法撤销的兜底）');
+    check(/opts && opts\.force/.test(surgSrc) && /!f\.changed && !force/.test(surgSrc),
+        'ForceWriteBack: 写回层支持 force —— 跳过"有无改动"判定，整份覆盖');
+    check(/resolveCityDir\(linkedDirectoryHandle, cityId\)/.test(surgSrc) && !/force[\s\S]{0,200}resolveCityDir = null/.test(surgSrc),
+        'ForceWriteBack: force 不会绕过目录安全校验（写错目录是硬红线）');
+
+    // 33. 写回时句柄状态过期（InvalidStateError）的自动重试与中文诊断
+    check(/async function writeOneFile/.test(surgSrc),
+        'FSError: 每个文件单独重新取句柄后写入');
+    check(/name !== 'InvalidStateError' && name !== 'NotFoundError'/.test(surgSrc) &&
+        /var freshDir = await resolveCityDir\(linkedDirectoryHandle, cityId\)/.test(surgSrc),
+        'FSError: 状态过期时重新解析目录并自动重试一次（仍走目录校验）');
+    check(/retriedFiles/.test(surgSrc) && /自动重试成功/.test(surgSrc),
+        'FSError: 结果里回报哪些文件是重试后才写成功的');
+    check(/function describeFileSystemError/.test(surgSrc),
+        'FSError: 提供 File System Access 报错的中文诊断');
+    check(/describeFileSystemError/.test(editorAppSrc) &&
+        /setLinkedDirectoryHandle\(null\)/.test(editorAppSrc),
+        'FSError: 界面展示中文诊断，并在状态过期时清掉旧句柄提示重新授权');
+
+    const desc = PipelineSurgical.describeFileSystemError;
+    check(desc && /被改动过/.test(desc({ name: 'InvalidStateError', message: 'state had changed since it was read from disk' })),
+        'FSError: InvalidStateError 被翻译成"文件在关联后被别处改动过"');
+    check(desc && /权限/.test(desc({ name: 'NotAllowedError', message: 'no permission' })),
+        'FSError: NotAllowedError 被翻译成"写入权限过期"');
+    check(desc && /只读|占用/.test(desc({ name: 'NoModificationAllowedError', message: 'locked' })),
+        'FSError: NoModificationAllowedError 被翻译成"文件只读/被占用"');
+}
+
+// ============================================================================
+// 二十五、启动策略：会话恢复后的 URL 城市参数（issue #50）
+// ============================================================================
+section('启动策略：会话恢复后不被 URL 覆盖 + 城市事件只触发一次（#50）');
+{
+    const editorAppSrc = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    new Function(fs.readFileSync(path.join(ROOT, 'editor/js/core/startup-policy.js'), 'utf8'))();
+    const Policy = global.window.OpenMapEditor.StartupPolicy;
+
+    check(Policy.decideUrlCity({ sessionRestored: false, urlCity: 'fuzhou' }) === 'load',
+        '未恢复会话时，URL ?city= 正常自动载入');
+    check(Policy.decideUrlCity({ sessionRestored: true, restoredCityId: 'fuzhou', urlCity: 'fuzhou' }) === 'already-loaded',
+        '恢复的正是 URL 指定的城市：只同步显示、不重复载入');
+    check(Policy.decideUrlCity({ sessionRestored: true, restoredCityId: 'beijing', urlCity: 'fuzhou' }) === 'keep-session',
+        '恢复的是另一座城市：保护未保存工程，不自动载入 URL 城市');
+    check(Policy.decideUrlCity({ sessionRestored: true, restoredCityId: null, urlCity: 'fuzhou' }) === 'keep-session',
+        '恢复的是未保存空白工程：同样不被 URL 城市覆盖');
+    check(Policy.decideUrlCity({ sessionRestored: true, urlCity: '' }) === 'none',
+        'URL 未带城市时不产生任何动作');
+
+    // 事件级：一次选择只能派发一种事件，否则两个监听器会各加载一次
+    global.Event = global.Event || class Event { constructor(type) { this.type = type; } };
+    global.CustomEvent = global.CustomEvent || class CustomEvent extends global.Event {
+        constructor(type, opts) { super(type); this.detail = opts && opts.detail; }
+    };
+    const customSelect = {
+        tagName: 'CGO-TOOLBAR-SELECT', value: '', _events: [],
+        dispatchEvent(e) { this._events.push(e.type); }, requestUpdate() { }
+    };
+    Policy.dispatchCityChange(customSelect, 'fuzhou');
+    check(customSelect._events.length === 1 && customSelect._events[0] === 'cgo-change',
+        'cgo-toolbar-select 只派发 1 次 cgo-change（不再额外补发 change）');
+
+    const nativeSelect = {
+        tagName: 'SELECT', value: '', _events: [],
+        dispatchEvent(e) { this._events.push(e.type); }
+    };
+    Policy.dispatchCityChange(nativeSelect, 'fuzhou');
+    check(nativeSelect._events.length === 1 && nativeSelect._events[0] === 'change',
+        '原生 select 只派发 1 次 change');
+
+    check(/function parseUrlParams\(sessionRestored\)/.test(editorAppSrc) &&
+        /StartupPolicy/.test(editorAppSrc) && /decideUrlCity/.test(editorAppSrc),
+        '编辑器启动时把「是否恢复会话」交给 StartupPolicy 判定，而不是无条件载入 URL 城市');
+    check(/if \(action === 'keep-session'\)/.test(editorAppSrc) &&
+        /未自动载入 URL 中的城市/.test(editorAppSrc),
+        '恢复出未保存工程时给出明确提示并跳过 URL 城市自动载入');
+}
+
+// ============================================================================
+// 二十六、视口事件：普通左键 / 空格拖拽 / 中键拖拽 / 失焦复位（issue #51）
+// ============================================================================
+section('视口交互：空格状态已声明，左键不再抛错（#51）');
+{
+    // 最小 DOM 桩：直接驱动真实的 viewport.js，按真实事件顺序跑一遍
+    const winHandlers = {};
+    global.window.addEventListener = function (type, fn) {
+        (winHandlers[type] = winHandlers[type] || []).push(fn);
+    };
+    global.window.removeEventListener = function () { };
+
+    new Function(fs.readFileSync(path.join(ROOT, 'editor/js/layers/viewport.js'), 'utf8'))();
+    const VP = global.window.OpenMapEditor.ViewportLayer;
+
+    const viewHandlers = {};
+    const classes = new Set();
+    const viewport = {
+        classList: {
+            add: (c) => classes.add(c),
+            remove: (c) => classes.delete(c),
+            contains: (c) => classes.has(c)
+        },
+        clientWidth: 800,
+        clientHeight: 600,
+        addEventListener(type, fn) { (viewHandlers[type] = viewHandlers[type] || []).push(fn); },
+        getBoundingClientRect() { return { left: 0, top: 0, width: 800, height: 600 }; }
+    };
+    const viewLayer = { setAttribute() { } };
+
+    VP.init(viewport, {}, viewLayer);
+
+    const fire = (list, ev) => (list || []).slice().forEach((fn) => fn(ev));
+    const mouse = (button, x, y, extra) => Object.assign({
+        button: button, clientX: x, clientY: y,
+        target: { closest: () => null },
+        preventDefault() { }
+    }, extra || {});
+
+    // 1) 普通左键点击：未声明 spaceHeld 的旧实现会在此抛 ReferenceError
+    let leftThrew = false;
+    try {
+        fire(viewHandlers.mousedown, mouse(0, 10, 10));
+    } catch (err) {
+        leftThrew = true;
+    }
+    check(!leftThrew, '普通左键点击不再抛 ReferenceError（spaceHeld 已在 IIFE 内声明）');
+    check(VP.getPan().x === 0 && VP.getPan().y === 0 && !classes.has('panning'),
+        '普通左键不会误触平移，也不会点亮手形光标');
+
+    // 2) 空格 + 左键拖拽
+    fire(winHandlers.keydown, { code: 'Space', target: { matches: () => false } });
+    check(classes.has('panning'), '按下空格后进入平移待命态（手形光标）');
+    fire(viewHandlers.mousedown, mouse(0, 100, 100));
+    fire(winHandlers.mousemove, { buttons: 1, clientX: 140, clientY: 130 });
+    check(VP.getPan().x === 40 && VP.getPan().y === 30,
+        '空格 + 左键拖拽按位移平移视口（40, 30）');
+    fire(winHandlers.mouseup, { button: 0 });
+    fire(winHandlers.keyup, { code: 'Space' });
+    check(!classes.has('panning'), '松开空格后退出平移待命态');
+
+    // 3) 中键拖拽
+    fire(viewHandlers.mousedown, mouse(1, 100, 100));
+    fire(winHandlers.mousemove, { buttons: 4, clientX: 90, clientY: 120 });
+    check(VP.getPan().x === 30 && VP.getPan().y === 50, '中键拖拽平移视口（-10, +20）');
+    fire(winHandlers.mouseup, { button: 1 });
+
+    // 4) 失焦复位：空格被"卡住"时，左键不该永久被当成平移
+    fire(winHandlers.keydown, { code: 'Space', target: { matches: () => false } });
+    check(classes.has('panning'), '失焦前空格处于按下态');
+    fire(winHandlers.blur, {});
+    check(!classes.has('panning'), '窗口失焦后空格状态复位、手形光标清除');
+    fire(viewHandlers.mousedown, mouse(0, 0, 0));
+    fire(winHandlers.mousemove, { buttons: 1, clientX: 50, clientY: 50 });
+    check(VP.getPan().x === 30 && VP.getPan().y === 50,
+        '失焦复位后左键拖动不再平移（不会把画布"粘"住）');
+
+    // 5) 输入框内按空格属于正常输入，不能触发平移
+    fire(winHandlers.keydown, { code: 'Space', target: { matches: (sel) => sel.indexOf('input') >= 0 } });
+    check(!classes.has('panning'), '输入框内按空格不会进入平移态');
+}
+
+// ============================================================================
+// 二十七、ID 生成与批量建站拓扑（issue #52 / #53）
+// ============================================================================
+section('批量建站：已有线路拓扑连续、ID 唯一（#52 / #53）');
+{
+    const mkNode = (x, y, cn) => ({ id: cn, x: x, y: y, cn: cn, en: cn, type: 'dot' });
+
+    // 1) 追加到已有线路：站序、站距、线段拓扑三者必须一致
+    const project = ProjectModel.createProject(1200, 900);
+    project.nodes = {
+        A1: Object.assign(mkNode(100, 100, '甲'), { id: 'A1' }),
+        A2: Object.assign(mkNode(200, 100, '乙'), { id: 'A2' })
+    };
+    project.lines = [{ id: 'L1', name: '1号线', color: '#E4002B', stationIds: ['A1', 'A2'], distances: [1000] }];
+    const created = BatchStationTool.batchCreateStations(
+        project, 'L1',
+        [{ cn: '丙', en: 'Bing' }, { cn: '丁', en: 'Ding' }],
+        { autoConnect: true, step: 50 }
+    );
+    const ids = project.lines[0].stationIds;
+    check(created.length === 2 && ids.length === 4 &&
+        ids[2] === created[0] && ids[3] === created[1],
+        '批量车站按顺序追加到已有站序末尾');
+    check(project.lines[0].distances.length === ids.length - 1,
+        '追加后 distances 长度仍严格等于「站数 − 1」');
+    check(project.nodes[created[0]].x === 250 && project.nodes[created[0]].y === 100,
+        '新站从原末站沿当前方向继续排（不与既有线网重叠）');
+
+    const segPairs = project.segments.map((s) => (s.points || []).map((p) => p.nid).join('→'));
+    check(segPairs.includes('A2→' + created[0]),
+        '原末站 → 新站链首端补上了线段（站序相邻、画布不断链）');
+    check(segPairs.includes(created[0] + '→' + created[1]),
+        '新站之间线段完整');
+
+    // 调用方不能把起点写死成 (200, 200)，否则流水线的「从末站续排」策略永远不会生效
+    const batchCall = (fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8')
+        .match(/batchCreateStations\([\s\S]*?\)\s*;/) || [''])[0];
+    check(batchCall.length > 0 && !/startX\s*:/.test(batchCall) && !/startY\s*:/.test(batchCall),
+        '批量导入界面不再把新站固定堆在 (200, 200)，起点交给流水线按末站决定');
+
+    // 2) 新建空线路：保持原有 (200, 200) 起点行为
+    const fresh = ProjectModel.createProject(1200, 900);
+    fresh.nodes = {};
+    fresh.lines = [{ id: 'L9', name: '9号线', color: '#123456', stationIds: [], distances: [] }];
+    const freshCreated = BatchStationTool.batchCreateStations(
+        fresh, 'L9', [{ cn: 'A', en: 'A' }, { cn: 'B', en: 'B' }],
+        { autoConnect: true, step: 60 }
+    );
+    check(fresh.nodes[freshCreated[0]].x === 200 && fresh.nodes[freshCreated[0]].y === 200,
+        '空线路批量建站仍从默认 (200, 200) 起步');
+    check(fresh.lines[0].stationIds.length === 2, '空线路写入 2 座车站站序');
+    check(fresh.lines[0].distances.length === fresh.lines[0].stationIds.length - 1,
+        '空线路追加后 distances 同步补齐为「站数 − 1」');
+
+    // 3) 分支线路：写入 way1 / distances-way1，并接上原 way1 末站
+    const branch = ProjectModel.createProject(1200, 900);
+    branch.nodes = { B1: Object.assign(mkNode(0, 0, '一'), { id: 'B1' }) };
+    branch.lines = [{
+        id: 'LB', name: '支线', color: '#654321', hasbranch: true,
+        'stationIds-way1': ['B1'], 'distances-way1': []
+    }];
+    const branchCreated = BatchStationTool.batchCreateStations(
+        branch, 'LB', [{ cn: '二', en: 'Two' }], { autoConnect: true, step: 40 }
+    );
+    check(branch.lines[0]['stationIds-way1'].length === 2 &&
+        branch.lines[0]['stationIds-way1'][1] === branchCreated[0] &&
+        !branch.lines[0].stationIds,
+        '分支线路追加到 way1，不会误写主站序');
+    check(branch.segments.some((s) => (s.points || []).map((p) => p.nid).join('→') === 'B1→' + branchCreated[0]),
+        '分支线路同样补上「原末站 → 新首站」线段');
+
+    // 4) 旧工程缺 idSeq：不得再产生 node_NaN / 互相覆盖
+    const legacy = {
+        version: 1,
+        canvas: { width: 1000, height: 800 },
+        nodes: { node_1: { id: 'node_1', x: 10, y: 10, cn: '旧站', en: 'Old', type: 'dot' } },
+        segments: [],
+        lines: [{ id: 'L1', name: '1号线', color: '#E4002B', stationIds: ['node_1'] }]
+        // 故意没有 idSeq
+    };
+    const normalized = ProjectModel.normalize(legacy);
+    check(normalized.idSeq >= 1, '导入旧工程时 normalize 补齐合法 idSeq');
+    const legacyCreated = BatchStationTool.batchCreateStations(
+        normalized, 'L1', [{ cn: '新1', en: 'N1' }, { cn: '新2', en: 'N2' }],
+        { autoConnect: false }
+    );
+    check(legacyCreated.length === 2 &&
+        !legacyCreated.some((id) => /NaN/.test(id)) &&
+        new Set(legacyCreated).size === 2,
+        '缺少 idSeq 的旧工程批量建站 ID 唯一（不再出现 node_NaN）');
+    check(Object.keys(normalized.nodes).length === 3,
+        '两座新站各自落到独立节点，没有被 node_NaN 覆盖');
+
+    // 5) 已占用 ID 时 nextId 会跳过，而不是覆盖
+    const occupied = { nodes: { node_4: { id: 'node_4' } }, segments: [{ id: 'seg_4' }], lines: [] };
+    const first = ProjectModel.nextId(occupied, 'node_');
+    occupied.nodes[first] = { id: first };
+    const second = ProjectModel.nextId(occupied, 'node_');
+    check(first !== 'node_4' && second !== first && second !== 'node_4',
+        'nextId 跳过已被占用的 ID，连续生成不重复');
+    check(!/NaN/.test(first + second), 'nextId 在异常计数器下也不会拼出 NaN');
+}
+
+// ============================================================================
+// 二十八、网格隐藏后的吸附步长（issue #56）
+// ============================================================================
+section('网格：隐藏后吸附步长跟随当前缩放（#56）');
+{
+    const gridLayerSrc = fs.readFileSync(path.join(ROOT, 'editor/js/layers/grid-layer.js'), 'utf8');
+    new Function(gridLayerSrc)();
+    const Grid = global.window.OpenMapEditor.GridLayer;
+    let scale = 0.3;
+    // 用最小视口桩替换，模拟「隐藏网格后继续缩放」
+    global.window.OpenMapEditor.ViewportLayer = { getScale: () => scale };
+
+    Grid.setVisible(false);
+    Grid.setGridSize(10);
+    check(Grid.getEffectiveGridSize() === 40,
+        '网格隐藏 + 缩放 0.3：吸附步长按当前 LOD 实时算为 40（不沿用旧值）');
+    scale = 1;
+    check(Grid.getEffectiveGridSize() === 10,
+        '隐藏状态下继续放大到 1：吸附步长回到 10');
+    scale = 0.5;
+    Grid.setGridSize(30);
+    check(Grid.getEffectiveGridSize() === 30,
+        '隐藏状态下修改基础网格间距：吸附步长立即按新配置计算');
+
+    check(/function computeGridStep/.test(gridLayerSrc) &&
+        /computeGridStep\(baseGrid, k\)/.test(gridLayerSrc),
+        '网格渲染与吸附共用同一份 LOD 计算（不再各算一套）');
+    check(/if \(state\.visible && state\.lastRenderedStep > 0\)/.test(gridLayerSrc),
+        '网格可见时用实际渲染步长，隐藏时改用实时计算');
+}
+
+// ============================================================================
+// 二十九、撤销历史不得跨工程（issue #39）
+// ============================================================================
+section('撤销历史：切换工程 / 新建画布后清空（#39）');
+{
+    const editorAppSrc = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    new Function(fs.readFileSync(path.join(ROOT, 'editor/js/core/history-manager.js'), 'utf8'))();
+    const HM = global.window.OpenMapEditor.HistoryManager;
+    HM.clear();
+    HM.pushSnapshot({ project: 'old' });
+    check(HM.canUndo(), '编辑后存在可撤销快照');
+    HM.clear();
+    check(!HM.canUndo() && !HM.canRedo() && HM.getDirtyCount() === 0,
+        'clear 同时清空撤销 / 重做栈与未保存计数');
+    HM.pushSnapshot({ project: 'old' });
+    HM.pushSnapshot({ project: 'new' });
+    HM.markSaved();
+    check(HM.getDirtyCount() === 0 && HM.canUndo(),
+        '保存成功后未保存计数归零，但历史仍可继续撤销');
+
+    check(/HistoryManager\.clear\(\)/.test(editorAppSrc), '编辑器使用 HistoryManager.clear（reset 并不存在）');
+    check(!/HistoryManager\.reset\b/.test(editorAppSrc), '不再调用不存在的 HistoryManager.reset');
+    check(/btnConfirmNewCanvas[\s\S]{0,1400}HistoryManager\.clear\(\)/.test(editorAppSrc),
+        '新建画布后清空撤销历史');
+    check(/btnHeaderOpenFile[\s\S]{0,2200}HistoryManager\.clear\(\)/.test(editorAppSrc),
+        '导入工程 JSON 后清空撤销历史');
+    check(/HistoryManager\.clear\(\)[\s\S]{0,200}renderAll\(\)[\s\S]{0,200}已无损载入城市/.test(editorAppSrc),
+        '载入城市后清空撤销历史（不会 Undo 回上一座城市）');
+    check(/HistoryManager\.markSaved\(\)/.test(editorAppSrc),
+        '直接写回本地目录成功后同步保存状态');
+    check(/btnHeaderOpenFile[\s\S]{0,1600}ProjectModel\.normalize\(parsed\)/.test(editorAppSrc),
+        '导入工程 JSON 先做 normalize，再接管为当前工程');
+}
+
+// ============================================================================
+// 三十、公告日期严格校验（issue #36）
+// ============================================================================
+section('公告时间：非空但无效的日期不再被当成永久有效（#36）');
+{
+    const prevDocument = global.document;
+    global.document = {
+        readyState: 'loading',
+        addEventListener() { },
+        removeEventListener() { },
+        head: { appendChild() { } },
+        createElement: () => ({})
+    };
+    try {
+        new Function(fs.readFileSync(path.join(ROOT, 'core/notice.js'), 'utf8'))();
+        const Notice = global.window.NAL_NOTICE;
+        const parse = Notice._parseLocalTime;
+
+        check(parse(undefined) === null && parse('') === null && parse('permanent') === null,
+            '缺省 / 空串 / permanent 仍按「不设限」处理（历史兼容口径）');
+        check(parse('2026-10-25') instanceof Date && parse('2026-10-25').getHours() === 0,
+            '纯日期按本地零点解析');
+        check(parse('2026-10-25 08:30') instanceof Date &&
+            parse('2026-10-25 08:30').getMinutes() === 30,
+            '接受 YYYY-MM-DD HH:mm');
+        check(parse('2026-10-25T08:30:15') instanceof Date,
+            '接受 T 分隔的 ISO 写法');
+
+        check(parse('2026-02-30 00:00:00') === undefined,
+            '不存在的日历日期（2026-02-30）判为无效，而不是进位到 3 月 2 日');
+        check(parse('2026-02-29') === undefined && parse('2024-02-29') instanceof Date,
+            '平年 2 月 29 无效、闰年 2 月 29 有效');
+        check(parse('2026-13-01') === undefined && parse('2026-10-32') === undefined,
+            '月份 / 日期越界判为无效');
+        check(parse('2026-10-25 24:00:00') === undefined &&
+            parse('2026-10-25 23:59:60') === undefined,
+            '时分秒越界判为无效');
+        check(parse('2026/10/25') === undefined && parse('2026-1-1') === undefined,
+            '斜杠格式与不补零格式判为无效');
+
+        const warn = console.warn;
+        console.warn = () => { };
+        try {
+            check(Notice._checkValidity({ id: 't1', active: true, deadline: '2026-02-30' }) === false,
+                '截止时间无效时整条公告不展示（不再永久有效）');
+            check(Notice._checkValidity({ id: 't2', active: true, startTime: '2026-13-01' }) === false,
+                '开始时间无效时整条公告不展示（不再提前放出）');
+        } finally {
+            console.warn = warn;
+        }
+        check(Notice._checkValidity({ id: 't3', active: true }) === true,
+            '不填时间字段的公告照常展示');
+        check(Notice._checkValidity({ id: 't4', active: true, startTime: '2026-01-01', deadline: 'permanent' }) === true,
+            '有效开始时间 + permanent 截止时间正常展示');
+    } finally {
+        global.document = prevDocument;
+    }
+}
+
+// ============================================================================
+// 三十一、全城市车站 type 必填与字段合法性（issue #57）
+// ============================================================================
+section('全城市车站 type 必填 / 合法与字段结构（#57）');
+{
+    const BASE_STATION_TYPES = new Set(['dot', 'tsf', 'tsfo', 'diy', 'no', 'rdot']);
+    const ALIGN_VALUES = new Set([
+        'top', 'bottom', 'left', 'right',
+        'top-left', 'top-right', 'bottom-left', 'bottom-right'
+    ]);
+
+    /**
+     * 校验一条车站数据。
+     * 引擎支持的基础类型见 BASE_STATION_TYPES；部分城市还会用 city.renderStationIcon
+     * 接管自定义图元（如石家庄的 terminus / scenery / railcity），这类类型必须能在
+     * 该城市主脚本里找到显式处理，否则同样视为非法。
+     */
+    function validateStation(city, id, s, customTypes) {
+        const errors = [];
+        if (!s || typeof s !== 'object' || Array.isArray(s)) {
+            return ['条目不是对象'];
+        }
+        if (typeof s.type !== 'string' || !s.type) {
+            errors.push('缺少 type（会退化为没有尺寸类的巨大空心圆）');
+        } else if (!BASE_STATION_TYPES.has(s.type) && !(customTypes && customTypes.has(s.type))) {
+            errors.push('非法 type: ' + s.type);
+        }
+        if (typeof s.x !== 'number' || !isFinite(s.x)) errors.push('x 必须是有限数字');
+        if (typeof s.y !== 'number' || !isFinite(s.y)) errors.push('y 必须是有限数字');
+        if (typeof s.cn !== 'string' || !s.cn.trim()) errors.push('cn 必须是非空字符串');
+        if (s.en !== undefined && typeof s.en !== 'string') errors.push('en 必须是字符串');
+        if (s.align !== undefined && !ALIGN_VALUES.has(s.align)) {
+            errors.push('align 非法: ' + JSON.stringify(s.align));
+        }
+        if (s.offset !== undefined) {
+            if (!s.offset || typeof s.offset !== 'object' ||
+                typeof s.offset.x !== 'number' || typeof s.offset.y !== 'number') {
+                errors.push('offset 必须是 { x: number, y: number }');
+            }
+        }
+        if (s.textScale !== undefined) {
+            if (!s.textScale || typeof s.textScale !== 'object' ||
+                typeof s.textScale.cn !== 'number' || typeof s.textScale.en !== 'number') {
+                errors.push('textScale 必须是 { cn: number, en: number }');
+            }
+        }
+        if (s.hideLabel !== undefined && typeof s.hideLabel !== 'boolean') {
+            errors.push('hideLabel 必须是布尔值');
+        }
+        return errors;
+    }
+
+    const issues = [];
+    for (const city of cities) {
+        const data = evalData(
+            fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'),
+            'stationsData'
+        );
+        const cityMain = path.join(ROOT, 'city', city, city + '.js');
+        const mainSrc = fs.existsSync(cityMain) ? fs.readFileSync(cityMain, 'utf8') : '';
+        const customTypes = new Set();
+        // 城市主脚本显式判定的站点类型（如 s.type === 'terminus'）视为该城合法的自定义图元
+        for (const m of mainSrc.matchAll(/(?:s|station)\.type\s*===\s*['"]([A-Za-z0-9_-]+)['"]/g)) {
+            customTypes.add(m[1]);
+        }
+        for (const [id, station] of Object.entries(data || {})) {
+            validateStation(city, id, station, customTypes).forEach((reason) => {
+                issues.push(`${city}/${id}: ${reason}`);
+            });
+        }
+    }
+
+    if (issues.length) {
+        console.log('  车站数据问题（最多显示前 10 条）：');
+        issues.slice(0, 10).forEach((msg) => console.log('   - ' + msg));
+    }
+    check(issues.length === 0,
+        `全部 ${cities.length} 座城市的车站 type 必填且合法，x/y/cn/align/offset/textScale 结构正确` +
+        (issues.length ? `；发现 ${issues.length} 处问题` : ''));
+
+    // 自检本身要能抓住回归，而不是恒真
+    const noCustom = new Set();
+    check(validateStation('demo', 'X1', { cn: '缺类型', x: 0, y: 0 }, noCustom).length > 0,
+        '自检能识别「缺少 type」的站点');
+    check(validateStation('demo', 'X2', { type: 'tsf', cn: '坏对齐', x: 0, y: 0, align: 'down' }, noCustom).length > 0,
+        '自检能识别非法 align');
+    check(validateStation('demo', 'X3', { type: 'dot', cn: '坏偏移', x: 0, y: 0, offset: { x: 1 } }, noCustom).length > 0,
+        '自检能识别结构不完整的 offset');
+    check(validateStation('demo', 'X4', { type: 'terminus', cn: '自定义', x: 0, y: 0 }, noCustom).length > 0 &&
+        validateStation('demo', 'X4', { type: 'terminus', cn: '自定义', x: 0, y: 0 }, new Set(['terminus'])).length === 0,
+        '自定义类型只有在城市脚本显式处理时才被放行');
+    check(validateStation('demo', 'X5', {
+        type: 'dot', cn: '正常', en: 'OK', x: 1, y: 2,
+        align: 'bottom-right', offset: { x: 0, y: 0 }, textScale: { cn: 1, en: 1 }
+    }, noCustom).length === 0, '合法站点不会被误报');
 }
 
 // ============================================================================

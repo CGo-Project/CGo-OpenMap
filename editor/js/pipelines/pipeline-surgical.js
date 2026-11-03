@@ -184,7 +184,14 @@
             }
 
             segmentsToCreate.forEach(function (segItem) {
-                var segId = 'seg_' + (++project.idSeq);
+                // 统一 ID 生成器：优先 ProjectModel.nextId，避免异常 idSeq 拼出 seg_NaN
+                var segId;
+                if (pm && typeof pm.nextId === 'function') {
+                    segId = pm.nextId(project, 'seg_');
+                } else {
+                    project.idSeq = (Number(project.idSeq) || 1) + 1;
+                    segId = 'seg_' + project.idSeq;
+                }
                 project.segments.push({
                     id: segId,
                     lineId: lid,
@@ -349,8 +356,10 @@
                 if (curr.offset && (curr.offset.x !== 0 || curr.offset.y !== 0)) {
                     item.offset = { x: curr.offset.x, y: curr.offset.y };
                 }
-                // type：仅在非默认 'dot' 时写入
-                if (curr.type && curr.type !== 'dot') item.type = curr.type;
+                // ⚠️ type 是数据契约里的必填字段：新增条目必须显式写出，
+                //    绝不能因为"默认是 dot"就省掉 —— 省掉后引擎没有尺寸类，
+                //    车站会渲染成没有尺寸的巨大空心圆（历史事故）。
+                item.type = curr.type || 'dot';
                 if (curr.hideLabel) item.hideLabel = true;
                 if (curr.textScale) item.textScale = curr.textScale;
                 if (curr.marker) item.marker = curr.marker;
@@ -576,11 +585,24 @@
     /**
      * 执行线路外科手术式回写
      */
+    /**
+     * 被删除的线路 ID：原始快照里有、当前工程里已经没有。
+     */
+    function computeDeletedLineIds(currentProject) {
+        if (!originalSnapshot || !currentProject) return [];
+        var currIds = {};
+        (currentProject.lines || []).forEach(function (l) { if (l && l.id) currIds[l.id] = true; });
+        return (originalSnapshot.lines || [])
+            .map(function (l) { return l && l.id; })
+            .filter(function (id) { return id && !currIds[id]; });
+    }
+
     function patchLinesSource(currentProject) {
         var io = getCityProjectIO();
         if (!io) throw new Error('CityProjectIO 模块未就绪');
         var dirty = computeDirtyLines(currentProject);
-        var dirtyCount = Object.keys(dirty).length;
+        var deletedLineIds = computeDeletedLineIds(currentProject);
+        var dirtyCount = Object.keys(dirty).length + deletedLineIds.length;
 
         if (dirtyCount === 0) {
             return { dirtyCount: 0, patchedSource: rawSources['data_lines.js'] || '' };
@@ -601,6 +623,8 @@
         });
 
         var ops = { update: updateOnly };
+        // 被删掉的线路：源码里还有这一条，必须走 remove 才会真的消失（否则导出补丁里它还在）
+        if (deletedLineIds.length) ops.remove = deletedLineIds;
         if (newLineKeys.length) {
             ops.append = newLineKeys.map(function (lid) {
                 var clean = {};
@@ -755,34 +779,107 @@
     /**
      * 直接写回本地文件系统
      */
-    async function saveDirectToLocal(currentProject) {
+    /**
+     * 直接写入关联的本地城市目录。
+     *
+     * @param {Object} currentProject
+     * @param {{force?: boolean}} [opts]
+     *        force = true 时**跳过"有无改动"判定**，把改动文件整份无条件重写。
+     *        用途：脏判定对某些编辑不敏感（或用户明确要求以当前画布为准）时强制落盘。
+     *        无论如何**不会**跳过目录校验 —— 写进错误目录是不可接受的后果。
+     */
+    /**
+     * 把 File System Access 的报错翻译成用户能理解的中文原因与处置办法。
+     * 原始英文消息仍保留在返回值里，便于排查。
+     */
+    function describeFileSystemError(err) {
+        var name = (err && err.name) || '';
+        var raw = (err && err.message) || String(err);
+        var hint = '';
+        if (name === 'InvalidStateError') {
+            hint = '磁盘上的文件在你关联目录之后被改动过（编辑器外的 git 操作 / VS Code 保存 / 上一次写回都会导致）。' +
+                '已尝试自动重试；若仍失败，请点「关联本地目录」重新授权后再试。';
+        } else if (name === 'NotAllowedError') {
+            hint = '浏览器拒绝了写入权限（授权可能已过期）。请重新点击「关联本地目录」并允许编辑文件。';
+        } else if (name === 'NoModificationAllowedError') {
+            hint = '文件处于只读状态或被其它程序独占（例如被 Office／同步盘锁定）。关闭占用后重试。';
+        } else if (name === 'NotFoundError') {
+            hint = '目标文件或目录不存在（可能被移动/改名）。请重新关联 city 目录。';
+        } else if (name === 'QuotaExceededError') {
+            hint = '磁盘空间不足，无法写入。';
+        } else if (name === 'SecurityError' || name === 'AbortError') {
+            hint = '操作被浏览器安全策略中断。请重新关联目录后重试。';
+        } else {
+            hint = '写入过程被中断。可点「关联本地目录」重新授权后重试。';
+        }
+        return hint + (raw ? '（原始信息：' + raw + '）' : '');
+    }
+
+    async function saveDirectToLocal(currentProject, opts) {
+        var force = !!(opts && opts.force);
         if (!linkedDirectoryHandle) {
             throw new Error('未关联本地城市目录，请先点击「关联本地城市目录」选取本地文件夹。');
         }
         var cs = computeChangeset(currentProject);
-        if (!cs.hasChanges) {
-            return { savedCount: 0, savedFiles: [], message: '当前无改动条目需要保存' };
+        if (!cs.hasChanges && !force) {
+            return { savedCount: 0, savedFiles: [], forced: false, message: '当前无改动条目需要保存' };
         }
 
         var cityId = (currentLoadedCity && currentLoadedCity.id) || '';
         var targetDir = await resolveCityDir(linkedDirectoryHandle, cityId);
 
+        /**
+         * 写单个文件。
+         *
+         * 为什么不是"取一次句柄直接写"：File System Access 把**读取时的磁盘状态**缓存在句柄里，
+         * 一旦文件在关联目录之后被别处改动过（编辑器外的 git 切换、VS Code 保存、上一次写回），
+         * createWritable() 就会抛 InvalidStateError：
+         *   "An operation that depends on state cached in an interface object was made
+         *    but the state had changed since it was read from disk."
+         * 所以这里每次都重新解析目录、重新取文件句柄，失败再整体重来一次；
+         * 重试前先 getFile() 读一下，强制浏览器刷新该句柄的缓存状态。
+         */
+        async function writeOneFile(filename, text) {
+            async function attempt(dir) {
+                var fh = await dir.getFileHandle(filename, { create: true });
+                try { await fh.getFile(); } catch (e) { /* 新文件读不到内容属正常，忽略 */ }
+                var w = await fh.createWritable();
+                await w.write(text);
+                await w.close();
+            }
+
+            try {
+                await attempt(targetDir);
+                return { retried: false };
+            } catch (err) {
+                var name = (err && err.name) || '';
+                if (name !== 'InvalidStateError' && name !== 'NotFoundError') throw err;
+                // 状态过期：重新走一遍目录校验（绝不跳过安全校验），再写一次
+                var freshDir = await resolveCityDir(linkedDirectoryHandle, cityId);
+                await attempt(freshDir);
+                return { retried: true };
+            }
+        }
+
         var savedFiles = [];
+        var retriedFiles = [];
         for (var i = 0; i < cs.files.length; i++) {
             var f = cs.files[i];
-            if (!f.changed) continue;
-            var fileHandle = await targetDir.getFileHandle(f.filename, { create: true });
-            var writable = await fileHandle.createWritable();
-            await writable.write(f.patchedSource);
-            await writable.close();
+            // 强制模式：即使该文件没有被判定为"有改动"，也用当前工程重新生成的文本覆盖
+            if (!f.changed && !force) continue;
+            var res = await writeOneFile(f.filename, f.patchedSource);
+            if (res.retried) retriedFiles.push(f.filename);
             savedFiles.push(f.filename);
         }
 
         return {
             savedCount: savedFiles.length,
             savedFiles: savedFiles,
+            retriedFiles: retriedFiles,
+            forced: force,
             city: currentLoadedCity,
-            message: '已直接更新本地 ' + savedFiles.join(' 与 ')
+            message: (force ? '【强制回写】已整份覆盖本地 ' : '已直接更新本地 ') + savedFiles.join(' 与 ') +
+                (retriedFiles.length ? '（' + retriedFiles.join('、') + ' 因句柄状态过期已自动重试成功）' : '')
         };
     }
 
@@ -794,6 +891,7 @@
         computeDeletedStationIds: computeDeletedStationIds,
         patchStationsSource: patchStationsSource,
         computeDirtyLines: computeDirtyLines,
+        computeDeletedLineIds: computeDeletedLineIds,
         patchLinesSource: patchLinesSource,
         computeChangeset: computeChangeset,
         linkLocalDirectory: linkLocalDirectory,
@@ -806,6 +904,7 @@
         restoreSession: restoreSession,
         resetContext: resetContext,
         getSessionSnapshot: getSessionSnapshot,
-        getOriginalSnapshot: function () { return originalSnapshot; }
+        getOriginalSnapshot: function () { return originalSnapshot; },
+        describeFileSystemError: describeFileSystemError
     };
 });

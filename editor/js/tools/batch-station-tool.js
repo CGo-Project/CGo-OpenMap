@@ -310,26 +310,111 @@ window.OpenMapEditor.BatchStationTool = (function () {
     }
 
     /**
-     * 批量创建车站节点并按步长与方向排列连线
+     * 生成唯一图元 ID。
+     * 优先走 ProjectModel.nextId（唯一的 ID 真源）；万一它未加载，则退回本地实现，
+     * 同样保证「不产生 node_NaN、不与已有 ID 撞车」，绝不直接 `++project.idSeq`。
+     */
+    function generateId(project, prefix) {
+        var p = prefix || 'item_';
+        var pm = window.OpenMapEditor && window.OpenMapEditor.ProjectModel;
+        if (pm && typeof pm.nextId === 'function') return pm.nextId(project, p);
+
+        var isNode = function (id) {
+            return !!(project.nodes && Object.prototype.hasOwnProperty.call(project.nodes, id));
+        };
+        var inList = function (id) {
+            var keys = ['segments', 'lines', 'waters', 'texts', 'virtualTransfers'];
+            for (var k = 0; k < keys.length; k++) {
+                var list = project[keys[k]];
+                if (!Array.isArray(list)) continue;
+                for (var i = 0; i < list.length; i++) {
+                    if (list[i] && list[i].id === id) return true;
+                }
+            }
+            return false;
+        };
+        var re = new RegExp('^' + String(p).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d+)$');
+        var seq = Number(project.idSeq) || 1;
+        var scan = function (id) {
+            var m = re.exec(String(id == null ? '' : id));
+            if (m) seq = Math.max(seq, parseInt(m[1], 10));
+        };
+        if (project.nodes) Object.keys(project.nodes).forEach(scan);
+        var id;
+        do { seq++; id = p + seq; } while (isNode(id) || inList(id));
+        project.idSeq = seq;
+        return id;
+    }
+
+    /** 找到目标线路对象（不存在返回 null） */
+    function findLine(project, lineId) {
+        var lines = Array.isArray(project.lines) ? project.lines : [];
+        for (var i = 0; i < lines.length; i++) {
+            if (lines[i] && lines[i].id === lineId) return lines[i];
+        }
+        return null;
+    }
+
+    /** 目标线路当前站序组的键名（与写入保持同一口径；分支线默认 way1） */
+    function stationGroupKeys(line) {
+        var branch = !!(line && line.hasbranch);
+        return {
+            idsKey: branch ? 'stationIds-way1' : 'stationIds',
+            distKey: branch ? 'distances-way1' : 'distances'
+        };
+    }
+
+    /** 目标线路站序里的末站 ID（没有则 null） */
+    function lastStationIdOf(line) {
+        if (!line) return null;
+        var idsKey = stationGroupKeys(line).idsKey;
+        var ids = line[idsKey];
+        return (Array.isArray(ids) && ids.length) ? ids[ids.length - 1] : null;
+    }
+
+    /**
+     * 批量创建车站节点并按步长与方向排列连线。
+     *
+     * 追加到已有线路时，必须同时满足三件事，否则画布拓扑会"断链"：
+     *   ① 新站链从**原末站**继续往外排（不再固定堆到 200,200 与旧线网重叠）；
+     *   ② 原末站 → 第一座新站也要补一条线段（否则站序说两站相邻、画布上没有线）；
+     *   ③ 站序与 distances 一起追加，且保持 `distances.length === stationIds.length - 1`。
+     *
      * @param {Object} project
      * @param {string} lineId
      * @param {Array} stations [{ cn, en }]
      * @param {Object} opts { startX, startY, step, direction: 'horizontal'|'vertical'|'diagonal', autoConnect }
+     * @returns {string[]} 本次新建的节点 ID（不含原有末站）
      */
     function batchCreateStations(project, lineId, stations, opts) {
         if (!project || !stations || !stations.length) return [];
+        // 兜住手工拼的工程对象：缺集合时先补上，避免 nodes/segments 上直接抛错
+        project.nodes = project.nodes || {};
+        project.segments = Array.isArray(project.segments) ? project.segments : [];
         var o = opts || {};
-        var startX = Number(o.startX) || 200;
-        var startY = Number(o.startY) || 200;
         var step = Number(o.step) || 60;
         var dir = o.direction || 'horizontal';
+
+        var line = lineId ? findLine(project, lineId) : null;
+        var tailId = (o.autoConnect && line) ? lastStationIdOf(line) : null;
+        var tailNode = (tailId && project.nodes) ? project.nodes[tailId] : null;
+        if (tailNode && (typeof tailNode.x !== 'number' || typeof tailNode.y !== 'number')) tailNode = null;
 
         var dx = (dir === 'vertical') ? 0 : step;
         var dy = (dir === 'horizontal') ? 0 : step;
 
+        // 起点策略：显式传入的优先；追加到已有线路时从原末站沿当前方向继续；
+        // 都没有才落到默认的 (200, 200) —— 不再无提示地把新站堆进既有线网中心。
+        var startX = (o.startX !== undefined && o.startX !== null)
+            ? (Number(o.startX) || 0)
+            : (tailNode ? tailNode.x + dx : 200);
+        var startY = (o.startY !== undefined && o.startY !== null)
+            ? (Number(o.startY) || 0)
+            : (tailNode ? tailNode.y + dy : 200);
+
         var createdNodeIds = [];
         stations.forEach(function (st, idx) {
-            var nid = 'node_' + (++project.idSeq);
+            var nid = generateId(project, 'node_');
             var x = startX + idx * dx;
             var y = startY + idx * dy;
 
@@ -347,13 +432,17 @@ window.OpenMapEditor.BatchStationTool = (function () {
         });
 
         // 自动连线（同时把站序写进线路，否则这些车站只是"画在图上"、不在任何线路站序里）
-        if (o.autoConnect && createdNodeIds.length >= 2 && lineId) {
-            for (var i = 1; i < createdNodeIds.length; i++) {
-                var prevId = createdNodeIds[i - 1];
-                var currId = createdNodeIds[i];
+        if (o.autoConnect && lineId) {
+            // 把原有末站接进链路头：只连新站之间会让「末站 ↔ 首新站」在站序里相邻、
+            // 在画布上却断开，这正是本条回归要防的拓扑不连续。
+            var chain = tailNode ? [tailId].concat(createdNodeIds) : createdNodeIds.slice();
+            for (var i = 1; i < chain.length; i++) {
+                var prevId = chain[i - 1];
+                var currId = chain[i];
                 var p1 = project.nodes[prevId];
                 var p2 = project.nodes[currId];
-                var segId = 'seg_' + (++project.idSeq);
+                if (!p1 || !p2) continue;
+                var segId = generateId(project, 'seg_');
 
                 project.segments.push({
                     id: segId,
@@ -367,11 +456,11 @@ window.OpenMapEditor.BatchStationTool = (function () {
                 });
             }
 
-            var line = (project.lines || []).find(function (l) { return l.id === lineId; });
             if (line) {
-                var idsKey = line.hasbranch ? 'stationIds-way1' : 'stationIds';
+                var keys = stationGroupKeys(line);
+                var idsKey = keys.idsKey;
+                var distKey = keys.distKey;
                 if (!Array.isArray(line[idsKey])) line[idsKey] = [];
-                var distKey = line.hasbranch ? 'distances-way1' : 'distances';
                 var idsBefore = line[idsKey].length;
                 var distBefore = Array.isArray(line[distKey]) ? line[distKey].length : -1;
 
@@ -381,7 +470,9 @@ window.OpenMapEditor.BatchStationTool = (function () {
 
                 // 站距必须与站数配套（否则触发硬性校验错误）：原本规整的数组补 0 占位，
                 // 由「里程管理」再补齐真实里程；原本就缺失/为空的继续留空（属于合法待补状态）。
-                if (distBefore >= 0 && distBefore === idsBefore - 1) {
+                // 「0 站 + 0 站距」也算规整（空线路），追加后同样补齐到「站数 − 1」。
+                var wasConsistent = distBefore >= 0 && distBefore === Math.max(0, idsBefore - 1);
+                if (wasConsistent) {
                     if (!Array.isArray(line[distKey])) line[distKey] = [];
                     var need = line[idsKey].length - 1 - line[distKey].length;
                     for (var d = 0; d < need; d++) line[distKey].push(0);
