@@ -229,24 +229,18 @@
                 badgeText = '更新中';
             } else if (city.status === 'offline') {
                 showBadge = false;
+            } else if (city.status === 'recruiting' || isRecruiting) {
+                badgeClass = 'badge-warning';
+                badgeIcon = 'sparkle';
+                badgeText = '招募主理人';
             } else if (city.status === 'active') {
                 badgeClass = 'badge-success';
                 badgeIcon = 'check-circle';
                 badgeText = '已上线';
-            } else if (city.status === 'recruiting') {
-                badgeClass = 'badge-warning';
-                badgeIcon = 'sparkle';
-                badgeText = '招募主理人';
             } else {
-                if (isRecruiting) {
-                    badgeClass = 'badge-warning';
-                    badgeIcon = 'sparkle';
-                    badgeText = '招募主理人';
-                } else {
-                    badgeClass = 'badge-success';
-                    badgeIcon = 'check-circle';
-                    badgeText = '已上线';
-                }
+                badgeClass = 'badge-success';
+                badgeIcon = 'check-circle';
+                badgeText = '已上线';
             }
 
             // 主理团队展示

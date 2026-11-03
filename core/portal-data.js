@@ -21,29 +21,42 @@
     const CITY_LETTER_DATA = {
         'beijing': { letter: 'B', pinyin: 'Beijing', zh: '北京', pyInitials: 'bj' },
         'changchun': { letter: 'C', pinyin: 'Changchun', zh: '长春', pyInitials: 'cc' },
+        'chuanxi': { letter: 'C', pinyin: 'Chuanxi', zh: '川西', pyInitials: 'cx' },
         'dalian': { letter: 'D', pinyin: 'Dalian', zh: '大连', pyInitials: 'dl' },
         'fuzhou': { letter: 'F', pinyin: 'Fuzhou', zh: '福州', pyInitials: 'fz' },
+        'hanoi': { letter: 'H', pinyin: 'Hanoi', zh: '河内', pyInitials: 'hn' },
         'harbin': { letter: 'H', pinyin: 'Harbin', zh: '哈尔滨', pyInitials: 'heb,hrb' },
+        'hefei': { letter: 'H', pinyin: 'Hefei', zh: '合肥', pyInitials: 'hf' },
         'hohhot': { letter: 'H', pinyin: 'Hohhot', zh: '呼和浩特', pyInitials: 'hhht' },
         'hongkong': { letter: 'H', pinyin: 'Hong Kong (Xianggang)', zh: '香港', pyInitials: 'hk,xg' },
         'huaian': { letter: 'H', pinyin: 'Huai\'an', zh: '淮安', pyInitials: 'ha' },
         'huangshi': { letter: 'H', pinyin: 'Huangshi', zh: '黄石', pyInitials: 'hs' },
         'jiaxing': { letter: 'J', pinyin: 'Jiaxing', zh: '嘉兴', pyInitials: 'jx' },
+        'jinhua': { letter: 'J', pinyin: 'Jinhua', zh: '金华', pyInitials: 'jh' },
         'lanzhou': { letter: 'L', pinyin: 'Lanzhou', zh: '兰州', pyInitials: 'lz' },
         'liaoyuan': { letter: 'L', pinyin: 'Liaoyuan', zh: '辽源', pyInitials: 'ly' },
+        'lijiang': { letter: 'L', pinyin: 'Lijiang', zh: '丽江', pyInitials: 'lj' },
         'macau': { letter: 'M', pinyin: 'Macau (Aomen)', zh: '澳門', pyInitials: 'am,mo,mac' },
         'nanjing': { letter: 'N', pinyin: 'Nanjing', zh: '南京', pyInitials: 'nj' },
         'nanping': { letter: 'N', pinyin: 'Nanping', zh: '南平', pyInitials: 'np' },
+        'pyongyang': { letter: 'P', pinyin: 'Pyongyang', zh: '平壤', pyInitials: 'pr' },
         'qingdao': { letter: 'Q', pinyin: 'Qingdao', zh: '青岛', pyInitials: 'qd' },
+        'saigon': { letter: 'H', pinyin: 'Ho Chi Minh City (Saigon)', zh: '胡志明市', pyInitials: 'hzm,sg' },
         'sanya': { letter: 'S', pinyin: 'Sanya', zh: '三亚', pyInitials: 'sy' },
         'shanghai': { letter: 'S', pinyin: 'Shanghai', zh: '上海', pyInitials: 'sh' },
         'shenzhen': { letter: 'S', pinyin: 'Shenzhen', zh: '深圳', pyInitials: 'sz' },
         'shenyang': { letter: 'S', pinyin: 'Shenyang', zh: '沈阳', pyInitials: 'sy' },
         'shijiazhuang': { letter: 'S', pinyin: 'Shijiazhuang', zh: '石家庄', pyInitials: 'sjz' },
+        'suzhou': { letter: 'S', pinyin: 'Suzhou', zh: '苏州', pyInitials: 'sz' },
         'sydney': { letter: 'S', pinyin: 'Sydney (Xini)', zh: '悉尼', pyInitials: 'xn,syd' },
+        'taichung': { letter: 'T', pinyin: 'Taichung', zh: '台中', pyInitials: 'tc' },
         'taizhou': { letter: 'T', pinyin: 'Taizhou', zh: '台州', pyInitials: 'tz' },
         'tianshui': { letter: 'T', pinyin: 'Tianshui', zh: '天水', pyInitials: 'ts' },
-        'wenshan': { letter: 'W', pinyin: 'Wenshan', zh: '文山', pyInitials: 'ws' }
+        'wenshan': { letter: 'W', pinyin: 'Wenshan', zh: '文山', pyInitials: 'ws' },
+        'wuhu': { letter: 'W', pinyin: 'Wuhu', zh: '芜湖', pyInitials: 'wh' },
+        'xiangxi': { letter: 'X', pinyin: 'Xiangxi', zh: '湘西', pyInitials: 'xx' },
+        'yancheng': { letter: 'Y', pinyin: 'Yancheng', zh: '盐城', pyInitials: 'yc' },
+        'yibin': { letter: 'Y', pinyin: 'Yibin', zh: '宜宾', pyInitials: 'yb' }
     };
 
     /**
@@ -140,7 +153,19 @@
         'tianshui': { lat: 34.5809, lng: 105.7249 },
         'huaian': { lat: 33.5597, lng: 119.0322 },
         'huangshi': { lat: 30.2201, lng: 115.0385 },
-        'taizhou': { lat: 28.6564, lng: 121.4208 }
+        'taizhou': { lat: 28.6564, lng: 121.4208 },
+        'suzhou': { lat: 31.2989, lng: 120.5853 },
+        'pyongyang': { lat: 39.0392, lng: 125.7625 },
+        'yibin': { lat: 28.7601, lng: 104.6432 },
+        'taichung': { lat: 24.1477, lng: 120.6736 },
+        'hanoi': { lat: 21.0285, lng: 105.8542 },
+        'yancheng': { lat: 33.3474, lng: 120.1636 },
+        'xiangxi': { lat: 28.3121, lng: 109.7397 },
+        'jinhua': { lat: 29.0791, lng: 119.6474 },
+        'wuhu': { lat: 31.3528, lng: 118.4329 },
+        'lijiang': { lat: 26.8550, lng: 100.2277 },
+        'saigon': { lat: 10.8231, lng: 106.6297 },
+        'chuanxi': { lat: 30.9882, lng: 103.6194 }
     };
 
     /**
@@ -249,6 +274,7 @@
         'shenzhen': 359,
         'qingdao': 262,
         'nanjing': 259,
+        'suzhou': 236,
         'shenyang': 224,
         'hefei': 211,
         'changchun': 203,
@@ -259,17 +285,28 @@
         'hongkong': 99,
         'shijiazhuang': 79,
         'harbin': 77,
+        'pyongyang': 63,
+        'yibin': 56,
+        'taichung': 49,
         'hohhot': 45,
+        'chuanxi': 36,
+        'wuhu': 35,
+        'jinhua': 31,
         'huangshi': 30,
         'tianshui': 29,
         'huaian': 23,
         'sanya': 23,
+        'hanoi': 23,
         'jiaxing': 21,
+        'yancheng': 17,
         'taizhou': 15,
         'macau': 15,
+        'saigon': 14,
         'nanping': 10,
         'wenshan': 10,
-        'liaoyuan': 8
+        'liaoyuan': 8,
+        'xiangxi': 6,
+        'lijiang': 5
     };
 
     /**
