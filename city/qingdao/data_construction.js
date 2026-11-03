@@ -152,8 +152,8 @@ window.QINGDAO_CONSTRUCTION_DATA = {
                 "sourceName": "大埠东"
             },
             "M0524": {
-                "date": "—",
-                "status": "主体结构施工",
+                "date": "2026-10",
+                "status": "主体结构完成",
                 "side": "",
                 "sourceName": "国信体育馆"
             },
@@ -772,8 +772,8 @@ window.QINGDAO_CONSTRUCTION_DATA = {
                     },
                     {
                         "side": "右线",
-                        "date": "2025-12-26",
-                        "status": "区间掘进中"
+                        "date": "2026-10-23",
+                        "status": "区间贯通"
                     }
                 ]
             },
@@ -1209,8 +1209,8 @@ window.QINGDAO_CONSTRUCTION_DATA = {
                     },
                     {
                         "side": "右线",
-                        "date": "—",
-                        "status": "暂未掘进"
+                        "date": "2026-10",
+                        "status": "区间掘进中"
                     }
                 ]
             }

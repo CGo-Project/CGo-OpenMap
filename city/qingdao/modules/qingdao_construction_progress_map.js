@@ -17,6 +17,55 @@
     const SEGMENT_POPUP_ID = "qd-construction-segment-popup";
     const LATEST_LAYER_ID = "qd-construction-latest-marker-layer";
 
+    // 临时停用「新」星标与站名的自动避让；恢复时设为 true。
+    const ENABLE_LATEST_MARKER_LABEL_AVOIDANCE = false;
+
+    // 临时星标位置检查：true 为所有仍在建/未开工的车站和区间显示“新”；
+    // 检查结束后改为 false，即恢复最近一个月进度更新的正式显示规则。
+    // 仅用于检查星标位置，不改动真实建设进度数据及区间状态。
+    // 星标逐项开关：true 强制显示，false 强制隐藏；没有配置则沿用最近一个月规则。
+    // 调整位置仍使用 LATEST_MARKER_POSITION_OFFSETS，两个配置彼此独立。
+    // 区间以线路、起终点、左/右线作为稳定标识，不使用可能变化的 :1/:2 序号。
+    const LATEST_MARKER_VISIBILITY = Object.freeze({
+        // null：自动（最近一个月）；true：强制显示；false：强制隐藏。
+        "station:M0221": null,
+        "station:M0502": null,
+        "station:M0503": null,
+        "station:M0528": null,
+        "station:M0812": null,
+        "station:M0822": null,
+        "station:M0823": null,
+        "station:M1510": null,
+        "segment:QDM05:M0527:M0528:左线": null,
+        "segment:QDM05:M0527:M0528:右线": null,
+        "segment:QDM06:M0623:M0622:左线": null,
+        "segment:QDM06:M0623:M0622:右线": null,
+        "segment:QDM06:M0628:M0627:左线": null,
+        "segment:QDM06:M0628:M0627:右线": null,
+        "segment:QDM06:M0629:M0628:左线": null,
+        "segment:QDM06:M0629:M0628:右线": null,
+        "segment:QDM06:M0630:M0629:左线": null,
+        "segment:QDM06:M0630:M0629:右线": null,
+        "segment:QDM06:M1312:M0625:左线": null,
+        "segment:QDM06:M1312:M0625:右线": null,
+        "segment:QDM07N:M0710:M0709:左线": null,
+        "segment:QDM07N:M0710:M0709:右线": null,
+        "segment:QDM07S:M0724:M0112:左线": null,
+        "segment:QDM07S:M0724:M0112:右线": null,
+        "segment:QDM07S:M0812:M0303:左线": null,
+        "segment:QDM07S:M0812:M0303:右线": null,
+        "segment:QDM08B:M0822:M0823:左线": null,
+        "segment:QDM08B:M0822:M0823:右线": null,
+        "segment:QDM09:M0912:M0911:左线": null,
+        "segment:QDM09:M0912:M0911:右线": null,
+        "segment:QDM15:M0907:M1506:左线": null,
+        "segment:QDM15:M0907:M1506:右线": null,
+        "segment:QDM15:M1506:M0713:左线": null,
+        "segment:QDM15:M1506:M0713:右线": null,
+        "segment:QDM15:M1511:M1510:左线": null,
+        "segment:QDM15:M1511:M1510:右线": null,
+    });
+
     // 最近一个月内有进度日期的车站 / 区间自动显示“新”。
 
     // 进度模式只把真正连接在建段的线路号提到蒙版上方。
@@ -156,6 +205,17 @@
             content.appendChild(layer);
         }
         return layer;
+    }
+
+    // Tab 顺序先遍历「新」标记，再进入线路导航。
+    // 这里只调整 DOM 焦点顺序；图层视觉层级仍由 CSS z-index 决定。
+    function orderConstructionKeyboardLayers() {
+        const content = document.getElementById("map-content");
+        const markerLayer = ensureLatestMarkerLayer();
+        const progressLayer = ensureLayer();
+        if (content && markerLayer && progressLayer && markerLayer.parentNode === content) {
+            content.insertBefore(markerLayer, progressLayer);
+        }
     }
 
     function ensureLegend() {
@@ -504,6 +564,38 @@
         });
     }
 
+    // Tab 默认会让浏览器滚动 overflow:hidden 的地图容器以追踪 SVG 焦点。
+    // 地图平移由 #map-content 的 transform 管理，而 DOM 滚动会把整张图推向空白区域。
+    // 只在键盘 Tab 进入专题交互目标时恢复原有滚动位置；不改变地图视角和鼠标拖动。
+    let constructionFocusScrollGuardInstalled = false;
+    function installConstructionFocusScrollGuard() {
+        if (constructionFocusScrollGuardInstalled) return;
+        constructionFocusScrollGuardInstalled = true;
+        let beforeTab = null;
+        document.addEventListener("keydown", (event) => {
+            if (event.key !== "Tab" || !visible) return;
+            const map = document.getElementById("map-container");
+            if (!map) return;
+            beforeTab = { left: map.scrollLeft, top: map.scrollTop };
+        }, true);
+        document.addEventListener("focusin", (event) => {
+            if (!visible || !beforeTab) return;
+            if (!event.target.matches?.(
+                `#${LAYER_ID} .qd-construction-segment-hit, #${LAYER_ID} .qd-construction-line-keyboard-entry, #${LATEST_LAYER_ID} .qd-construction-latest-marker`
+            )) return;
+            const saved = beforeTab;
+            beforeTab = null;
+            const restore = () => {
+                const map = document.getElementById("map-container");
+                if (!map) return;
+                if (map.scrollLeft !== saved.left) map.scrollLeft = saved.left;
+                if (map.scrollTop !== saved.top) map.scrollTop = saved.top;
+            };
+            restore();
+            requestAnimationFrame(restore);
+        }, true);
+    }
+
     function appendSegmentHit(layer, path, startLength, endLength, segment, api, lineId) {
         const signedSpan = endLength - startLength;
         const span = Math.abs(signedSpan);
@@ -525,8 +617,14 @@
         hit.dataset.lineId = lineId || "";
         hit.dataset.from = segment.from || "";
         hit.dataset.to = segment.to || "";
-        hit.setAttribute("focusable", "false");
+        // 鼠标仍可查看所有施工区间；键盘线路导航只收录尚未完成的区间。
+        hit.dataset.unfinished = unfinishedSegmentSides(segment, api).size > 0 ? "true" : "false";
+        // 区间自行提供键盘交互；不依赖 Core 的全局键盘激活。
+        hit.setAttribute("focusable", "true");
+        hit.setAttribute("role", "button");
+        hit.setAttribute("tabindex", "-1"); // 二级键盘导航；鼠标点击逻辑保持原样。
         hit.setAttribute("aria-label", `${segment.name || "区间"}建设进度`);
+
         const open = (event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -536,7 +634,197 @@
             showSegmentPopup(segment, api, anchor, hit);
         };
         hit.addEventListener("click", open);
+
+        // 仅在这个青岛 SVG 命中区域上补充键盘行为，不依赖或修改 Core。
+        // 阻止事件继续冒泡，避免 Core 的 document 级键盘激活监听重复触发。
+        let spaceArmed = false;
+        hit.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!event.repeat) open(event);
+                return;
+            }
+            if (event.key === " " || event.key === "Spacebar" || event.code === "Space") {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!event.repeat) spaceArmed = true;
+            }
+        });
+        hit.addEventListener("keyup", (event) => {
+            if (event.key !== " " && event.key !== "Spacebar" && event.code !== "Space") return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (!spaceArmed) return;
+            spaceArmed = false;
+            open(event);
+        });
+        hit.addEventListener("blur", () => { spaceArmed = false; });
+
         layer.appendChild(hit);
+    }
+
+    // 所有自动取景只由键盘导航调用，不监听鼠标或修改原始命中路径。
+    // 使用 SVG 本身的地图坐标，不调用 scrollIntoView，避免引发浏览器隐式滚动。
+    // 自动取景只响应键盘导航；鼠标点选星标时不主动改变地图视角。
+    let keyboardNavigationIntent = false;
+    let keyboardNavigationModalityInstalled = false;
+    function installKeyboardNavigationModality() {
+        if (keyboardNavigationModalityInstalled) return;
+        keyboardNavigationModalityInstalled = true;
+        document.addEventListener("keydown", (event) => {
+            if (["Tab", "Enter", " ", "Spacebar", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+                keyboardNavigationIntent = true;
+            }
+        }, true);
+        document.addEventListener("pointerdown", () => {
+            keyboardNavigationIntent = false;
+        }, true);
+    }
+
+    function centerKeyboardTarget(path, fitWholeLine = false) {
+        if (!visible || !path || typeof window.setMapView !== "function" ||
+            typeof window.getMapView !== "function") return;
+        const map = document.getElementById("map-container");
+        if (!map || !map.clientWidth || !map.clientHeight) return;
+        let box;
+        try { box = path.getBBox(); } catch (_) { return; }
+        if (!box || ![box.x, box.y, box.width, box.height].every(Number.isFinite)) return;
+        const view = window.getMapView();
+        const currentScale = Number(view?.scale);
+        if (!Number.isFinite(currentScale) || currentScale <= 0) return;
+        let scale = currentScale;
+        if (fitWholeLine) {
+            const margin = 0.78;
+            const widthScale = box.width > 0 ? map.clientWidth * margin / box.width : currentScale;
+            const heightScale = box.height > 0 ? map.clientHeight * margin / box.height : currentScale;
+            scale = Math.min(currentScale, widthScale, heightScale);
+            // 留出正常缩放下限，线路过长时仍允许完整取景。
+            scale = Math.max(0.05, scale);
+        }
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+        window.setMapView({ x: map.clientWidth / 2 - cx * scale,
+            y: map.clientHeight / 2 - cy * scale, scale });
+    }
+
+    function centerKeyboardMarker(marker) {
+        if (!visible || !keyboardNavigationIntent || !marker ||
+            typeof window.setMapView !== "function" || typeof window.getMapView !== "function") return;
+        const map = document.getElementById("map-container");
+        const x = Number(marker.dataset.baseX);
+        const y = Number(marker.dataset.baseY);
+        const view = window.getMapView();
+        const scale = Number(view?.scale);
+        if (!map || !map.clientWidth || !map.clientHeight ||
+            !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(scale) || scale <= 0) return;
+        window.setMapView({
+            x: map.clientWidth / 2 - x * scale,
+            y: map.clientHeight / 2 - y * scale,
+            scale
+        });
+    }
+
+    function nextFocusableAfter(element) {
+        if (!element) return null;
+        const selector = 'a[href], area[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const candidates = Array.from(document.querySelectorAll(selector)).filter((node) => {
+            if (node === element) return true;
+            if (!node.getClientRects().length) return false;
+            if (node.closest('[aria-hidden="true"]')) return false;
+            const style = window.getComputedStyle(node);
+            return style.display !== "none" && style.visibility !== "hidden";
+        });
+        const index = candidates.indexOf(element);
+        return index >= 0 ? candidates[index + 1] || null : null;
+    }
+
+    // 每条有未完成施工区间的线路只占一个 Tab 停靠点；鼠标热区仍由原区间 path 独立承担。
+    // 进入线路后 Tab/Shift+Tab 顺序浏览该线路各区间；首尾自然接回线路导航。
+    function appendLineKeyboardEntry(layer, lineId, lineName) {
+        // 线路导航范围以建设进度专题实际绘制的区间为准：
+        // 只要该区间在专题中有进度数据并生成了命中路径，就纳入线路取景和区间导航；
+        // 不按“是否仍在施工”二次筛选。这样会保留专题中已完工的施工段，
+        // 同时不会把专题未绘制的既有运营段（例如6号线灵山湾以西）纳入范围。
+        const segments = Array.from(layer.querySelectorAll(".qd-construction-segment-hit"))
+            .filter((hit) => hit.dataset.lineId === lineId);
+        if (!segments.length) return;
+        const entry = document.createElementNS(SVG_NS, "path");
+        entry.setAttribute("class", "qd-construction-line-keyboard-entry");
+        entry.dataset.lineId = lineId;
+        entry.setAttribute("d", segments.map((hit) => hit.getAttribute("d")).join(" "));
+        entry.setAttribute("fill", "none");
+        entry.setAttribute("stroke", "rgba(0,0,0,0.001)");
+        entry.setAttribute("stroke-width", "18");
+        entry.setAttribute("pointer-events", "none");
+        entry.setAttribute("tabindex", "0");
+        entry.setAttribute("focusable", "true");
+        entry.setAttribute("role", "button");
+        entry.setAttribute("aria-label", `${lineName || lineId}建设进度专题区间，按回车进入区间导航`);
+        entry.addEventListener("focus", () => {
+            if (keyboardNavigationIntent) centerKeyboardTarget(entry, true);
+        });
+        const focusSegment = (index) => {
+            if (!visible || !segments.length) return;
+            const target = segments[Math.max(0, Math.min(segments.length - 1, index))];
+            if (target) {
+                target.focus({ preventScroll: true });
+                centerKeyboardTarget(target);
+            }
+        };
+        entry.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar") return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (!event.repeat) focusSegment(0);
+        });
+        segments.forEach((hit, index) => {
+            hit.addEventListener("keydown", (event) => {
+                if (!visible) return;
+                if (event.key === "Tab") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (event.shiftKey) {
+                        if (index > 0) focusSegment(index - 1);
+                        else entry.focus({ preventScroll: true });
+                        return;
+                    }
+                    if (index + 1 < segments.length) {
+                        focusSegment(index + 1);
+                        return;
+                    }
+                    const entries = Array.from(layer.querySelectorAll(".qd-construction-line-keyboard-entry"));
+                    const currentIndex = entries.indexOf(entry);
+                    const nextEntry = currentIndex >= 0 ? entries[currentIndex + 1] : null;
+                    if (nextEntry) {
+                        nextEntry.focus({ preventScroll: true });
+                        return;
+                    }
+                    // 最后一条线路之后离开专题导航，不再因区间 path 的 DOM 位置跳回 5 号线。
+                    const next = nextFocusableAfter(entries[entries.length - 1] || entry);
+                    if (next) next.focus({ preventScroll: true });
+                    else entry.focus({ preventScroll: true });
+                    return;
+                }
+                let next = null;
+                if (event.key === "ArrowDown" || event.key === "ArrowRight") next = index + 1;
+                if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = index - 1;
+                if (event.key === "Home") next = 0;
+                if (event.key === "End") next = segments.length - 1;
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeSegmentPopup();
+                    entry.focus({ preventScroll: true });
+                    return;
+                }
+                if (next === null) return;
+                event.preventDefault();
+                event.stopPropagation();
+                focusSegment(next);
+            });
+        });
+        layer.appendChild(entry);
     }
 
     function labelDirection(align) {
@@ -633,6 +921,165 @@
         return sides;
     }
 
+    // 检查模式：按照原始施工记录的左右线分别判断；同一区间的不同分段
+    // 也分别判断最新状态，避免一段已贯通掩盖另一段仍在施工。
+    function unfinishedSegmentSides(segment, api) {
+        const sides = new Set();
+        const parts = Array.isArray(segment?.parts) && segment.parts.length
+            ? segment.parts : [segment];
+        parts.forEach((part) => {
+            const latestBySide = new Map();
+            (part?.details || []).forEach((detail) => {
+                if (detail?.side === "左线" || detail?.side === "右线") {
+                    latestBySide.set(detail.side, detail);
+                }
+            });
+            latestBySide.forEach((detail, side) => {
+                if (api.classifyStatus(detail?.status, detail?.date) !== "complete") {
+                    sides.add(side);
+                }
+            });
+        });
+        return sides;
+    }
+
+    // 已通过临时位置编辑器核定的「新」星标偏移（地图单位）。
+    // 与编辑器导出的 v1 key 格式对应；不加载临时编辑器，不存入 localStorage。
+    const LATEST_MARKER_POSITION_OFFSETS = Object.freeze({
+        "segment:QDM06:M0630:M0629:1": {
+                "dx": -0.7,
+                "dy": 7
+        },
+        "segment:QDM06:M0629:M0628:1": {
+                "dx": -1.7,
+                "dy": 7
+        },
+        "segment:QDM06:M0628:M0627:1": {
+                "dx": -1.7,
+                "dy": 7
+        },
+        "segment:QDM06:M0628:M0627:2": {
+                "dx": 3.3,
+                "dy": 1.7
+        },
+        "segment:QDM06:M1312:M0625:2": {
+                "dx": -8.8,
+                "dy": -0.2
+        },
+        "segment:QDM06:M1312:M0625:1": {
+                "dx": -0.3,
+                "dy": 6.2
+        },
+        "segment:QDM06:M0623:M0622:1": {
+                "dx": -0.7,
+                "dy": 6.2
+        },
+        "segment:QDM06:M0623:M0622:2": {
+                "dx": 20.3,
+                "dy": 1.7
+        },
+        "station:M0503": {
+                "dx": 0.2,
+                "dy": 2.7
+        },
+        "station:M0502": {
+                "dx": 3.8,
+                "dy": 3.5
+        },
+        "station:M0221": {
+                "dx": 15.5,
+                "dy": 40.5
+        },
+        "segment:QDM05:M0527:M0528:1": {
+                "dx": 0.2,
+                "dy": 6
+        },
+        "segment:QDM05:M0527:M0528:2": {
+                "dx": -0.3,
+                "dy": 2.3
+        },
+        "station:M0528": {
+                "dx": 21.8,
+                "dy": 25.7
+        },
+        "station:M0812": {
+                "dx": -3,
+                "dy": 2
+        },
+        "segment:QDM07S:M0812:M0303:1": {
+                "dx": 2.7,
+                "dy": -3.8
+        },
+        "segment:QDM07S:M0812:M0303:2": {
+                "dx": -1.8,
+                "dy": 11.3
+        },
+        "segment:QDM07S:M0724:M0112:1": {
+                "dx": 2.2,
+                "dy": -1.3
+        },
+        "segment:QDM07S:M0724:M0112:2": {
+                "dx": -4,
+                "dy": 13.5
+        },
+        "segment:QDM15:M1506:M0713:1": {
+                "dx": 0.7,
+                "dy": 1
+        },
+        "segment:QDM15:M0907:M1506:1": {
+                "dx": 1.7,
+                "dy": 6.5
+        },
+        "segment:QDM15:M0907:M1506:2": {
+                "dx": -3.5,
+                "dy": -2
+        },
+        "segment:QDM09:M0912:M0911:1": {
+                "dx": 0.5,
+                "dy": 6.9
+        },
+        "segment:QDM09:M0912:M0911:2": {
+                "dx": -2.7,
+                "dy": 2
+        },
+        "segment:QDM07N:M0710:M0709:2": {
+                "dx": -3.7,
+                "dy": 2.2
+        },
+        "segment:QDM07N:M0710:M0709:1": {
+                "dx": 0.8,
+                "dy": 3.7
+        },
+        "segment:QDM15:M1511:M1510:1": {
+                "dx": 0.8,
+                "dy": 4.1
+        },
+        "station:M1510": {
+                "dx": 0.8,
+                "dy": -18.6
+        },
+        "segment:QDM15:M1511:M1510:2": {
+                "dx": -0.8,
+                "dy": 4.3
+        },
+        "segment:QDM08B:M0822:M0823:2": {
+                "dx": -14.4,
+                "dy": 6.7
+        },
+        "station:M0823": {
+                "dx": -1.3,
+                "dy": 69.3
+        },
+        "station:M0822": {
+                "dx": -0.3,
+                "dy": -59
+        },
+        "segment:QDM08B:M0822:M0823:1": {
+                "dx": 10.8,
+                "dy": 1.5
+        }
+});
+
     function buildLatestMarkers(stations, lines) {
         const layer = ensureLatestMarkerLayer();
         const api = getProgressApi();
@@ -640,13 +1087,36 @@
         layer.replaceChildren();
 
         const now = new Date();
+        const markerVisibilityFor = (meta) => {
+            if (!meta) return undefined;
+            const key = meta.kind === "station" ? `station:${meta.stationId}` :
+                `segment:${meta.lineId}:${meta.fromId}:${meta.toId}:${meta.side}`;
+            return Object.prototype.hasOwnProperty.call(LATEST_MARKER_VISIBILITY, key)
+                ? LATEST_MARKER_VISIBILITY[key] : undefined;
+        };
+        const markerOffsetFor = (meta) => {
+            if (!meta) return null;
+            if (meta.kind === "station") {
+                return LATEST_MARKER_POSITION_OFFSETS[`station:${meta.stationId}`] || null;
+            }
+            if (meta.kind !== "segment") return null;
+            const group = `segment:${meta.lineId}:${meta.fromId}:${meta.toId}`;
+            // 编辑器按左线→右线生成次序编号，单独右线为 :1。
+            // 固化「检查模式」时的左右线存在情况，避免今后仅一侧更新时编号漂移。
+            const reviewSides = unfinishedSegmentSides(meta.segment, api);
+            const ordinal = meta.side === "右线" && reviewSides.has("左线") ? 2 : 1;
+            return LATEST_MARKER_POSITION_OFFSETS[`${group}:${ordinal}`] || null;
+        };
         const addMarker = (x, y, avoidX = 0, avoidY = 0, tangentX = 0, tangentY = 0, meta = null) => {
             const el = document.createElement("div");
             el.className = "qd-construction-latest-marker is-solid";
-            el.style.left = `${x}px`;
-            el.style.top = `${y}px`;
-            el.dataset.baseX = String(x);
-            el.dataset.baseY = String(y);
+            const offset = markerOffsetFor(meta);
+            const finalX = x + (offset?.dx || 0);
+            const finalY = y + (offset?.dy || 0);
+            el.style.left = `${finalX}px`;
+            el.style.top = `${finalY}px`;
+            el.dataset.baseX = String(finalX);
+            el.dataset.baseY = String(finalY);
             el.dataset.avoidX = String(avoidX);
             el.dataset.avoidY = String(avoidY);
             el.dataset.tangentX = String(tangentX);
@@ -667,7 +1137,17 @@
             if (meta?.kind === "station" || meta?.kind === "segment") {
                 el.setAttribute("role", "button");
                 el.setAttribute("tabindex", "0");
-                el.setAttribute("aria-label", meta.kind === "station" ? "查看车站最新建设进度" : "查看区间最新建设进度");
+                const stationName = meta.kind === "station"
+                    ? (stations[meta.stationId]?.cn || meta.stationId)
+                    : "";
+                const fromName = meta.kind === "segment" ? (stations[meta.fromId]?.cn || meta.fromId) : "";
+                const toName = meta.kind === "segment" ? (stations[meta.toId]?.cn || meta.toId) : "";
+                const lineName = meta.kind === "segment"
+                    ? (lines.find((item) => item?.id === meta.lineId)?.name || meta.lineId)
+                    : "";
+                el.setAttribute("aria-label", meta.kind === "station"
+                    ? `新：${stationName}站，按 Enter 或空格键查看车站信息`
+                    : `新：${lineName}，${fromName}至${toName}区间，${meta.side || ""}，按 Enter 或空格键查看区间信息`);
                 const activate = (event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -675,8 +1155,18 @@
                     if (meta.kind === "station") {
                         if (typeof window.selectStation !== "function") return;
                         closeSegmentPopup();
-                        // 使用站点本身的默认打开机制；桌面不自动平移。
+                        // 与鼠标点击同一入口；键盘合成点击以星标中心作为信息卡锚点。
                         window.selectStation(meta.stationId, event.pageX, event.pageY);
+                        // 只针对键盘激活的星标：将焦点带入车站信息卡，
+                        // 以复用 Core 已有的 Escape 关闭处理；鼠标点击保持原样。
+                        if (keyboardNavigationIntent) {
+                            const panel = document.getElementById("info-panel");
+                            if (panel && panel.style.display !== "none") {
+                                const heading = panel.querySelector(".panel-cn-name") || panel;
+                                if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+                                heading.focus({ preventScroll: true });
+                            }
+                        }
                     } else {
                         const hits = document.querySelectorAll(`#${LAYER_ID} .qd-construction-segment-hit`);
                         const hit = Array.from(hits).find((node) =>
@@ -688,10 +1178,42 @@
                         showSegmentPopup(meta.segment, api, anchor, hit);
                     }
                 };
+                installKeyboardNavigationModality();
+                el.addEventListener("focus", () => centerKeyboardMarker(el));
                 el.addEventListener("click", activate);
+                let spaceArmed = false;
+                const dispatchMarkerClick = () => {
+                    const rect = el.getBoundingClientRect();
+                    el.dispatchEvent(new MouseEvent("click", {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window,
+                        clientX: rect.left + rect.width / 2,
+                        clientY: rect.top + rect.height / 2
+                    }));
+                };
                 el.addEventListener("keydown", (event) => {
-                    if (event.key === "Enter" || event.key === " ") activate(event);
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (!event.repeat) dispatchMarkerClick();
+                        return;
+                    }
+                    if (event.key === " " || event.key === "Spacebar" || event.code === "Space") {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (!event.repeat) spaceArmed = true;
+                    }
                 });
+                el.addEventListener("keyup", (event) => {
+                    if (event.key !== " " && event.key !== "Spacebar" && event.code !== "Space") return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!spaceArmed) return;
+                    spaceArmed = false;
+                    dispatchMarkerClick();
+                });
+                el.addEventListener("blur", () => { spaceArmed = false; });
             }
             layer.appendChild(el);
         };
@@ -702,14 +1224,17 @@
             if (!lineData) return;
 
             Object.entries(lineData.stations || {}).forEach(([stationId, detail]) => {
-                if (!isRecentProgressDate(detail?.date, now)) return;
+                const visibleOverride = markerVisibilityFor({ kind: "station", stationId });
+                if (visibleOverride === false) return;
+                if (visibleOverride !== true && !isRecentProgressDate(detail?.date, now)) return;
                 const station = stations[stationId];
                 if (!station) return;
                 const delta = overlayStationDeltas.get(stationId) || { x: 0, y: 0 };
-                const dir = labelDirection(station.align);
+                // 与建设进度专题站名采用相同的方向覆盖，确保“新”位于站名对侧。
+                const dir = PROGRESS_LABEL_DIRECTION_OVERRIDES[stationId] || labelDirection(station.align);
                 // “新”标记优先放在站名的反方向，避免天然与站名叠在同一侧。
                 const mx = -dir.x || 0;
-                const my = -dir.y || 1;
+                const my = -dir.y;
                 addMarker(
                     station.x + delta.x + mx * 22,
                     station.y + delta.y + my * 22,
@@ -723,7 +1248,10 @@
             if (!path || typeof path.getTotalLength !== "function") return;
 
             Object.values(lineData.segments || {}).forEach((segment) => {
-                if (!segmentHasRecentProgress(segment, now)) return;
+                const sideVisibility = (side) => markerVisibilityFor({ kind: "segment", lineId: line.id,
+                    fromId: segment.from, toId: segment.to, side });
+                if (!segmentHasRecentProgress(segment, now) &&
+                    sideVisibility("左线") !== true && sideVisibility("右线") !== true) return;
                 const from = stations[segment.from];
                 const to = stations[segment.to];
                 if (!from || !to) return;
@@ -732,6 +1260,12 @@
                 const endLength = closestLengthOnPath(path, to);
                 const pt = samplePointAndNormal(path, startLength, endLength);
                 const recentSides = recentSegmentSides(segment, now);
+                for (const side of ["左线", "右线"]) {
+                    const override = sideVisibility(side);
+                    if (override === true) recentSides.add(side);
+                    if (override === false) recentSides.delete(side);
+                }
+                if (!recentSides.size) return;
                 const outward = 21;
                 // 海红区间（海南路 M0623 — 红树林 M0622）：星标单独向左平移半个图形。
                 const seaHongOffsetX = line.id === "QDM06" &&
@@ -744,13 +1278,13 @@
                 if (recentSides.has("左线")) {
                     addMarker(
                         pt.x - pt.nx * outward + seaHongOffsetX, pt.y - pt.ny * outward,
-                        -pt.nx, -pt.ny, pt.tx, pt.ty, markerMeta
+                        -pt.nx, -pt.ny, pt.tx, pt.ty, { ...markerMeta, side: "左线" }
                     );
                 }
                 if (recentSides.has("右线")) {
                     addMarker(
                         pt.x + pt.nx * outward + seaHongOffsetX, pt.y + pt.ny * outward,
-                        pt.nx, pt.ny, pt.tx, pt.ty, markerMeta
+                        pt.nx, pt.ny, pt.tx, pt.ty, { ...markerMeta, side: "右线" }
                     );
                 }
             });
@@ -767,6 +1301,7 @@
     }
 
     function resolveLatestMarkerLabelCollisions() {
+        if (!ENABLE_LATEST_MARKER_LABEL_AVOIDANCE) return;
         const markerLayer = document.getElementById(LATEST_LAYER_ID);
         const labelLayer = document.getElementById(LABEL_LAYER_ID);
         if (!markerLayer || !labelLayer) return;
@@ -1423,6 +1958,8 @@
             appendSegmentHit(layer, path, fromLength, toLength, segment, api, line.id);
         }
 
+        appendLineKeyboardEntry(layer, line.id, line.name || line.id);
+
         // 同样按信息卡接口逐站读取，避免专题层自行解释状态文本。
         const renderedStations = new Set();
         ids.forEach((stationId) => {
@@ -1494,9 +2031,21 @@
             count += buildLine(progressGroup, line, stations, api);
         });
 
+        // 只重排不可被鼠标命中的键盘入口；施工线与区间绘制顺序保持原状。
+        const entries = Array.from(progressGroup.querySelectorAll(".qd-construction-line-keyboard-entry"));
+        entries.sort((a, b) => {
+            const rank = (id) => {
+                const m = String(id || "").match(/^QDM(\d+)/);
+                return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
+            };
+            return rank(a.dataset.lineId) - rank(b.dataset.lineId);
+        });
+        entries.forEach((entry) => progressGroup.appendChild(entry));
+
         buildConstructionLabels(stations);
         buildConstructionBadges();
         buildLatestMarkers(stations, lines);
+        orderConstructionKeyboardLayers();
         ensureLegend();
         built = count > 0;
         return built;
@@ -1511,6 +2060,9 @@
     }
 
     function showLayer(layer) {
+        installConstructionFocusScrollGuard();
+        installKeyboardNavigationModality();
+        layer.setAttribute("aria-hidden", "false");
         if (hideTimer) {
             clearTimeout(hideTimer);
             hideTimer = null;
@@ -1520,6 +2072,22 @@
         const latestLayer = ensureLatestMarkerLayer();
         const legend = ensureLegend();
         buildLatestMarkers(getStations(), getLines());
+        orderConstructionKeyboardLayers();
+        if (latestLayer) latestLayer.querySelectorAll(".qd-construction-latest-marker").forEach((node) => node.setAttribute("tabindex", "0"));
+        layer.querySelectorAll(".qd-construction-line-keyboard-entry").forEach((node) => node.setAttribute("tabindex", "0"));
+        const progressButton = document.getElementById(BUTTON_ID);
+        if (progressButton && !progressButton._qdFirstTabEntryInstalled) {
+            progressButton._qdFirstTabEntryInstalled = true;
+            progressButton.addEventListener("keydown", (event) => {
+                if (event.key !== "Tab" || event.shiftKey || !visible || document.activeElement !== progressButton) return;
+                const firstMarker = document.querySelector(`#${LATEST_LAYER_ID} .qd-construction-latest-marker[tabindex="0"]`);
+                const firstLine = document.querySelector(`#${LAYER_ID} .qd-construction-line-keyboard-entry[tabindex="0"]`);
+                const target = firstMarker || firstLine;
+                if (!target) return;
+                event.preventDefault();
+                target.focus({ preventScroll: true });
+            });
+        }
         layer.style.display = "block";
         layer.classList.remove("show");
         if (labelLayer) {
@@ -1553,6 +2121,9 @@
     }
 
     function hideLayer(layer) {
+        layer.setAttribute("aria-hidden", "true");
+        // 退出专题时立即移除键盘停靠点，避免淡出期间仍能 Tab 到隐藏图层。
+        layer.querySelectorAll(".qd-construction-line-keyboard-entry").forEach((node) => node.setAttribute("tabindex", "-1"));
         const labelLayer = ensureLabelLayer();
         const badgeLayer = ensureBadgeLayer();
         const latestLayer = ensureLatestMarkerLayer();
@@ -1562,6 +2133,7 @@
         badgeLayer?.classList.remove("show");
         latestLayer?.classList.remove("show");
         latestLayer?.setAttribute("aria-hidden", "true");
+        latestLayer?.querySelectorAll(".qd-construction-latest-marker").forEach((node) => node.setAttribute("tabindex", "-1"));
         legend?.classList.remove("show");
         hideTimer = setTimeout(() => {
             if (!visible) {

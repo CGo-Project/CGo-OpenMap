@@ -858,6 +858,10 @@ window.QINGDAO_STATION_NAME_HISTORY = {
             {
                 "type": "正式站名(2026定名)",
                 "name": "毕家上流"
+            },
+            {
+                "type": "正式站名(2026调整)",
+                "name": "毕家上流(世博园南门)"
             }
         ]
     },

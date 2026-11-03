@@ -35,7 +35,7 @@
 /* 下王埠（外贸学院）：长站名左对齐，并整体向右移动约两个中文字符宽度。 */
 .map-qingdao #label_M0208 {
     text-align: left !important;
-    margin-left: 23px;
+    margin-left: 26px;
 }
 
 
@@ -208,7 +208,29 @@ html[data-theme="dark"] .map-qingdao #qd-interval-time-hint {
 .map-qingdao #qd-construction-progress-layer .qd-construction-segment-hit {
     pointer-events: stroke !important;
     cursor: pointer;
-    outline: none !important;
+}
+
+/* 线路入口仅供键盘导航，绝不拦截鼠标点击或地图拖动。 */
+.map-qingdao #qd-construction-progress-layer .qd-construction-line-keyboard-entry {
+    pointer-events: none !important;
+}
+.map-qingdao #qd-construction-progress-layer .qd-construction-line-keyboard-entry:focus:not(:focus-visible) {
+    outline: none;
+}
+.map-qingdao #qd-construction-progress-layer .qd-construction-line-keyboard-entry:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
+}
+
+/* 鼠标点击区间不显示焦点框；键盘聚焦沿用公共主题焦点色与实线风格。 */
+.map-qingdao #qd-construction-progress-layer .qd-construction-segment-hit:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* 保持公共 2px 焦点环粗细，通过向内偏移缩小焦点框，不改变命中路径。 */
+.map-qingdao #qd-construction-progress-layer .qd-construction-segment-hit:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -2px;
 }
 
 .map-qingdao #modern-zoom-control button#qd-construction-progress-btn.on {
@@ -649,3 +671,73 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
 }
 
 
+
+
+/* 信息卡英文：单行超出可用宽度时，才按数据里的 <br> 人工折行。 */
+.map-qingdao .panel-en-name.qd-adaptive-en-wrapped {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere;
+}
+
+
+/* Qingdao sea layer styling (previously injected by data_scattered.js) */
+
+            :root { --qingdao-sea-color: #dceff4; }
+            html[data-theme="light"] { --qingdao-sea-color: #dceff4; }
+            html[data-theme="dark"] { --qingdao-sea-color: #17323b; }
+            @media (prefers-color-scheme: dark) {
+                html:not([data-theme]) { --qingdao-sea-color: #17323b; }
+            }
+            #scattered-layer .qingdao-sea-inline {
+                width: 100%;
+                height: 100%;
+                display: block;
+                color: var(--qingdao-sea-color);
+                pointer-events: none;
+            }
+            #scattered-layer .qingdao-sea-inline .sea {
+                fill: var(--qingdao-sea-color) !important;
+            }
+        
+
+/* 海域越过固定画布右侧和下侧的部分，必须与地图内容共用 transform。
+   新 SVG 的 viewBox 为 2700×2250，原海水路径经 0.9 缩放后：
+   右侧海水从 (2700, 450) 开始；底部海水从 (297, 2250) 开始。 */
+.map-qingdao #map-content::before,
+.map-qingdao #map-content::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    display: block;
+    pointer-events: none;
+    background: var(--qingdao-sea-color, #dceff4);
+}
+
+/* 海岸线右侧：从 SVG 右边界向外延伸。 */
+.map-qingdao #map-content::before {
+    left: 2700px;
+    top: 450px;
+    width: 20000px;
+    height: 20000px;
+}
+
+/* 海岸线下侧：从底边海水起点向右下延伸，不覆盖左下陆地。 */
+.map-qingdao #map-content::after {
+    left: 297px;
+    top: 2250px;
+    width: 20000px;
+    height: 20000px;
+}
+
+/* Transport scattered symbol theme rules */
+
+            html[data-theme="dark"] .scattered-item img[src*="China_Railway.svg"],
+            html[data-theme="dark"] .scattered-item img[src*="Aircraft.svg"],
+            html[data-theme="dark"] .scattered-item img[src*="Long_Distance_Bus.svg"],
+            html[data-theme="dark"] .scattered-item img[src*="Ship.svg"],
+            html[data-theme="dark"] .scattered-item img[src*="Streetcar.svg"] {
+                filter: invert(1);
+            }
+        

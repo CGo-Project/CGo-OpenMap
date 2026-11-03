@@ -5,22 +5,6 @@
 (function () {
     "use strict";
 
-    // 青岛地图上的综合交通换乘图标为固定黑色 SVG。
-    // 延续基线实现：暗色主题仅做黑白反转；素材本身为纯黑，因此无需 brightness(0) 强制归零。
-    if (typeof document !== "undefined" && !document.getElementById("qingdao-transport-icon-theme")) {
-        const style = document.createElement("style");
-        style.id = "qingdao-transport-icon-theme";
-        style.textContent = `
-            html[data-theme="dark"] .scattered-item img[src*="China_Railway.svg"],
-            html[data-theme="dark"] .scattered-item img[src*="Aircraft.svg"],
-            html[data-theme="dark"] .scattered-item img[src*="Long_Distance_Bus.svg"],
-            html[data-theme="dark"] .scattered-item img[src*="Ship.svg"],
-            html[data-theme="dark"] .scattered-item img[src*="Streetcar.svg"] {
-                filter: invert(1);
-            }
-        `;
-        document.head.appendChild(style);
-    }
 
     /** 载入青岛城市专属样式表（线路层级、换乘图元、交通图标主题适配） */
     (function loadCityStylesheet() {
@@ -37,13 +21,72 @@
 
     document.documentElement.classList.add("map-qingdao");
 
+    // Qingdao sea SVG theme adaptation is a rendering behavior, not data.
+    if (typeof document !== "undefined") {
+        // Sea theme colors. Manual app theme wins; when no data-theme exists yet,
+        // follow the operating-system color scheme as a startup fallback.
+
+        // SCATTERED_DATA normally renders external SVG files as <img>. For the sea only,
+        // replace that image with an inline SVG after it appears. This lets the SVG use
+        // page-level CSS variables, like the project's inline line badges do.
+        const inlineQingdaoSea = async () => {
+            const img = document.querySelector('#scattered-layer img[src*="qingdao_sea.svg"]');
+            if (!img || img.dataset.qingdaoInlining === "1") return false;
+            img.dataset.qingdaoInlining = "1";
+            try {
+                const response = await fetch(img.src);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const text = await response.text();
+                const parsed = new DOMParser().parseFromString(text, "image/svg+xml");
+                const sourceSvg = parsed.documentElement;
+                if (!sourceSvg || sourceSvg.nodeName.toLowerCase() !== "svg") {
+                    throw new Error("Invalid SVG");
+                }
+                const svg = document.importNode(sourceSvg, true);
+                svg.classList.add("qingdao-sea-inline");
+                svg.setAttribute("aria-hidden", "true");
+                svg.removeAttribute("width");
+                svg.removeAttribute("height");
+                img.replaceWith(svg);
+                return true;
+            } catch (error) {
+                // Keep the original external SVG as a graceful fallback. Its own
+                // prefers-color-scheme rule still follows the system theme.
+                img.removeAttribute("data-qingdao-inlining");
+                console.warn("[Qingdao] Sea SVG inline injection failed:", error);
+                return false;
+            }
+        };
+
+        const startSeaObserver = () => {
+            inlineQingdaoSea().then(done => {
+                if (done) return;
+                const observer = new MutationObserver(async () => {
+                    if (await inlineQingdaoSea()) observer.disconnect();
+                });
+                observer.observe(document.documentElement, { childList: true, subtree: true });
+            });
+        };
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", startSeaObserver, { once: true });
+        } else {
+            startSeaObserver();
+        }
+    }
+
+
+
+    // 海域越界补绘由 style.css 作为 map-content 的伪元素绘制，
+    // 与地图共用同一个 transform，避免视口层在动画期间错位。
+
     const QingdaoCity = {
         id: "qingdao",
         name: "青岛",
         searchCity: "青岛",
-        center: { x: 1500, y: 1250 },
+        center: { x: 1350, y: 1125 },
         defaultScale: 1.45,
-        mapSize: { width: 3000, height: 2500 },
+        mapSize: { width: 2700, height: 2250 },
         officialMapUrl: "https://www.qd-metro.com/",
         LINE_META: {},
         LINE_SORT_ORDER: ["QDM01", "QDM02", "QDM03", "QDM04", "QDM05", "QDM06", "QDM07N", "QDM07S", "QDM08", "QDM08B", "QDM09", "QDM11", "QDM13", "QDM15"],
@@ -201,7 +244,11 @@
             amapDataUrl: "./city/qingdao/amap_data.json"
         },
         getNavigationUrl(stationName, isRailway = false) {
-            const query = isRailway ? stationName : `${stationName}(地铁站)`;
+            const cleanStationName = String(stationName || "")
+                .replace(/<br\s*\/?\s*>/gi, "")
+                .replace(/\s+/g, " ")
+                .trim();
+            const query = isRailway ? cleanStationName : `${cleanStationName}(地铁站)`;
             return `https://uri.amap.com/search?keyword=${encodeURIComponent(query)}&city=${encodeURIComponent("青岛")}`;
         },
         getSuburbanLinks() { return null; },
@@ -230,15 +277,74 @@
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
         },
         stationBoard: {
-            scripts: [
-                "modules/qingdao_station_name_history.js",
-                "modules/qingdao_travel_guide.js",
-                "modules/qingdao_engineering_name_notice.js",
-                "modules/qingdao_timetable.js",
-                "modules/qingdao_construction.js",
-                "modules/qingdao_line_badges.js"
-            ],
             modules: {
+                'header-title': {
+                    enabled: true,
+                    slot: 'header',
+                    order: 20,
+                    render(context) {
+                        const station = context.station || {};
+
+                        // 仅在更新浏览器标题/分享元数据时转为纯文本；地图与信息卡仍使用原始站名。
+                        const updateShareMeta = context.helpers?.updateShareMeta;
+                        if (typeof updateShareMeta === "function" && !updateShareMeta.__qingdaoPlainName) {
+                            const wrappedUpdateShareMeta = function (targetStation) {
+                                if (!targetStation) {
+                                    return updateShareMeta.call(this, targetStation);
+                                }
+                                const plainName = window.CGoA11y?.plainName;
+                                // 标题中直接删除地图/信息卡换行标记，不在副站名前插入空格。
+                                const titleSource = String(targetStation.cn == null ? "" : targetStation.cn)
+                                    .replace(/<br\s*\/?\s*>/gi, "")
+                                    .replace(/\r?\n/g, "");
+                                const cleanCn = typeof plainName === "function"
+                                    ? plainName(titleSource)
+                                    : titleSource
+                                        .replace(/<[^>]*>/g, "")
+                                        .replace(/\s+/g, " ")
+                                        .trim();
+                                return updateShareMeta.call(this, {
+                                    ...targetStation,
+                                    cn: cleanCn
+                                });
+                            };
+                            wrappedUpdateShareMeta.__qingdaoPlainName = true;
+                            context.helpers.updateShareMeta = wrappedUpdateShareMeta;
+                        }
+
+                        const safeNameHtml = (value) => {
+                            const helper = window.CGoA11y?.safeNameHtml;
+                            if (typeof helper === "function") return helper(value);
+                            const escaped = String(value == null ? "" : value).replace(/[&<>"']/g, ch => ({
+                                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+                            })[ch]);
+                            return escaped
+                                .replace(/&lt;br\s*\/?&gt;/gi, "<br>")
+                                .replace(/&lt;(\/?)(sup|sub)&gt;/gi, "<$1$2>");
+                        };
+
+                        // 信息卡统一使用 \n 换行；地图专用 <br> 不产生换行。
+                        const renderCardName = (value) => {
+                            const source = String(value == null ? "" : value);
+                            const normalized = source
+                                .replace(/<br\s*\/?\s*>/gi, (tag, offset, whole) => {
+                                    const before = whole.slice(0, offset).trimEnd().slice(-1);
+                                    const after = whole.slice(offset + tag.length).trimStart().charAt(0);
+                                    const isCjk = ch => /[\u3400-\u9fff]/.test(ch || "");
+                                    return isCjk(before) || isCjk(after) ? "" : " ";
+                                })
+                                .replace(/\r?\n/g, "<br>");
+                            return safeNameHtml(normalized);
+                        };
+
+                        return `
+                            <div class="header-name-group">
+                                <div class="panel-cn-name" role="heading" aria-level="2" tabindex="-1">${renderCardName(station.cn)}</div>
+                                <div class="panel-en-name" lang="en">${renderCardName(station.en)}</div>
+                            </div>
+                        `;
+                    }
+                },
                 'qingdao-station-name-history': { enabled: true, targetTab: 'station-info', order: 15 },
                 'qingdao-travel-guide': { enabled: true, targetTab: 'station-info', order: 14 },
                 'operators': {
@@ -328,9 +434,27 @@
                         const isMergeStation = context.isMergeStation;
                         const lineInfo = context.lineInfo || {};
                         const shouldHideNone = isMergeStation || lineInfo.isRwy;
+
+                        // 上一站/下一站保留距离标注等内联 HTML，但不产生人工换行。
+                        // <br> 与 \n 都只作为分隔标记；中文不加空格，英文单词间保留空格。
+                        const renderAdjacentName = (value) => {
+                            const source = String(value == null ? "" : value);
+                            return source.replace(/<br\s*\/?\s*>|\r?\n/gi, (marker, offset, whole) => {
+                                const beforeText = whole.slice(0, offset)
+                                    .replace(/<[^>]*>/g, "").trimEnd();
+                                const afterText = whole.slice(offset + marker.length)
+                                    .replace(/<[^>]*>/g, "").trimStart();
+                                const before = beforeText.slice(-1);
+                                const after = afterText.charAt(0);
+                                const isCjk = ch => /[\u3400-\u9fff]/.test(ch || "");
+                                if (!before || !after) return "";
+                                return isCjk(before) || isCjk(after) ? "" : " ";
+                            });
+                        };
+
                         const createRow = (label, value) => {
                             if (isMergeStation && value === "无") return "";
-                            return `<div class="info-row"><span class="info-label">${label}</span><span class="info-value" style="line-height:1.4;">${value}</span></div>`;
+                            return `<div class="info-row"><span class="info-label">${label}</span><span class="info-value" style="line-height:1.4;">${renderAdjacentName(value)}</span></div>`;
                         };
                         let stopsHtml = '';
                         if (lineInfo.prev && !(shouldHideNone && lineInfo.prev === "无")) {
@@ -347,18 +471,21 @@
     };
 
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        const qingdaoResourceVersion = "261023.005503";
-        document.write('<scr' + 'ipt src="./city/qingdao/data_station_names.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/data_interval_times.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_interval_times.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_station_name_history.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_travel_guide.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/data_construction.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_construction_progress_map.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_engineering_name_notice.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_timetable.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_construction.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/qingdao/modules/qingdao_line_badges.js?v=' + qingdaoResourceVersion + '"><\/scr' + 'ipt>');
+        const qingdaoResourceVersion = window.CGO_ASSET_VERSION || "";
+        const qingdaoVersionedUrl = (path) => qingdaoResourceVersion
+            ? `${path}?v=${encodeURIComponent(qingdaoResourceVersion)}`
+            : path;
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/data_station_names.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/data_interval_times.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/modules/qingdao_interval_times.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/modules/qingdao_station_name_history.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/modules/qingdao_travel_guide.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/data_construction.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/modules/qingdao_construction_progress_map.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/modules/qingdao_engineering_name_notice.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/modules/qingdao_timetable.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/modules/qingdao_construction.js") + '"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="' + qingdaoVersionedUrl("./city/qingdao/modules/qingdao_line_badges.js") + '"><\/scr' + 'ipt>');
     }
 
     window.QINGDAO_CITY = QingdaoCity;
