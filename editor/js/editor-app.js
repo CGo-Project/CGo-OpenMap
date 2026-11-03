@@ -4433,8 +4433,10 @@
 
                 window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
 
+                var pModel = window.OpenMapEditor.ProjectModel || window.ProjectModel;
+
                 if (app.activeStamp.category === 'station') {
-                    var newId = window.OpenMapEditor.CityProjectIO ? window.OpenMapEditor.CityProjectIO.nextId(app.project, 'station') : ('node_' + Date.now());
+                    var newId = pModel ? pModel.nextId(app.project, 'station_') : ('station_' + Date.now());
                     app.project.nodes[newId] = {
                         id: newId,
                         x: snappedStamp.x,
@@ -4447,7 +4449,7 @@
                     app.selected = { type: 'node', id: newId };
                     showToast('已成功放置车站「' + app.project.nodes[newId].cn + '」', 'success');
                 } else if (app.activeStamp.category === 'amenity') {
-                    var newId2 = window.OpenMapEditor.CityProjectIO ? window.OpenMapEditor.CityProjectIO.nextId(app.project, 'station') : ('node_' + Date.now());
+                    var newId2 = pModel ? pModel.nextId(app.project, 'station_') : ('station_' + Date.now());
                     app.project.nodes[newId2] = {
                         id: newId2,
                         x: snappedStamp.x,
@@ -4463,8 +4465,9 @@
                 } else if (app.activeStamp.category === 'carto') {
                     if (app.activeStamp.payload.id === 'north_arrow') {
                         app.project.scattered = app.project.scattered || [];
+                        var newCompassId = pModel ? pModel.nextId(app.project, 'compass_') : ('compass_' + Date.now());
                         app.project.scattered.push({
-                            id: 'compass_' + Date.now(),
+                            id: newCompassId,
                             x: snappedStamp.x,
                             y: snappedStamp.y,
                             type: 'north_arrow',

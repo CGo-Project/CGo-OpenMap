@@ -2398,6 +2398,10 @@ section('全城市车站 type 必填 / 合法与字段结构（#57）');
         'Delete 快捷键兼容 idx 索引型图元（virtual / notopen / scattered）');
     check(/targetType === 'node' && prop === 'delete'[\s\S]{0,900}window\.confirm[\s\S]{0,400}HistoryManager\.pushSnapshot\(app\.project\)/.test(appSrc2),
         '删除车站的确认弹窗在压入撤销栈之前执行（取消不会污染撤销栈）');
+    check(!/CityProjectIO\.nextId/.test(appSrc2),
+        '零件盒落子放置等操作使用 ProjectModel.nextId 生成 ID（不调用不存在的 CityProjectIO.nextId）');
+    check(/<meta\s+name="mobile-web-app-capable"\s+content="yes">/.test(editorHtml),
+        'PWA: 页面声明 mobile-web-app-capable 消除移动端废弃告警');
 }
 
 // ============================================================================
