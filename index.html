@@ -1279,7 +1279,19 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
                 navigator.serviceWorker.register('./sw.js')
-                    .then(function (reg) { reg.update().catch(function () { }); })
+                    .then(function (reg) {
+                        reg.update().catch(function () { });
+                        var triggerPrecache = function () {
+                            if (navigator.serviceWorker.controller) {
+                                navigator.serviceWorker.controller.postMessage({ type: 'PRECACHE_REMAINING' });
+                            }
+                        };
+                        if ('requestIdleCallback' in window) {
+                            window.requestIdleCallback(triggerPrecache, { timeout: 3000 });
+                        } else {
+                            setTimeout(triggerPrecache, 1500);
+                        }
+                    })
                     .catch(function () { });
             });
             var hadController = Boolean(navigator.serviceWorker.controller);

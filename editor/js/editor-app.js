@@ -1989,6 +1989,9 @@
             } else if (prop === 'amenities') {
                 if (value && Array.isArray(value) && value.length > 0) node.amenities = value;
                 else delete node.amenities;
+            } else if (prop === 'siblings') {
+                if (value && Array.isArray(value) && value.length > 0) node.siblings = value;
+                else delete node.siblings;
             }
         } else if (targetType === 'segment') {
             var seg = (app.project.segments || []).find(function (s) { return s.id === targetId; });

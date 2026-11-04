@@ -118,8 +118,8 @@ function getActiveCity() {
         getRailway12306Url: (name) => `https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc&fs=${encodeURIComponent(name.replace(/站$/, ''))}`,
         getSuburbanLinks: () => null,
         dataFiles: {
-            stanameCsvUrl: './city/beijing/staname.csv',
-            amapDataUrl: './city/beijing/amap_data.json'
+            stanameCsvUrl: (currentCityId === 'beijing') ? './city/beijing/staname.csv' : null,
+            amapDataUrl: (currentCityId === 'beijing') ? './city/beijing/amap_data.json' : null
         },
         formatOwnerName: (name) => name,
         formatCompanyString: (list) => [...new Set(list)].join('，')
@@ -353,7 +353,7 @@ async function loadStationAliases() {
     if (!csvUrl) return;
     try {
         const response = await fetch(csvUrl);
-        if (!response.ok) throw new Error("CSV load failed");
+        if (!response.ok) return;
         const [headerLine, ...rows] = (await response.text()).split(/\r?\n/);
         if (!headerLine || !rows.length) return;
 
@@ -472,6 +472,19 @@ function bindSearchAndLegendEvents() {
                         const aliasClean = normalizeSearchText(alias);
                         maxScore = Math.max(maxScore, calculateScore(cleanVal, aliasClean));
                         if (maxScore === 100) break;
+                    }
+                }
+                if (maxScore < 100 && s.siblings && Array.isArray(s.siblings)) {
+                    for (let sib of s.siblings) {
+                        if (sib.cn && sib.cn.includes(rawVal.trim())) {
+                            maxScore = 100;
+                            break;
+                        }
+                        if (sib.en) {
+                            const sibEnClean = normalizeSearchText(sib.en);
+                            maxScore = Math.max(maxScore, calculateScore(cleanVal, sibEnClean));
+                            if (maxScore === 100) break;
+                        }
                     }
                 }
                 if (maxScore > 0) {
@@ -774,13 +787,45 @@ function renderPinModeTree() {
 }
 function renderDefaultLegend() {
     const container = document.getElementById('legend-content');
-    const activeLegendConfig = (typeof window !== 'undefined' && window.LEGEND_CONFIG)
+    if (!container) return;
+
+    let activeLegendConfig = (typeof window !== 'undefined' && window.LEGEND_CONFIG)
         || (typeof LEGEND_CONFIG !== 'undefined' ? LEGEND_CONFIG : null)
         || (typeof window !== 'undefined' && window.LEGEND_SECTIONS)
         || (typeof LEGEND_SECTIONS !== 'undefined' ? LEGEND_SECTIONS : null)
         || (getActiveCity().LEGEND_CONFIG)
-        || [];
-    if (!container || !Array.isArray(activeLegendConfig) || activeLegendConfig.length === 0) return;
+        || null;
+
+    // 兼容 legendData 结构（如 beijing_plan 等以 { groups: [{ title, lineIds }] } 格式声明的数据）
+    const activeLegendData = (typeof window !== 'undefined' && window.legendData)
+        || (typeof legendData !== 'undefined' ? legendData : null);
+
+    if ((!activeLegendConfig || !Array.isArray(activeLegendConfig) || activeLegendConfig.length === 0) &&
+        activeLegendData && Array.isArray(activeLegendData.groups)) {
+        activeLegendConfig = [];
+        activeLegendData.groups.forEach(g => {
+            activeLegendConfig.push({ type: 'title', title: g.title });
+            activeLegendConfig.push({
+                type: 'grid',
+                cols: 2,
+                items: (g.lineIds || []).map(id => ({ targets: [id] }))
+            });
+        });
+    }
+
+    // 仍未获取到有效图例时，从 linesData 自动兜底生成全线图例列表
+    if ((!activeLegendConfig || !Array.isArray(activeLegendConfig) || activeLegendConfig.length === 0) &&
+        typeof linesData !== 'undefined' && Array.isArray(linesData) && linesData.length > 0) {
+        activeLegendConfig = [
+            { type: 'title', title: '线路列表', subtitle: 'Lines' },
+            { type: 'grid', cols: 2, items: linesData.map(l => ({ targets: [l.id], name: l.name })) }
+        ];
+    }
+
+    if (!Array.isArray(activeLegendConfig)) {
+        activeLegendConfig = [];
+    }
+
     const panel = document.getElementById('info-panel');
     if (panel && panel.parentElement !== document.body) {
         document.body.appendChild(panel);
@@ -853,7 +898,9 @@ function renderDefaultLegend() {
     });
     let finalHtml = '';
     finalHtml += createPanelSection('搜索', SEARCH_BAR_HTML, true);
-    finalHtml += createPanelSection('图例', legendInnerHtml, true);
+    if (legendInnerHtml.trim()) {
+        finalHtml += createPanelSection('图例', legendInnerHtml, true);
+    }
     finalHtml += '<div id="sidebar-dynamic-content"></div>';
     container.innerHTML = finalHtml;
     injectInlineSvgs(container);
@@ -1170,11 +1217,61 @@ function renderStations() {
         let scaleEn = s.textScale?.en || 1;
         const codeBadge = s.code ? (window.CGoStationIcons?.renderStationCodeBadge?.(s.code, s.lineColors?.[0]) || `<span class="station-code-pill" style="background:${s.lineColors?.[0] || 'var(--station-stroke)'};">${s.code}</span>`) : '';
         const amenitiesHtml = (s.amenities && Array.isArray(s.amenities)) ? (window.CGoStationIcons?.renderAmenitiesHtml?.(s.amenities) || '') : '';
+        const mainColor = s.color || '';
+        const mainColorStyle = mainColor ? `color:${mainColor} !important;` : '';
         labelDiv.innerHTML = `
-            <span class="stacn" style="transform:scaleX(${scaleCn});transform-origin:${transformOriginX} center;">${codeBadge}${safeNameHtml(s.cn)}${amenitiesHtml}</span>
-            <span class="staen" lang="en" style="transform:scaleX(${scaleEn});transform-origin:${transformOriginX} center;">${safeNameHtml(s.en)}</span>
+            <span class="stacn" style="${mainColorStyle}transform:scaleX(${scaleCn});transform-origin:${transformOriginX} center;">${codeBadge}${safeNameHtml(s.cn)}${amenitiesHtml}</span>
+            <span class="staen" lang="en" style="${mainColorStyle}transform:scaleX(${scaleEn});transform-origin:${transformOriginX} center;">${safeNameHtml(s.en)}</span>
         `;
         labelsLayer.appendChild(labelDiv);
+
+        // 渲染同址异名站（siblings 莫斯科型换乘，共用同一个站点图元，各自拥有独立站名与朝向）
+        if (s.siblings && Array.isArray(s.siblings)) {
+            s.siblings.forEach((sib, sibIdx) => {
+                if (!sib || (!sib.cn && !sib.en)) return;
+                const sibDiv = document.createElement('div');
+                sibDiv.className = `label-group type-${s.type} station-sibling-label`;
+                sibDiv.id = `${getDomId('label', id)}_sib_${sibIdx}`;
+                sibDiv.dataset.sid = id;
+                sibDiv.dataset.siblingIndex = String(sibIdx);
+                sibDiv.setAttribute('role', 'button');
+                sibDiv.setAttribute('tabindex', '-1');
+                sibDiv.setAttribute('aria-label', `${plainName(sib.cn || '')} (${stationLabel})`);
+
+                let sibLeft = s.x, sibTop = s.y;
+                let sibTransform = "", sibTextAlign = "center", sibTransformOriginX = "50%";
+                const sibAlign = sib.align || (s.align === 'top-left' ? 'bottom-right' : 'bottom');
+                switch (sibAlign) {
+                    case 'top': sibTop -= distV; sibTransform = "translate(-50%, -100%)"; break;
+                    case 'bottom': sibTop += distV; sibTransform = "translate(-50%, 0)"; break;
+                    case 'left': sibLeft -= distH; sibTransform = "translate(-100%, -50%)"; sibTextAlign = "right"; sibTransformOriginX = "100%"; break;
+                    case 'right': sibLeft += distH; sibTransform = "translate(0, -50%)"; sibTextAlign = "left"; sibTransformOriginX = "0%"; break;
+                    case 'top-left': sibLeft -= distD; sibTop -= distD; sibTransform = "translate(-100%, -100%)"; sibTextAlign = "right"; sibTransformOriginX = "100%"; break;
+                    case 'top-right': sibLeft += distD; sibTop -= distD; sibTransform = "translate(0, -100%)"; sibTextAlign = "left"; sibTransformOriginX = "0%"; break;
+                    case 'bottom-left': sibLeft -= distD; sibTop += distD; sibTransform = "translate(-100%, 0)"; sibTextAlign = "right"; sibTransformOriginX = "100%"; break;
+                    case 'bottom-right': sibLeft += distD; sibTop += distD; sibTransform = "translate(0, 0)"; sibTextAlign = "left"; sibTransformOriginX = "0%"; break;
+                    default: sibTop += distV; sibTransform = "translate(-50%, 0)";
+                }
+                if (sib.offset) {
+                    if (sib.offset.x) sibLeft += sib.offset.x;
+                    if (sib.offset.y) sibTop += sib.offset.y;
+                }
+                sibDiv.style.left = sibLeft + 'px';
+                sibDiv.style.top = sibTop + 'px';
+                sibDiv.style.transform = sibTransform;
+                sibDiv.style.textAlign = sibTextAlign;
+
+                const sibScaleCn = sib.textScale?.cn || 1;
+                const sibScaleEn = sib.textScale?.en || 1;
+                const sibColor = sib.color || (sib.lineId && Array.isArray(linesData) ? linesData.find(l => l.id === sib.lineId)?.color : '') || '';
+                const sibColorStyle = sibColor ? `color:${sibColor} !important;` : '';
+                sibDiv.innerHTML = `
+                    <span class="stacn" style="${sibColorStyle}transform:scaleX(${sibScaleCn});transform-origin:${sibTransformOriginX} center;">${safeNameHtml(sib.cn || '')}</span>
+                    <span class="staen" lang="en" style="${sibColorStyle}transform:scaleX(${sibScaleEn});transform-origin:${sibTransformOriginX} center;">${safeNameHtml(sib.en || '')}</span>
+                `;
+                labelsLayer.appendChild(sibDiv);
+            });
+        }
     }
 }
 
@@ -1266,6 +1363,7 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
         if (nodeEl) nodeEl.classList.add('active');
         const labelEl = document.getElementById(`label_${targetSid}`);
         if (labelEl) labelEl.classList.add('active');
+        document.querySelectorAll(`.label-group[data-sid="${targetSid}"]`).forEach(el => el.classList.add('active'));
         if (targetS.relatedLines) targetS.relatedLines.forEach(lineId => highlightLine(lineId, sid));
     };
     activate(sid);

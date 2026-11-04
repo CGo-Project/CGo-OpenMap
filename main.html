@@ -469,6 +469,17 @@
                     .then(function (reg) {
                         reg.update().catch(function () { });
                         console.log('[SW] Service Worker 注册成功，作用域:', reg.scope);
+                        // 页面就绪后，通知 SW 在受控生命周期内安全执行/断点续传后台城市离线预热
+                        var triggerPrecache = function () {
+                            if (navigator.serviceWorker.controller) {
+                                navigator.serviceWorker.controller.postMessage({ type: 'PRECACHE_REMAINING' });
+                            }
+                        };
+                        if ('requestIdleCallback' in window) {
+                            window.requestIdleCallback(triggerPrecache, { timeout: 3000 });
+                        } else {
+                            setTimeout(triggerPrecache, 1500);
+                        }
                     })
                     .catch(function (err) {
                         console.warn('[SW] Service Worker 注册失败:', err);

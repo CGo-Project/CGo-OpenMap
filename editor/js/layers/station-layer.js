@@ -298,6 +298,55 @@ window.OpenMapEditor.StationLayer = (function () {
                 labelDiv.innerHTML = innerHtml;
                 fo.appendChild(labelDiv);
                 dom.labelLayer.appendChild(fo);
+
+                // 渲染同址异名站（siblings 莫斯科型换乘）
+                if (n.siblings && Array.isArray(n.siblings)) {
+                    n.siblings.forEach(function (sib, sIdx) {
+                        if (!sib || (!sib.cn && !sib.en)) return;
+                        var sLayout = calculateLabelLayout({
+                            x: n.x,
+                            y: n.y,
+                            align: sib.align || (n.align === 'top-left' ? 'bottom-right' : 'bottom'),
+                            offset: sib.offset
+                        });
+                        var sScaleCn = (sib.textScale && sib.textScale.cn) ? sib.textScale.cn : 1;
+                        var sScaleEn = (sib.textScale && sib.textScale.en) ? sib.textScale.en : 1;
+
+                        var sFo = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+                        sFo.setAttribute('x', String(sLayout.x));
+                        sFo.setAttribute('y', String(sLayout.y));
+                        sFo.setAttribute('width', '1');
+                        sFo.setAttribute('height', '1');
+                        sFo.setAttribute('data-node-id', nodeId);
+                        sFo.style.overflow = 'visible';
+                        sFo.style.pointerEvents = 'none';
+
+                        var sLabelDiv = document.createElement('div');
+                        sLabelDiv.className = 'label-group type-' + stType + (isSelected ? ' active' : '') + ' station-sibling-label';
+                        sLabelDiv.setAttribute('data-node-id', nodeId);
+                        sLabelDiv.setAttribute('data-sibling-idx', String(sIdx));
+                        sLabelDiv.style.transform = sLayout.transform;
+                        sLabelDiv.style.textAlign = sLayout.textAlign;
+                        sLabelDiv.style.pointerEvents = 'auto';
+                        sLabelDiv.style.cursor = 'pointer';
+
+                        var sColor = sib.color || '';
+                        var sColorStyle = sColor ? ('color:' + sColor + ' !important;') : '';
+
+                        var sHtml = '';
+                        if (sib.cn) {
+                            sHtml += '<span class="stacn" style="' + sColorStyle + 'transform:scaleX(' + sScaleCn + ');transform-origin:' + sLayout.transformOriginX + ' center;">' +
+                                escapeHtml(sib.cn) + '</span>';
+                        }
+                        if (sib.en) {
+                            sHtml += '<span class="staen" lang="en" style="' + sColorStyle + 'transform:scaleX(' + sScaleEn + ');transform-origin:' + sLayout.transformOriginX + ' center;">' +
+                                escapeHtml(sib.en) + '</span>';
+                        }
+                        sLabelDiv.innerHTML = sHtml;
+                        sFo.appendChild(sLabelDiv);
+                        dom.labelLayer.appendChild(sFo);
+                    });
+                }
             }
         });
     }

@@ -2405,6 +2405,128 @@ section('全城市车站 type 必填 / 合法与字段结构（#57）');
 }
 
 // ============================================================================
+// 十四、PWA 离线可靠性与预缓存生命周期守护 (Issue #69 / #70)
+// ============================================================================
+section('PWA 离线就绪判定与后台预热生命周期保护（Issue #69 / #70）');
+{
+    const offlineHtmlSrc = fs.readFileSync(path.join(ROOT, 'offline.html'), 'utf8');
+    const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+    const mainHtmlSrc = fs.readFileSync(path.join(ROOT, 'main.html'), 'utf8');
+    const indexHtmlSrc = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+
+    // Issue #70: 离线就绪必须校验核心城市三文件，单文件缓存不误判
+    check(/hasMain\s*&&\s*hasStations\s*&&\s*hasLines/.test(offlineHtmlSrc),
+        'Issue #70: offline.html 必须同时校验城市核心JS、data_stations与data_lines才判定离线就绪');
+    check(/partialCitiesSection/.test(offlineHtmlSrc) && /partialCitiesText/.test(offlineHtmlSrc),
+        'Issue #70: offline.html 提供部分缓存/预热中提示区，区分完整就绪与未完成状态');
+
+    // 逻辑判定模拟断言
+    function simulateCityReadyCheck(cachedPaths, folder, mainJs) {
+        const hasMain = cachedPaths.has(mainJs);
+        const hasStations = cachedPaths.has(folder + '/data_stations.js');
+        const hasLines = cachedPaths.has(folder + '/data_lines.js');
+        return hasMain && hasStations && hasLines;
+    }
+    const singleFileSet = new Set(['city/shenyang/shenyang.js']);
+    check(simulateCityReadyCheck(singleFileSet, 'city/shenyang', 'city/shenyang/shenyang.js') === false,
+        'Issue #70 验收: 只缓存单个文件时不会被判定为离线就绪');
+    const fullFilesSet = new Set([
+        'city/shenyang/shenyang.js',
+        'city/shenyang/data_stations.js',
+        'city/shenyang/data_lines.js'
+    ]);
+    check(simulateCityReadyCheck(fullFilesSet, 'city/shenyang', 'city/shenyang/shenyang.js') === true,
+        'Issue #70 验收: 核心脚本、站点与走向三项完整时准确判定为离线就绪');
+
+    // Issue #69: Service Worker 生命周期与断点续传守护
+    check(/runPrecacheRemaining/.test(swSrc) && /isPrecaching/.test(swSrc),
+        'Issue #69: sw.js 具备受控的后台城市预热状态控制器与断点续传机制');
+    check(/event\.data\.type\s*===\s*'PRECACHE_REMAINING'[\s\S]{0,250}event\.waitUntil\(runPrecacheRemaining\(true\)\)/.test(swSrc),
+        'Issue #69: sw.js 在 message 事件中通过 event.waitUntil 显式延长运行生命周期');
+    check(/postMessage\(\{\s*type:\s*'PRECACHE_REMAINING'\s*\}\)/.test(mainHtmlSrc),
+        'Issue #69: main.html 在空闲期通知 Service Worker 执行/续传后台城市离线预热');
+    check(/postMessage\(\{\s*type:\s*'PRECACHE_REMAINING'\s*\}\)/.test(indexHtmlSrc),
+        'Issue #69: index.html 在空闲期通知 Service Worker 执行/续传后台城市离线预热');
+}
+
+// ============================================================================
+// 十五、城市数据与图例通用引擎鲁棒性 (Issue #61 / #62)
+// ============================================================================
+section('城市图例、别名库与侧栏通用引擎弹性（Issue #61 / #62）');
+{
+    const scriptSrc = fs.readFileSync(path.join(ROOT, 'core/script.js'), 'utf8');
+    const bjPlanLegendSrc = fs.readFileSync(path.join(ROOT, 'city/beijing_plan/data_legend.js'), 'utf8');
+    const fzLegendSrc = fs.readFileSync(path.join(ROOT, 'city/fuzhou/data_legend.js'), 'utf8');
+    const szLegendSrc = fs.readFileSync(path.join(ROOT, 'city/suzhou/data_legend.js'), 'utf8');
+    const hhLegendSrc = fs.readFileSync(path.join(ROOT, 'city/hohhot/data_legend.js'), 'utf8');
+
+    // Issue #61: 图例与侧栏弹性
+    check(/activeLegendData\s*&&\s*Array\.isArray\(activeLegendData\.groups\)/.test(scriptSrc),
+        'Issue #61: core/script.js 自动兼容 legendData.groups 分组结构并转为通用图例');
+    check(/linesData\.map\(l\s*=>\s*\(\{\s*targets:\s*\[l\.id\]/.test(scriptSrc),
+        'Issue #61: core/script.js 当图例未配置时自动从 linesData 兜底生成线路列表');
+    check(!/if\s*\(!container\s*\|\|\s*!Array\.isArray\(activeLegendConfig\)\s*\|\|\s*activeLegendConfig\.length\s*===\s*0\)\s*return;/.test(scriptSrc),
+        'Issue #61: core/script.js 不再因图例空配置过早 return 导致搜索栏与侧栏容器彻底失效');
+    check(/window\.LEGEND_CONFIG\s*=\s*LEGEND_CONFIG/.test(bjPlanLegendSrc),
+        'Issue #61: beijing_plan/data_legend.js 规范挂载 window.LEGEND_CONFIG');
+    check(/window\.LEGEND_CONFIG\s*=\s*LEGEND_CONFIG/.test(fzLegendSrc),
+        'Issue #61: fuzhou/data_legend.js 规范挂载 window.LEGEND_CONFIG');
+    check(/window\.LEGEND_CONFIG\s*=\s*LEGEND_CONFIG/.test(szLegendSrc),
+        'Issue #61: suzhou/data_legend.js 规范挂载 window.LEGEND_CONFIG');
+    check(/window\.LEGEND_CONFIG\s*=\s*LEGEND_CONFIG/.test(hhLegendSrc),
+        'Issue #61: hohhot/data_legend.js 规范挂载 window.LEGEND_CONFIG');
+
+    // Issue #62: 非北京城市不误拉取北京 staname.csv
+    check(/stanameCsvUrl:\s*\(currentCityId\s*===\s*'beijing'\)\s*\?\s*'\.\/city\/beijing\/staname\.csv'\s*:\s*null/.test(scriptSrc),
+        'Issue #62: getActiveCity 默认回落仅对北京设置 stanameCsvUrl，防止其他城市产生 404');
+    check(/const response = await fetch\(csvUrl\);\s*\n\s*if \(!response\.ok\) return;/.test(scriptSrc),
+        'Issue #62: loadStationAliases 在可选 CSV 404 时优雅退出不抛未捕获异常');
+}
+
+// ============================================================================
+// 十六、「同址异站」莫斯科型换乘原生数据体系 (Issue #47)
+// ============================================================================
+section('「同址异站」莫斯科型换乘原生支持（Issue #47）');
+{
+    const scriptSrc = fs.readFileSync(path.join(ROOT, 'core/script.js'), 'utf8');
+    const boardSrc = fs.readFileSync(path.join(ROOT, 'core/station-board.js'), 'utf8');
+    const staLayerSrc = fs.readFileSync(path.join(ROOT, 'editor/js/layers/station-layer.js'), 'utf8');
+    const inspectorSrc = fs.readFileSync(path.join(ROOT, 'editor/js/ui/inspector-view.js'), 'utf8');
+    const appSrc = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    const pyStationsSrc = fs.readFileSync(path.join(ROOT, 'city/pyongyang/data_stations.js'), 'utf8');
+    const pyCitySrc = fs.readFileSync(path.join(ROOT, 'city/pyongyang/pyongyang.js'), 'utf8');
+
+    // 引擎渲染与搜索
+    check(/s\.siblings\s*&&\s*Array\.isArray\(s\.siblings\)/.test(scriptSrc),
+        'Issue #47: core/script.js 原生支持车站 siblings 字段多站名渲染');
+    check(/station-sibling-label/.test(scriptSrc),
+        'Issue #47: core/script.js 为同址异名站生成独立方位与配色的 station-sibling-label');
+    check(/document\.querySelectorAll\(`\.label-group\[data-sid="\$\{targetSid\}"\]`\)\.forEach/.test(scriptSrc),
+        'Issue #47: selectStation 同时高亮主站名与所有 sibling 异名站标签');
+    check(/sib\.cn\s*&&\s*sib\.cn\.includes\(rawVal\.trim\(\)\)/.test(scriptSrc),
+        'Issue #47: 全局车站检索能直接索引并匹配 sibling 站名');
+    check(/station\.siblings\s*&&\s*Array\.isArray\(station\.siblings\)/.test(boardSrc),
+        'Issue #47: StationBoard 车站信息板标题联动显示多线异名站名');
+
+    // 编辑器渲染与检视
+    check(/n\.siblings\s*&&\s*Array\.isArray\(n\.siblings\)/.test(staLayerSrc),
+        'Issue #47: OpenMap Editor StationLayer 支持渲染同址异名站文字标注');
+    check(/btnAddSibling/.test(inspectorSrc) && /input-sibling-field/.test(inspectorSrc),
+        'Issue #47: OpenMap Editor InspectorView 提供同址异名站增加、修改与删除交互');
+    check(/prop === 'siblings'/.test(appSrc),
+        'Issue #47: editor-app.js 将 siblings 改动接入撤销栈并支持外科手术式保存');
+
+    // 平壤标杆数据结构
+    const pyReal = evalData(pyStationsSrc, 'stationsData');
+    check(pyReal.PY02 && Array.isArray(pyReal.PY02.siblings) && pyReal.PY02.siblings.length === 1,
+        'Issue #47: 平壤 PY02 (战友/战胜) 数据模型已迁移至原生 siblings 结构');
+    check(pyReal.PY02.cn === '전우' && pyReal.PY02.siblings[0].cn === '전승',
+        'Issue #47: 平壤 PY02 主名 전우 (战友)，sibling 名 전승 (战胜)');
+    check(!/cgoDualName/.test(pyCitySrc),
+        'Issue #47: pyongyang.js 彻底移除临时的 DOM 篡改补丁脚本');
+}
+
+// ============================================================================
 console.log('\n' + '─'.repeat(64));
 if (failed === 0) {
     console.log(`全部通过：${passed} 项断言，覆盖 ${cities.length} 座城市（${cities.join('、')}）`);

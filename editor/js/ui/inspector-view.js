@@ -176,6 +176,39 @@ window.OpenMapEditor.InspectorView = (function () {
                 '<span>隐藏站名标注 (hideLabel)</span>' +
                 '</label></div>';
 
+            // 同址异名站（莫斯科型换乘 siblings）
+            var siblings = Array.isArray(node.siblings) ? node.siblings : [];
+            html += '<div class="inspector-siblings-section" style="margin-top:10px;padding:8px 0;border-top:1px dashed var(--border-color,#e2e8f0);">' +
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+                '<span style="font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;">' +
+                '<cgo-icon name="route" size="12"></cgo-icon><span>同址异名站 (Siblings)</span>' +
+                '</span>' +
+                '<button type="button" class="btn btn-secondary" id="btnAddSibling" style="padding:2px 6px;font-size:11px;border-radius:4px;">+ 添加别名</button>' +
+                '</div>';
+            if (siblings.length > 0) {
+                siblings.forEach(function (sib, sIdx) {
+                    html += '<div class="sibling-item" style="background:var(--bg-subtle, rgba(0,0,0,0.03));border:1px solid var(--border-light, rgba(0,0,0,0.06));border-radius:6px;padding:6px;margin-bottom:6px;">' +
+                        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
+                        '<span style="font-size:11px;font-weight:600;">异名站 #' + (sIdx + 1) + '</span>' +
+                        '<button type="button" class="btn-remove-sibling" data-sib-idx="' + sIdx + '" title="删除此站名" style="background:none;border:none;color:var(--text-light,#94a3b8);cursor:pointer;padding:0 2px;"><cgo-icon name="close" size="12"></cgo-icon></button>' +
+                        '</div>' +
+                        '<div class="form-row" style="margin-bottom:3px;"><span class="form-label">中文:</span><input type="text" class="form-input input-sibling-field" data-sib-idx="' + sIdx + '" data-field="cn" value="' + escapeHtml(sib.cn || '') + '"></div>' +
+                        '<div class="form-row" style="margin-bottom:3px;"><span class="form-label">英文:</span><input type="text" class="form-input input-sibling-field" data-sib-idx="' + sIdx + '" data-field="en" value="' + escapeHtml(sib.en || '') + '"></div>' +
+                        '<div class="form-row" style="margin-bottom:3px;"><span class="form-label">线路:</span><input type="text" class="form-input input-sibling-field" data-sib-idx="' + sIdx + '" data-field="lineId" placeholder="线路ID (选填)" value="' + escapeHtml(sib.lineId || '') + '"></div>' +
+                        '<div class="form-row" style="margin-bottom:3px;"><span class="form-label">方位:</span>' +
+                        '<select class="form-select input-sibling-field" data-sib-idx="' + sIdx + '" data-field="align">' +
+                        ['top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].map(function (a) {
+                            return '<option value="' + a + '"' + ((sib.align || 'bottom-right') === a ? ' selected' : '') + '>' + a + '</option>';
+                        }).join('') +
+                        '</select></div>' +
+                        '<div class="form-row"><span class="form-label">配色:</span><input type="text" class="form-input input-sibling-field" data-sib-idx="' + sIdx + '" data-field="color" placeholder="如 #50B344 (选填)" value="' + escapeHtml(sib.color || '') + '"></div>' +
+                        '</div>';
+                });
+            } else {
+                html += '<div style="font-size:11px;color:var(--text-light);padding:2px 0 6px 0;">共用图元的其它线路站名（如莫斯科式换乘）</div>';
+            }
+            html += '</div>';
+
             // 收集此车站所属线路及站序
             var memberLines = [];
             var lines = project ? (project.lines || []) : [];
@@ -352,6 +385,36 @@ window.OpenMapEditor.InspectorView = (function () {
                 }
             });
         }
+
+        // 绑定同址异名站 (siblings) 交互
+        var btnAddSib = document.getElementById('btnAddSibling');
+        if (btnAddSib) {
+            btnAddSib.addEventListener('click', function () {
+                var curSibs = Array.isArray(node.siblings) ? node.siblings.slice() : [];
+                curSibs.push({ lineId: '', cn: '新站名', en: 'New Station', align: 'bottom-right', offset: { x: 0, y: 0 } });
+                fireChange('node', node.id, 'siblings', curSibs);
+            });
+        }
+        document.querySelectorAll('.btn-remove-sibling').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var sIdx = parseInt(this.getAttribute('data-sib-idx'), 10);
+                if (isNaN(sIdx)) return;
+                var curSibs = Array.isArray(node.siblings) ? node.siblings.slice() : [];
+                curSibs.splice(sIdx, 1);
+                fireChange('node', node.id, 'siblings', curSibs.length ? curSibs : undefined);
+            });
+        });
+        document.querySelectorAll('.input-sibling-field').forEach(function (input) {
+            input.addEventListener('change', function () {
+                var sIdx = parseInt(this.getAttribute('data-sib-idx'), 10);
+                var field = this.getAttribute('data-field');
+                if (isNaN(sIdx) || !field) return;
+                var curSibs = Array.isArray(node.siblings) ? node.siblings.map(function (s) { return Object.assign({}, s); }) : [];
+                if (!curSibs[sIdx]) return;
+                curSibs[sIdx][field] = this.value;
+                fireChange('node', node.id, 'siblings', curSibs);
+            });
+        });
 
         // 绑定线路站序微调与归属控制
         document.querySelectorAll('.btn-sta-order-up').forEach(function (btn) {

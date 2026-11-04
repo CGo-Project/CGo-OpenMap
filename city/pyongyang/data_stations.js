@@ -5,7 +5,7 @@
 
 const stationsData = {
     "PY01": { type: "dot", x: 418.7, y: 100, cn: "붉은별", en: "红星<br>Pulgŭnbyŏl", align: "top", offset: { x: 0, y: -2 } },
-    "PY02": {"x":418.8,"y":180.2,"cn": "전우 · 전승","en": "战友 Chŏnu<br>战胜 Chŏnsŭng","align":"top-left","type":"tsf", "offset": { x: 0, y: 0 } },
+    "PY02": { "x": 418.8, "y": 180.2, "cn": "전우", "en": "战友<br>Chŏnu", "align": "top-left", "type": "tsf", "offset": { "x": 0, "y": 0 }, "color": "#ED1C23", "siblings": [{ "lineId": "PY-HK", "cn": "전승", "en": "战胜<br>Chŏnsŭng", "align": "bottom-right", "offset": { "x": 0, "y": 0 }, "color": "#50B344" }] },
     "PY03": {"type":"dot","x":295.4,"y":174.8,"cn":"서평양역","en":"西平壤站<br>West P'yŏngyang Railway Station","align":"left","offset":{"x":0,"y":0}},
     "PY06": { type: "no", x: 614.8, y: 180.2, cn: "광명", en: "光明<br>Kwangmyŏng", align: "top", offset: { x: 0, y: -2 } },
     "PY07": { type: "dot", x: 706.6, y: 180.2, cn: "락원", en: "乐园<br>Ragwŏn", align: "top", offset: { x: 0, y: -2 } },
