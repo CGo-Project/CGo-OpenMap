@@ -33,7 +33,9 @@
     /** 站点缺少原图图元数据时，按所属线路折线的切线方向推断短横朝向 */
     const tangentAngleCache = new Map();
     function inferTangentAngle(station, stationId) {
-        if (tangentAngleCache.has(stationId)) return tangentAngleCache.get(stationId);
+        // 缓存键带上坐标：OpenMap Editor 里拖动车站后要按新位置重新推断朝向
+        const cacheKey = `${stationId}@${station.x},${station.y}`;
+        if (tangentAngleCache.has(cacheKey)) return tangentAngleCache.get(cacheKey);
         let angle = 90;
         const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
         let best = null;
@@ -56,7 +58,7 @@
         if (best && best.d <= 12) angle = (Math.atan2(best.dy, best.dx) / RAD) + 90;
         while (angle < 0) angle += 180;
         while (angle >= 180) angle -= 180;
-        return tangentAngleCache.set(stationId, angle), angle;
+        return tangentAngleCache.set(cacheKey, angle), angle;
     }
 
     /** 把 marker 字段规整成统一的 parts 数组（兼容旧的单图元写法） */
@@ -235,6 +237,81 @@
                 width: box, height: box,
                 className: capsules ? "sh-marker sh-capsule" : "sh-marker sh-tick"
             };
+        },
+
+        /**
+         * 上海线路图实际存在的站点画法（OpenMap Editor 图元类型选择器只列这些）。
+         * 上海没有胶囊连杆 / 哑铃之类的通用图元：普通站一律是短横，换乘站与国铁站一律是胶囊。
+         */
+        STATION_TYPES: [
+            { id: "dot", name: "普通站", desc: "线路色短横" },
+            { id: "tsf", name: "换乘站", desc: "白底深灰描边胶囊" },
+            { id: "rdot", name: "国铁车站", desc: "与换乘站同为胶囊" },
+            { id: "no", name: "暂缓开通", desc: "在建 / 未开通车站" }
+        ],
+
+        /**
+         * OpenMap Editor 钩子：切换车站类型时同步改写逐站图元 marker。
+         * 上海每座车站都带官方图实测的 marker，它决定画短横还是胶囊；只改 type 不改 marker，画面不会变。
+         * 「短横 ↔ 胶囊」跨类切换时按新类型重建一枚标准图元（短横沿线路切线自动定向），
+         * 同类之间（如换乘站 ↔ 国铁站）保留原有的实测几何。
+         * @returns {object} 要写回车站的字段（值为 undefined 表示删除该字段）
+         */
+        adaptStationForType(station, type, stationId) {
+            if (!station || type === "no") return {};
+            const wantCapsule = type === "tsf" || type === "rdot" || type === "tsfo";
+            const parts = markerParts(Object.assign({}, station, { type }), stationId);
+            const hasCapsule = parts.some((p) => p.shape !== "tick");
+            if (station.marker && hasCapsule === wantCapsule) return {};
+            if (wantCapsule) {
+                return { marker: { parts: [{ shape: "capsule", dx: 0, dy: 0, angle: 0, long: CAPSULE_SHORT, short: CAPSULE_SHORT }] } };
+            }
+            // 与 data_stations.js 的实测写法一致：短横以车站坐标为中心（偏出线路的效果由车站坐标本身体现）
+            const angle = Math.round(inferTangentAngle(station, stationId) * 10) / 10;
+            return { marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle, long: TICK_LONG, short: TICK_SHORT }] } };
+        },
+
+        /**
+         * OpenMap Editor 钩子：为一座车站现场生成可选画法。
+         * 按经过本站的每条线路求出站台位置（线路折线上离车站最近的点），据此给出：
+         *   · 短横（普通站，沿线路切线定向）；
+         *   · 单枚胶囊（一般换乘 / 国铁站）；
+         *   · 合并胶囊：多条线路站台平行相邻（同台 / 平行换乘），一枚拉长胶囊横跨各站台；
+         *   · 每线一枚：各线站台分开（通道 / 出站换乘），每条线路在自己的站台处各画一枚胶囊。
+         * @returns {Array<{key, name, desc, patch}>}
+         */
+        getStationStyleOptions(station, stationId) {
+            if (!station) return [];
+            const r1 = (v) => Math.round(v * 10) / 10;
+            const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
+            // 各线站台位置（线路折线上离车站最近的点），共用 core/station-icons.js 的实现
+            const platforms = (window.CGoStationIcons && window.CGoStationIcons.stationPlatforms)
+                ? window.CGoStationIcons.stationPlatforms(station, lines, 12) : [];
+
+            const capsule = (cx, cy, angle, long) => ({ shape: "capsule", dx: r1(cx), dy: r1(cy), angle: r1(angle),
+                long: r1(long), short: CAPSULE_SHORT });
+            const opts = [];
+            const tickAngle = Math.round(inferTangentAngle(station, stationId) * 10) / 10;
+            opts.push({ key: "tick", name: "短横", desc: "普通站 · 沿线路切线定向",
+                patch: { type: "dot", marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: tickAngle, long: TICK_LONG, short: TICK_SHORT }] } } });
+            const ic = (station.type === "rdot") ? "rdot" : "tsf";
+            opts.push({ key: "capsule", name: "单枚胶囊", desc: "换乘站 / 国铁站",
+                patch: { type: ic, marker: { parts: [capsule(0, 0, 0, CAPSULE_SHORT)] } } });
+
+            if (platforms.length >= 2) {
+                // 合并胶囊：取相距最远的两处站台，胶囊沿两者连线拉长并覆盖全部站台
+                let a = platforms[0], b = platforms[1], best = -1;
+                platforms.forEach((p) => platforms.forEach((q) => {
+                    const d = Math.hypot(p.x - q.x, p.y - q.y);
+                    if (d > best) { best = d; a = p; b = q; }
+                }));
+                const ang = Math.atan2(b.y - a.y, b.x - a.x) / RAD;
+                opts.push({ key: "merged", name: "合并胶囊", desc: `同台 / 平行换乘 · 横跨 ${platforms.length} 处站台`,
+                    patch: { type: "tsf", marker: { parts: [capsule((a.x + b.x) / 2 - station.x, (a.y + b.y) / 2 - station.y, ang, best + CAPSULE_SHORT)] } } });
+                opts.push({ key: "split", name: `每线一枚 ×${platforms.length}`, desc: "通道 / 出站换乘 · 各站台独立",
+                    patch: { type: "tsf", marker: { parts: platforms.map((p) => capsule(p.x - station.x, p.y - station.y, 0, CAPSULE_SHORT)) } } });
+            }
+            return opts;
         },
 
         /** 初始化车站卡片系统 */

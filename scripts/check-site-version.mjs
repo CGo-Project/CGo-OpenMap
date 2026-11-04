@@ -28,7 +28,7 @@ const FILES = [
     'sw.js',
 ];
 
-// 注意：不能加前导 \b —— sw.js 里版本串紧跟在 `v` 后面（cgo-openmap-v261030.212000），
+// 注意：不能加前导 \b —— sw.js 里版本串紧跟在 `v` 后面（cgo-openmap-v261104.212815），
 // `v` 与数字都是单词字符，之间不存在单词边界。
 const VERSION_RE = /(?<![\d.])(\d{6}\.\d{6})(?![\d.])/g;
 const FORMAT_RE = /^\d{6}\.\d{6}$/;

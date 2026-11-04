@@ -338,6 +338,32 @@
      * 避免回写时将 align:"top" / offset:{x:0,y:0} / type:"dot" 注入到原本没有这些字段的条目中，
      * 防止 patchEntries diffContainerEdits 因 key 数量变化而回退为整条重写（源文件字段污染）。
      */
+    function shiftBoxes(v, dx, dy) {
+        if (Array.isArray(v)) {
+            if (v.length === 4 && v.every(function (n) { return typeof n === 'number'; })) {
+                return [r2(v[0] + dx), r2(v[1] + dy), r2(v[2] + dx), r2(v[3] + dy)];
+            }
+            return v.map(function (x) { return shiftBoxes(x, dx, dy); });
+        }
+        if (v && typeof v === 'object') {
+            var out = {};
+            Object.keys(v).forEach(function (k) { out[k] = shiftBoxes(v[k], dx, dy); });
+            return out;
+        }
+        return v;
+    }
+
+    /** 车站位移后平移其绝对排版框 lab；没有 lab、没挪动或 lab 已被手工改过时返回 null */
+    function shiftLabWithStation(curr, orig) {
+        if (!curr || !orig || !curr.lab || !orig.lab) return null;
+        var off = function (n, k) { return (n.offset && n.offset[k]) || 0; };
+        var dx = (curr.x || 0) - (orig.x || 0) + off(curr, 'x') - off(orig, 'x');
+        var dy = (curr.y || 0) - (orig.y || 0) + off(curr, 'y') - off(orig, 'y');
+        if (!dx && !dy) return null;
+        if (JSON.stringify(curr.lab) !== JSON.stringify(orig.lab)) return curr.lab;
+        return shiftBoxes(orig.lab, dx, dy);
+    }
+
     function computeDirtyStations(currentProject) {
         if (!originalSnapshot || !currentProject) return {};
         var dirty = {};
@@ -350,8 +376,9 @@
             if (!orig) {
                 // 新增车站：只写入非默认的可选字段，保持与源码风格一致
                 var item = { x: r2(curr.x), y: r2(curr.y), cn: curr.cn, en: curr.en };
-                // align：仅在非默认 'top' 时写入
-                if (curr.align && curr.align !== 'top') item.align = curr.align;
+                // align：新增条目一律显式写出。引擎缺省 align 时把站名放在「下方」，
+                // 以前省略 'top' 导致编辑器里在上方的站名，导出后跑到了下方。
+                item.align = curr.align || 'bottom';
                 // offset：仅在非零时写入
                 if (curr.offset && (curr.offset.x !== 0 || curr.offset.y !== 0)) {
                     item.offset = { x: curr.offset.x, y: curr.offset.y };
@@ -419,7 +446,13 @@
                 else patch.hideLabel = null;      // null = 从源码条目里删掉该字段（取消勾选）
                 if (curr.textScale) patch.textScale = curr.textScale;
                 if (curr.marker) patch.marker = curr.marker;
+                else if (orig.marker) patch.marker = null;   // null = 从源码条目里删掉该字段
                 if (curr.halo) patch.halo = curr.halo;
+                else if (orig.halo) patch.halo = null;
+                // 香港 / 深圳的站名按绝对坐标的墨迹框（lab）排版：车站挪动后排版框随之平移，
+                // 与画布上看到的一致（StationLayer.followStation 同一算法）
+                var labMoved = shiftLabWithStation(curr, orig);
+                if (labMoved) patch.lab = labMoved;
                 dirty[nid] = patch;
             }
         });
@@ -642,13 +675,61 @@
     }
 
     /**
+     * 地图装饰（data_scattered.js）的条目级回写：按 id 对比载入时的快照，
+     * 只改动过的条目被重写、删掉的移除、新放的追加，其余逐字节保留。
+     */
+    function patchScatteredSource(currentProject) {
+        var origList = (originalSnapshot && originalSnapshot.scattered) || [];
+        var currList = (currentProject && currentProject.scattered) || [];
+        var origById = {};
+        origList.forEach(function (it, i) { origById[it && it.id ? it.id : ('#' + i)] = it; });
+        var currIds = {};
+        var update = {}, append = [], dirty = 0;
+        currList.forEach(function (it, i) {
+            if (!it) return;
+            var key = it.id ? it.id : ('#' + i);
+            currIds[key] = true;
+            var o = origById[key];
+            if (!o) { append.push(it); dirty++; return; }
+            if (JSON.stringify(o) === JSON.stringify(it)) return;
+            var patch = {};
+            Object.keys(it).forEach(function (k) { if (JSON.stringify(it[k]) !== JSON.stringify(o[k])) patch[k] = it[k]; });
+            Object.keys(o).forEach(function (k) { if (!(k in it)) patch[k] = null; });   // null = 删除字段
+            update[it.id || i] = patch;
+            dirty++;
+        });
+        var remove = [];
+        origList.forEach(function (it, i) {
+            var key = it && it.id ? it.id : ('#' + i);
+            if (!currIds[key]) { remove.push(it && it.id ? it.id : String(i)); dirty++; }
+        });
+        var origSrc = rawSources['data_scattered.js'];
+        if (!dirty) return { dirtyCount: 0, patchedSource: origSrc || '' };
+        var io = getCityProjectIO();
+        if (!origSrc) {
+            // 城市原本没有装饰文件：整份新建
+            return {
+                dirtyCount: dirty,
+                patchedSource: '/**\n * 地图装饰物（由 OpenMap Editor 生成）\n */\nconst SCATTERED_DATA = ' +
+                    JSON.stringify(currList, null, 4) + ';\n'
+            };
+        }
+        var patched = io.patchEntries(origSrc, 'SCATTERED_DATA', {
+            update: update, remove: remove,
+            append: append.map(function (it) { return { value: it }; })   // 数组条目无键名
+        });
+        return { dirtyCount: dirty, patchedSource: patched };
+    }
+
+    /**
      * 提取全文件改动集 (Changeset)
      */
     function computeChangeset(currentProject) {
         var stationsRes = patchStationsSource(currentProject);
         var linesRes = patchLinesSource(currentProject);
+        var scatteredRes = patchScatteredSource(currentProject);
 
-        var hasChanges = (stationsRes.dirtyCount > 0 || linesRes.dirtyCount > 0);
+        var hasChanges = (stationsRes.dirtyCount > 0 || linesRes.dirtyCount > 0 || scatteredRes.dirtyCount > 0);
         var files = [
             {
                 filename: 'data_stations.js',
@@ -661,6 +742,12 @@
                 dirtyCount: linesRes.dirtyCount,
                 patchedSource: linesRes.patchedSource,
                 changed: linesRes.dirtyCount > 0
+            },
+            {
+                filename: 'data_scattered.js',
+                dirtyCount: scatteredRes.dirtyCount,
+                patchedSource: scatteredRes.patchedSource,
+                changed: scatteredRes.dirtyCount > 0
             }
         ];
 
@@ -893,6 +980,7 @@
         computeDirtyLines: computeDirtyLines,
         computeDeletedLineIds: computeDeletedLineIds,
         patchLinesSource: patchLinesSource,
+        patchScatteredSource: patchScatteredSource,
         computeChangeset: computeChangeset,
         linkLocalDirectory: linkLocalDirectory,
         getLinkedDirectoryHandle: getLinkedDirectoryHandle,

@@ -184,7 +184,110 @@
         return stations;
     }
 
+    /**
+     * 逐行复刻 core/script.js processData 的经停线路标志色次序，返回 { sid: [color, …] }。
+     *
+     * 注意引擎的次序并不是「线路书写顺序」：普通线路用 unshift（后写的线路排在前面），
+     * 只有 isPointOnly 的线路用 push；分支线路只统计 way1 / way2。普通站的环色取 [0]，
+     * 城市钩子（长春、沈阳……）也按 [0] 上色——次序不一致，编辑器里的站点就会换一种颜色。
+     *
+     * @param {Array} lines 线路数组
+     * @returns {Object<string, string[]>}
+     */
+    function engineLineColors(lines) {
+        const out = {};
+        (lines || []).forEach(line => {
+            if (!line) return;
+            let ids;
+            if (line.hasbranch) {
+                ids = Array.from(new Set([].concat(line['stationIds-way1'] || [], line['stationIds-way2'] || [])));
+            } else {
+                ids = line.stationIds || [];
+            }
+            ids.forEach(sid => {
+                if (!out[sid]) out[sid] = [];
+                if (line.isPointOnly) out[sid].push(line.color);
+                else out[sid].unshift(line.color);
+            });
+        });
+        return out;
+    }
+
+    /**
+     * 「明确指定形状」的通用图元：车站选了这些类型，就画这里的通用模板，不交给城市钩子
+     * （城市钩子通常按逐站 marker 或 dot / tsf 两分法画图，会把胶囊、哑铃吞掉）。
+     * 引擎 renderStations 与 OpenMap Editor 画布共用这一规则。
+     */
+    const EXPLICIT_GLYPH_TYPES = ['tsf_pill_h', 'tsf_pill_v', 'tsf_pill_d45', 'tsf_pill_d135', 'tsf_dumbbell'];
+    function isExplicitGlyph(type) {
+        return EXPLICIT_GLYPH_TYPES.indexOf(type) !== -1;
+    }
+
+    /**
+     * 找出经过某座车站的各条线路「站台」：每条线路折线上离车站最近的点及该处线路走向。
+     * 供各城市的 getStationStyleOptions 钩子按真实站台位置生成合并 / 分离的换乘图元。
+     * 同一位置（< 3px）的多条线路合并为一处站台，colors 记录全部线路色。
+     *
+     * @param {{x:number,y:number}} station
+     * @param {Array} lines linesData（含 pathPoints / pathPoints-* 与 color）
+     * @param {number} [radius=12] 认定「经过本站」的最大距离
+     * @returns {Array<{x,y,dx,dy,angle,colors:string[],lineIds:string[]}>} dx/dy 为相对车站的偏移，angle 为线路走向（度）
+     */
+    function stationPlatforms(station, lines, radius) {
+        const R = radius || 12;
+        const near = {};
+        (lines || []).forEach((line, li) => {
+            if (!line) return;
+            Object.keys(line).forEach(key => {
+                if (key.indexOf('pathPoints') !== 0 || !Array.isArray(line[key])) return;
+                const pts = line[key];
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const a = pts[i], b = pts[i + 1];
+                    const vx = b.x - a.x, vy = b.y - a.y, l2 = vx * vx + vy * vy;
+                    if (l2 < 1e-6) continue;
+                    const t = Math.max(0, Math.min(1, ((station.x - a.x) * vx + (station.y - a.y) * vy) / l2));
+                    const px = a.x + t * vx, py = a.y + t * vy;
+                    const d = Math.hypot(station.x - px, station.y - py);
+                    const id = line.id || ('L' + li);
+                    if (d <= R && (!near[id] || d < near[id].d)) {
+                        near[id] = { d, x: px, y: py, angle: Math.atan2(vy, vx) * 180 / Math.PI, color: line.color, id };
+                    }
+                }
+            });
+        });
+        const out = [];
+        Object.keys(near).forEach(id => {
+            const p = near[id];
+            const hit = out.find(q => Math.hypot(q.x - p.x, q.y - p.y) < 3);
+            if (hit) {
+                if (p.color && hit.colors.indexOf(p.color) === -1) hit.colors.push(p.color);
+                hit.lineIds.push(id);
+                return;
+            }
+            out.push({ x: p.x, y: p.y, dx: p.x - station.x, dy: p.y - station.y, angle: p.angle,
+                colors: p.color ? [p.color] : [], lineIds: [id] });
+        });
+        return out;
+    }
+
+    /** 胶囊（跑道圆）轮廓路径：中心 (cx, cy)、总长 len、半径 r、长轴角度 angle（度），相对坐标 */
+    function capsulePath(cx, cy, len, r, angle) {
+        const a = (angle || 0) * Math.PI / 180;
+        const ux = Math.cos(a), uy = Math.sin(a), nx = -uy, ny = ux;
+        const h = Math.max(0, len / 2 - r);
+        const f = v => (Math.round(v * 100) / 100).toFixed(2);
+        const ax = cx - ux * h, ay = cy - uy * h, bx = cx + ux * h, by = cy + uy * h;
+        return `M${f(ax + nx * r)} ${f(ay + ny * r)}L${f(bx + nx * r)} ${f(by + ny * r)}` +
+            `A${f(r)} ${f(r)} 0 0 0 ${f(bx - nx * r)} ${f(by - ny * r)}` +
+            `L${f(ax - nx * r)} ${f(ay - ny * r)}A${f(r)} ${f(r)} 0 0 0 ${f(ax + nx * r)} ${f(ay + ny * r)}Z`;
+    }
+
     return {
+        stationPlatforms,
+        capsulePath,
+        EXPLICIT_GLYPH_TYPES,
+        isExplicitGlyph,
+        engineLineColors,
         SVGTemplates,
         STATION_SIZE,
         STATION_DIMS,

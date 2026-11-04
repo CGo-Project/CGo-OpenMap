@@ -3,7 +3,7 @@
  */
 
 
-const APP_VERSION = "261104.085834";
+const APP_VERSION = "261104.212815";
 const originalTitle = document.title;
 const originalDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || "CGo OpenMap";
 
@@ -118,8 +118,10 @@ function getActiveCity() {
         getRailway12306Url: (name) => `https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc&fs=${encodeURIComponent(name.replace(/站$/, ''))}`,
         getSuburbanLinks: () => null,
         dataFiles: {
-            stanameCsvUrl: (currentCityId === 'beijing') ? './city/beijing/staname.csv' : null,
-            amapDataUrl: (currentCityId === 'beijing') ? './city/beijing/amap_data.json' : null
+            // 只有北京本身才回落到北京的站名库（避免其他城市 404）。
+            // 注意：当前城市 ID 是 city/data.js 闭包内的私有变量，这里拿不到，必须用注册表数据判定
+            stanameCsvUrl: ((registryData?.id || 'beijing') === 'beijing') ? './city/beijing/staname.csv' : null,
+            amapDataUrl: ((registryData?.id || 'beijing') === 'beijing') ? './city/beijing/amap_data.json' : null
         },
         formatOwnerName: (name) => name,
         formatCompanyString: (list) => [...new Set(list)].join('，')
@@ -1167,7 +1169,9 @@ function renderStations() {
         stationDiv.setAttribute('aria-label', stationLabel);
         // 城市可自定义站点图元画法（如上海式短横与换乘胶囊）；未实现时回落到通用模板
         const city = getActiveCity();
-        const customIcon = typeof city.renderStationIcon === 'function' ? city.renderStationIcon(s, id) : null;
+        // 胶囊 / 哑铃等明确指定形状的通用图元不交给城市钩子（规则见 core/station-icons.js isExplicitGlyph）
+        const explicitGlyph = window.CGoStationIcons?.isExplicitGlyph?.(s.type);
+        const customIcon = (!explicitGlyph && typeof city.renderStationIcon === 'function') ? city.renderStationIcon(s, id) : null;
         if (customIcon && customIcon.html) {
             stationDiv.innerHTML = customIcon.html;
             if (customIcon.className) stationDiv.className += ' ' + customIcon.className;

@@ -226,7 +226,7 @@ window.OpenMapEditor.NavTreeView = (function () {
 
         // 9. 地点地标散点 (Scattered)
         if (scattered.length > 0 || q) {
-            renderScatteredBranch(scattered, q);
+            renderScatteredBranch(scattered, q, layerState.scattered);
         }
 
         // 同步当前选中态的高亮标记
@@ -675,14 +675,14 @@ window.OpenMapEditor.NavTreeView = (function () {
     /**
      * 9. 地点地标图标分支
      */
-    function renderScatteredBranch(scattered, query) {
+    function renderScatteredBranch(scattered, query, layerConf) {
         var filtered = scattered.filter(function (sc, idx) {
             if (!query) return !0;
             var name = sc.id || sc.file || ('地标 ' + (idx + 1));
             return name.toLowerCase().indexOf(query) !== -1;
         });
 
-        var branch = createBranchContainer('scattered', '地点地标散点', 'tourist', scattered.length, filtered.length, query);
+        var branch = createBranchContainer('scattered', '地图装饰', 'tourist', scattered.length, filtered.length, query, layerConf);
         if (!branch) return;
 
         var children = branch.querySelector('.tree-children');
@@ -740,7 +740,8 @@ window.OpenMapEditor.NavTreeView = (function () {
         // 图层显隐与锁定动作按钮
         var actionBtns = '';
         if (layerConf) {
-            var eyeIcon = isVisible ? 'eye' : 'eye-close';
+            // 图标库没有「闭眼」：隐藏态仍用 eye，由 .is-hidden 样式（划线 + 变淡）区分
+            var eyeIcon = 'eye';
             var eyeTitle = isVisible ? '点击隐藏图层' : '点击显示图层';
             var eyeBtn = '<button type="button" class="tree-action-btn tree-btn-eye' + (!isVisible ? ' is-hidden' : '') + '" data-layer-key="' + key + '" title="' + eyeTitle + '">' +
                 '<cgo-icon name="' + eyeIcon + '" size="12"></cgo-icon>' +

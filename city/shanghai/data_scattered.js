@@ -3,6 +3,8 @@
  *
  * 官方 D202512 版线网图在国铁车站、机场航站楼与磁浮线旁绘有徽标，
  * 位置与尺寸均取自原图（坐标为徽标中心）。
+ * 机场 / 国铁圆环的描边压在原图裁切框边缘上：素材四周各外扩 0.7px，尺寸同步加 1.4px，
+ * 图形本身大小与位置不变，圆环不再被裁掉半边。
  */
 
 const SCATTERED_DATA = [
@@ -11,8 +13,8 @@ const SCATTERED_DATA = [
         file: "./city/shanghai/assets/icon-airport.svg",
         x: 482.3,
         y: 1444.4,
-        width: 26.8,
-        height: 26.63,
+        width: 28.2,
+        height: 28.03,
         opacity: 1,
         zIndex: 5
     }, // 虹桥2号航站楼
@@ -21,8 +23,8 @@ const SCATTERED_DATA = [
         file: "./city/shanghai/assets/icon-airport.svg",
         x: 610.2,
         y: 1527.5,
-        width: 26.8,
-        height: 26.63,
+        width: 28.2,
+        height: 28.03,
         opacity: 1,
         zIndex: 5
     }, // 虹桥1号航站楼
@@ -31,8 +33,8 @@ const SCATTERED_DATA = [
         file: "./city/shanghai/assets/icon-airport.svg",
         x: 2534.2,
         y: 2807.0,
-        width: 26.8,
-        height: 26.63,
+        width: 28.2,
+        height: 28.03,
         opacity: 1,
         zIndex: 5
     }, // 浦东1号2号航站楼
@@ -51,8 +53,8 @@ const SCATTERED_DATA = [
         file: "./city/shanghai/assets/icon-railway.svg",
         x: 835.4,
         y: 972.3,
-        width: 26.92,
-        height: 26.93,
+        width: 28.32,
+        height: 28.33,
         opacity: 1,
         zIndex: 5
     }, // 上海西站
@@ -61,8 +63,8 @@ const SCATTERED_DATA = [
         file: "./city/shanghai/assets/icon-railway.svg",
         x: 1299.4,
         y: 1156.3,
-        width: 26.92,
-        height: 26.93,
+        width: 28.32,
+        height: 28.33,
         opacity: 1,
         zIndex: 5
     }, // 上海火车站
@@ -71,8 +73,8 @@ const SCATTERED_DATA = [
         file: "./city/shanghai/assets/icon-railway.svg",
         x: 388.7,
         y: 1445.2,
-        width: 26.92,
-        height: 26.93,
+        width: 28.32,
+        height: 28.33,
         opacity: 1,
         zIndex: 5
     }, // 虹桥火车站
@@ -81,8 +83,8 @@ const SCATTERED_DATA = [
         file: "./city/shanghai/assets/icon-railway.svg",
         x: 853.4,
         y: 2146.5,
-        width: 26.92,
-        height: 26.93,
+        width: 28.32,
+        height: 28.33,
         opacity: 1,
         zIndex: 5
     }, // 上海南站

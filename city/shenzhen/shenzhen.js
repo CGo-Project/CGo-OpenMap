@@ -71,6 +71,53 @@
         };
     }
 
+
+    /**
+     * OpenMap Editor 钩子共用：经过本站的站台、全部线路色，以及换乘图元的排布轴。
+     * 站台分开时沿两端站台连线排布（对应真实站台位置），否则垂直于线路走向并排。
+     */
+    function stylePlan(station) {
+        const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
+        const lib = window.CGoStationIcons;
+        const plats = (lib && lib.stationPlatforms) ? lib.stationPlatforms(station, lines, 14) : [];
+        const colors = [];
+        plats.forEach((p) => p.colors.forEach((c) => { if (colors.indexOf(c) === -1) colors.push(c); }));
+        (station.lineColors || []).forEach((c) => { if (c && colors.indexOf(c) === -1) colors.push(c); });
+        let axis = plats.length ? plats[0].angle + 90 : 0, cx = 0, cy = 0, spread = 0;
+        if (plats.length >= 2) {
+            let a = plats[0], b = plats[1];
+            plats.forEach((p) => plats.forEach((q) => {
+                const d = Math.hypot(p.x - q.x, p.y - q.y);
+                if (d > spread) { spread = d; a = p; b = q; }
+            }));
+            if (spread > 2) {
+                axis = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+                cx = (a.dx + b.dx) / 2; cy = (a.dy + b.dy) / 2;
+            } else spread = 0;
+        }
+        const r2 = (v) => Math.round(v * 100) / 100;
+        return { plats, colors: colors.length ? colors : ["#888888"], axis: r2(axis), cx: r2(cx), cy: r2(cy), spread, r2,
+            lineAngle: plats.length ? plats[0].angle : 0 };
+    }
+
+    /** OpenMap Editor 钩子：按经过本站的线路生成深圳图的线路色圆环 / 深色换乘胶囊 */
+    function styleOptions(station) {
+        const P = stylePlan(station), r2 = P.r2;
+        const lib = window.CGoStationIcons;
+        if (!lib || !lib.capsulePath) return [];
+        const opts = [{ key: "ring", name: "普通站圆环", desc: "线路色圆环",
+            patch: { type: "dot", mk: { p: [{ d: lib.capsulePath(0, 0, 7.2, 3.6, 0), c: P.colors[0] }], w: 9.2, h: 9.2 } } }];
+        const n = Math.max(P.colors.length, P.spread ? P.plats.length : 1);
+        const R = 4.2;
+        const len = P.spread ? P.spread + 2 * R : 2 * R + (n - 1) * 12;
+        const a = P.axis * Math.PI / 180, ux = Math.abs(Math.cos(a)), uy = Math.abs(Math.sin(a));
+        const ex = ux * len / 2 + uy * R, ey = uy * len / 2 + ux * R;
+        opts.push({ key: "capsule", name: n >= 2 ? `换乘胶囊 ×${n}` : "换乘圆", desc: "深色描边白底",
+            patch: { type: "tsf", mk: { p: [{ d: lib.capsulePath(P.cx, P.cy, len, R, P.axis), c: "#231916" }],
+                w: r2(2 * (Math.abs(P.cx) + ex) + 2), h: r2(2 * (Math.abs(P.cy) + ey) + 2) } } });
+        return opts;
+    }
+
     // ==========================================================================
     // 2. 按墨迹包围盒逐行贴合排版（站名与装饰文字共用）
     // ==========================================================================
@@ -465,6 +512,10 @@
 
         renderStationIcon,
         getStationLabelStyle() { return null; },
+
+        /** OpenMap Editor 渲染钩子：站名按官方墨迹框逐行贴合，与线路图共用 layoutStationLabel */
+        decorateStationLabel(el, station) { layoutStationLabel(el, station); },
+        getStationStyleOptions(station) { return styleOptions(station); },
 
         stationBoard: {
             modules: {

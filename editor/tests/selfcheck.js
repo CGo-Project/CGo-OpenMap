@@ -334,6 +334,8 @@ section('车站图元 (core/station-icons.js)');
     const editorStationSrc = fs.existsSync(path.join(ROOT, 'editor/js/layers/station-layer.js')) ?
         fs.readFileSync(path.join(ROOT, 'editor/js/layers/station-layer.js'), 'utf8') : '';
     check(editorStationSrc.includes('iconHtmlFor'), 'OpenMap Editor 画布走同一份图元模板');
+    check(editorStationSrc.includes('renderStationIcon') && editorStationSrc.includes('decorateStationLabel'),
+        'OpenMap Editor 画布优先走城市渲染钩子（renderStationIcon / decorateStationLabel），与线路图同源');
 
     const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
 
@@ -370,6 +372,17 @@ section('车站图元 (core/station-icons.js)');
         && st.a.lineColors === undefined,
         'computeLineColors 可写入 _lineColors 运行期私有字段');
 
+    // 经停线路标志色次序与引擎 processData 一致：普通线路 unshift、isPointOnly push、分支只计 way1/way2
+    const ec = Icons.engineLineColors([
+        { color: '#111111', stationIds: ['a', 'b'] },
+        { color: '#222222', stationIds: ['b'] },
+        { color: '#333333', isPointOnly: true, stationIds: ['b'] },
+        { color: '#444444', hasbranch: true, 'stationIds-way1': ['c'], 'stationIds-way2': ['c', 'd'], 'stationIds-way3': ['e'] }
+    ]);
+    check(JSON.stringify(ec.b) === '["#222222","#111111","#333333"]'
+        && JSON.stringify(ec.c) === '["#444444"]' && ec.e === undefined,
+        'engineLineColors 与引擎 processData 的标志色次序一致');
+
     // 真实数据：统计各城市图元类型分布，确保全部能产出图元
     for (const city of cities) {
         const stations = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
@@ -385,6 +398,84 @@ section('车站图元 (core/station-icons.js)');
         check(bad === 0, `${city}: ${Object.keys(stations).length} 座车站图元全部生成 (`
             + Object.entries(kinds).map(([k, v]) => `${k}×${v}`).join(' ') + ')');
     }
+}
+
+// ============================================================================
+// 四点九五、车站样式目录：任何城市、任何样式都可选，且任何改动都能切回
+// ============================================================================
+section('车站样式目录 (editor/js/core/station-style-catalog.js)');
+{
+    const Cat = require(path.join(ROOT, 'editor/js/core/station-style-catalog.js'));
+    const orig = { id: 'S', type: 'tsf', x: 0, y: 0, marker: { parts: [{ shape: 'capsule', long: 32.1, short: 12.8, angle: 90, dx: 0, dy: 0 }] } };
+    const g = Cat.genericOptions().find(o => o.patch.type === 'dot');
+    const changed = Cat.applyPatch(orig, g.patch);
+    check(changed.type === 'dot' && changed.marker === undefined && orig.marker, '通用图元去掉逐站 marker，且不改动原对象');
+    const groups = Cat.optionsFor({ node: changed, project: { nodes: { S: changed } }, origin: orig });
+    const restore = groups.find(x => x.group === 'original');
+    check(restore && Cat.sameAppearance(Cat.applyPatch(changed, restore.items[0].patch), orig),
+        '改过样式后总能「恢复载入时的样式」，官方几何逐字段还原');
+    const generic = groups.find(x => x.group === 'generic');
+    check(generic && Cat.GENERIC_TYPES.length === 10 && generic.items.length >= 9,
+        '通用图元不按城市裁剪（10 种全部提供，仅与已列出的样式去重）');
+    check(Cat.applyPatch({ type: 'dot' }, { type: 'no' }).notOpen === true && Cat.applyPatch({ type: 'no', notOpen: true }, { type: 'tsf' }).notOpen === false,
+        '套用样式时同步 notOpen 派生态');
+    for (const city of cities) {
+        const st = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
+        const nodes = {};
+        Object.keys(st).forEach(id => { nodes[id] = Object.assign({ id }, st[id]); });
+        const h = Cat.harvest({ nodes });
+        const total = h.reduce((n, x) => n + x.count, 0);
+        check(h.length >= 1 && total === Object.keys(nodes).length,
+            `${city}: 提取出 ${h.length} 种现有样式，覆盖全部 ${total} 座车站`);
+    }
+}
+
+// ============================================================================
+// 四点九六、地图装饰（散点）可编辑、可导出
+// ============================================================================
+section('地图装饰管理');
+{
+    const src = 'const SCATTERED_DATA = [\n    {\n        id: "a",\n        x: 1\n    }, // 甲\n];\n';
+    const out = IO.patchEntries(src, 'SCATTERED_DATA', { append: [{ value: { id: 'b', x: 2 } }] });
+    check(/\}, \/\/ 甲\n/.test(out) && out.indexOf('"b"') > out.indexOf('// 甲'),
+        '追加条目时，原末条的行尾注释留在原末条那一行');
+    const surg = fs.readFileSync(path.join(ROOT, 'editor/js/pipelines/pipeline-surgical.js'), 'utf8');
+    check(/filename: 'data_scattered\.js'/.test(surg) && /function patchScatteredSource/.test(surg),
+        '改动集包含 data_scattered.js（装饰的移动 / 增删会进入补丁、ZIP 与回写）');
+    const app = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    check(/isDraggingScattered/.test(app) && /renderScatteredInspector/.test(app),
+        '装饰可在画布上点选拖动，并有可编辑的检视面板');
+    check(/if \(app\.activeStamp\) \{\s*e\.preventDefault\(\);\s*return;/.test(app),
+        '落子模式下按下鼠标不会先触发选中 / 拖拽（点在线路上也能落子）');
+    const html = fs.readFileSync(path.join(ROOT, 'editor/index.html'), 'utf8');
+    check(/id="qatUndo"/.test(html) && /id="qatRedo"/.test(html) && /save-dirty-dot/.test(html),
+        '标题栏快速访问：撤销 / 重做 / 保存（含未保存提示）在任何页签都可见');
+}
+
+// ============================================================================
+// 四点九七、鼠标模式 / 右键菜单 / 逐城样式生成
+// ============================================================================
+section('鼠标模式、右键菜单与逐城样式生成');
+{
+    const vp = fs.readFileSync(path.join(ROOT, 'editor/js/layers/viewport.js'), 'utf8');
+    check(/getNavMode\(\) === 'map'\) \{ zoomToPoint/.test(vp) && /navMode = \(v === 'design'\) \? 'design' : 'map'/.test(vp),
+        '默认地图模式：滚轮缩放；可切换到设计软件模式并记住选择');
+    const app = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    check(/vpLayer\.startPan\(e, function \(\)/.test(app), '地图模式下左键拖动空白处平移画布，单击空白处取消选中');
+    check(/function buildContextMenuItems/.test(app) && /'在此添加车站'/.test(app) && /'在此处插入车站'/.test(app),
+        '画布右键菜单覆盖车站 / 线路 / 装饰 / 空白处');
+    const Icons = require(path.join(ROOT, 'core/station-icons.js'));
+    const plats = Icons.stationPlatforms({ x: 0, y: 0 }, [
+        { id: 'A', color: '#f00', pathPoints: [{ x: -50, y: -4 }, { x: 50, y: -4 }] },
+        { id: 'B', color: '#00f', pathPoints: [{ x: -50, y: 4 }, { x: 50, y: 4 }] },
+        { id: 'C', color: '#0f0', pathPoints: [{ x: 0, y: -50 }, { x: 0, y: 50 }] }]);
+    check(plats.length === 3 && plats.some(p => Math.abs(p.dy + 4) < 1e-6), 'stationPlatforms 找出各线站台的真实位置');
+    ['shanghai', 'sydney', 'hongkong', 'shenzhen'].forEach(c => {
+        const src = fs.readFileSync(path.join(ROOT, 'city', c, c + '.js'), 'utf8');
+        check(/getStationStyleOptions/.test(src), `${c}: 提供「为本站生成」样式钩子`);
+    });
+    const io = fs.readFileSync(path.join(ROOT, 'editor/js/pipelines/pipeline-surgical.js'), 'utf8');
+    check(/off\(curr, 'x'\) - off\(orig, 'x'\)/.test(io), '香港 / 深圳墨迹框站名：位置偏移换算进 lab 一并导出');
 }
 
 // ============================================================================
@@ -1615,10 +1706,11 @@ section('Milestone 3 多选框选与智能对齐参考线');
         'ForceWriteBack: 存量维护 Tab 提供危险配色的「强制回写」入口');
     check(/\.ribbon-action-btn-lg\.danger/.test(ribbonCss),
         'ForceWriteBack: 危险按钮有独立的红橙色危险态样式');
-    check(/function forceWriteBack/.test(editorAppSrc) && /⚠ 危险操作：强制回写/.test(editorAppSrc),
+    check(/function forceWriteBack/.test(editorAppSrc) && /title: '强制回写 city\/'[\s\S]{0,900}danger: true/.test(editorAppSrc)
+        && /导出改动补丁/.test(editorAppSrc.slice(editorAppSrc.indexOf('function forceWriteBack'))),
         'ForceWriteBack: 弹窗明确标注这是危险操作，并解释与"导出补丁"的区别');
-    check(/请再次确认：真的要强制覆盖/.test(editorAppSrc),
-        'ForceWriteBack: 需要二次确认，防止连点/手滑');
+    check(/title: '强制回写 city\/'[\s\S]{0,1200}requireText: cityId/.test(editorAppSrc),
+        'ForceWriteBack: 需手动输入城市 ID 才能确认，防止连点/手滑');
     check(/function downloadOriginalsBackup/.test(editorAppSrc),
         'ForceWriteBack: 写回前自动下载原件备份 ZIP（磁盘上无法撤销的兜底）');
     check(/opts && opts\.force/.test(surgSrc) && /!f\.changed && !force/.test(surgSrc),
@@ -2396,8 +2488,10 @@ section('全城市车站 type 必填 / 合法与字段结构（#57）');
         'handlePropertyChange 完整覆盖 virtual / notopen / scattered 的删除操作');
     check(/delTargetKey\s*=\s*\(app\.selected\.id\s*!==\s*undefined\)\s*\?\s*app\.selected\.id\s*:\s*app\.selected\.idx/.test(appSrc2),
         'Delete 快捷键兼容 idx 索引型图元（virtual / notopen / scattered）');
-    check(/targetType === 'node' && prop === 'delete'[\s\S]{0,900}window\.confirm[\s\S]{0,400}HistoryManager\.pushSnapshot\(app\.project\)/.test(appSrc2),
+    check(/targetType === 'node' && prop === 'delete'[\s\S]{0,900}askConfirm\([\s\S]{0,900}return;\s*\}\s*\}\s*\n\s*window\.OpenMapEditor\.HistoryManager\.pushSnapshot\(app\.project\)/.test(appSrc2),
         '删除车站的确认弹窗在压入撤销栈之前执行（取消不会污染撤销栈）');
+    check(!/[^.\w]confirm\(|window\.confirm\(/.test(appSrc2.replace(/function askConfirm[\s\S]*?\n    \}/, '')),
+        '编辑器不再直接调用原生 confirm()，统一走 ConfirmDialog（标题 / 后果 / 明确的动作按钮）');
     check(!/CityProjectIO\.nextId/.test(appSrc2),
         '零件盒落子放置等操作使用 ProjectModel.nextId 生成 ID（不调用不存在的 CityProjectIO.nextId）');
     check(/<meta\s+name="mobile-web-app-capable"\s+content="yes">/.test(editorHtml),
@@ -2477,7 +2571,7 @@ section('城市图例、别名库与侧栏通用引擎弹性（Issue #61 / #62�
         'Issue #61: hohhot/data_legend.js 规范挂载 window.LEGEND_CONFIG');
 
     // Issue #62: 非北京城市不误拉取北京 staname.csv
-    check(/stanameCsvUrl:\s*\(currentCityId\s*===\s*'beijing'\)\s*\?\s*'\.\/city\/beijing\/staname\.csv'\s*:\s*null/.test(scriptSrc),
+    check(/stanameCsvUrl:\s*\(\(registryData\?\.id \|\| 'beijing'\)\s*===\s*'beijing'\)\s*\?\s*'\.\/city\/beijing\/staname\.csv'\s*:\s*null/.test(scriptSrc),
         'Issue #62: getActiveCity 默认回落仅对北京设置 stanameCsvUrl，防止其他城市产生 404');
     check(/const response = await fetch\(csvUrl\);\s*\n\s*if \(!response\.ok\) return;/.test(scriptSrc),
         'Issue #62: loadStationAliases 在可选 CSV 404 时优雅退出不抛未捕获异常');
@@ -2509,7 +2603,9 @@ section('「同址异站」莫斯科型换乘原生支持（Issue #47）');
         'Issue #47: StationBoard 车站信息板标题联动显示多线异名站名');
 
     // 编辑器渲染与检视
-    check(/n\.siblings\s*&&\s*Array\.isArray\(n\.siblings\)/.test(staLayerSrc),
+    check(!/\bcurrentCityId\b/.test(fs.readFileSync(path.join(ROOT, 'core/script.js'), 'utf8')),
+        'core/script.js 不引用 city/data.js 闭包内的 currentCityId（曾导致全部城市线路图空白）');
+    check(/Array\.isArray\([ns]\.siblings\)/.test(staLayerSrc) && /station-sibling-label/.test(staLayerSrc),
         'Issue #47: OpenMap Editor StationLayer 支持渲染同址异名站文字标注');
     check(/btnAddSibling/.test(inspectorSrc) && /input-sibling-field/.test(inspectorSrc),
         'Issue #47: OpenMap Editor InspectorView 提供同址异名站增加、修改与删除交互');

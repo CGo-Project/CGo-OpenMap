@@ -270,6 +270,48 @@ window.OpenMapEditor.ViewportLayer = (function () {
             : { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
     }
 
+    // ==========================================================================
+    // 操作模式
+    //   map    地图模式（默认）：滚轮缩放，左键按住空白处拖动画布，Shift + 拖动框选
+    //   design 设计软件模式：滚轮智能识别（鼠标缩放 / 触控板平移），左键拖动空白处框选，
+    //          空格或中键拖动画布
+    // ==========================================================================
+    var NAV_KEY = 'openmap_editor_nav_mode';
+    var navMode = null;
+    function getNavMode() {
+        if (navMode) return navMode;
+        var v = null;
+        try { v = localStorage.getItem(NAV_KEY); } catch (e) { v = null; }
+        navMode = (v === 'design') ? 'design' : 'map';
+        return navMode;
+    }
+    function setNavMode(m) {
+        navMode = (m === 'design') ? 'design' : 'map';
+        try { localStorage.setItem(NAV_KEY, navMode); } catch (e) { }
+        if (dom.viewport) {
+            dom.viewport.classList.remove('nav-map', 'nav-design');
+            dom.viewport.classList.add(navMode === 'map' ? 'nav-map' : 'nav-design');
+        }
+        notify();
+        return navMode;
+    }
+
+    /**
+     * 由编辑器在「左键按下空白处」时调用，开始拖动画布。
+     * @param {MouseEvent} e mousedown 事件
+     * @param {Function} [onTap] 没有拖动就松开（单击空白处）时回调，用于取消选中
+     */
+    function startPan(e, onTap) {
+        panDrag = {
+            startX: e.clientX, startY: e.clientY,
+            panX: state.pan.x, panY: state.pan.y,
+            moved: false, onTap: onTap || null
+        };
+        isPanning = true;
+        setPanCursor(true);
+        e.preventDefault();
+    }
+
     /**
      * 滚轮事件监听器（支持鼠标滚轮与 macOS 触控板智能区分）
      */
@@ -286,6 +328,9 @@ window.OpenMapEditor.ViewportLayer = (function () {
             zoomToPoint(state.scale * factorFor(ZOOM_K_PINCH), e.clientX, e.clientY);
             return;
         }
+
+        // 地图模式：滚轮（含触控板双指滑动）一律缩放，平移交给左键拖动空白处
+        if (getNavMode() === 'map') { zoomToPoint(state.scale * factorFor(ZOOM_K_WHEEL), e.clientX, e.clientY); return; }
 
         var mode = localStorage.getItem('openmap_editor_wheel_mode') ||
             localStorage.getItem('cgo_openmap_wheel_mode') ||
@@ -321,6 +366,7 @@ window.OpenMapEditor.ViewportLayer = (function () {
         if (!dom.viewport) return;
 
         dom.viewport.addEventListener('wheel', onWheel, { passive: false });
+        setNavMode(getNavMode());
 
         // 漫游拖拽支持（中键或按住空格拖拽）
         window.addEventListener('keydown', function (e) {
@@ -357,6 +403,7 @@ window.OpenMapEditor.ViewportLayer = (function () {
                 setPanCursor(false);
                 return;
             }
+            if (Math.abs(e.clientX - panDrag.startX) + Math.abs(e.clientY - panDrag.startY) > 3) panDrag.moved = true;
             state.pan.x = panDrag.panX + (e.clientX - panDrag.startX);
             state.pan.y = panDrag.panY + (e.clientY - panDrag.startY);
             applyTransform();
@@ -365,7 +412,9 @@ window.OpenMapEditor.ViewportLayer = (function () {
         window.addEventListener('mouseup', function (e) {
             if (!panDrag) return;
             if (e.button !== 0 && e.button !== 1) return;
+            var tap = (!panDrag.moved && typeof panDrag.onTap === 'function') ? panDrag.onTap : null;
             panDrag = null;
+            if (tap) tap();
             isPanning = false;
             setPanCursor(false);             // 空格仍按住时 setPanCursor 会保留手形光标
         });
@@ -405,6 +454,9 @@ window.OpenMapEditor.ViewportLayer = (function () {
         snapPointToRays: snapPointToRays,
         onTransform: onTransform,
         getScale: function () { return state.scale; },
+        getNavMode: getNavMode,
+        setNavMode: setNavMode,
+        startPan: startPan,
         getPan: function () { return { x: state.pan.x, y: state.pan.y }; },
         getGridSize: function () { return state.gridSize || 5; },
         getCanvasSize: function () { return { width: state.canvasSize.width, height: state.canvasSize.height }; },

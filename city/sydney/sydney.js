@@ -106,6 +106,69 @@
         };
     }
 
+
+    /**
+     * OpenMap Editor 钩子共用：经过本站的站台、全部线路色，以及换乘图元的排布轴。
+     * 站台分开时沿两端站台连线排布（对应真实站台位置），否则垂直于线路走向并排。
+     */
+    function stylePlan(station) {
+        const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
+        const lib = window.CGoStationIcons;
+        const plats = (lib && lib.stationPlatforms) ? lib.stationPlatforms(station, lines, 14) : [];
+        const colors = [];
+        plats.forEach((p) => p.colors.forEach((c) => { if (colors.indexOf(c) === -1) colors.push(c); }));
+        (station.lineColors || []).forEach((c) => { if (c && colors.indexOf(c) === -1) colors.push(c); });
+        let axis = plats.length ? plats[0].angle + 90 : 0, cx = 0, cy = 0, spread = 0;
+        if (plats.length >= 2) {
+            let a = plats[0], b = plats[1];
+            plats.forEach((p) => plats.forEach((q) => {
+                const d = Math.hypot(p.x - q.x, p.y - q.y);
+                if (d > spread) { spread = d; a = p; b = q; }
+            }));
+            if (spread > 2) {
+                axis = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+                cx = (a.dx + b.dx) / 2; cy = (a.dy + b.dy) / 2;
+            } else spread = 0;
+        }
+        const r2 = (v) => Math.round(v * 100) / 100;
+        return { plats, colors: colors.length ? colors : ["#888888"], axis: r2(axis), cx: r2(cx), cy: r2(cy), spread, r2,
+            lineAngle: plats.length ? plats[0].angle : 0 };
+    }
+
+    /** OpenMap Editor 钩子：按经过本站的线路现场生成悉尼官方图的几种站点画法 */
+    function styleOptions(station) {
+        const P = stylePlan(station);
+        const c0 = P.colors[0], r2 = P.r2;
+        const n = Math.max(P.colors.length, P.plats.length >= 2 && P.spread ? P.plats.length : 1);
+        const SP = 10.9;                                    // 官方图换乘站相邻圆环中心距
+        const rad = P.axis * Math.PI / 180, ux = Math.cos(rad), uy = Math.sin(rad);
+        const along = (i, kind, size) => {
+            // 站台分开：放在各站台真实位置；否则沿排布轴等距并排
+            const pl = P.spread && P.plats[i] ? P.plats[i] : null;
+            const t = (i - (n - 1) / 2) * SP;
+            return { t: kind, dx: r2(pl ? pl.dx : P.cx + ux * t), dy: r2(pl ? pl.dy : P.cy + uy * t),
+                c: P.colors[i % P.colors.length], w: size, h: size };
+        };
+        const span = P.spread ? P.spread : (n - 1) * SP;
+        const halo = { dx: P.cx, dy: P.cy, w: r2(span + 15.62), h: 15.62 };
+        if (P.axis % 180) halo.ang = r2(P.axis);
+        const opts = [
+            { key: "stop", name: "普通站", desc: "白心线路色圆环", patch: { type: "dot", marker: { parts: [{ t: "stop", dx: 0, dy: 0, c: c0, w: 7.14, h: 7.14 }] } } },
+            { key: "metro", name: "地铁站 M 徽标", desc: "Sydney Metro", patch: { type: "dot", marker: { parts: [{ t: "metro", dx: 0, dy: 0, c: c0, w: 12.61, h: 12.61 }] } } },
+            { key: "end", name: "终点站", desc: "色心白环 + 渐变端块", patch: { type: "dot", marker: { parts: [{ t: "end", dx: 0, dy: 0, c: c0, w: 7.14, h: 7.14, ang: r2(P.lineAngle) }] } } }
+        ];
+        if (n >= 2) {
+            opts.push({ key: "interchange", name: `换乘站 ×${n}`, desc: "每线一枚圆环 + 灰色底衬",
+                patch: { type: "tsf", marker: { parts: Array.from({ length: n }, (_, i) => along(i, "stop", 7.14)), halo } } });
+            opts.push({ key: "tsf", name: `同心环换乘 ×${n}`, desc: "每线一枚同心三环 + 灰色底衬",
+                patch: { type: "tsf", marker: { parts: Array.from({ length: n }, (_, i) => along(i, "tsf", 10.11)), halo } } });
+        } else {
+            opts.push({ key: "tsf1", name: "同心环换乘", desc: "单枚同心三环",
+                patch: { type: "tsf", marker: { parts: [{ t: "tsf", dx: 0, dy: 0, c: c0, w: 10.11, h: 10.11 }] } } });
+        }
+        return opts;
+    }
+
     // ── 站名排版还原（锚点距站点图元边缘 2.7pt，45° 斜排，加粗与枢纽放大）──────
     // 官方图实测：站名墨迹边缘距站点图元外缘 2.7pt ≈ 7.5px；
     // 竖向（上/下方站名）留白略紧，为 1.6pt ≈ 4.4px；斜角方向为 1.5pt ≈ 4.2px。
@@ -164,6 +227,24 @@
         el.style.textAlign = (p.ax === "L") ? "right" : (p.ax === "R" ? "left" : "center");
     }
 
+    /**
+     * 单个站名标签的悉尼式排版（加粗 / 枢纽放大 / 灰粉色调 / 45° 斜排 / 折行 + 锚点留白）。
+     * 线路图由 syncLabels() 逐个调用；OpenMap Editor 通过城市钩子 decorateStationLabel 调用同一实现。
+     */
+    function decorateLabel(el, s) {
+        if (!el || !s) return;
+        if (s.labelSize === "big") el.classList.add("syd-big");
+        if (s.labelBold) el.classList.add("syd-bold");
+        if (s.labelTone === "grey") el.classList.add("syd-grey");
+        if (s.labelTone === "pink") el.classList.add("syd-pink");
+        if (s.rotate) el.classList.add("syd-rot");
+        if (s.labelLines) {
+            const sp = el.querySelector(".stacn");
+            if (sp) sp.innerHTML = s.labelLines.join("<br>");
+        }
+        placeLabel(el, s);
+    }
+
     function syncLabels() {
         const layer = document.getElementById("labels-layer");
         if (!layer || typeof stationsData === "undefined") return;
@@ -171,16 +252,7 @@
             const s = stationsData[el.dataset.sid];
             if (!s || el.dataset.sydDone === "1") return;
             el.dataset.sydDone = "1";
-            if (s.labelSize === "big") el.classList.add("syd-big");
-            if (s.labelBold) el.classList.add("syd-bold");
-            if (s.labelTone === "grey") el.classList.add("syd-grey");
-            if (s.labelTone === "pink") el.classList.add("syd-pink");
-            if (s.rotate) el.classList.add("syd-rot");
-            if (s.labelLines) {
-                const sp = el.querySelector(".stacn");
-                if (sp) sp.innerHTML = s.labelLines.join("<br>");
-            }
-            placeLabel(el, s);
+            decorateLabel(el, s);
         });
     }
 
@@ -193,6 +265,28 @@
      * 两者在官方图上都是压在线路之上、把线路压深一档的半透明色块；
      * 挂在站点图元里没用（图元自身的 transform 会形成隔离组），因此单独成层。
      */
+    /**
+     * 正片叠底底衬的几何（画布坐标，中心点 + 宽高 + 旋转角）：CBD 底板 + 各换乘站灰色胶囊。
+     * 线路图（syncHalos）与 OpenMap Editor（getStationUnderlays 钩子）共用这一份。
+     */
+    function underlayShapes(stations) {
+        const shapes = [{
+            cx: CITY_TINT.x + CITY_TINT.w / 2, cy: CITY_TINT.y + CITY_TINT.h / 2,
+            w: CITY_TINT.w, h: CITY_TINT.h, r: CITY_TINT.r, angle: 0,
+            className: "syd-city-tint", fill: "var(--syd-city-tint)"
+        }];
+        Object.keys(stations || {}).forEach((sid) => {
+            const s = stations[sid];
+            const h = s && s.marker && s.marker.halo;
+            if (!h) return;
+            shapes.push({
+                cx: s.x + h.dx, cy: s.y + h.dy, w: h.w, h: h.h, angle: h.ang || 0,
+                className: "syd-halo", fill: "var(--syd-halo)"
+            });
+        });
+        return shapes;
+    }
+
     function syncHalos() {
         const content = document.getElementById("map-content");
         if (!content || typeof stationsData === "undefined") return;
@@ -205,26 +299,21 @@
         if (layer.dataset.built === "1") return;
         layer.dataset.built = "1";
         const frag = document.createDocumentFragment();
-        const city = document.createElement("div");
-        city.className = "syd-city-tint";
-        city.style.left = CITY_TINT.x + "px";
-        city.style.top = CITY_TINT.y + "px";
-        city.style.width = CITY_TINT.w + "px";
-        city.style.height = CITY_TINT.h + "px";
-        city.style.borderRadius = CITY_TINT.r + "px";
-        frag.appendChild(city);
-        Object.keys(stationsData).forEach((sid) => {
-            const s = stationsData[sid];
-            const h = s.marker && s.marker.halo;
-            if (!h) return;
-            const pill = document.createElement("div");
-            pill.className = "syd-halo";
-            pill.style.left = (s.x + h.dx) + "px";
-            pill.style.top = (s.y + h.dy) + "px";
-            pill.style.width = h.w + "px";
-            pill.style.height = h.h + "px";
-            pill.style.transform = `translate(-50%, -50%) rotate(${h.ang || 0}deg)`;
-            frag.appendChild(pill);
+        underlayShapes(stationsData).forEach((u) => {
+            const div = document.createElement("div");
+            div.className = u.className;
+            if (u.className === "syd-city-tint") {
+                div.style.left = (u.cx - u.w / 2) + "px";
+                div.style.top = (u.cy - u.h / 2) + "px";
+                div.style.borderRadius = u.r + "px";
+            } else {
+                div.style.left = u.cx + "px";
+                div.style.top = u.cy + "px";
+                div.style.transform = `translate(-50%, -50%) rotate(${u.angle}deg)`;
+            }
+            div.style.width = u.w + "px";
+            div.style.height = u.h + "px";
+            frag.appendChild(div);
         });
         layer.appendChild(frag);
     }
@@ -312,6 +401,14 @@
 
         /** 悉尼站点画法：官方图元逐站还原 */
         renderStationIcon,
+
+        /** OpenMap Editor 渲染钩子：与线路图共用 decorateLabel / underlayShapes 的实现 */
+        decorateStationLabel(el, station) { decorateLabel(el, station); },
+        getStationStyleOptions(station) { return styleOptions(station); },
+        getStationUnderlays(stations) {
+            const dark = document.documentElement.getAttribute("data-theme") === "dark";
+            return underlayShapes(stations).map((u) => Object.assign(u, { blend: dark ? "screen" : "multiply" }));
+        },
 
         /** 站名排版由 syncLabels() 统一处理，这里不再额外下发样式 */
         getStationLabelStyle(station) {

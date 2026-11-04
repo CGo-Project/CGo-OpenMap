@@ -130,7 +130,7 @@
 
 .form-input, .form-select, .form-textarea {
     flex: 1;
-    background: var(--card-bg, #ffffff);
+    background-color: var(--card-bg, #ffffff);
     border: 1px solid var(--border-color, #dee2e6);
     border-radius: var(--radius-sm, 6px);
     padding: 5px 9px;
@@ -145,7 +145,9 @@
 [data-theme='dark'] .form-input,
 [data-theme='dark'] .form-select,
 [data-theme='dark'] .form-textarea {
-    background: rgba(255, 255, 255, 0.05);
+    /* 只改底色：用 background 简写会把 .form-select 的 background-repeat / position / size 一并重置，
+       下拉箭头就会平铺满整个选择框（深色主题下「图元类型」一排箭头的来历） */
+    background-color: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.12);
     color: var(--text-main);
 }
@@ -698,71 +700,7 @@ cgo-modal .dialog-buttons {
     pointer-events: stroke;
 }
 
-/* 车站文字排版规范 (严格对齐主地图 main.html / css/style.css) */
-foreignObject {
-    overflow: visible;
-}
-
-.label-group {
-    position: absolute;
-    pointer-events: auto;
-    cursor: pointer;
-    white-space: nowrap;
-    user-select: none;
-    -webkit-user-select: none;
-    transition: transform 0.2s;
-}
-
-.stacn {
-    font-size: 11.5px;
-    color: var(--text-main, #00263b) !important;
-    display: block;
-    line-height: 13.8px;
-    font-weight: 500;
-    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-    paint-order: stroke fill;
-    white-space: nowrap;
-}
-
-.staen {
-    font-size: 6.65px;
-    color: var(--text-main, #00263b) !important;
-    display: block;
-    margin-top: 0;
-    line-height: 6.35px;
-    white-space: nowrap;
-    font-family: 'Arimo', 'Arial', sans-serif;
-    font-weight: 500;
-    paint-order: stroke fill;
-}
-
-.label-group.type-no .stacn,
-.label-group.type-no .staen {
-    color: var(--not-open-color, #94a3b8) !important;
-}
-
-/* 选中高亮态 */
-.label-group.active {
-    z-index: 35;
-}
-
-.label-group.active .stacn {
-    color: #d0021b !important;
-    transform: scale(1.1);
-    transform-origin: inherit;
-    font-size: 15px;
-    line-height: 15px;
-    font-weight: 700;
-    -webkit-text-stroke: var(--sta-stroke-width-cn, 1px) var(--map-bg, #ffffff);
-}
-
-.label-group.active .staen {
-    color: #d0021b !important;
-    font-size: 9px;
-    line-height: 8px;
-    font-weight: 700;
-    -webkit-text-stroke: var(--sta-stroke-width-en, 0.5px) var(--map-bg, #ffffff);
-}
+/* 车站与站名的排版规则见 css/editor-map-replica.css（逐条对齐 css/style.css） */
 
 /* ==========================================================================
    7. 网格与坐标刻度图层规范 (Grid & Coordinate Axes Layer)
@@ -1407,3 +1345,541 @@ body.tool-eyedropper #workbenchViewport svg {
 }
 
 
+
+/* ==========================================================================
+   车站图元类型选择器（按当前城市画法实时预览）
+   ========================================================================== */
+.cgo-type-picker {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.type-picker-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 3px 8px 3px 3px;
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius-sm, 6px);
+    background-color: var(--card-bg, #ffffff);
+    color: var(--text-main);
+    font: inherit;
+    font-size: var(--font-size-xs, 11px);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color var(--dur-fast, 140ms) ease, box-shadow var(--dur-fast, 140ms) ease;
+}
+
+[data-theme='dark'] .type-picker-trigger {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.type-picker-trigger:hover {
+    border-color: var(--office-primary, #0078d4);
+}
+
+.type-picker-trigger:focus-visible,
+.cgo-type-picker.open .type-picker-trigger {
+    outline: none;
+    border-color: var(--primary-color, #00263b);
+    box-shadow: 0 0 0 3px rgba(0, 96, 152, 0.16);
+}
+
+[data-theme='dark'] .type-picker-trigger:focus-visible,
+[data-theme='dark'] .cgo-type-picker.open .type-picker-trigger {
+    border-color: var(--primary-color, #4dabf7);
+    box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.22);
+}
+
+.type-picker-text,
+.type-option-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    line-height: 1.25;
+}
+
+.type-picker-name,
+.type-option-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.type-picker-code,
+.type-option-desc {
+    font-size: 10px;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.type-picker-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.type-picker-caret {
+    flex-shrink: 0;
+    color: var(--text-light);
+    transition: transform var(--dur-fast, 140ms) ease;
+}
+
+.cgo-type-picker.open .type-picker-caret {
+    transform: rotate(180deg);
+}
+
+/* 小样：地图底色上的一段线路 + 图元，城市样式表经 .cgo-map-replica / map-{city} 同样生效 */
+.type-tile-slot {
+    flex-shrink: 0;
+    display: inline-flex;
+}
+
+.type-tile {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 30px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--map-bg, #ffffff);
+    box-shadow: inset 0 0 0 1px var(--border-color, rgba(0, 0, 0, 0.1));
+    pointer-events: none;
+}
+
+.type-tile-line {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.type-tile-marker {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: block;
+    transform-origin: 0 0;
+}
+
+.type-tile-marker .station {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+}
+
+.type-tile-marker .station svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+}
+
+.type-picker-menu {
+    position: absolute;
+    z-index: 60;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #dee2e6);
+    background: var(--card-bg, #ffffff);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    overscroll-behavior: contain;
+}
+
+[data-theme='dark'] .type-picker-menu {
+    background: var(--office-bg-elevated, #23272b);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.type-picker-hint,
+.type-picker-group {
+    padding: 6px 8px 4px;
+    font-size: 10px;
+    color: var(--text-light);
+}
+
+.type-picker-group {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.type-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 4px 6px 4px 4px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-main);
+    font: inherit;
+    font-size: var(--font-size-xs, 11px);
+    text-align: left;
+    cursor: pointer;
+}
+
+.type-option:hover,
+.type-option:focus-visible {
+    outline: none;
+    background: var(--office-hover, rgba(0, 0, 0, 0.05));
+}
+
+.type-option.is-current {
+    background: var(--theme-subtle, rgba(2, 132, 199, 0.12));
+}
+
+.type-option-check {
+    flex-shrink: 0;
+    color: var(--office-primary, #0078d4);
+}
+
+.type-option-count {
+    font-weight: 500;
+    font-size: 10px;
+    color: var(--text-light);
+}
+
+.type-picker-note {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    margin: 6px 4px 2px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--text-light);
+    background: var(--office-hover, rgba(0, 0, 0, 0.04));
+}
+
+.type-picker-note cgo-icon {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* 交通设施矢量徽标（core/station-icons.js AMENITY_ICONS，与线路图站名旁的徽标同一份） */
+.amenity-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    color: currentColor;
+}
+
+.amenity-glyph svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* ==========================================================================
+   确认对话框（js/ui/confirm-dialog.js，取代原生 confirm）
+   ========================================================================== */
+.confirm-dialog {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 2px 2px 4px;
+}
+
+.confirm-dialog-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--office-primary, #0078d4);
+    background: rgba(0, 120, 212, 0.12);
+}
+
+.confirm-dialog.is-danger .confirm-dialog-icon {
+    color: var(--danger-color, #dc3545);
+    background: rgba(220, 53, 69, 0.12);
+}
+
+.confirm-dialog-body {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-main);
+}
+
+.confirm-dialog-message {
+    margin: 0 0 6px;
+}
+
+.confirm-dialog-details {
+    margin: 0 0 8px;
+    padding-left: 18px;
+    color: var(--text-main);
+    font-size: 12px;
+}
+
+.confirm-dialog-details li + li {
+    margin-top: 2px;
+}
+
+.confirm-dialog-note {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.confirm-dialog-require {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-light);
+}
+
+.confirm-dialog-require code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: var(--office-hover, rgba(0, 0, 0, 0.06));
+    color: var(--text-main);
+}
+
+.confirm-dialog-buttons {
+    align-items: center;
+}
+
+.confirm-dialog-buttons .ribbon-btn-sm {
+    width: auto;
+    height: 30px;
+    padding: 0 14px;
+    font-size: 12px;
+    border: 1px solid var(--border-color, #dee2e6);
+}
+
+.confirm-dialog-buttons .confirm-dialog-extra {
+    margin-right: auto;
+    gap: 5px;
+}
+
+.confirm-dialog-buttons .confirm-dialog-ok.primary {
+    background: var(--office-primary, #0078d4);
+    border-color: var(--office-primary, #0078d4);
+    color: #fff;
+}
+
+.confirm-dialog-buttons .confirm-dialog-ok.danger {
+    background: var(--danger-color, #dc3545);
+    border-color: var(--danger-color, #dc3545);
+    color: #fff;
+}
+
+.confirm-dialog-buttons .confirm-dialog-ok.danger:hover {
+    filter: brightness(1.08);
+    color: #fff;
+    background: var(--danger-color, #dc3545);
+}
+
+.confirm-dialog-buttons .confirm-dialog-ok:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: none;
+}
+
+/* 地图装饰检视面板 */
+.scattered-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 84px;
+    margin: 4px 0 10px;
+    border-radius: 8px;
+    background: var(--map-bg, #ffffff);
+    box-shadow: inset 0 0 0 1px var(--border-color, rgba(0, 0, 0, 0.1));
+    color: var(--text-light);
+    font-size: 11px;
+}
+
+.scattered-preview img {
+    max-width: 70%;
+    max-height: 64px;
+    display: block;
+}
+
+.scattered-backdrop-note {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--text-light);
+    background: var(--office-hover, rgba(0, 0, 0, 0.04));
+}
+
+.sc-lock {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+.deco-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 30px;
+    border-radius: 5px;
+    background: var(--map-bg, #ffffff);
+    box-shadow: inset 0 0 0 1px var(--border-color, rgba(0, 0, 0, 0.1));
+}
+
+.deco-thumb img {
+    max-width: 24px;
+    max-height: 24px;
+    display: block;
+}
+
+/* 并排输入框（坐标 X/Y、宽/高、偏移）在窄面板里按比例收缩，不再把第二个框挤出面板 */
+.form-input,
+.form-select {
+    min-width: 0;
+}
+
+.scattered-preview img {
+    width: 56px;
+    height: auto;
+}
+
+.form-row > div {
+    min-width: 0;
+}
+
+/* ==========================================================================
+   画布右键菜单（js/ui/context-menu.js）
+   ========================================================================== */
+.cgo-context-menu {
+    position: fixed;
+    z-index: 3000;
+    min-width: 196px;
+    max-width: 300px;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color, #dee2e6);
+    background: var(--card-bg, #ffffff);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+    font-size: 12px;
+    color: var(--text-main);
+}
+
+[data-theme='dark'] .cgo-context-menu {
+    background: var(--office-bg-elevated, #23272b);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.cgo-context-menu .ctx-header {
+    padding: 6px 10px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cgo-context-menu .ctx-sep {
+    height: 1px;
+    margin: 4px 6px;
+    background: var(--border-color, rgba(0, 0, 0, 0.1));
+}
+
+.cgo-context-menu .ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cgo-context-menu .ctx-item:hover:not(:disabled),
+.cgo-context-menu .ctx-item:focus-visible {
+    outline: none;
+    background: var(--office-hover, rgba(0, 0, 0, 0.06));
+}
+
+.cgo-context-menu .ctx-item:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.cgo-context-menu .ctx-item.danger {
+    color: var(--danger-color, #dc3545);
+}
+
+.cgo-context-menu .ctx-icon {
+    width: 14px;
+    display: inline-flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.cgo-context-menu .ctx-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cgo-context-menu .ctx-kbd {
+    flex-shrink: 0;
+    font-size: 10.5px;
+    color: var(--text-light);
+}
+
+/* 图层隐藏态：图标库没有「闭眼」，在眼睛上加一道斜线 */
+.tree-action-btn.tree-btn-eye.is-hidden {
+    position: relative;
+}
+
+.tree-action-btn.tree-btn-eye.is-hidden::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 15px;
+    height: 1.5px;
+    background: currentColor;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    border-radius: 1px;
+}

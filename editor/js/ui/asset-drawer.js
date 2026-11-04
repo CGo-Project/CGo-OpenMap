@@ -13,6 +13,16 @@ window.OpenMapEditor = window.OpenMapEditor || {};
 window.OpenMapEditor.AssetDrawer = (function () {
     'use strict';
 
+    /**
+     * 交通设施徽标：优先用 core/station-icons.js 的矢量徽标（与线路图站名旁的徽标同一份），
+     * CGoUI 图标库里没有轮渡、P+R 等语义的图标。
+     */
+    function amenityGlyph(am) {
+        var lib = window.CGoStationIcons && window.CGoStationIcons.AMENITY_ICONS;
+        if (lib && lib[am.id]) return '<span class="amenity-glyph" aria-hidden="true">' + lib[am.id] + '</span>';
+        return '<cgo-icon name="' + am.icon + '" size="14"></cgo-icon>';
+    }
+
     var dom = {
         container: null,
         tabOutlineBtn: null,
@@ -35,8 +45,8 @@ window.OpenMapEditor.AssetDrawer = (function () {
         stations: [
             { id: 'dot', label: '普通圆点', type: 'station', glyph: 'dot', icon: 'dot', desc: '单线常规经停车站' },
             { id: 'tsf', label: '双圈换乘', type: 'station', glyph: 'tsf', icon: 'transfer', desc: '标准同心圆两线换乘' },
-            { id: 'tsf_pill_h', label: '水平胶囊', type: 'station', glyph: 'tsf_pill_h', icon: 'horizontal-flip', desc: '水平跑道圆多线换乘' },
-            { id: 'tsf_pill_v', label: '垂直胶囊', type: 'station', glyph: 'tsf_pill_v', icon: 'vertical-flip', desc: '垂直跑道圆多线换乘' },
+            { id: 'tsf_pill_h', label: '水平胶囊', type: 'station', glyph: 'tsf_pill_h', icon: 'flip-h', desc: '水平跑道圆多线换乘' },
+            { id: 'tsf_pill_v', label: '垂直胶囊', type: 'station', glyph: 'tsf_pill_v', icon: 'flip-v', desc: '垂直跑道圆多线换乘' },
             { id: 'tsf_pill_d45', label: '45°斜向胶囊', type: 'station', glyph: 'tsf_pill_d45', icon: 'design', desc: '45度倾斜跑道圆换乘' },
             { id: 'tsf_pill_d135', label: '135°斜向胶囊', type: 'station', glyph: 'tsf_pill_d135', icon: 'design', desc: '135度倾斜跑道圆换乘' },
             { id: 'tsf_dumbbell', label: '双联哑铃', type: 'station', glyph: 'tsf_dumbbell', icon: 'route', desc: '长通道/大厅双圆连杆换乘' },
@@ -118,20 +128,55 @@ window.OpenMapEditor.AssetDrawer = (function () {
         html += '<div class="asset-group-section" style="margin-bottom:12px;">' +
             '<div style="font-size:11px;font-weight:700;color:var(--text-light, #64748b);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">' +
             '<span>车站与换乘图元</span>' +
-            '<span class="cgo-badge" style="font-size:9px;">' + ASSET_DEFINITIONS.stations.length + ' 种</span>' +
+            '<span class="cgo-badge" style="font-size:9px;">' + stationAssets().length + ' 种</span>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:5px;">';
 
-        ASSET_DEFINITIONS.stations.forEach(function (st) {
+        stationAssets().forEach(function (st) {
             html += '<button type="button" class="asset-tile-btn" data-category="station" data-id="' + st.id + '" data-glyph="' + st.glyph + '" title="' + st.label + ' (' + st.glyph + ')\n' + st.desc + '" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:4px;transition:all 0.15s;">' +
-                '<div style="width:28px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--text-color, #1e293b);">' +
-                getStationGlyphPreviewSvg(st.glyph) +
-                '</div>' +
+                stationAssetPreview(st.glyph) +
                 '<span style="font-size:10px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + st.label + '</span>' +
                 '</button>';
         });
 
         html += '</div></div>';
+
+        // 分组一点五：本城市现有样式（从已载入城市的全部车站自动提取，含逐站官方图元）
+        var cityStyles = cityStyleAssets();
+        if (cityStyles.length) {
+            html += '<div class="asset-group-section" style="margin-bottom:12px;">' +
+                '<div style="font-size:11px;font-weight:700;color:var(--text-light, #64748b);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">' +
+                '<span>本城市现有样式</span>' +
+                '<span class="cgo-badge" style="font-size:9px;">' + cityStyles.length + ' 种</span>' +
+                '</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:5px;">';
+            cityStyles.forEach(function (cs) {
+                var title = (cs.label + '\n' + cs.desc).replace(/"/g, '&quot;');
+                html += '<button type="button" class="asset-tile-btn" data-category="station" data-id="' + cs.key + '" data-glyph="' + (cs.patch.type || 'dot') + '" data-style="' + cs.key + '" title="' + title + '" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:4px;transition:all 0.15s;">' +
+                    stationAssetPreview(cs.patch.type || 'dot', cs.patch) +
+                    '<span style="font-size:10px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + cs.label + '</span>' +
+                    '</button>';
+            });
+            html += '</div></div>';
+        }
+
+        // 分组一点八：地图装饰素材（本城市已在用的 SVG 徽标，点击后在画布落子）
+        var decoFiles = decorationAssets();
+        if (decoFiles.length) {
+            html += '<div class="asset-group-section" style="margin-bottom:12px;">' +
+                '<div style="font-size:11px;font-weight:700;color:var(--text-light, #64748b);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">' +
+                '<span>地图装饰素材</span>' +
+                '<span class="cgo-badge" style="font-size:9px;">' + decoFiles.length + ' 个</span>' +
+                '</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:5px;">';
+            decoFiles.forEach(function (d, i) {
+                html += '<button type="button" class="asset-tile-btn asset-deco-btn" data-category="scattered" data-id="deco' + i + '" data-deco="' + i + '" title="' + escHtml(d.file) + '\n已用 ' + d.count + ' 处 · 点击后在画布落子" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:4px;transition:all 0.15s;">' +
+                    '<span class="deco-thumb"><img src="' + escHtml(d.src) + '" alt="" draggable="false"></span>' +
+                    '<span style="font-size:10px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + escHtml(d.name) + '</span>' +
+                    '</button>';
+            });
+            html += '</div></div>';
+        }
 
         // 分组二：综合交通枢纽设施徽标
         html += '<div class="asset-group-section" style="margin-bottom:12px;">' +
@@ -144,7 +189,7 @@ window.OpenMapEditor.AssetDrawer = (function () {
         ASSET_DEFINITIONS.amenities.forEach(function (am) {
             html += '<button type="button" class="asset-tile-btn" data-category="amenity" data-id="' + am.id + '" title="' + am.label + '\n' + am.desc + '" style="display:flex;align-items:center;padding:6px 8px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:6px;transition:all 0.15s;">' +
                 '<div style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:var(--theme-accent, #0284c7);flex-shrink:0;">' +
-                '<cgo-icon name="' + am.icon + '" size="14"></cgo-icon>' +
+                amenityGlyph(am) +
                 '</div>' +
                 '<div style="display:flex;flex-direction:column;min-width:0;text-align:left;">' +
                 '<span style="font-size:11px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + am.label + '</span>' +
@@ -194,6 +239,91 @@ window.OpenMapEditor.AssetDrawer = (function () {
         bindTileEvents();
     }
 
+    /** 通用车站图元：任何城市都全部提供（不按城市裁剪，选择权交给使用者） */
+    function stationAssets() {
+        return ASSET_DEFINITIONS.stations;
+    }
+
+    /** 本城市现有样式（从当前工程全部车站提取，见 StationStyleCatalog.harvest），key → 外观补丁 */
+    var harvestedPatches = {};
+    function cityStyleAssets() {
+        var cat = window.OpenMapEditor.StationStyleCatalog;
+        var app = window.OpenMapEditor._getApp ? window.OpenMapEditor._getApp() : null;
+        if (!cat || !app || !app.project) return [];
+        var rt = window.OpenMapEditor.CityRenderRuntime;
+        var fields = cat.fieldsFor(rt && rt.getCity ? rt.getCity() : null);
+        harvestedPatches = {};
+        return cat.harvest(app.project, fields).slice(0, 18).map(function (h, i) {
+            var key = 'h' + i;
+            harvestedPatches[key] = h.patch;
+            return { key: key, label: h.name, desc: (h.detail ? h.detail + ' · ' : '') + h.count + ' 座 · 例：' + h.sampleName, patch: h.patch };
+        });
+    }
+
+    function escHtml(v) {
+        return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * 本城市已在用的装饰素材（按文件去重，取首次出现的尺寸作为落子默认尺寸）。
+     * 只列徽标级小图：铺满画布的底图装饰不适合「再放一个」。
+     */
+    var decoList = [];
+    function decorationAssets() {
+        var app = window.OpenMapEditor._getApp ? window.OpenMapEditor._getApp() : null;
+        var list = (app && app.project && app.project.scattered) || [];
+        var layer = window.OpenMapEditor.ScatteredLayer;
+        var byFile = {};
+        decoList = [];
+        list.forEach(function (sc) {
+            if (!sc || !sc.file) return;
+            if (layer && layer.isPickable && !layer.isPickable(sc)) return;
+            if (byFile[sc.file]) { byFile[sc.file].count++; return; }
+            var d = {
+                file: sc.file,
+                name: String(sc.file).split('/').pop().replace(/\.svg$/i, ''),
+                src: layer && layer.resolveSvgPath ? layer.resolveSvgPath(sc.file) : sc.file,
+                width: sc.width, height: sc.height, zIndex: sc.zIndex, idStem: String(sc.id || 'deco').replace(/-[\d_.-]+$/, ''),
+                count: 1
+            };
+            byFile[sc.file] = d;
+            decoList.push(d);
+        });
+        return decoList;
+    }
+
+    function patchFor(key) {
+        return harvestedPatches[key] || null;
+    }
+
+    /** 零件盒里的图元小样：按当前城市画法生成（与检视面板的类型选择器同一套） */
+    function stationAssetPreview(type, patch) {
+        var layer = window.OpenMapEditor.StationLayer;
+        if (layer && typeof layer.previewTileHtml === 'function') {
+            var color = '#0284c7';
+            var app = window.OpenMapEditor._getApp ? window.OpenMapEditor._getApp() : null;
+            var lines = app && app.project && app.project.lines;
+            if (lines && lines.length) {
+                var active = lines.filter(function (l) { return l.id === app.activeLineId; })[0] || lines[0];
+                if (active && active.color) color = active.color;
+            }
+            // 小样车站放在远离线网的位置：城市钩子推断朝向时不会吸附到真实线路上
+            var st = Object.assign({ x: -1e6, y: -1e6 }, patch || {}, { lineColors: [color] });
+            st.type = (patch && patch.type) || type;
+            Object.keys(st).forEach(function (k) { if (st[k] === undefined) delete st[k]; });
+            return layer.previewTileHtml(st, { id: '__asset_' + type });
+        }
+        return '<div style="width:28px;height:24px;display:flex;align-items:center;justify-content:center;">' +
+            getStationGlyphPreviewSvg(type) + '</div>';
+    }
+
+    /** 城市渲染钩子就绪 / 切换城市 / 切换主题后重画零件盒 */
+    function refresh() {
+        if (!dom.container) return;
+        renderDrawer();
+        bindTileEvents();
+    }
+
     /**
      * 生成车站图元的精简矢量预览 SVG
      */
@@ -220,7 +350,23 @@ window.OpenMapEditor.AssetDrawer = (function () {
                 this.classList.add('active');
 
                 if (typeof callbacks.onEnterStampMode === 'function') {
-                    callbacks.onEnterStampMode(cat, { id: id, glyph: glyph });
+                    if (cat === 'scattered') {
+                        var deco = decoList[parseInt(this.getAttribute('data-deco'), 10)];
+                        if (deco) callbacks.onEnterStampMode('scattered', { id: id, deco: deco });
+                        return;
+                    }
+                    var styleKey = this.getAttribute('data-style');
+                    var payload = { id: id, glyph: glyph };
+                    if (cat === 'station') {
+                        // 通用图元：去掉城市逐站外观字段、只留类型；本城市样式：整组外观字段
+                        var cat2 = window.OpenMapEditor.StationStyleCatalog;
+                        if (styleKey && patchFor(styleKey)) payload.patch = patchFor(styleKey);
+                        else if (cat2) {
+                            var g = cat2.genericOptions().filter(function (o) { return o.patch.type === glyph; })[0];
+                            if (g) payload.patch = g.patch;
+                        }
+                    }
+                    callbacks.onEnterStampMode(cat, payload);
                 }
             });
         });
@@ -244,6 +390,7 @@ window.OpenMapEditor.AssetDrawer = (function () {
 
     return {
         init: init,
+        refresh: refresh,
         switchTab: switchTab,
         clearActiveSelection: clearActiveSelection,
         ASSET_DEFINITIONS: ASSET_DEFINITIONS
