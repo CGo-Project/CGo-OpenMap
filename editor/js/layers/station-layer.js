@@ -146,6 +146,36 @@ window.OpenMapEditor.StationLayer = (function () {
         };
     }
 
+    function escAttr(v) {
+        return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * 图元小样：地图底色 + 一段线路 + 该站在当前城市画法下的图元。
+     * 检视面板的类型选择器与左侧零件盒共用，城市样式表经 .cgo-map-replica / map-{city} 同样生效。
+     * @param {Object} station 车站对象（含 type、lineColors，可带城市私有字段如 marker）
+     * @param {Object} [opts] { angle: 线路方向（度）, id: 车站 ID }
+     */
+    function previewTileHtml(station, opts) {
+        var o = opts || {};
+        var type = station.type || 'dot';
+        var colors = station.lineColors || [];
+        var mk = previewMarker(station, o.id || station.id);
+        var w = mk.width || 10, h = mk.height || 10;
+        var scale = Math.max(0.5, Math.min(1.7, 24 / Math.max(w, h)));
+        var lineColor = type === 'no' ? 'var(--not-open-color, #bdcbd2)' : (colors[0] || 'var(--station-stroke)');
+        var angle = o.angle || 0;
+        return '<span class="type-tile cgo-map-replica" aria-hidden="true">' +
+            '<svg class="type-tile-line" viewBox="-30 -20 60 40" preserveAspectRatio="xMidYMid slice">' +
+            '<line x1="-60" y1="0" x2="60" y2="0" transform="rotate(' + angle.toFixed(1) + ')"' +
+            ' stroke="' + escAttr(lineColor) + '" stroke-width="' + (5.4 * scale).toFixed(2) + '" stroke-linecap="round"' +
+            (type === 'no' ? ' stroke-dasharray="' + (6 * scale).toFixed(1) + ' ' + (6 * scale).toFixed(1) + '"' : '') + '/></svg>' +
+            '<span class="type-tile-marker" style="transform:scale(' + scale.toFixed(3) + ') translate(-50%,-50%);">' +
+            '<span class="station ' + escAttr(type) + (mk.className ? ' ' + escAttr(mk.className) : '') + '"' +
+            ' style="position:relative;left:auto;top:auto;transform:none;width:' + w + 'px;height:' + h + 'px;">' +
+            mk.html + '</span></span></span>';
+    }
+
     // ==========================================================================
     // 墨迹框类站名（香港 / 深圳的 lab）：随车站一起平移
     // ==========================================================================
@@ -378,6 +408,7 @@ window.OpenMapEditor.StationLayer = (function () {
         calculateLabelLayout: calculateLabelLayout,
         labelOffsetFor: labelOffsetFor,
         previewMarker: previewMarker,
+        previewTileHtml: previewTileHtml,
         followStation: followStation,
         shiftBoxes: shiftBoxes,
         getStationIconsEngine: getStationIconsEngine

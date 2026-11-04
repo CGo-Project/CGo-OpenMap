@@ -444,7 +444,9 @@
                 else patch.hideLabel = null;      // null = 从源码条目里删掉该字段（取消勾选）
                 if (curr.textScale) patch.textScale = curr.textScale;
                 if (curr.marker) patch.marker = curr.marker;
+                else if (orig.marker) patch.marker = null;   // null = 从源码条目里删掉该字段
                 if (curr.halo) patch.halo = curr.halo;
+                else if (orig.halo) patch.halo = null;
                 // 香港 / 深圳的站名按绝对坐标的墨迹框（lab）排版：车站挪动后排版框随之平移，
                 // 与画布上看到的一致（StationLayer.followStation 同一算法）
                 var labMoved = shiftLabWithStation(curr, orig);

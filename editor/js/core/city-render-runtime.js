@@ -460,7 +460,24 @@ window.OpenMapEditor.CityRenderRuntime = (function () {
         return list.slice();
     }
 
+    /** 本城市实际支持的站点类型清单（城市声明了 STATION_TYPES 时才有），否则返回 null */
+    function getStationTypes() {
+        var city = getCity();
+        return (city && Array.isArray(city.STATION_TYPES) && city.STATION_TYPES.length) ? city.STATION_TYPES.slice() : null;
+    }
+
+    /**
+     * 切换车站类型时，城市需要连带改写的字段（如上海逐站 marker）。
+     * @returns {Object} 字段补丁，值为 undefined 表示删除
+     */
+    function adaptStationForType(station, type, id) {
+        var out = safeCall('adaptStationForType', [station, type, id]);
+        return (out && typeof out === 'object') ? out : {};
+    }
+
     return {
+        getStationTypes: getStationTypes,
+        adaptStationForType: adaptStationForType,
         activate: activate,
         onChange: onChange,
         getCity: getCity,

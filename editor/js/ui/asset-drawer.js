@@ -128,15 +128,13 @@ window.OpenMapEditor.AssetDrawer = (function () {
         html += '<div class="asset-group-section" style="margin-bottom:12px;">' +
             '<div style="font-size:11px;font-weight:700;color:var(--text-light, #64748b);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">' +
             '<span>车站与换乘图元</span>' +
-            '<span class="cgo-badge" style="font-size:9px;">' + ASSET_DEFINITIONS.stations.length + ' 种</span>' +
+            '<span class="cgo-badge" style="font-size:9px;">' + stationAssets().length + ' 种</span>' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:5px;">';
 
-        ASSET_DEFINITIONS.stations.forEach(function (st) {
+        stationAssets().forEach(function (st) {
             html += '<button type="button" class="asset-tile-btn" data-category="station" data-id="' + st.id + '" data-glyph="' + st.glyph + '" title="' + st.label + ' (' + st.glyph + ')\n' + st.desc + '" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:4px;transition:all 0.15s;">' +
-                '<div style="width:28px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--text-color, #1e293b);">' +
-                getStationGlyphPreviewSvg(st.glyph) +
-                '</div>' +
+                stationAssetPreview(st.glyph) +
                 '<span style="font-size:10px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + st.label + '</span>' +
                 '</button>';
         });
@@ -205,6 +203,45 @@ window.OpenMapEditor.AssetDrawer = (function () {
     }
 
     /**
+     * 当前城市可用的车站图元。城市声明了 STATION_TYPES（如上海只有短横 / 胶囊两种画法）时只列这些，
+     * 否则列通用图元目录——零件盒不应提供本城市线路图里根本画不出来的样式。
+     */
+    function stationAssets() {
+        var rt = window.OpenMapEditor.CityRenderRuntime;
+        var ct = (rt && typeof rt.getStationTypes === 'function') ? rt.getStationTypes() : null;
+        if (!ct) return ASSET_DEFINITIONS.stations;
+        return ct.map(function (t) {
+            var base = ASSET_DEFINITIONS.stations.filter(function (s) { return s.id === t.id; })[0] || {};
+            return { id: t.id, label: t.name || base.label || t.id, type: 'station', glyph: t.id, desc: t.desc || base.desc || '' };
+        });
+    }
+
+    /** 零件盒里的图元小样：按当前城市画法生成（与检视面板的类型选择器同一套） */
+    function stationAssetPreview(type) {
+        var layer = window.OpenMapEditor.StationLayer;
+        if (layer && typeof layer.previewTileHtml === 'function') {
+            var color = '#0284c7';
+            var app = window.OpenMapEditor._getApp ? window.OpenMapEditor._getApp() : null;
+            var lines = app && app.project && app.project.lines;
+            if (lines && lines.length) {
+                var active = lines.filter(function (l) { return l.id === app.activeLineId; })[0] || lines[0];
+                if (active && active.color) color = active.color;
+            }
+            // 小样车站放在远离线网的位置：城市钩子推断朝向时不会吸附到真实线路上
+            return layer.previewTileHtml({ type: type, lineColors: [color], x: -1e6, y: -1e6 }, { id: '__asset_' + type });
+        }
+        return '<div style="width:28px;height:24px;display:flex;align-items:center;justify-content:center;">' +
+            getStationGlyphPreviewSvg(type) + '</div>';
+    }
+
+    /** 城市渲染钩子就绪 / 切换城市 / 切换主题后重画零件盒 */
+    function refresh() {
+        if (!dom.container) return;
+        renderDrawer();
+        bindTileEvents();
+    }
+
+    /**
      * 生成车站图元的精简矢量预览 SVG
      */
     function getStationGlyphPreviewSvg(glyph) {
@@ -254,6 +291,7 @@ window.OpenMapEditor.AssetDrawer = (function () {
 
     return {
         init: init,
+        refresh: refresh,
         switchTab: switchTab,
         clearActiveSelection: clearActiveSelection,
         ASSET_DEFINITIONS: ASSET_DEFINITIONS

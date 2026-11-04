@@ -95,7 +95,16 @@ window.OpenMapEditor.InspectorView = (function () {
         return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function cityTypes() {
+        var rt = window.OpenMapEditor.CityRenderRuntime;
+        return (rt && typeof rt.getStationTypes === 'function') ? rt.getStationTypes() : null;
+    }
+
     function typeMeta(id) {
+        var ct = cityTypes() || [];
+        for (var c = 0; c < ct.length; c++) {
+            if (ct[c] && ct[c].id === id) return { id: id, name: ct[c].name || id, desc: ct[c].desc || '' };
+        }
         for (var i = 0; i < TYPE_CATALOG.length; i++) {
             if (TYPE_CATALOG[i].id === id) return TYPE_CATALOG[i];
         }
@@ -121,7 +130,9 @@ window.OpenMapEditor.InspectorView = (function () {
 
     function typeOptions(node, project) {
         var usage = typeUsage(project);
-        var ids = TYPE_CATALOG.map(function (t) { return t.id; });
+        // 城市声明了自己支持的画法时只列这些（如上海只有短横 / 胶囊），否则列通用目录
+        var ct = cityTypes();
+        var ids = (ct || TYPE_CATALOG).map(function (t) { return t.id; });
         Object.keys(usage).forEach(function (t) { if (ids.indexOf(t) === -1) ids.push(t); });
         var cur = currentTypeOf(node);
         if (ids.indexOf(cur) === -1) ids.push(cur);
@@ -164,27 +175,24 @@ window.OpenMapEditor.InspectorView = (function () {
         return [];
     }
 
+    /** 预览用：套上新类型，并按城市规则改写逐站图元（与真正切换时 handlePropertyChange 的结果一致） */
+    function adaptedStation(node, type, colors) {
+        var station = Object.assign({}, node, { type: type, lineColors: colors });
+        var rt = window.OpenMapEditor.CityRenderRuntime;
+        var patch = rt && rt.adaptStationForType ? rt.adaptStationForType(node, type, node.id) : {};
+        Object.keys(patch).forEach(function (k) {
+            if (patch[k] === undefined || patch[k] === null) delete station[k];
+            else station[k] = patch[k];
+        });
+        return station;
+    }
+
     /** 单个类型的预览小样：地图底色 + 一段线路 + 该类型在本城市画法下的图元 */
     function typeTileHtml(node, project, type) {
         var layer = window.OpenMapEditor.StationLayer;
-        var colors = previewLineColor(node, project);
-        var station = Object.assign({}, node, { type: type, lineColors: colors });
-        var mk = (layer && typeof layer.previewMarker === 'function')
-            ? layer.previewMarker(station, node.id)
-            : { html: '', width: 10, height: 10, className: '' };
-        var w = mk.width || 10, h = mk.height || 10;
-        var scale = Math.max(0.5, Math.min(1.7, 24 / Math.max(w, h)));
-        var lineColor = type === 'no' ? 'var(--not-open-color, #bdcbd2)' : (colors[0] || 'var(--station-stroke)');
-        var angle = previewLineAngle(node, project);
-        return '<span class="type-tile cgo-map-replica" aria-hidden="true">' +
-            '<svg class="type-tile-line" viewBox="-30 -20 60 40" preserveAspectRatio="xMidYMid slice">' +
-            '<line x1="-60" y1="0" x2="60" y2="0" transform="rotate(' + angle.toFixed(1) + ')"' +
-            ' stroke="' + escAttr(lineColor) + '" stroke-width="' + (5.4 * scale).toFixed(2) + '" stroke-linecap="round"' +
-            (type === 'no' ? ' stroke-dasharray="' + (6 * scale).toFixed(1) + ' ' + (6 * scale).toFixed(1) + '"' : '') + '/></svg>' +
-            '<span class="type-tile-marker" style="transform:scale(' + scale.toFixed(3) + ') translate(-50%,-50%);">' +
-            '<span class="station ' + escAttr(type) + (mk.className ? ' ' + escAttr(mk.className) : '') + '"' +
-            ' style="position:relative;left:auto;top:auto;transform:none;width:' + w + 'px;height:' + h + 'px;">' +
-            mk.html + '</span></span></span>';
+        if (!layer || typeof layer.previewTileHtml !== 'function') return '';
+        var station = adaptedStation(node, type, previewLineColor(node, project));
+        return layer.previewTileHtml(station, { angle: previewLineAngle(node, project), id: node.id });
     }
 
     function renderTypePickerHtml(node, project) {
@@ -226,14 +234,14 @@ window.OpenMapEditor.InspectorView = (function () {
             html += '<div class="type-picker-group">本工程在用</div>' + opts.used.map(item).join('');
         }
         if (opts.rest.length) {
-            html += '<div class="type-picker-group">更多图元</div>' + opts.rest.map(item).join('');
+            html += '<div class="type-picker-group">' + (cityTypes() ? '本城市其他画法' : '更多图元') + '</div>' + opts.rest.map(item).join('');
         }
         // 城市按逐站官方数据画图元时（如悉尼 marker、香港 mk），改类型不会改变图元外观，提前说清楚
         var layer = window.OpenMapEditor.StationLayer;
         var colors = previewLineColor(node, project);
         var sample = opts.used.concat(opts.rest).filter(function (t) { return t !== 'no'; }).map(function (t) {
             if (!layer || typeof layer.previewMarker !== 'function') return t;
-            var mk = layer.previewMarker(Object.assign({}, node, { type: t, lineColors: colors }), node.id);
+            var mk = layer.previewMarker(adaptedStation(node, t, colors), node.id);
             // 悉尼终点站渐变 id 每次递增，比较前抹掉
             return String(mk.html).replace(/sydeol\d+/g, '') + '|' + mk.width + 'x' + mk.height;
         });

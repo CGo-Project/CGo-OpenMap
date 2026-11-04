@@ -565,6 +565,8 @@
     function refreshInspectorPreviews() {
         var iv = window.OpenMapEditor.InspectorView;
         if (iv && typeof iv.refreshPreviews === 'function') iv.refreshPreviews();
+        var ad = window.OpenMapEditor.AssetDrawer;
+        if (ad && typeof ad.refresh === 'function') ad.refresh();
     }
 
     function updateNavCounts() {
@@ -2013,6 +2015,13 @@
             } else if (prop === 'offset') {
                 node.offset = value;
             } else if (prop === 'type') {
+                // 城市逐站图元（如上海 marker）决定实际画法：先让城市按新类型改写，再落类型
+                var rtType = window.OpenMapEditor.CityRenderRuntime;
+                var typePatch = rtType ? rtType.adaptStationForType(node, value, targetId) : {};
+                Object.keys(typePatch).forEach(function (k) {
+                    if (typePatch[k] === undefined || typePatch[k] === null) delete node[k];
+                    else node[k] = typePatch[k];
+                });
                 node.type = value;
                 // notOpen 是 type === 'no' 的派生态：只改 type 不同步它，「暂缓开通」站改成换乘站后仍画成未开通
                 node.notOpen = (value === 'no');
