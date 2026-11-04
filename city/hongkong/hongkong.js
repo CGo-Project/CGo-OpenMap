@@ -195,6 +195,60 @@
         };
     }
 
+
+    /**
+     * OpenMap Editor 钩子共用：经过本站的站台、全部线路色，以及换乘图元的排布轴。
+     * 站台分开时沿两端站台连线排布（对应真实站台位置），否则垂直于线路走向并排。
+     */
+    function stylePlan(station) {
+        const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
+        const lib = window.CGoStationIcons;
+        const plats = (lib && lib.stationPlatforms) ? lib.stationPlatforms(station, lines, 14) : [];
+        const colors = [];
+        plats.forEach((p) => p.colors.forEach((c) => { if (colors.indexOf(c) === -1) colors.push(c); }));
+        (station.lineColors || []).forEach((c) => { if (c && colors.indexOf(c) === -1) colors.push(c); });
+        let axis = plats.length ? plats[0].angle + 90 : 0, cx = 0, cy = 0, spread = 0;
+        if (plats.length >= 2) {
+            let a = plats[0], b = plats[1];
+            plats.forEach((p) => plats.forEach((q) => {
+                const d = Math.hypot(p.x - q.x, p.y - q.y);
+                if (d > spread) { spread = d; a = p; b = q; }
+            }));
+            if (spread > 2) {
+                axis = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+                cx = (a.dx + b.dx) / 2; cy = (a.dy + b.dy) / 2;
+            } else spread = 0;
+        }
+        const r2 = (v) => Math.round(v * 100) / 100;
+        return { plats, colors: colors.length ? colors : ["#888888"], axis: r2(axis), cx: r2(cx), cy: r2(cy), spread, r2,
+            lineAngle: plats.length ? plats[0].angle : 0 };
+    }
+
+    /** OpenMap Editor 鉤子：按經過本站的綫路生成港鐵圖的單圓環 / 連珠換乘 */
+    function styleOptions(station) {
+        const P = stylePlan(station), r2 = P.r2;
+        const lib = window.CGoStationIcons;
+        const n = Math.max(P.colors.length, 1);
+        const opts = [{ key: "ring", name: "單圓環", desc: "普通站", patch: { type: "dot", mk: {} } }];
+        if (n >= 2 && lib && lib.capsulePath) {
+            const SP = 8.03, R = RING_R;
+            const len = P.spread ? Math.max(P.spread + 2 * R, (n - 1) * SP + 2 * R) : (n - 1) * SP + 2 * R;
+            const step = (len - 2 * R) / (n - 1);
+            const a = P.axis * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a), nx = -uy, ny = ux;
+            const bars = P.colors.slice(0, n).map((c, i) => {
+                const t = -(len / 2 - R) + i * step;
+                const t0 = Math.max(-(len / 2) + 2.6, t - step / 2), t1 = Math.min(len / 2 - 2.6, t + step / 2);
+                const pt = (tt, s0) => `${r2(P.cx + ux * tt + nx * s0)},${r2(P.cy + uy * tt + ny * s0)}`;
+                return { c, p: [pt(t1, 1.35), pt(t0, 1.35), pt(t0, -1.35), pt(t1, -1.35)].join(" ") };
+            });
+            const ex = Math.abs(ux) * len / 2 + Math.abs(nx) * R, ey = Math.abs(uy) * len / 2 + Math.abs(ny) * R;
+            opts.push({ key: "chain", name: `連珠換乘 ×${n}`, desc: "外框 + 各綫色條",
+                patch: { type: "tsf", mk: { o: lib.capsulePath(P.cx, P.cy, len, R, P.axis), bars,
+                    w: r2(2 * (Math.abs(P.cx) + ex)), h: r2(2 * (Math.abs(P.cy) + ey)) } } });
+        }
+        return opts;
+    }
+
     // ==========================================================================
     // 2. 按墨跡包圍盒逐行貼合排版（站名、區域名、圖例文字共用）
     // ==========================================================================
@@ -2212,6 +2266,8 @@
 
         renderStationIcon,
         getStationLabelStyle() { return null; },
+
+        getStationStyleOptions(station) { return styleOptions(station); },
 
         /** OpenMap Editor 渲染鉤子：站名按墨跡框逐行貼合，與綫路圖共用 layoutStationLabel */
         decorateStationLabel(el, station, sid) {

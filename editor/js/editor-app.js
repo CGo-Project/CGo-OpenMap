@@ -23,6 +23,7 @@
             lines: { id: 'lines', name: '轨道走向', icon: 'route', visible: true, locked: false },
             stations: { id: 'stations', name: '车站图元', icon: 'location', visible: true, locked: false },
             texts: { id: 'texts', name: '自由文本', icon: 'vi-text', visible: true, locked: false },
+            scattered: { id: 'scattered', name: '地图装饰', icon: 'tourist', visible: true, locked: false },
             grid: { id: 'grid', name: '辅助网格', icon: 'view-grid', visible: true, locked: false }
         }
     };
@@ -580,7 +581,8 @@
         var layerMap = {
             ghost: ['ghostLayer'],
             water: ['waterLayer'],
-            lines: ['lineLayer', 'notOpenLayer', 'scatteredLayer', 'virtualConnectorLayer'],
+            lines: ['lineLayer', 'notOpenLayer', 'virtualConnectorLayer'],
+            scattered: ['scatteredLayer'],
             stations: ['stationLayer', 'labelLayer'],
             texts: ['textLayer'],
             grid: ['gridLayer', 'canvasArtboardBackdrop']
@@ -2246,6 +2248,129 @@
      * 一批找不到归属的孤儿线段；**车站本身不删** —— 它们可能还被别的线路
      * 或虚拟换乘引用着，要删请到车站列表或多选面板里删。
      */
+    // =========================================================================
+    // 画布右键菜单：按右键位置下的对象（车站 / 线路 / 装饰 / 空白处）给出常用操作
+    // =========================================================================
+    function plainText(v) { return String(v == null ? '' : v).replace(/<[^>]*>/g, ''); }
+
+    function buildContextMenuItems(e) {
+        var VP = window.OpenMapEditor.ViewportLayer;
+        var world = VP.screenToWorld(e.clientX, e.clientY);
+        var HM = window.OpenMapEditor.HistoryManager;
+        var items = [];
+        var common = function () {
+            return [
+                { separator: true },
+                { label: '撤销', icon: 'undo', shortcut: 'Ctrl+Z', disabled: !HM.canUndo(), onClick: function () { document.getElementById('btnUndo').click(); } },
+                { label: '重做', icon: 'redo', shortcut: 'Ctrl+Y', disabled: !HM.canRedo(), onClick: function () { document.getElementById('btnRedo').click(); } }
+            ];
+        };
+
+        // 1. 车站
+        var nodeEl = e.target.closest('[data-node-id]');
+        if (nodeEl && app.project.nodes[nodeEl.getAttribute('data-node-id')]) {
+            var nid = nodeEl.getAttribute('data-node-id');
+            var node = app.project.nodes[nid];
+            var cat = window.OpenMapEditor.StationStyleCatalog;
+            var surg = window.OpenMapEditor.PipelineSurgical;
+            var snap = surg && surg.getOriginalSnapshot ? surg.getOriginalSnapshot() : null;
+            var origin = snap && snap.nodes ? snap.nodes[nid] : null;
+            var styleChanged = !!(cat && origin && !cat.sameAppearance(origin, node));
+            var selectIt = function () { app.selected = { type: 'node', id: nid }; renderAll(); };
+            items.push({ header: '车站「' + plainText(node.cn || nid) + '」' });
+            items.push({ label: '更换样式…', icon: 'palette', onClick: function () {
+                selectIt();
+                setTimeout(function () { var t = document.getElementById('propNodeTypeTrigger'); if (t) t.click(); }, 30);
+            } });
+            if (styleChanged) {
+                items.push({ label: '恢复载入时的样式', icon: 'undo', onClick: function () {
+                    handlePropertyChange('node', nid, 'appearance', cat.appearanceOf(origin));
+                } });
+            }
+            items.push({ label: node.hideLabel ? '显示站名' : '隐藏站名', icon: 'eye', onClick: function () {
+                handlePropertyChange('node', nid, 'hideLabel', !node.hideLabel);
+            } });
+            items.push({ label: '复制', icon: 'copy', shortcut: 'Ctrl+C', onClick: function () {
+                selectIt(); if (copySelection()) showToast('已复制车站', 'success');
+            } });
+            items.push({ label: '在大纲中定位', icon: 'location', onClick: selectIt });
+            items.push({ separator: true });
+            items.push({ label: '删除车站', icon: 'delete', danger: true, shortcut: 'Del', onClick: function () {
+                handlePropertyChange('node', nid, 'delete', true);
+            } });
+            return items.concat(common());
+        }
+
+        // 2. 地图装饰（徽标级散点）
+        var scEl = e.target.closest('.scattered-item.is-pickable[data-scattered-idx]');
+        if (scEl && !(app.layerState.scattered && app.layerState.scattered.locked)) {
+            var si = parseInt(scEl.getAttribute('data-scattered-idx'), 10);
+            var sc = (app.project.scattered || [])[si];
+            if (sc) {
+                var z = sc.zIndex !== undefined ? sc.zIndex : 5;
+                items.push({ header: '地图装饰「' + plainText(String(sc.file || sc.id).split('/').pop()) + '」' });
+                items.push({ label: '编辑属性', icon: 'edit', onClick: function () { app.selected = { type: 'scattered', idx: si }; renderAll(); } });
+                items.push({ label: '复制一份', icon: 'copy', onClick: function () { handlePropertyChange('scattered', si, 'duplicate', true); } });
+                items.push({ label: '置于车站之上', icon: 'arrow-up', disabled: z >= 25, onClick: function () { handlePropertyChange('scattered', si, 'zIndex', 25); } });
+                items.push({ label: '置于线路之下', icon: 'arrow-down', disabled: z <= 5, onClick: function () { handlePropertyChange('scattered', si, 'zIndex', 5); } });
+                items.push({ separator: true });
+                items.push({ label: '删除装饰', icon: 'delete', danger: true, onClick: function () { handlePropertyChange('scattered', si, 'delete', true); } });
+                return items.concat(common());
+            }
+        }
+
+        // 3. 线路
+        var segEl = e.target.closest('[data-segment-id]');
+        var seg = segEl ? (app.project.segments || []).find(function (s0) { return s0.id === segEl.getAttribute('data-segment-id'); }) : null;
+        var line = seg ? (app.project.lines || []).find(function (l) { return l.id === seg.lineId; }) : null;
+        if (seg) {
+            var scale = VP.getScale() || 1;
+            var proj = window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.findNearestLineProjection
+                ? window.OpenMapEditor.PipelineDraw.findNearestLineProjection(app.project, world, 30 / scale) : null;
+            items.push({ header: '线路「' + plainText(line ? (line.name || line.id) : seg.lineId) + '」' });
+            items.push({ label: '在此处插入车站', icon: 'add', disabled: !proj, onClick: function () {
+                HM.pushSnapshot(app.project);
+                var res = window.OpenMapEditor.PipelineDraw.insertStationOnLine(app.project, proj);
+                if (res && res.createdId) app.selected = { type: 'node', id: res.createdId };
+                renderAll();
+            } });
+            if (line) {
+                items.push({ label: '选中整条线路', icon: 'route', onClick: function () { app.selected = { type: 'line', id: line.id }; renderAll(); } });
+                items.push({ label: '设为当前绘制线路', icon: 'edit', disabled: app.activeLineId === line.id, onClick: function () {
+                    app.activeLineId = line.id;
+                    if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.setActiveLine) window.OpenMapEditor.PipelineDraw.setActiveLine(line.id);
+                    renderAll();
+                    showToast('当前绘制线路：' + (line.name || line.id), 'info');
+                } });
+            }
+            items.push({ label: '编辑这一段折点', icon: 'edit', onClick: function () { app.selected = { type: 'segment', id: seg.id }; setTool('points'); renderAll(); } });
+            if (line) {
+                items.push({ separator: true });
+                items.push({ label: '删除整条线路…', icon: 'delete', danger: true, onClick: function () { deleteLineById(line.id); } });
+            }
+            return items.concat(common());
+        }
+
+        // 4. 空白处
+        var snapped = app.snapEnabled ? VP.snapPoint(world.x, world.y) : { x: roundCoord(world.x), y: roundCoord(world.y) };
+        var navMode = VP.getNavMode ? VP.getNavMode() : 'map';
+        items.push({ label: '在此添加车站', icon: 'add', onClick: function () {
+            HM.pushSnapshot(app.project);
+            var pModel = window.OpenMapEditor.ProjectModel || window.ProjectModel;
+            var id = pModel ? pModel.nextId(app.project, 'station_') : ('station_' + Date.now());
+            app.project.nodes[id] = { id: id, x: snapped.x, y: snapped.y, cn: '新车站', en: 'New Station', type: 'dot', align: 'top' };
+            app.selected = { type: 'node', id: id };
+            renderAll();
+        } });
+        items.push({ label: '粘贴', icon: 'copy', shortcut: 'Ctrl+V', disabled: !editorClipboard, onClick: function () { pasteClipboard(); } });
+        items.push({ separator: true });
+        items.push({ label: '全图居中', icon: 'fullscn', shortcut: 'F', onClick: function () { document.getElementById('hudBtnFit')?.click(); } });
+        items.push({ label: (app.gridVisible ? '隐藏' : '显示') + '网格', icon: 'view-grid', shortcut: 'G', onClick: function () { document.getElementById('hudBtnGrid')?.click(); } });
+        items.push({ label: navMode === 'map' ? '切换到设计软件模式（左键框选）' : '切换到地图模式（左键拖动画布）', icon: navMode === 'map' ? 'fullscn' : 'touch', shortcut: 'M',
+            onClick: function () { document.getElementById('hudBtnNavMode')?.click(); } });
+        return items.concat(common());
+    }
+
     /** 新装饰的唯一 id（导出补丁按 id 定位条目，不能重复） */
     function uniqueScatteredId(base) {
         var used = {};
@@ -3008,6 +3133,37 @@
                 showToast(app.smartGuidesEnabled ? '智能参考线与磁吸已开启 (Ctrl+U)' : '智能参考线已关闭 (Ctrl+U)');
             });
         }
+
+        // 鼠标操作模式：地图模式（滚轮缩放 / 左键拖动画布）⇄ 设计软件模式（左键框选 / 空格或中键拖动）
+        var navBtn = document.getElementById('hudBtnNavMode');
+        var syncNavBtn = function () {
+            var vpl = window.OpenMapEditor.ViewportLayer;
+            var m = vpl.getNavMode ? vpl.getNavMode() : 'map';
+            var label = document.getElementById('hudNavModeLabel');
+            if (label) label.textContent = m === 'map' ? '地图' : '设计';
+            var ic = navBtn && navBtn.querySelector('cgo-icon');
+            if (ic) ic.setAttribute('name', m === 'map' ? 'touch' : 'fullscn');
+            if (navBtn) navBtn.title = m === 'map'
+                ? '当前：地图模式 —— 滚轮缩放，左键按住空白处拖动画布，Shift + 拖动框选。点击切换到设计软件模式 (M)'
+                : '当前：设计软件模式 —— 左键拖动空白处框选，空格 / 中键拖动画布，鼠标滚轮缩放、触控板滑动平移。点击切换到地图模式 (M)';
+        };
+        var toggleNavMode = function () {
+            var vpl = window.OpenMapEditor.ViewportLayer;
+            var next = vpl.getNavMode() === 'map' ? 'design' : 'map';
+            vpl.setNavMode(next);
+            syncNavBtn();
+            showToast(next === 'map'
+                ? '地图模式：滚轮缩放，左键拖动画布（Shift + 拖动框选）'
+                : '设计软件模式：左键框选，空格 / 中键拖动画布', 'info');
+        };
+        if (navBtn) navBtn.addEventListener('click', toggleNavMode);
+        syncNavBtn();
+        window.addEventListener('keydown', function (e) {
+            if (e.key !== 'm' && e.key !== 'M') return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.target && e.target.matches && e.target.matches('input, textarea, select, [contenteditable="true"]')) return;
+            toggleNavMode();
+        });
 
         var rulerBtn = document.getElementById('hudBtnRuler');
         if (rulerBtn) rulerBtn.addEventListener('click', function () {
@@ -4425,7 +4581,7 @@
 
             // 3.5 点选 / 拖动地图装饰（徽标级散点）
             var targetScEl = e.target.closest('.scattered-item.is-pickable[data-scattered-idx]');
-            if (targetScEl && !app.layerState.lines.locked && (app.activeTool === 'select' || app.activeTool === 'box')) {
+            if (targetScEl && !(app.layerState.scattered && app.layerState.scattered.locked) && (app.activeTool === 'select' || app.activeTool === 'box')) {
                 var scIdx = parseInt(targetScEl.getAttribute('data-scattered-idx'), 10);
                 var scObj = (app.project.scattered || [])[scIdx];
                 if (scObj) {
@@ -4494,6 +4650,16 @@
                 var widEl = targetWaterEl.getAttribute('data-water-id');
                 app.selected = { type: 'water', id: widEl };
                 renderAll();
+                return;
+            }
+
+            // 地图模式：选择工具下按住空白处 = 拖动画布（Shift + 拖动仍是框选）；不拖动直接松开 = 取消选中
+            var vpLayer = window.OpenMapEditor.ViewportLayer;
+            if (app.activeTool === 'select' && !e.shiftKey && vpLayer.getNavMode && vpLayer.getNavMode() === 'map' &&
+                !targetNodeEl && !targetSegEl && !targetTextEl && !targetWaterEl && !targetWaterPtHandle && !targetWaterMid) {
+                vpLayer.startPan(e, function () {
+                    if (app.selected) { app.selected = null; renderAll(); }
+                });
                 return;
             }
 
@@ -4799,7 +4965,13 @@
                 pd.cancelDraft();
                 renderAll();
                 showToast('已结束连续绘制（起点已清除）');
+                return;
             }
+            if (e.target.closest('.viewport-hud')) return;
+            var menu = window.OpenMapEditor.ContextMenu;
+            if (!menu || !app.project) return;
+            e.preventDefault();
+            menu.show(e.clientX, e.clientY, buildContextMenuItems(e));
         });
 
         // 双击交互：双击文字启动原地内联编辑，双击折线在线插入车站

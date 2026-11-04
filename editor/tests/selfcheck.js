@@ -453,6 +453,32 @@ section('地图装饰管理');
 }
 
 // ============================================================================
+// 四点九七、鼠标模式 / 右键菜单 / 逐城样式生成
+// ============================================================================
+section('鼠标模式、右键菜单与逐城样式生成');
+{
+    const vp = fs.readFileSync(path.join(ROOT, 'editor/js/layers/viewport.js'), 'utf8');
+    check(/getNavMode\(\) === 'map'\) \{ zoomToPoint/.test(vp) && /navMode = \(v === 'design'\) \? 'design' : 'map'/.test(vp),
+        '默认地图模式：滚轮缩放；可切换到设计软件模式并记住选择');
+    const app = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    check(/vpLayer\.startPan\(e, function \(\)/.test(app), '地图模式下左键拖动空白处平移画布，单击空白处取消选中');
+    check(/function buildContextMenuItems/.test(app) && /'在此添加车站'/.test(app) && /'在此处插入车站'/.test(app),
+        '画布右键菜单覆盖车站 / 线路 / 装饰 / 空白处');
+    const Icons = require(path.join(ROOT, 'core/station-icons.js'));
+    const plats = Icons.stationPlatforms({ x: 0, y: 0 }, [
+        { id: 'A', color: '#f00', pathPoints: [{ x: -50, y: -4 }, { x: 50, y: -4 }] },
+        { id: 'B', color: '#00f', pathPoints: [{ x: -50, y: 4 }, { x: 50, y: 4 }] },
+        { id: 'C', color: '#0f0', pathPoints: [{ x: 0, y: -50 }, { x: 0, y: 50 }] }]);
+    check(plats.length === 3 && plats.some(p => Math.abs(p.dy + 4) < 1e-6), 'stationPlatforms 找出各线站台的真实位置');
+    ['shanghai', 'sydney', 'hongkong', 'shenzhen'].forEach(c => {
+        const src = fs.readFileSync(path.join(ROOT, 'city', c, c + '.js'), 'utf8');
+        check(/getStationStyleOptions/.test(src), `${c}: 提供「为本站生成」样式钩子`);
+    });
+    const io = fs.readFileSync(path.join(ROOT, 'editor/js/pipelines/pipeline-surgical.js'), 'utf8');
+    check(/off\(curr, 'x'\) - off\(orig, 'x'\)/.test(io), '香港 / 深圳墨迹框站名：位置偏移换算进 lab 一并导出');
+}
+
+// ============================================================================
 // 四点十、开通沿革：区段必须拼满、不得留空洞
 // ============================================================================
 // 「发展史动态演示」把 data_opening_history.js 按日期顺序播成生长动画。数据里

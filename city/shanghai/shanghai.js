@@ -284,31 +284,9 @@
             if (!station) return [];
             const r1 = (v) => Math.round(v * 10) / 10;
             const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
-            // 每条线路离本站最近的点（12px 以内才算经过本站）
-            const near = {};
-            lines.forEach((line) => {
-                Object.keys(line).forEach((key) => {
-                    if (key.indexOf("pathPoints") !== 0) return;
-                    const pts = line[key];
-                    if (!Array.isArray(pts)) return;
-                    for (let i = 0; i < pts.length - 1; i++) {
-                        const a = pts[i], b = pts[i + 1];
-                        const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
-                        if (l2 < 1e-6) continue;
-                        const t = Math.max(0, Math.min(1, ((station.x - a.x) * dx + (station.y - a.y) * dy) / l2));
-                        const px = a.x + t * dx, py = a.y + t * dy;
-                        const d = Math.hypot(station.x - px, station.y - py);
-                        const lid = line.id || key;
-                        if (d <= 12 && (!near[lid] || d < near[lid].d)) near[lid] = { d, x: px, y: py };
-                    }
-                });
-            });
-            // 同一位置的多条线路（共线 / 交叉点）只算一个站台
-            const platforms = [];
-            Object.keys(near).forEach((lid) => {
-                const p = near[lid];
-                if (!platforms.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < 3)) platforms.push(p);
-            });
+            // 各线站台位置（线路折线上离车站最近的点），共用 core/station-icons.js 的实现
+            const platforms = (window.CGoStationIcons && window.CGoStationIcons.stationPlatforms)
+                ? window.CGoStationIcons.stationPlatforms(station, lines, 12) : [];
 
             const capsule = (cx, cy, angle, long) => ({ shape: "capsule", dx: r1(cx), dy: r1(cy), angle: r1(angle),
                 long: r1(long), short: CAPSULE_SHORT });

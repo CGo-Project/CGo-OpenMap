@@ -356,7 +356,9 @@
     /** 车站位移后平移其绝对排版框 lab；没有 lab、没挪动或 lab 已被手工改过时返回 null */
     function shiftLabWithStation(curr, orig) {
         if (!curr || !orig || !curr.lab || !orig.lab) return null;
-        var dx = (curr.x || 0) - (orig.x || 0), dy = (curr.y || 0) - (orig.y || 0);
+        var off = function (n, k) { return (n.offset && n.offset[k]) || 0; };
+        var dx = (curr.x || 0) - (orig.x || 0) + off(curr, 'x') - off(orig, 'x');
+        var dy = (curr.y || 0) - (orig.y || 0) + off(curr, 'y') - off(orig, 'y');
         if (!dx && !dy) return null;
         if (JSON.stringify(curr.lab) !== JSON.stringify(orig.lab)) return curr.lab;
         return shiftBoxes(orig.lab, dx, dy);

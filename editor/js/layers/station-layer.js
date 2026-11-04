@@ -204,8 +204,11 @@ window.OpenMapEditor.StationLayer = (function () {
      */
     function followStation(node, origin) {
         if (!node || !node.lab || !origin || !origin.lab) return node;
-        var dx = (node.x || 0) - (origin.x || 0);
-        var dy = (node.y || 0) - (origin.y || 0);
+        // 车站位移 + 位置偏移的增量都作用到排版框上：这类城市的引擎不读 offset，
+        // 编辑器把「偏移」换算进 lab，导出后线路图上看到的就是同一个位置
+        var off = function (n, k) { return (n.offset && n.offset[k]) || 0; };
+        var dx = (node.x || 0) - (origin.x || 0) + off(node, 'x') - off(origin, 'x');
+        var dy = (node.y || 0) - (origin.y || 0) + off(node, 'y') - off(origin, 'y');
         if (!dx && !dy) return node;
         if (JSON.stringify(node.lab) !== JSON.stringify(origin.lab)) return node;
         return Object.assign({}, node, { lab: shiftBoxes(origin.lab, dx, dy) });

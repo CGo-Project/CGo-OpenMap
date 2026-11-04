@@ -602,3 +602,17 @@ body.office-app-shell .mobile-status-bar-fill,
     accent-color: var(--office-primary);
     cursor: pointer;
 }
+
+/* 鼠标操作模式切换（视口浮动工具栏） */
+.hud-btn.hud-nav-mode {
+    width: auto;
+    gap: 4px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* 地图模式：空白处可直接抓取拖动画布 */
+.workbench-canvas-viewport.nav-map {
+    cursor: grab;
+}

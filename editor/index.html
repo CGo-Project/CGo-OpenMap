@@ -52,11 +52,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261104.203540">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261104.203540">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261104.203540">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261104.203540">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261104.203540">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261104.205102">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261104.205102">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261104.205102">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261104.205102">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261104.205102">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -572,6 +572,10 @@
                     <cgo-icon name="design" size="14"></cgo-icon>
                 </button>
                 <div class="hud-divider"></div>
+                <button class="hud-btn hud-nav-mode" id="hudBtnNavMode" title="切换鼠标操作模式 (M)">
+                    <cgo-icon name="touch" size="14"></cgo-icon><span id="hudNavModeLabel">地图</span>
+                </button>
+                <div class="hud-divider"></div>
                 <button class="hud-btn active" id="hudBtnToggleInspector" title="切换属性检视面板 (Ctrl+])">
                     <cgo-icon name="edit" size="14"></cgo-icon>
                 </button>
@@ -968,6 +972,9 @@
                     Ctrl+Shift+Z</span></div>
             <div class="shortcut-row"><span class="desc">操作历史步骤面板</span><span class="shortcut-kbd">Ctrl + H</span></div>
             <div class="shortcut-row"><span class="desc">显示/隐藏坐标标尺</span><span class="shortcut-kbd">R</span></div>
+            <div class="shortcut-row"><span class="desc">切换鼠标模式（地图 ⇄ 设计软件）</span><span class="shortcut-kbd">M</span></div>
+            <div class="shortcut-row"><span class="desc">地图模式：拖动画布 / 框选</span><span class="shortcut-kbd">左键拖动空白处 / Shift + 拖动</span></div>
+            <div class="shortcut-row"><span class="desc">右键菜单</span><span class="shortcut-kbd">右键车站 / 线路 / 装饰 / 空白处</span></div>
             <div class="shortcut-row"><span class="desc">快速原地保存工程</span><span class="shortcut-kbd">Ctrl + S</span></div>
             <div class="shortcut-row"><span class="desc">打开 / 导入工程</span><span class="shortcut-kbd">Ctrl + O</span>
             </div>
@@ -1048,10 +1055,10 @@
     </cgo-modal>
 
     <!-- 模块脚本加载链 -->
-    <script type="module" src="../core/cgo-ui.js?v=261104.203540"></script>
-    <script src="../core/path-geometry.js?v=261104.203540"></script>
-    <script src="../core/station-icons.js?v=261104.203540"></script>
-    <script src="../city/data.js?v=261104.203540"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261104.205102"></script>
+    <script src="../core/path-geometry.js?v=261104.205102"></script>
+    <script src="../core/station-icons.js?v=261104.205102"></script>
+    <script src="../city/data.js?v=261104.205102"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -1113,6 +1120,7 @@
     <script src="js/ui/inspector-view.js"></script>
     <script src="js/ui/asset-drawer.js"></script>
     <script src="js/ui/confirm-dialog.js"></script>
+    <script src="js/ui/context-menu.js"></script>
 
     <!-- 主入口集成脚本 -->
     <script src="js/editor-app.js"></script>

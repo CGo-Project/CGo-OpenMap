@@ -357,6 +357,11 @@ window.OpenMapEditor.InspectorView = (function () {
             html += '</div></div>';
 
             // 嵌入 8 方向轮盘
+            if (node.lab) {
+                html += '<div class="type-picker-note" style="margin:8px 0 6px;"><cgo-icon name="info" size="12"></cgo-icon>' +
+                    '<span>本站站名按官方排版框（lab）逐行定位：8 方向锚点对它不起作用；' +
+                    '用下方「位置偏移」微调站名，拖动车站时站名会跟着移动，导出时排版框同步换算。</span></div>';
+            }
             html += renderAlignWheelHtml(node.align);
 
             // 偏移微调
