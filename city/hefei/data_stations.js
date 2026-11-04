@@ -39,7 +39,7 @@ const stationsData = {
         x: 1362,
         y: 1147,
         cn: "合肥火车站",
-        en: "Hefei Railway Station<br>(Hefei Railway Station)",
+        en: "Hefei Huochezhan<br>(Hefei Railway Station)",
         align: "bottom-right",
         offset: { x: 6, y: 6 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -269,7 +269,7 @@ const stationsData = {
         x: 270,
         y: 1347,
         cn: "南岗",
-        en: "Nangang",
+        en: "Nan'gang",
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -339,7 +339,7 @@ const stationsData = {
         x: 801,
         y: 1347,
         cn: "科学大道",
-        en: "Science Dadao",
+        en: "Kexue Dadao",
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -379,7 +379,7 @@ const stationsData = {
         x: 1062,
         y: 1348,
         cn: "三里庵",
-        en: "Sanlian",
+        en: "Sanli'an",
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -559,7 +559,7 @@ const stationsData = {
         x: 2283,
         y: 1456,
         cn: "肥东站",
-        en: "Feidong Zhan<br>Feidong Railway Station",
+        en: "Feidong Zhan<br>(Feidong Railway Station)",
         align: "left",
         offset: { x: -8, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -569,7 +569,7 @@ const stationsData = {
         x: 2282,
         y: 1515,
         cn: "和睦湖",
-        en: "Hemu Lake",
+        en: "Hemuhu",
         align: "right",
         offset: { x: 8, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -779,7 +779,7 @@ const stationsData = {
         x: 987,
         y: 1217,
         cn: "合肥西站",
-        en: "Hefei Xizhan<br>Hefei West Railway Station",
+        en: "Hefei Xizhan<br>(Hefei West Railway Station)",
         align: "top-left",
         offset: { x: -4, y: -8 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -819,7 +819,7 @@ const stationsData = {
         x: 953,
         y: 1550,
         cn: "市政务中心",
-        en: "Shi Zhengwuzhongxin",
+        en: "Shi Zhengwu Zhongxin",
         align: "right",
         offset: { x: 6, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1009,7 +1009,7 @@ const stationsData = {
         x: 1532,
         y: 820,
         cn: "安医一附院北区",
-        en: "Anyi 1 Fuayuan Beiqu",
+        en: "Anyi 1 Fuyuan Beiqu",
         align: "left",
         offset: { x: -8, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1039,7 +1039,7 @@ const stationsData = {
         x: 1532,
         y: 1068,
         cn: "新海公园",
-        en: "Xinhai Park",
+        en: "Xinhai Gongyuan",
         align: "right",
         offset: { x: 8, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1079,7 +1079,7 @@ const stationsData = {
         x: 1485,
         y: 1495,
         cn: "尧渡河路",
-        en: "Yaoduhe Road",
+        en: "Yaoduhe Lu",
         align: "bottom-left",
         offset: { x: -6, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1089,7 +1089,7 @@ const stationsData = {
         x: 1485,
         y: 1597,
         cn: "工经学院",
-        en: "Industrial Economics College",
+        en: "Gongjing Xueyuan",
         align: "right",
         offset: { x: 8, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1099,7 +1099,7 @@ const stationsData = {
         x: 1445,
         y: 1692,
         cn: "葛大店南",
-        en: "South Gedadian",
+        en: "Gedadianan",
         align: "bottom-right",
         offset: { x: 6, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1109,7 +1109,7 @@ const stationsData = {
         x: 1368,
         y: 1692,
         cn: "望湖城南",
-        en: "South Wanghucheng",
+        en: "Wanghuchengnan",
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1239,7 +1239,7 @@ const stationsData = {
         x: 483,
         y: 1757,
         cn: "长安集",
-        en: "Changanji",
+        en: "Chang'anji",
         align: "right",
         offset: { x: 6, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1379,7 +1379,7 @@ const stationsData = {
         x: 1166,
         y: 1446,
         cn: "中国科大东区",
-        en: "Zhonguo Keda Dongqu",
+        en: "Zhongguo Keda Dongqu",
         align: "left",
         offset: { x: 0, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1399,7 +1399,7 @@ const stationsData = {
         x: 1166,
         y: 1548,
         cn: "休宁路",
-        en: "Xiuninglu",
+        en: "Xiuning Lu",
         align: "right",
         offset: { x: 8, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1419,7 +1419,7 @@ const stationsData = {
         x: 1219,
         y: 1652,
         cn: "望湖城西",
-        en: "West Wanghucheng",
+        en: "Wanghuchengxi",
         align: "bottom-left",
         offset: { x: -1, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1889,7 +1889,7 @@ const stationsData = {
         x: 1640,
         y: 2047,
         cn: "合肥四中",
-        en: "Hefei No.4 High School",
+        en: "Hefei Sizhong",
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1909,7 +1909,7 @@ const stationsData = {
         x: 1113,
         y: 583,
         cn: "省立医院北区",
-        en: "Shengliyiyuan Beiqu",
+        en: "Shengli Yiyuan Beiqu",
         align: "top-left",
         offset: { x: -6, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -2049,7 +2049,7 @@ const stationsData = {
         x: 537,
         y: 850,
         cn: "未来湖",
-        en: "Weilai Lake",
+        en: "Weilaihu",
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -2059,7 +2059,7 @@ const stationsData = {
         x: 634,
         y: 849,
         cn: "长兴湖",
-        en: "Changxing Lake",
+        en: "Changxinghu",
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
