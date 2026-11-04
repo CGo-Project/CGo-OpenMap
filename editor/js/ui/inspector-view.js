@@ -793,6 +793,97 @@ window.OpenMapEditor.InspectorView = (function () {
     /**
      * 通用图元检视面板（用于虚拟换乘、在建走向、地点地标、水域、文本等）
      */
+    /**
+     * 地图装饰（散点）检视面板：素材、位置、尺寸、旋转、不透明度、层级均可直接编辑。
+     * @param {Object} item SCATTERED_DATA 条目
+     * @param {number} idx 条目下标
+     * @param {Object} project 工程（用于列出本城市已用的素材文件）
+     */
+    function renderScatteredInspector(item, idx, project) {
+        if (!dom.body) return;
+        var resolve = (window.OpenMapEditor.ScatteredLayer && window.OpenMapEditor.ScatteredLayer.resolveSvgPath) || function (f) { return f; };
+        var pickable = window.OpenMapEditor.ScatteredLayer && window.OpenMapEditor.ScatteredLayer.isPickable
+            ? window.OpenMapEditor.ScatteredLayer.isPickable(item) : true;
+        var files = [];
+        ((project && project.scattered) || []).forEach(function (sc) {
+            if (sc && sc.file && files.indexOf(sc.file) === -1) files.push(sc.file);
+        });
+        var num = function (v, d) { return (v === undefined || v === null || v === '') ? d : v; };
+        var fileName = function (f) { return String(f || '').split('/').pop(); };
+
+        var html = '<div class="inspector-section">' +
+            '<div class="inspector-section-title"><span>地图装饰</span>' +
+            '<cgo-badge variant="info">' + escAttr(item.id || ('#' + idx)) + '</cgo-badge></div>' +
+            '<div class="scattered-preview">' +
+            (item.file ? '<img src="' + escAttr(resolve(item.file)) + '" alt="" draggable="false">' : '<span>无素材</span>') +
+            '</div>' +
+            (pickable ? '' : '<div class="scattered-backdrop-note"><cgo-icon name="info" size="12"></cgo-icon>' +
+                '<span>这是铺满画布的底图装饰，为避免误拖，只能在这里调整，画布上不可直接点选。</span></div>') +
+            '<div class="form-row"><span class="form-label">素材文件:</span>' +
+            '<select class="form-select" id="propScFileSel">' +
+            files.map(function (f) {
+                return '<option value="' + escAttr(f) + '"' + (f === item.file ? ' selected' : '') + '>' + escAttr(fileName(f)) + '</option>';
+            }).join('') +
+            '<option value="__custom">自定义路径…</option></select></div>' +
+            '<div class="form-row" id="propScFileCustomRow" style="display:none;"><span class="form-label">路径:</span>' +
+            '<input type="text" class="form-input" id="propScFile" spellcheck="false" placeholder="./city/{id}/assets/xxx.svg" value="' + escAttr(item.file || '') + '"></div>' +
+            '<div class="form-row"><span class="form-label">中心坐标:</span><div style="display:flex;gap:4px;flex:1;">' +
+            '<input type="number" step="0.1" class="form-input" id="propScX" value="' + escAttr(num(item.x, 0)) + '">' +
+            '<input type="number" step="0.1" class="form-input" id="propScY" value="' + escAttr(num(item.y, 0)) + '"></div></div>' +
+            '<div class="form-row"><span class="form-label">宽 × 高:</span><div style="display:flex;gap:4px;flex:1;align-items:center;">' +
+            '<input type="number" step="0.1" min="1" class="form-input" id="propScW" value="' + escAttr(num(item.width, '')) + '" placeholder="原始">' +
+            '<input type="number" step="0.1" min="1" class="form-input" id="propScH" value="' + escAttr(num(item.height, '')) + '" placeholder="原始">' +
+            '<label class="sc-lock" title="锁定宽高比"><input type="checkbox" id="propScLock" checked><cgo-icon name="link" size="12"></cgo-icon></label>' +
+            '</div></div>' +
+            '<div class="form-row"><span class="form-label">旋转角:</span>' +
+            '<input type="number" step="1" class="form-input" id="propScRot" value="' + escAttr(num(item.rotation, 0)) + '"></div>' +
+            '<div class="form-row"><span class="form-label">不透明度:</span><div style="display:flex;gap:6px;flex:1;align-items:center;">' +
+            '<input type="range" min="0" max="1" step="0.05" id="propScOpacity" value="' + escAttr(num(item.opacity, 1)) + '" style="flex:1;">' +
+            '<span id="propScOpacityVal" style="width:34px;text-align:right;font-size:11px;">' + Math.round(num(item.opacity, 1) * 100) + '%</span></div></div>' +
+            '<div class="form-row"><span class="form-label">图层层级:</span>' +
+            '<input type="number" step="1" class="form-input" id="propScZ" value="' + escAttr(num(item.zIndex, 5)) + '" title="数值越大越靠上（车站约 15~20，线路约 10）"></div>' +
+            '<div style="display:flex;gap:6px;margin-top:10px;">' +
+            '<button type="button" class="ribbon-btn-sm" id="btnScDuplicate"><cgo-icon name="copy" size="12"></cgo-icon><span>复制一份</span></button>' +
+            '<button type="button" class="ribbon-btn-sm danger" id="btnScDelete"><cgo-icon name="delete" size="12"></cgo-icon><span>删除装饰</span></button>' +
+            '</div></div>';
+        dom.body.innerHTML = html;
+
+        var fire = function (prop, value) { fireChange('scattered', idx, prop, value); };
+        var numOrNull = function (el) { var v = parseFloat(el.value); return isNaN(v) ? null : Math.round(v * 100) / 100; };
+        var sel = document.getElementById('propScFileSel');
+        var customRow = document.getElementById('propScFileCustomRow');
+        var fileInput = document.getElementById('propScFile');
+        if (!item.file || files.indexOf(item.file) === -1) { sel.value = '__custom'; customRow.style.display = ''; }
+        sel.addEventListener('change', function () {
+            if (sel.value === '__custom') { customRow.style.display = ''; fileInput.focus(); return; }
+            customRow.style.display = 'none';
+            fire('file', sel.value);
+        });
+        fileInput.addEventListener('change', function () { if (fileInput.value.trim()) fire('file', fileInput.value.trim()); });
+        var xEl = document.getElementById('propScX'), yEl = document.getElementById('propScY');
+        var onPos = function () { fire('position', { x: numOrNull(xEl) || 0, y: numOrNull(yEl) || 0 }); };
+        xEl.addEventListener('change', onPos); yEl.addEventListener('change', onPos);
+        var wEl = document.getElementById('propScW'), hEl = document.getElementById('propScH'), lock = document.getElementById('propScLock');
+        var ratio = (item.width && item.height) ? item.height / item.width : 1;
+        wEl.addEventListener('change', function () {
+            var w = numOrNull(wEl);
+            var h = lock.checked && w ? Math.round(w * ratio * 100) / 100 : numOrNull(hEl);
+            fire('size', { width: w, height: h });
+        });
+        hEl.addEventListener('change', function () {
+            var h = numOrNull(hEl);
+            var w = lock.checked && h ? Math.round(h / ratio * 100) / 100 : numOrNull(wEl);
+            fire('size', { width: w, height: h });
+        });
+        document.getElementById('propScRot').addEventListener('change', function () { fire('rotation', numOrNull(this) || null); });
+        var op = document.getElementById('propScOpacity');
+        op.addEventListener('input', function () { document.getElementById('propScOpacityVal').textContent = Math.round(op.value * 100) + '%'; });
+        op.addEventListener('change', function () { var v = parseFloat(op.value); fire('opacity', v >= 1 ? 1 : v); });
+        document.getElementById('propScZ').addEventListener('change', function () { fire('zIndex', numOrNull(this)); });
+        document.getElementById('btnScDuplicate').addEventListener('click', function () { fire('duplicate', true); });
+        document.getElementById('btnScDelete').addEventListener('click', function () { fire('delete', true); });
+    }
+
     /** 坐标显示：最多 2 位小数，整数不带 ".0" */
     function fmtCoord(v) {
         var n = Math.round(Number(v) * 100) / 100;
@@ -1429,6 +1520,7 @@ window.OpenMapEditor.InspectorView = (function () {
         renderTextInspector: renderTextInspector,
         renderWaterInspector: renderWaterInspector,
         renderGenericInspector: renderGenericInspector,
+        renderScatteredInspector: renderScatteredInspector,
         renderEmpty: renderEmpty
     };
 })();

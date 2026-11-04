@@ -160,6 +160,24 @@ window.OpenMapEditor.AssetDrawer = (function () {
             html += '</div></div>';
         }
 
+        // 分组一点八：地图装饰素材（本城市已在用的 SVG 徽标，点击后在画布落子）
+        var decoFiles = decorationAssets();
+        if (decoFiles.length) {
+            html += '<div class="asset-group-section" style="margin-bottom:12px;">' +
+                '<div style="font-size:11px;font-weight:700;color:var(--text-light, #64748b);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">' +
+                '<span>地图装饰素材</span>' +
+                '<span class="cgo-badge" style="font-size:9px;">' + decoFiles.length + ' 个</span>' +
+                '</div>' +
+                '<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:5px;">';
+            decoFiles.forEach(function (d, i) {
+                html += '<button type="button" class="asset-tile-btn asset-deco-btn" data-category="scattered" data-id="deco' + i + '" data-deco="' + i + '" title="' + escHtml(d.file) + '\n已用 ' + d.count + ' 处 · 点击后在画布落子" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:4px;transition:all 0.15s;">' +
+                    '<span class="deco-thumb"><img src="' + escHtml(d.src) + '" alt="" draggable="false"></span>' +
+                    '<span style="font-size:10px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + escHtml(d.name) + '</span>' +
+                    '</button>';
+            });
+            html += '</div></div>';
+        }
+
         // 分组二：综合交通枢纽设施徽标
         html += '<div class="asset-group-section" style="margin-bottom:12px;">' +
             '<div style="font-size:11px;font-weight:700;color:var(--text-light, #64748b);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">' +
@@ -242,6 +260,38 @@ window.OpenMapEditor.AssetDrawer = (function () {
         });
     }
 
+    function escHtml(v) {
+        return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * 本城市已在用的装饰素材（按文件去重，取首次出现的尺寸作为落子默认尺寸）。
+     * 只列徽标级小图：铺满画布的底图装饰不适合「再放一个」。
+     */
+    var decoList = [];
+    function decorationAssets() {
+        var app = window.OpenMapEditor._getApp ? window.OpenMapEditor._getApp() : null;
+        var list = (app && app.project && app.project.scattered) || [];
+        var layer = window.OpenMapEditor.ScatteredLayer;
+        var byFile = {};
+        decoList = [];
+        list.forEach(function (sc) {
+            if (!sc || !sc.file) return;
+            if (layer && layer.isPickable && !layer.isPickable(sc)) return;
+            if (byFile[sc.file]) { byFile[sc.file].count++; return; }
+            var d = {
+                file: sc.file,
+                name: String(sc.file).split('/').pop().replace(/\.svg$/i, ''),
+                src: layer && layer.resolveSvgPath ? layer.resolveSvgPath(sc.file) : sc.file,
+                width: sc.width, height: sc.height, zIndex: sc.zIndex, idStem: String(sc.id || 'deco').replace(/-[\d_.-]+$/, ''),
+                count: 1
+            };
+            byFile[sc.file] = d;
+            decoList.push(d);
+        });
+        return decoList;
+    }
+
     function patchFor(key) {
         return harvestedPatches[key] || null;
     }
@@ -300,6 +350,11 @@ window.OpenMapEditor.AssetDrawer = (function () {
                 this.classList.add('active');
 
                 if (typeof callbacks.onEnterStampMode === 'function') {
+                    if (cat === 'scattered') {
+                        var deco = decoList[parseInt(this.getAttribute('data-deco'), 10)];
+                        if (deco) callbacks.onEnterStampMode('scattered', { id: id, deco: deco });
+                        return;
+                    }
                     var styleKey = this.getAttribute('data-style');
                     var payload = { id: id, glyph: glyph };
                     if (cat === 'station') {

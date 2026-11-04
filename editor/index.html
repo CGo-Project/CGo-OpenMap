@@ -52,11 +52,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261104.093002">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261104.093002">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261104.093002">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261104.093002">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261104.093002">
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261104.203540">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261104.203540">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261104.203540">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261104.203540">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261104.203540">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -117,6 +117,19 @@
                 <span class="doc-sep">Beta4 /</span>
                 <span class="doc-name" id="currentDocLabel">未打开工程</span>
             </div>
+            <!-- 快速访问工具栏：撤销 / 重做在任何功能区页签下都可见 -->
+            <div class="title-bar-quick" role="toolbar" aria-label="快速访问">
+                <span class="title-bar-divider" aria-hidden="true"></span>
+                <button class="title-bar-btn" id="qatUndo" title="撤销 (Ctrl+Z)" aria-label="撤销" disabled>
+                    <cgo-icon name="undo" size="15"></cgo-icon>
+                </button>
+                <button class="title-bar-btn" id="qatRedo" title="重做 (Ctrl+Y / Ctrl+Shift+Z)" aria-label="重做" disabled>
+                    <cgo-icon name="redo" size="15"></cgo-icon>
+                </button>
+                <button class="title-bar-btn" id="qatHistory" title="操作历史 (Ctrl+H)" aria-label="操作历史">
+                    <cgo-icon name="time" size="15"></cgo-icon>
+                </button>
+            </div>
         </div>
 
         <div class="title-bar-center"></div>
@@ -131,8 +144,8 @@
             <button class="title-bar-btn" id="btnHeaderLinkDir" title="关联本地城市目录 (File System Access API 原地直存)">
                 <cgo-icon name="folder" size="15"></cgo-icon>
             </button>
-            <button class="title-bar-btn" id="btnHeaderSave" title="保存改动 (Ctrl+S，若关联本地目录则直接原地保存)">
-                <cgo-icon name="save" size="15"></cgo-icon>
+            <button class="title-bar-btn title-bar-save" id="btnHeaderSave" title="保存改动 (Ctrl+S，若关联本地目录则直接原地保存)">
+                <cgo-icon name="save" size="15"></cgo-icon><span>保存</span><span class="save-dirty-dot" aria-hidden="true"></span>
             </button>
             <button class="title-bar-btn" id="btnHeaderShortcuts" title="键盘快捷键与高效手势速查 (?)">
                 <cgo-icon name="info" size="15"></cgo-icon>
@@ -1035,10 +1048,10 @@
     </cgo-modal>
 
     <!-- 模块脚本加载链 -->
-    <script type="module" src="../core/cgo-ui.js?v=261104.093002"></script>
-    <script src="../core/path-geometry.js?v=261104.093002"></script>
-    <script src="../core/station-icons.js?v=261104.093002"></script>
-    <script src="../city/data.js?v=261104.093002"></script>
+    <script type="module" src="../core/cgo-ui.js?v=261104.203540"></script>
+    <script src="../core/path-geometry.js?v=261104.203540"></script>
+    <script src="../core/station-icons.js?v=261104.203540"></script>
+    <script src="../city/data.js?v=261104.203540"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

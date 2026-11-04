@@ -1703,3 +1703,77 @@ body.tool-eyedropper #workbenchViewport svg {
     cursor: not-allowed;
     filter: none;
 }
+
+/* 地图装饰检视面板 */
+.scattered-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 84px;
+    margin: 4px 0 10px;
+    border-radius: 8px;
+    background: var(--map-bg, #ffffff);
+    box-shadow: inset 0 0 0 1px var(--border-color, rgba(0, 0, 0, 0.1));
+    color: var(--text-light);
+    font-size: 11px;
+}
+
+.scattered-preview img {
+    max-width: 70%;
+    max-height: 64px;
+    display: block;
+}
+
+.scattered-backdrop-note {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--text-light);
+    background: var(--office-hover, rgba(0, 0, 0, 0.04));
+}
+
+.sc-lock {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+.deco-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 30px;
+    border-radius: 5px;
+    background: var(--map-bg, #ffffff);
+    box-shadow: inset 0 0 0 1px var(--border-color, rgba(0, 0, 0, 0.1));
+}
+
+.deco-thumb img {
+    max-width: 24px;
+    max-height: 24px;
+    display: block;
+}
+
+/* 并排输入框（坐标 X/Y、宽/高、偏移）在窄面板里按比例收缩，不再把第二个框挤出面板 */
+.form-input,
+.form-select {
+    min-width: 0;
+}
+
+.scattered-preview img {
+    width: 56px;
+    height: auto;
+}
+
+.form-row > div {
+    min-width: 0;
+}

@@ -673,13 +673,61 @@
     }
 
     /**
+     * 地图装饰（data_scattered.js）的条目级回写：按 id 对比载入时的快照，
+     * 只改动过的条目被重写、删掉的移除、新放的追加，其余逐字节保留。
+     */
+    function patchScatteredSource(currentProject) {
+        var origList = (originalSnapshot && originalSnapshot.scattered) || [];
+        var currList = (currentProject && currentProject.scattered) || [];
+        var origById = {};
+        origList.forEach(function (it, i) { origById[it && it.id ? it.id : ('#' + i)] = it; });
+        var currIds = {};
+        var update = {}, append = [], dirty = 0;
+        currList.forEach(function (it, i) {
+            if (!it) return;
+            var key = it.id ? it.id : ('#' + i);
+            currIds[key] = true;
+            var o = origById[key];
+            if (!o) { append.push(it); dirty++; return; }
+            if (JSON.stringify(o) === JSON.stringify(it)) return;
+            var patch = {};
+            Object.keys(it).forEach(function (k) { if (JSON.stringify(it[k]) !== JSON.stringify(o[k])) patch[k] = it[k]; });
+            Object.keys(o).forEach(function (k) { if (!(k in it)) patch[k] = null; });   // null = 删除字段
+            update[it.id || i] = patch;
+            dirty++;
+        });
+        var remove = [];
+        origList.forEach(function (it, i) {
+            var key = it && it.id ? it.id : ('#' + i);
+            if (!currIds[key]) { remove.push(it && it.id ? it.id : String(i)); dirty++; }
+        });
+        var origSrc = rawSources['data_scattered.js'];
+        if (!dirty) return { dirtyCount: 0, patchedSource: origSrc || '' };
+        var io = getCityProjectIO();
+        if (!origSrc) {
+            // 城市原本没有装饰文件：整份新建
+            return {
+                dirtyCount: dirty,
+                patchedSource: '/**\n * 地图装饰物（由 OpenMap Editor 生成）\n */\nconst SCATTERED_DATA = ' +
+                    JSON.stringify(currList, null, 4) + ';\n'
+            };
+        }
+        var patched = io.patchEntries(origSrc, 'SCATTERED_DATA', {
+            update: update, remove: remove,
+            append: append.map(function (it) { return { value: it }; })   // 数组条目无键名
+        });
+        return { dirtyCount: dirty, patchedSource: patched };
+    }
+
+    /**
      * 提取全文件改动集 (Changeset)
      */
     function computeChangeset(currentProject) {
         var stationsRes = patchStationsSource(currentProject);
         var linesRes = patchLinesSource(currentProject);
+        var scatteredRes = patchScatteredSource(currentProject);
 
-        var hasChanges = (stationsRes.dirtyCount > 0 || linesRes.dirtyCount > 0);
+        var hasChanges = (stationsRes.dirtyCount > 0 || linesRes.dirtyCount > 0 || scatteredRes.dirtyCount > 0);
         var files = [
             {
                 filename: 'data_stations.js',
@@ -692,6 +740,12 @@
                 dirtyCount: linesRes.dirtyCount,
                 patchedSource: linesRes.patchedSource,
                 changed: linesRes.dirtyCount > 0
+            },
+            {
+                filename: 'data_scattered.js',
+                dirtyCount: scatteredRes.dirtyCount,
+                patchedSource: scatteredRes.patchedSource,
+                changed: scatteredRes.dirtyCount > 0
             }
         ];
 
@@ -924,6 +978,7 @@
         computeDirtyLines: computeDirtyLines,
         computeDeletedLineIds: computeDeletedLineIds,
         patchLinesSource: patchLinesSource,
+        patchScatteredSource: patchScatteredSource,
         computeChangeset: computeChangeset,
         linkLocalDirectory: linkLocalDirectory,
         getLinkedDirectoryHandle: getLinkedDirectoryHandle,

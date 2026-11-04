@@ -431,6 +431,28 @@ section('车站样式目录 (editor/js/core/station-style-catalog.js)');
 }
 
 // ============================================================================
+// 四点九六、地图装饰（散点）可编辑、可导出
+// ============================================================================
+section('地图装饰管理');
+{
+    const src = 'const SCATTERED_DATA = [\n    {\n        id: "a",\n        x: 1\n    }, // 甲\n];\n';
+    const out = IO.patchEntries(src, 'SCATTERED_DATA', { append: [{ value: { id: 'b', x: 2 } }] });
+    check(/\}, \/\/ 甲\n/.test(out) && out.indexOf('"b"') > out.indexOf('// 甲'),
+        '追加条目时，原末条的行尾注释留在原末条那一行');
+    const surg = fs.readFileSync(path.join(ROOT, 'editor/js/pipelines/pipeline-surgical.js'), 'utf8');
+    check(/filename: 'data_scattered\.js'/.test(surg) && /function patchScatteredSource/.test(surg),
+        '改动集包含 data_scattered.js（装饰的移动 / 增删会进入补丁、ZIP 与回写）');
+    const app = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    check(/isDraggingScattered/.test(app) && /renderScatteredInspector/.test(app),
+        '装饰可在画布上点选拖动，并有可编辑的检视面板');
+    check(/if \(app\.activeStamp\) \{\s*e\.preventDefault\(\);\s*return;/.test(app),
+        '落子模式下按下鼠标不会先触发选中 / 拖拽（点在线路上也能落子）');
+    const html = fs.readFileSync(path.join(ROOT, 'editor/index.html'), 'utf8');
+    check(/id="qatUndo"/.test(html) && /id="qatRedo"/.test(html) && /save-dirty-dot/.test(html),
+        '标题栏快速访问：撤销 / 重做 / 保存（含未保存提示）在任何页签都可见');
+}
+
+// ============================================================================
 // 四点十、开通沿革：区段必须拼满、不得留空洞
 // ============================================================================
 // 「发展史动态演示」把 data_opening_history.js 按日期顺序播成生长动画。数据里

@@ -34,6 +34,16 @@ window.OpenMapEditor.ScatteredLayer = (function () {
     }
 
     /**
+     * 画布上可直接点选 / 拖动的装饰：只限徽标级的小图（≤ 300px）。
+     * 悉尼海域、深圳底图这类铺满整张画布的底图装饰若也可点，点地图任何地方都会选中并拖走它，
+     * 因此只能从大纲 / 检视面板编辑。
+     */
+    function isPickable(item) {
+        if (!item || !item.width || !item.height) return false;
+        return Math.max(Number(item.width), Number(item.height)) <= 300;
+    }
+
+    /**
      * 渲染地理地标与城门散点。
      * DOM 与 core/script.js renderScatteredObjects 一致（#scattered-layer > .scattered-item > img），
      * 这样城市样式表里针对 #scattered-layer 的规则（深色主题反相、提亮等）在编辑器里同样生效。
@@ -64,7 +74,7 @@ window.OpenMapEditor.ScatteredLayer = (function () {
 
         project.scattered.forEach(function (item, idx) {
             var div = document.createElement('div');
-            div.className = 'scattered-item';
+            div.className = 'scattered-item' + (isPickable(item) ? ' is-pickable' : '');
             div.setAttribute('data-scattered-idx', String(idx));
             div.style.left = item.x + 'px';
             div.style.top = item.y + 'px';
@@ -114,7 +124,8 @@ window.OpenMapEditor.ScatteredLayer = (function () {
     return {
         init: init,
         render: render,
-        resolveSvgPath: resolveSvgPath
+        resolveSvgPath: resolveSvgPath,
+        isPickable: isPickable
     };
 })();
 

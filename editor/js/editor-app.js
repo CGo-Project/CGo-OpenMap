@@ -1347,24 +1347,7 @@
         } else if (app.selected.type === 'scattered') {
             var sc = (app.project.scattered || [])[app.selected.idx];
             if (sc) {
-                window.OpenMapEditor.InspectorView.renderGenericInspector(
-                    sc.id || '地点图标地标', 'tourist',
-                    [
-                        { label: '地标标识', value: sc.id || '未知' },
-                        { label: '素材文件', value: sc.file || '内置' },
-                        { label: '中心坐标', value: '(' + sc.x + ', ' + sc.y + ')' },
-                        { label: '尺寸宽高', value: (sc.width || 36) + ' × ' + (sc.height || 36) + ' px' },
-                        { label: '图层层级', value: sc.zIndex !== undefined ? sc.zIndex : 5 }
-                    ],
-                    [
-                        {
-                            label: '删除此地标', danger: true, icon: 'delete',
-                            onClick: function () {
-                                handlePropertyChange('scattered', app.selected.idx, 'delete', true);
-                            }
-                        }
-                    ]
-                );
+                window.OpenMapEditor.InspectorView.renderScatteredInspector(sc, app.selected.idx, app.project);
             } else {
                 renderEmptyInspector();
             }
@@ -2204,9 +2187,31 @@
                 app.selected = null;
             }
         } else if (targetType === 'scattered') {
-            if (prop === 'delete' && Array.isArray(app.project.scattered) && targetId >= 0 && targetId < app.project.scattered.length) {
-                app.project.scattered.splice(targetId, 1);
+            var scList = Array.isArray(app.project.scattered) ? app.project.scattered : (app.project.scattered = []);
+            var scItem = scList[targetId];
+            if (prop === 'delete' && scItem) {
+                scList.splice(targetId, 1);
                 app.selected = null;
+            } else if (scItem) {
+                // 值为 null 表示删掉该字段（如清空宽高 = 回到素材原始尺寸、旋转 0 = 不写 rotation）
+                var setField = function (k, v) {
+                    if (v === null || v === undefined || v === '') delete scItem[k];
+                    else scItem[k] = v;
+                };
+                if (prop === 'position') { scItem.x = value.x; scItem.y = value.y; }
+                else if (prop === 'size') { setField('width', value.width); setField('height', value.height); }
+                else if (prop === 'file') { scItem.file = value; }
+                else if (prop === 'rotation') { setField('rotation', value ? value : null); }
+                else if (prop === 'opacity') { setField('opacity', value); }
+                else if (prop === 'zIndex') { setField('zIndex', value); }
+                else if (prop === 'duplicate') {
+                    var copy = JSON.parse(JSON.stringify(scItem));
+                    copy.id = uniqueScatteredId(scItem.id || 'deco');
+                    copy.x = Math.round(((scItem.x || 0) + 24) * 10) / 10;
+                    copy.y = Math.round(((scItem.y || 0) + 24) * 10) / 10;
+                    scList.splice(targetId + 1, 0, copy);
+                    app.selected = { type: 'scattered', idx: targetId + 1 };
+                }
             }
         }
 
@@ -2241,6 +2246,16 @@
      * 一批找不到归属的孤儿线段；**车站本身不删** —— 它们可能还被别的线路
      * 或虚拟换乘引用着，要删请到车站列表或多选面板里删。
      */
+    /** 新装饰的唯一 id（导出补丁按 id 定位条目，不能重复） */
+    function uniqueScatteredId(base) {
+        var used = {};
+        (app.project.scattered || []).forEach(function (sc) { if (sc && sc.id) used[sc.id] = true; });
+        var stem = String(base || 'deco').replace(/-\d+$/, '');
+        var n = 2;
+        while (used[stem + '-' + n]) n++;
+        return stem + '-' + n;
+    }
+
     /**
      * 批量删除车站（先确认、再压撤销快照）。
      * 分支安全：逐站走 deleteStationById（会处理 stationIds-wayN / distances-wayN / 虚拟换乘）。
@@ -2364,6 +2379,13 @@
                     return;
                 }
             }
+        }
+
+        // 地图装饰：选中了某个装饰时直接换素材，否则进入落子
+        if (category === 'scattered' && app.selected && app.selected.type === 'scattered' && payload.deco) {
+            handlePropertyChange('scattered', app.selected.idx, 'file', payload.deco.file);
+            showToast('已把选中的装饰换成「' + payload.deco.name + '」', 'success');
+            return;
         }
 
         // 未选中车站时，进入落子放置模式
@@ -2559,6 +2581,18 @@
             var dirtyBadge = document.getElementById('dirtyCounterBadge');
             if (undoBtn) undoBtn.disabled = !st.canUndo;
             if (redoBtn) redoBtn.disabled = !st.canRedo;
+            // 快速访问工具栏与保存按钮同步
+            var qu = document.getElementById('qatUndo');
+            var qr = document.getElementById('qatRedo');
+            if (qu) qu.disabled = !st.canUndo;
+            if (qr) qr.disabled = !st.canRedo;
+            var saveBtn = document.getElementById('btnHeaderSave');
+            if (saveBtn) {
+                saveBtn.classList.toggle('has-changes', st.dirtyCounter > 0);
+                saveBtn.title = st.dirtyCounter > 0
+                    ? '保存 ' + st.dirtyCounter + ' 处改动 (Ctrl+S，若关联本地目录则直接原地保存)'
+                    : '保存改动 (Ctrl+S，若关联本地目录则直接原地保存)';
+            }
             if (dirtyBadge) {
                 dirtyBadge.style.cursor = 'pointer';
                 dirtyBadge.title = '点击查看操作历史步骤面板 (Ctrl+H)';
@@ -2764,6 +2798,15 @@
                     showToast('已回到最早状态，没有更早的步骤了', 'info');
                 }
             }
+        });
+
+        // 快速访问工具栏：转发到功能区里的同名按钮，逻辑只有一份
+        [['qatUndo', 'btnUndo'], ['qatRedo', 'btnRedo'], ['qatHistory', 'btnHistoryPanel']].forEach(function (pair) {
+            var q = document.getElementById(pair[0]);
+            if (q) q.addEventListener('click', function () {
+                var target = document.getElementById(pair[1]);
+                if (target) target.click();
+            });
         });
 
         var redoBtn = document.getElementById('btnRedo');
@@ -3747,6 +3790,9 @@
 
         var isDraggingNode = false;
         var draggedNodeId = null;
+        var isDraggingScattered = false;
+        var draggedScatteredIdx = null;
+        var scatteredDragOrigin = null;
         var isDraggingPoint = false;
         var draggedSegId = null;
         var draggedPointIdx = null;
@@ -4048,6 +4094,21 @@
                 return;
             }
 
+            // 1.9 拖动地图装饰（机场 / 国铁 / 地标徽标）
+            if (isDraggingScattered && scatteredDragOrigin) {
+                var scItem = (app.project.scattered || [])[draggedScatteredIdx];
+                if (scItem) {
+                    var nx = scatteredDragOrigin.x + (world.x - dragStartPos.x);
+                    var ny = scatteredDragOrigin.y + (world.y - dragStartPos.y);
+                    var snappedSc = app.snapEnabled ? window.OpenMapEditor.ViewportLayer.snapPoint(nx, ny) : { x: nx, y: ny };
+                    scItem.x = Math.round(snappedSc.x * 10) / 10;
+                    scItem.y = Math.round(snappedSc.y * 10) / 10;
+                    hasDragged = true;
+                    renderAll();
+                }
+                return;
+            }
+
             // 2. 拖动节点移动 (带智能对齐参考线与正交导轨协同推移)
             if (isDraggingNode && draggedNodeId && app.project.nodes[draggedNodeId]) {
                 var snapped = app.snapEnabled
@@ -4129,6 +4190,13 @@
             //   少了这一句，空白处按住中键或右键都会落到下面的框选分支，
             //   表现就是「无论中键左键右键都在框选」。
             if (e.button !== 0 || viewportEl.classList.contains('panning')) return;
+
+            // -3. 落子模式（零件盒里选了车站 / 装饰）：按下时什么都不做，交给 mouseup 落子。
+            //     否则点在线路或车站上会先被当成选中 / 拖拽，mouseup 提前返回，落子就丢了。
+            if (app.activeStamp) {
+                e.preventDefault();
+                return;
+            }
 
             // -2. 吸管取色工具 (Eyedropper)
             if (app.activeTool === 'eyedropper') {
@@ -4355,6 +4423,24 @@
                 return;
             }
 
+            // 3.5 点选 / 拖动地图装饰（徽标级散点）
+            var targetScEl = e.target.closest('.scattered-item.is-pickable[data-scattered-idx]');
+            if (targetScEl && !app.layerState.lines.locked && (app.activeTool === 'select' || app.activeTool === 'box')) {
+                var scIdx = parseInt(targetScEl.getAttribute('data-scattered-idx'), 10);
+                var scObj = (app.project.scattered || [])[scIdx];
+                if (scObj) {
+                    app.selected = { type: 'scattered', idx: scIdx };
+                    isDraggingScattered = true;
+                    draggedScatteredIdx = scIdx;
+                    hasDragged = false;
+                    dragBaseline = JSON.stringify(app.project);
+                    dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
+                    scatteredDragOrigin = { x: scObj.x, y: scObj.y };
+                    renderAll();
+                    return;
+                }
+            }
+
             var targetSegEl = e.target.closest('[data-segment-id]');
             if (targetSegEl && !app.layerState.lines.locked && (app.activeTool === 'select' || app.activeTool === 'points')) {
                 var sid = targetSegEl.getAttribute('data-segment-id');
@@ -4522,6 +4608,15 @@
                 return;
             }
 
+            if (isDraggingScattered) {
+                commitDragHistory();
+                isDraggingScattered = false;
+                draggedScatteredIdx = null;
+                scatteredDragOrigin = null;
+                hasDragged = false;
+                return;
+            }
+
             if (isDraggingNode) {
                 commitDragHistory();
                 isDraggingNode = false;
@@ -4563,6 +4658,22 @@
                     }
                     app.selected = { type: 'node', id: newId };
                     showToast('已成功放置车站「' + app.project.nodes[newId].cn + '」', 'success');
+                } else if (app.activeStamp.category === 'scattered' && app.activeStamp.payload.deco) {
+                    var deco = app.activeStamp.payload.deco;
+                    if (!Array.isArray(app.project.scattered)) app.project.scattered = [];
+                    var newDeco = {
+                        id: uniqueScatteredId(deco.idStem || 'deco'),
+                        file: deco.file,
+                        x: snappedStamp.x,
+                        y: snappedStamp.y
+                    };
+                    if (deco.width) newDeco.width = deco.width;
+                    if (deco.height) newDeco.height = deco.height;
+                    newDeco.opacity = 1;
+                    newDeco.zIndex = deco.zIndex !== undefined ? deco.zIndex : 5;
+                    app.project.scattered.push(newDeco);
+                    app.selected = { type: 'scattered', idx: app.project.scattered.length - 1 };
+                    showToast('已放置装饰「' + deco.name + '」', 'success');
                 } else if (app.activeStamp.category === 'amenity') {
                     var newId2 = pModel ? pModel.nextId(app.project, 'station_') : ('station_' + Date.now());
                     app.project.nodes[newId2] = {

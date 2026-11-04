@@ -642,11 +642,17 @@ window.CityProjectIO = (function () {
             const hadTrailingComma = /^\s*,/.test(between);
             const rest = hadTrailingComma ? between.replace(/^\s*,/, '') : between;
 
+            // 末条同一行的行尾注释（如 `}, // 上海南站`）属于末条本身，必须留在它那一行，
+            // 不能被挤到新追加条目的后面
+            const lineComment = last ? rest.match(/^[ \t]*(\/\/[^\n]*|\/\*[^\n]*?\*\/)/) : null;
+            const keep = lineComment ? lineComment[0] : '';
+            const after = lineComment ? rest.slice(keep.length) : rest;
+
             result = result.slice(0, anchor)
-                + (last ? ',\n' : '\n')
+                + (last ? ',' + keep + '\n' : '\n')
                 + pieces.join(',\n')
                 + (hadTrailingComma ? ',' : '')
-                + (rest.length ? rest : '\n')
+                + (after.length ? after : '\n')
                 + result.slice(at);
         }
 

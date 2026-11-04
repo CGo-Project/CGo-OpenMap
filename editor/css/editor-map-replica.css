@@ -206,6 +206,17 @@
     pointer-events: none;
 }
 
+/* 徽标级装饰（机场、国铁、地标图标）可在画布上直接点选与拖动 */
+.cgo-map-replica .scattered-item.is-pickable {
+    pointer-events: auto;
+    cursor: move;
+}
+
+.cgo-map-replica .scattered-item.is-pickable:hover {
+    outline: 1.5px dashed rgba(56, 189, 248, 0.9);
+    outline-offset: 2px;
+}
+
 /* 线路层 / 未开通层只是为了让城市样式表里的 #lines-layer、#not-open-layer 规则（线帽、叠放）生效；
    香港在线路图上给图层加的边缘渐隐蒙版依赖整页尺寸，编辑时不需要 */
 #lines-layer,

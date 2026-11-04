@@ -213,6 +213,56 @@ body.office-app-shell .mobile-status-bar-fill,
     border-color: var(--office-border);
 }
 
+.title-bar-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    background: transparent;
+    border-color: transparent;
+}
+
+/* 快速访问工具栏（撤销 / 重做 / 历史） */
+.title-bar-quick {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.title-bar-divider {
+    width: 1px;
+    height: 16px;
+    margin: 0 6px;
+    background: var(--office-border, rgba(0, 0, 0, 0.12));
+}
+
+/* 保存：带文字，有未保存改动时右上角亮起提示点 */
+.title-bar-save {
+    position: relative;
+    gap: 5px;
+    padding: 3px 10px;
+    border-color: var(--office-border);
+}
+
+.title-bar-save .save-dirty-dot {
+    display: none;
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--warning-color, #f59f00);
+    box-shadow: 0 0 0 2px var(--office-bg, #fff);
+}
+
+.title-bar-save.has-changes .save-dirty-dot {
+    display: block;
+}
+
+.title-bar-save.has-changes {
+    color: var(--office-primary, #0078d4);
+    border-color: var(--office-primary, #0078d4);
+}
+
 /* ==========================================================================
    2. 三栏主工作区 (Workbench)
    ========================================================================== */
