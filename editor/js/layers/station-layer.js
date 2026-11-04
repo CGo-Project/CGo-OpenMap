@@ -234,6 +234,32 @@ window.OpenMapEditor.StationLayer = (function () {
         return root;
     }
 
+    /**
+     * 同址异名站（siblings，莫斯科式换乘：一个站点图元、几个站名各带朝向与颜色）的站名，
+     * 逐行对齐 core/script.js renderStations 的 siblings 分支。
+     */
+    function buildSiblingLabelsHtml(id, s, isSelected, lineColorById) {
+        if (!Array.isArray(s.siblings)) return '';
+        return s.siblings.map(function (sib, idx) {
+            if (!sib || (!sib.cn && !sib.en)) return '';
+            var layout = calculateLabelLayout({
+                x: s.x, y: s.y,
+                align: sib.align || (s.align === 'top-left' ? 'bottom-right' : 'bottom'),
+                offset: sib.offset
+            });
+            var scCn = (sib.textScale && sib.textScale.cn) || 1;
+            var scEn = (sib.textScale && sib.textScale.en) || 1;
+            var color = sib.color || (sib.lineId && lineColorById[sib.lineId]) || '';
+            var cs = color ? 'color:' + escapeHtml(color) + ' !important;' : '';
+            var style = 'left:' + layout.x + 'px;top:' + layout.y + 'px;transform:' + layout.transform + ';text-align:' + layout.textAlign + ';';
+            return '<div class="label-group type-' + escapeHtml(s.type) + ' station-sibling-label' + (isSelected ? ' active' : '') + '"' +
+                ' data-sid="' + escapeHtml(id) + '" data-node-id="' + escapeHtml(id) + '" data-sibling-idx="' + idx + '"' +
+                ' style="' + style + '" title="' + escapeHtml(plainName(sib.cn)) + '">' +
+                '<span class="stacn" style="' + cs + 'transform:scaleX(' + scCn + ');transform-origin:' + layout.transformOriginX + ' center;">' + safeNameHtml(sib.cn || '') + '</span>' +
+                '<span class="staen" lang="en" style="' + cs + 'transform:scaleX(' + scEn + ');transform-origin:' + layout.transformOriginX + ' center;">' + safeNameHtml(sib.en || '') + '</span></div>';
+        }).join('');
+    }
+
     function buildLabelHtml(id, s, isSelected) {
         var layout = calculateLabelLayout(s);
         var scaleCn = (s.textScale && s.textScale.cn) || 1;
@@ -243,12 +269,14 @@ window.OpenMapEditor.StationLayer = (function () {
         var codeBadge = (s.code && icons && icons.renderStationCodeBadge) ? icons.renderStationCodeBadge(String(s.code), primary) : '';
         var amenities = (Array.isArray(s.amenities) && icons && icons.renderAmenitiesHtml) ? icons.renderAmenitiesHtml(s.amenities) : '';
         var style = 'left:' + layout.x + 'px;top:' + layout.y + 'px;transform:' + layout.transform + ';text-align:' + layout.textAlign + ';';
+        // 站名主色（同址异名站的主站名用本线颜色），与引擎 s.color 一致
+        var mainColor = s.color ? 'color:' + escapeHtml(s.color) + ' !important;' : '';
         return '<div class="label-group type-' + escapeHtml(s.type) + (isSelected ? ' active' : '') + '"' +
             ' data-sid="' + escapeHtml(id) + '" data-node-id="' + escapeHtml(id) + '" style="' + style + '"' +
             ' title="' + escapeHtml(plainName(s.cn)) + '">' +
-            '<span class="stacn" style="transform:scaleX(' + scaleCn + ');transform-origin:' + layout.transformOriginX + ' center;">' +
+            '<span class="stacn" style="' + mainColor + 'transform:scaleX(' + scaleCn + ');transform-origin:' + layout.transformOriginX + ' center;">' +
             codeBadge + safeNameHtml(s.cn) + amenities + '</span>' +
-            '<span class="staen" lang="en" style="transform:scaleX(' + scaleEn + ');transform-origin:' + layout.transformOriginX + ' center;">' +
+            '<span class="staen" lang="en" style="' + mainColor + 'transform:scaleX(' + scaleEn + ');transform-origin:' + layout.transformOriginX + ' center;">' +
             safeNameHtml(s.en) + '</span></div>';
     }
 
@@ -344,11 +372,13 @@ window.OpenMapEditor.StationLayer = (function () {
         var labelHost = dom.labelLayer || dom.stationLayer;
         var labelRoot = makeReplica(labelHost, 'cgo-replica-labels', canvasW, canvasH);
         var labelParts = [];
+        var lineColorById = {};
+        (project.lines || []).forEach(function (l) { if (l && l.id) lineColorById[l.id] = l.color; });
         Object.keys(stations).forEach(function (id) {
             var s = stations[id];
             if (s.hideLabel === true) return;
-            if (!s.cn && !s.en) return;
-            labelParts.push(buildLabelHtml(id, s, selectedSet.has(id)));
+            if (s.cn || s.en) labelParts.push(buildLabelHtml(id, s, selectedSet.has(id)));
+            labelParts.push(buildSiblingLabelsHtml(id, s, selectedSet.has(id), lineColorById));
         });
         labelRoot.innerHTML = labelParts.join('');
         if (runtime && runtime.getCity()) {
@@ -356,6 +386,7 @@ window.OpenMapEditor.StationLayer = (function () {
             for (var li = 0; li < labels.length; li++) {
                 var el = labels[li];
                 var sid = el.getAttribute('data-sid');
+                if (el.hasAttribute('data-sibling-idx')) continue;
                 if (stations[sid]) runtime.decorateStationLabel(el, stations[sid], sid);
             }
         }

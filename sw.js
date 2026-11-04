@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261104.205102';
+const CACHE_NAME = 'cgo-openmap-v261104.212815';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -813,6 +813,57 @@ async function precacheBatch(cache, assets) {
     }
 }
 
+let isPrecaching = false;
+
+/**
+ * 带有可恢复机制与生命周期保护的后台非核心城市资源预热
+ * 核心特性：
+ * 1. 自动过滤已缓存资源，网络中断或进程关闭后可断点续传；
+ * 2. 结合 message 事件的 event.waitUntil() 延长 SW 运行生命周期，杜绝浏览器将空闲 SW 强制回收；
+ * 3. 避免单次长时间阻塞 install 事件，保持秒级 App Shell 就绪速度。
+ */
+async function runPrecacheRemaining(notifyClients = false) {
+    if (isPrecaching) return;
+    isPrecaching = true;
+    try {
+        const cache = await caches.open(CACHE_NAME);
+        const coreAssets = ASSETS_TO_CACHE.filter(url =>
+            CORE_SHELL_PATTERNS.some(re => re.test(url))
+        );
+        const remainingAssets = ASSETS_TO_CACHE.filter(url => !coreAssets.includes(url));
+
+        // 检查未缓存项，实现断点续传
+        const unhitAssets = [];
+        for (const url of remainingAssets) {
+            try {
+                const matched = await cache.match(url);
+                if (!matched) unhitAssets.push(url);
+            } catch (_) {
+                unhitAssets.push(url);
+            }
+        }
+
+        if (unhitAssets.length > 0) {
+            await precacheBatch(cache, unhitAssets);
+        }
+
+        if (notifyClients) {
+            const clients = await self.clients.matchAll();
+            clients.forEach(c => {
+                c.postMessage({
+                    type: 'PRECACHE_COMPLETE',
+                    version: CACHE_NAME,
+                    cachedCount: remainingAssets.length - unhitAssets.length + unhitAssets.length
+                });
+            });
+        }
+    } catch (err) {
+        console.warn('[SW] 后台预热异常:', err);
+    } finally {
+        isPrecaching = false;
+    }
+}
+
 // 1. Service Worker 安装：App Shell 秒级预缓存并立即激活，其余城市资源转入后台队列
 self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
@@ -821,7 +872,6 @@ self.addEventListener('install', (event) => {
             const coreAssets = ASSETS_TO_CACHE.filter(url =>
                 CORE_SHELL_PATTERNS.some(re => re.test(url))
             );
-            const remainingAssets = ASSETS_TO_CACHE.filter(url => !coreAssets.includes(url));
 
             // ① 核心 App Shell 优先高速并行预缓存（约 35 项，保证离线外壳与基准城市秒级就绪）
             await Promise.allSettled(coreAssets.map(async (url) => {
@@ -835,8 +885,8 @@ self.addEventListener('install', (event) => {
             // ② 核心就绪后立即跳过等待，秒级激活 Service Worker，彻底解决云端审计超时崩溃问题
             await self.skipWaiting();
 
-            // ③ 其余城市资产在后台平滑排队缓行预热，与 fetch 运行期按需缓存形成双重保障
-            precacheBatch(cache, remainingAssets).catch(() => { });
+            // ③ 启动断点续传后台预热（后续由客户端页面通过 message + waitUntil 继续续命守护）
+            runPrecacheRemaining(false).catch(() => { });
         } catch (err) {
             console.error('[SW] 缓存安装异常:', err);
         }
@@ -1006,9 +1056,31 @@ self.addEventListener('notificationclick', (event) => {
     );
 });
 
-// 7. 消息通讯控制 (例如由页面触发 SKIP_WAITING 立即激活新 SW)
+// 7. 消息通讯控制 (例如由页面触发 SKIP_WAITING 立即激活新 SW，或由受控页面在空闲期延长生命周期预热)
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
+    if (!event.data) return;
+    if (event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
+    } else if (event.data.type === 'PRECACHE_REMAINING' || event.data.type === 'START_BACKGROUND_PRECACHE') {
+        // 关键生命周期保护：通过 event.waitUntil 挂靠当前打开页面的消息事件，防止浏览器在空闲时终止 SW
+        event.waitUntil(runPrecacheRemaining(true));
+    } else if (event.data.type === 'QUERY_PRECACHE_STATUS') {
+        event.waitUntil((async () => {
+            const cache = await caches.open(CACHE_NAME);
+            const coreAssets = ASSETS_TO_CACHE.filter(url => CORE_SHELL_PATTERNS.some(re => re.test(url)));
+            const remainingAssets = ASSETS_TO_CACHE.filter(url => !coreAssets.includes(url));
+            let cachedCount = 0;
+            for (const u of remainingAssets) {
+                if (await cache.match(u)) cachedCount++;
+            }
+            if (event.source) {
+                event.source.postMessage({
+                    type: 'PRECACHE_STATUS',
+                    total: remainingAssets.length,
+                    cached: cachedCount,
+                    isPrecaching: isPrecaching
+                });
+            }
+        })());
     }
 });

@@ -20,3 +20,5 @@ const LEGEND_CONFIG = [
         ]
     }
 ];
+
+window.LEGEND_CONFIG = LEGEND_CONFIG;

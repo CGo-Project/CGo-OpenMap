@@ -18,7 +18,9 @@
  *   所以这里用一份最小 DOM 桩直接驱动**真实的 fuzhou_site_space.js**：
  *     ① 静态：两条路径的代码特征都在（桌面保留 84vh / 卡片；触屏段不得再出现 cgo-modal）；
  *     ② 分派：把 matchMedia 分别设成「粗指针」与「精确指针」，看创建的是哪个浮层；
- *     ③ 几何：适应屏幕的 contain 与居中、双指捏合锚点不漂移、拖动钳制、缩放下限、横竖屏切换。
+ *     ③ 几何：适应屏幕的 contain 与居中、双指捏合锚点不漂移、拖动钳制、缩放下限、横竖屏切换；
+ *     ④ 光栅预算（黑块回归）：画布后备像素恒为「舞台 × DPR」，与 3282×1815 的原图、
+ *        与放大到 1:1 都无关 —— 这正是 2026-11 手机上出现黑块的根因。
  *
  * 与 fuzhou_check.js 的分工：那个查数据契约与配置一致性，这个查浮层分派与查看器算法。
  * 本文件是 Node 端脚本，浏览器不会请求，故不需要登记进 sw.js 的预缓存清单。
@@ -46,8 +48,28 @@ function section(title) { process.stdout.write(`\n${title}\n`); }
  * ==================================================================== */
 /** 典型手机舞台尺寸（竖屏） */
 const PHONE = { left: 0, top: 0, width: 390, height: 600 };
-const IMG_W = 2000;
-const IMG_H = 1400;
+/** 官网原图的真实尺寸（洪湾站）：黑块就是在这样一张大图上出现的 */
+const IMG_W = 3282;
+const IMG_H = 1815;
+
+/** 记录 drawImage 调用的最小 2D 上下文桩 */
+function makeCtx(canvasEl) {
+    return {
+        canvas: canvasEl,
+        _draws: [],
+        imageSmoothingEnabled: false,
+        imageSmoothingQuality: "low",
+        setTransform() { },
+        clearRect() { },
+        drawImage(...args) {
+            this._draws.push({
+                el: args[0],
+                sx: args[1], sy: args[2], sw: args[3], sh: args[4],
+                dx: args[5], dy: args[6], dw: args[7], dh: args[8]
+            });
+        }
+    };
+}
 
 function makeEl(tag) {
     const el = {
@@ -88,7 +110,8 @@ function makeEl(tag) {
         },
         querySelector(sel) {
             if (!this._bySel.has(sel)) {
-                const child = makeEl("div");
+                // 查看器从 .fz-lb-canvas 取画布：桩要给出真正的 canvas 形状（带 getContext）
+                const child = makeEl(sel === ".fz-lb-canvas" ? "canvas" : "div");
                 child.parentNode = this;
                 this._bySel.set(sel, child);
             }
@@ -98,6 +121,12 @@ function makeEl(tag) {
         setPointerCapture() { },
         getBoundingClientRect() { return this._rect; }
     };
+    if (String(tag).toLowerCase() === "canvas") {
+        el.width = 300;
+        el.height = 150;
+        el._ctx = makeCtx(el);
+        el.getContext = (type) => (type === "2d" ? el._ctx : null);
+    }
     Object.defineProperty(el, "innerHTML", {
         get() { return this._html; },
         set(v) { this._html = v; }
@@ -212,8 +241,14 @@ section("① 设备判定与双路径（静态）");
     check("触屏查看器全屏（position:fixed + inset:0）",
         /position:\s*fixed/.test(touchPart) && /inset:\s*0/.test(touchPart));
     check("触屏舞台 touch-action:none", /touch-action:\s*none/.test(touchPart), "未接管手势会被浏览器抢走");
-    check("只改 transform（合成层，不触发布局）",
-        /translate3d/.test(touchPart) && /will-change:\s*transform/.test(touchPart));
+    check("触屏用视口大小的画布绘制（不再放大整张 <img>）",
+        /getContext\("2d"\)/.test(touchPart) && /drawImage\(/.test(touchPart),
+        "查看器又回到「原尺寸 img + transform」的巨型合成层");
+    check("图片元素默认 display:none（只作解码源）",
+        /\.fz-lb-img\s*\{[^}]*display:\s*none/.test(touchPart),
+        "大图被重新塞进布局，黑块风险回来");
+    check("画布铺满舞台（width/height:100%）",
+        /\.fz-lb-canvas\s*\{[^}]*width:\s*100%/.test(touchPart) && /\.fz-lb-canvas\s*\{[^}]*height:\s*100%/.test(touchPart));
     check("图标使用 CGoUI 组件", /<cgo-icon name="/.test(code));
     check("无 Emoji", !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u.test(code));
 }
@@ -298,21 +333,41 @@ section("④ URL 覆盖参数 ?fzviewer=");
 
 const stage = root.querySelector(".fz-lb-stage");
 const img = root.querySelector(".fz-lb-img");
+const canvas = root.querySelector(".fz-lb-canvas");
+const cctx = canvas._ctx;
 const zoomLabel = root.querySelector(".fz-lb-zoom");
 stage._rect = { ...PHONE };
 
 /* ======================================================================
- * 三至七、触屏查看器的几何算法
+ * 触屏查看器的几何与光栅算法
  * ==================================================================== */
-/** 解析 transform（浮点噪声可能写成 2.84e-14，需接受指数形式） */
-function tf() {
-    const m = /translate3d\(([-\d.e+]+)px,\s*([-\d.e+]+)px,\s*0\)\s*scale\(([-\d.e+]+)\)/
-        .exec(img.style.transform || "");
-    return m ? { tx: Number(m[1]), ty: Number(m[2]), s: Number(m[3]) } : null;
+/** 模块内的只读状态探针（画布方案下没有 transform 字符串可读） */
+function probe() {
+    return typeof root.__fzViewerProbe === "function" ? root.__fzViewerProbe() : null;
+}
+/** 最近一次真实 drawImage 的矩形，而不是推测出来的 */
+function lastDraw() {
+    const list = (cctx && cctx._draws) || [];
+    return list.length ? list[list.length - 1] : null;
 }
 function imgPointAt(px, py) {
-    const t = tf();
-    return { x: (px - t.tx) / t.s, y: (py - t.ty) / t.s };
+    const st = probe();
+    return { x: (px - st.tx) / st.scale, y: (py - st.ty) / st.scale };
+}
+/** 按当前状态算出「这一帧应该画到哪儿」，用来核对真实绘制调用 */
+function expectedDraw() {
+    const st = probe();
+    const s = st.scale;
+    const sx = -st.tx / s;
+    const sy = -st.ty / s;
+    const x0 = Math.max(0, sx);
+    const y0 = Math.max(0, sy);
+    const x1 = Math.min(IMG_W, sx + PHONE.width / s);
+    const y1 = Math.min(IMG_H, sy + PHONE.height / s);
+    return {
+        dx: (x0 - sx) * s, dy: (y0 - sy) * s,
+        dw: (x1 - x0) * s, dh: (y1 - y0) * s
+    };
 }
 function pointer(type, id, x, y) {
     stage.dispatch(type, {
@@ -328,40 +383,73 @@ function fireResize() {
 const minFit = Math.min(PHONE.width / IMG_W, PHONE.height / IMG_H, 1);
 const maxFit = Math.max(1, minFit * 2);
 
-section("⑤ 适应屏幕：完整可见且居中");
+section("⑤ 适应屏幕：完整可见、居中，画布只按舞台光栅化");
 {
     img.naturalWidth = IMG_W;
     img.naturalHeight = IMG_H;
     img.dispatch("load", {});
-    const t = tf();
-    check("transform 已设置", Boolean(t), img.style.transform);
-    check("初始缩放 = contain", Math.abs(t.s - minFit) < 1e-6, `实际 ${t.s}, 期望 ${minFit}`);
+
+    const st = probe();
+    const d = lastDraw();
+    check("状态探针可用", Boolean(st && typeof st.scale === "number"));
+    check("初始缩放 = contain", Math.abs(st.scale - minFit) < 1e-6, `实际 ${st.scale}, 期望 ${minFit}`);
     check("图片整体落在舞台内",
-        IMG_W * t.s <= PHONE.width + 0.5 && IMG_H * t.s <= PHONE.height + 0.5,
-        `${(IMG_W * t.s).toFixed(0)}×${(IMG_H * t.s).toFixed(0)} > ${PHONE.width}×${PHONE.height}`);
-    check("水平居中", Math.abs(t.tx - (PHONE.width - IMG_W * t.s) / 2) < 0.5, `tx=${t.tx}`);
-    check("垂直居中", Math.abs(t.ty - (PHONE.height - IMG_H * t.s) / 2) < 0.5, `ty=${t.ty}`);
+        IMG_W * st.scale <= PHONE.width + 0.5 && IMG_H * st.scale <= PHONE.height + 0.5,
+        `${(IMG_W * st.scale).toFixed(0)}×${(IMG_H * st.scale).toFixed(0)} > ${PHONE.width}×${PHONE.height}`);
+    check("水平居中", Math.abs(st.tx - (PHONE.width - IMG_W * st.scale) / 2) < 0.5, `tx=${st.tx}`);
+    check("垂直居中", Math.abs(st.ty - (PHONE.height - IMG_H * st.scale) / 2) < 0.5, `ty=${st.ty}`);
     check("缩放指示为 100%", zoomLabel.textContent === "100%", zoomLabel.textContent);
-    check("图片按原始像素布局（缩放交给 transform）",
-        img.style.width === `${IMG_W}px` && img.style.height === `${IMG_H}px`,
-        `${img.style.width}×${img.style.height}`);
+
+    // 黑块回归的第一道门：光栅面积只跟舞台走，跟 3282×1815 的原图无关
+    check("画布只有舞台大小（390×600），不随原图尺寸膨胀",
+        canvas.width === PHONE.width && canvas.height === PHONE.height,
+        `${canvas.width}×${canvas.height}`);
+    check("图片元素不再按原始像素布局（只作解码源）",
+        !img.style.width && !img.style.height,
+        `${img.style.width || "未设置"}×${img.style.height || "未设置"}`);
+    check("已把可见部分画进画布", Boolean(d) && d.dw > 0 && d.dh > 0);
+    check("绘制目标 = 图片按 contain 后的位置（上下留白居中）",
+        Boolean(d) && Math.abs(d.dx) < 0.5
+            && Math.abs(d.dw - IMG_W * st.scale) < 0.5
+            && Math.abs(d.dy - (PHONE.height - IMG_H * st.scale) / 2) < 0.5,
+        d ? `dx=${d.dx.toFixed(2)} dy=${d.dy.toFixed(2)} ${d.dw.toFixed(1)}×${d.dh.toFixed(1)}` : "无绘制");
+    check("源矩形落在图片内（不改取值域）",
+        Boolean(d) && d.sx >= -0.5 && d.sy >= -0.5
+            && d.sx + d.sw <= IMG_W + 0.5 && d.sy + d.sh <= IMG_H + 0.5,
+        d ? `源 [${d.sx.toFixed(1)}, ${d.sy.toFixed(1)}] + ${d.sw.toFixed(1)}×${d.sh.toFixed(1)}` : "无绘制");
+    check("源/目标等比，未拉伸变形",
+        Boolean(d) && Math.abs(d.dw / d.sw - d.dh / d.sh) < 0.02,
+        d ? `${(d.dw / d.sw).toFixed(4)} vs ${(d.dh / d.sh).toFixed(4)}` : "无绘制");
 }
 
-section("⑥ 双指捏合：锚点不跳");
+section("⑥ 双指捏合：锚点不跳，光栅预算不随缩放增长");
 {
     const midX = 200, midY = 300;
     const before = imgPointAt(midX, midY);
-    const baseScale = tf().s;
+    const baseScale = probe().scale;
+    const baseW = canvas.width;
     pointer("pointerdown", 1, 150, 300);
     pointer("pointerdown", 2, 250, 300);            // 相距 100，中点 (200,300)
     pointer("pointermove", 1, 100, 300);
     pointer("pointermove", 2, 300, 300);            // 张开到 200 → 放大 2 倍
     const after = imgPointAt(midX, midY);
     const drift = Math.hypot(after.x - before.x, after.y - before.y);
-    const t = tf();
-    check("已放大", t.s > baseScale, `${baseScale} → ${t.s}`);
+    const st = probe();
+    check("已放大", st.scale > baseScale, `${baseScale} → ${st.scale}`);
     check("中点下的图片内容未漂移", drift < 1, `漂移 ${drift.toFixed(2)} 图片像素`);
-    check("未超出缩放上限", t.s <= maxFit + 1e-6, `${t.s} ≤ ${maxFit}`);
+    check("未超出缩放上限", st.scale <= maxFit + 1e-6, `${st.scale} ≤ ${maxFit}`);
+
+    // 黑块回归的第二道门：放大到 1:1 也不改变光栅面积
+    check("放大后画布尺寸不变（不随缩放倍数膨胀）",
+        canvas.width === baseW && canvas.width === PHONE.width && canvas.height === PHONE.height,
+        `${canvas.width}×${canvas.height}`);
+
+    const d = lastDraw();
+    const ex = expectedDraw();
+    check("放大后仍按当前可见区域重绘（无未重绘的空洞）",
+        Boolean(d) && Math.abs(d.dx - ex.dx) < 0.5 && Math.abs(d.dy - ex.dy) < 0.5
+            && Math.abs(d.dw - ex.dw) < 0.5 && Math.abs(d.dh - ex.dh) < 0.5,
+        d ? `${d.dx.toFixed(1)},${d.dy.toFixed(1)} ${d.dw.toFixed(1)}×${d.dh.toFixed(1)} vs ${ex.dx.toFixed(1)},${ex.dy.toFixed(1)} ${ex.dw.toFixed(1)}×${ex.dh.toFixed(1)}` : "无绘制");
     pointer("pointerup", 1, 100, 300);
     pointer("pointerup", 2, 300, 300);
 }
@@ -370,14 +458,17 @@ section("⑦ 平移钳制：图边不脱离可视区");
 {
     pointer("pointerdown", 3, 200, 300);
     pointer("pointermove", 3, -400, 300);           // 向左拖 600px
-    let t = tf();
-    const minTx = PHONE.width - IMG_W * t.s;
-    check("向左拖到底：右边缘停靠", Math.abs(t.tx - minTx) < 0.5, `tx=${t.tx}, 期望 ${minTx}`);
-    check("tx 落在允许区间", t.tx <= 0.5 && t.tx >= minTx - 0.5, `[${minTx}, 0]`);
+    let st = probe();
+    let minTx = PHONE.width - IMG_W * st.scale;
+    check("向左拖到底：右边缘停靠", Math.abs(st.tx - minTx) < 0.5, `tx=${st.tx}, 期望 ${minTx}`);
+    check("tx 落在允许区间", st.tx <= 0.5 && st.tx >= minTx - 0.5, `[${minTx}, 0]`);
 
     pointer("pointermove", 3, 900, 300);            // 反向拖到底
-    t = tf();
-    check("向右拖到底：左边缘停靠（tx=0）", Math.abs(t.tx) < 0.5, `tx=${t.tx}`);
+    st = probe();
+    check("向右拖到底：左边缘停靠（tx=0）", Math.abs(st.tx) < 0.5, `tx=${st.tx}`);
+    const d = lastDraw();
+    check("拖到底后绘制矩形仍贴着舞台左边（不留空洞）",
+        Boolean(d) && Math.abs(d.dx) < 0.5, d && `dx=${d.dx}`);
     pointer("pointerup", 3, 900, 300);
 }
 
@@ -387,10 +478,10 @@ section("⑧ 缩放下限：不会比「适应屏幕」更小");
     pointer("pointerdown", 5, 250, 300);
     pointer("pointermove", 4, 195, 300);
     pointer("pointermove", 5, 205, 300);            // 收拢到 10px
-    const t = tf();
-    check("收敛到下限", Math.abs(t.s - minFit) < 1e-6, `实际 ${t.s}, 期望 ${minFit}`);
+    const st = probe();
+    check("收敛到下限", Math.abs(st.scale - minFit) < 1e-6, `实际 ${st.scale}, 期望 ${minFit}`);
     check("缩到下限后自动居中",
-        Math.abs(t.tx - (PHONE.width - IMG_W * t.s) / 2) < 0.5, `tx=${t.tx}`);
+        Math.abs(st.tx - (PHONE.width - IMG_W * st.scale) / 2) < 0.5, `tx=${st.tx}`);
     pointer("pointerup", 4, 195, 300);
     pointer("pointerup", 5, 205, 300);
 }
@@ -399,15 +490,17 @@ section("⑨ 舞台尺寸变化（横竖屏切换）");
 {
     stage._rect = { left: 0, top: 0, width: 700, height: 380 };
     (state.windowHandlers.resize || []).slice().forEach((fn) => fn());
-    const t = tf();
+    const st = probe();
     const minLand = Math.min(700 / IMG_W, 380 / IMG_H, 1);
     const maxLand = Math.max(1, minLand * 2);
     check("缩放重新收敛进合法区间",
-        t.s >= minLand - 1e-6 && t.s <= maxLand + 1e-6,
-        `${t.s} ∉ [${minLand}, ${maxLand}]`);
-    check("横屏后图片仍完整可见",
-        IMG_W * t.s <= 700 + 0.5 && IMG_H * t.s <= 380 + 0.5,
-        `${(IMG_W * t.s).toFixed(0)}×${(IMG_H * t.s).toFixed(0)}`);
+        st.scale >= minLand - 1e-6 && st.scale <= maxLand + 1e-6,
+        `${st.scale} ∉ [${minLand}, ${maxLand}]`);
+    check("原本贴合的图片仍完整可见",
+        IMG_W * st.scale <= 700 + 0.5 && IMG_H * st.scale <= 380 + 0.5,
+        `${(IMG_W * st.scale).toFixed(0)}×${(IMG_H * st.scale).toFixed(0)}`);
+    check("画布随舞台改尺寸（700×380）",
+        canvas.width === 700 && canvas.height === 380, `${canvas.width}×${canvas.height}`);
 }
 
 /* ======================================================================
@@ -423,33 +516,37 @@ section("⑩ 已放大 + 尺寸变化但 min 不变：保留放大状态（#54�
     // 滚轮放大两档
     stage.dispatch("wheel", { preventDefault() { }, clientX: 195, clientY: 300, deltaY: -100 });
     stage.dispatch("wheel", { preventDefault() { }, clientX: 195, clientY: 300, deltaY: -100 });
-    const zoomed = tf().s;
+    const zoomed = probe().scale;
     check("前提：已放大到适应屏幕之上", zoomed > minPortrait + 1e-6,
         `${zoomed} ≤ ${minPortrait}`);
 
     // 只加高舞台：宽度仍是 390，contain 的 min 不变
     stage._rect = { left: 0, top: 0, width: PHONE.width, height: PHONE.height + 240 };
     fireResize();
-    const t = tf();
+    const t = probe();
     const minAfter = Math.min(PHONE.width / IMG_W, (PHONE.height + 240) / IMG_H, 1);
     check("前提：调整前后最小缩放比例相同", Math.abs(minAfter - minPortrait) < 1e-9,
         `${minPortrait} → ${minAfter}`);
-    check("放大状态被保留，不再意外缩回适应屏幕", Math.abs(t.s - zoomed) < 1e-6,
-        `${zoomed} → ${t.s}`);
+    check("放大状态被保留，不再意外缩回适应屏幕", Math.abs(t.scale - zoomed) < 1e-6,
+        `${zoomed} → ${t.scale}`);
     const maxAfter = Math.max(1, minAfter * 2);
-    check("保留后的缩放仍在合法区间", t.s >= minAfter - 1e-6 && t.s <= maxAfter + 1e-6,
-        `${t.s} ∉ [${minAfter}, ${maxAfter}]`);
+    check("保留后的缩放仍在合法区间", t.scale >= minAfter - 1e-6 && t.scale <= maxAfter + 1e-6,
+        `${t.scale} ∉ [${minAfter}, ${maxAfter}]`);
+    check("加高舞台后画布随之变高，宽度不变",
+        canvas.width === PHONE.width && canvas.height === PHONE.height + 240,
+        `${canvas.width}×${canvas.height}`);
 
     // 对照：原本就贴合屏幕的，尺寸变化后应继续贴合（不能把这条行为改坏）
     root.querySelector('[data-act="reset"]').dispatch("click", {});
-    check("对照：点「适应屏幕」后回到 min", Math.abs(tf().s - minAfter) < 1e-6,
-        `${tf().s} vs ${minAfter}`);
+    check("对照：点「适应屏幕」后回到 min", Math.abs(probe().scale - minAfter) < 1e-6,
+        `${probe().scale} vs ${minAfter}`);
 
     stage._rect = { left: 0, top: 0, width: 330, height: PHONE.height };
     fireResize();
     const minNarrow = Math.min(330 / IMG_W, PHONE.height / IMG_H, 1);
-    check("原本贴合的图片随新尺寸重新贴合", Math.abs(tf().s - minNarrow) < 1e-6,
-        `${tf().s} vs ${minNarrow}`);
+    check("原本贴合的图片随新尺寸重新贴合", Math.abs(probe().scale - minNarrow) < 1e-6,
+        `${probe().scale} vs ${minNarrow}`);
+    check("缩窄后画布同步变窄", canvas.width === 330, `${canvas.width}`);
 }
 
 /* ======================================================================

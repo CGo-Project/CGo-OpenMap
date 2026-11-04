@@ -616,13 +616,20 @@
         order: 20,
         render(context) {
             const station = context.station || {};
+            let cnNameDisplay = station.cn || '';
             let enNameDisplay = (station.en || '').replace(/<br>/gi, ' ');
+            if (station.siblings && Array.isArray(station.siblings) && station.siblings.length > 0) {
+                const siblingCns = station.siblings.map(sib => sib.cn).filter(Boolean);
+                const siblingEns = station.siblings.map(sib => (sib.en || '').replace(/<br>/gi, ' ')).filter(Boolean);
+                if (siblingCns.length > 0) cnNameDisplay += ' · ' + siblingCns.join(' · ');
+                if (siblingEns.length > 0) enNameDisplay += ' / ' + siblingEns.join(' / ');
+            }
             if (station.cn === '首经贸') {
                 enNameDisplay = (station.en || '').replace(/<br>/gi, '<span class="special-br"></span>');
             }
             return `
                 <div class="header-name-group">
-                    <div class="panel-cn-name" role="heading" aria-level="2" tabindex="-1">${station.cn || ''}</div>
+                    <div class="panel-cn-name" role="heading" aria-level="2" tabindex="-1">${cnNameDisplay}</div>
                     <div class="panel-en-name" lang="en">${enNameDisplay}</div>
                 </div>
             `;

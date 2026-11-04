@@ -15,12 +15,20 @@
  *     点开只比缩略图大一点；② 它的遮罩是全屏 `backdrop-filter: blur(8px)`，且位于 Shadow DOM，
  *     捏合缩放时浏览器每帧重算整屏高斯模糊，掉帧严重；③ 没有平移能力，放大后看不到图外内容。
  *     故触屏改走本文件的全屏查看器：
- *       · `position:fixed; inset:0` 铺满视口，图片按 contain 贴合后**以 transform 缩放**
- *         （合成层，不触发布局），不再受 84vh 限制；
+ *       · `position:fixed; inset:0` 铺满视口，图片按 contain 贴合，不再受 84vh 限制；
  *       · `touch-action:none` 接管指针事件 —— 单指拖动平移、双指捏合缩放（以双指中点为锚点）、
  *         双击在「适应屏幕」与「约 3 倍」间切换；平移用 clamp 保证图边不脱离可视区；
- *       · 无 backdrop-filter，只改 transform，`will-change:transform` 预提升；
+ *       · `will-change:transform` 预提升（仅用于没有 2D 上下文的极端兜底路径）；
  *       · 关闭按钮 / Esc 退出，含安全区内边距。
+ *
+ * 绘图为什么不直接把 <img> 用 transform 放大（2026-11 修复）：
+ *   官网原图是 3282×1815 的位图。把「元素尺寸=原始像素、再用 transform 缩放」时，
+ *   整张图会被提升成一个 3282×1815 CSS px 的合成层；手机 DPR 3 下光栅化尺寸接近
+ *   9800×5400（约 5300 万像素、RGBA 约 210MB），远超 Chromium 的分块光栅预算，部分分块直接
+ *   光栅化失败 —— 表现就是黑块（实为透明洞，透出遮罩下的页面），放大再缩小/拖动后
+ *   尤其明显（见 issue 反馈截图）。因此触屏查看器改用**视口大小的 <canvas>**：
+ *   只光栅化舞台这一块，按当前缩放/平移把图片的可见部分 drawImage 进去（源矩形裁到
+ *   图片边界内），光栅面积与图片原始尺寸无关。这也是自检里最关键的一条回归断言。
  *
  * 为什么用能力判定而不是 UA：`(pointer: coarse)` 描述的是**主输入设备**，
  *   带触屏的笔记本仍以鼠标为主会判为桌面（正确）；手机/平板判为触屏（正确）。
@@ -214,7 +222,25 @@
     cursor: grab;
 }
 .fz-lb-stage.is-drag { cursor: grabbing; }
+.fz-lb-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* 画布本身就只有舞台这么大：光栅面积与图片原始像素无关（黑块修复的关键） */
+    /* 指针事件的落点就是画布，自己和舞台都声明一遍，避免个别内核只认 target 的 touch-action */
+    touch-action: none;
+}
 .fz-lb-img {
+    /* 只作解码源：display:none 不参与布局，也不会被提升成巨型合成层 */
+    display: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+.fz-lb-img.is-fallback {
+    /* 极端兜底（拿不到 2D 上下文）才露出来，按原尺寸布局后用 transform 缩放 */
+    display: block;
     position: absolute;
     left: 0;
     top: 0;
@@ -222,8 +248,6 @@
     will-change: transform;
     max-width: none;
     max-height: none;
-    user-select: none;
-    -webkit-user-drag: none;
     background: #fff;
     border-radius: 2px;
     box-shadow: 0 10px 48px rgba(0, 0, 0, 0.5);
@@ -328,7 +352,9 @@
                 <span class="fz-lb-hint">${hintText}</span>
             </div>
             <div class="fz-lb-stage">
-                <img class="fz-lb-img" alt="${esc(name)}站点空间示意图（大图）"
+                <canvas class="fz-lb-canvas" role="img"
+                        aria-label="${esc(name)}站点空间示意图（大图）"></canvas>
+                <img class="fz-lb-img" alt="" aria-hidden="true"
                      decoding="async" referrerpolicy="no-referrer">
                 <div class="fz-lb-status">正在加载大图…</div>
             </div>
@@ -352,7 +378,9 @@
 
         /* ── 状态 ─────────────────────────────────────────────────────── */
         const stage = root.querySelector(".fz-lb-stage");
+        const canvas = root.querySelector(".fz-lb-canvas");
         const img = root.querySelector(".fz-lb-img");
+        const ctx = canvas && typeof canvas.getContext === "function" ? canvas.getContext("2d") : null;
         const statusEl = root.querySelector(".fz-lb-status");
         const zoomLabel = root.querySelector(".fz-lb-zoom");
         const closeBtn = root.querySelector('[data-act="close"]');
@@ -361,8 +389,58 @@
         const st = { nw: 0, nh: 0, min: 1, max: 1, scale: 1, tx: 0, ty: 0 };
         let box = { w: 0, h: 0 };
         let ready = false;
+        /** 降采样层级：[{ el, k }]，k = 该级像素 / 原图像素；原图那级 k=1 */
+        let levels = null;
+
+        /** 画布后备分辨率上限：手机 DPR 3 时按 2 光栅化，肉眼几乎无差，绘制量却少一半 */
+        const MAX_CANVAS_DPR = 2;
 
         const clampNum = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+
+        /**
+         * 预生成 1/2、1/4 两级降采样位图。
+         * 原因：drawImage 一次缩 4 倍以上时取样核只有几个像素，图表里的细线和小字会断纹，
+         * 逐级减半再画则是标准的抗锯齿降采样。两级合计只多占几 MB，却在「适应屏幕」
+         * 这一最常见的倍率上明显更清晰。
+         */
+        function buildLevels() {
+            levels = [{ el: img, k: 1 }];
+            let src = img;
+            let w = st.nw;
+            let h = st.nh;
+            for (let i = 0; i < 2; i += 1) {
+                const nw = Math.max(1, Math.round(w / 2));
+                const nh = Math.max(1, Math.round(h / 2));
+                if (nw < 256) break;
+                const c = document.createElement("canvas");
+                c.width = nw;
+                c.height = nh;
+                const cx = typeof c.getContext === "function" ? c.getContext("2d") : null;
+                if (!cx) break;
+                cx.imageSmoothingEnabled = true;
+                if ("imageSmoothingQuality" in cx) cx.imageSmoothingQuality = "high";
+                cx.drawImage(src, 0, 0, nw, nh);
+                levels.push({ el: c, k: nw / st.nw });
+                src = c;
+                w = nw;
+                h = nh;
+            }
+        }
+
+        /** 挑一级「刚好够用」的位图：分辨率不低于本帧需要的采样密度，避免又糊又慢 */
+        function pickLevel(need) {
+            if (!levels || !levels.length) return { el: img, k: 1 };
+            for (let i = levels.length - 1; i > 0; i -= 1) {
+                if (levels[i].k >= need) return levels[i];
+            }
+            return levels[0];
+        }
+
+        function canvasDpr() {
+            const raw = typeof window !== "undefined" && window.devicePixelRatio
+                ? window.devicePixelRatio : 1;
+            return Math.min(Math.max(raw, 1), MAX_CANVAS_DPR);
+        }
 
         function measure() {
             const r = stage.getBoundingClientRect();
@@ -384,8 +462,61 @@
             st.ty = h <= box.h ? (box.h - h) / 2 : clampNum(st.ty, box.h - h, 0);
         }
 
-        function apply() {
+        /**
+         * 画布后备像素只跟**舞台尺寸**走，与图片原始像素无关。
+         * 这是黑块修复的核心：3282×1815 的原图不会再生成一个 3282×1815 CSS px 的合成层，
+         * 光栅面积恒为「舞台 × DPR」，与图片大小、缩放倍数都无关。
+         */
+        function syncCanvasSize() {
+            if (!canvas) return 1;
+            const dpr = canvasDpr();
+            const w = Math.max(1, Math.round(box.w * dpr));
+            const h = Math.max(1, Math.round(box.h * dpr));
+            if (canvas.width !== w) canvas.width = w;
+            if (canvas.height !== h) canvas.height = h;
+            return dpr;
+        }
+
+        /** 把图片的可见部分画进视口大小的画布；源矩形裁到图片边界内，越界部分留空（露出深色舞台） */
+        function draw() {
+            if (!ready) return;
+            if (!ctx) { drawFallback(); return; }
+
+            const dpr = syncCanvasSize();
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, box.w, box.h);
+            ctx.imageSmoothingEnabled = true;
+            if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+
+            const s = st.scale;
+            const sx = -st.tx / s;
+            const sy = -st.ty / s;
+            const x0 = Math.max(0, sx);
+            const y0 = Math.max(0, sy);
+            const x1 = Math.min(st.nw, sx + box.w / s);
+            const y1 = Math.min(st.nh, sy + box.h / s);
+            if (x1 <= x0 || y1 <= y0) return;
+
+            // 按「图片像素 → 画布像素」的密度选降采样层级，源坐标同步乘以该级的 k
+            const level = pickLevel(s * dpr);
+            const k = level.k;
+            ctx.drawImage(level.el,
+                x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k,
+                (x0 - sx) * s, (y0 - sy) * s, (x1 - x0) * s, (y1 - y0) * s);
+        }
+
+        /** 拿不到 2D 上下文时的兜底：退回整图 transform（现代浏览器不会走到） */
+        function drawFallback() {
+            if (!canvas) return;
+            canvas.style.display = "none";
+            img.classList.add("is-fallback");
+            img.style.width = `${st.nw}px`;
+            img.style.height = `${st.nh}px`;
             img.style.transform = `translate3d(${st.tx}px, ${st.ty}px, 0) scale(${st.scale})`;
+        }
+
+        function apply() {
+            draw();
             if (zoomLabel && st.min) {
                 zoomLabel.textContent = `${Math.round((st.scale / st.min) * 100)}%`;
             }
@@ -572,9 +703,8 @@
             st.nw = img.naturalWidth || 0;
             st.nh = img.naturalHeight || 0;
             if (!st.nw || !st.nh) return;
-            // 用原始像素作为布局尺寸，缩放全部交给 transform（合成层，不触发布局）
-            img.style.width = `${st.nw}px`;
-            img.style.height = `${st.nh}px`;
+            // 图片只作解码源：绘制交给视口大小的 canvas，不再按原始像素撑开元素
+            buildLevels();
             ready = true;
             if (statusEl && statusEl.parentNode) statusEl.remove();
             measure();
@@ -614,6 +744,12 @@
         if (closeBtn.focus) {
             try { closeBtn.focus({ preventScroll: true }); } catch (err) { closeBtn.focus(); }
         }
+        // 自检探针（city/fuzhou/tools/fuzhou_viewer_check.js 只读）：浏览器里这些状态没有任何
+        // 可观察的 DOM 出口（改的是 canvas，不再是 transform 字符串），故留一个只读快照函数。
+        root.__fzViewerProbe = () => ({
+            scale: st.scale, tx: st.tx, ty: st.ty, min: st.min, max: st.max,
+            loading: !ready, canvasW: canvas ? canvas.width : 0, canvasH: canvas ? canvas.height : 0
+        });
         measure();
         img.src = entry.map;
     }

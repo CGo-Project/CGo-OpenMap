@@ -29,13 +29,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="CGo开放地图">
 
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261104.205102">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261104.205102">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261104.205102">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261104.205102">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261104.205102">
-    <script type="module" src="core/cgo-ui.js?v=261104.205102"></script>
-    <script src="city/data.js?v=261104.205102"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261104.212815">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261104.212815">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261104.212815">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261104.212815">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261104.212815">
+    <script type="module" src="core/cgo-ui.js?v=261104.212815"></script>
+    <script src="city/data.js?v=261104.212815"></script>
 
     <style>
         body {
@@ -308,6 +308,9 @@
                 <span>已离线就绪的城市（点击可直接进入）：</span>
             </div>
             <div id="cachedCitiesList" class="cached-cities-grid"></div>
+            <div id="partialCitiesSection" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-color, rgba(0,0,0,0.08)); font-size: 11px; color: var(--text-light, #64748b);">
+                <span id="partialCitiesText"></span>
+            </div>
         </div>
 
         <div class="offline-tips">
@@ -346,6 +349,15 @@
             showOnlineToastAndRedirect();
         });
 
+        function normalizeUrlPath(url) {
+            try {
+                var u = new URL(url, window.location.href);
+                return u.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+            } catch (_) {
+                return (url || '').split('?')[0].replace(/^\.?\/+/, '').replace(/\/+$/, '');
+            }
+        }
+
         async function detectCachedCities() {
             if (!('caches' in window)) return;
             try {
@@ -357,41 +369,80 @@
                 var cache = await caches.open(currentCacheName);
                 var requests = await cache.keys();
 
-                var detectedCityIds = new Set();
+                var cachedPaths = new Set();
                 requests.forEach(function (req) {
-                    var m = req.url.match(/\/city\/([a-z0-9_-]+)\//i);
-                    if (m && m[1]) {
-                        detectedCityIds.add(m[1].toLowerCase());
-                    }
+                    cachedPaths.add(normalizeUrlPath(req.url));
                 });
 
                 var registry = window.CITY_REGISTRY || {};
-                var validCities = [];
-                detectedCityIds.forEach(function (id) {
-                    if (registry[id]) {
-                        validCities.push({
+                var readyCities = [];
+                var partialCities = [];
+
+                Object.keys(registry).forEach(function (id) {
+                    var reg = registry[id];
+                    var folder = (reg.folder || ('./city/' + id)).replace(/^\.?\/+/, '').replace(/\/+$/, '');
+                    var mainJs = (reg.mainLogic || (folder + '/' + id + '.js')).replace(/^\.?\/+/, '');
+                    var stationsJs = folder + '/data_stations.js';
+                    var linesJs = folder + '/data_lines.js';
+
+                    var hasMain = cachedPaths.has(mainJs);
+                    var hasStations = cachedPaths.has(stationsJs);
+                    var hasLines = cachedPaths.has(linesJs);
+
+                    // 离线可用性铁律：必须同时拥有核心业务脚本、车站数据与线路数据，方可确认离线就绪
+                    if (hasMain && hasStations && hasLines) {
+                        readyCities.push({
                             id: id,
-                            name: registry[id].name || id,
-                            color: registry[id].themeColor || '#1a73e8'
+                            name: reg.name || id,
+                            color: reg.themeColor || '#1a73e8'
                         });
+                    } else if (hasMain || hasStations || hasLines) {
+                        partialCities.push(reg.name || id);
+                    } else {
+                        var hasAny = Array.from(cachedPaths).some(function (p) {
+                            return p.indexOf(folder + '/') === 0;
+                        });
+                        if (hasAny) {
+                            partialCities.push(reg.name || id);
+                        }
                     }
                 });
 
-                if (validCities.length > 0) {
-                    var container = document.getElementById('cachedCitiesContainer');
-                    var list = document.getElementById('cachedCitiesList');
+                var container = document.getElementById('cachedCitiesContainer');
+                var list = document.getElementById('cachedCitiesList');
+                var partialSection = document.getElementById('partialCitiesSection');
+                var partialText = document.getElementById('partialCitiesText');
+
+                if (readyCities.length > 0 || partialCities.length > 0) {
                     if (container && list) {
-                        list.innerHTML = validCities.map(function (c) {
-                            return '<a href="./main.html?city=' + encodeURIComponent(c.id) + '" class="cached-city-btn" title="进入 ' + c.name + ' 离线地图">' +
-                                '<span class="cached-city-left">' +
-                                '<span class="city-badge-dot" style="background-color: ' + c.color + '"></span>' +
-                                '<span>' + c.name + '</span>' +
-                                '</span>' +
-                                '<cgo-icon name="chevron-right" size="12"></cgo-icon>' +
-                                '</a>';
-                        }).join('');
+                        if (readyCities.length > 0) {
+                            list.innerHTML = readyCities.map(function (c) {
+                                return '<a href="./main.html?city=' + encodeURIComponent(c.id) + '" class="cached-city-btn" title="进入 ' + c.name + ' 离线地图">' +
+                                    '<span class="cached-city-left">' +
+                                    '<span class="city-badge-dot" style="background-color: ' + c.color + '"></span>' +
+                                    '<span>' + c.name + '</span>' +
+                                    '</span>' +
+                                    '<cgo-icon name="chevron-right" size="12"></cgo-icon>' +
+                                    '</a>';
+                            }).join('');
+                            list.style.display = 'grid';
+                        } else {
+                            list.innerHTML = '';
+                            list.style.display = 'none';
+                        }
+
+                        if (partialSection && partialText) {
+                            if (partialCities.length > 0) {
+                                partialText.textContent = '缓存预热中（尚未完整）：' + partialCities.join('、');
+                                partialSection.style.display = 'block';
+                            } else {
+                                partialSection.style.display = 'none';
+                            }
+                        }
                         container.style.display = 'block';
                     }
+                } else if (container) {
+                    container.style.display = 'none';
                 }
             } catch (err) {
                 console.warn('[Offline] 检测离线缓存城市异常:', err);
