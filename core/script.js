@@ -3,7 +3,7 @@
  */
 
 
-const APP_VERSION = "261104.091538";
+const APP_VERSION = "261104.093002";
 const originalTitle = document.title;
 const originalDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || "CGo OpenMap";
 
@@ -1120,7 +1120,9 @@ function renderStations() {
         stationDiv.setAttribute('aria-label', stationLabel);
         // 城市可自定义站点图元画法（如上海式短横与换乘胶囊）；未实现时回落到通用模板
         const city = getActiveCity();
-        const customIcon = typeof city.renderStationIcon === 'function' ? city.renderStationIcon(s, id) : null;
+        // 胶囊 / 哑铃等明确指定形状的通用图元不交给城市钩子（规则见 core/station-icons.js isExplicitGlyph）
+        const explicitGlyph = window.CGoStationIcons?.isExplicitGlyph?.(s.type);
+        const customIcon = (!explicitGlyph && typeof city.renderStationIcon === 'function') ? city.renderStationIcon(s, id) : null;
         if (customIcon && customIcon.html) {
             stationDiv.innerHTML = customIcon.html;
             if (customIcon.className) stationDiv.className += ' ' + customIcon.className;

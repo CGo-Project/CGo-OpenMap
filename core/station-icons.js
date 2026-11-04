@@ -213,7 +213,19 @@
         return out;
     }
 
+    /**
+     * 「明确指定形状」的通用图元：车站选了这些类型，就画这里的通用模板，不交给城市钩子
+     * （城市钩子通常按逐站 marker 或 dot / tsf 两分法画图，会把胶囊、哑铃吞掉）。
+     * 引擎 renderStations 与 OpenMap Editor 画布共用这一规则。
+     */
+    const EXPLICIT_GLYPH_TYPES = ['tsf_pill_h', 'tsf_pill_v', 'tsf_pill_d45', 'tsf_pill_d135', 'tsf_dumbbell'];
+    function isExplicitGlyph(type) {
+        return EXPLICIT_GLYPH_TYPES.indexOf(type) !== -1;
+    }
+
     return {
+        EXPLICIT_GLYPH_TYPES,
+        isExplicitGlyph,
         engineLineColors,
         SVGTemplates,
         STATION_SIZE,

@@ -401,6 +401,36 @@ section('车站图元 (core/station-icons.js)');
 }
 
 // ============================================================================
+// 四点九五、车站样式目录：任何城市、任何样式都可选，且任何改动都能切回
+// ============================================================================
+section('车站样式目录 (editor/js/core/station-style-catalog.js)');
+{
+    const Cat = require(path.join(ROOT, 'editor/js/core/station-style-catalog.js'));
+    const orig = { id: 'S', type: 'tsf', x: 0, y: 0, marker: { parts: [{ shape: 'capsule', long: 32.1, short: 12.8, angle: 90, dx: 0, dy: 0 }] } };
+    const g = Cat.genericOptions().find(o => o.patch.type === 'dot');
+    const changed = Cat.applyPatch(orig, g.patch);
+    check(changed.type === 'dot' && changed.marker === undefined && orig.marker, '通用图元去掉逐站 marker，且不改动原对象');
+    const groups = Cat.optionsFor({ node: changed, project: { nodes: { S: changed } }, origin: orig });
+    const restore = groups.find(x => x.group === 'original');
+    check(restore && Cat.sameAppearance(Cat.applyPatch(changed, restore.items[0].patch), orig),
+        '改过样式后总能「恢复载入时的样式」，官方几何逐字段还原');
+    const generic = groups.find(x => x.group === 'generic');
+    check(generic && Cat.GENERIC_TYPES.length === 10 && generic.items.length >= 9,
+        '通用图元不按城市裁剪（10 种全部提供，仅与已列出的样式去重）');
+    check(Cat.applyPatch({ type: 'dot' }, { type: 'no' }).notOpen === true && Cat.applyPatch({ type: 'no', notOpen: true }, { type: 'tsf' }).notOpen === false,
+        '套用样式时同步 notOpen 派生态');
+    for (const city of cities) {
+        const st = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
+        const nodes = {};
+        Object.keys(st).forEach(id => { nodes[id] = Object.assign({ id }, st[id]); });
+        const h = Cat.harvest({ nodes });
+        const total = h.reduce((n, x) => n + x.count, 0);
+        check(h.length >= 1 && total === Object.keys(nodes).length,
+            `${city}: 提取出 ${h.length} 种现有样式，覆盖全部 ${total} 座车站`);
+    }
+}
+
+// ============================================================================
 // 四点十、开通沿革：区段必须拼满、不得留空洞
 // ============================================================================
 // 「发展史动态演示」把 data_opening_history.js 按日期顺序播成生长动画。数据里

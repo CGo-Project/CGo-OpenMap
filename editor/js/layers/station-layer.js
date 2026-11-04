@@ -113,7 +113,9 @@ window.OpenMapEditor.StationLayer = (function () {
      */
     function stationMarkup(s, id) {
         var runtime = getRuntime();
-        var custom = runtime ? runtime.renderStationIcon(s, id) : null;
+        var iconsLib = getStationIconsEngine();
+        var explicit = iconsLib && typeof iconsLib.isExplicitGlyph === 'function' && iconsLib.isExplicitGlyph(s.type);
+        var custom = (runtime && !explicit) ? runtime.renderStationIcon(s, id) : null;
         if (custom && custom.html) {
             return {
                 html: custom.html,

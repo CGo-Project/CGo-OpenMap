@@ -271,6 +271,71 @@
             return { marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle, long: TICK_LONG, short: TICK_SHORT }] } };
         },
 
+        /**
+         * OpenMap Editor 钩子：为一座车站现场生成可选画法。
+         * 按经过本站的每条线路求出站台位置（线路折线上离车站最近的点），据此给出：
+         *   · 短横（普通站，沿线路切线定向）；
+         *   · 单枚胶囊（一般换乘 / 国铁站）；
+         *   · 合并胶囊：多条线路站台平行相邻（同台 / 平行换乘），一枚拉长胶囊横跨各站台；
+         *   · 每线一枚：各线站台分开（通道 / 出站换乘），每条线路在自己的站台处各画一枚胶囊。
+         * @returns {Array<{key, name, desc, patch}>}
+         */
+        getStationStyleOptions(station, stationId) {
+            if (!station) return [];
+            const r1 = (v) => Math.round(v * 10) / 10;
+            const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
+            // 每条线路离本站最近的点（12px 以内才算经过本站）
+            const near = {};
+            lines.forEach((line) => {
+                Object.keys(line).forEach((key) => {
+                    if (key.indexOf("pathPoints") !== 0) return;
+                    const pts = line[key];
+                    if (!Array.isArray(pts)) return;
+                    for (let i = 0; i < pts.length - 1; i++) {
+                        const a = pts[i], b = pts[i + 1];
+                        const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+                        if (l2 < 1e-6) continue;
+                        const t = Math.max(0, Math.min(1, ((station.x - a.x) * dx + (station.y - a.y) * dy) / l2));
+                        const px = a.x + t * dx, py = a.y + t * dy;
+                        const d = Math.hypot(station.x - px, station.y - py);
+                        const lid = line.id || key;
+                        if (d <= 12 && (!near[lid] || d < near[lid].d)) near[lid] = { d, x: px, y: py };
+                    }
+                });
+            });
+            // 同一位置的多条线路（共线 / 交叉点）只算一个站台
+            const platforms = [];
+            Object.keys(near).forEach((lid) => {
+                const p = near[lid];
+                if (!platforms.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < 3)) platforms.push(p);
+            });
+
+            const capsule = (cx, cy, angle, long) => ({ shape: "capsule", dx: r1(cx), dy: r1(cy), angle: r1(angle),
+                long: r1(long), short: CAPSULE_SHORT });
+            const opts = [];
+            const tickAngle = Math.round(inferTangentAngle(station, stationId) * 10) / 10;
+            opts.push({ key: "tick", name: "短横", desc: "普通站 · 沿线路切线定向",
+                patch: { type: "dot", marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: tickAngle, long: TICK_LONG, short: TICK_SHORT }] } } });
+            const ic = (station.type === "rdot") ? "rdot" : "tsf";
+            opts.push({ key: "capsule", name: "单枚胶囊", desc: "换乘站 / 国铁站",
+                patch: { type: ic, marker: { parts: [capsule(0, 0, 0, CAPSULE_SHORT)] } } });
+
+            if (platforms.length >= 2) {
+                // 合并胶囊：取相距最远的两处站台，胶囊沿两者连线拉长并覆盖全部站台
+                let a = platforms[0], b = platforms[1], best = -1;
+                platforms.forEach((p) => platforms.forEach((q) => {
+                    const d = Math.hypot(p.x - q.x, p.y - q.y);
+                    if (d > best) { best = d; a = p; b = q; }
+                }));
+                const ang = Math.atan2(b.y - a.y, b.x - a.x) / RAD;
+                opts.push({ key: "merged", name: "合并胶囊", desc: `同台 / 平行换乘 · 横跨 ${platforms.length} 处站台`,
+                    patch: { type: "tsf", marker: { parts: [capsule((a.x + b.x) / 2 - station.x, (a.y + b.y) / 2 - station.y, ang, best + CAPSULE_SHORT)] } } });
+                opts.push({ key: "split", name: `每线一枚 ×${platforms.length}`, desc: "通道 / 出站换乘 · 各站台独立",
+                    patch: { type: "tsf", marker: { parts: platforms.map((p) => capsule(p.x - station.x, p.y - station.y, 0, CAPSULE_SHORT)) } } });
+            }
+            return opts;
+        },
+
         /** 初始化车站卡片系统 */
         async initStaCard(options = {}) {
             return await this.stacard.getRenderer()?.init?.({

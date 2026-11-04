@@ -475,7 +475,14 @@ window.OpenMapEditor.CityRenderRuntime = (function () {
         return (out && typeof out === 'object') ? out : {};
     }
 
+    /** 城市为某座车站现场生成的可选画法（getStationStyleOptions 钩子），没有时返回 [] */
+    function getStationStyleOptions(station, id) {
+        var out = safeCall('getStationStyleOptions', [station, id]);
+        return Array.isArray(out) ? out : [];
+    }
+
     return {
+        getStationStyleOptions: getStationStyleOptions,
         getStationTypes: getStationTypes,
         adaptStationForType: adaptStationForType,
         activate: activate,

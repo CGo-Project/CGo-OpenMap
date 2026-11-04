@@ -2014,6 +2014,12 @@
                 node.align = value;
             } else if (prop === 'offset') {
                 node.offset = value;
+            } else if (prop === 'appearance') {
+                // 样式选择器：一次性写入一组外观字段（type + marker / mk / halo…），值为 undefined/null 表示删除
+                var cat = window.OpenMapEditor.StationStyleCatalog;
+                var applied = cat ? cat.applyPatch(node, value || {}) : node;
+                Object.keys(node).forEach(function (k) { if (!(k in applied)) delete node[k]; });
+                Object.keys(applied).forEach(function (k) { node[k] = applied[k]; });
             } else if (prop === 'type') {
                 // 城市逐站图元（如上海 marker）决定实际画法：先让城市按新类型改写，再落类型
                 var rtType = window.OpenMapEditor.CityRenderRuntime;
@@ -2343,8 +2349,9 @@
             var node = app.project.nodes[app.selected.id];
             if (node) {
                 if (category === 'station') {
-                    handlePropertyChange('node', node.id, 'type', payload.glyph);
-                    showToast('已将车站「' + (node.cn || node.id) + '」图元切换为 ' + payload.glyph, 'success');
+                    if (payload.patch) handlePropertyChange('node', node.id, 'appearance', payload.patch);
+                    else handlePropertyChange('node', node.id, 'type', payload.glyph);
+                    showToast('已将车站「' + String(node.cn || node.id).replace(/<[^>]*>/g, '') + '」换成所选样式（可在右侧「恢复载入时的样式」切回）', 'success');
                     renderAll();
                     return;
                 } else if (category === 'amenity') {
@@ -4546,6 +4553,14 @@
                         type: app.activeStamp.payload.glyph || 'dot',
                         align: 'top'
                     };
+                    // 零件盒里选的是「本城市现有样式」时，连同逐站图元字段一起落子
+                    var stampPatch = app.activeStamp.payload.patch;
+                    var styleCat = window.OpenMapEditor.StationStyleCatalog;
+                    if (stampPatch && styleCat) {
+                        var stamped = styleCat.applyPatch(app.project.nodes[newId], stampPatch);
+                        if (!stamped.notOpen) delete stamped.notOpen;
+                        app.project.nodes[newId] = stamped;
+                    }
                     app.selected = { type: 'node', id: newId };
                     showToast('已成功放置车站「' + app.project.nodes[newId].cn + '」', 'success');
                 } else if (app.activeStamp.category === 'amenity') {
