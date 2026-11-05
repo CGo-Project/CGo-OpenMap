@@ -22,6 +22,8 @@
  * ==============================================================================
  * - listCities()                     读取 CITY_REGISTRY 中已注册的城市列表
  * - loadCity(cityId)                 拉取并解析某城市的全套数据文件（含源码原文）
+ * - scanDirectoryForCities(handle)   在关联的本地目录里找出全部城市目录
+ * - loadCityFromDirectory(dir, id)   从本地城市目录载入（线上部署唯一的存量城市入口）
  * - patchEntries(text, name, ops)    对 `const X = {...}` / `[...]` 做条目级回写
  * - formatEntryValue(obj, opts)      按原条目的书写风格序列化一条数据
  * - downloadText(filename, text)     浏览器端另存为文件
@@ -129,15 +131,25 @@ window.CityProjectIO = (function () {
     /**
      * 拉取某城市的全套数据文件。
      * 返回 { id, name, meta, base, sources: {文件名: 源码}, data: {全局名: 值} }
+     *
+     * @param {string} cityId
+     * @param {{ readFile?: function(string): Promise<{text?: string, reason?: Object}>,
+     *           meta?: Object, base?: string,
+     *           describeFailure?: function(string, string, Object): string }} [opts]
+     *        不传 readFile 时从站点服务器 fetch（本地开发服务器）；
+     *        传入时由调用方提供文件来源（例如用户关联的本地目录）。
      */
-    async function loadCity(cityId) {
-        const meta = findCity(cityId);
+    async function loadCity(cityId, opts) {
+        const o = opts || {};
+        const meta = o.meta || findCity(cityId);
         if (!meta) throw new Error(`城市 "${cityId}" 未在 city/data.js 的 CITY_REGISTRY 中注册。`);
 
-        const base = resolveFolder(meta.folder, cityId);
+        const base = o.base != null ? o.base : resolveFolder(meta.folder, cityId);
+        const readFile = typeof o.readFile === 'function' ? o.readFile : (file => fetchCityFile(base, file));
+        const describe = typeof o.describeFailure === 'function' ? o.describeFailure : describeLoadFailure;
         const project = {
-            id: meta.id,
-            name: meta.name || meta.id,
+            id: meta.id || cityId,
+            name: meta.name || meta.id || cityId,
             meta,
             base,
             sources: {},
@@ -146,19 +158,16 @@ window.CityProjectIO = (function () {
         };
 
         for (const entry of DATA_FILES) {
-            const url = `${base}/${entry.file}?_editor=${Date.now()}`;
-            let text = null;
-            let reason = null;
+            let res;
             try {
-                const res = await fetch(url, { cache: 'no-store' });
-                if (res.ok) text = await res.text();
-                else reason = { kind: 'http', status: res.status, statusText: res.statusText };
+                res = await readFile(entry.file);
             } catch (err) {
-                reason = { kind: 'network', message: err.message };
+                res = { reason: { kind: 'network', message: err && err.message } };
             }
+            const text = res && typeof res.text === 'string' ? res.text : null;
 
             if (text == null) {
-                if (entry.required) throw new Error(describeLoadFailure(base, entry.file, reason));
+                if (entry.required) throw new Error(describe(base, entry.file, res && res.reason));
                 project.missing.push(entry.file);
                 continue;
             }
@@ -177,6 +186,110 @@ window.CityProjectIO = (function () {
         }
 
         return project;
+    }
+
+    /** 默认文件来源：从站点服务器读取 `${base}/${file}` */
+    async function fetchCityFile(base, file) {
+        const url = `${base}/${file}?_editor=${Date.now()}`;
+        try {
+            const res = await fetch(url, { cache: 'no-store' });
+            if (res.ok) return { text: await res.text() };
+            return { reason: { kind: 'http', status: res.status, statusText: res.statusText } };
+        } catch (err) {
+            return { reason: { kind: 'network', message: err.message } };
+        }
+    }
+
+    // ==========================================================================
+    // 二点一、从用户关联的本地目录读取城市（File System Access API）
+    // ==========================================================================
+    //
+    // 部署在线上的编辑器不再提供「在线城市库」：想维护已有城市，必须先把仓库
+    // 克隆到本地，再通过「关联本地目录」选中仓库根目录 / city/ / city/<id>/。
+    // 这里只认目录句柄的最小接口（getFileHandle / getDirectoryHandle / entries /
+    // name），便于在 Node 自检里用内存桩替代。
+
+    async function dirHasFile(dir, file) {
+        try {
+            await dir.getFileHandle(file);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    async function getSubdir(dir, name) {
+        try {
+            return await dir.getDirectoryHandle(name);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    async function listSubdirs(dir) {
+        const out = [];
+        if (!dir || typeof dir.entries !== 'function') return out;
+        for await (const [name, handle] of dir.entries()) {
+            if (handle && handle.kind === 'directory' && name.charAt(0) !== '.') out.push(handle);
+        }
+        return out;
+    }
+
+    /**
+     * 在用户选中的目录里找出全部城市目录。
+     * 支持三种选法：仓库根目录（含 city/）、city/ 目录本身、某个 city/<id>/ 目录。
+     * @returns {Promise<Array<{id: string, name: string, dir: Object, registered: boolean}>>}
+     */
+    async function scanDirectoryForCities(handle) {
+        if (!handle) return [];
+        const describe = dir => {
+            const reg = findCity(dir.name);
+            return { id: dir.name, name: (reg && reg.name) || dir.name, dir, registered: !!reg };
+        };
+
+        // 1) 直接选中了 city/<id>/
+        if (await dirHasFile(handle, 'data_stations.js')) return [describe(handle)];
+
+        // 2) 仓库根目录 → city/；3) city/ 目录本身
+        const cityRoot = (await getSubdir(handle, 'city')) || handle;
+        const found = [];
+        for (const sub of await listSubdirs(cityRoot)) {
+            if (await dirHasFile(sub, 'data_stations.js')) found.push(describe(sub));
+        }
+        found.sort((a, b) => a.id.localeCompare(b.id));
+        return found;
+    }
+
+    /**
+     * 从本地城市目录载入城市工程。返回结构与 loadCity 相同。
+     * @param {Object} cityDir 城市目录句柄（scanDirectoryForCities 返回的 dir）
+     * @param {string} [cityId] 默认取目录名
+     */
+    async function loadCityFromDirectory(cityDir, cityId) {
+        if (!cityDir) throw new Error('未提供本地城市目录。');
+        const id = cityId || cityDir.name;
+        const meta = findCity(id) || { id, name: id, folder: `./city/${id}` };
+        const base = `local:city/${id}`;
+        return loadCity(id, {
+            meta,
+            base,
+            readFile: async file => {
+                let fh;
+                try {
+                    fh = await cityDir.getFileHandle(file);
+                } catch (err) {
+                    return { reason: { kind: 'local-missing', message: err && err.message } };
+                }
+                const f = await fh.getFile();
+                return { text: await f.text() };
+            },
+            describeFailure: (b, file, reason) => {
+                if (reason && reason.kind === 'local-missing') {
+                    return `本地目录 city/${id}/ 里缺少 ${file}。请确认选中的是完整克隆的 CGo-OpenMap 仓库。`;
+                }
+                return `读取本地文件 city/${id}/${file} 失败：${(reason && reason.message) || '未知原因'}`;
+            }
+        });
     }
 
     // ==========================================================================
@@ -679,6 +792,8 @@ window.CityProjectIO = (function () {
         listCities,
         findCity,
         loadCity,
+        scanDirectoryForCities,
+        loadCityFromDirectory,
         resolveFolder,
         // 线路数据模型访问器（分支线路安全）
         lineStationGroups,

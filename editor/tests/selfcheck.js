@@ -2623,6 +2623,79 @@ section('「同址异站」莫斯科型换乘原生支持（Issue #47）');
 }
 
 // ============================================================================
+// 线上部署禁止在线城市库：只能从关联的本地目录载入已有城市
+// ============================================================================
+section('线上编辑器：不提供在线城市库，已有城市只能从本地目录载入');
+(async () => {
+    new Function(fs.readFileSync(path.join(ROOT, 'editor/js/core/startup-policy.js'), 'utf8'))();
+    const Policy = global.window.OpenMapEditor.StartupPolicy;
+    const at = (hostname, protocol) => Policy.isOnlineDeployment({ hostname, protocol: protocol || 'https:' });
+
+    check(at('centralgo.site') === true && at('www.centralgo.site') === true, 'centralgo.site 判定为线上部署');
+    check(at('localhost', 'http:') === false && at('127.0.0.1', 'http:') === false && at('[::1]', 'http:') === false,
+        'localhost / 127.0.0.1 / ::1 判定为本地');
+    check(at('192.168.1.8', 'http:') === false && at('10.0.0.2', 'http:') === false && at('172.16.3.4', 'http:') === false,
+        '局域网私有地址判定为本地');
+    check(at('', 'file:') === false, 'file:// 判定为本地');
+    check(Policy.decideUrlCity({ urlCity: 'beijing', online: true }) === 'blocked-online',
+        '线上部署时 URL ?city= 不再从服务器自动载入');
+    check(Policy.decideUrlCity({ urlCity: 'beijing', online: false }) === 'load',
+        '本地开发时 URL ?city= 仍正常载入');
+
+    // 内存版目录句柄：只实现 File System Access API 的最小接口，内容取自真实 city/ 目录
+    function fileHandle(abs) {
+        return { kind: 'file', getFile: async () => ({ text: async () => fs.readFileSync(abs, 'utf8') }) };
+    }
+    function dirHandle(abs) {
+        const name = path.basename(abs);
+        return {
+            kind: 'directory', name,
+            async getFileHandle(n) {
+                const f = path.join(abs, n);
+                if (!fs.existsSync(f) || !fs.statSync(f).isFile()) { const e = new Error('NotFound'); e.name = 'NotFoundError'; throw e; }
+                return fileHandle(f);
+            },
+            async getDirectoryHandle(n) {
+                const d = path.join(abs, n);
+                if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) { const e = new Error('NotFound'); e.name = 'NotFoundError'; throw e; }
+                return dirHandle(d);
+            },
+            async *entries() {
+                for (const n of fs.readdirSync(abs)) {
+                    const full = path.join(abs, n);
+                    yield [n, fs.statSync(full).isDirectory() ? dirHandle(full) : fileHandle(full)];
+                }
+            }
+        };
+    }
+
+    const fromRoot = await IO.scanDirectoryForCities(dirHandle(ROOT));
+    const fromCityDir = await IO.scanDirectoryForCities(dirHandle(path.join(ROOT, 'city')));
+    const fromSingle = await IO.scanDirectoryForCities(dirHandle(path.join(ROOT, 'city', 'fuzhou')));
+    check(fromRoot.length === cities.length && fromRoot.some(c => c.id === 'fuzhou'),
+        '选中仓库根目录：找到全部 ' + cities.length + ' 座城市');
+    check(fromCityDir.length === fromRoot.length, '选中 city/ 目录：结果与仓库根目录一致');
+    check(fromSingle.length === 1 && fromSingle[0].id === 'fuzhou', '选中 city/fuzhou/：只识别出这一座城市');
+    check((await IO.scanDirectoryForCities(dirHandle(path.join(ROOT, 'editor')))).length === 0,
+        '选中无关目录：不误认任何城市');
+
+    const loaded = await IO.loadCityFromDirectory(fromSingle[0].dir, 'fuzhou');
+    const expectSrc = fs.readFileSync(path.join(ROOT, 'city/fuzhou/data_stations.js'), 'utf8');
+    check(loaded.sources['data_stations.js'] === expectSrc && loaded.data.stationsData && loaded.data.linesData,
+        '从本地目录载入城市：原始源码逐字节保留，站点与线路数据解析成功');
+    check(/^local:/.test(loaded.base), '本地载入的工程 base 标记为 local:，不指向服务器路径');
+
+    let missingMsg = '';
+    try { await IO.loadCityFromDirectory(dirHandle(path.join(ROOT, 'editor')), 'fakecity'); }
+    catch (e) { missingMsg = e.message; }
+    check(/缺少 data_stations\.js/.test(missingMsg), '本地目录缺文件时给出明确的中文提示');
+
+    const appSrc2 = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    check(/isOnlineEditor\(\)/.test(appSrc2) && /blocked-online/.test(appSrc2) && /loadCityFromDirectory/.test(appSrc2),
+        'editor-app.js 线上隐藏服务器城市库、拦截 ?city=，并从本地目录载入');
+})().then(finish, err => { failed++; console.log('  ✗ 本地目录载入自检异常：' + (err && err.stack || err)); finish(); });
+
+function finish() {
 console.log('\n' + '─'.repeat(64));
 if (failed === 0) {
     console.log(`全部通过：${passed} 项断言，覆盖 ${cities.length} 座城市（${cities.join('、')}）`);
@@ -2630,4 +2703,5 @@ if (failed === 0) {
 } else {
     console.log(`失败 ${failed} 项 / 通过 ${passed} 项`);
     process.exit(1);
+}
 }

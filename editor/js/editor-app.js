@@ -3787,10 +3787,48 @@
         try {
             var handle = await surgical.linkLocalDirectory();
             updateLinkDirUi(handle);
-            showToast('已关联本地目录: ' + handle.name + '，现在支持直接写回', 'success');
+            await refreshLocalCityLibrary(handle);
         } catch (err) {
             if (err.name !== 'AbortError') {
                 showToast('关联本地目录失败: ' + (err.message || err), 'error');
+            }
+        }
+    }
+
+    /**
+     * 扫描刚关联的本地目录，把其中的城市填进「本地城市库」下拉框。
+     * 只找到一座城市（直接选中了 city/<id>/）且当前没有城市工程时，直接载入。
+     */
+    async function refreshLocalCityLibrary(handle) {
+        var io = window.OpenMapEditor.CityProjectIO || window.CityProjectIO;
+        var found = [];
+        try {
+            found = (io && typeof io.scanDirectoryForCities === 'function')
+                ? await io.scanDirectoryForCities(handle) : [];
+        } catch (err) {
+            showToast('读取本地目录失败: ' + (err.message || err), 'error');
+            return;
+        }
+
+        localCityDirs = {};
+        found.forEach(function (c) { localCityDirs[c.id] = { dir: c.dir, name: c.name }; });
+        populateCitySelect();
+
+        if (!found.length) {
+            showToast('已关联本地目录: ' + handle.name + '，但没找到城市数据。' +
+                '如需载入已有城市，请选择 CGo-OpenMap 仓库根目录、city/ 或 city/<城市>/', 'warning');
+            return;
+        }
+        window.OpenMapEditor.RibbonController.switchTab('surgical');
+        showToast('已关联本地目录: ' + handle.name + '，找到 ' + found.length + ' 座城市，请在「本地城市库」中选择', 'success');
+
+        var surgical = window.OpenMapEditor.PipelineSurgical;
+        var loaded = surgical && surgical.getCurrentLoadedCity && surgical.getCurrentLoadedCity();
+        var sel = document.getElementById('selectCityToLoad');
+        if (found.length === 1 && !loaded && sel) {
+            var policy = window.OpenMapEditor.StartupPolicy;
+            if (policy && typeof policy.dispatchCityChange === 'function') {
+                policy.dispatchCityChange(sel, found[0].id);
             }
         }
     }
@@ -5363,8 +5401,15 @@
 
                 loadingCityId = cityId;
                 try {
-                    showToast('正在载入城市: ' + cityId + '...', 'info');
-                    var res = await window.OpenMapEditor.PipelineSurgical.loadCity(cityId);
+                    var localDir = localCityDirs && localCityDirs[cityId] ? localCityDirs[cityId].dir : null;
+                    if (!localDir && isOnlineEditor()) {
+                        throw new Error('线上编辑器不提供在线城市库，请先「关联本地目录」');
+                    }
+                    showToast('正在载入城市: ' + cityId + (localDir ? '（本地目录）' : '') + '...', 'info');
+                    var res = localDir
+                        ? await window.OpenMapEditor.PipelineSurgical.loadCityFromDirectory(localDir, cityId)
+                        : await window.OpenMapEditor.PipelineSurgical.loadCity(cityId);
+                    updateLinkDirUi();
                     // 换了工程：上一个工程遗留的走线草稿必须清掉，否则首次点击会被当成"第二击"
                     if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.cancelDraft) {
                         window.OpenMapEditor.PipelineDraw.cancelDraft();
@@ -5912,28 +5957,58 @@
         }
     }
 
+    // ------------------------------------------------------------------
+    // 城市库来源
+    // ------------------------------------------------------------------
+    // 线上部署（如 centralgo.site）不提供「在线城市库」：想维护已有城市，必须先克隆
+    // 仓库，再用「关联本地目录」选中仓库根目录 / city/ / city/<id>/，从本地读取。
+    // 本机开发服务器上仍可直接从服务器（也就是本地文件）载入注册表里的城市。
+    var localCityDirs = null;   // { cityId: 目录句柄 }，关联本地目录后才有
+
+    function isOnlineEditor() {
+        var policy = window.OpenMapEditor.StartupPolicy;
+        return !!(policy && typeof policy.isOnlineDeployment === 'function' && policy.isOnlineDeployment());
+    }
+
+    function escapeOptionText(text) {
+        return String(text == null ? '' : text).replace(/[&<>"']/g, function (ch) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+        });
+    }
+
     function populateCitySelect() {
         var sel = document.getElementById('selectCityToLoad');
         if (!sel) return;
-        var io = window.OpenMapEditor.CityProjectIO || window.CityProjectIO;
-        if (!io) return;
-        var cities = io.listCities();
-        if (cities && cities.length) {
-            var optionsHtml = '<cgo-toolbar-option value="">载入城市工程...</cgo-toolbar-option>' +
-                cities.map(function (c) {
-                    return '<cgo-toolbar-option value="' + c.id + '">' + c.name + ' (' + c.id + ')</cgo-toolbar-option>';
-                }).join('');
-            // 同时兼容原生 select
-            if (sel.tagName.toLowerCase() === 'select') {
-                optionsHtml = '<option value="">载入城市工程...</option>' +
-                    cities.map(function (c) {
-                        return '<option value="' + c.id + '">' + c.name + ' (' + c.id + ')</option>';
-                    }).join('');
-            }
-            sel.innerHTML = optionsHtml;
-            if (typeof sel.requestUpdate === 'function') {
-                sel.requestUpdate();
-            }
+        var label = document.getElementById('cityLibraryLabel');
+        var cities = [];
+        var placeholder = '载入城市工程...';
+
+        if (localCityDirs) {
+            cities = Object.keys(localCityDirs).map(function (id) {
+                return { id: id, name: localCityDirs[id].name || id };
+            });
+            if (label) label.textContent = '本地城市库';
+            if (!cities.length) placeholder = '所选目录里没有城市';
+        } else if (isOnlineEditor()) {
+            if (label) label.textContent = '本地城市库';
+            placeholder = '请先「关联本地目录」';
+            sel.title = '线上编辑器不提供在线城市库：请克隆 CGo-OpenMap 仓库后，点「关联本地目录」选中仓库根目录或 city/ 目录';
+        } else {
+            var io = window.OpenMapEditor.CityProjectIO || window.CityProjectIO;
+            cities = io ? io.listCities() : [];
+            if (label) label.textContent = '城市库（本机服务器）';
+            sel.title = '';
+        }
+
+        var isNative = String(sel.tagName || '').toLowerCase() === 'select';
+        var tag = isNative ? 'option' : 'cgo-toolbar-option';
+        sel.innerHTML = '<' + tag + ' value="">' + escapeOptionText(placeholder) + '</' + tag + '>' +
+            (cities || []).map(function (c) {
+                return '<' + tag + ' value="' + escapeOptionText(c.id) + '">' +
+                    escapeOptionText(c.name) + ' (' + escapeOptionText(c.id) + ')</' + tag + '>';
+            }).join('');
+        if (typeof sel.requestUpdate === 'function') {
+            sel.requestUpdate();
         }
     }
 
@@ -5955,14 +6030,22 @@
             ? policy.decideUrlCity({
                 sessionRestored: !!sessionRestored,
                 restoredCityId: restoredSessionCityId,
-                urlCity: city
+                urlCity: city,
+                online: isOnlineEditor()
             })
             : (sessionRestored ? 'keep-session' : 'load');
+
+        if (action === 'blocked-online') {
+            window.OpenMapEditor.RibbonController.switchTab('surgical');
+            showToast('线上编辑器不能直接打开已有城市「' + city + '」。请克隆 CGo-OpenMap 仓库，' +
+                '再在「城市维护」里点「关联本地目录」选择本地仓库后载入。', 'warning');
+            return;
+        }
 
         if (action === 'keep-session') {
             // 会话已恢复出未保存工程：URL 的 ?city= 只提示、不自动覆盖（issue #50）
             showToast('已恢复上次未保存的工程，未自动载入 URL 中的城市「' + city +
-                '」；如需载入，请从「在线城市库」手动选择', 'warning');
+                '」；如需载入，请从「城市维护」的城市库手动选择', 'warning');
             return;
         }
 
