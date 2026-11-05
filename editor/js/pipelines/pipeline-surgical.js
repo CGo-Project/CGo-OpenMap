@@ -241,6 +241,35 @@
     }
 
     /**
+     * 从用户关联的本地目录载入城市（线上部署时唯一的存量城市入口）。
+     * 载入后同时把该城市目录设为写回目录，Ctrl+S 可直接原地保存。
+     *
+     * @param {Object} cityDir 城市目录句柄（CityProjectIO.scanDirectoryForCities 的 dir）
+     * @param {string} [cityId]
+     */
+    async function loadCityFromDirectory(cityDir, cityId) {
+        var io = getCityProjectIO();
+        if (!io || typeof io.loadCityFromDirectory !== 'function') throw new Error('CityProjectIO 模块未就绪');
+
+        var result = await io.loadCityFromDirectory(cityDir, cityId);
+        currentLoadedCity = {
+            id: result.id || cityId,
+            name: result.name || (result.meta && result.meta.name) || result.id || cityId,
+            meta: result.meta || null,
+            base: result.base || ''
+        };
+        rawSources = result.sources || {};
+        if (!linkedDirectoryHandle) linkedDirectoryHandle = cityDir;
+
+        var project = buildProjectFromCityData(currentLoadedCity, rawSources, result.data);
+
+        return {
+            city: currentLoadedCity,
+            project: project
+        };
+    }
+
+    /**
      * 同步/测试初始注入器（支持离线及自检单元测试）
      */
     function init(cityId, sources, data) {
@@ -972,6 +1001,7 @@
 
     return {
         loadCity: loadCity,
+        loadCityFromDirectory: loadCityFromDirectory,
         init: init,
         syncSegmentsToLines: syncSegmentsToLines,
         computeDirtyStations: computeDirtyStations,
