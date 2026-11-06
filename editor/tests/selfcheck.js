@@ -2342,7 +2342,8 @@ section('全城市车站 type 必填 / 合法与字段结构（#57）');
     console.log('\n══ 轨交图元进阶：胶囊/哑铃换乘、交通枢纽徽标与车站编号 ══');
     const Icons = require(path.join(ROOT, 'core/station-icons.js'));
 
-    // 1. 换乘胶囊与哑铃图元
+    // 1. 换乘胶囊与哑铃图元及基础车站图元规范
+    check(Icons.SVGTemplates.no && Icons.SVGTemplates.no.includes('<circle cx="5" cy="5" r="3.5" style="fill: var(--map-bg);"/>'), '暂缓开通图元具备完整三层结构（包含 r=3.5 背景遮罩内圆）');
     check(Icons.SVGTemplates.tsf_pill_h && Icons.SVGTemplates.tsf_pill_h.includes('rx="7"'), '支持水平跑道圆胶囊换乘 (tsf_pill_h)');
     check(Icons.SVGTemplates.tsf_pill_v && Icons.SVGTemplates.tsf_pill_v.includes('viewBox="0 0 14 26"'), '支持垂直跑道圆胶囊换乘 (tsf_pill_v)');
     check(Icons.SVGTemplates.tsf_dumbbell && Icons.SVGTemplates.tsf_dumbbell.includes('viewBox="0 0 32 14"'), '支持长通道哑铃双联换乘 (tsf_dumbbell)');
