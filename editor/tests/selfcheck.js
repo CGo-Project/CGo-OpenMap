@@ -1618,6 +1618,33 @@ section('Milestone 3 多选框选与智能对齐参考线');
         'Align45: 功能区提供「45/90 对齐」一键入口');
     check(!/\.\/editor\//.test(swSrc),
         'SW: 开放地图编辑器已从 Service Worker 预缓存清单中解耦');
+    const orderSrcForPath = fs.readFileSync(path.join(ROOT, 'editor/js/algorithms/station-order.js'), 'utf8');
+    const pathModelSandbox = { window: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('window', orderSrcForPath)(pathModelSandbox.window);
+    const SOpath = pathModelSandbox.window.OpenMapEditor.StationOrder;
+    const demoPath = [{ x: 0, y: 100 }, { x: 200, y: 100 }, { x: 400, y: 100 }];
+    const demoNodes = {
+        A: { x: 10, y: 102, type: 'dot' }, B: { x: 200, y: 100, type: 'dot' },
+        C: { x: 390, y: 96, type: 'dot' }, T: { x: 300, y: 78, type: 'tsf' },
+        X: { x: 300, y: 300, type: 'dot' }
+    };
+    const byPathRes = SOpath.orderStationsByPath(['C', 'A', 'B'], demoPath, demoNodes, { tolerance: 6 });
+    check(byPathRes.ids.join(',') === 'A,B,C', 'Export: 站序按投影弧长排序（与画线先后无关）');
+    check(SOpath.stationsOnPath(demoNodes, demoPath, { tolerance: 6 }).sort().join(',') === 'A,B,C',
+        'Export: 能自动发现站心压在路径上、但不在站序里的站');
+    check(SOpath.orderStationsByPath(['A', 'T'], demoPath, demoNodes, { tolerance: 6 }).offPath[0].id === 'T',
+        'Export: 偏离路径的换乘站会被单独识别（允许避让偏移）');
+    const openSeg = { points: [{ x: 0, y: 0, nid: 'A' }, { x: 100, y: 0, nid: 'B' }] };
+    const notOpenSeg = { notOpen: true, points: [{ x: 100, y: 0, nid: 'B' }, { x: 200, y: 0, nid: 'C' }] };
+    const onlyOpen = SOpath.buildPathPoints([openSeg, notOpenSeg]);
+    check(onlyOpen.points.length === 2, 'Export: buildPathPoints 默认跳过未开通线段');
+    const withNotOpen = SOpath.buildPathPoints([openSeg, notOpenSeg], { includeNotOpen: true });
+    check(withNotOpen.points.length === 3, 'Export: 显式 includeNotOpen 时才并入（供特殊用途）');
+
+    check(Math.round(SOpath.projectOnPath(demoPath, { x: 100, y: 110 }).dist) === 10,
+        'Export: 点到路径的距离计算正确');
+
     check(/A45\.constrainTo45/.test(drawSrc),
         'Align45: 绘制工具的 45° 约束与该模块共用同一份数学（唯一真源）');
 
@@ -1739,6 +1766,125 @@ section('Milestone 3 多选框选与智能对齐参考线');
         'FSError: NotAllowedError 被翻译成"写入权限过期"');
     check(desc && /只读|占用/.test(desc({ name: 'NoModificationAllowedError', message: 'locked' })),
         'FSError: NoModificationAllowedError 被翻译成"文件只读/被占用"');
+
+    // 34. 水域绘制：实时预览 + 双击/右键/Enter 闭合（曾经"有入口画不出水域"）
+    check(/id="toolBtn_water"|id="toolBtn_river"/.test(editorHtmlSrc) && /水域|河流/.test(editorHtmlSrc),
+        'Water: 功能区保留水域绘制入口');
+    check(/function hasWaterDraft/.test(drawSrc) && /function finishWaterDraft/.test(drawSrc),
+        'Water: 提供草稿查询与主动闭合 API（双击/右键/Enter 用）');
+    check(/function renderWaterDraftPreview/.test(editorAppSrc) && /getWaterDraft/.test(editorAppSrc),
+        'Water: 绘制过程中实时渲染多边形预览（半透明填充 + 顶点 + 闭合虚线）');
+    check(/updateWaterPointer/.test(editorAppSrc) && /finishWaterDraft\(app.project\)/.test(editorAppSrc),
+        'Water: 橡皮筋跟随指针，并支持双击 / 右键 / Enter 闭合');
+    check(/已落下水域第 1 个顶点/.test(editorAppSrc),
+        'Water: 落第一个顶点时提示如何继续与如何闭合（不再"点了没反应"）');
+    // 水域回写契约：assets/*.svg + data_scattered.js（沿用青岛范式，不需引擎改动）
+    check(/describeWaterWriteBack/.test(editorAppSrc) && !/confirmUnsavedWaters/.test(editorAppSrc),
+        'Water: 写回时提示"水域会导出为 assets SVG + scattered 条目"，不再拦下写回');
+    check(/js\/tools\/water-exporter\.js/.test(editorHtmlSrc),
+        'Water: 编辑器加载水域导出器 water-exporter.js');
+    check(/function collectWaterScattered/.test(surgSrc) && /planWaterAssets/.test(surgSrc),
+        'Water: 维护流水线把水域翻译成 scattered 条目 + SVG 资产');
+    check(/\(cs\.assets \|\| \[\]\)\.forEach/.test(editorAppSrc),
+        'Water: 导出改动 ZIP 会一并包含水域 SVG 资产');
+
+    // 35. 长时间运行不卡：渲染分帧 + 大纲树签名短路 + 健康校验节流 + 自动保存降频
+    const navSrc = fs.readFileSync(path.join(ROOT, 'editor/js/ui/nav-tree-view.js'), 'utf8');
+    check(/function scheduleRender\(\)/.test(editorAppSrc) && /requestAnimationFrame/.test(editorAppSrc),
+        'Perf: 拖动类高频渲染用 requestAnimationFrame 合并成每帧一次');
+    const mmStart = editorAppSrc.indexOf("viewportEl.addEventListener('mousemove'");
+    const mmEnd = editorAppSrc.indexOf("viewportEl.addEventListener('mouseup'");
+    const mmBody = mmStart >= 0 && mmEnd > mmStart ? editorAppSrc.slice(mmStart, mmEnd) : '';
+    check(mmBody.length > 0 && !/^\s+renderAll\(\);/m.test(mmBody) &&
+        (mmBody.match(/scheduleRender\(\);/g) || []).length >= 10,
+        'Perf: mousemove 里不再整屏同步重建（全部走 scheduleRender）');
+    check(/function structureSignature/.test(navSrc) && /sig === lastSignature/.test(navSrc),
+        'Perf: 大纲树结构未变时跳过整棵 DOM 重建（拖站/拖折点不再重排树）');
+    check(/function updateHealthBadgeNow/.test(editorAppSrc) && /INTERVAL/.test(editorAppSrc),
+        'Perf: 数据完整性校验从"每次渲染"降为每 700ms 一次（并做尾随合并）');
+    check(/holdSessionSave/.test(editorAppSrc) && /now - lastSessionAt < 2000/.test(editorAppSrc),
+        'Perf: 自动保存降频到 2.5s、拖拽期跳过、2 秒内不重复落盘');
+
+    // 36. 导出站序：按线段拓扑重建 + 写出真实走向（曾导致"编辑器画面正常、导出乱成蜘蛛网"）
+    const orderSrc = fs.readFileSync(path.join(ROOT, 'editor/js/algorithms/station-order.js'), 'utf8');
+    const exporterSrc = fs.readFileSync(path.join(ROOT, 'editor/js/tools/bundle-exporter.js'), 'utf8');
+    check(/js\/algorithms\/station-order\.js/.test(editorHtmlSrc), 'Export: 编辑器加载站序重建器 station-order.js');
+    check(/function orderFromSegments/.test(orderSrc) && /function buildPathPoints/.test(orderSrc),
+        'Export: 提供"按线段拓扑重排站序"与"把线段拼成 pathPoints"两个能力');
+    check(/function deriveCityLines/.test(exporterSrc) && /copy\.pathPoints = path\.points/.test(exporterSrc),
+        'Export: 城市包导出写出真实走向 pathPoints（引擎优先按它渲染，导出=画布）');
+    check(/copy\.stationIds = ordered\.ids/.test(exporterSrc) && /uncoveredReport\.push/.test(exporterSrc),
+        'Export: 拓扑覆盖不到的站仍保留在站序（线形由 pathPoints 决定，不丢用户数据），并记入提示清单');
+    check(/orderStationsByPath/.test(exporterSrc) && /stationsOnPath/.test(exporterSrc),
+        'Export: 站序以路径为准（按投影弧长排序，站心落在路径上即属于该线）');
+    check(/offNonTransfer/.test(exporterSrc),
+        'Export: 偏离路径只提醒非换乘站（换乘站避让偏移属正常）');
+    check(/notOpen && !includeNotOpen/.test(orderSrc),
+        'Export: 未开通（在建/规划）线段不并入已开通走向 pathPoints');
+    check(/function buildNotOpenData/.test(exporterSrc) && /NOT_OPEN_LINES/.test(exporterSrc),
+        'Export: 未开通走向单独生成 data_notopen.js（灰虚线样式）');
+    check(/data_notopen\.js/.test(editorAppSrc),
+        'Export: 城市包 ZIP 会带上 data_notopen.js');
+
+    check(/names: offNonTransfer\.map/.test(exporterSrc),
+        'Export: 提示清单带中文站名与偏移距离');
+    check(/new Array\(need\)\.fill\('\?\?'\)/.test(exporterSrc),
+        'Export: 站序变化后未知站距用 "??" 合规占位，绝不伪造里程');
+    check(/function insertStation/.test(orderSrc) && /insertStation\(targetLine\.stationIds, nid/.test(
+        fs.readFileSync(path.join(ROOT, 'editor/js/pipelines/pipeline-draw.js'), 'utf8')),
+        'Export: 画线接上新车站时按锚点插入站序（不再 push 到末尾）');
+    check(/window\.LEGEND_CONFIG = LEGEND_CONFIG/.test(exporterSrc),
+        'Export: 生成的 data_legend.js 会挂载 window.LEGEND_CONFIG（Issue #61 约定）');
+
+    // 功能：真实工程里"接上已有车站"的典型错序能被纠正
+    const orderSandbox = { window: {} };
+    // eslint-disable-next-line no-new-func
+    new Function('window', orderSrc)(orderSandbox.window);
+    const SOtest = orderSandbox.window.OpenMapEditor.StationOrder;
+    const segOf = (a, b) => ({ points: [{ x: 0, y: 0, nid: a }, { x: 1, y: 1, nid: b }] });
+    const wrongOrder = SOtest.orderFromSegments(['A', 'B', 'C', 'D', 'X', 'Y'],
+        [segOf('A', 'B'), segOf('B', 'C'), segOf('C', 'D')]);
+    check(wrongOrder.ids.join(',') === 'A,B,C,D,X,Y' && wrongOrder.leftover.join(',') === 'X,Y',
+        'Export: 错序工程能识别出"无走向车站"并给出拓扑站序');
+    const realSeg = (a1, b1) => ({ points: [{ x: a1.x, y: a1.y, nid: a1.nid }, { x: b1.x, y: b1.y, nid: b1.nid }] });
+    const pathRes = SOtest.buildPathPoints([
+        realSeg({ nid: 'A', x: 0, y: 0 }, { nid: 'B', x: 100, y: 0 }),
+        realSeg({ nid: 'B', x: 100, y: 0 }, { nid: 'C', x: 200, y: 50 })
+    ]);
+    check(pathRes.points.length === 3 && pathRes.chains === 1,
+        'Export: 相邻线段拼成单条走向折线并去掉重复接头');
+    const insRes = SOtest.insertStation(['A', 'B'], 'N', { beforeId: 'A' });
+    check(insRes.ids.join(',') === 'N,A,B', 'Export: 车站可按锚点前后插入（反向接线不会排错）');
+
+    // 功能：无 UI 也能验证"逐点 → 闭合 → 成面"
+    const PM = (function () {
+        global.window = global.window || {};
+        // eslint-disable-next-line no-new-func
+        new Function(fs.readFileSync(path.join(ROOT, 'editor/js/core/project-model.js'), 'utf8'))();
+        return global.window.OpenMapEditor.ProjectModel;
+    })();
+    const waterProj = PM.createProject(2000, 1500);
+    const drawApi = require(path.join(ROOT, 'editor/js/pipelines/pipeline-draw.js'));
+    drawApi.setTool('water');
+    drawApi.cancelDraft();
+    const w1 = drawApi.handleCanvasClick(waterProj, { x: 100, y: 100 }, null, { button: 0 });
+    check(w1.action === 'draft_water_point' && w1.pointCount === 1 && drawApi.hasWaterDraft(),
+        'Water: 第 1 个顶点落定后进入草稿态（预览有内容可画）');
+    drawApi.updateWaterPointer({ x: 200, y: 130 });
+    check(drawApi.getWaterDraft().cursor.x === 200, 'Water: 草稿记录鼠标位置，供橡皮筋预览');
+    drawApi.handleCanvasClick(waterProj, { x: 300, y: 100 }, null, { button: 0 });
+    drawApi.handleCanvasClick(waterProj, { x: 300, y: 300 }, null, { button: 0 });
+    const wId = drawApi.finishWaterDraft(waterProj);
+    check(typeof wId === 'string' && waterProj.waters.length === 1 && waterProj.waters[0].points.length === 3,
+        'Water: finishWaterDraft 生成含 3 个顶点的水域多边形');
+    check(drawApi.hasWaterDraft() === false, 'Water: 闭合后草稿清空');
+    const loneProj = PM.createProject(2000, 1500);
+    drawApi.setTool('water');
+    drawApi.cancelDraft();
+    drawApi.handleCanvasClick(loneProj, { x: 10, y: 10 }, null, { button: 0 });
+    drawApi.handleCanvasClick(loneProj, { x: 60, y: 10 }, null, { button: 0 });
+    check(drawApi.finishWaterDraft(loneProj) === null && loneProj.waters.length === 0,
+        'Water: 顶点不足 3 个时拒绝闭合，不会产生残缺多边形');
 }
 
 // ============================================================================
