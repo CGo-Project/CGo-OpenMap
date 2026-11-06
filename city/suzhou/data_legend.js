@@ -12,21 +12,21 @@ const LEGEND_CONFIG = [
         type: "grid",
         cols: 2,
         items: [
-            { targets: ["M1"], name: "1号线 Line 1" },
-            { targets: ["M2"], name: "2号线 Line 2" },
-            { targets: ["M3"], name: "3号线 Line 3" },
-            { targets: ["M4"], name: "4号线 Line 4" },
-            { targets: ["M5"], name: "5号线 Line 5" },
-            { targets: ["M6"], name: "6号线 Line 6" },
-            { targets: ["M7"], name: "7号线 Line 7" },
-            { targets: ["M8"], name: "8号线 Line 8" },
-            { targets: ["M11"], name: "11号线 Line 11" }
+            { targets: ["L1"], name: "1号线 Line 1" },
+            { targets: ["L2"], name: "2号线 Line 2" },
+            { targets: ["L3"], name: "3号线 Line 3" },
+            { targets: ["L4"], name: "4号线 Line 4" },
+            { targets: ["L5"], name: "5号线 Line 5" },
+            { targets: ["L6"], name: "6号线 Line 6" },
+            { targets: ["L7"], name: "7号线 Line 7" },
+            { targets: ["L8"], name: "8号线 Line 8" },
+            { targets: ["L11"], name: "11号线 Line 11" }
         ]
     },
     {
         type: "title",
         title: "跨省换乘",
-        subtitle: "Intercity Transfer"
+        subtitle: "Cross-province Transfer"
     },
     {
         type: "grid",
