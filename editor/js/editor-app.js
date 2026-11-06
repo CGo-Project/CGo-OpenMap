@@ -85,13 +85,88 @@
      * 实时草稿预览：把「已定起点 → 当前鼠标」按当前折角类型路由后画在 #draftLayer 上。
      * 用的是与最终落笔完全相同的 SegmentRouter.routeBetweenByType，因此所见即所得。
      */
+    /** 水域草稿的多边形预览（半透明填充 + 虚线边 + 顶点 + 到指针的橡皮筋） */
+    function renderWaterDraftPreview(layer, pd) {
+        var draft = (typeof pd.getWaterDraft === 'function') ? pd.getWaterDraft() : null;
+        if (!draft || !draft.points || !draft.points.length) return;
+
+        var style = (app.project && app.project.waterStyle) || {};
+        var fill = style.fillLight || '#a5d7e8';
+        var pts = draft.points.slice();
+        var cursor = draft.cursor;
+        if (cursor && (Math.abs(cursor.x - pts[pts.length - 1].x) > 0.01 || Math.abs(cursor.y - pts[pts.length - 1].y) > 0.01)) {
+            pts.push(cursor);
+        }
+        if (pts.length < 2) {
+            // 只有第一个顶点：画个起点标记，让用户知道"已经开始了"
+            var dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot.setAttribute('cx', roundCoord(pts[0].x));
+            dot.setAttribute('cy', roundCoord(pts[0].y));
+            dot.setAttribute('r', '4');
+            dot.setAttribute('fill', fill);
+            dot.setAttribute('stroke', '#0284c7');
+            dot.setAttribute('stroke-width', '1.5');
+            dot.setAttribute('pointer-events', 'none');
+            layer.appendChild(dot);
+            return;
+        }
+
+        var d = pts.map(function (p, i) {
+            return (i === 0 ? 'M' : 'L') + roundCoord(p.x) + ' ' + roundCoord(p.y);
+        }).join(' ');
+
+        var poly = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        poly.setAttribute('d', d + ' Z');
+        poly.setAttribute('fill', fill);
+        poly.setAttribute('fill-opacity', String(style.opacity != null ? style.opacity * 0.7 : 0.4));
+        poly.setAttribute('stroke', '#0284c7');
+        poly.setAttribute('stroke-width', '1.5');
+        poly.setAttribute('stroke-dasharray', '5,3');
+        poly.setAttribute('pointer-events', 'none');
+        layer.appendChild(poly);
+
+        // 伪闭合边（最后一点 → 起点）用更淡的虚线，提示"这样会闭合"
+        if (pts.length >= 3) {
+            var closePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            closePath.setAttribute('d', 'M' + roundCoord(pts[pts.length - 1].x) + ' ' + roundCoord(pts[pts.length - 1].y) +
+                ' L' + roundCoord(pts[0].x) + ' ' + roundCoord(pts[0].y));
+            closePath.setAttribute('fill', 'none');
+            closePath.setAttribute('stroke', '#0ea5e9');
+            closePath.setAttribute('stroke-width', '1');
+            closePath.setAttribute('stroke-dasharray', '2,4');
+            closePath.setAttribute('pointer-events', 'none');
+            layer.appendChild(closePath);
+        }
+
+        // 顶点小圆
+        draft.points.forEach(function (p, i) {
+            var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            c.setAttribute('cx', roundCoord(p.x));
+            c.setAttribute('cy', roundCoord(p.y));
+            c.setAttribute('r', i === 0 ? '4.5' : '3');
+            c.setAttribute('fill', i === 0 ? '#0ea5e9' : '#ffffff');
+            c.setAttribute('stroke', '#0284c7');
+            c.setAttribute('stroke-width', '1.5');
+            c.setAttribute('pointer-events', 'none');
+            layer.appendChild(c);
+        });
+    }
+
     function renderDraftLayer() {
         var layer = document.getElementById('draftLayer');
         if (!layer) return;
         layer.innerHTML = '';
 
         var pd = window.OpenMapEditor.PipelineDraw;
-        if (!pd || !app.project || !/^seg/.test(app.activeTool)) return;
+        if (!pd || !app.project) return;
+
+        // 水域草稿：多边形预览（与"走线"互斥，各管各的草稿）
+        if (app.activeTool === 'water') {
+            renderWaterDraftPreview(layer, pd);
+            return;
+        }
+
+        if (!/^seg/.test(app.activeTool)) return;
         if (typeof pd.hasDraft !== 'function' || !pd.hasDraft()) return;
 
         var pts = (typeof pd.getDraftPreviewPoints === 'function')
@@ -318,6 +393,23 @@
     /** 图层显隐 / 锁定、线路叠放顺序等调用的重绘入口（与 renderAll 同义，保留旧名） */
     function renderCanvas() {
         renderAll();
+    }
+
+    /**
+     * 把高频渲染（拖动 / 变换 / 调圆角时的 mousemove）合并成"每帧最多一次"。
+     *
+     * 高刷新率鼠标的 mousemove 可以比 requestAnimationFrame 密得多，
+     * 之前每个事件都整屏重建 SVG + 大纲树，CPU 直接被打满 —— 这正是长时间拖动后
+     * 明显卡顿的来源。这里只把同一帧内的多次请求折叠成一次，不改渲染内容。
+     */
+    var renderRafId = 0;
+    function scheduleRender() {
+        if (renderRafId) return;
+        var raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
+        renderRafId = raf(function () {
+            renderRafId = 0;
+            if (app.project) renderAll();
+        });
     }
 
     function renderAll() {
@@ -1598,13 +1690,58 @@
             stationsData[id] = st;
         });
 
-        // linesData: 从线路+线段重建站序
+        // linesData: 站序与走向都从「线段」这个真实几何推导出来
+        //
+        // 旧实现是"有 stationIds 就原样照抄"，而 stationIds 是**点击/建站顺序**：
+        // 画线时接到已有车站会被 push 到末尾，导出后引擎按这个顺序连点成线，
+        // 于是出现"编辑器画面正常、导出乱成一团"的严重问题。
+        // 现在：
+        //   1) stationIds 按线段拓扑重排成真实行车顺序；
+        //   2) 同时写出 pathPoints（画布上真正画出来的走向），引擎会优先按它渲染 ——
+        //      即使有些车站没画线段，导出的线形也与画布一致。
+        var orderApi = window.OpenMapEditor.StationOrder;
         var linesData = (project.lines || []).map(function (line) {
             var lCopy = Object.assign({}, line);
             var io = window.OpenMapEditor.CityProjectIO || window.CityProjectIO;
             var groups = (io && typeof io.lineStationGroups === 'function')
                 ? io.lineStationGroups(line)
                 : [];
+
+            var segsOfLine = (project.segments || []).filter(function (s) { return s && s.lineId === line.id; });
+            if (orderApi && segsOfLine.length) {
+                var path = orderApi.buildPathPoints(segsOfLine);
+                if (path && path.points && path.points.length >= 2) {
+                    lCopy.pathPoints = path.points;
+                }
+                // 站序以【路径】为准：线段与车站不强绑定，站心落在路径上即属于本线，
+                // 顺序按投影弧长排（换乘站允许偏离）。
+                var baseIds = (io && typeof io.lineAllStationIds === 'function')
+                    ? io.lineAllStationIds(line)
+                    : (line.stationIds || []);
+                var ordered = null;
+                if (path && path.points && path.points.length >= 2 && orderApi.stationsOnPath) {
+                    var discovered2 = orderApi.stationsOnPath(project.nodes || {}, path.points, { tolerance: 6 });
+                    var merged2 = baseIds.slice();
+                    discovered2.forEach(function (id) { if (merged2.indexOf(id) === -1) merged2.push(id); });
+                    var byPath2 = orderApi.orderStationsByPath(merged2, path.points, project.nodes || {}, { tolerance: 6 });
+                    ordered = { ids: byPath2.ids, leftover: (byPath2.offPath || []).map(function (o) { return o.id; }) };
+                } else {
+                    ordered = orderApi.orderFromSegments(baseIds, segsOfLine, project.nodes);
+                }
+                if (ordered && ordered.ids && ordered.ids.length) {
+                    // 站序按线段拓扑排好；拓扑覆盖不到的站保留在末尾。
+                    // 线形由 pathPoints 决定，站序不再影响渲染，因此不需要删任何车站。
+                    lCopy.stationIds = ordered.ids;
+                    if (lCopy.distances && (!Array.isArray(lCopy.distances) || lCopy.distances.length !== Math.max(0, lCopy.stationIds.length - 1))) {
+                        lCopy.distances = lCopy.stationIds.length > 1 ? new Array(lCopy.stationIds.length - 1).fill(null) : [];
+                    }
+                }
+                if (ordered && ordered.leftover && ordered.leftover.length) {
+                    lCopy._uncoveredStations = ordered.leftover.slice();
+                }
+                return lCopy;
+            }
+
             if (groups.length > 0) {
                 return lCopy;
             }
@@ -1624,13 +1761,49 @@
             return lCopy;
         });
 
+        // 汇总：哪些线路有"没有画线段的车站"（导出时已从站序剔除，需提示用户补画）
+        var uncoveredReport = [];
+        linesData.forEach(function (l) {
+            if (l && l._uncoveredStations && l._uncoveredStations.length) {
+                uncoveredReport.push(l.id + ' ' + (l.name || '') + '（' + l._uncoveredStations.length + ' 站）');
+            }
+        });
+        window.__openmapLastExportNotes = uncoveredReport;
+
         return { stationsData: stationsData, linesData: linesData };
     }
 
     /**
      * 更新标题栏数据健康状态指示 (dirtyCounterBadge / 校验摘要)
      */
+    /**
+     * 数据完整性校验（判断"错误/警告"徽章）。
+     *
+     * 它要把整份工程转成城市格式再全量校验，是 O(n) 且会分配大量临时对象。
+     * 以前 renderAll 每帧都跑一次，拖动几百座车站时纯属浪费主线程，
+     * 长时间操作后 GC 压力会明显拖慢编辑器。现在改成：
+     *   · 最多每 700ms 校验一次；
+     *   · 节流窗口内来的请求合并成一次尾随校验（拖完立刻反映最新状态）。
+     */
+    var healthLastAt = 0;
+    var healthTimer = 0;
     function updateHealthBadge() {
+        var now = Date.now();
+        var INTERVAL = 700;
+        if (now - healthLastAt < INTERVAL) {
+            if (!healthTimer) {
+                healthTimer = setTimeout(function () {
+                    healthTimer = 0;
+                    updateHealthBadgeNow();
+                }, INTERVAL - (now - healthLastAt));
+            }
+            return;
+        }
+        updateHealthBadgeNow();
+    }
+
+    function updateHealthBadgeNow() {
+        healthLastAt = Date.now();
         var dirtyBadge = document.getElementById('dirtyCounterBadge');
         if (!dirtyBadge || !app.project) return;
 
@@ -2790,6 +2963,11 @@
     //         万一超额则降级为"只存工程本体"，至少不丢画的东西。
     var SESSION_KEY = 'openmap_editor_session_v1';
     var sessionTimer = null;
+    // 上一次真正落盘的内容长度 + 时间：用于"内容没变就不重复序列化/写入"
+    var lastSessionSize = -1;
+    var lastSessionAt = 0;
+    // 交互中（拖拽 / 变换）不要落盘：那时每帧都在改工程，序列化几百 KB 只会加剧卡顿
+    var sessionHoldUntil = 0;
     /** 本次启动恢复出来的城市 id（空白工程为 null）；供 URL 参数判断能否安全自动载入 */
     var restoredSessionCityId = null;
 
@@ -2816,10 +2994,16 @@
     }
 
     function saveSessionNow() {
+        // 2 秒内重复触发（例如连续 mouseup）直接忽略，避免反复序列化整个工程
+        var now = Date.now();
+        if (now - lastSessionAt < 2000) return;
         var payload = buildSessionPayload();
         if (!payload) return;
         try {
-            localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+            var json = JSON.stringify(payload);
+            lastSessionAt = Date.now();
+            lastSessionSize = json.length;
+            localStorage.setItem(SESSION_KEY, json);
             return;
         } catch (e) {
             // 多半是配额不足：丢掉源码与快照再试一次，保住工程本体
@@ -2835,13 +3019,22 @@
         }
     }
 
-    /** 防抖：连续操作只在停下 1.2s 后落一次盘 */
+    /** 标记"正在交互"，这段时间内跳过自动保存（拖拽结束由 mouseup 再触发一次） */
+    function holdSessionSave(ms) {
+        sessionHoldUntil = Date.now() + (ms || 800);
+    }
+
+    /** 防抖：连续操作只在停下 2.5s 后落一次盘 */
     function scheduleSaveSession() {
         if (sessionTimer) return;
         sessionTimer = setTimeout(function () {
             sessionTimer = null;
+            if (Date.now() < sessionHoldUntil) {          // 还在拖拽：稍后再试
+                scheduleSaveSession();
+                return;
+            }
             saveSessionNow();
-        }, 1200);
+        }, 2500);
     }
 
     function clearSession() {
@@ -3592,6 +3785,25 @@
             }
         }
 
+        /**
+         * 水域回写说明。
+         *
+         * 城市数据里的水域契约沿用青岛范式：assets/*.svg 资产 + data_scattered.js 条目。
+         * 编辑器里画的水域会在写回时自动生成 SVG 资产并追加 scattered 条目，
+         * 所以这里只负责把"要新增几个资产"告诉用户（不再阻止写回）。
+         * @returns {string} 供提示展示的一句话（无水域时为空串）
+         */
+        function describeWaterWriteBack() {
+            var surgical = window.OpenMapEditor.PipelineSurgical;
+            if (!surgical || typeof surgical.collectWaterScattered !== 'function') return '';
+            if (!app.project || !Array.isArray(app.project.waters) || !app.project.waters.length) return '';
+            var plan = null;
+            try { plan = surgical.collectWaterScattered(app.project); } catch (err) { return ''; }
+            var count = (plan && plan.assets && plan.assets.length) || 0;
+            if (!count) return '';
+            return '本轮新绘的 ' + count + ' 处水域会导出为 assets/*.svg 资产，并在 data_scattered.js 追加对应条目';
+        }
+
         /** 统计本次会写什么，供危险提示展示 */
         function summarizeForWriteBack() {
             var surgical = window.OpenMapEditor.PipelineSurgical;
@@ -3658,6 +3870,9 @@
                 }
             }
 
+            var waterNote = describeWaterWriteBack();
+            if (waterNote) showToast(waterNote, 'info');
+
             var backupName = downloadOriginalsBackup(cityId);
             if (backupName) showToast('已下载原件备份：' + backupName, 'info');
             else showToast('未能生成原件备份（继续执行，请自行确认已有 git 提交）', 'warning');
@@ -3706,6 +3921,8 @@
                     return;
                 }
             }
+            var waterNoteModal = describeWaterWriteBack();
+            if (waterNoteModal) showToast(waterNoteModal, 'info');
             try {
                 var res = await surgical.saveDirectToLocal(app.project);
                 showToast(res.message + '；请记得在发布前将 sw.js 的 CACHE_NAME 递增版本号', 'success');
@@ -3735,6 +3952,12 @@
                 var fmt = projectToOpenMapFormat(app.project);
                 var result = window.OpenMapEditor.BundleExporter.validateData(fmt.stationsData, fmt.linesData);
                 var summaryEl = document.getElementById('exportValidationSummary');
+
+                // 站序已按线段拓扑重建；未被任何线段覆盖的车站会被剔出站序（否则引擎按站序连点会拉出横跨全图的长线）
+                var notes = window.__openmapLastExportNotes || [];
+                if (notes.length) {
+                    showToast('以下线路存在"没有画线段的车站"，已从站序剔除（请补画走向）：' + notes.join('、'), 'warning');
+                }
                 if (summaryEl && result) {
                     if (result.errors.length) {
                         summaryEl.style.color = '#f44';
@@ -3863,6 +4086,8 @@
         var dirHandle = surgical && surgical.getLinkedDirectoryHandle && surgical.getLinkedDirectoryHandle();
 
         if (dirHandle) {
+            var waterNoteQuick = describeWaterWriteBack();
+            if (waterNoteQuick) showToast(waterNoteQuick, 'info');
             try {
                 showToast('正在写回本地目录…');
                 var res = await surgical.saveDirectToLocal(app.project);
@@ -3966,6 +4191,13 @@
                 });
             }
         });
+        // 水域资产：城市侧以 assets/*.svg + data_scattered.js 条目交付
+        (cs.assets || []).forEach(function (asset) {
+            entries.push({
+                name: cityId + '/' + asset.path,
+                text: asset.content
+            });
+        });
 
         if (!entries.length) {
             showToast('当前无任何改动文件需要打包');
@@ -3976,7 +4208,8 @@
             var zipBytes = window.OpenMapEditor.BundleExporter.buildZipBytes(entries);
             var blob = new Blob([zipBytes], { type: 'application/zip' });
             window.OpenMapEditor.BundleExporter.download(cityId + '-changeset.zip', blob);
-            showToast('已导出改动补丁包: ' + cityId + '-changeset.zip', 'success');
+            var assetNote = (cs.assets && cs.assets.length) ? ('（含 ' + cs.assets.length + ' 个水域 SVG 资产）') : '';
+            showToast('已导出改动补丁包: ' + cityId + '-changeset.zip' + assetNote, 'success');
         } catch (err) {
             showToast('打包失败: ' + (err.message || err), 'error');
         }
@@ -4062,6 +4295,17 @@
             var coordEl = document.getElementById('cursorCoordinates');
             if (coordEl) coordEl.textContent = 'X: ' + Math.round(world.x) + ', Y: ' + Math.round(world.y);
 
+            // 水域工具：橡皮筋跟着指针走，用户才能看见自己正在画什么
+            if (app.activeTool === 'water' && !viewportEl.classList.contains('panning')) {
+                var pdWater = window.OpenMapEditor.PipelineDraw;
+                if (pdWater && typeof pdWater.updateWaterPointer === 'function') {
+                    var waterPt = (app.snapEnabled && !e.altKey && window.OpenMapEditor.ViewportLayer.snapPoint)
+                        ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
+                        : { x: roundCoord(world.x), y: roundCoord(world.y) };
+                    if (pdWater.updateWaterPointer(waterPt)) renderDraftLayer();
+                }
+            }
+
             // 走线工具：把指针位置写进草稿并即时重画预览（只重画草稿层，不整屏重绘）
             // 按住 Shift 时方向锁到 45° 的整数倍（含水平 / 垂直），长度仍跟手
             // 平移（中键 / 空格 + 拖动）期间不更新草稿指针：
@@ -4092,6 +4336,14 @@
                     if (coordHint && typeof pdMove.hasDraft === 'function' && pdMove.hasDraft()) {
                         coordHint.textContent += ' · Enter / 右键 结束绘制';
                     }
+                }
+            }
+
+            if (app.activeTool === 'water') {
+                var coordWater = document.getElementById('cursorCoordinates');
+                var pdW = window.OpenMapEditor.PipelineDraw;
+                if (coordWater && pdW && typeof pdW.hasWaterDraft === 'function' && pdW.hasWaterDraft()) {
+                    coordWater.textContent += ' · 双击 / 右键 / Enter 闭合水域';
                 }
             }
 
@@ -4138,7 +4390,7 @@
                         );
                     }
                     applyTransformedPoints(app.selected, transformedPts);
-                    renderAll();
+                    scheduleRender();
                 }
                 return;
             }
@@ -4152,7 +4404,7 @@
                     var newR = Math.max(0, Math.min(48, Math.round(dist)));
                     cp.r = newR;
                     hasDragged = true;
-                    renderAll();
+                    scheduleRender();
                 }
                 return;
             }
@@ -4200,7 +4452,7 @@
                         }
                     });
                     syncSegmentsForNodes(nList);
-                    renderAll();
+                    scheduleRender();
                 }
                 return;
             }
@@ -4238,7 +4490,7 @@
                                 }
                             });
                         }
-                        renderAll();
+                        scheduleRender();
                     }
                 }
             }
@@ -4261,7 +4513,7 @@
                     if (hasDragged) {
                         dragWater.points[draggedWaterPointIdx].x = Math.round(snappedW.x);
                         dragWater.points[draggedWaterPointIdx].y = Math.round(snappedW.y);
-                        renderAll();
+                        scheduleRender();
                     }
                 }
                 return;
@@ -4285,7 +4537,7 @@
                     if (hasDragged) {
                         dragTxt.x = Math.round(snappedT.x);
                         dragTxt.y = Math.round(snappedT.y);
-                        renderAll();
+                        scheduleRender();
                     }
                 }
                 return;
@@ -4301,7 +4553,7 @@
                     scItem.x = Math.round(snappedSc.x * 10) / 10;
                     scItem.y = Math.round(snappedSc.y * 10) / 10;
                     hasDragged = true;
-                    renderAll();
+                    scheduleRender();
                 }
                 return;
             }
@@ -4374,13 +4626,16 @@
                         }
                     });
 
-                    renderAll();
+                    scheduleRender();
                 }
             }
         });
 
         viewportEl.addEventListener('mousedown', function (e) {
             if (e.target.closest('.viewport-hud')) return;
+
+            // 交互开始：短时间内不自动保存，避免序列化与拖拽抢主线程
+            holdSessionSave(1200);
 
             // ⚠️ 只有左键参与选中 / 拖拽 / 框选。
             //   中键 = 画布漫游（由 ViewportLayer 处理）、右键 = 结束连续绘制 / 浏览器菜单。
@@ -4496,7 +4751,7 @@
                 hasDragged = false;
                 dragBaseline = JSON.stringify(app.project);
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
-                renderAll();
+                scheduleRender();
                 e.stopPropagation();
                 return;
             }
@@ -4519,7 +4774,7 @@
                     hasDragged = false;
                     dragBaseline = JSON.stringify(app.project);
                     dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
-                    renderAll();
+                    scheduleRender();
                     e.stopPropagation();
                     return;
                 }
@@ -4537,7 +4792,7 @@
                 hasDragged = false;
                 dragBaseline = JSON.stringify(app.project);
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
-                renderAll();
+                scheduleRender();
                 e.stopPropagation();
                 return;
             }
@@ -4561,7 +4816,7 @@
                     // 插入已单独记过一次撤销，这里抓的是「插入后、拖动前」的基线
                     dragBaseline = JSON.stringify(app.project);
                     dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
-                    renderAll();
+                    scheduleRender();
                     e.stopPropagation();
                     return;
                 }
@@ -4589,7 +4844,7 @@
                             app.selected.nodeIds.push(nid);
                         }
                     }
-                    renderAll();
+                    scheduleRender();
                     return;
                 }
 
@@ -4605,7 +4860,7 @@
                             initialMultiPositions[id] = { x: app.project.nodes[id].x, y: app.project.nodes[id].y };
                         }
                     });
-                    renderAll();
+                    scheduleRender();
                     return;
                 }
 
@@ -4616,7 +4871,7 @@
                 dragBaseline = JSON.stringify(app.project);
                 draggedNodeId = nid;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
-                renderAll();
+                scheduleRender();
                 return;
             }
 
@@ -4633,7 +4888,7 @@
                     dragBaseline = JSON.stringify(app.project);
                     dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                     scatteredDragOrigin = { x: scObj.x, y: scObj.y };
-                    renderAll();
+                    scheduleRender();
                     return;
                 }
             }
@@ -4649,7 +4904,7 @@
                         window.OpenMapEditor.PipelineDraw.setActiveLine(segLineId);
                     }
                 }
-                renderAll();
+                scheduleRender();
                 return;
             }
 
@@ -4672,7 +4927,7 @@
                             app.selected.textIds.push(tid);
                         }
                     }
-                    renderAll();
+                    scheduleRender();
                     return;
                 }
                 app.selected = { type: 'text', id: tid };
@@ -4681,7 +4936,7 @@
                 dragBaseline = JSON.stringify(app.project);
                 draggedTextId = tid;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
-                renderAll();
+                scheduleRender();
                 return;
             }
 
@@ -4690,7 +4945,7 @@
             if (targetWaterEl && !app.layerState.water.locked && (app.activeTool === 'select' || app.activeTool === 'points')) {
                 var widEl = targetWaterEl.getAttribute('data-water-id');
                 app.selected = { type: 'water', id: widEl };
-                renderAll();
+                scheduleRender();
                 return;
             }
 
@@ -4713,6 +4968,10 @@
         });
 
         viewportEl.addEventListener('mouseup', function (e) {
+            // 一次拖拽/变换结束：立刻允许自动保存（此前交互期是压着的）
+            sessionHoldUntil = 0;
+            scheduleSaveSession();
+
             // 框选结束判定
             if (isBoxSelecting) {
                 isBoxSelecting = false;
@@ -4947,6 +5206,21 @@
                     if (draft5) snapped = pdClick.constrainTo45(draft5.startPoint, snapped, app.snapEnabled ? step5 : 0);
                 }
                 var result = window.OpenMapEditor.PipelineDraw.handleCanvasClick(app.project, snapped, null, { button: e.button });
+                if (result.action === 'draft_water_point') {
+                    renderDraftLayer();
+                    if (result.pointCount === 1) {
+                        showToast('已落下水域第 1 个顶点：继续点击添加顶点；点回起点、双击、右键或按 Enter 都能闭合');
+                    } else if (result.pointCount === 2) {
+                        showToast('已有 2 个顶点：再点 1 个即可成面（双击 / 右键 / Enter 闭合）', 'info');
+                    }
+                    return;
+                }
+                if (result.action === 'create_water') {
+                    app.selected = { type: 'water', id: result.createdId };
+                    renderAll();
+                    showToast('已创建水域多边形（选中后可在右侧调样式 / 删除）', 'success');
+                    return;
+                }
                 if (result.updated) {
                     // create_segment 返回的是线段 id，不能当节点 id 选中
                     if (result.action === 'create_segment' || result.action === 'extend_segment') {
@@ -4998,9 +5272,25 @@
             }
         });
 
-        // 右键结束连续绘制（CAD 习惯），不必切换工具才能停
+        // 右键结束连续绘制 / 闭合水域（CAD 习惯），不必切换工具才能停
         viewportEl.addEventListener('contextmenu', function (e) {
             var pd = window.OpenMapEditor.PipelineDraw;
+
+            // 水域工具：右键 = 闭合多边形
+            if (app.activeTool === 'water' && pd && typeof pd.finishWaterDraft === 'function' &&
+                typeof pd.hasWaterDraft === 'function' && pd.hasWaterDraft()) {
+                e.preventDefault();
+                var widCtx = pd.finishWaterDraft(app.project);
+                if (widCtx) {
+                    app.selected = { type: 'water', id: widCtx };
+                    renderAll();
+                    showToast('已闭合水域多边形（右键）', 'success');
+                } else {
+                    renderAll();
+                    showToast('至少需要 3 个顶点才能闭合水域', 'warning');
+                }
+                return;
+            }
             if (/^seg/.test(app.activeTool) && pd && typeof pd.hasDraft === 'function' && pd.hasDraft()) {
                 e.preventDefault();
                 pd.cancelDraft();
@@ -5017,6 +5307,23 @@
 
         // 双击交互：双击文字启动原地内联编辑，双击折线在线插入车站
         viewportEl.addEventListener('dblclick', function (e) {
+            // 水域工具：双击直接闭合当前多边形（画水域时不需要也不应该有其它双击行为）
+            if (app.activeTool === 'water') {
+                var pdDbl = window.OpenMapEditor.PipelineDraw;
+                if (pdDbl && typeof pdDbl.finishWaterDraft === 'function') {
+                    var widDbl = pdDbl.finishWaterDraft(app.project);
+                    if (widDbl) {
+                        app.selected = { type: 'water', id: widDbl };
+                        renderAll();
+                        showToast('已闭合水域多边形（双击）', 'success');
+                    } else {
+                        renderAll();
+                        showToast('至少需要 3 个顶点才能闭合水域', 'warning');
+                    }
+                }
+                return;
+            }
+
             if (app.activeTool !== 'select' && app.activeTool !== 'points' && app.activeTool !== 'box') return;
 
             var targetTxt = e.target.closest('[data-text-id]');
@@ -5157,8 +5464,22 @@
                 }
             } else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
                 // Enter：立即结束当前连续绘制（保留已经画好的线段，且不切换工具，
-                // 方便马上开始下一条走线）；没有草稿时交还给浏览器默认行为。
+                // 方便马上开始下一条走线）；水域工具下则是闭合多边形。
                 var pdEnter = window.OpenMapEditor.PipelineDraw;
+                if (app.activeTool === 'water' && pdEnter &&
+                    typeof pdEnter.hasWaterDraft === 'function' && pdEnter.hasWaterDraft()) {
+                    e.preventDefault();
+                    var widEnter = pdEnter.finishWaterDraft(app.project);
+                    if (widEnter) {
+                        app.selected = { type: 'water', id: widEnter };
+                        renderAll();
+                        showToast('已闭合水域多边形（Enter）', 'success');
+                    } else {
+                        renderAll();
+                        showToast('至少需要 3 个顶点才能闭合水域', 'warning');
+                    }
+                    return;
+                }
                 if (/^seg/.test(app.activeTool) && pdEnter &&
                     typeof pdEnter.hasDraft === 'function' && pdEnter.hasDraft()) {
                     e.preventDefault();
@@ -5861,12 +6182,28 @@
                     { name: cityId + '/data_legend.js', text: pack.legendJs },
                     { name: cityId + '/openmap_project.json', text: JSON.stringify(app.project, null, 2) }
                 ];
+                // 未开通 / 在建 / 规划走向：必须单独交付，否则会被当成已开通线路画成实线
+                if (pack.notOpenJs && (pack.notOpenData || []).length) {
+                    entries.push({ name: cityId + '/data_notopen.js', text: pack.notOpenJs });
+                }
 
                 var zipBytes = await window.OpenMapEditor.BundleExporter.buildZipBytes(entries);
                 var blob = new Blob([zipBytes], { type: 'application/zip' });
                 window.OpenMapEditor.BundleExporter.download(cityId + '-openmap-bundle.zip', blob);
 
                 document.getElementById('modalExportPackage')?.classList.remove('open');
+                var report = (pack && pack.uncoveredReport) || [];
+                if (report.length) {
+                    // 数据契约：站心（非换乘站）应落在路径上。偏离的这些需要微调站心或走向，
+                    // 但它们仍保留在站序里，不会丢。
+                    var detail = report.map(function (r) {
+                        var names = (r.names || []).slice(0, 3).join('、');
+                        var more = (r.names || []).length > 3 ? ' 等' : '';
+                        return r.lineId + ' ' + r.lineName + '：' + names + more;
+                    }).join('；');
+                    showToast('导出完成。提示：以下非换乘站的站心不在本线路径上（站仍保留在站序中）：' + detail +
+                        '。把站心挪到路径上、或调整走向即可。', 'warning', 7000);
+                }
                 showToast('已导出 OpenMap 城市包: ' + cityId + '-openmap-bundle.zip', 'success');
             } catch (err) {
                 showToast('打包失败: ' + (err.message || err), 'error');
@@ -6085,6 +6422,7 @@
     window.OpenMapEditor._getApp = function () { return app; }; // 供调试使用
     window.OpenMapEditor._appContext = app;
     window.OpenMapEditor.renderAll = renderAll;
+    window.OpenMapEditor.scheduleRender = scheduleRender;
     window.OpenMapEditor.setTool = setTool;
 
     if (document.readyState === 'loading') {

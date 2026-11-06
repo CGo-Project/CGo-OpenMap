@@ -227,6 +227,125 @@ window.OpenMapEditor.BundleExporter = (function () {
         return 'const linesData = ' + JSON.stringify(linesData || [], null, 4) + ';\n';
     }
 
+    /**
+     * 把编辑器工程里的线路整理成可交付的 linesData。
+     *
+     * 关键（曾导致导出乱网的严重 bug）：
+     *   · line.stationIds 是"点击/建站顺序"，画线时接到已有车站会被追加到末尾，
+     *     引擎按这个顺序连点成线就会拉出横跨全图的长斜线；
+     *   · 因此这里按【线段拓扑】重建站序，并把画布上真正画出来的走向写成 pathPoints
+     *     （引擎优先按 pathPoints 渲染，于是导出结果 = 编辑器画面）；
+     *   · 没被任何线段覆盖的车站从站序里剔除（它们不在画布这条线上），
+     *     车站条目本身保留，并在返回值里报告，提示用户补画走向。
+     *
+     * @returns {[Array, Array]} [linesData, uncoveredReport]
+     */
+    function deriveCityLines(project) {
+        var SO = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.StationOrder) || null;
+        var io = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.CityProjectIO) || null;
+        var uncoveredReport = [];
+        var lines = (project && project.lines) || [];
+
+        var out = lines.map(function (line) {
+            var copy = {};
+            Object.keys(line).forEach(function (k) {
+                if (k.charAt(0) === '_') return;               // 运行期派生字段不进数据文件
+                copy[k] = line[k];
+            });
+            if (!SO) return copy;
+
+            var segs = ((project && project.segments) || []).filter(function (sg) {
+                return sg && sg.lineId === line.id;
+            });
+            if (!segs.length) return copy;
+
+            // 1) 真实走向
+            var path = SO.buildPathPoints(segs);
+            if (path && path.points && path.points.length >= 2) {
+                copy.pathPoints = path.points;
+            }
+
+            // 2) 站序：以【路径】为准 ——
+            //    线段与车站不强绑定，只要站心落在路径上就算这条线的站，
+            //    顺序按投影弧长排；换乘站允许偏离（画图时为了避让会挪站心）。
+            var nodesAll = (project && project.nodes) || {};
+            var tol = 6;
+            var baseIds = (io && typeof io.lineAllStationIds === "function")
+                ? io.lineAllStationIds(line)
+                : (line.stationIds || []);
+            if (path && path.points && path.points.length >= 2 && SO.stationsOnPath) {
+                // 路径自动发现的站 + 线路原有站序，合并后统一按投影排序
+                var discovered = SO.stationsOnPath(nodesAll, path.points, { tolerance: tol });
+                var merged = baseIds.slice();
+                discovered.forEach(function (id) { if (merged.indexOf(id) === -1) merged.push(id); });
+                var byPath = SO.orderStationsByPath(merged, path.points, nodesAll, { tolerance: tol });
+                if (byPath && byPath.ids && byPath.ids.length) copy.stationIds = byPath.ids;
+
+                // 偏离路径的站：换乘站属正常（避让画法），只有非换乘站才提醒
+                var offNonTransfer = (byPath.offPath || []).filter(function (o) {
+                    var nd = nodesAll[o.id];
+                    return !nd || nd.type !== "tsf";
+                });
+                if (offNonTransfer.length) {
+                    uncoveredReport.push({
+                        lineId: line.id,
+                        lineName: line.name || line.id,
+                        ids: offNonTransfer.map(function (o) { return o.id; }),
+                        names: offNonTransfer.map(function (o) {
+                            var nd = nodesAll[o.id];
+                            return ((nd && nd.cn) ? nd.cn : o.id) + "(" + o.dist + "px)";
+                        })
+                    });
+                }
+            } else {
+                var ordered = SO.orderFromSegments(baseIds, segs, nodesAll);
+                if (ordered && ordered.ids && ordered.ids.length) copy.stationIds = ordered.ids;
+            }
+
+            // 3) 站距：站序变了就重排长度；未知用 "??" 合规占位（严禁伪造里程）
+            var need = Math.max(0, (copy.stationIds || []).length - 1);
+            if (!Array.isArray(copy.distances) || copy.distances.length !== need) {
+                copy.distances = need > 0 ? new Array(need).fill('??') : [];
+            }
+
+            return copy;
+        });
+
+        return [out, uncoveredReport];
+    }
+
+    /**
+     * 把"未开通 / 在建 / 规划"的走向整理成 data_notopen.js 的内容。
+     *
+     * 编辑器里未开通的线段带 notOpen: true（画布上画成灰虚线），
+     * 它们**必须**单独交付到 NOT_OPEN_LINES，否则导出后会被当成已开通线路画成实线。
+     * 样式沿用编辑器画布的观感（灰虚线），与引擎默认的"白线遮罩"区分开。
+     */
+    function buildNotOpenData(project) {
+        var out = [];
+        var NOT_OPEN_STYLE = { color: "#94a3b8", width: "3.4", opacity: 1, dashArray: "6,6" };
+
+        // 1) 线段上标记为未开通的走向
+        ((project && project.segments) || []).forEach(function (seg) {
+            if (!seg || !seg.notOpen) return;
+            var pts = (seg.points || []).filter(function (p) {
+                return p && p.x !== undefined && p.y !== undefined;
+            }).map(function (p) {
+                return { x: Math.round(Number(p.x) * 100) / 100, y: Math.round(Number(p.y) * 100) / 100 };
+            });
+            if (pts.length < 2) return;
+            out.push({ points: pts, style: Object.assign({}, NOT_OPEN_STYLE) });
+        });
+
+        // 2) 工程里单独维护的在建/规划走向
+        ((project && project.notOpenLines) || []).forEach(function (ln) {
+            if (!ln || !Array.isArray(ln.points) || ln.points.length < 2) return;
+            out.push(Object.assign({}, ln));
+        });
+
+        return out;
+    }
+
     function formatCityPackage(project, meta) {
         meta = meta || {};
         var cityId = meta.cityId || meta.id || 'unnamed';
@@ -253,11 +372,15 @@ window.OpenMapEditor.BundleExporter = (function () {
             stationsData[nid] = st;
         });
 
-        var linesData = project.lines || [];
+        // 站序按线段拓扑重建 + 写出真实走向（否则导出会与画布不一致）
+        var derived = deriveCityLines(project);
+        var linesData = derived[0];
+        var uncoveredReport = derived[1] || [];
 
         var metaHeader = '/* CGo OpenMap City Pack: ' + cityId + ' (' + cityName + ') */\n' +
             '/* Generated by OpenMap Editor at ' + new Date().toISOString() + ' */\n\n';
 
+        var notOpenData = buildNotOpenData(project);
         var stationsJs = metaHeader + formatStationsData(stationsData);
         var linesJs = metaHeader + formatLinesData(linesData);
 
@@ -270,9 +393,16 @@ window.OpenMapEditor.BundleExporter = (function () {
             company: meta.company || '',
             pixelsPerMeter: meta.pixelsPerMeter || 25
         };
-        var legendJs = metaHeader + 'const LEGEND_CONFIG = ' + JSON.stringify(legendConfig, null, 2) + ';\n';
+        // 城市图例文件：必须同时挂到 window 上（Issue #61 的引擎约定），
+        // 否则引擎读不到 LEGEND_CONFIG，只好兜底，图例/侧栏会不完整。
+        var legendJs = metaHeader + 'const LEGEND_CONFIG = ' + JSON.stringify(legendConfig, null, 2) + ';\n' +
+            'window.LEGEND_CONFIG = LEGEND_CONFIG;\n';
 
         return {
+            uncoveredReport: uncoveredReport,
+            notOpenData: notOpenData,
+            notOpenJs: metaHeader + "const NOT_OPEN_LINES = " + JSON.stringify(notOpenData, null, 4) + ";\n" +
+                "window.NOT_OPEN_LINES = NOT_OPEN_LINES;\n",
             stationsJs: stationsJs,
             linesJs: linesJs,
             legendJs: legendJs,

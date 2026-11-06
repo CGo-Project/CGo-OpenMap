@@ -162,9 +162,59 @@ window.OpenMapEditor.NavTreeView = (function () {
      * @param {Object} project
      * @param {Object} [state] { selected, activeLineId, layerState, snapEnabled }
      */
+    /**
+     * 结构签名：只有"大纲里看得见的东西"变了才重建 DOM。
+     *
+     * 拖动车站 / 拖折点 / 改圆角都会疯狂调用 renderAll，但这些操作并不会改变
+     * 大纲树的内容 —— 之前每帧都把几百个站点行整棵树重建成新节点，长时间操作后
+     * 累积的 GC 压力与 DOM 抖动正是"越用越卡"的主因之一。
+     */
+    function structureSignature(p, st, q) {
+        var nodes = p.nodes || {};
+        var lines = p.lines || [];
+        var parts = [];
+        parts.push('q:' + q);
+        parts.push('sel:' + (st.selected ? (st.selected.type + ':' + (st.selected.id != null ? st.selected.id : st.selected.idx)) : '-'));
+        parts.push('act:' + (st.activeLineId || '-'));
+        var layerState = st.layerState || {};
+        Object.keys(layerState).forEach(function (k) {
+            parts.push('L' + k + ':' + (layerState[k] && (layerState[k].visible ? 1 : 0) + '' + (layerState[k].locked ? 1 : 0)));
+        });
+        Object.keys(nodes).forEach(function (id) {
+            var n = nodes[id];
+            if (!n || n.type === 'temp') return;
+            parts.push(id + '|' + (n.cn || '') + '|' + (n.type || ''));
+        });
+        lines.forEach(function (l) {
+            var cnt = 0;
+            if (Array.isArray(l.stationIds)) cnt = l.stationIds.length;
+            Object.keys(l).forEach(function (k) {
+                if (/^stationIds-/.test(k) && Array.isArray(l[k])) cnt += l[k].length;
+            });
+            parts.push('L' + l.id + '|' + (l.name || '') + '|' + cnt);
+        });
+        (p.virtualConnectors || []).forEach(function (v, i) { parts.push('v' + i); });
+        (p.notOpenLines || []).forEach(function (v, i) { parts.push('n' + i + ':' + ((v && v.points) ? v.points.length : 0)); });
+        (p.scattered || []).forEach(function (v, i) { parts.push('s' + i + ':' + ((v && v.id) || '')); });
+        (p.waters || []).forEach(function (v, i) { parts.push('w' + i + ':' + ((v && v.id) || '') + ':' + ((v && v.points) ? v.points.length : 0)); });
+        (p.texts || []).forEach(function (v, i) { parts.push('t' + i + ':' + ((v && v.text) || '')); });
+        return parts.join('\n');
+    }
+
+    var lastSignature = null;
+
     function render(project, state) {
         lastProject = project;
         lastState = state || lastState || {};
+        var st = lastState || {};
+        var sig = null;
+        try { sig = structureSignature(project || {}, st, currentSearchQuery); } catch (err) { sig = null; }
+        if (sig != null && sig === lastSignature) {
+            // 结构没变：只同步高亮（很便宜），不重建整棵树
+            try { syncSelection(lastSelected, lastActiveLineId, false); } catch (e) { /* 忽略 */ }
+            return;
+        }
+        lastSignature = sig;
         renderTree();
     }
 

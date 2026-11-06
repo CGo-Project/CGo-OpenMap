@@ -43,13 +43,17 @@ for (const line of lines) {
 }
 
 // 换乘站类型核对（foreign 邻城线只是换乘示意，不计入本城线路成员关系）
+// 在建站（type: "no"）不参与该规则：它们在图上按普通灰点绘制，落在 data_notopen.js 的虚线层上，
+// 两条在建线在图上交叉（如 莫阳 = 4 号线北延 × 7 号线北延）也不必升级为换乘图元。
 const foreignIds = new Set(lines.filter((l) => l.foreign).map((l) => l.id));
 for (const [id, s] of Object.entries(stations)) {
   const ls = used.get(id) || [];
   const local = ls.filter((lid) => !foreignIds.has(lid));
   if (!ls.length) warn.push(`${id} ${s.cn} 未被任何线路引用`);
+  if (s.type === 'no') continue;
   if (local.length > 1 && s.type !== 'tsf') err.push(`${id} ${s.cn} 属于 ${local.join('/')} 但类型是 ${s.type}`);
-  if (local.length === 1 && s.type === 'tsf') warn.push(`${id} ${s.cn} 只有一条线却是换乘图元`);
+  // 跨省换乘（花桥 × 上海 11 号线）也算一条线：ls 含 foreign 线，只有全城仅一条时才提示
+  if (ls.length === 1 && s.type === 'tsf') warn.push(`${id} ${s.cn} 只有一条线却是换乘图元`);
 }
 
 // 坐标重合但未合并的换乘
@@ -113,12 +117,15 @@ for (const [id, s] of Object.entries(stations)) {
   if (/[/\\]/.test(s.cn)) warn.push(`${id} 站名含斜杠: ${s.cn}`);
 }
 
-// 坐标网格：站心与走向折点一律落在 6px 网格上（全图 ×1.2 缩放后由原 5px 栅格映射而来，便于人工核对与增删站）
-const GRID = 6;
+// 坐标网格：站心与走向折点一律落在 5px 网格上（整理后以 10 为主、几何必须处保留 5），便于人工核对与增删站
+// 例外：邻城示意线（foreign，如 SH11 上海 11 号线）必须与邻城影子的映射点逐点重合，用整数/一位小数坐标，
+// 不适用本城网格规则。
+const GRID = 5;
 for (const [id, s] of Object.entries(stations)) {
   if (s.x % GRID || s.y % GRID) err.push(`${id} ${s.cn} 坐标未对齐 ${GRID}px 网格: (${s.x}, ${s.y})`);
 }
 for (const line of lines) {
+  if (line.foreign) continue;
   for (const p of line.pathPoints) {
     if (p.x % GRID || p.y % GRID) err.push(`${line.id} 折点未对齐 ${GRID}px 网格: (${p.x}, ${p.y})`);
   }
@@ -148,11 +155,14 @@ const ON_LINE_TOLERANCE = 0.75; // 半个像素以内，肉眼不可辨
 // 桑田岛），或让两条线在换乘站两侧各留 5px（苏州新区火车站）；站心落在图元覆盖
 // 范围内即可，属排版手法而非走向错误。
 const TSF_RADIUS = STATION_SIZE.tsf / 2;
+// 在建站（type: "no"）不参与「站心落在走向上」与「站序单调」两条校验：
+// 它们按官方图排在所属线路站序的端部/交叉处，实际几何画在 data_notopen.js 的虚线层上，
+// 并不落在该线运营段的实线走向里（editor 导出即如此）。运营段仍按 0.75px / 8.75px 严检。
 for (const line of lines) {
   const pts = line.pathPoints || [];
   for (const id of line.stationIds || []) {
     const s = stations[id];
-    if (!s) continue;
+    if (!s || s.type === 'no') continue;
     const { d } = projectOnPolyline(s, pts);
     const limit = s.type === 'tsf' ? TSF_RADIUS : ON_LINE_TOLERANCE;
     if (d > limit) err.push(`${line.id} 的走向未经过 ${id} ${s.cn}(${s.x},${s.y})，距折线 ${d.toFixed(1)}px`);
@@ -166,7 +176,7 @@ for (const line of lines) {
   let prevS = null, prevLabel = '';
   for (const id of line.stationIds || []) {
     const s = stations[id];
-    if (!s) continue;
+    if (!s || s.type === 'no') continue;
     const pos = projectOnPolyline(s, line.pathPoints).s;
     if (prevS !== null && pos <= prevS) {
       err.push(`${line.id} 站序与走向不一致：${prevLabel}(${prevS.toFixed(0)}px) 之后是 ${id} ${s.cn}(${pos.toFixed(0)}px)`);
@@ -181,6 +191,12 @@ const minY = Math.min(...boxes.map((b) => b.box[1]));
 const maxX = Math.max(...boxes.map((b) => b.box[2]));
 const maxY = Math.max(...boxes.map((b) => b.box[3]));
 console.log('内容外接盒 x', minX.toFixed(1), '..', maxX.toFixed(1), ' y', minY.toFixed(1), '..', maxY.toFixed(1));
+
+const on10 = (v) => v % 10 === 0;
+const st10 = Object.values(stations).filter((s) => on10(s.x) && on10(s.y)).length;
+const ptAll = lines.reduce((n, l) => n + (l.pathPoints || []).length, 0);
+const pt10 = lines.reduce((n, l) => n + (l.pathPoints || []).filter((p) => on10(p.x) && on10(p.y)).length, 0);
+console.log(`整10 占比：站心 ${st10}/${Object.keys(stations).length}，折点 ${pt10}/${ptAll}（其余为几何必须的 5 的倍数）`);
 
 console.log('车站', Object.keys(stations).length, '线路', lines.length, '换乘站', list.filter((s) => s.type === 'tsf').length);
 console.log('站名重叠对数:', overlaps);
