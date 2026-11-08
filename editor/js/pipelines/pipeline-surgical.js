@@ -707,9 +707,34 @@
      * 地图装饰（data_scattered.js）的条目级回写：按 id 对比载入时的快照，
      * 只改动过的条目被重写、删掉的移除、新放的追加，其余逐字节保留。
      */
+    /**
+     * 把编辑器里画的「水域」翻译成城市侧可交付的形态：
+     *   · 每个水域 → 一个 assets/{city}_water_{id}.svg 资产；
+     *   · data_scattered.js 里追加一条 { id, file, x, y, width, height, opacity, zIndex }。
+     *
+     * 为什么走 scattered 而不是新开 data_waters.js：main.html 对每个城市固定
+     * document.write 一批 data_*.js，新增文件会让没有它的城市 404；而 SVG 资产 +
+     * scattered 条目是引擎已支持、青岛海面等城市已在用的通道。
+     */
+    function collectWaterScattered(currentProject) {
+        var out = { entries: [], assets: [], waterIds: [] };
+        var exporter = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.WaterExporter) || null;
+        var cityId = (currentLoadedCity && currentLoadedCity.id) || '';
+        if (!exporter || !cityId || !currentProject || !Array.isArray(currentProject.waters) || !currentProject.waters.length) {
+            return out;
+        }
+        var plan = exporter.planWaterAssets(currentProject, cityId);
+        out.entries = plan.entries || [];
+        out.assets = plan.assets || [];
+        out.waterIds = plan.waterIds || [];
+        return out;
+    }
+
     function patchScatteredSource(currentProject) {
+        var waterPlan = collectWaterScattered(currentProject);
         var origList = (originalSnapshot && originalSnapshot.scattered) || [];
-        var currList = (currentProject && currentProject.scattered) || [];
+        // 水域生成的条目与手动摆放的装饰条目合并处理（id 稳定，重复保存不会重复追加）
+        var currList = ((currentProject && currentProject.scattered) || []).concat(waterPlan.entries);
         var origById = {};
         origList.forEach(function (it, i) { origById[it && it.id ? it.id : ('#' + i)] = it; });
         var currIds = {};
@@ -733,21 +758,23 @@
             if (!currIds[key]) { remove.push(it && it.id ? it.id : String(i)); dirty++; }
         });
         var origSrc = rawSources['data_scattered.js'];
-        if (!dirty) return { dirtyCount: 0, patchedSource: origSrc || '' };
+        if (!dirty) return { dirtyCount: 0, patchedSource: origSrc || '', assets: [], waterIds: [] };
         var io = getCityProjectIO();
         if (!origSrc) {
             // 城市原本没有装饰文件：整份新建
             return {
                 dirtyCount: dirty,
                 patchedSource: '/**\n * 地图装饰物（由 OpenMap Editor 生成）\n */\nconst SCATTERED_DATA = ' +
-                    JSON.stringify(currList, null, 4) + ';\n'
+                    JSON.stringify(currList, null, 4) + ';\n',
+                assets: waterPlan.assets,
+                waterIds: waterPlan.waterIds
             };
         }
         var patched = io.patchEntries(origSrc, 'SCATTERED_DATA', {
             update: update, remove: remove,
             append: append.map(function (it) { return { value: it }; })   // 数组条目无键名
         });
-        return { dirtyCount: dirty, patchedSource: patched };
+        return { dirtyCount: dirty, patchedSource: patched, assets: waterPlan.assets, waterIds: waterPlan.waterIds };
     }
 
     /**
@@ -780,8 +807,15 @@
             }
         ];
 
+        // 水域资产（新增 SVG 文件）：与 data_scattered.js 的追加条目配套产生
+        var assets = scatteredRes.assets || [];
+        var waterIds = scatteredRes.waterIds || [];
+
         return {
-            hasChanges: hasChanges,
+            hasChanges: hasChanges || assets.length > 0,
+            hasWaterAssets: assets.length > 0,
+            assets: assets,
+            waterIds: waterIds,
             city: currentLoadedCity,
             files: files
         };
@@ -956,8 +990,22 @@
          * 重试前先 getFile() 读一下，强制浏览器刷新该句柄的缓存状态。
          */
         async function writeOneFile(filename, text) {
+            // 支持 "assets/xxx.svg" 这类子路径：逐级取（必要时创建）目录
+            function splitPath(p) {
+                var parts = String(p || '').split('/').filter(Boolean);
+                var file = parts.pop() || '';
+                return { dirs: parts, file: file };
+            }
+            async function handleFor(dir, path) {
+                var sp = splitPath(path);
+                var cur = dir;
+                for (var i = 0; i < sp.dirs.length; i++) {
+                    cur = await cur.getDirectoryHandle(sp.dirs[i], { create: true });
+                }
+                return await cur.getFileHandle(sp.file, { create: true });
+            }
             async function attempt(dir) {
-                var fh = await dir.getFileHandle(filename, { create: true });
+                var fh = await handleFor(dir, filename);
                 try { await fh.getFile(); } catch (e) { /* 新文件读不到内容属正常，忽略 */ }
                 var w = await fh.createWritable();
                 await w.write(text);
@@ -988,13 +1036,32 @@
             savedFiles.push(f.filename);
         }
 
+        // 水域资产：写到 city/<id>/assets/ 下的新 SVG 文件
+        var savedAssets = [];
+        if (cs.assets && cs.assets.length) {
+            for (var ai = 0; ai < cs.assets.length; ai++) {
+                var asset = cs.assets[ai];
+                await writeOneFile(String(asset.path).replace(/\\/g, '/'), asset.content);
+                savedAssets.push(asset.path);
+            }
+        }
+        // 资产落盘成功后打标，避免同一会话里重复追加 scattered 条目
+        if (cs.waterIds && cs.waterIds.length && currentProject && Array.isArray(currentProject.waters)) {
+            cs.waterIds.forEach(function (wid) {
+                var w = currentProject.waters.find(function (x) { return x && x.id === wid; });
+                if (w) w._exportedToCity = true;
+            });
+        }
+
         return {
             savedCount: savedFiles.length,
             savedFiles: savedFiles,
+            savedAssets: savedAssets,
             retriedFiles: retriedFiles,
             forced: force,
             city: currentLoadedCity,
             message: (force ? '【强制回写】已整份覆盖本地 ' : '已直接更新本地 ') + savedFiles.join(' 与 ') +
+                (savedAssets.length ? '，并新增 ' + savedAssets.length + ' 个水域 SVG 资产' : '') +
                 (retriedFiles.length ? '（' + retriedFiles.join('、') + ' 因句柄状态过期已自动重试成功）' : '')
         };
     }
@@ -1012,6 +1079,7 @@
         patchLinesSource: patchLinesSource,
         patchScatteredSource: patchScatteredSource,
         computeChangeset: computeChangeset,
+        collectWaterScattered: collectWaterScattered,
         linkLocalDirectory: linkLocalDirectory,
         getLinkedDirectoryHandle: getLinkedDirectoryHandle,
         setLinkedDirectoryHandle: setLinkedDirectoryHandle,

@@ -346,6 +346,55 @@
         return !!draftSegment;
     }
 
+    /* ── 水域（多边形）草稿 ────────────────────────────────────────── */
+
+    /** 是否正在绘制水域 */
+    function hasWaterDraft() {
+        return !!(draftWater && draftWater.points && draftWater.points.length);
+    }
+
+    /** 当前水域草稿（含指针位置，供预览用） */
+    function getWaterDraft() {
+        if (!hasWaterDraft()) return null;
+        return {
+            points: draftWater.points.map(function (p) { return { x: p.x, y: p.y }; }),
+            cursor: draftWater.cursor ? { x: draftWater.cursor.x, y: draftWater.cursor.y } : null
+        };
+    }
+
+    /** 鼠标移动时更新水域草稿的"橡皮筋"端点 */
+    function updateWaterPointer(worldPos) {
+        if (!hasWaterDraft() || !worldPos) return false;
+        draftWater.cursor = { x: worldPos.x, y: worldPos.y };
+        return true;
+    }
+
+    /**
+     * 主动闭合水域草稿（供双击 / 右键 / Enter 调用）。
+     * 少于 3 个顶点无法构成多边形，直接放弃并返回 null。
+     * @returns {string|null} 新建水域的 id
+     */
+    function finishWaterDraft(project) {
+        if (!project || !hasWaterDraft()) return null;
+        var pts = draftWater.points;
+        if (pts.length < 3) {
+            draftWater = null;
+            return null;
+        }
+        var pModel = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.ProjectModel) ||
+            (typeof ProjectModel !== 'undefined' ? ProjectModel : null);
+        var wid = pModel ? pModel.nextId(project, 'water_') : ('water_' + (++project.idSeq || 1));
+        if (!Array.isArray(project.waters)) project.waters = [];
+        project.waters.push({
+            id: wid,
+            name: '水域 ' + (project.idSeq || pts.length),
+            type: 'poly',
+            points: pts.map(function (p) { return { x: p.x, y: p.y }; })
+        });
+        draftWater = null;
+        return wid;
+    }
+
     /**
      * @param {object} [opts]
      * @param {number} [opts.button] 触发本次点击的鼠标键：只有左键（0）才会落笔。
@@ -431,11 +480,32 @@
 
                 var lineId = activeLineId || (project.lines[0] && project.lines[0].id) || 'L1';
                 var targetLine = (project.lines || []).find(function (l) { return l.id === lineId; });
-                var addStationToLine = function (nid) {
+                /**
+                 * 把车站记进线路站序。
+                 *
+                 * 关键：**必须按几何位置插入**，不能 push 到末尾。
+                 * 画线时"接到一个已有车站"如果直接 push，站序就会变成
+                 * "先画的一串 + 末尾接上的老站"，导出（引擎按站序连点）时会拉出一堆
+                 * 横跨全图的长斜线 —— 这正是"编辑器画面正常、导出乱成一团"的根源。
+                 *
+                 * 插入规则：接在**本段的另一个端点之后**（anchorNid）。
+                 */
+                var addStationToLine = function (nid, anchorNid, position) {
                     if (!nid || !project.nodes[nid] || project.nodes[nid].type === 'temp') return;
                     if (!targetLine) return;
                     if (!Array.isArray(targetLine.stationIds)) targetLine.stationIds = [];
-                    if (targetLine.stationIds.indexOf(nid) === -1) targetLine.stationIds.push(nid);
+                    if (targetLine.stationIds.indexOf(nid) !== -1) return;
+
+                    var orderApi = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.StationOrder) || null;
+                    if (orderApi && typeof orderApi.insertStation === 'function') {
+                        var opts = position === 'before'
+                            ? { beforeId: anchorNid || null }
+                            : { afterId: anchorNid || null };
+                        var res = orderApi.insertStation(targetLine.stationIds, nid, opts);
+                        targetLine.stationIds = res.ids;
+                        return;
+                    }
+                    targetLine.stationIds.push(nid);
                 };
 
                 // ---- 自由折线（segaxis）：把新点**追加到当前这条折线**，而不是另起一段 ----
@@ -446,7 +516,7 @@
                         var tail = { x: p2.x, y: p2.y };
                         if (targetNodeId) tail.nid = targetNodeId;
                         liveSeg.points.push(tail);
-                        addStationToLine(targetNodeId);
+                        addStationToLine(targetNodeId, draftSegment.startNodeId || null, 'after');
                         draftSegment.startNodeId = targetNodeId || null;
                         draftSegment.startPoint = { x: p2.x, y: p2.y };
                         draftSegment.currentPoint = { x: p2.x, y: p2.y };
@@ -474,8 +544,11 @@
                 });
 
                 // 若首尾为车站节点，自动同步进线路站序
-                addStationToLine(draftSegment.startNodeId);
-                addStationToLine(targetNodeId);
+                // 方向很重要：线段是"起点 → 终点"，
+                // 起点若不在序里，应插在**终点之前**；终点若不在序里，插在**起点之后**。
+                // 只按"插在锚点后面"处理，反向接线时会把前驱错排到后继的位置。
+                addStationToLine(draftSegment.startNodeId, targetNodeId, 'before');
+                addStationToLine(targetNodeId, draftSegment.startNodeId, 'after');
 
                 // 连续绘制（CAD 习惯）：不清空草稿，把刚画到的终点当作下一段的起点，
                 // 于是可以一路点下去不断线；要结束就按 Esc 或右键。
@@ -494,10 +567,11 @@
         // 4. 绘制水域要素 (water)
         if (activeTool === 'water') {
             if (!draftWater) {
-                draftWater = { points: [worldPos] };
-                return { updated: false, action: 'draft_water_point' };
+                draftWater = { points: [{ x: worldPos.x, y: worldPos.y }], cursor: { x: worldPos.x, y: worldPos.y } };
+                return { updated: false, action: 'draft_water_point', pointCount: 1 };
             } else {
-                draftWater.points.push(worldPos);
+                draftWater.points.push({ x: worldPos.x, y: worldPos.y });
+                draftWater.cursor = { x: worldPos.x, y: worldPos.y };
                 // 3 点以上闭合
                 if (draftWater.points.length >= 3 && Math.hypot(worldPos.x - draftWater.points[0].x, worldPos.y - draftWater.points[0].y) < 15) {
                     var wid = pModel ? pModel.nextId(project, 'water_') : fallbackNextId(project, 'water_');
@@ -508,9 +582,9 @@
                         points: draftWater.points.slice(0, -1)
                     });
                     draftWater = null;
-                    return { updated: true, action: 'create_water', createdId: wid };
+                    return { updated: true, action: 'create_water', createdId: wid, waterCount: project.waters.length };
                 }
-                return { updated: false, action: 'draft_water_point' };
+                return { updated: false, action: 'draft_water_point', pointCount: draftWater.points.length };
             }
         }
 
@@ -546,6 +620,10 @@
         constrainTo45: constrainTo45,
         getDraft: getDraft,
         hasDraft: hasDraft,
+        hasWaterDraft: hasWaterDraft,
+        getWaterDraft: getWaterDraft,
+        updateWaterPointer: updateWaterPointer,
+        finishWaterDraft: finishWaterDraft,
         updateDraftPointer: updateDraftPointer,
         getDraftPreviewPoints: getDraftPreviewPoints,
         handleCanvasClick: handleCanvasClick,

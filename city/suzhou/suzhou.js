@@ -2,7 +2,7 @@
  * CGo OpenMap - 苏州 城市模块 (city/suzhou/suzhou.js)
  *
  * 线网数据依苏州地铁官方「运行线路图」(sz-mtr.com) 矢量底图整理，含 1~8 号线与 11 号线。
- * 站心与走向折点统一对齐 6px 网格（2026-10-31 全图 ×1.2 缩放后由 5px 栅格映射而来），便于人工增删站与核对走向。
+ * 站心与走向折点对齐「整 5 整 10」网格（以 10 为主、几何必须处保留 5），便于人工增删站；收拢手法见 city/suzhou/README.md。
  */
 
 (function () {
@@ -14,7 +14,7 @@
         name: "上海地铁11号线换乘",
         slot: "body-top",
         order: 12,
-        shouldRender(ctx) { return Boolean(ctx.station && ctx.station.id === "M1127"); },
+        shouldRender(ctx) { return Boolean(ctx.station && ctx.station.id === "node_556"); },
         render() {
             return `<div class="sz-hq-sh11">
                 <div class="sz-hq-sh11-head"><cgo-icon name="transfer" size="16"></cgo-icon><b>上海地铁 11 号线</b><span>跨省换乘 · Shanghai Metro Line 11</span></div>
@@ -55,16 +55,30 @@
         name: "苏州",
         themeColor: "#0c3674",
         searchCity: "苏州",
-        /* 首屏视点：乐桥（1 / 4 号线换乘，古城核心） */
-        center: { x: 1500, y: 1398 },
-        defaultScale: 0.72,
-        mapSize: { width: 3084, height: 3120 },
+        /* 首屏视点：线网几何中心（古城区与工业园区之间） */
+        center: { x: 950, y: 1050 },
+        defaultScale: 0.9,
+        mapSize: { width: 2000, height: 2100 },
         officialMapUrl: "https://www.sz-mtr.com/service/guide/map/index_zh.html",
         LINE_META: {},
-        LINE_SORT_ORDER: ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M11", "SH11"],
+        LINE_SORT_ORDER: ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L11", "SH11"],
         stationBoard: {
-            modules: { "sz-hq-sh11": Sh11TransferModule }
+            // 花桥跨省换乘卡片（本城内联定义）+ 官网资料模块（独立脚本注册，此处只配置开关与顺序）
+            modules: {
+                "sz-hq-sh11": Sh11TransferModule,
+                "suzhou-station-info": { enabled: true, order: 15, targetTab: "station-info" }
+            }
         },
+        /* 3 号线与 11 号线在唯亭贯通运行（同一列车直通，无需下车），
+           声明为 through 后行程规划不计换乘、车站详情合并显示 */
+        lineLinks: [{
+            id: "L3-L11",
+            lineIds: ["L3", "L11"],
+            at: "node_151",
+            name: "3 / 11 号线（贯通）",
+            through: true,
+            keepBadges: true
+        }],
         LINE_SYNC_GROUPS: [],
         SUBURBAN_LINES: [],
         MERGE_STATIONS: [],
@@ -75,7 +89,33 @@
             "苏州园区火车站": "苏州园区",
             "苏州新区火车站": "苏州新区"
         },
-        dataFiles: { stanameCsvUrl: "./city/suzhou/staname.csv" },
+        dataFiles: {
+            stanameCsvUrl: "./city/suzhou/staname.csv",
+            amapDataUrl: "./city/suzhou/amap_data.json"
+        },
+        /* 车站信息板「周边地图」卡片：高德瓦片 + 本站经纬度落针（坐标取自高德地铁图，GCJ-02） */
+        stacard: {
+            script: "./city/suzhou/stacard/script.js",
+            geoDataUrl: "./city/suzhou/amap_data.json",
+            basePath: "./city/suzhou/stacard/",
+            getRenderer: () => window.SuzhouStaCard || window.StaCard || null
+        },
+        async initStaCard(options = {}) {
+            return await this.stacard.getRenderer()?.init?.({
+                basePath: this.stacard.basePath,
+                geoDataUrl: this.stacard.geoDataUrl,
+                ...options
+            });
+        },
+        hasStaCard(stationId, lineId, stationInfo) {
+            return Boolean(this.stacard.getRenderer()?.hasCard?.(stationId, lineId, stationInfo));
+        },
+        getStaCardHtml(station, lineInfo, isCrossPlatform = false) {
+            return this.stacard.getRenderer()?.getCardPlaceholderHtml?.(station, lineInfo, isCrossPlatform) || "";
+        },
+        async renderStaCards(infoPanel, station) {
+            return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
+        },
         getNavigationUrl(stationName, isRailway = false) {
             const query = isRailway ? stationName : `${stationName}(地铁站)`;
             return `https://uri.amap.com/search?keyword=${encodeURIComponent(query)}&city=${encodeURIComponent("苏州")}`;
@@ -94,6 +134,56 @@
     };
     window.CURRENT_CITY = City;
     window.SUZHOU_CITY = City;
+
+    /* 行程规划（共享层 route/*）：城市侧只描述坐标与时刻表读取方式 */
+    window.CGO_ROUTE_CONFIG = {
+        coords: "./city/suzhou/amap_data.json",
+        cityIcon: "suzhou",
+        reader(line, sid) {
+            const data = window.SUZHOU_SCHEDULE_DATA;
+            const lineData = data && data[line.id];
+            const info = lineData && lineData.stations && lineData.stations[sid];
+            if (!info) return [];
+            const slot = window.CGoRouteData && window.CGoRouteData.hourSlots;
+            if (typeof slot !== "function") return [];
+            const toward = lineData.toward || {};
+            return Object.entries(info.directions || {}).map(([label, times]) => {
+                const dest = toward[label] || label;
+                return slot(dest, [["first", "首", times.first], ["last", "末", times.last]]);
+            }).flat();
+        },
+        /* 官方未公开站间票价表，票价一律按「未知」处理（不做站距推算） */
+        fareSystems: {},
+        fare: {}
+    };
+
+    /* 官网车站资料 + 行程规划共享层（须在核心引擎执行前同步写入） */
+    function loadStationBoardModules() {
+        if (typeof document === "undefined" || typeof document.write !== "function") return;
+        const version = "261107.024200";
+        const shared = "./city/shenyang/shared";
+        const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
+
+        // 首末班车数据（行程规划 reader 依赖，须早于 route-data 建图）
+        write("./city/suzhou/data_timetable.js");
+        // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒；面板自带 CSS 注入）
+        write(`${shared}/station/line-link.js`);
+        write(`${shared}/route/route-data.js`);
+        write(`${shared}/route/route-planner.js`);
+        write(`${shared}/route/route-panel-icons.js`);
+        write(`${shared}/route/route-panel-search.js`);
+        write(`${shared}/route/route-panel.js`);
+        // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
+        write(`${shared}/base/viewport-inset.js`);
+        // 车站信息板横滑切页补充通道
+        write(`${shared}/base/panel-tab-swipe-relay.js`);
+
+        // 城市专属：官网站厅示意图/设施/结构图 + 首末班车模块
+        write("./city/suzhou/data_station_info.js");
+        write("./city/suzhou/modules/suzhou_station_info.js");
+        write("./city/suzhou/modules/suzhou_timetable.js");
+    }
+
     window.CityDataManager?.registerCity?.({
         id: City.id, name: City.name,
         folder: "./city/suzhou", mainLogic: "./city/suzhou/suzhou.js",
@@ -101,10 +191,11 @@
         searchCity: City.searchCity,
         title: "CGo OpenMap - 苏州轨道交通线路图",
         keywords: "CGo OpenMap, 苏州地铁, 苏州轨道交通, 线路图",
-        description: "覆盖 1~8 号线与 11 号线，含 11 号线花桥接驳上海地铁 11 号线。",
+        description: "覆盖 1~8 号线与 11 号线，含 4 / 7 号线在建延伸段与花桥接驳上海地铁 11 号线。",
         officialMapUrl: City.officialMapUrl,
         isDefault: false,
         ...City
     });
+    loadStationBoardModules();
     injectStyle();
 })();

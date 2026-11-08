@@ -1,0 +1,8296 @@
+{
+  "version": 1,
+  "canvas": {
+    "width": 2000,
+    "height": 2000
+  },
+  "nodes": {
+    "node_1": {
+      "id": "node_1",
+      "x": 300,
+      "y": 950,
+      "cn": "木渎",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_2": {
+      "id": "node_2",
+      "x": 350,
+      "y": 950,
+      "cn": "金枫路",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_3": {
+      "id": "node_3",
+      "x": 400,
+      "y": 950,
+      "cn": "汾湖路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_4": {
+      "id": "node_4",
+      "x": 450,
+      "y": 950,
+      "cn": "玉山路",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_5": {
+      "id": "node_5",
+      "x": 500,
+      "y": 925,
+      "cn": "狮子山",
+      "en": "",
+      "type": "tsf",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_6": {
+      "id": "node_6",
+      "x": 550,
+      "y": 900,
+      "cn": "塔园路",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_7": {
+      "id": "node_7",
+      "x": 600,
+      "y": 900,
+      "cn": "滨河路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_8": {
+      "id": "node_8",
+      "x": 650,
+      "y": 900,
+      "cn": "西环路",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_9": {
+      "id": "node_9",
+      "x": 700,
+      "y": 900,
+      "cn": "桐泾北路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_10": {
+      "id": "node_10",
+      "x": 750,
+      "y": 900,
+      "cn": "广济南路",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_11": {
+      "id": "node_11",
+      "x": 800,
+      "y": 900,
+      "cn": "养育巷",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_12": {
+      "id": "node_12",
+      "x": 850,
+      "y": 900,
+      "cn": "乐桥",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_13": {
+      "id": "node_13",
+      "x": 900,
+      "y": 900,
+      "cn": "临顿路",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_14": {
+      "id": "node_14",
+      "x": 950,
+      "y": 900,
+      "cn": "相门",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_15": {
+      "id": "node_15",
+      "x": 1000,
+      "y": 900,
+      "cn": "东环路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_16": {
+      "id": "node_16",
+      "x": 1050,
+      "y": 900,
+      "cn": "中央公园",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_17": {
+      "id": "node_17",
+      "x": 1100,
+      "y": 900,
+      "cn": "星海广场",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_18": {
+      "id": "node_18",
+      "x": 1150,
+      "y": 900,
+      "cn": "东方之门",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_19": {
+      "id": "node_19",
+      "x": 1350,
+      "y": 900,
+      "cn": "文化博览中心",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_20": {
+      "id": "node_20",
+      "x": 1400,
+      "y": 900,
+      "cn": "时代广场",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_21": {
+      "id": "node_21",
+      "x": 1475,
+      "y": 900,
+      "cn": "星湖街",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_22": {
+      "id": "node_22",
+      "x": 1525,
+      "y": 900,
+      "cn": "南施街",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_23": {
+      "id": "node_23",
+      "x": 1600,
+      "y": 900,
+      "cn": "星塘街",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_24": {
+      "id": "node_24",
+      "x": 1650,
+      "y": 900,
+      "cn": "钟南街",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_46": {
+      "id": "node_46",
+      "x": 875,
+      "y": 175,
+      "cn": "骑河",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_47": {
+      "id": "node_47",
+      "x": 875,
+      "y": 225,
+      "cn": "富翔路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_48": {
+      "id": "node_48",
+      "x": 875,
+      "y": 275,
+      "cn": "高铁苏州北站",
+      "en": "",
+      "type": "dot",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "amenities": [
+        "maglev"
+      ]
+    },
+    "node_49": {
+      "id": "node_49",
+      "x": 875,
+      "y": 325,
+      "cn": "大湾",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_50": {
+      "id": "node_50",
+      "x": 875,
+      "y": 375,
+      "cn": "富元路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_51": {
+      "id": "node_51",
+      "x": 875,
+      "y": 425,
+      "cn": "蠡口",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_52": {
+      "id": "node_52",
+      "x": 875,
+      "y": 475,
+      "cn": "徐图港",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_53": {
+      "id": "node_53",
+      "x": 875,
+      "y": 525,
+      "cn": "阳澄湖中路",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_54": {
+      "id": "node_54",
+      "x": 875,
+      "y": 575,
+      "cn": "陆慕",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_55": {
+      "id": "node_55",
+      "x": 875,
+      "y": 625,
+      "cn": "平泷路东",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_56": {
+      "id": "node_56",
+      "x": 850,
+      "y": 675,
+      "cn": "平河路",
+      "en": "",
+      "type": "tsf",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_57": {
+      "id": "node_57",
+      "x": 800,
+      "y": 725,
+      "cn": "苏州火车站",
+      "en": "",
+      "type": "tsf",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false,
+      "amenities": [
+        "railway"
+      ]
+    },
+    "node_58": {
+      "id": "node_58",
+      "x": 750,
+      "y": 800,
+      "cn": "山塘街",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_59": {
+      "id": "node_59",
+      "x": 750,
+      "y": 850,
+      "cn": "石路",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_61": {
+      "id": "node_61",
+      "x": 750,
+      "y": 975,
+      "cn": "三香广场",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_62": {
+      "id": "node_62",
+      "x": 750,
+      "y": 1050,
+      "cn": "劳动路",
+      "en": "",
+      "type": "tsf",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_63": {
+      "id": "node_63",
+      "x": 750,
+      "y": 1100,
+      "cn": "胥江路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_64": {
+      "id": "node_64",
+      "x": 750,
+      "y": 1150,
+      "cn": "桐泾公园",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_65": {
+      "id": "node_65",
+      "x": 750,
+      "y": 1200,
+      "cn": "友联",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_66": {
+      "id": "node_66",
+      "x": 750,
+      "y": 1250,
+      "cn": "盘蠡路",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_67": {
+      "id": "node_67",
+      "x": 750,
+      "y": 1300,
+      "cn": "新家桥",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_68": {
+      "id": "node_68",
+      "x": 850,
+      "y": 1350,
+      "cn": "石湖东路",
+      "en": "",
+      "type": "tsf",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_69": {
+      "id": "node_69",
+      "x": 910,
+      "y": 1350,
+      "cn": "宝带桥南",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_70": {
+      "id": "node_70",
+      "x": 985,
+      "y": 1350,
+      "cn": "尹中路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_71": {
+      "id": "node_71",
+      "x": 1050,
+      "y": 1350,
+      "cn": "郭巷",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_72": {
+      "id": "node_72",
+      "x": 1100,
+      "y": 1350,
+      "cn": "郭苑路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_73": {
+      "id": "node_73",
+      "x": 1150,
+      "y": 1350,
+      "cn": "尹山湖",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_74": {
+      "id": "node_74",
+      "x": 1200,
+      "y": 1350,
+      "cn": "独墅湖南",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_75": {
+      "id": "node_75",
+      "x": 1250,
+      "y": 1350,
+      "cn": "独墅湖邻里中心",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_76": {
+      "id": "node_76",
+      "x": 1300,
+      "y": 1350,
+      "cn": "月亮湾",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_77": {
+      "id": "node_77",
+      "x": 1400,
+      "y": 1350,
+      "cn": "松涛街",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_78": {
+      "id": "node_78",
+      "x": 1450,
+      "y": 1350,
+      "cn": "金谷路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_79": {
+      "id": "node_79",
+      "x": 1550,
+      "y": 1350,
+      "cn": "金尚路",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 5
+      },
+      "notOpen": false
+    },
+    "node_80": {
+      "id": "node_80",
+      "x": 1600,
+      "y": 1350,
+      "cn": "桑田岛",
+      "en": "",
+      "type": "tsf",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": -5
+      },
+      "notOpen": false
+    },
+    "node_115": {
+      "id": "node_115",
+      "x": 350,
+      "y": 525,
+      "cn": "苏州新区火车站",
+      "en": "",
+      "type": "tsf",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false,
+      "amenities": [
+        "railway"
+      ]
+    },
+    "node_116": {
+      "id": "node_116",
+      "x": 450,
+      "y": 575,
+      "cn": "惠昌路",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_117": {
+      "id": "node_117",
+      "x": 450,
+      "y": 625,
+      "cn": "文昌路",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_118": {
+      "id": "node_118",
+      "x": 450,
+      "y": 675,
+      "cn": "长亭",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_119": {
+      "id": "node_119",
+      "x": 450,
+      "y": 725,
+      "cn": "铜墩",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_120": {
+      "id": "node_120",
+      "x": 474,
+      "y": 775,
+      "cn": "马运路",
+      "en": "",
+      "type": "dot",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_121": {
+      "id": "node_121",
+      "x": 500,
+      "y": 825,
+      "cn": "西津桥",
+      "en": "",
+      "type": "tsf",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_122": {
+      "id": "node_122",
+      "x": 500,
+      "y": 875,
+      "cn": "何山",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_124": {
+      "id": "node_124",
+      "x": 500,
+      "y": 1000,
+      "cn": "狮山路",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_125": {
+      "id": "node_125",
+      "x": 500,
+      "y": 1050,
+      "cn": "沙金桥",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_126": {
+      "id": "node_126",
+      "x": 500,
+      "y": 1125,
+      "cn": "索山桥西",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_127": {
+      "id": "node_127",
+      "x": 525,
+      "y": 1225,
+      "cn": "横山",
+      "en": "",
+      "type": "dot",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_128": {
+      "id": "node_128",
+      "x": 600,
+      "y": 1250,
+      "cn": "横塘",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_129": {
+      "id": "node_129",
+      "x": 650,
+      "y": 1250,
+      "cn": "石湖北",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_130": {
+      "id": "node_130",
+      "x": 700,
+      "y": 1250,
+      "cn": "新郭",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_132": {
+      "id": "node_132",
+      "x": 850,
+      "y": 1250,
+      "cn": "宝带路",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_133": {
+      "id": "node_133",
+      "x": 925,
+      "y": 1250,
+      "cn": "迎春路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_134": {
+      "id": "node_134",
+      "x": 990,
+      "y": 1250,
+      "cn": "北港路",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_135": {
+      "id": "node_135",
+      "x": 1050,
+      "y": 1250,
+      "cn": "通园路南",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_136": {
+      "id": "node_136",
+      "x": 1150,
+      "y": 1200,
+      "cn": "墅浦路北",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_137": {
+      "id": "node_137",
+      "x": 1150,
+      "y": 1125,
+      "cn": "东振路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_138": {
+      "id": "node_138",
+      "x": 1150,
+      "y": 1050,
+      "cn": "金厍桥",
+      "en": "",
+      "type": "tsf",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_139": {
+      "id": "node_139",
+      "x": 1150,
+      "y": 975,
+      "cn": "李公堤西",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_141": {
+      "id": "node_141",
+      "x": 1150,
+      "y": 850,
+      "cn": "烟雨桥",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_142": {
+      "id": "node_142",
+      "x": 1150,
+      "y": 800,
+      "cn": "倪浜·阳澄数谷",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_143": {
+      "id": "node_143",
+      "x": 1200,
+      "y": 750,
+      "cn": "唐庄",
+      "en": "",
+      "type": "tsf",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_144": {
+      "id": "node_144",
+      "x": 1300,
+      "y": 750,
+      "cn": "跨塘",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_145": {
+      "id": "node_145",
+      "x": 1400,
+      "y": 750,
+      "cn": "苏州园区火车站",
+      "en": "",
+      "type": "tsf",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false,
+      "amenities": [
+        "railway"
+      ]
+    },
+    "node_146": {
+      "id": "node_146",
+      "x": 1450,
+      "y": 750,
+      "cn": "方湾街",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_147": {
+      "id": "node_147",
+      "x": 1500,
+      "y": 750,
+      "cn": "丰和路",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_148": {
+      "id": "node_148",
+      "x": 1550,
+      "y": 750,
+      "cn": "双马街",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_149": {
+      "id": "node_149",
+      "x": 1600,
+      "y": 750,
+      "cn": "葑亭大道",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_150": {
+      "id": "node_150",
+      "x": 1650,
+      "y": 750,
+      "cn": "戈巷街",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_151": {
+      "id": "node_151",
+      "x": 1700,
+      "y": 750,
+      "cn": "唯亭",
+      "en": "",
+      "type": "tsf",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_187": {
+      "id": "node_187",
+      "x": 725,
+      "y": 325,
+      "cn": "龙道浜",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_188": {
+      "id": "node_188",
+      "x": 725,
+      "y": 375,
+      "cn": "张庄",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_189": {
+      "id": "node_189",
+      "x": 725,
+      "y": 425,
+      "cn": "姚祥",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_190": {
+      "id": "node_190",
+      "x": 725,
+      "y": 475,
+      "cn": "活力岛",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_191": {
+      "id": "node_191",
+      "x": 725,
+      "y": 525,
+      "cn": "孙武纪念园",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_192": {
+      "id": "node_192",
+      "x": 725,
+      "y": 600,
+      "cn": "平泷路西",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_193": {
+      "id": "node_193",
+      "x": 750,
+      "y": 675,
+      "cn": "苏锦",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_195": {
+      "id": "node_195",
+      "x": 850,
+      "y": 800,
+      "cn": "北寺塔",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_196": {
+      "id": "node_196",
+      "x": 850,
+      "y": 850,
+      "cn": "察院场",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_198": {
+      "id": "node_198",
+      "x": 850,
+      "y": 975,
+      "cn": "三元坊",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_199": {
+      "id": "node_199",
+      "x": 850,
+      "y": 1050,
+      "cn": "南门",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_200": {
+      "id": "node_200",
+      "x": 850,
+      "y": 1125,
+      "cn": "人民桥南",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_201": {
+      "id": "node_201",
+      "x": 850,
+      "y": 1200,
+      "cn": "团结桥",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_204": {
+      "id": "node_204",
+      "x": 850,
+      "y": 1400,
+      "cn": "红庄",
+      "en": "",
+      "type": "tsf",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_205": {
+      "id": "node_205",
+      "x": 850,
+      "y": 1450,
+      "cn": "清树湾",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_206": {
+      "id": "node_206",
+      "x": 850,
+      "y": 1500,
+      "cn": "花港",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_207": {
+      "id": "node_207",
+      "x": 850,
+      "y": 1550,
+      "cn": "江陵西路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_208": {
+      "id": "node_208",
+      "x": 850,
+      "y": 1600,
+      "cn": "江兴西路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_209": {
+      "id": "node_209",
+      "x": 850,
+      "y": 1650,
+      "cn": "流虹路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_210": {
+      "id": "node_210",
+      "x": 850,
+      "y": 1700,
+      "cn": "笠泽路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_211": {
+      "id": "node_211",
+      "x": 850,
+      "y": 1750,
+      "cn": "顾家荡",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_212": {
+      "id": "node_212",
+      "x": 850,
+      "y": 1800,
+      "cn": "苏州湾东",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_213": {
+      "id": "node_213",
+      "x": 875,
+      "y": 1850,
+      "cn": "松陵大道",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_214": {
+      "id": "node_214",
+      "x": 950,
+      "y": 1850,
+      "cn": "吴江人民广场",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_215": {
+      "id": "node_215",
+      "x": 1025,
+      "y": 1850,
+      "cn": "吴江汽车站",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_216": {
+      "id": "node_216",
+      "x": 1100,
+      "y": 1850,
+      "cn": "庞金路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_217": {
+      "id": "node_217",
+      "x": 1175,
+      "y": 1850,
+      "cn": "同里",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_249": {
+      "id": "node_249",
+      "x": 80,
+      "y": 1420,
+      "cn": "太湖香山",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_250": {
+      "id": "node_250",
+      "x": 110,
+      "y": 1390,
+      "cn": "花墩",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_251": {
+      "id": "node_251",
+      "x": 140,
+      "y": 1360,
+      "cn": "津桥",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_252": {
+      "id": "node_252",
+      "x": 170,
+      "y": 1330,
+      "cn": "胥口",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_253": {
+      "id": "node_253",
+      "x": 200,
+      "y": 1300,
+      "cn": "茅蓬路东",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_254": {
+      "id": "node_254",
+      "x": 230,
+      "y": 1270,
+      "cn": "许家桥",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_255": {
+      "id": "node_255",
+      "x": 260,
+      "y": 1240,
+      "cn": "灵岩山",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_256": {
+      "id": "node_256",
+      "x": 290,
+      "y": 1210,
+      "cn": "渎川桥",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_257": {
+      "id": "node_257",
+      "x": 320,
+      "y": 1180,
+      "cn": "大治桥",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_258": {
+      "id": "node_258",
+      "x": 350,
+      "y": 1150,
+      "cn": "西跨塘",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_259": {
+      "id": "node_259",
+      "x": 400,
+      "y": 1125,
+      "cn": "石城",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_260": {
+      "id": "node_260",
+      "x": 450,
+      "y": 1125,
+      "cn": "落星桥",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_262": {
+      "id": "node_262",
+      "x": 650,
+      "y": 1075,
+      "cn": "双桥",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_264": {
+      "id": "node_264",
+      "x": 800,
+      "y": 1050,
+      "cn": "新市桥",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_266": {
+      "id": "node_266",
+      "x": 900,
+      "y": 1050,
+      "cn": "南园北路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_267": {
+      "id": "node_267",
+      "x": 950,
+      "y": 1050,
+      "cn": "竹辉桥",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_268": {
+      "id": "node_268",
+      "x": 1000,
+      "y": 1050,
+      "cn": "荷花荡",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_269": {
+      "id": "node_269",
+      "x": 1050,
+      "y": 1050,
+      "cn": "黄天荡",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_271": {
+      "id": "node_271",
+      "x": 1200,
+      "y": 1050,
+      "cn": "星波街",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_272": {
+      "id": "node_272",
+      "x": 1250,
+      "y": 1050,
+      "cn": "李公堤南",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_273": {
+      "id": "node_273",
+      "x": 1300,
+      "y": 1050,
+      "cn": "金湖",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_274": {
+      "id": "node_274",
+      "x": 1350,
+      "y": 1050,
+      "cn": "华莲",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_275": {
+      "id": "node_275",
+      "x": 1400,
+      "y": 1050,
+      "cn": "斜塘",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_276": {
+      "id": "node_276",
+      "x": 1500,
+      "y": 1050,
+      "cn": "苏州奥体中心",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_277": {
+      "id": "node_277",
+      "x": 1600,
+      "y": 975,
+      "cn": "方洲公园",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_279": {
+      "id": "node_279",
+      "x": 1600,
+      "y": 850,
+      "cn": "龙墩",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_280": {
+      "id": "node_280",
+      "x": 1600,
+      "y": 800,
+      "cn": "东沙湖",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_282": {
+      "id": "node_282",
+      "x": 1600,
+      "y": 700,
+      "cn": "阳澄湖南",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_322": {
+      "id": "node_322",
+      "x": 400,
+      "y": 525,
+      "cn": "保丰",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_323": {
+      "id": "node_323",
+      "x": 450,
+      "y": 525,
+      "cn": "富强",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_324": {
+      "id": "node_324",
+      "x": 500,
+      "y": 525,
+      "cn": "长泾",
+      "en": "",
+      "type": "dot",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_325": {
+      "id": "node_325",
+      "x": 560,
+      "y": 560,
+      "cn": "白洋湾公园",
+      "en": "",
+      "type": "tsf",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_326": {
+      "id": "node_326",
+      "x": 600,
+      "y": 600,
+      "cn": "金鸡墩",
+      "en": "",
+      "type": "dot",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_327": {
+      "id": "node_327",
+      "x": 625,
+      "y": 625,
+      "cn": "虎丘",
+      "en": "",
+      "type": "dot",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_328": {
+      "id": "node_328",
+      "x": 650,
+      "y": 650,
+      "cn": "青山桥浜",
+      "en": "",
+      "type": "dot",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_329": {
+      "id": "node_329",
+      "x": 700,
+      "y": 675,
+      "cn": "江星桥南站",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_332": {
+      "id": "node_332",
+      "x": 900,
+      "y": 750,
+      "cn": "梅巷",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_333": {
+      "id": "node_333",
+      "x": 900,
+      "y": 800,
+      "cn": "拙政园苏博",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_334": {
+      "id": "node_334",
+      "x": 900,
+      "y": 850,
+      "cn": "悬桥巷",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_336": {
+      "id": "node_336",
+      "x": 950,
+      "y": 975,
+      "cn": "望星桥苏大",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_337": {
+      "id": "node_337",
+      "x": 1000,
+      "y": 975,
+      "cn": "徐家浜",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_338": {
+      "id": "node_338",
+      "x": 1050,
+      "y": 975,
+      "cn": "惹云桥",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_339": {
+      "id": "node_339",
+      "x": 1100,
+      "y": 975,
+      "cn": "秋塘浜",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_341": {
+      "id": "node_341",
+      "x": 1400,
+      "y": 975,
+      "cn": "琼姬墩",
+      "en": "",
+      "type": "tsf",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_342": {
+      "id": "node_342",
+      "x": 1500,
+      "y": 1000,
+      "cn": "南施公园南",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_344": {
+      "id": "node_344",
+      "x": 1500,
+      "y": 1100,
+      "cn": "儿童医院总院",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_345": {
+      "id": "node_345",
+      "x": 1500,
+      "y": 1150,
+      "cn": "涵青桥",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_346": {
+      "id": "node_346",
+      "x": 1500,
+      "y": 1200,
+      "cn": "金家堰",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_347": {
+      "id": "node_347",
+      "x": 1500,
+      "y": 1250,
+      "cn": "北斜步",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_348": {
+      "id": "node_348",
+      "x": 1500,
+      "y": 1300,
+      "cn": "南斜步",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_385": {
+      "id": "node_385",
+      "x": 525,
+      "y": 225,
+      "cn": "春秋路",
+      "en": "",
+      "type": "no",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "node_386": {
+      "id": "node_386",
+      "x": 575,
+      "y": 225,
+      "cn": "春光路",
+      "en": "",
+      "type": "no",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "node_387": {
+      "id": "node_387",
+      "x": 625,
+      "y": 225,
+      "cn": "永昌路",
+      "en": "",
+      "type": "no",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "node_388": {
+      "id": "node_388",
+      "x": 675,
+      "y": 225,
+      "cn": "石港路",
+      "en": "",
+      "type": "no",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "node_389": {
+      "id": "node_389",
+      "x": 725,
+      "y": 225,
+      "cn": "莫阳",
+      "en": "",
+      "type": "no",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "node_390": {
+      "id": "node_390",
+      "x": 800,
+      "y": 225,
+      "cn": "朱泾",
+      "en": "",
+      "type": "no",
+      "align": "bottom-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "node_392": {
+      "id": "node_392",
+      "x": 915,
+      "y": 315,
+      "cn": "雪南",
+      "en": "",
+      "type": "no",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "node_393": {
+      "id": "node_393",
+      "x": 945,
+      "y": 345,
+      "cn": "常楼",
+      "en": "",
+      "type": "dot",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_394": {
+      "id": "node_394",
+      "x": 975,
+      "y": 375,
+      "cn": "登云",
+      "en": "",
+      "type": "dot",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_395": {
+      "id": "node_395",
+      "x": 1005,
+      "y": 405,
+      "cn": "蠡塘河路",
+      "en": "",
+      "type": "dot",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_396": {
+      "id": "node_396",
+      "x": 1035,
+      "y": 435,
+      "cn": "春申湖东路",
+      "en": "",
+      "type": "dot",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_397": {
+      "id": "node_397",
+      "x": 1050,
+      "y": 475,
+      "cn": "华元路东",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_398": {
+      "id": "node_398",
+      "x": 1050,
+      "y": 525,
+      "cn": "白荡北",
+      "en": "",
+      "type": "tsf",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    },
+    "node_399": {
+      "id": "node_399",
+      "x": 1050,
+      "y": 625,
+      "cn": "白荡南站",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_400": {
+      "id": "node_400",
+      "x": 1050,
+      "y": 725,
+      "cn": "板泾",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_401": {
+      "id": "node_401",
+      "x": 1050,
+      "y": 800,
+      "cn": "洋泾",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_402": {
+      "id": "node_402",
+      "x": 1050,
+      "y": 850,
+      "cn": "积翠桥",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_406": {
+      "id": "node_406",
+      "x": 1050,
+      "y": 1125,
+      "cn": "娄葑",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_407": {
+      "id": "node_407",
+      "x": 1050,
+      "y": 1200,
+      "cn": "群力",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_409": {
+      "id": "node_409",
+      "x": 1050,
+      "y": 1300,
+      "cn": "林家潭",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_411": {
+      "id": "node_411",
+      "x": 1000,
+      "y": 1400,
+      "cn": "尹山",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_412": {
+      "id": "node_412",
+      "x": 950,
+      "y": 1400,
+      "cn": "金家桥南",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_413": {
+      "id": "node_413",
+      "x": 900,
+      "y": 1400,
+      "cn": "枫津路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_415": {
+      "id": "node_415",
+      "x": 800,
+      "y": 1400,
+      "cn": "蠡墅",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_416": {
+      "id": "node_416",
+      "x": 750,
+      "y": 1425,
+      "cn": "石湖莫舍",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_417": {
+      "id": "node_417",
+      "x": 720,
+      "y": 1455,
+      "cn": "越溪",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_418": {
+      "id": "node_418",
+      "x": 690,
+      "y": 1485,
+      "cn": "文溪路",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_419": {
+      "id": "node_419",
+      "x": 660,
+      "y": 1515,
+      "cn": "天鹅荡路",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_420": {
+      "id": "node_420",
+      "x": 630,
+      "y": 1545,
+      "cn": "苏州湾北",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_421": {
+      "id": "node_421",
+      "x": 600,
+      "y": 1575,
+      "cn": "木里",
+      "en": "",
+      "type": "dot",
+      "align": "top-left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "station_462": {
+      "id": "station_462",
+      "x": 725,
+      "y": 275,
+      "cn": "太阳路",
+      "en": "",
+      "type": "no",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "station_463": {
+      "id": "station_463",
+      "x": 725,
+      "y": 175,
+      "cn": "漕湖大道",
+      "en": "",
+      "type": "no",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "station_464": {
+      "id": "station_464",
+      "x": 725,
+      "y": 125,
+      "cn": "观塘路",
+      "en": "",
+      "type": "no",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": true
+    },
+    "node_465": {
+      "id": "node_465",
+      "x": 505,
+      "y": 725,
+      "cn": "新元",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_466": {
+      "id": "node_466",
+      "x": 525,
+      "y": 595,
+      "cn": "时家桥",
+      "en": "",
+      "type": "dot",
+      "align": "bottom-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_468": {
+      "id": "node_468",
+      "x": 625,
+      "y": 525,
+      "cn": "虎北路",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_469": {
+      "id": "node_469",
+      "x": 675,
+      "y": 525,
+      "cn": "虎丘湿地公园",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_471": {
+      "id": "node_471",
+      "x": 775,
+      "y": 525,
+      "cn": "御窑",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_472": {
+      "id": "node_472",
+      "x": 825,
+      "y": 525,
+      "cn": "陆慕古巷",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_474": {
+      "id": "node_474",
+      "x": 965,
+      "y": 525,
+      "cn": "夏圩",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_476": {
+      "id": "node_476",
+      "x": 1115,
+      "y": 560,
+      "cn": "五潨泾",
+      "en": "",
+      "type": "dot",
+      "align": "top-right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_477": {
+      "id": "node_477",
+      "x": 1150,
+      "y": 625,
+      "cn": "古香圩",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_478": {
+      "id": "node_478",
+      "x": 1150,
+      "y": 700,
+      "cn": "南泽庄",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_480": {
+      "id": "node_480",
+      "x": 1325,
+      "y": 700,
+      "cn": "古楼",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_482": {
+      "id": "node_482",
+      "x": 1400,
+      "y": 825,
+      "cn": "华池浜",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_484": {
+      "id": "node_484",
+      "x": 1400,
+      "y": 940,
+      "cn": "苏州当代美术馆",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_487": {
+      "id": "node_487",
+      "x": 1400,
+      "y": 1150,
+      "cn": "莲池桥",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_488": {
+      "id": "node_488",
+      "x": 1400,
+      "y": 1250,
+      "cn": "仁爱路",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_490": {
+      "id": "node_490",
+      "x": 1400,
+      "y": 1400,
+      "cn": "裕新路",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_491": {
+      "id": "node_491",
+      "x": 1400,
+      "y": 1450,
+      "cn": "车坊",
+      "en": "",
+      "type": "dot",
+      "align": "left",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_530": {
+      "id": "node_530",
+      "x": 1750,
+      "y": 750,
+      "cn": "草鞋山",
+      "en": "",
+      "type": "dot",
+      "align": "bottom",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_531": {
+      "id": "node_531",
+      "x": 1800,
+      "y": 750,
+      "cn": "阳澄湖东站",
+      "en": "",
+      "type": "dot",
+      "align": "top",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_532": {
+      "id": "node_532",
+      "x": 1825,
+      "y": 800,
+      "cn": "正仪",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_533": {
+      "id": "node_533",
+      "x": 1825,
+      "y": 850,
+      "cn": "莲湖公园",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_534": {
+      "id": "node_534",
+      "x": 1825,
+      "y": 900,
+      "cn": "祖冲之公园",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_535": {
+      "id": "node_535",
+      "x": 1825,
+      "y": 950,
+      "cn": "昆山文化艺术中心",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_536": {
+      "id": "node_536",
+      "x": 1825,
+      "y": 1000,
+      "cn": "共青",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_537": {
+      "id": "node_537",
+      "x": 1825,
+      "y": 1050,
+      "cn": "江浦",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_538": {
+      "id": "node_538",
+      "x": 1825,
+      "y": 1100,
+      "cn": "白马泾",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_539": {
+      "id": "node_539",
+      "x": 1825,
+      "y": 1150,
+      "cn": "玉山广场",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_540": {
+      "id": "node_540",
+      "x": 1825,
+      "y": 1200,
+      "cn": "绣衣",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_541": {
+      "id": "node_541",
+      "x": 1825,
+      "y": 1250,
+      "cn": "昆山城市广场",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_542": {
+      "id": "node_542",
+      "x": 1825,
+      "y": 1300,
+      "cn": "金浦大桥东",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_543": {
+      "id": "node_543",
+      "x": 1825,
+      "y": 1350,
+      "cn": "顺帆北路",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_544": {
+      "id": "node_544",
+      "x": 1825,
+      "y": 1400,
+      "cn": "鱼池泾",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_545": {
+      "id": "node_545",
+      "x": 1825,
+      "y": 1450,
+      "cn": "白河潭",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_546": {
+      "id": "node_546",
+      "x": 1825,
+      "y": 1500,
+      "cn": "兵希",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_547": {
+      "id": "node_547",
+      "x": 1825,
+      "y": 1550,
+      "cn": "夏驾河公园",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_548": {
+      "id": "node_548",
+      "x": 1825,
+      "y": 1600,
+      "cn": "盛庄",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_549": {
+      "id": "node_549",
+      "x": 1825,
+      "y": 1650,
+      "cn": "章基路南",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_550": {
+      "id": "node_550",
+      "x": 1825,
+      "y": 1700,
+      "cn": "夏桥",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_551": {
+      "id": "node_551",
+      "x": 1825,
+      "y": 1750,
+      "cn": "神童泾",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_552": {
+      "id": "node_552",
+      "x": 1825,
+      "y": 1800,
+      "cn": "菉葭",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_553": {
+      "id": "node_553",
+      "x": 1825,
+      "y": 1850,
+      "cn": "花桥博览中心",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_554": {
+      "id": "node_554",
+      "x": 1825,
+      "y": 1900,
+      "cn": "集善",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_555": {
+      "id": "node_555",
+      "x": 1825,
+      "y": 1950,
+      "cn": "花溪公园",
+      "en": "",
+      "type": "dot",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    "node_556": {
+      "id": "node_556",
+      "x": 1825,
+      "y": 2000,
+      "cn": "花桥",
+      "en": "",
+      "type": "tsf",
+      "align": "right",
+      "offset": {
+        "x": 0,
+        "y": 0
+      },
+      "notOpen": false
+    }
+  },
+  "segments": [
+    {
+      "id": "seg_24",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 300,
+          "y": 950,
+          "nid": "node_1"
+        },
+        {
+          "x": 350,
+          "y": 950,
+          "nid": "node_2"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_25",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 350,
+          "y": 950,
+          "nid": "node_2"
+        },
+        {
+          "x": 400,
+          "y": 950,
+          "nid": "node_3"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_26",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 400,
+          "y": 950,
+          "nid": "node_3"
+        },
+        {
+          "x": 450,
+          "y": 950,
+          "nid": "node_4"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_27",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 450,
+          "y": 950,
+          "nid": "node_4"
+        },
+        {
+          "x": 475,
+          "y": 950
+        },
+        {
+          "x": 500,
+          "y": 925,
+          "nid": "node_5"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_28",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 500,
+          "y": 925,
+          "nid": "node_5"
+        },
+        {
+          "x": 525,
+          "y": 900
+        },
+        {
+          "x": 550,
+          "y": 900,
+          "nid": "node_6"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_29",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 550,
+          "y": 900,
+          "nid": "node_6"
+        },
+        {
+          "x": 600,
+          "y": 900,
+          "nid": "node_7"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_30",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 600,
+          "y": 900,
+          "nid": "node_7"
+        },
+        {
+          "x": 650,
+          "y": 900,
+          "nid": "node_8"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_31",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 650,
+          "y": 900,
+          "nid": "node_8"
+        },
+        {
+          "x": 700,
+          "y": 900,
+          "nid": "node_9"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_32",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 700,
+          "y": 900,
+          "nid": "node_9"
+        },
+        {
+          "x": 750,
+          "y": 900,
+          "nid": "node_10"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_33",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 900,
+          "nid": "node_10"
+        },
+        {
+          "x": 800,
+          "y": 900,
+          "nid": "node_11"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_34",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 800,
+          "y": 900,
+          "nid": "node_11"
+        },
+        {
+          "x": 850,
+          "y": 900,
+          "nid": "node_12"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_35",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 900,
+          "nid": "node_12"
+        },
+        {
+          "x": 900,
+          "y": 900,
+          "nid": "node_13"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_36",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 900,
+          "y": 900,
+          "nid": "node_13"
+        },
+        {
+          "x": 950,
+          "y": 900,
+          "nid": "node_14"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_37",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 950,
+          "y": 900,
+          "nid": "node_14"
+        },
+        {
+          "x": 1000,
+          "y": 900,
+          "nid": "node_15"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_38",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1000,
+          "y": 900,
+          "nid": "node_15"
+        },
+        {
+          "x": 1050,
+          "y": 900,
+          "nid": "node_16"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_39",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 900,
+          "nid": "node_16"
+        },
+        {
+          "x": 1100,
+          "y": 900,
+          "nid": "node_17"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_40",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1100,
+          "y": 900,
+          "nid": "node_17"
+        },
+        {
+          "x": 1150,
+          "y": 900,
+          "nid": "node_18"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_41",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 900,
+          "nid": "node_18"
+        },
+        {
+          "x": 1350,
+          "y": 900,
+          "nid": "node_19"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_42",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1350,
+          "y": 900,
+          "nid": "node_19"
+        },
+        {
+          "x": 1400,
+          "y": 900,
+          "nid": "node_20"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_43",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 900,
+          "nid": "node_20"
+        },
+        {
+          "x": 1475,
+          "y": 900,
+          "nid": "node_21"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_44",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1475,
+          "y": 900,
+          "nid": "node_21"
+        },
+        {
+          "x": 1525,
+          "y": 900,
+          "nid": "node_22"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_45",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1525,
+          "y": 900,
+          "nid": "node_22"
+        },
+        {
+          "x": 1600,
+          "y": 900,
+          "nid": "node_23"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_46",
+      "lineId": "L1",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1600,
+          "y": 900,
+          "nid": "node_23"
+        },
+        {
+          "x": 1650,
+          "y": 900,
+          "nid": "node_24"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_80",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 175,
+          "nid": "node_46"
+        },
+        {
+          "x": 875,
+          "y": 225,
+          "nid": "node_47"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_81",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 225,
+          "nid": "node_47"
+        },
+        {
+          "x": 875,
+          "y": 275,
+          "nid": "node_48"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_82",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 275,
+          "nid": "node_48"
+        },
+        {
+          "x": 875,
+          "y": 325,
+          "nid": "node_49"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_83",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 325,
+          "nid": "node_49"
+        },
+        {
+          "x": 875,
+          "y": 375,
+          "nid": "node_50"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_84",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 375,
+          "nid": "node_50"
+        },
+        {
+          "x": 875,
+          "y": 425,
+          "nid": "node_51"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_85",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 425,
+          "nid": "node_51"
+        },
+        {
+          "x": 875,
+          "y": 475,
+          "nid": "node_52"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_86",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 475,
+          "nid": "node_52"
+        },
+        {
+          "x": 875,
+          "y": 525,
+          "nid": "node_53"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_87",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 525,
+          "nid": "node_53"
+        },
+        {
+          "x": 875,
+          "y": 575,
+          "nid": "node_54"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_88",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 575,
+          "nid": "node_54"
+        },
+        {
+          "x": 875,
+          "y": 625,
+          "nid": "node_55"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_89",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 625,
+          "nid": "node_55"
+        },
+        {
+          "x": 875,
+          "y": 650
+        },
+        {
+          "x": 850,
+          "y": 675,
+          "nid": "node_56"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_90",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 675,
+          "nid": "node_56"
+        },
+        {
+          "x": 800,
+          "y": 725,
+          "nid": "node_57"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_91",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 800,
+          "y": 725,
+          "nid": "node_57"
+        },
+        {
+          "x": 750,
+          "y": 775
+        },
+        {
+          "x": 750,
+          "y": 800,
+          "nid": "node_58"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_92",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 800,
+          "nid": "node_58"
+        },
+        {
+          "x": 750,
+          "y": 850,
+          "nid": "node_59"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_95",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 975,
+          "nid": "node_61"
+        },
+        {
+          "x": 750,
+          "y": 1050,
+          "nid": "node_62"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_96",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 1050,
+          "nid": "node_62"
+        },
+        {
+          "x": 750,
+          "y": 1100,
+          "nid": "node_63"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_97",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 1100,
+          "nid": "node_63"
+        },
+        {
+          "x": 750,
+          "y": 1150,
+          "nid": "node_64"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_98",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 1150,
+          "nid": "node_64"
+        },
+        {
+          "x": 750,
+          "y": 1200,
+          "nid": "node_65"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_99",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 1200,
+          "nid": "node_65"
+        },
+        {
+          "x": 750,
+          "y": 1250,
+          "nid": "node_66"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_100",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 1250,
+          "nid": "node_66"
+        },
+        {
+          "x": 750,
+          "y": 1300,
+          "nid": "node_67"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_101",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 1300,
+          "nid": "node_67"
+        },
+        {
+          "x": 750,
+          "y": 1350
+        },
+        {
+          "x": 850,
+          "y": 1350,
+          "nid": "node_68"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_102",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1350,
+          "nid": "node_68"
+        },
+        {
+          "x": 910,
+          "y": 1350,
+          "nid": "node_69"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_103",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 910,
+          "y": 1350,
+          "nid": "node_69"
+        },
+        {
+          "x": 985,
+          "y": 1350,
+          "nid": "node_70"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_104",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 985,
+          "y": 1350,
+          "nid": "node_70"
+        },
+        {
+          "x": 1050,
+          "y": 1350,
+          "nid": "node_71"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_105",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 1350,
+          "nid": "node_71"
+        },
+        {
+          "x": 1100,
+          "y": 1350,
+          "nid": "node_72"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_106",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1100,
+          "y": 1350,
+          "nid": "node_72"
+        },
+        {
+          "x": 1150,
+          "y": 1350,
+          "nid": "node_73"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_107",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 1350,
+          "nid": "node_73"
+        },
+        {
+          "x": 1200,
+          "y": 1350,
+          "nid": "node_74"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_108",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1200,
+          "y": 1350,
+          "nid": "node_74"
+        },
+        {
+          "x": 1250,
+          "y": 1350,
+          "nid": "node_75"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_109",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1250,
+          "y": 1350,
+          "nid": "node_75"
+        },
+        {
+          "x": 1300,
+          "y": 1350,
+          "nid": "node_76"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_110",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1300,
+          "y": 1350,
+          "nid": "node_76"
+        },
+        {
+          "x": 1400,
+          "y": 1350,
+          "nid": "node_77"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_111",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 1350,
+          "nid": "node_77"
+        },
+        {
+          "x": 1450,
+          "y": 1350,
+          "nid": "node_78"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_112",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1450,
+          "y": 1350,
+          "nid": "node_78"
+        },
+        {
+          "x": 1550,
+          "y": 1350,
+          "nid": "node_79"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_113",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1550,
+          "y": 1350,
+          "nid": "node_79"
+        },
+        {
+          "x": 1600,
+          "y": 1350,
+          "nid": "node_80"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_114",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 850,
+          "nid": "node_59"
+        },
+        {
+          "x": 750,
+          "y": 900,
+          "nid": "node_10"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_115",
+      "lineId": "L2",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 975,
+          "nid": "node_61"
+        },
+        {
+          "x": 750,
+          "y": 900,
+          "nid": "node_10"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_151",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 350,
+          "y": 525,
+          "nid": "node_115"
+        },
+        {
+          "x": 375,
+          "y": 550
+        },
+        {
+          "x": 450,
+          "y": 550
+        },
+        {
+          "x": 450,
+          "y": 575,
+          "nid": "node_116"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_152",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 450,
+          "y": 575,
+          "nid": "node_116"
+        },
+        {
+          "x": 450,
+          "y": 625,
+          "nid": "node_117"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_153",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 450,
+          "y": 625,
+          "nid": "node_117"
+        },
+        {
+          "x": 450,
+          "y": 675,
+          "nid": "node_118"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_154",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 450,
+          "y": 675,
+          "nid": "node_118"
+        },
+        {
+          "x": 450,
+          "y": 725,
+          "nid": "node_119"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_155",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 450,
+          "y": 725,
+          "nid": "node_119"
+        },
+        {
+          "x": 450,
+          "y": 750
+        },
+        {
+          "x": 474,
+          "y": 775,
+          "nid": "node_120"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_156",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 474,
+          "y": 775,
+          "nid": "node_120"
+        },
+        {
+          "x": 500,
+          "y": 800
+        },
+        {
+          "x": 500,
+          "y": 825,
+          "nid": "node_121"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_157",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 500,
+          "y": 825,
+          "nid": "node_121"
+        },
+        {
+          "x": 500,
+          "y": 875,
+          "nid": "node_122"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_160",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 500,
+          "y": 1000,
+          "nid": "node_124"
+        },
+        {
+          "x": 500,
+          "y": 1050,
+          "nid": "node_125"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_161",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 500,
+          "y": 1050,
+          "nid": "node_125"
+        },
+        {
+          "x": 500,
+          "y": 1125,
+          "nid": "node_126"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_162",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 500,
+          "y": 1125,
+          "nid": "node_126"
+        },
+        {
+          "x": 500,
+          "y": 1200
+        },
+        {
+          "x": 525,
+          "y": 1225,
+          "nid": "node_127"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_163",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 525,
+          "y": 1225,
+          "nid": "node_127"
+        },
+        {
+          "x": 550,
+          "y": 1250
+        },
+        {
+          "x": 600,
+          "y": 1250,
+          "nid": "node_128"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_164",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 600,
+          "y": 1250,
+          "nid": "node_128"
+        },
+        {
+          "x": 650,
+          "y": 1250,
+          "nid": "node_129"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_165",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 650,
+          "y": 1250,
+          "nid": "node_129"
+        },
+        {
+          "x": 700,
+          "y": 1250,
+          "nid": "node_130"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_168",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1250,
+          "nid": "node_132"
+        },
+        {
+          "x": 925,
+          "y": 1250,
+          "nid": "node_133"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_169",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 925,
+          "y": 1250,
+          "nid": "node_133"
+        },
+        {
+          "x": 990,
+          "y": 1250,
+          "nid": "node_134"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_170",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 990,
+          "y": 1250,
+          "nid": "node_134"
+        },
+        {
+          "x": 1050,
+          "y": 1250,
+          "nid": "node_135"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_171",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 1250,
+          "nid": "node_135"
+        },
+        {
+          "x": 1150,
+          "y": 1250
+        },
+        {
+          "x": 1150,
+          "y": 1200,
+          "nid": "node_136"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_172",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 1200,
+          "nid": "node_136"
+        },
+        {
+          "x": 1150,
+          "y": 1125,
+          "nid": "node_137"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_173",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 1125,
+          "nid": "node_137"
+        },
+        {
+          "x": 1150,
+          "y": 1050,
+          "nid": "node_138"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_174",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 1050,
+          "nid": "node_138"
+        },
+        {
+          "x": 1150,
+          "y": 975,
+          "nid": "node_139"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_177",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 850,
+          "nid": "node_141"
+        },
+        {
+          "x": 1150,
+          "y": 800,
+          "nid": "node_142"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_178",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 800,
+          "nid": "node_142"
+        },
+        {
+          "x": 1150,
+          "y": 750
+        },
+        {
+          "x": 1200,
+          "y": 750,
+          "nid": "node_143"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_179",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1200,
+          "y": 750,
+          "nid": "node_143"
+        },
+        {
+          "x": 1225,
+          "y": 750
+        },
+        {
+          "x": 1250,
+          "y": 750
+        },
+        {
+          "x": 1300,
+          "y": 750,
+          "nid": "node_144"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_180",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1300,
+          "y": 750,
+          "nid": "node_144"
+        },
+        {
+          "x": 1350,
+          "y": 750
+        },
+        {
+          "x": 1375,
+          "y": 750
+        },
+        {
+          "x": 1400,
+          "y": 750,
+          "nid": "node_145"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_181",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 750,
+          "nid": "node_145"
+        },
+        {
+          "x": 1450,
+          "y": 750,
+          "nid": "node_146"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_182",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1450,
+          "y": 750,
+          "nid": "node_146"
+        },
+        {
+          "x": 1500,
+          "y": 750,
+          "nid": "node_147"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_183",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1500,
+          "y": 750,
+          "nid": "node_147"
+        },
+        {
+          "x": 1550,
+          "y": 750,
+          "nid": "node_148"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_184",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1550,
+          "y": 750,
+          "nid": "node_148"
+        },
+        {
+          "x": 1600,
+          "y": 750,
+          "nid": "node_149"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_185",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1600,
+          "y": 750,
+          "nid": "node_149"
+        },
+        {
+          "x": 1650,
+          "y": 750,
+          "nid": "node_150"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_186",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1650,
+          "y": 750,
+          "nid": "node_150"
+        },
+        {
+          "x": 1700,
+          "y": 750,
+          "nid": "node_151"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_187",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 500,
+          "y": 1000,
+          "nid": "node_124"
+        },
+        {
+          "x": 500,
+          "y": 925,
+          "nid": "node_5"
+        },
+        {
+          "x": 500,
+          "y": 875,
+          "nid": "node_122"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_217",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 725,
+          "y": 325,
+          "nid": "node_187"
+        },
+        {
+          "x": 725,
+          "y": 375,
+          "nid": "node_188"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_218",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 725,
+          "y": 375,
+          "nid": "node_188"
+        },
+        {
+          "x": 725,
+          "y": 425,
+          "nid": "node_189"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_219",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 725,
+          "y": 425,
+          "nid": "node_189"
+        },
+        {
+          "x": 725,
+          "y": 475,
+          "nid": "node_190"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_220",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 725,
+          "y": 475,
+          "nid": "node_190"
+        },
+        {
+          "x": 725,
+          "y": 525,
+          "nid": "node_191"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_221",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 725,
+          "y": 525,
+          "nid": "node_191"
+        },
+        {
+          "x": 725,
+          "y": 600,
+          "nid": "node_192"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_222",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 725,
+          "y": 600,
+          "nid": "node_192"
+        },
+        {
+          "x": 725,
+          "y": 650
+        },
+        {
+          "x": 750,
+          "y": 675,
+          "nid": "node_193"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_225",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 800,
+          "nid": "node_195"
+        },
+        {
+          "x": 850,
+          "y": 850,
+          "nid": "node_196"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_228",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 975,
+          "nid": "node_198"
+        },
+        {
+          "x": 850,
+          "y": 1050,
+          "nid": "node_199"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_229",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1050,
+          "nid": "node_199"
+        },
+        {
+          "x": 850,
+          "y": 1125,
+          "nid": "node_200"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_230",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1125,
+          "nid": "node_200"
+        },
+        {
+          "x": 850,
+          "y": 1200,
+          "nid": "node_201"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_234",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1400,
+          "nid": "node_204"
+        },
+        {
+          "x": 850,
+          "y": 1450,
+          "nid": "node_205"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_235",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1450,
+          "nid": "node_205"
+        },
+        {
+          "x": 850,
+          "y": 1500,
+          "nid": "node_206"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_236",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1500,
+          "nid": "node_206"
+        },
+        {
+          "x": 850,
+          "y": 1550,
+          "nid": "node_207"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_237",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1550,
+          "nid": "node_207"
+        },
+        {
+          "x": 850,
+          "y": 1600,
+          "nid": "node_208"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_238",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1600,
+          "nid": "node_208"
+        },
+        {
+          "x": 850,
+          "y": 1650,
+          "nid": "node_209"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_239",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1650,
+          "nid": "node_209"
+        },
+        {
+          "x": 850,
+          "y": 1700,
+          "nid": "node_210"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_240",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1700,
+          "nid": "node_210"
+        },
+        {
+          "x": 850,
+          "y": 1750,
+          "nid": "node_211"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_241",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1750,
+          "nid": "node_211"
+        },
+        {
+          "x": 850,
+          "y": 1800,
+          "nid": "node_212"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_242",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1800,
+          "nid": "node_212"
+        },
+        {
+          "x": 850,
+          "y": 1775
+        },
+        {
+          "x": 850,
+          "y": 1850
+        },
+        {
+          "x": 875,
+          "y": 1850,
+          "nid": "node_213"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_243",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 875,
+          "y": 1850,
+          "nid": "node_213"
+        },
+        {
+          "x": 950,
+          "y": 1850,
+          "nid": "node_214"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_244",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 950,
+          "y": 1850,
+          "nid": "node_214"
+        },
+        {
+          "x": 1025,
+          "y": 1850,
+          "nid": "node_215"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_245",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1025,
+          "y": 1850,
+          "nid": "node_215"
+        },
+        {
+          "x": 1100,
+          "y": 1850,
+          "nid": "node_216"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_246",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1100,
+          "y": 1850,
+          "nid": "node_216"
+        },
+        {
+          "x": 1175,
+          "y": 1850,
+          "nid": "node_217"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_247",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 675,
+          "nid": "node_193"
+        },
+        {
+          "x": 800,
+          "y": 725,
+          "nid": "node_57"
+        },
+        {
+          "x": 850,
+          "y": 775
+        },
+        {
+          "x": 850,
+          "y": 800,
+          "nid": "node_195"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_248",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 850,
+          "nid": "node_196"
+        },
+        {
+          "x": 850,
+          "y": 900,
+          "nid": "node_12"
+        },
+        {
+          "x": 850,
+          "y": 975,
+          "nid": "node_198"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_249",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 850,
+          "y": 1200,
+          "nid": "node_201"
+        },
+        {
+          "x": 850,
+          "y": 1250,
+          "nid": "node_132"
+        },
+        {
+          "x": 850,
+          "y": 1350,
+          "nid": "node_68"
+        },
+        {
+          "x": 850,
+          "y": 1400,
+          "nid": "node_204"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_282",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 80,
+          "y": 1420,
+          "nid": "node_249"
+        },
+        {
+          "x": 110,
+          "y": 1390,
+          "nid": "node_250"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_283",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 110,
+          "y": 1390,
+          "nid": "node_250"
+        },
+        {
+          "x": 140,
+          "y": 1360,
+          "nid": "node_251"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_284",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 140,
+          "y": 1360,
+          "nid": "node_251"
+        },
+        {
+          "x": 170,
+          "y": 1330,
+          "nid": "node_252"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_285",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 170,
+          "y": 1330,
+          "nid": "node_252"
+        },
+        {
+          "x": 200,
+          "y": 1300,
+          "nid": "node_253"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_286",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 200,
+          "y": 1300,
+          "nid": "node_253"
+        },
+        {
+          "x": 230,
+          "y": 1270,
+          "nid": "node_254"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_287",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 230,
+          "y": 1270,
+          "nid": "node_254"
+        },
+        {
+          "x": 260,
+          "y": 1240,
+          "nid": "node_255"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_288",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 260,
+          "y": 1240,
+          "nid": "node_255"
+        },
+        {
+          "x": 290,
+          "y": 1210,
+          "nid": "node_256"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_289",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 290,
+          "y": 1210,
+          "nid": "node_256"
+        },
+        {
+          "x": 320,
+          "y": 1180,
+          "nid": "node_257"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_290",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 320,
+          "y": 1180,
+          "nid": "node_257"
+        },
+        {
+          "x": 350,
+          "y": 1150,
+          "nid": "node_258"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_291",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 350,
+          "y": 1150,
+          "nid": "node_258"
+        },
+        {
+          "x": 375,
+          "y": 1125
+        },
+        {
+          "x": 400,
+          "y": 1125,
+          "nid": "node_259"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_292",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 400,
+          "y": 1125,
+          "nid": "node_259"
+        },
+        {
+          "x": 450,
+          "y": 1125,
+          "nid": "node_260"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_299",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 900,
+          "y": 1050,
+          "nid": "node_266"
+        },
+        {
+          "x": 950,
+          "y": 1050,
+          "nid": "node_267"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_300",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 950,
+          "y": 1050,
+          "nid": "node_267"
+        },
+        {
+          "x": 1000,
+          "y": 1050,
+          "nid": "node_268"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_301",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1000,
+          "y": 1050,
+          "nid": "node_268"
+        },
+        {
+          "x": 1050,
+          "y": 1050,
+          "nid": "node_269"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_304",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1200,
+          "y": 1050,
+          "nid": "node_271"
+        },
+        {
+          "x": 1250,
+          "y": 1050,
+          "nid": "node_272"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_305",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1250,
+          "y": 1050,
+          "nid": "node_272"
+        },
+        {
+          "x": 1300,
+          "y": 1050,
+          "nid": "node_273"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_306",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1300,
+          "y": 1050,
+          "nid": "node_273"
+        },
+        {
+          "x": 1350,
+          "y": 1050,
+          "nid": "node_274"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_307",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1350,
+          "y": 1050,
+          "nid": "node_274"
+        },
+        {
+          "x": 1400,
+          "y": 1050,
+          "nid": "node_275"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_308",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 1050,
+          "nid": "node_275"
+        },
+        {
+          "x": 1500,
+          "y": 1050
+        },
+        {
+          "x": 1500,
+          "y": 1050,
+          "nid": "node_276"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_309",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1500,
+          "y": 1050,
+          "nid": "node_276"
+        },
+        {
+          "x": 1600,
+          "y": 1050
+        },
+        {
+          "x": 1600,
+          "y": 975,
+          "nid": "node_277"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_312",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1600,
+          "y": 850,
+          "nid": "node_279"
+        },
+        {
+          "x": 1600,
+          "y": 800,
+          "nid": "node_280"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_315",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 450,
+          "y": 1125,
+          "nid": "node_260"
+        },
+        {
+          "x": 500,
+          "y": 1125,
+          "nid": "node_126"
+        },
+        {
+          "x": 600,
+          "y": 1125
+        },
+        {
+          "x": 650,
+          "y": 1075,
+          "nid": "node_262"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_316",
+      "lineId": "L5",
+      "type": "seg135",
+      "points": [
+        {
+          "x": 650,
+          "y": 1075,
+          "nid": "node_262"
+        },
+        {
+          "x": 675,
+          "y": 1050
+        },
+        {
+          "x": 800,
+          "y": 1050,
+          "nid": "node_264"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_317",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 1050,
+          "nid": "node_269"
+        },
+        {
+          "x": 1150,
+          "y": 1050,
+          "nid": "node_138"
+        },
+        {
+          "x": 1200,
+          "y": 1050,
+          "nid": "node_271"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_318",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1600,
+          "y": 975,
+          "nid": "node_277"
+        },
+        {
+          "x": 1600,
+          "y": 900,
+          "nid": "node_23"
+        },
+        {
+          "x": 1600,
+          "y": 850,
+          "nid": "node_279"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_319",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1600,
+          "y": 800,
+          "nid": "node_280"
+        },
+        {
+          "x": 1600,
+          "y": 750,
+          "nid": "node_149"
+        },
+        {
+          "x": 1600,
+          "y": 700,
+          "nid": "node_282"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_320",
+      "lineId": "L5",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 800,
+          "y": 1050,
+          "nid": "node_264"
+        },
+        {
+          "x": 850,
+          "y": 1050,
+          "nid": "node_199"
+        },
+        {
+          "x": 900,
+          "y": 1050,
+          "nid": "node_266"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_321",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 700,
+          "y": 1250,
+          "nid": "node_130"
+        },
+        {
+          "x": 750,
+          "y": 1250,
+          "nid": "node_66"
+        },
+        {
+          "x": 850,
+          "y": 1250,
+          "nid": "node_132"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_351",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 400,
+          "y": 525,
+          "nid": "node_322"
+        },
+        {
+          "x": 450,
+          "y": 525,
+          "nid": "node_323"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_352",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 450,
+          "y": 525,
+          "nid": "node_323"
+        },
+        {
+          "x": 500,
+          "y": 525,
+          "nid": "node_324"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_353",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 500,
+          "y": 525,
+          "nid": "node_324"
+        },
+        {
+          "x": 525,
+          "y": 525
+        },
+        {
+          "x": 560,
+          "y": 560,
+          "nid": "node_325"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_354",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 560,
+          "y": 560,
+          "nid": "node_325"
+        },
+        {
+          "x": 600,
+          "y": 600,
+          "nid": "node_326"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_355",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 600,
+          "y": 600,
+          "nid": "node_326"
+        },
+        {
+          "x": 625,
+          "y": 625,
+          "nid": "node_327"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_356",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 625,
+          "y": 625,
+          "nid": "node_327"
+        },
+        {
+          "x": 650,
+          "y": 650,
+          "nid": "node_328"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_357",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 650,
+          "y": 650,
+          "nid": "node_328"
+        },
+        {
+          "x": 675,
+          "y": 675
+        },
+        {
+          "x": 700,
+          "y": 675,
+          "nid": "node_329"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_361",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 900,
+          "y": 750,
+          "nid": "node_332"
+        },
+        {
+          "x": 900,
+          "y": 800,
+          "nid": "node_333"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_362",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 900,
+          "y": 800,
+          "nid": "node_333"
+        },
+        {
+          "x": 900,
+          "y": 850,
+          "nid": "node_334"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_365",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 950,
+          "y": 975,
+          "nid": "node_336"
+        },
+        {
+          "x": 1000,
+          "y": 975,
+          "nid": "node_337"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_366",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1000,
+          "y": 975,
+          "nid": "node_337"
+        },
+        {
+          "x": 1050,
+          "y": 975,
+          "nid": "node_338"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_367",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 975,
+          "nid": "node_338"
+        },
+        {
+          "x": 1100,
+          "y": 975,
+          "nid": "node_339"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_370",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 975,
+          "nid": "node_341"
+        },
+        {
+          "x": 1500,
+          "y": 975
+        },
+        {
+          "x": 1500,
+          "y": 1000,
+          "nid": "node_342"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_373",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1500,
+          "y": 1100,
+          "nid": "node_344"
+        },
+        {
+          "x": 1500,
+          "y": 1150,
+          "nid": "node_345"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_374",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1500,
+          "y": 1150,
+          "nid": "node_345"
+        },
+        {
+          "x": 1500,
+          "y": 1200,
+          "nid": "node_346"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_375",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1500,
+          "y": 1200,
+          "nid": "node_346"
+        },
+        {
+          "x": 1500,
+          "y": 1250,
+          "nid": "node_347"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_376",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1500,
+          "y": 1250,
+          "nid": "node_347"
+        },
+        {
+          "x": 1500,
+          "y": 1300,
+          "nid": "node_348"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_377",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1500,
+          "y": 1300,
+          "nid": "node_348"
+        },
+        {
+          "x": 1500,
+          "y": 1345
+        },
+        {
+          "x": 1600,
+          "y": 1345
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_380",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 700,
+          "y": 675,
+          "nid": "node_329"
+        },
+        {
+          "x": 750,
+          "y": 675,
+          "nid": "node_193"
+        },
+        {
+          "x": 850,
+          "y": 675,
+          "nid": "node_56"
+        },
+        {
+          "x": 900,
+          "y": 675
+        },
+        {
+          "x": 900,
+          "y": 750,
+          "nid": "node_332"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_381",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 900,
+          "y": 850,
+          "nid": "node_334"
+        },
+        {
+          "x": 900,
+          "y": 900,
+          "nid": "node_13"
+        },
+        {
+          "x": 900,
+          "y": 975
+        },
+        {
+          "x": 950,
+          "y": 975,
+          "nid": "node_336"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_382",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1100,
+          "y": 975,
+          "nid": "node_339"
+        },
+        {
+          "x": 1150,
+          "y": 975,
+          "nid": "node_139"
+        },
+        {
+          "x": 1400,
+          "y": 975,
+          "nid": "node_341"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_383",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1500,
+          "y": 1000,
+          "nid": "node_342"
+        },
+        {
+          "x": 1500,
+          "y": 1050,
+          "nid": "node_276"
+        },
+        {
+          "x": 1500,
+          "y": 1100,
+          "nid": "node_344"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_384",
+      "lineId": "L6",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 400,
+          "y": 525,
+          "nid": "node_322"
+        },
+        {
+          "x": 350,
+          "y": 525,
+          "nid": "node_115"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_385",
+      "lineId": "L3",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 975,
+          "nid": "node_139"
+        },
+        {
+          "x": 1150,
+          "y": 900,
+          "nid": "node_18"
+        },
+        {
+          "x": 1150,
+          "y": 850,
+          "nid": "node_141"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_421",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 525,
+          "y": 225,
+          "nid": "node_385"
+        },
+        {
+          "x": 575,
+          "y": 225,
+          "nid": "node_386"
+        }
+      ],
+      "routed": true,
+      "notOpen": true
+    },
+    {
+      "id": "seg_422",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 575,
+          "y": 225,
+          "nid": "node_386"
+        },
+        {
+          "x": 625,
+          "y": 225,
+          "nid": "node_387"
+        }
+      ],
+      "routed": true,
+      "notOpen": true
+    },
+    {
+      "id": "seg_423",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 625,
+          "y": 225,
+          "nid": "node_387"
+        },
+        {
+          "x": 675,
+          "y": 225,
+          "nid": "node_388"
+        }
+      ],
+      "routed": true,
+      "notOpen": true
+    },
+    {
+      "id": "seg_424",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 675,
+          "y": 225,
+          "nid": "node_388"
+        },
+        {
+          "x": 725,
+          "y": 225,
+          "nid": "node_389"
+        }
+      ],
+      "routed": true,
+      "notOpen": true
+    },
+    {
+      "id": "seg_425",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 725,
+          "y": 225,
+          "nid": "node_389"
+        },
+        {
+          "x": 800,
+          "y": 225,
+          "nid": "node_390"
+        }
+      ],
+      "routed": true,
+      "notOpen": true
+    },
+    {
+      "id": "seg_428",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 915,
+          "y": 315,
+          "nid": "node_392"
+        },
+        {
+          "x": 945,
+          "y": 345,
+          "nid": "node_393"
+        }
+      ],
+      "routed": true,
+      "notOpen": true
+    },
+    {
+      "id": "seg_429",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 945,
+          "y": 345,
+          "nid": "node_393"
+        },
+        {
+          "x": 975,
+          "y": 375,
+          "nid": "node_394"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_430",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 975,
+          "y": 375,
+          "nid": "node_394"
+        },
+        {
+          "x": 1005,
+          "y": 405,
+          "nid": "node_395"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_431",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1005,
+          "y": 405,
+          "nid": "node_395"
+        },
+        {
+          "x": 1035,
+          "y": 435,
+          "nid": "node_396"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_432",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1035,
+          "y": 435,
+          "nid": "node_396"
+        },
+        {
+          "x": 1050,
+          "y": 450
+        },
+        {
+          "x": 1050,
+          "y": 475,
+          "nid": "node_397"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_433",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 475,
+          "nid": "node_397"
+        },
+        {
+          "x": 1050,
+          "y": 525,
+          "nid": "node_398"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_434",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 525,
+          "nid": "node_398"
+        },
+        {
+          "x": 1050,
+          "y": 625,
+          "nid": "node_399"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_435",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 625,
+          "nid": "node_399"
+        },
+        {
+          "x": 1050,
+          "y": 725,
+          "nid": "node_400"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_436",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 725,
+          "nid": "node_400"
+        },
+        {
+          "x": 1050,
+          "y": 800,
+          "nid": "node_401"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_437",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 800,
+          "nid": "node_401"
+        },
+        {
+          "x": 1050,
+          "y": 850,
+          "nid": "node_402"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_442",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 1125,
+          "nid": "node_406"
+        },
+        {
+          "x": 1050,
+          "y": 1200,
+          "nid": "node_407"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_447",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1000,
+          "y": 1400,
+          "nid": "node_411"
+        },
+        {
+          "x": 950,
+          "y": 1400,
+          "nid": "node_412"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_448",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 950,
+          "y": 1400,
+          "nid": "node_412"
+        },
+        {
+          "x": 900,
+          "y": 1400,
+          "nid": "node_413"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_451",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 800,
+          "y": 1400,
+          "nid": "node_415"
+        },
+        {
+          "x": 775,
+          "y": 1400
+        },
+        {
+          "x": 750,
+          "y": 1425,
+          "nid": "node_416"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_452",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 750,
+          "y": 1425,
+          "nid": "node_416"
+        },
+        {
+          "x": 720,
+          "y": 1455,
+          "nid": "node_417"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_453",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 720,
+          "y": 1455,
+          "nid": "node_417"
+        },
+        {
+          "x": 690,
+          "y": 1485,
+          "nid": "node_418"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_454",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 690,
+          "y": 1485,
+          "nid": "node_418"
+        },
+        {
+          "x": 660,
+          "y": 1515,
+          "nid": "node_419"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_455",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 660,
+          "y": 1515,
+          "nid": "node_419"
+        },
+        {
+          "x": 630,
+          "y": 1545,
+          "nid": "node_420"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_456",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 630,
+          "y": 1545,
+          "nid": "node_420"
+        },
+        {
+          "x": 600,
+          "y": 1575,
+          "nid": "node_421"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_457",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 800,
+          "y": 225,
+          "nid": "node_390"
+        },
+        {
+          "x": 825,
+          "y": 225
+        },
+        {
+          "x": 875,
+          "y": 275,
+          "nid": "node_48"
+        },
+        {
+          "x": 915,
+          "y": 315,
+          "nid": "node_392"
+        }
+      ],
+      "routed": true,
+      "notOpen": true
+    },
+    {
+      "id": "seg_458",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 850,
+          "nid": "node_402"
+        },
+        {
+          "x": 1050,
+          "y": 900,
+          "nid": "node_16"
+        },
+        {
+          "x": 1050,
+          "y": 975,
+          "nid": "node_338"
+        },
+        {
+          "x": 1050,
+          "y": 1050,
+          "nid": "node_269"
+        },
+        {
+          "x": 1050,
+          "y": 1125,
+          "nid": "node_406"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_459",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 1200,
+          "nid": "node_407"
+        },
+        {
+          "x": 1050,
+          "y": 1250,
+          "nid": "node_135"
+        },
+        {
+          "x": 1050,
+          "y": 1300,
+          "nid": "node_409"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_460",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1050,
+          "y": 1300,
+          "nid": "node_409"
+        },
+        {
+          "x": 1050,
+          "y": 1350,
+          "nid": "node_71"
+        },
+        {
+          "x": 1050,
+          "y": 1400
+        },
+        {
+          "x": 1000,
+          "y": 1400,
+          "nid": "node_411"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_461",
+      "lineId": "L7",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 900,
+          "y": 1400,
+          "nid": "node_413"
+        },
+        {
+          "x": 850,
+          "y": 1400,
+          "nid": "node_204"
+        },
+        {
+          "x": 800,
+          "y": 1400,
+          "nid": "node_415"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_462",
+      "lineId": "L4",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 725,
+          "y": 325
+        },
+        {
+          "x": 725,
+          "y": 275,
+          "nid": "station_462"
+        },
+        {
+          "x": 725,
+          "y": 175,
+          "nid": "station_463"
+        },
+        {
+          "x": 725,
+          "y": 125,
+          "nid": "station_464"
+        }
+      ],
+      "routed": true,
+      "notOpen": true
+    },
+    {
+      "id": "seg_492",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 505,
+          "y": 725,
+          "nid": "node_465"
+        },
+        {
+          "x": 505,
+          "y": 615
+        },
+        {
+          "x": 525,
+          "y": 595,
+          "nid": "node_466"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_495",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 625,
+          "y": 525,
+          "nid": "node_468"
+        },
+        {
+          "x": 675,
+          "y": 525,
+          "nid": "node_469"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_498",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 775,
+          "y": 525,
+          "nid": "node_471"
+        },
+        {
+          "x": 825,
+          "y": 525,
+          "nid": "node_472"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_503",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1115,
+          "y": 560,
+          "nid": "node_476"
+        },
+        {
+          "x": 1150,
+          "y": 595
+        },
+        {
+          "x": 1150,
+          "y": 625,
+          "nid": "node_477"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_504",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 625,
+          "nid": "node_477"
+        },
+        {
+          "x": 1150,
+          "y": 700,
+          "nid": "node_478"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_514",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 1150,
+          "nid": "node_487"
+        },
+        {
+          "x": 1400,
+          "y": 1250,
+          "nid": "node_488"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_517",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 1400,
+          "nid": "node_490"
+        },
+        {
+          "x": 1400,
+          "y": 1450,
+          "nid": "node_491"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_518",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 500,
+          "y": 825,
+          "nid": "node_121"
+        },
+        {
+          "x": 505,
+          "y": 725,
+          "nid": "node_465"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_519",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 525,
+          "y": 595,
+          "nid": "node_466"
+        },
+        {
+          "x": 560,
+          "y": 560,
+          "nid": "node_325"
+        },
+        {
+          "x": 595,
+          "y": 525
+        },
+        {
+          "x": 625,
+          "y": 525,
+          "nid": "node_468"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_520",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 675,
+          "y": 525,
+          "nid": "node_469"
+        },
+        {
+          "x": 725,
+          "y": 525,
+          "nid": "node_191"
+        },
+        {
+          "x": 775,
+          "y": 525,
+          "nid": "node_471"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_521",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 825,
+          "y": 525,
+          "nid": "node_472"
+        },
+        {
+          "x": 875,
+          "y": 525,
+          "nid": "node_53"
+        },
+        {
+          "x": 965,
+          "y": 525,
+          "nid": "node_474"
+        },
+        {
+          "x": 1050,
+          "y": 525,
+          "nid": "node_398"
+        },
+        {
+          "x": 1080,
+          "y": 525
+        },
+        {
+          "x": 1115,
+          "y": 560,
+          "nid": "node_476"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_522",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1150,
+          "y": 700,
+          "nid": "node_478"
+        },
+        {
+          "x": 1150,
+          "y": 750
+        },
+        {
+          "x": 1200,
+          "y": 750,
+          "nid": "node_143"
+        },
+        {
+          "x": 1225,
+          "y": 750
+        },
+        {
+          "x": 1275,
+          "y": 700
+        },
+        {
+          "x": 1325,
+          "y": 700,
+          "nid": "node_480"
+        },
+        {
+          "x": 1400,
+          "y": 700
+        },
+        {
+          "x": 1400,
+          "y": 750,
+          "nid": "node_145"
+        },
+        {
+          "x": 1400,
+          "y": 825,
+          "nid": "node_482"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_523",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 825,
+          "nid": "node_482"
+        },
+        {
+          "x": 1400,
+          "y": 900,
+          "nid": "node_20"
+        },
+        {
+          "x": 1400,
+          "y": 940,
+          "nid": "node_484"
+        },
+        {
+          "x": 1400,
+          "y": 975,
+          "nid": "node_341"
+        },
+        {
+          "x": 1400,
+          "y": 1050,
+          "nid": "node_275"
+        },
+        {
+          "x": 1400,
+          "y": 1150,
+          "nid": "node_487"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_524",
+      "lineId": "L8",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1400,
+          "y": 1250,
+          "nid": "node_488"
+        },
+        {
+          "x": 1400,
+          "y": 1350,
+          "nid": "node_77"
+        },
+        {
+          "x": 1400,
+          "y": 1400,
+          "nid": "node_490"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_557",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1750,
+          "y": 750,
+          "nid": "node_530"
+        },
+        {
+          "x": 1800,
+          "y": 750,
+          "nid": "node_531"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_558",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1800,
+          "y": 750,
+          "nid": "node_531"
+        },
+        {
+          "x": 1825,
+          "y": 750
+        },
+        {
+          "x": 1825,
+          "y": 800,
+          "nid": "node_532"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_559",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 800,
+          "nid": "node_532"
+        },
+        {
+          "x": 1825,
+          "y": 850,
+          "nid": "node_533"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_560",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 850,
+          "nid": "node_533"
+        },
+        {
+          "x": 1825,
+          "y": 900,
+          "nid": "node_534"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_561",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 900,
+          "nid": "node_534"
+        },
+        {
+          "x": 1825,
+          "y": 950,
+          "nid": "node_535"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_562",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 950,
+          "nid": "node_535"
+        },
+        {
+          "x": 1825,
+          "y": 1000,
+          "nid": "node_536"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_563",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1000,
+          "nid": "node_536"
+        },
+        {
+          "x": 1825,
+          "y": 1050,
+          "nid": "node_537"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_564",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1050,
+          "nid": "node_537"
+        },
+        {
+          "x": 1825,
+          "y": 1100,
+          "nid": "node_538"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_565",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1100,
+          "nid": "node_538"
+        },
+        {
+          "x": 1825,
+          "y": 1150,
+          "nid": "node_539"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_566",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1150,
+          "nid": "node_539"
+        },
+        {
+          "x": 1825,
+          "y": 1200,
+          "nid": "node_540"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_567",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1200,
+          "nid": "node_540"
+        },
+        {
+          "x": 1825,
+          "y": 1250,
+          "nid": "node_541"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_568",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1250,
+          "nid": "node_541"
+        },
+        {
+          "x": 1825,
+          "y": 1300,
+          "nid": "node_542"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_569",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1300,
+          "nid": "node_542"
+        },
+        {
+          "x": 1825,
+          "y": 1350,
+          "nid": "node_543"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_570",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1350,
+          "nid": "node_543"
+        },
+        {
+          "x": 1825,
+          "y": 1400,
+          "nid": "node_544"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_571",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1400,
+          "nid": "node_544"
+        },
+        {
+          "x": 1825,
+          "y": 1450,
+          "nid": "node_545"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_572",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1450,
+          "nid": "node_545"
+        },
+        {
+          "x": 1825,
+          "y": 1500,
+          "nid": "node_546"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_573",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1500,
+          "nid": "node_546"
+        },
+        {
+          "x": 1825,
+          "y": 1550,
+          "nid": "node_547"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_574",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1550,
+          "nid": "node_547"
+        },
+        {
+          "x": 1825,
+          "y": 1600,
+          "nid": "node_548"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_575",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1600,
+          "nid": "node_548"
+        },
+        {
+          "x": 1825,
+          "y": 1650,
+          "nid": "node_549"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_576",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1650,
+          "nid": "node_549"
+        },
+        {
+          "x": 1825,
+          "y": 1700,
+          "nid": "node_550"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_577",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1700,
+          "nid": "node_550"
+        },
+        {
+          "x": 1825,
+          "y": 1750,
+          "nid": "node_551"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_578",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1750,
+          "nid": "node_551"
+        },
+        {
+          "x": 1825,
+          "y": 1800,
+          "nid": "node_552"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_579",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1800,
+          "nid": "node_552"
+        },
+        {
+          "x": 1825,
+          "y": 1850,
+          "nid": "node_553"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_580",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1850,
+          "nid": "node_553"
+        },
+        {
+          "x": 1825,
+          "y": 1900,
+          "nid": "node_554"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_581",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1900,
+          "nid": "node_554"
+        },
+        {
+          "x": 1825,
+          "y": 1950,
+          "nid": "node_555"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_582",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1825,
+          "y": 1950,
+          "nid": "node_555"
+        },
+        {
+          "x": 1825,
+          "y": 2000,
+          "nid": "node_556"
+        }
+      ],
+      "routed": true
+    },
+    {
+      "id": "seg_583",
+      "lineId": "L11",
+      "type": "segaxis",
+      "points": [
+        {
+          "x": 1750,
+          "y": 750,
+          "nid": "node_530"
+        },
+        {
+          "x": 1700,
+          "y": 750,
+          "nid": "node_151"
+        }
+      ],
+      "routed": true
+    }
+  ],
+  "lines": [
+    {
+      "id": "L1",
+      "name": "1号线",
+      "color": "#78BE20",
+      "strokeWidth": 5,
+      "stationIds": [
+        "node_1",
+        "node_2",
+        "node_3",
+        "node_4",
+        "node_5",
+        "node_6",
+        "node_7",
+        "node_8",
+        "node_9",
+        "node_10",
+        "node_11",
+        "node_12",
+        "node_13",
+        "node_14",
+        "node_15",
+        "node_16",
+        "node_17",
+        "node_18",
+        "node_19",
+        "node_20",
+        "node_21",
+        "node_22",
+        "node_23",
+        "node_24"
+      ]
+    },
+    {
+      "id": "L2",
+      "name": "2号线",
+      "color": "#EF3340",
+      "stationIds": [
+        "node_46",
+        "node_47",
+        "node_48",
+        "node_49",
+        "node_50",
+        "node_51",
+        "node_52",
+        "node_53",
+        "node_54",
+        "node_55",
+        "node_56",
+        "node_57",
+        "node_58",
+        "node_59",
+        "node_61",
+        "node_62",
+        "node_63",
+        "node_64",
+        "node_65",
+        "node_66",
+        "node_67",
+        "node_68",
+        "node_69",
+        "node_70",
+        "node_71",
+        "node_72",
+        "node_73",
+        "node_74",
+        "node_75",
+        "node_76",
+        "node_77",
+        "node_78",
+        "node_79",
+        "node_80",
+        "node_10"
+      ],
+      "strokeWidth": 5
+    },
+    {
+      "id": "L3",
+      "name": "3号线",
+      "color": "#FF8200",
+      "stationIds": [
+        "node_115",
+        "node_116",
+        "node_117",
+        "node_118",
+        "node_119",
+        "node_120",
+        "node_121",
+        "node_122",
+        "node_124",
+        "node_125",
+        "node_126",
+        "node_127",
+        "node_128",
+        "node_129",
+        "node_130",
+        "node_132",
+        "node_133",
+        "node_134",
+        "node_135",
+        "node_136",
+        "node_137",
+        "node_138",
+        "node_139",
+        "node_141",
+        "node_142",
+        "node_143",
+        "node_144",
+        "node_145",
+        "node_146",
+        "node_147",
+        "node_148",
+        "node_149",
+        "node_150",
+        "node_151",
+        "node_5",
+        "node_66",
+        "node_18"
+      ],
+      "strokeWidth": 5
+    },
+    {
+      "id": "L4",
+      "name": "4号线",
+      "color": "#0072CE",
+      "stationIds": [
+        "node_187",
+        "node_188",
+        "node_189",
+        "node_190",
+        "node_191",
+        "node_192",
+        "node_193",
+        "node_195",
+        "node_196",
+        "node_198",
+        "node_199",
+        "node_200",
+        "node_201",
+        "node_204",
+        "node_205",
+        "node_206",
+        "node_207",
+        "node_208",
+        "node_209",
+        "node_210",
+        "node_211",
+        "node_212",
+        "node_213",
+        "node_214",
+        "node_215",
+        "node_216",
+        "node_217",
+        "node_57",
+        "node_12",
+        "node_132",
+        "node_68",
+        "node_389",
+        "station_462",
+        "station_463",
+        "station_464"
+      ],
+      "strokeWidth": 5
+    },
+    {
+      "id": "L5",
+      "name": "5号线",
+      "color": "#E93CAC",
+      "stationIds": [
+        "node_249",
+        "node_250",
+        "node_251",
+        "node_252",
+        "node_253",
+        "node_254",
+        "node_255",
+        "node_256",
+        "node_257",
+        "node_258",
+        "node_259",
+        "node_260",
+        "node_262",
+        "node_264",
+        "node_266",
+        "node_267",
+        "node_268",
+        "node_269",
+        "node_271",
+        "node_272",
+        "node_273",
+        "node_274",
+        "node_275",
+        "node_276",
+        "node_277",
+        "node_279",
+        "node_280",
+        "node_282",
+        "node_126",
+        "node_62",
+        "node_138",
+        "node_23",
+        "node_149",
+        "node_199"
+      ],
+      "strokeWidth": 5
+    },
+    {
+      "id": "L6",
+      "name": "6号线",
+      "color": "#41B6E6",
+      "stationIds": [
+        "node_322",
+        "node_323",
+        "node_324",
+        "node_325",
+        "node_326",
+        "node_327",
+        "node_328",
+        "node_329",
+        "node_332",
+        "node_333",
+        "node_334",
+        "node_336",
+        "node_337",
+        "node_338",
+        "node_339",
+        "node_341",
+        "node_342",
+        "node_344",
+        "node_345",
+        "node_346",
+        "node_347",
+        "node_348",
+        "node_115",
+        "node_193",
+        "node_56",
+        "node_13",
+        "node_139",
+        "node_276",
+        "node_79",
+        "node_80"
+      ],
+      "strokeWidth": 5
+    },
+    {
+      "id": "L7",
+      "name": "7号线",
+      "color": "#A77BCA",
+      "stationIds": [
+        "node_385",
+        "node_386",
+        "node_387",
+        "node_388",
+        "node_389",
+        "node_390",
+        "node_392",
+        "node_393",
+        "node_394",
+        "node_395",
+        "node_396",
+        "node_397",
+        "node_398",
+        "node_399",
+        "node_400",
+        "node_401",
+        "node_402",
+        "node_406",
+        "node_407",
+        "node_409",
+        "node_411",
+        "node_412",
+        "node_413",
+        "node_415",
+        "node_416",
+        "node_417",
+        "node_418",
+        "node_419",
+        "node_420",
+        "node_421",
+        "node_16",
+        "node_338",
+        "node_269",
+        "node_135",
+        "node_71",
+        "node_204"
+      ]
+    },
+    {
+      "id": "L8",
+      "name": "8号线",
+      "color": "#A09200",
+      "stationIds": [
+        "node_465",
+        "node_466",
+        "node_468",
+        "node_469",
+        "node_471",
+        "node_472",
+        "node_474",
+        "node_476",
+        "node_477",
+        "node_478",
+        "node_480",
+        "node_482",
+        "node_484",
+        "node_487",
+        "node_488",
+        "node_490",
+        "node_491",
+        "node_121",
+        "node_325",
+        "node_191",
+        "node_53",
+        "node_398",
+        "node_143",
+        "node_145",
+        "node_20",
+        "node_341",
+        "node_275",
+        "node_77"
+      ]
+    },
+    {
+      "id": "L11",
+      "name": "11号线",
+      "color": "#F1C6A7",
+      "stationIds": [
+        "node_530",
+        "node_531",
+        "node_532",
+        "node_533",
+        "node_534",
+        "node_535",
+        "node_536",
+        "node_537",
+        "node_538",
+        "node_539",
+        "node_540",
+        "node_541",
+        "node_542",
+        "node_543",
+        "node_544",
+        "node_545",
+        "node_546",
+        "node_547",
+        "node_548",
+        "node_549",
+        "node_550",
+        "node_551",
+        "node_552",
+        "node_553",
+        "node_554",
+        "node_555",
+        "node_556",
+        "node_151"
+      ]
+    }
+  ],
+  "waters": [],
+  "texts": [],
+  "virtualTransfers": [],
+  "virtualConnectors": [],
+  "notOpenLines": [],
+  "scattered": [],
+  "legend": [],
+  "waterStyle": {
+    "fillLight": "#a5d7e8",
+    "fillDark": "#13354d",
+    "opacity": 0.6,
+    "zIndex": 1
+  },
+  "slope": {
+    "m": 1,
+    "n": 1
+  },
+  "lineDistances": {},
+  "idSeq": 583
+}
