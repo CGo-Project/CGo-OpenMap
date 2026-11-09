@@ -781,6 +781,6 @@ const linesData = [
         foreign: "suzhou",
         stationIds: ["SH_1114"],
         distances: [],
-        pathPoints: [{ x: 0, y: 593.5 }, { x: 85, y: 693 }]
+        pathPoints: [{ x: -14, y: 591 }, { x: 85, y: 690 }]
     }
 ];

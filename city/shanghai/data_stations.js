@@ -266,7 +266,7 @@ const stationsData = {
     "SH_1117": { type: "tsf", x: 200, y: 622, cn: "安亭", en: "Anting", align: "bottom-right", offset: { x: 7.3, y: -6.7 }, marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: 44.99, long: 15, short: 7 }] } },
     "SH_1116": { type: "tsf", x: 162, y: 648, cn: "兆丰路", en: "Zhaofeng Rd.", align: "top-left", offset: { x: 8.4, y: -4 }, marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: 45.01, long: 15, short: 7 }] } },
     "SH_1115": { type: "tsf", x: 138, y: 685, cn: "光明路", en: "Guangming Rd.", align: "bottom-right", offset: { x: 5, y: -6 }, marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: 45.01, long: 15, short: 7 }] } },
-    "SH_1114": { type: "tsf", x: 85, y: 693, cn: "花桥", en: "Huaqiao", align: "top", offset: { x: -1.9, y: -1.7 }, marker: { parts: [{ shape: "capsule", dx: 0, dy: 0, angle: 0, long: 15.8, short: 12.8 }] } },
+    "SH_1114": { type: "tsf", x: 85, y: 690, cn: "花桥", en: "Huaqiao", align: "bottom", offset: { x: -1.9, y: 4.3 }, marker: { parts: [{ shape: "capsule", dx: 0, dy: 0, angle: 0, long: 15.8, short: 12.8 }] } },
     "SH_1134": { type: "tsf", x: 343, y: 511, cn: "嘉定新城", en: "Jiading Xincheng", align: "top-right", offset: { x: -10.6, y: -1.6 }, marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: 135.01, long: 15, short: 7 }] } },
     "SH_1135": { type: "dot", x: 389, y: 558, cn: "马陆", en: "Malu", align: "top-right", offset: { x: 2.5, y: 1.4 }, marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: 135.01, long: 15, short: 7 }] } },
     "SH_1136": { type: "dot", x: 437, y: 606, cn: "陈翔公路", en: "Chengxiang Hwy.", align: "top-right", offset: { x: 0.3, y: -0.4 }, marker: { parts: [{ shape: "tick", dx: 0, dy: 0, angle: 135.01, long: 15, short: 7 }] } },
