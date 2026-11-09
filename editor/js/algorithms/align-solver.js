@@ -38,7 +38,7 @@ const AlignSolver = (function () {
                 "二纬路": { en: "Erweilu", pinyin: "erweilu" },
                 "海光寺": { en: "Haiguangsi", pinyin: "haiguangsi" },
                 "鞍山道": { en: "Anshandao", pinyin: "anshandao" },
-                "营口道": { en: "Yingk Maintain", en: "Yingkoudao", pinyin: "yingkoudao" },
+                "营口道": { en: "Yingkoudao", pinyin: "yingkoudao" },
                 "小白楼": { en: "Xiaobailou", pinyin: "xiaobailou" },
                 "下瓦房": { en: "Xiawafang", pinyin: "xiawafang" },
                 "刘庄": { en: "Liuzhuang", pinyin: "liuzhuang" },

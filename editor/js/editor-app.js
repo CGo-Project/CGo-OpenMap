@@ -2196,11 +2196,14 @@
             } else if (prop === 'position') {
                 node.x = value.x;
                 node.y = value.y;
-                // 同步更新绑定线段端点
+                // 同步更新绑定线段端点与内部关联折点
                 app.project.segments.forEach(function (seg) {
-                    var pts = seg.points;
-                    if (pts[0].nid === targetId) { pts[0].x = value.x; pts[0].y = value.y; }
-                    if (pts[pts.length - 1].nid === targetId) { pts[pts.length - 1].x = value.x; pts[pts.length - 1].y = value.y; }
+                    (seg.points || []).forEach(function (p) {
+                        if (p && p.nid === targetId) {
+                            p.x = value.x;
+                            p.y = value.y;
+                        }
+                    });
                 });
             } else if (prop === 'align') {
                 node.align = value;
@@ -3839,7 +3842,18 @@
                         return Math.abs(nn.x - n.x) < 100 && Math.abs(nn.y - n.y) < 100;
                     }).map(function (nid) { return nodes[nid]; });
                     if (neighbors.length > 0) {
-                        var result = solver.solveAlign(n.x, n.y, n.x, n.y);
+                        // 计算邻近节点的斥力向量：文字朝远离密集邻居的空旷方向对齐
+                        var repelDx = 0, repelDy = 0;
+                        neighbors.forEach(function (nb) {
+                            var dX = nb.x - n.x;
+                            var dY = nb.y - n.y;
+                            var distSq = dX * dX + dY * dY || 1;
+                            repelDx -= (dX / distSq);
+                            repelDy -= (dY / distSq);
+                        });
+                        var targetX = n.x + repelDx * 100;
+                        var targetY = n.y + repelDy * 100;
+                        var result = solver.solveAlign(n.x, n.y, targetX, targetY);
                         if (result && result.align && result.align !== n.align) {
                             n.align = result.align;
                             fixed++;
@@ -4602,23 +4616,32 @@
                         : { x: world.x, y: world.y };
 
                     // 智能辅助线吸附 (SmartGuides)
-                    if (window.OpenMapEditor.SmartGuides) {
+                    if (app.smartGuidesEnabled && window.OpenMapEditor.SmartGuides) {
                         var scaleFactor = window.OpenMapEditor.ViewportLayer.getScale() || 1;
+                        var targets = [];
+                        var curNid = (dragSeg.points[draggedPointIdx] && dragSeg.points[draggedPointIdx].nid) || null;
+                        Object.keys(app.project.nodes || {}).forEach(function (nid) {
+                            if (nid !== curNid) {
+                                var n = app.project.nodes[nid];
+                                if (n) targets.push({ id: nid, x: n.x, y: n.y });
+                            }
+                        });
                         var alignResult = window.OpenMapEditor.SmartGuides.computeAlignment(
-                            app.project,
-                            null,
                             snappedPt,
-                            { threshold: 8 / scaleFactor }
+                            targets,
+                            8 / scaleFactor
                         );
-                        if (alignResult) {
-                            snappedPt.x = alignResult.point.x;
-                            snappedPt.y = alignResult.point.y;
+                        if (alignResult && alignResult.guides && alignResult.guides.length > 0) {
+                            snappedPt.x = alignResult.snapped.x;
+                            snappedPt.y = alignResult.snapped.y;
                             if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.renderSmartGuides === 'function') {
-                                window.OpenMapEditor.GridLayer.renderSmartGuides(alignResult.guides);
+                                window.OpenMapEditor.GridLayer.renderSmartGuides(alignResult.guides, app.project.canvas);
                             }
                         } else if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.clearSmartGuides === 'function') {
                             window.OpenMapEditor.GridLayer.clearSmartGuides();
                         }
+                    } else if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.clearSmartGuides === 'function') {
+                        window.OpenMapEditor.GridLayer.clearSmartGuides();
                     }
 
                     if (!hasDragged) {

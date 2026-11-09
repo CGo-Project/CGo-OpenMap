@@ -461,12 +461,12 @@ window.OpenMapEditor.InspectorView = (function () {
             if (memberLines.length > 0) {
                 memberLines.forEach(function (m) {
                     var line = m.line;
-                    var branchTag = m.groupKey !== 'stationIds' ? ' <span class="cgo-badge" style="font-size:9px;padding:1px 4px;margin-left:2px;">' + m.groupLabel + '</span>' : '';
+                    var branchTag = m.groupKey !== 'stationIds' ? ' <span class="cgo-badge" style="font-size:9px;padding:1px 4px;margin-left:2px;">' + escAttr(m.groupLabel) + '</span>' : '';
                     html += '<div class="inspector-line-item" style="background:var(--bg-subtle, rgba(0,0,0,0.03));border:1px solid var(--border-light, rgba(0,0,0,0.06));border-radius:6px;padding:6px 8px;margin-bottom:6px;">' +
                         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
                         '<div style="display:flex;align-items:center;gap:6px;overflow:hidden;flex:1;min-width:0;">' +
                         '<span style="width:8px;height:8px;border-radius:50%;background:' + (line.color || '#0284c7') + ';flex-shrink:0;"></span>' +
-                        '<span style="font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (line.name || line.id) + '</span>' +
+                        '<span style="font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escAttr(line.name || line.id) + '</span>' +
                         branchTag +
                         '</div>' +
                         '<span style="font-size:10px;color:var(--text-light);flex-shrink:0;">第 ' + (m.index + 1) + ' / ' + m.total + ' 站</span>' +
@@ -492,7 +492,7 @@ window.OpenMapEditor.InspectorView = (function () {
                 '<select class="form-select" id="selAddLineToStation" style="flex:1;font-size:11px;">' +
                 '<option value="">-- 加入线路 --</option>';
             candidateLines.forEach(function (l) {
-                html += '<option value="' + l.id + '">' + (l.name || l.id) + '</option>';
+                html += '<option value="' + escAttr(l.id) + '">' + escAttr(l.name || l.id) + '</option>';
             });
             html += '</select>' +
                 '<button type="button" class="ribbon-btn-sm" id="btnAddStationToLine">' +
@@ -689,7 +689,7 @@ window.OpenMapEditor.InspectorView = (function () {
             '<select class="form-select" id="propSegLine">';
 
         (project.lines || []).forEach(function (l) {
-            html += '<option value="' + l.id + '"' + (l.id === segment.lineId ? ' selected' : '') + '>' + (l.name || l.id) + '</option>';
+            html += '<option value="' + escAttr(l.id) + '"' + (l.id === segment.lineId ? ' selected' : '') + '>' + escAttr(l.name || l.id) + '</option>';
         });
 
         html += '</select>' +

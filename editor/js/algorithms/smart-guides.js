@@ -32,11 +32,22 @@ window.OpenMapEditor.SmartGuides = (function () {
         if (!neighbors || neighbors.length < 2) return null;
         var tol = (typeof tolerance === 'number') ? tolerance : 2;
         var alignBand = Math.max(8, tol * 3);
+        var maxDistance = 380; // 局部等间距探测上限，避免远距离不相干车站引发 O(N^2) 耗时
 
-        for (var i = 0; i < neighbors.length; i++) {
-            for (var j = i + 1; j < neighbors.length; j++) {
-                var n1 = neighbors[i];
-                var n2 = neighbors[j];
+        // 空间粗筛：只保留距离当前移动中心 380px 以内的邻近参考站
+        var localNeighbors = [];
+        for (var k = 0; k < neighbors.length; k++) {
+            var nb = neighbors[k];
+            if (nb && Math.abs(nb.x - pCenter.x) <= maxDistance && Math.abs(nb.y - pCenter.y) <= maxDistance) {
+                localNeighbors.push(nb);
+            }
+        }
+        if (localNeighbors.length < 2) return null;
+
+        for (var i = 0; i < localNeighbors.length; i++) {
+            for (var j = i + 1; j < localNeighbors.length; j++) {
+                var n1 = localNeighbors[i];
+                var n2 = localNeighbors[j];
 
                 // ── 1. 水平 X 轴等距检测 ──
                 var left = n1.x <= n2.x ? n1 : n2;

@@ -3060,6 +3060,48 @@ section('线上编辑器：不提供在线城市库，已有城市只能从本�
     const deepseekSrc = fs.readFileSync(path.join(ROOT, 'editor/js/tools/deepseek-vision.js'), 'utf8');
     check(!/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u.test(deepseekSrc),
         'D-12: deepseek-vision.js 中已清理所有原生 Emoji，遵循 CGoUI 规范');
+
+    // ══ Ponytail 深度审计缺陷修复验证 ══
+    // P-01: 折线控制点拖拽对齐吸附传参及 snapped 属性修复
+    check(editorAppSrc.includes('SmartGuides.computeAlignment(\n                            snappedPt,\n                            targets,\n                            8 / scaleFactor\n                        )') ||
+          editorAppSrc.includes('SmartGuides.computeAlignment(snappedPt, targets, 8 / scaleFactor)'),
+        'P-01: 折线控制点拖拽调用 SmartGuides.computeAlignment 传参顺序正确 (snappedPt, targets, threshold)');
+    check(editorAppSrc.includes('snappedPt.x = alignResult.snapped.x') && editorAppSrc.includes('snappedPt.y = alignResult.snapped.y'),
+        'P-01: 折线控制点拖拽正确读取 alignResult.snapped 坐标');
+
+    // P-02: 快速排版智能避让求解器斥力向量修复
+    check(editorAppSrc.includes('repelDx') && editorAppSrc.includes('repelDy') && editorAppSrc.includes('solver.solveAlign(n.x, n.y, targetX, targetY)'),
+        'P-02: 快速排版避让通过邻居反向斥力向量引导文字朝向，无自死锁');
+
+    // P-03: 属性面板坐标手动修改时同步更新折线内部绑定节点
+    check(editorAppSrc.includes('(seg.points || []).forEach(function (p)') && editorAppSrc.includes('if (p && p.nid === targetId)'),
+        'P-03: 属性面板坐标手动输入同步遍历并更新线段所有绑定折点');
+
+    // P-04: SmartGuides 等间距探测范围粗筛
+    const SmartGuidesMod = global.window.OpenMapEditor.SmartGuides;
+    const testNeighbors = [
+        { x: 100, y: 100 },
+        { x: 200, y: 100 },
+        { x: 5000, y: 5000 } // 超出 380px 范围的遥远点
+    ];
+    const alignWithFar = SmartGuidesMod.computeAlignment({ x: 300, y: 100 }, testNeighbors, 4);
+    check(alignWithFar && alignWithFar.guides && alignWithFar.guides.some(g => g.type === 'spacing' && g.axis === 'x'),
+        'P-04: SmartGuides 局部等间距探测成功吸附且自动剔除远距离干扰点');
+
+    // P-05: InspectorView XSS 防御与 escAttr 转义
+    const inspectorSrc = fs.readFileSync(path.join(ROOT, 'editor/js/ui/inspector-view.js'), 'utf8');
+    check(inspectorSrc.includes('escAttr(m.groupLabel)') && inspectorSrc.includes('escAttr(line.name || line.id)') && inspectorSrc.includes('escAttr(l.id)'),
+        'P-05: InspectorView 针对线路名称、ID 与分支标签注入实施 escAttr 转义');
+
+    // P-06: 冗余脚本引用清理
+    const editorHtmlSrc = fs.readFileSync(path.join(ROOT, 'editor/index.html'), 'utf8');
+    check(!editorHtmlSrc.includes('topology-tracer.js'),
+        'P-06: editor/index.html 彻底移除不存在的 topology-tracer.js 引用');
+
+    // P-07: 词典重复键清理
+    const alignSolverSrc = fs.readFileSync(path.join(ROOT, 'editor/js/algorithms/align-solver.js'), 'utf8');
+    check(!alignSolverSrc.includes('"Yingk Maintain"'),
+        'P-07: align-solver.js 天津词典已清理重复键 Yingk Maintain');
 })().then(finish, err => { failed++; console.log('  ✗ 本地目录载入自检异常：' + (err && err.stack || err)); finish(); });
 
 function finish() {
