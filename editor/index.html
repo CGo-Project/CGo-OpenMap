@@ -110,11 +110,11 @@
     <header class="office-title-bar">
         <div class="title-bar-left">
             <div class="office-app-icon" title="开放地图编辑器 (OpenMap Editor)">
-                <cgo-icon name="map" size="22"></cgo-icon>
+                <cgo-icon name="drunk" size="22"></cgo-icon>
             </div>
             <div class="office-doc-title">
                 <span class="app-brand">OpenMap Editor</span>
-                <span class="doc-sep">Beta4 /</span>
+                <span class="doc-sep">Beta5 /</span>
                 <span class="doc-name" id="currentDocLabel">未打开工程</span>
             </div>
             <!-- 快速访问工具栏：撤销 / 重做在任何功能区页签下都可见 -->
@@ -145,7 +145,8 @@
                 <cgo-icon name="folder" size="15"></cgo-icon>
             </button>
             <button class="title-bar-btn title-bar-save" id="btnHeaderSave" title="保存改动 (Ctrl+S，若关联本地目录则直接原地保存)">
-                <cgo-icon name="save" size="15"></cgo-icon><span>保存</span><span class="save-dirty-dot" aria-hidden="true"></span>
+                <cgo-icon name="save" size="15"></cgo-icon><span>保存</span><span class="save-dirty-dot"
+                    aria-hidden="true"></span>
             </button>
             <button class="title-bar-btn" id="btnHeaderShortcuts" title="键盘快捷键与高效手势速查 (?)">
                 <cgo-icon name="info" size="15"></cgo-icon>
@@ -236,18 +237,38 @@
                     <div class="ribbon-group-controls">
                         <div class="ribbon-v-stack">
                             <button class="ribbon-btn-sm" id="toolBtn_seg135" title="135° 正交折角走线 (45°斜段 + 轴段)">
-                                <svg class="cgo-inline-icon" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><polyline points="3,17 10,17 19,8"/><circle cx="19" cy="8" r="1.6"/><circle cx="3" cy="17" r="1.6"/></svg><span>135° 折角</span>
+                                <svg class="cgo-inline-icon" viewBox="0 0 24 24" width="12" height="12"
+                                    aria-hidden="true">
+                                    <polyline points="3,17 10,17 19,8" />
+                                    <circle cx="19" cy="8" r="1.6" />
+                                    <circle cx="3" cy="17" r="1.6" />
+                                </svg><span>135° 折角</span>
                             </button>
                             <button class="ribbon-btn-sm" id="toolBtn_seg90" title="90° 正交直角走线 (L 形)">
-                                <svg class="cgo-inline-icon" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><polyline points="5,5 5,19 19,19"/><circle cx="5" cy="5" r="1.6"/><circle cx="19" cy="19" r="1.6"/></svg><span>90° 直角</span>
+                                <svg class="cgo-inline-icon" viewBox="0 0 24 24" width="12" height="12"
+                                    aria-hidden="true">
+                                    <polyline points="5,5 5,19 19,19" />
+                                    <circle cx="5" cy="5" r="1.6" />
+                                    <circle cx="19" cy="19" r="1.6" />
+                                </svg><span>90° 直角</span>
                             </button>
                         </div>
                         <div class="ribbon-v-stack">
                             <button class="ribbon-btn-sm" id="toolBtn_seg90d" title="斜 90° 对角折角 (双斜段)">
-                                <svg class="cgo-inline-icon" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><polyline points="3,16 12,7 21,16"/><circle cx="3" cy="16" r="1.6"/><circle cx="21" cy="16" r="1.6"/></svg><span>斜 90°</span>
+                                <svg class="cgo-inline-icon" viewBox="0 0 24 24" width="12" height="12"
+                                    aria-hidden="true">
+                                    <polyline points="3,16 12,7 21,16" />
+                                    <circle cx="3" cy="16" r="1.6" />
+                                    <circle cx="21" cy="16" r="1.6" />
+                                </svg><span>斜 90°</span>
                             </button>
                             <button class="ribbon-btn-sm" id="toolBtn_segaxis" title="自由直线 (两端直连)">
-                                <svg class="cgo-inline-icon" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><polyline points="4,19 20,5"/><circle cx="4" cy="19" r="1.6"/><circle cx="20" cy="5" r="1.6"/></svg><span>自由直线</span>
+                                <svg class="cgo-inline-icon" viewBox="0 0 24 24" width="12" height="12"
+                                    aria-hidden="true">
+                                    <polyline points="4,19 20,5" />
+                                    <circle cx="4" cy="19" r="1.6" />
+                                    <circle cx="20" cy="5" r="1.6" />
+                                </svg><span>自由直线</span>
                             </button>
                         </div>
                         <div class="ribbon-v-stack">
@@ -309,6 +330,11 @@
                             <div class="ribbon-icon"><cgo-icon name="compass" size="18"></cgo-icon></div>
                             <span class="btn-text">45/90 对齐</span>
                         </button>
+                        <button class="ribbon-action-btn-lg" id="btnApplyParallelCorridor"
+                            title="将共线运行的重复线段自动平移展开为平行走线并匹配换乘胶囊">
+                            <div class="ribbon-icon"><cgo-icon name="layers" size="18"></cgo-icon></div>
+                            <span class="btn-text">平行走线</span>
+                        </button>
                     </div>
                     <div class="ribbon-group-label">历史与重算</div>
                 </div>
@@ -319,6 +345,11 @@
                 <!-- 导入流水线 -->
                 <div class="ribbon-group">
                     <div class="ribbon-group-controls">
+                        <button class="ribbon-action-btn-lg" id="btnIngestRmp" title="载入 Rail Map Painter (.json) 原生工程文件并无损转换">
+                            <div class="ribbon-icon"><cgo-icon name="route" size="18"></cgo-icon></div>
+                            <span class="btn-text">导入RMP</span>
+                        </button>
+                        <input type="file" id="inputImportRmpFile" accept=".json,application/json" style="display:none;">
                         <button class="ribbon-action-btn-lg" id="btnIngestPdf" title="载入 PDF/AI 原生矢量文件直通抽取">
                             <div class="ribbon-icon"><cgo-icon name="export-pdf" size="18"></cgo-icon></div>
                             <span class="btn-text">PDF识别</span>
@@ -453,6 +484,14 @@
                             <div class="ribbon-icon"><cgo-icon name="export-img" size="18"></cgo-icon></div>
                             <span class="btn-text">导出PNG</span>
                         </button>
+                        <div class="ribbon-btn-column">
+                            <button class="ribbon-btn-sm" id="btnExportPng4x" title="导出 4x 超高清 PNG (300DPI 印刷喷绘标准)">
+                                <cgo-icon name="image" size="12"></cgo-icon><span>4x印刷</span>
+                            </button>
+                            <button class="ribbon-btn-sm" id="btnExportPng8x" title="导出 8x 超大画幅 PNG (大幅海报级)">
+                                <cgo-icon name="image" size="12"></cgo-icon><span>8x海报</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="ribbon-group-label">成果交付</div>
                 </div>
@@ -527,9 +566,13 @@
                     <g id="scatteredLayer"></g>
                     <g id="waterLayer"></g>
                     <g id="gridLayer"></g>
-                    <g id="lines-layer"><g id="lineLayer"></g></g>
+                    <g id="lines-layer">
+                        <g id="lineLayer"></g>
+                    </g>
                     <g id="draftLayer"></g>
-                    <g id="not-open-layer"><g id="notOpenLayer"></g></g>
+                    <g id="not-open-layer">
+                        <g id="notOpenLayer"></g>
+                    </g>
                     <g id="virtualConnectorLayer"></g>
                     <g id="stationLayer"></g>
                     <g id="labelLayer"></g>
@@ -972,9 +1015,12 @@
                     Ctrl+Shift+Z</span></div>
             <div class="shortcut-row"><span class="desc">操作历史步骤面板</span><span class="shortcut-kbd">Ctrl + H</span></div>
             <div class="shortcut-row"><span class="desc">显示/隐藏坐标标尺</span><span class="shortcut-kbd">R</span></div>
-            <div class="shortcut-row"><span class="desc">切换鼠标模式（地图 ⇄ 设计软件）</span><span class="shortcut-kbd">M</span></div>
-            <div class="shortcut-row"><span class="desc">地图模式：拖动画布 / 框选</span><span class="shortcut-kbd">左键拖动空白处 / Shift + 拖动</span></div>
-            <div class="shortcut-row"><span class="desc">右键菜单</span><span class="shortcut-kbd">右键车站 / 线路 / 装饰 / 空白处</span></div>
+            <div class="shortcut-row"><span class="desc">切换鼠标模式（地图 ⇄ 设计软件）</span><span class="shortcut-kbd">M</span>
+            </div>
+            <div class="shortcut-row"><span class="desc">地图模式：拖动画布 / 框选</span><span class="shortcut-kbd">左键拖动空白处 / Shift
+                    + 拖动</span></div>
+            <div class="shortcut-row"><span class="desc">右键菜单</span><span class="shortcut-kbd">右键车站 / 线路 / 装饰 /
+                    空白处</span></div>
             <div class="shortcut-row"><span class="desc">快速原地保存工程</span><span class="shortcut-kbd">Ctrl + S</span></div>
             <div class="shortcut-row"><span class="desc">打开 / 导入工程</span><span class="shortcut-kbd">Ctrl + O</span>
             </div>
@@ -1108,6 +1154,7 @@
     <script src="js/tools/mileage-manager.js"></script>
     <script src="js/tools/water-exporter.js"></script>
     <script src="js/tools/bundle-exporter.js"></script>
+    <script src="js/tools/rmp-importer.js"></script>
     <script src="js/tools/swatches-palette.js"></script>
     <script src="js/tools/agent-api.js"></script>
 

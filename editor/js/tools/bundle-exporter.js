@@ -424,12 +424,251 @@ window.OpenMapEditor.BundleExporter = (function () {
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
 
+    var DEFAULT_PALETTE_LIGHT = {
+        mapBg: '#ffffff',
+        stationStroke: '#00263b',
+        notOpenColor: '#bdcbd2',
+        notOpenText: '#889096',
+        textMain: '#00263b',
+        staStrokeWidthCn: '2px',
+        staStrokeWidthEn: '1.75px',
+        panelHeaderBg: '#00263b'
+    };
+
+    var DEFAULT_PALETTE_DARK = {
+        mapBg: '#1a1a1a',
+        stationStroke: '#bdcbd2',
+        notOpenColor: '#4e4e4e',
+        notOpenText: '#78848b',
+        textMain: '#e5e8ea',
+        staStrokeWidthCn: '2px',
+        staStrokeWidthEn: '1.75px',
+        panelHeaderBg: '#373838'
+    };
+
+    function resolvePalette(themeOrPalette) {
+        if (themeOrPalette && typeof themeOrPalette === 'object') {
+            var base = (themeOrPalette.isDark || themeOrPalette.theme === 'dark') ? DEFAULT_PALETTE_DARK : DEFAULT_PALETTE_LIGHT;
+            return Object.assign({}, base, themeOrPalette);
+        }
+        return (themeOrPalette === 'dark') ? Object.assign({}, DEFAULT_PALETTE_DARK) : Object.assign({}, DEFAULT_PALETTE_LIGHT);
+    }
+
     /**
-     * 准备纯净的独立矢量 SVG DOM（移除 UI 辅助层、复位视口平移缩放、设置 viewBox）
+     * 将 SVG 字符串或元素内依赖的 CSS 变量固化替换为具体的 Hex/RGB 色值（印刷与外部矢量工具兼容）
+     * @param {string|SVGElement} target
+     * @param {string|Object} [themeOrPalette]
+     * @returns {string}
+     */
+    function resolveCssVariables(target, themeOrPalette) {
+        if (!target) return '';
+        var pal = resolvePalette(themeOrPalette);
+        var str = (typeof target === 'string')
+            ? target
+            : ((typeof XMLSerializer !== 'undefined') ? new XMLSerializer().serializeToString(target) : '');
+        if (!str) return '';
+
+        var res = str;
+        res = res.replace(/var\(--map-bg(?:,\s*[^)]+)?\)/g, pal.mapBg);
+        res = res.replace(/var\(--station-stroke(?:,\s*[^)]+)?\)/g, pal.stationStroke);
+        res = res.replace(/var\(--not-open-color(?:,\s*[^)]+)?\)/g, pal.notOpenColor);
+        res = res.replace(/var\(--not-open-text(?:,\s*[^)]+)?\)/g, pal.notOpenText);
+        res = res.replace(/var\(--text-main(?:,\s*[^)]+)?\)/g, pal.textMain);
+        res = res.replace(/var\(--sta-stroke-width-cn(?:,\s*[^)]+)?\)/g, pal.staStrokeWidthCn || '2px');
+        res = res.replace(/var\(--sta-stroke-width-en(?:,\s*[^)]+)?\)/g, pal.staStrokeWidthEn || '1.75px');
+        res = res.replace(/var\(--panel-header-bg(?:,\s*[^)]+)?\)/g, pal.panelHeaderBg || pal.stationStroke);
+        // 通用兜底：var(--foo, fallback) -> fallback
+        res = res.replace(/var\(--[a-zA-Z0-9_-]+,\s*([^)]+)\)/g, '$1');
+        return res;
+    }
+
+    /**
+     * 将 HTML 外衬与 foreignObject 转换为 100% 纯矢量 SVG 车站与站名元素
+     */
+    function synthesizePureVectorLayers(clone, project, options) {
+        if (!clone || !project || !project.nodes) return;
+        var opt = options || {};
+        var pal = resolvePalette(opt.palette || opt.theme);
+        var icons = window.CGoStationIcons || (typeof require !== 'undefined' ? (function () {
+            try { return require('../../../core/station-icons.js'); } catch (e) { return null; }
+        })() : null);
+
+        // 收集站点经停线色
+        var colorsMap = {};
+        (project.lines || []).forEach(function (line) {
+            if (!line || !line.color) return;
+            (line.stationIds || []).forEach(function (sid) {
+                if (!colorsMap[sid]) colorsMap[sid] = [];
+                if (colorsMap[sid].indexOf(line.color) === -1) colorsMap[sid].push(line.color);
+            });
+        });
+        (project.segments || []).forEach(function (seg) {
+            var l = (project.lines || []).find(function (item) { return item.id === seg.lineId; });
+            var col = l ? l.color : null;
+            if (!col) return;
+            (seg.points || []).forEach(function (p) {
+                if (p && p.nid) {
+                    if (!colorsMap[p.nid]) colorsMap[p.nid] = [];
+                    if (colorsMap[p.nid].indexOf(col) === -1) colorsMap[p.nid].push(col);
+                }
+            });
+        });
+
+        var SVG_NS = 'http://www.w3.org/2000/svg';
+
+        // 1. 替换车站层
+        var stLayer = clone.querySelector('#stationLayer');
+        if (stLayer) {
+            // 清理原 foreignObject 底板
+            var fos = stLayer.querySelectorAll('foreignObject, .cgo-map-replica-host');
+            fos.forEach(function (fo) { fo.remove(); });
+
+            var stVectorGroup = document.createElementNS(SVG_NS, 'g');
+            stVectorGroup.setAttribute('id', 'vectorStationGlyphs');
+            stVectorGroup.setAttribute('class', 'cgo-vector-stations');
+
+            Object.keys(project.nodes).forEach(function (id) {
+                var n = project.nodes[id];
+                if (!n || n.type === 'temp') return;
+                var s = Object.assign({}, n);
+                s.type = n.notOpen ? 'no' : (n.type || 'dot');
+                var cList = colorsMap[id] || [];
+                var col = cList[0] || pal.stationStroke;
+                s.lineColors = cList.length ? cList : [col];
+
+                var dims = (icons && typeof icons.dimensionsFor === 'function')
+                    ? icons.dimensionsFor(s.type)
+                    : { width: 10, height: 10 };
+                var iconHtml = (icons && typeof icons.iconHtmlFor === 'function')
+                    ? icons.iconHtmlFor(s)
+                    : '';
+                if (!iconHtml) return;
+
+                var inner = iconHtml.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>$/i, '');
+                inner = inner.replace(/\{\{COLOR\}\}/g, col);
+                inner = resolveCssVariables(inner, pal);
+
+                var g = document.createElementNS(SVG_NS, 'g');
+                g.setAttribute('class', 'station-glyph station-' + s.type);
+                g.setAttribute('data-node-id', id);
+                var tx = s.x - (dims.width || 10) / 2;
+                var ty = s.y - (dims.height || 10) / 2;
+                g.setAttribute('transform', 'translate(' + tx.toFixed(2) + ',' + ty.toFixed(2) + ')');
+                g.innerHTML = inner;
+                stVectorGroup.appendChild(g);
+            });
+            stLayer.appendChild(stVectorGroup);
+        }
+
+        // 2. 替换站名层
+        var lbLayer = clone.querySelector('#labelLayer') || stLayer;
+        if (lbLayer) {
+            var lbfos = lbLayer.querySelectorAll('foreignObject, .cgo-map-replica-host');
+            lbfos.forEach(function (fo) { fo.remove(); });
+
+            var lbVectorGroup = document.createElementNS(SVG_NS, 'g');
+            lbVectorGroup.setAttribute('id', 'vectorStationLabels');
+            lbVectorGroup.setAttribute('class', 'cgo-vector-labels');
+
+            var calcLayout = (window.OpenMapEditor.StationLayer && window.OpenMapEditor.StationLayer.calculateLabelLayout)
+                ? window.OpenMapEditor.StationLayer.calculateLabelLayout
+                : function (node) {
+                    var distV = 5.2, distH = 6, distD = 6;
+                    var left = node.x || 0, top = node.y || 0;
+                    var transform = '', textAlign = 'center';
+                    switch (node.align) {
+                        case 'top': top -= distV; transform = 'translate(-50%, -100%)'; break;
+                        case 'bottom': top += distV; transform = 'translate(-50%, 0)'; break;
+                        case 'left': left -= distH; transform = 'translate(-100%, -50%)'; textAlign = 'right'; break;
+                        case 'right': left += distH; transform = 'translate(0, -50%)'; textAlign = 'left'; break;
+                        case 'top-left': left -= distD; top -= distD; transform = 'translate(-100%, -100%)'; textAlign = 'right'; break;
+                        case 'top-right': left += distD; top -= distD; transform = 'translate(0, -100%)'; textAlign = 'left'; break;
+                        case 'bottom-left': left -= distD; top += distD; transform = 'translate(-100%, 0)'; textAlign = 'right'; break;
+                        case 'bottom-right': left += distD; top += distD; transform = 'translate(0, 0)'; textAlign = 'left'; break;
+                        default: top += distV; transform = 'translate(-50%, 0)';
+                    }
+                    if (node.offset) {
+                        if (node.offset.x) left += node.offset.x;
+                        if (node.offset.y) top += node.offset.y;
+                    }
+                    return { x: left, y: top, transform: transform, textAlign: textAlign };
+                };
+
+            Object.keys(project.nodes).forEach(function (id) {
+                var s = project.nodes[id];
+                if (!s || s.type === 'temp' || s.hideLabel === true) return;
+                var rawCn = (s.cn || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                var rawEn = (s.en || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                if (!rawCn && !rawEn) return;
+
+                var layout = calcLayout(s);
+                var anchor = layout.textAlign === 'right' ? 'end' : (layout.textAlign === 'left' ? 'start' : 'middle');
+                var hasCn = !!rawCn;
+                var hasEn = !!rawEn;
+                var totalH = (hasCn ? 13.8 : 0) + (hasEn ? 7.5 : 0);
+
+                var baseY = layout.y;
+                if (layout.transform.indexOf('-100%') !== -1) {
+                    baseY = layout.y - totalH;
+                } else if (layout.transform.indexOf('-50%') !== -1) {
+                    baseY = layout.y - totalH / 2;
+                }
+                var cnBaselineY = baseY + 10.2;
+                var enBaselineY = baseY + (hasCn ? 13.8 : 0) + 5.5;
+                var labelColor = (s.notOpen || s.type === 'no') ? pal.notOpenText : (s.color || pal.textMain);
+
+                var labelItem = document.createElementNS(SVG_NS, 'g');
+                labelItem.setAttribute('class', 'label-group label-' + id);
+                labelItem.setAttribute('data-node-id', id);
+
+                if (hasCn) {
+                    var txtCn = document.createElementNS(SVG_NS, 'text');
+                    txtCn.setAttribute('x', layout.x.toFixed(2));
+                    txtCn.setAttribute('y', cnBaselineY.toFixed(2));
+                    txtCn.setAttribute('text-anchor', anchor);
+                    txtCn.setAttribute('font-family', '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif');
+                    txtCn.setAttribute('font-size', '11.5');
+                    txtCn.setAttribute('font-weight', '500');
+                    txtCn.setAttribute('paint-order', 'stroke fill');
+                    txtCn.setAttribute('stroke', pal.mapBg);
+                    txtCn.setAttribute('stroke-width', '2.5');
+                    txtCn.setAttribute('stroke-linejoin', 'round');
+                    txtCn.setAttribute('stroke-linecap', 'round');
+                    txtCn.setAttribute('fill', labelColor);
+                    txtCn.textContent = rawCn;
+                    labelItem.appendChild(txtCn);
+                }
+
+                if (hasEn) {
+                    var txtEn = document.createElementNS(SVG_NS, 'text');
+                    txtEn.setAttribute('x', layout.x.toFixed(2));
+                    txtEn.setAttribute('y', enBaselineY.toFixed(2));
+                    txtEn.setAttribute('text-anchor', anchor);
+                    txtEn.setAttribute('font-family', "'Arimo', 'Arial', sans-serif");
+                    txtEn.setAttribute('font-size', '6.65');
+                    txtEn.setAttribute('font-weight', '500');
+                    txtEn.setAttribute('paint-order', 'stroke fill');
+                    txtEn.setAttribute('stroke', pal.mapBg);
+                    txtEn.setAttribute('stroke-width', '2');
+                    txtEn.setAttribute('stroke-linejoin', 'round');
+                    txtEn.setAttribute('stroke-linecap', 'round');
+                    txtEn.setAttribute('fill', labelColor);
+                    txtEn.textContent = rawEn;
+                    labelItem.appendChild(txtEn);
+                }
+                lbVectorGroup.appendChild(labelItem);
+            });
+            lbLayer.appendChild(lbVectorGroup);
+        }
+    }
+
+    /**
+     * 准备纯净的独立矢量 SVG DOM（移除 UI 辅助层、复位视口平移缩放、固化 CSS 变量、合成纯矢量车站/站名）
      */
     function prepareCleanSvgClone(svgEl, project, options) {
         if (!svgEl) return null;
         var opt = options || {};
+        var pal = resolvePalette(opt.palette || opt.theme);
         var clone = svgEl.cloneNode(true);
         clone.removeAttribute('style');
 
@@ -460,11 +699,91 @@ window.OpenMapEditor.BundleExporter = (function () {
             var bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             bgRect.setAttribute('width', String(w));
             bgRect.setAttribute('height', String(h));
-            bgRect.setAttribute('fill', opt.backgroundColor || '#ffffff');
+            bgRect.setAttribute('fill', opt.backgroundColor || pal.mapBg);
             clone.insertBefore(bgRect, clone.firstChild);
         }
 
-        return { clone: clone, width: w, height: h };
+        // 合成纯矢量车站与站名（替换 foreignObject，确保 Illustrator/Canvas 兼容）
+        if (project && project.nodes && typeof document !== 'undefined') {
+            synthesizePureVectorLayers(clone, project, opt);
+        }
+
+        return { clone: clone, width: w, height: h, palette: pal };
+    }
+
+    /**
+     * 构建独立的印刷级纯矢量 SVG 源码字符串（无外部样式依赖）
+     */
+    function compileStandalonePrintSvg(project, options) {
+        var opt = options || {};
+        var pal = resolvePalette(opt.palette || opt.theme);
+        if (opt.svgEl) {
+            var prep = prepareCleanSvgClone(opt.svgEl, project, opt);
+            if (!prep) return '';
+            var xml = (typeof XMLSerializer !== 'undefined') ? new XMLSerializer().serializeToString(prep.clone) : '';
+            xml = resolveCssVariables(xml, pal);
+            return '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
+        }
+
+        var w = (project && project.canvas && project.canvas.width) || 2000;
+        var h = (project && project.canvas && project.canvas.height) || 1500;
+        var bg = opt.backgroundColor !== false ? (opt.backgroundColor || pal.mapBg) : 'transparent';
+
+        var xmlParts = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">',
+            bg !== 'transparent' ? '<rect width="' + w + '" height="' + h + '" fill="' + bg + '"/>' : '',
+            '<g id="viewLayer">'
+        ];
+
+        // 线路折线层
+        xmlParts.push('<g id="lineLayer">');
+        (project.segments || []).forEach(function (seg) {
+            if (!seg || !Array.isArray(seg.points) || seg.points.length < 2) return;
+            var l = (project.lines || []).find(function (item) { return item.id === seg.lineId; }) || {};
+            var strokeColor = l.color || '#00263b';
+            var strokeWidth = l.strokeWidth || 5.4;
+            var d = seg.points.map(function (p, i) { return (i === 0 ? 'M' : 'L') + p.x + ',' + p.y; }).join(' ');
+            xmlParts.push('<path d="' + d + '" fill="none" stroke="' + strokeColor + '" stroke-width="' + strokeWidth + '" stroke-linecap="round" stroke-linejoin="round"/>');
+        });
+        xmlParts.push('</g>');
+
+        // 车站层
+        xmlParts.push('<g id="stationLayer">');
+        var icons = window.CGoStationIcons;
+        Object.keys((project && project.nodes) || {}).forEach(function (id) {
+            var n = project.nodes[id];
+            if (!n || n.type === 'temp') return;
+            var sType = n.notOpen ? 'no' : (n.type || 'dot');
+            var dims = (icons && typeof icons.dimensionsFor === 'function') ? icons.dimensionsFor(sType) : { width: 10, height: 10 };
+            var rawIcon = (icons && typeof icons.iconHtmlFor === 'function') ? icons.iconHtmlFor({ type: sType, lineColors: [pal.stationStroke] }) : '';
+            var inner = rawIcon.replace(/^<svg[^>]*>/i, '').replace(/<\/svg>$/i, '');
+            inner = resolveCssVariables(inner, pal);
+            var tx = n.x - dims.width / 2;
+            var ty = n.y - dims.height / 2;
+            xmlParts.push('<g class="station-glyph" transform="translate(' + tx.toFixed(2) + ',' + ty.toFixed(2) + ')">' + inner + '</g>');
+        });
+        xmlParts.push('</g>');
+
+        // 站名文字层
+        xmlParts.push('<g id="labelLayer">');
+        Object.keys((project && project.nodes) || {}).forEach(function (id) {
+            var n = project.nodes[id];
+            if (!n || n.type === 'temp' || n.hideLabel || (!n.cn && !n.en)) return;
+            var cn = (n.cn || '').replace(/<[^>]*>/g, '').trim();
+            var en = (n.en || '').replace(/<[^>]*>/g, '').trim();
+            if (cn) {
+                xmlParts.push('<text x="' + n.x + '" y="' + (n.y + 16) + '" text-anchor="middle" font-size="11.5" font-family="sans-serif" fill="' + pal.textMain + '" stroke="' + pal.mapBg + '" stroke-width="2" paint-order="stroke fill">' + cn + '</text>');
+            }
+            if (en) {
+                xmlParts.push('<text x="' + n.x + '" y="' + (n.y + 24) + '" text-anchor="middle" font-size="6.65" font-family="sans-serif" fill="' + pal.textMain + '" stroke="' + pal.mapBg + '" stroke-width="1.5" paint-order="stroke fill">' + en + '</text>');
+            }
+        });
+        xmlParts.push('</g>');
+
+        xmlParts.push('</g>'); // viewLayer
+        xmlParts.push('</svg>');
+        return resolveCssVariables(xmlParts.join('\n'), pal);
     }
 
     function exportSvgElement(svgEl, filename, project, options) {
@@ -472,12 +791,13 @@ window.OpenMapEditor.BundleExporter = (function () {
         var prep = prepareCleanSvgClone(svgEl, project, options);
         if (!prep) return;
         var xml = new XMLSerializer().serializeToString(prep.clone);
+        xml = resolveCssVariables(xml, prep.palette);
         var src = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
         download(filename || 'openmap-canvas.svg', src, 'image/svg+xml;charset=utf-8');
     }
 
     /**
-     * 将 SVG 矢量地图高清光栅化并导出为 PNG 位图
+     * 将 SVG 矢量地图高清光栅化并导出为 PNG 位图（支持 1x, 2x, 4x, 8x 超采样并防内存溢出）
      * @param {SVGElement} svgEl
      * @param {string} filename
      * @param {Object} project
@@ -489,14 +809,28 @@ window.OpenMapEditor.BundleExporter = (function () {
             if (typeof opt.onError === 'function') opt.onError(new Error('SVG 元素不存在'));
             return;
         }
-        var scale = Number(opt.scale) || 2; // 默认 2x 超采样 (Retina / 300DPI 级别清晰度)
+        var rawScale = Number(opt.scale) || 2; // 默认 2x (Retina)；支持 4x (300DPI 印刷)、8x (大幅海报)
         var prep = prepareCleanSvgClone(svgEl, project, opt);
         if (!prep) {
             if (typeof opt.onError === 'function') opt.onError(new Error('SVG 准备失败'));
             return;
         }
 
+        // 安全限制保护：防止 Canvas 超出浏览器最大纹理尺寸 (16384px) 或导致 OOM 崩溃
+        var MAX_CANVAS_SIDE = 16384;
+        var targetW = Math.round(prep.width * rawScale);
+        var targetH = Math.round(prep.height * rawScale);
+        var scale = rawScale;
+        if (targetW > MAX_CANVAS_SIDE || targetH > MAX_CANVAS_SIDE) {
+            var clampRatio = Math.min(MAX_CANVAS_SIDE / targetW, MAX_CANVAS_SIDE / targetH);
+            scale = rawScale * clampRatio;
+            targetW = Math.round(prep.width * scale);
+            targetH = Math.round(prep.height * scale);
+            console.warn('[BundleExporter] Canvas 尺寸超出安全极限 ' + MAX_CANVAS_SIDE + 'px，已智能约束缩放比至 ' + scale.toFixed(2));
+        }
+
         var xml = new XMLSerializer().serializeToString(prep.clone);
+        xml = resolveCssVariables(xml, prep.palette);
         var blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
         var url = URL.createObjectURL(blob);
 
@@ -504,15 +838,15 @@ window.OpenMapEditor.BundleExporter = (function () {
         img.onload = function () {
             URL.revokeObjectURL(url);
             var canvas = document.createElement('canvas');
-            canvas.width = Math.round(prep.width * scale);
-            canvas.height = Math.round(prep.height * scale);
+            canvas.width = targetW;
+            canvas.height = targetH;
 
             var ctx = canvas.getContext('2d');
             if (ctx) {
                 try {
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0, targetW, targetH);
                     canvas.toBlob(function (pngBlob) {
                         if (pngBlob) {
                             download(filename || 'openmap-export.png', pngBlob, 'image/png');
@@ -541,6 +875,10 @@ window.OpenMapEditor.BundleExporter = (function () {
         validateData: validateData,
         buildZipBytes: buildZipBytes,
         download: download,
+        resolvePalette: resolvePalette,
+        resolveCssVariables: resolveCssVariables,
+        synthesizePureVectorLayers: synthesizePureVectorLayers,
+        compileStandalonePrintSvg: compileStandalonePrintSvg,
         prepareCleanSvgClone: prepareCleanSvgClone,
         exportSvgElement: exportSvgElement,
         exportPngElement: exportPngElement,

@@ -378,6 +378,80 @@ window.OpenMapEditor.GridLayer = (function () {
             var guideG = document.createElementNS(NS, 'g');
             guideG.setAttribute('class', 'smart-guide-item');
 
+            if (g.type === 'diagonal') {
+                var dLine = document.createElementNS(NS, 'line');
+                dLine.setAttribute('stroke', '#06b6d4');
+                dLine.setAttribute('stroke-width', '1.3');
+                dLine.setAttribute('stroke-dasharray', '4,3');
+                dLine.setAttribute('opacity', '0.92');
+                dLine.setAttribute('x1', String(g.x1 || 0));
+                dLine.setAttribute('y1', String(g.y1 || 0));
+                dLine.setAttribute('x2', String(g.x2 || 0));
+                dLine.setAttribute('y2', String(g.y2 || 0));
+                guideG.appendChild(dLine);
+
+                var mx = ((g.x1 || 0) + (g.x2 || 0)) / 2;
+                var my = ((g.y1 || 0) + (g.y2 || 0)) / 2;
+                var dLabel = g.label || ((g.angle || 45) + '°');
+                var dRect = document.createElementNS(NS, 'rect');
+                dRect.setAttribute('x', String(mx - 14));
+                dRect.setAttribute('y', String(my - 18));
+                dRect.setAttribute('width', String(dLabel.length * 6.5 + 8));
+                dRect.setAttribute('height', '14');
+                dRect.setAttribute('rx', '3');
+                dRect.setAttribute('fill', '#06b6d4');
+                var dTxt = document.createElementNS(NS, 'text');
+                dTxt.setAttribute('x', String(mx - 10));
+                dTxt.setAttribute('y', String(my - 8));
+                dTxt.setAttribute('fill', '#ffffff');
+                dTxt.setAttribute('font-size', '9.5');
+                dTxt.setAttribute('font-family', 'var(--cgo-font-mono, monospace)');
+                dTxt.textContent = dLabel;
+                guideG.appendChild(dRect);
+                guideG.appendChild(dTxt);
+                el.appendChild(guideG);
+                return;
+            }
+
+            if (g.type === 'spacing' && g.pA && g.pB && g.pCenter) {
+                var ptsOrder = [g.pA, g.pB, g.pCenter].slice().sort(function (a, b) {
+                    return g.axis === 'x' ? (a.x - b.x) : (a.y - b.y);
+                });
+                [[ptsOrder[0], ptsOrder[1]], [ptsOrder[1], ptsOrder[2]]].forEach(function (pair) {
+                    var sLine = document.createElementNS(NS, 'line');
+                    sLine.setAttribute('stroke', '#8b5cf6');
+                    sLine.setAttribute('stroke-width', '1.2');
+                    sLine.setAttribute('stroke-dasharray', '2,2');
+                    sLine.setAttribute('x1', String(pair[0].x));
+                    sLine.setAttribute('y1', String(pair[0].y));
+                    sLine.setAttribute('x2', String(pair[1].x));
+                    sLine.setAttribute('y2', String(pair[1].y));
+                    guideG.appendChild(sLine);
+
+                    var smx = (pair[0].x + pair[1].x) / 2;
+                    var smy = (pair[0].y + pair[1].y) / 2;
+                    var sLabel = g.label || (g.dist + 'px');
+                    var sRect = document.createElementNS(NS, 'rect');
+                    sRect.setAttribute('x', String(smx - 16));
+                    sRect.setAttribute('y', String(smy - 17));
+                    sRect.setAttribute('width', String(sLabel.length * 6 + 8));
+                    sRect.setAttribute('height', '13');
+                    sRect.setAttribute('rx', '3');
+                    sRect.setAttribute('fill', '#8b5cf6');
+                    var sTxt = document.createElementNS(NS, 'text');
+                    sTxt.setAttribute('x', String(smx - 12));
+                    sTxt.setAttribute('y', String(smy - 7.5));
+                    sTxt.setAttribute('fill', '#ffffff');
+                    sTxt.setAttribute('font-size', '9');
+                    sTxt.setAttribute('font-family', 'var(--cgo-font-mono, monospace)');
+                    sTxt.textContent = sLabel;
+                    guideG.appendChild(sRect);
+                    guideG.appendChild(sTxt);
+                });
+                el.appendChild(guideG);
+                return;
+            }
+
             var line = document.createElementNS(NS, 'line');
             line.setAttribute('stroke', '#ec4899');
             line.setAttribute('stroke-width', '1.2');
