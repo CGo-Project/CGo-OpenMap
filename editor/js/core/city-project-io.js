@@ -647,6 +647,11 @@ window.CityProjectIO = (function () {
                 if (mId && mId[1]) {
                     byKey.set(mId[1], e);
                 }
+                const mFrom = e.raw.match(/["']?from["']?\s*:\s*["']([^"']+)["']/);
+                const mTo = e.raw.match(/["']?to["']?\s*:\s*["']([^"']+)["']/);
+                if (mFrom && mTo && mFrom[1] && mTo[1]) {
+                    byKey.set(mFrom[1] + '->' + mTo[1], e);
+                }
             }
         });
 
@@ -811,3 +816,7 @@ window.CityProjectIO = (function () {
 
 window.OpenMapEditor = window.OpenMapEditor || {};
 window.OpenMapEditor.CityProjectIO = window.CityProjectIO;
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = window.CityProjectIO;
+}

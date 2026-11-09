@@ -78,6 +78,11 @@
         modal.classList.remove('open');
     }
 
+    function clickElement(id) {
+        var el = typeof id === 'string' ? document.getElementById(id) : id;
+        if (el && typeof el.click === 'function') el.click();
+    }
+
     /**
      * 全局统一重绘
      */
@@ -217,6 +222,7 @@
         if (!selected || !app.project) return [];
         if (selected.type === 'multi') {
             var pts = [];
+            var nodeSet = new Set(selected.nodeIds || []);
             (selected.nodeIds || []).forEach(function (nid) {
                 var n = app.project.nodes[nid];
                 if (n) pts.push({ id: nid, x: n.x, y: n.y, type: 'node' });
@@ -224,6 +230,21 @@
             (selected.textIds || []).forEach(function (tid) {
                 var t = (app.project.texts || []).find(function (item) { return item.id === tid; });
                 if (t) pts.push({ id: tid, x: t.x, y: t.y, type: 'text' });
+            });
+            // 拓扑诱导子图：起点与终点均在选区内的线段，其全部无绑定中间折点随选区刚体变换
+            (app.project.segments || []).forEach(function (seg) {
+                var segPts = seg.points || [];
+                if (segPts.length >= 2) {
+                    var sNid = segPts[0].nid;
+                    var eNid = segPts[segPts.length - 1].nid;
+                    if (sNid && eNid && nodeSet.has(sNid) && nodeSet.has(eNid)) {
+                        for (var pi = 1; pi < segPts.length - 1; pi++) {
+                            if (!segPts[pi].nid) {
+                                pts.push({ segId: seg.id, pointIdx: pi, x: segPts[pi].x, y: segPts[pi].y, type: 'waypoint' });
+                            }
+                        }
+                    }
+                }
             });
             return pts;
         } else if (selected.type === 'water') {
@@ -261,6 +282,12 @@
                 } else if (pt.type === 'text') {
                     var t = (app.project.texts || []).find(function (item) { return item.id === pt.id; });
                     if (t) { t.x = pt.x; t.y = pt.y; }
+                } else if (pt.type === 'waypoint' && pt.segId) {
+                    var seg = (app.project.segments || []).find(function (s) { return s.id === pt.segId; });
+                    if (seg && seg.points && seg.points[pt.pointIdx]) {
+                        seg.points[pt.pointIdx].x = pt.x;
+                        seg.points[pt.pointIdx].y = pt.y;
+                    }
                 }
             });
             if (changedNodeIds.length > 0) {
@@ -2009,7 +2036,14 @@
     function handlePropertyChange(targetType, targetId, prop, value) {
         if (!app.project) return;
 
-        // 非数据改动的操作（聚焦视口 / 多选车站 / 委托给 deleteLineById）不在此处压撤销栈
+        // 非数据改动的操作（聚焦视口 / 多选车站 / 委托给 deleteLineById / 切换检视）不在此处压撤销栈
+        if (targetType === 'segment' && prop === 'open_line') {
+            app.selected = { type: 'line', id: value };
+            app.activeLineId = value;
+            renderAll();
+            return;
+        }
+
         if (targetType === 'line') {
             var linePre = (app.project.lines || []).find(function (l) { return l.id === targetId; });
             if (!linePre) return;
@@ -2540,10 +2574,10 @@
         } });
         items.push({ label: '粘贴', icon: 'copy', shortcut: 'Ctrl+V', disabled: !editorClipboard, onClick: function () { pasteClipboard(); } });
         items.push({ separator: true });
-        items.push({ label: '全图居中', icon: 'fullscn', shortcut: 'F', onClick: function () { document.getElementById('hudBtnFit')?.click(); } });
-        items.push({ label: (app.gridVisible ? '隐藏' : '显示') + '网格', icon: 'view-grid', shortcut: 'G', onClick: function () { document.getElementById('hudBtnGrid')?.click(); } });
+        items.push({ label: '全图居中', icon: 'fullscn', shortcut: 'F', onClick: function () { clickElement('hudBtnFit'); } });
+        items.push({ label: (app.gridVisible ? '隐藏' : '显示') + '网格', icon: 'view-grid', shortcut: 'G', onClick: function () { clickElement('hudBtnGrid'); } });
         items.push({ label: navMode === 'map' ? '切换到设计软件模式（左键框选）' : '切换到地图模式（左键拖动画布）', icon: navMode === 'map' ? 'fullscn' : 'touch', shortcut: 'M',
-            onClick: function () { document.getElementById('hudBtnNavMode')?.click(); } });
+            onClick: function () { clickElement('hudBtnNavMode'); } });
         return items.concat(common());
     }
 
@@ -3114,6 +3148,9 @@
                 var prev = window.OpenMapEditor.HistoryManager.undo(app.project);
                 if (prev) {
                     app.project = prev;
+                    if (window.OpenMapEditor.HistoryManager.sanitizeSelection) {
+                        app.selected = window.OpenMapEditor.HistoryManager.sanitizeSelection(app.selected, app.project);
+                    }
                     renderAll();
                 } else {
                     showToast('已回到最早状态，没有更早的步骤了', 'info');
@@ -3136,6 +3173,9 @@
                 var next = window.OpenMapEditor.HistoryManager.redo(app.project);
                 if (next) {
                     app.project = next;
+                    if (window.OpenMapEditor.HistoryManager.sanitizeSelection) {
+                        app.selected = window.OpenMapEditor.HistoryManager.sanitizeSelection(app.selected, app.project);
+                    }
                     renderAll();
                 } else {
                     showToast('已经在最新状态，没有可重做的步骤', 'info');
@@ -3241,9 +3281,13 @@
                 gridStep = window.OpenMapEditor.ViewportLayer.getSnapStep() || 0;
             }
 
-            var plan = A45.alignProject(app.project, { grid: gridStep });
+            var slope = (app.project && app.project.slope) || { m: 1, n: 1 };
+            var isStd45 = !slope || (slope.m === 1 && slope.n === 1);
+            var slopeName = isStd45 ? '45° / 90°' : (slope.m + ':' + slope.n + ' / 90°');
+
+            var plan = A45.alignProject(app.project, { grid: gridStep, slope: slope });
             if (!plan.stats.changed) {
-                showToast('所有走向与车站链都已经是 45°/90°，无需调整', 'info');
+                showToast('所有走向与车站链都已经是 ' + slopeName + '，无需调整', 'info');
                 return;
             }
 
@@ -3255,8 +3299,8 @@
                 parts.push('（另有 ' + plan.stats.skippedHandTuned + ' 条手工调过倒角半径的折线将跳过）');
             }
             var okAlign = await askConfirm({
-                title: '整份工程对齐到 45° / 90°？',
-                message: parts.join('，') + '到 45°/90° 方向。',
+                title: '整份工程对齐到 ' + slopeName + '？',
+                message: parts.join('，') + '到 ' + slopeName + ' 方向。',
                 details: ['最大位移 ' + plan.stats.maxShift + ' px' +
                     (gridStep ? '（已同时对网格步长 ' + gridStep + ' px 取整）' : '')],
                 note: '可用 Ctrl+Z 撤销。',
@@ -3283,12 +3327,26 @@
             });
 
             renderAll();
-            showToast('已对齐到 45°/90°：' + plan.stats.movedPoints + ' 个折点、' +
+            showToast('已对齐到 ' + slopeName + '：' + plan.stats.movedPoints + ' 个折点、' +
                 plan.stats.movedStations + ' 座车站（Ctrl+Z 可撤销）', 'success');
         }
 
         var align45Btn = document.getElementById('btnAlign45');
         if (align45Btn) align45Btn.addEventListener('click', alignAllTo45);
+
+        var btnApplyParallel = document.getElementById('btnApplyParallelCorridor');
+        if (btnApplyParallel) {
+            btnApplyParallel.addEventListener('click', function () {
+                var router = window.OpenMapEditor && window.OpenMapEditor.ParallelCorridorRouter;
+                if (!router || !app.project) return;
+                window.OpenMapEditor.HistoryManager.runInTransaction('应用平行走线与胶囊换乘', function () {
+                    var count = router.applyParallelOffsetsToProject(app.project, { spacing: 5.4 });
+                    var pillCount = router.autoUpgradeCorridorTransferGlyphs(app.project);
+                    renderAll();
+                    showToast('已完成 ' + count + ' 处共线段平行走线重构' + (pillCount > 0 ? '，并自动升级 ' + pillCount + ' 处换乘胶囊' : '') + '！', 'success');
+                });
+            });
+        }
 
         // 网格开关：显示网格 = 显示 + 对齐；隐藏网格 = 不显示 + 不对齐。
         // 两者以前是独立开关，会出现「看得到网格却不对齐」「网格关着却在吸附」这种自相矛盾的状态。
@@ -3421,7 +3479,7 @@
         // 标题栏：新建画布（已在 bindModals 中处理，这里只打开弹窗）
         var btnHeaderNew = document.getElementById('btnHeaderNewCanvas');
         if (btnHeaderNew) btnHeaderNew.addEventListener('click', function () {
-            document.getElementById('modalNewCanvas')?.classList.add('open');
+            openModal('modalNewCanvas');
         });
 
         // 标题栏：打开工程 JSON 文件
@@ -3437,15 +3495,17 @@
                 reader.onload = function (ev) {
                     try {
                         var parsed = JSON.parse(ev.target.result);
+                        if (window.OpenMapEditor.RMPImporter && window.OpenMapEditor.RMPImporter.isRmpJson(parsed)) {
+                            parsed = window.OpenMapEditor.RMPImporter.convert(parsed, { name: file.name.replace(/\.json$/i, '') });
+                            showToast('检测到 Rail Map Painter 工程，已无损转换为 OpenMap 项目', 'info');
+                        }
                         if (!parsed || !parsed.nodes) throw new Error('不是有效的工程 JSON 文件');
-                        // 导入的 JSON 与当前城市无关：清掉维护上下文，避免写回错城市
                         if (window.OpenMapEditor.PipelineSurgical && window.OpenMapEditor.PipelineSurgical.resetContext) {
                             window.OpenMapEditor.PipelineSurgical.resetContext();
                         }
                         if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.cancelDraft) {
                             window.OpenMapEditor.PipelineDraw.cancelDraft();
                         }
-                        // 旧版 / 手改工程可能缺 idSeq 等字段：先规范化再接管，避免批量建站生成 node_NaN
                         app.project = window.OpenMapEditor.ProjectModel.normalize(parsed);
                         app.activeLineId = (parsed.lines && parsed.lines[0]) ? parsed.lines[0].id : null;
                         if (app.activeLineId) window.OpenMapEditor.PipelineDraw.setActiveLine(app.activeLineId);
@@ -3465,6 +3525,77 @@
             };
             input.click();
         });
+
+        // 加载与解析工程 JSON 数据（供功能区与拖拽复用）
+        function loadProjectJsonData(content, fileName) {
+            try {
+                var parsed = JSON.parse(content);
+                if (window.OpenMapEditor.RMPImporter && window.OpenMapEditor.RMPImporter.isRmpJson(parsed)) {
+                    parsed = window.OpenMapEditor.RMPImporter.convert(parsed, { name: (fileName || 'rmp-project').replace(/\.json$/i, '') });
+                    showToast('检测到 Rail Map Painter 工程，已无损转换为 OpenMap 项目', 'info');
+                }
+                if (!parsed || !parsed.nodes) throw new Error('不是有效的工程 JSON 文件');
+                if (window.OpenMapEditor.PipelineSurgical && window.OpenMapEditor.PipelineSurgical.resetContext) {
+                    window.OpenMapEditor.PipelineSurgical.resetContext();
+                }
+                if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.cancelDraft) {
+                    window.OpenMapEditor.PipelineDraw.cancelDraft();
+                }
+                app.project = window.OpenMapEditor.ProjectModel.normalize(parsed);
+                app.activeLineId = (parsed.lines && parsed.lines[0]) ? parsed.lines[0].id : null;
+                if (app.activeLineId) window.OpenMapEditor.PipelineDraw.setActiveLine(app.activeLineId);
+                document.getElementById('currentDocLabel').textContent = (fileName || 'project').replace('.json', '');
+                if (parsed.canvas) {
+                    window.OpenMapEditor.ViewportLayer.fitCanvas(parsed.canvas.width, parsed.canvas.height);
+                }
+                window.OpenMapEditor.HistoryManager.clear();
+                renderAll();
+                showToast('已导入工程: ' + (fileName || 'project.json'), 'success');
+            } catch (err) {
+                showToast('导入失败: ' + (err.message || err), 'error');
+            }
+        }
+
+        // 功能区：导入 Rail Map Painter (RMP) 工程
+        var btnIngestRmp = document.getElementById('btnIngestRmp');
+        var inputImportRmpFile = document.getElementById('inputImportRmpFile');
+        if (btnIngestRmp && inputImportRmpFile) {
+            btnIngestRmp.addEventListener('click', function () {
+                inputImportRmpFile.click();
+            });
+            inputImportRmpFile.addEventListener('change', function (e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function (ev) {
+                    loadProjectJsonData(ev.target.result, file.name);
+                    inputImportRmpFile.value = '';
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        // 画布与窗口全局文件拖拽导入（支持 .json 及 .rmp JSON）
+        var canvasDropEl = document.getElementById('workbenchViewport') || document.body;
+        if (canvasDropEl) {
+            canvasDropEl.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            });
+            canvasDropEl.addEventListener('drop', function (e) {
+                e.preventDefault();
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    var f = e.dataTransfer.files[0];
+                    if (f.name.endsWith('.json') || f.type === 'application/json') {
+                        var reader = new FileReader();
+                        reader.onload = function (ev) {
+                            loadProjectJsonData(ev.target.result, f.name);
+                        };
+                        reader.readAsText(f);
+                    }
+                }
+            });
+        }
 
         // 标题栏：关联本地城市目录 (File System Access API)
         var btnHeaderLinkDir = document.getElementById('btnHeaderLinkDir');
@@ -3536,7 +3667,7 @@
         if (btnVision) btnVision.addEventListener('click', function () {
             if (!window.DeepSeekVision || !window.DeepSeekVision.hasApiKey || !window.DeepSeekVision.hasApiKey()) {
                 showToast('请先在「模型设置」中配置 DeepSeek API Key');
-                document.getElementById('modalDeepseekSettings')?.classList.add('open');
+                openModal('modalDeepseekSettings');
                 return;
             }
             var input = document.createElement('input');
@@ -3567,18 +3698,7 @@
             input.click();
         });
 
-        // 摄入 Tab：DeepSeek 模型设置
-        var btnDsConfig = document.getElementById('btnDeepseekConfig');
-        if (btnDsConfig) btnDsConfig.addEventListener('click', function () {
-            // 预填现有配置到弹窗
-            var keyInput = document.getElementById('deepseekApiKey');
-            var baseInput = document.getElementById('deepseekApiBase');
-            var modelInput = document.getElementById('deepseekModel');
-            if (keyInput && window.DeepSeekVision) keyInput.value = window.DeepSeekVision.getApiKey ? window.DeepSeekVision.getApiKey() : '';
-            if (baseInput && window.DeepSeekVision) baseInput.value = window.DeepSeekVision.getApiBase ? window.DeepSeekVision.getApiBase() : '';
-            if (modelInput && window.DeepSeekVision) modelInput.value = window.DeepSeekVision.getModel ? window.DeepSeekVision.getModel() : '';
-            document.getElementById('modalDeepseekSettings')?.classList.add('open');
-        });
+        // 摄入 Tab：DeepSeek 模型设置由 deepseek-vision.js 的 openSettingsModal 统一托管处理
 
         // 工具化 Tab：拓扑净化
         var btnSanitize = document.getElementById('btnSanitizeTopology');
@@ -3883,7 +4003,7 @@
                     showToast('强制回写未写入任何文件：' + ((res && res.message) || '未知原因'), 'warning');
                     return;
                 }
-                document.getElementById('modalChangeset')?.classList.remove('open');
+                closeModal('modalChangeset');
                 showToast(res.message + '；别忘了把 sw.js 的 CACHE_NAME 递增版本号', 'success');
             } catch (err) {
                 var describe = (window.OpenMapEditor.PipelineSurgical &&
@@ -3926,7 +4046,7 @@
             try {
                 var res = await surgical.saveDirectToLocal(app.project);
                 showToast(res.message + '；请记得在发布前将 sw.js 的 CACHE_NAME 递增版本号', 'success');
-                document.getElementById('modalChangeset')?.classList.remove('open');
+                closeModal('modalChangeset');
             } catch (err) {
                 var describeDirect = (window.OpenMapEditor.PipelineSurgical &&
                     window.OpenMapEditor.PipelineSurgical.describeFileSystemError);
@@ -3961,16 +4081,16 @@
                 if (summaryEl && result) {
                     if (result.errors.length) {
                         summaryEl.style.color = '#f44';
-                        summaryEl.innerHTML = '<strong>⚠ ' + result.errors.length + ' 项错误：</strong><br>' +
+                        summaryEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="close" size="14"></cgo-icon> <strong>' + result.errors.length + ' 项错误：</strong></span><br>' +
                             result.errors.slice(0, 5).join('<br>') +
                             (result.errors.length > 5 ? '<br>…' : '');
                     } else if (result.warnings.length) {
                         summaryEl.style.color = '#fa3';
-                        summaryEl.innerHTML = '⚠ ' + result.warnings.length + ' 项警告：' +
+                        summaryEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="warning" size="14"></cgo-icon> <strong>' + result.warnings.length + ' 项警告：</strong></span> ' +
                             result.warnings.slice(0, 3).join(' | ');
                     } else {
                         summaryEl.style.color = '#4c4';
-                        summaryEl.innerHTML = '✔ 数据完整性校验通过，可安全打包';
+                        summaryEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="check-circle" size="14"></cgo-icon> <span>数据完整性校验通过，可安全打包</span></span>';
                     }
                 }
                 // 预填城市 ID
@@ -3981,7 +4101,7 @@
                     if (guessId) cityIdInput.value = guessId;
                 }
             }
-            document.getElementById('modalExportPackage')?.classList.add('open');
+            openModal('modalExportPackage');
         });
     }
 
@@ -4168,7 +4288,7 @@
             });
         }
 
-        document.getElementById('modalChangeset')?.classList.add('open');
+        openModal('modalChangeset');
     }
 
     /**
@@ -4446,9 +4566,25 @@
                 if (hasDragged) {
                     var nList = app.selected.nodeIds || [];
                     nList.forEach(function (nid) {
-                        if (initialMultiPositions[nid] && app.project.nodes[nid]) {
-                            app.project.nodes[nid].x = Math.round(initialMultiPositions[nid].x + dX);
-                            app.project.nodes[nid].y = Math.round(initialMultiPositions[nid].y + dY);
+                        var initPos = (initialMultiPositions.nodes && initialMultiPositions.nodes[nid]) || initialMultiPositions[nid];
+                        if (initPos && app.project.nodes[nid]) {
+                            app.project.nodes[nid].x = Math.round(initPos.x + dX);
+                            app.project.nodes[nid].y = Math.round(initPos.y + dY);
+                        }
+                    });
+                    var tList = app.selected.textIds || [];
+                    tList.forEach(function (tid) {
+                        var t = (app.project.texts || []).find(function (item) { return item.id === tid; });
+                        if (t && initialMultiPositions.texts && initialMultiPositions.texts[tid]) {
+                            t.x = Math.round(initialMultiPositions.texts[tid].x + dX);
+                            t.y = Math.round(initialMultiPositions.texts[tid].y + dY);
+                        }
+                    });
+                    (initialMultiPositions.waypoints || []).forEach(function (wp) {
+                        var seg = (app.project.segments || []).find(function (s) { return s.id === wp.segId; });
+                        if (seg && seg.points && seg.points[wp.pointIdx]) {
+                            seg.points[wp.pointIdx].x = Math.round(wp.x + dX);
+                            seg.points[wp.pointIdx].y = Math.round(wp.y + dY);
                         }
                     });
                     syncSegmentsForNodes(nList);
@@ -4464,6 +4600,26 @@
                     var snappedPt = app.snapEnabled
                         ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
                         : { x: world.x, y: world.y };
+
+                    // 智能辅助线吸附 (SmartGuides)
+                    if (window.OpenMapEditor.SmartGuides) {
+                        var scaleFactor = window.OpenMapEditor.ViewportLayer.getScale() || 1;
+                        var alignResult = window.OpenMapEditor.SmartGuides.computeAlignment(
+                            app.project,
+                            null,
+                            snappedPt,
+                            { threshold: 8 / scaleFactor }
+                        );
+                        if (alignResult) {
+                            snappedPt.x = alignResult.point.x;
+                            snappedPt.y = alignResult.point.y;
+                            if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.renderSmartGuides === 'function') {
+                                window.OpenMapEditor.GridLayer.renderSmartGuides(alignResult.guides);
+                            }
+                        } else if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.clearSmartGuides === 'function') {
+                            window.OpenMapEditor.GridLayer.clearSmartGuides();
+                        }
+                    }
 
                     if (!hasDragged) {
                         var dStartPt = dragStartPos || snappedPt;
@@ -4854,10 +5010,41 @@
                     hasDragged = false;
                     dragBaseline = JSON.stringify(app.project);
                     dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
-                    initialMultiPositions = {};
-                    app.selected.nodeIds.forEach(function (id) {
+                    initialMultiPositions = {
+                        nodes: {},
+                        texts: {},
+                        waypoints: []
+                    };
+                    var selNodeSet = new Set(app.selected.nodeIds || []);
+                    (app.selected.nodeIds || []).forEach(function (id) {
                         if (app.project.nodes[id]) {
-                            initialMultiPositions[id] = { x: app.project.nodes[id].x, y: app.project.nodes[id].y };
+                            initialMultiPositions.nodes[id] = { x: app.project.nodes[id].x, y: app.project.nodes[id].y };
+                        }
+                    });
+                    (app.selected.textIds || []).forEach(function (tid) {
+                        var t = (app.project.texts || []).find(function (item) { return item.id === tid; });
+                        if (t) {
+                            initialMultiPositions.texts[tid] = { x: t.x, y: t.y };
+                        }
+                    });
+                    // 收集内部线段的全部未绑定折点
+                    (app.project.segments || []).forEach(function (seg) {
+                        var segPts = seg.points || [];
+                        if (segPts.length >= 2) {
+                            var sN = segPts[0].nid;
+                            var eN = segPts[segPts.length - 1].nid;
+                            if (sN && eN && selNodeSet.has(sN) && selNodeSet.has(eN)) {
+                                for (var pi = 1; pi < segPts.length - 1; pi++) {
+                                    if (!segPts[pi].nid) {
+                                        initialMultiPositions.waypoints.push({
+                                            segId: seg.id,
+                                            pointIdx: pi,
+                                            x: segPts[pi].x,
+                                            y: segPts[pi].y
+                                        });
+                                    }
+                                }
+                            }
                         }
                     });
                     scheduleRender();
@@ -4994,10 +5181,40 @@
                             return t && t.x >= minX && t.x <= maxX && t.y >= minY && t.y <= maxY;
                         }).map(function (t) { return t.id; });
 
-                        if (foundNodes.length > 1 || (foundNodes.length + foundTexts.length > 1)) {
-                            app.selected = { type: 'multi', nodeIds: foundNodes, textIds: foundTexts };
-                        } else if (foundNodes.length === 1) {
-                            app.selected = { type: 'node', id: foundNodes[0] };
+                        var finalNodes = foundNodes;
+                        var finalTexts = foundTexts;
+                        if (e.shiftKey && app.selected) {
+                            var curNodes = [];
+                            var curTexts = [];
+                            if (app.selected.type === 'multi') {
+                                curNodes = app.selected.nodeIds || [];
+                                curTexts = app.selected.textIds || [];
+                            } else if (app.selected.type === 'node') {
+                                curNodes = [app.selected.id];
+                            } else if (app.selected.type === 'text') {
+                                curTexts = [app.selected.id];
+                            }
+                            finalNodes = Array.from(new Set(curNodes.concat(foundNodes)));
+                            finalTexts = Array.from(new Set(curTexts.concat(foundTexts)));
+                        } else if (e.altKey && app.selected) {
+                            var subNodes = new Set(foundNodes);
+                            var subTexts = new Set(foundTexts);
+                            if (app.selected.type === 'multi') {
+                                finalNodes = (app.selected.nodeIds || []).filter(function (id) { return !subNodes.has(id); });
+                                finalTexts = (app.selected.textIds || []).filter(function (id) { return !subTexts.has(id); });
+                            } else if (app.selected.type === 'node') {
+                                finalNodes = subNodes.has(app.selected.id) ? [] : [app.selected.id];
+                            } else if (app.selected.type === 'text') {
+                                finalTexts = subTexts.has(app.selected.id) ? [] : [app.selected.id];
+                            }
+                        }
+
+                        if (finalNodes.length > 1 || (finalNodes.length + finalTexts.length > 1)) {
+                            app.selected = { type: 'multi', nodeIds: finalNodes, textIds: finalTexts };
+                        } else if (finalNodes.length === 1 && finalTexts.length === 0) {
+                            app.selected = { type: 'node', id: finalNodes[0] };
+                        } else if (finalTexts.length === 1 && finalNodes.length === 0) {
+                            app.selected = { type: 'text', id: finalTexts[0] };
                         } else {
                             app.selected = null;
                         }
@@ -5071,6 +5288,9 @@
                 draggedSegId = null;
                 draggedPointIdx = null;
                 hasDragged = false;
+                if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.clearSmartGuides === 'function') {
+                    window.OpenMapEditor.GridLayer.clearSmartGuides();
+                }
                 return;
             }
 
@@ -5399,13 +5619,13 @@
             if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
                 e.preventDefault();
                 if (e.shiftKey) {
-                    document.getElementById('btnRedo')?.click();
+                    clickElement('btnRedo');
                 } else {
-                    document.getElementById('btnUndo')?.click();
+                    clickElement('btnUndo');
                 }
             } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') {
                 e.preventDefault();
-                document.getElementById('btnRedo')?.click();
+                clickElement('btnRedo');
             } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC') {
                 e.preventDefault();
                 copySelection();
@@ -5436,7 +5656,7 @@
                 handleSmartSave();
             } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyO') {
                 e.preventDefault();
-                document.getElementById('btnHeaderOpenFile')?.click();
+                clickElement('btnHeaderOpenFile');
             } else if ((e.ctrlKey || e.metaKey) && (e.code === 'BracketLeft' || e.key === '[')) {
                 e.preventDefault();
                 toggleNavDrawer();
@@ -5511,9 +5731,9 @@
                 } else if (e.code === 'KeyX') {
                     setTool('text');
                 } else if (e.code === 'KeyF') {
-                    document.getElementById('hudBtnFit')?.click();
+                    clickElement('hudBtnFit');
                 } else if (e.code === 'KeyG') {
-                    document.getElementById('hudBtnGrid')?.click();
+                    clickElement('hudBtnGrid');
                 } else if (e.code === 'KeyR') {
                     setRulerVisible(!app.rulerVisible);
                 }
@@ -5559,53 +5779,7 @@
             });
         }
 
-        // DeepSeek 配置：保存
-        var btnDsSave = document.getElementById('btnDeepseekSave');
-        if (btnDsSave) btnDsSave.addEventListener('click', function () {
-            var key = (document.getElementById('deepseekApiKey') || {}).value || '';
-            var base = (document.getElementById('deepseekApiBase') || {}).value || '';
-            var model = (document.getElementById('deepseekModel') || {}).value || '';
-            if (window.DeepSeekVision) {
-                if (window.DeepSeekVision.setApiKey) window.DeepSeekVision.setApiKey(key);
-                if (window.DeepSeekVision.setApiBase) window.DeepSeekVision.setApiBase(base);
-                if (window.DeepSeekVision.setModel) window.DeepSeekVision.setModel(model);
-            }
-            document.getElementById('modalDeepseekSettings')?.classList.remove('open');
-            showToast('DeepSeek 配置已保存', 'success');
-        });
-
-        // DeepSeek 配置：测试连接
-        var btnDsTest = document.getElementById('btnDeepseekTest');
-        if (btnDsTest) btnDsTest.addEventListener('click', async function () {
-            var statusEl = document.getElementById('deepseekStatusText');
-            if (statusEl) statusEl.textContent = '正在测试连接…';
-            try {
-                var key = (document.getElementById('deepseekApiKey') || {}).value || '';
-                var base = (document.getElementById('deepseekApiBase') || {}).value || 'https://api.deepseek.com';
-                var model = (document.getElementById('deepseekModel') || {}).value || 'deepseek-chat';
-
-                var res = await fetch(base.replace(/\/$/, '') + '/models', {
-                    headers: { 'Authorization': 'Bearer ' + key }
-                });
-                if (res.ok) {
-                    if (statusEl) { statusEl.textContent = '✔ 连接成功'; statusEl.style.color = '#4c4'; }
-                } else {
-                    if (statusEl) { statusEl.textContent = '✘ 连接失败 (HTTP ' + res.status + ')'; statusEl.style.color = '#f44'; }
-                }
-            } catch (err) {
-                if (statusEl) { statusEl.textContent = '✘ 连接异常: ' + (err.message || err); statusEl.style.color = '#f44'; }
-            }
-        });
-
-        // DeepSeek 配置：清除 Key
-        var btnDsClear = document.getElementById('btnDeepseekClear');
-        if (btnDsClear) btnDsClear.addEventListener('click', function () {
-            if (window.DeepSeekVision && window.DeepSeekVision.setApiKey) window.DeepSeekVision.setApiKey('');
-            var keyInput = document.getElementById('deepseekApiKey');
-            if (keyInput) keyInput.value = '';
-            var statusEl = document.getElementById('deepseekStatusText');
-            if (statusEl) { statusEl.textContent = '已清除本地保存的 API Key'; statusEl.style.color = '#fa3'; }
-        });
+        // DeepSeek 配置：保存、测试与清除由 deepseek-vision.js 的 initModalBindings 统一托管处理，避免双重绑定与覆盖 API Base
 
         // 快捷键速查面板触发
         var btnShortcuts = document.getElementById('btnHeaderShortcuts');
@@ -5667,7 +5841,7 @@
             window.OpenMapEditor.HistoryManager.clear();
 
             document.getElementById('currentDocLabel').textContent = '未命名工程 (' + w + '×' + h + ')';
-            document.getElementById('modalNewCanvas')?.classList.remove('open');
+            closeModal('modalNewCanvas');
             window.OpenMapEditor.ViewportLayer.fitCanvas(w, h);
             renderAll();
             showToast('已创建新画布');
@@ -5818,6 +5992,42 @@
             });
         }
 
+        var btnExportPng4x = document.getElementById('btnExportPng4x');
+        if (btnExportPng4x) {
+            btnExportPng4x.addEventListener('click', function () {
+                var svg = document.getElementById('editorSvg');
+                var fname = (app.project && app.project.name ? app.project.name + '-map-4x-print.png' : 'openmap-export-4x.png');
+                showToast('正在渲染 4x 印刷级超清 PNG (300DPI)...', 'info');
+                window.OpenMapEditor.BundleExporter.exportPngElement(svg, fname, app.project, {
+                    scale: 4,
+                    onSuccess: function () {
+                        showToast('已导出 4x 印刷级超清 PNG 图片 (300DPI)', 'success');
+                    },
+                    onError: function () {
+                        showToast('4x PNG 导出失败：Canvas 尺寸超限或内存不足', 'error');
+                    }
+                });
+            });
+        }
+
+        var btnExportPng8x = document.getElementById('btnExportPng8x');
+        if (btnExportPng8x) {
+            btnExportPng8x.addEventListener('click', function () {
+                var svg = document.getElementById('editorSvg');
+                var fname = (app.project && app.project.name ? app.project.name + '-map-8x-poster.png' : 'openmap-export-8x.png');
+                showToast('正在渲染 8x 超大画幅海报 PNG...', 'info');
+                window.OpenMapEditor.BundleExporter.exportPngElement(svg, fname, app.project, {
+                    scale: 8,
+                    onSuccess: function () {
+                        showToast('已导出 8x 超大画幅海报 PNG 图片', 'success');
+                    },
+                    onError: function () {
+                        showToast('8x PNG 导出失败：Canvas 尺寸超限或内存不足', 'error');
+                    }
+                });
+            });
+        }
+
         // 实际站间距弹窗
         var btnOpenMileage = document.getElementById('btnOpenMileageModal');
         if (btnOpenMileage) btnOpenMileage.addEventListener('click', function () {
@@ -5834,7 +6044,7 @@
                     if (textarea) textarea.value = app.project.lineDistances[firstLine.id].source || '';
                 }
             }
-            document.getElementById('modalMileage')?.classList.add('open');
+            openModal('modalMileage');
         });
 
         // 线路切换时更新站间距文本框
@@ -5871,7 +6081,7 @@
                 updatedAt: Date.now()
             };
 
-            document.getElementById('modalMileage')?.classList.remove('open');
+            closeModal('modalMileage');
             showToast('已保存线路「' + lineId + '」站间距 ' + parsed.count + ' 条', 'success');
         });
 
@@ -5912,7 +6122,7 @@
             if (companyEl) companyEl.value = '';
             if (loopEl) loopEl.checked = false;
             if (branchEl) branchEl.checked = false;
-            document.getElementById('modalNewLine')?.classList.add('open');
+            openModal('modalNewLine');
             setTimeout(function () { if (idEl) { idEl.focus(); idEl.select(); } }, 30);
         }
 
@@ -5960,7 +6170,7 @@
             // 选中它，右侧立即显示「线路属性」，可继续改名称/色号
             app.selected = { type: 'line', id: id };
 
-            document.getElementById('modalNewLine')?.classList.remove('open');
+            closeModal('modalNewLine');
             renderAll();
             showToast('已新增线路「' + line.name + '」（' + id + '），已设为当前绘制线路', 'success');
         }
@@ -6071,7 +6281,7 @@
                 renderBatchPreview();
                 var status = document.getElementById('batchParseStatus');
                 if (status) status.textContent = '';
-                document.getElementById('modalBatchStation')?.classList.add('open');
+                openModal('modalBatchStation');
             });
         }
 
@@ -6144,7 +6354,7 @@
                     { step: step, direction: dir, autoConnect: connect }
                 );
 
-                document.getElementById('modalBatchStation')?.classList.remove('open');
+                closeModal('modalBatchStation');
                 batchPreviewRows = [];
                 renderBatchPreview();
                 renderAll();
@@ -6191,7 +6401,7 @@
                 var blob = new Blob([zipBytes], { type: 'application/zip' });
                 window.OpenMapEditor.BundleExporter.download(cityId + '-openmap-bundle.zip', blob);
 
-                document.getElementById('modalExportPackage')?.classList.remove('open');
+                closeModal('modalExportPackage');
                 var report = (pack && pack.uncoveredReport) || [];
                 if (report.length) {
                     // 数据契约：站心（非换乘站）应落在路径上。偏离的这些需要微调站心或走向，

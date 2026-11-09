@@ -137,7 +137,8 @@ window.OpenMapEditor.AgentAPI = (function () {
         var svgEl = document.getElementById('editorSvg');
         if (!svgEl || !window.OpenMapEditor.BundleExporter) return '';
         var cleanSvg = window.OpenMapEditor.BundleExporter.prepareCleanSvgClone(svgEl, app.project);
-        return new XMLSerializer().serializeToString(cleanSvg);
+        var nodeToSerialize = (cleanSvg && cleanSvg.clone) ? cleanSvg.clone : cleanSvg;
+        return nodeToSerialize ? new XMLSerializer().serializeToString(nodeToSerialize) : '';
     }
 
     return {

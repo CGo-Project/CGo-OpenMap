@@ -20,13 +20,21 @@
     }
 
     function dedupePoints(points) {
+        if (!points || !points.length) return [];
         var out = [];
-        (points || []).forEach(function (p) {
+        for (var i = 0; i < points.length; i++) {
+            var p = points[i];
             var last = out[out.length - 1];
-            if (!last || Math.hypot(p.x - last.x, p.y - last.y) > 0.5) {
+            var isLast = (i === points.length - 1);
+            if (!last) {
                 out.push({ x: round2(p.x), y: round2(p.y) });
+            } else if (Math.hypot(p.x - last.x, p.y - last.y) > 0.5) {
+                out.push({ x: round2(p.x), y: round2(p.y) });
+            } else if (isLast) {
+                // 若末点离前一折点过近 (≤0.5)，替换前一折点为终点，确保终点坐标绝对精确等于输入目标点
+                out[out.length - 1] = { x: round2(p.x), y: round2(p.y) };
             }
-        });
+        }
         return out.length ? out : [{ x: round2(points[0].x), y: round2(points[0].y) }];
     }
 

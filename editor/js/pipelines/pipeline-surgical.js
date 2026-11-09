@@ -297,6 +297,130 @@
      * 站序驱动（只有 stationIds）的线路没有点阵，凭空生成 pathPoints 会把它写进源文件，
      * 并让走向改由点阵决定 —— 那等于悄悄改掉城市数据。
      */
+    /**
+     * 清理线段点阵坐标与保留合法注解
+     */
+    function cleanSegmentPoints(points) {
+        return (points || []).map(function (p) {
+            var pt = {
+                x: Math.round(Number(p.x) * 100) / 100,
+                y: Math.round(Number(p.y) * 100) / 100
+            };
+            if (p.nid) pt.nid = p.nid;
+            if (p.r !== undefined) pt.r = p.r;
+            return pt;
+        });
+    }
+
+    /**
+     * 将属于同一条线路分支的多段折线（例如多次落笔生成的各个 segment）
+     * 按端点拓扑拼接缝合成单条完整连续的走向折线点阵（解决 D-01 缺陷）
+     * @param {Array<{points:Array}>} segments
+     * @returns {Array<{x:number,y:number,nid?:string,r?:number}>}
+     */
+    function stitchSegmentsToPath(segments) {
+        var list = (segments || []).filter(function (s) {
+            return s && Array.isArray(s.points) && s.points.length >= 2;
+        });
+        if (!list.length) return [];
+        if (list.length === 1) return cleanSegmentPoints(list[0].points);
+
+        function ptKey(p) {
+            return (p && p.nid)
+                ? ('n:' + p.nid)
+                : ('p:' + (Math.round(Number(p.x) * 100) / 100) + ',' + (Math.round(Number(p.y) * 100) / 100));
+        }
+
+        var at = {};
+        list.forEach(function (seg, i) {
+            var h = ptKey(seg.points[0]);
+            var t = ptKey(seg.points[seg.points.length - 1]);
+            (at[h] = at[h] || []).push({ i: i, end: 0 });
+            (at[t] = at[t] || []).push({ i: i, end: 1 });
+        });
+
+        var used = {};
+        function findUnused(key) {
+            var cands = at[key] || [];
+            for (var i = 0; i < cands.length; i++) {
+                if (!used[cands[i].i]) return cands[i];
+            }
+            return null;
+        }
+
+        function headKey(link) {
+            var seg = list[link.i];
+            var p = link.reversed ? seg.points[seg.points.length - 1] : seg.points[0];
+            return ptKey(p);
+        }
+        function tailKey(link) {
+            var seg = list[link.i];
+            var p = link.reversed ? seg.points[0] : seg.points[seg.points.length - 1];
+            return ptKey(p);
+        }
+
+        var fullPath = [];
+
+        list.forEach(function (seg, seedIdx) {
+            if (used[seedIdx]) return;
+            used[seedIdx] = true;
+            var chain = [{ i: seedIdx, reversed: false }];
+
+            // 向后延伸拼接
+            var guard = 0;
+            while (guard++ < list.length + 2) {
+                var tail = tailKey(chain[chain.length - 1]);
+                var hit = findUnused(tail);
+                if (!hit) break;
+                used[hit.i] = true;
+                chain.push({ i: hit.i, reversed: hit.end === 1 });
+            }
+
+            // 向前延伸拼接
+            guard = 0;
+            while (guard++ < list.length + 2) {
+                var head = headKey(chain[0]);
+                var hit2 = findUnused(head);
+                if (!hit2) break;
+                used[hit2.i] = true;
+                chain.unshift({ i: hit2.i, reversed: hit2.end === 0 });
+            }
+
+            // 组装整条链点阵，相邻首尾接头去重但保留 nid 与 r
+            var chainPts = [];
+            chain.forEach(function (link, li) {
+                var s = list[link.i];
+                var pts = cleanSegmentPoints(link.reversed ? s.points.slice().reverse() : s.points);
+                pts.forEach(function (p, pi) {
+                    var k = ptKey(p);
+                    var prev = chainPts.length ? chainPts[chainPts.length - 1] : null;
+                    if (prev) {
+                        var prevK = ptKey(prev);
+                        if (prevK === k || (li > 0 && pi === 0 && Math.abs(p.x - prev.x) < 0.01 && Math.abs(p.y - prev.y) < 0.01)) {
+                            if (p.nid && !prev.nid) prev.nid = p.nid;
+                            if (p.r !== undefined && prev.r === undefined) prev.r = p.r;
+                            return;
+                        }
+                    }
+                    chainPts.push(p);
+                });
+            });
+
+            if (chainPts.length >= 2) {
+                fullPath = fullPath.concat(chainPts);
+            }
+        });
+
+        return fullPath;
+    }
+
+    /**
+     * 把编辑用的 segments 回代成线路的 pathPoints（走向点阵）。
+     *
+     * opts.onlyExistingPath = true 时：
+     * - 既有线路若原本没有 pathPoints（站序驱动，如合肥），不凭空生成点阵以免污染数据；
+     * - 新增线路（快照中不存在）允许正常生成 pathPoints（解决 D-02 缺陷）。
+     */
     function syncSegmentsToLines(currentProject, opts) {
         if (!currentProject || !currentProject.lines) return;
         var onlyExistingPath = !!(opts && opts.onlyExistingPath);
@@ -318,25 +442,30 @@
                 for (var si = 0; si < snapLines.length; si++) {
                     if (snapLines[si].id === line.id) { snapLine = snapLines[si]; break; }
                 }
-                if (!snapLine) return;
-                var hadPath = Object.keys(snapLine).some(function (k) {
-                    return k === 'pathPoints' || /^pathPoints-/.test(k);
-                });
-                if (!hadPath) return;   // 站序驱动的线路：不生成点阵
+                // 仅当原始快照中存在该线路且原本无点阵时，才跳过（新增线路 snapLine 为 null，应正常写回走向）
+                if (snapLine) {
+                    var hadPath = Object.keys(snapLine).some(function (k) {
+                        return k === 'pathPoints' || /^pathPoints-/.test(k);
+                    });
+                    if (!hadPath) return;
+                }
             }
 
+            // 按分支分组多段折线，并缝合成统一走向点阵
+            var segsByBranch = {};
             lineSegs.forEach(function (s) {
-                var cleanPts = (s.points || []).map(function (p) {
-                    var pt = {
-                        x: Math.round(Number(p.x) * 100) / 100,
-                        y: Math.round(Number(p.y) * 100) / 100
-                    };
-                    if (p.nid) pt.nid = p.nid;
-                    if (p.r !== undefined) pt.r = p.r;
-                    return pt;
-                });
-
                 var bKey = s.branchKey || 'main';
+                segsByBranch[bKey] = segsByBranch[bKey] || [];
+                segsByBranch[bKey].push(s);
+            });
+
+            Object.keys(segsByBranch).forEach(function (bKey) {
+                var branchSegs = segsByBranch[bKey];
+                // 优先取在运营段（在建 notOpen 线段不写入已运营 pathPoints）
+                var operationalSegs = branchSegs.filter(function (s) { return !s.notOpen; });
+                if (!operationalSegs.length) operationalSegs = branchSegs;
+                var cleanPts = stitchSegmentsToPath(operationalSegs);
+
                 if (bKey === 'pathPoints' || bKey.startsWith('pathPoints-')) {
                     line[bKey] = cleanPts;
                 } else if (bKey === 'main') {
@@ -420,11 +549,15 @@
                 if (curr.textScale) item.textScale = curr.textScale;
                 if (curr.marker) item.marker = curr.marker;
                 if (curr.halo) item.halo = curr.halo;
+                if (curr.code) item.code = curr.code;
+                if (curr.amenities) item.amenities = curr.amenities;
+                if (curr.siblings) item.siblings = curr.siblings;
+                if (curr.lab) item.lab = curr.lab;
                 dirty[nid] = item;
                 return;
             }
 
-            // 对比字段 (全面覆盖坐标、名称、对齐、偏移、hideLabel与textScale、marker、halo)
+            // 对比字段 (全面覆盖坐标、名称、对齐、偏移、hideLabel与textScale、marker、halo、code、amenities、siblings、lab)
             var currOffX = (curr.offset && curr.offset.x) || 0;
             var currOffY = (curr.offset && curr.offset.y) || 0;
             var origOffX = (orig.offset && orig.offset.x) || 0;
@@ -437,12 +570,17 @@
             // 零编辑也会整份重写源文件，把人工排版全冲掉。
             var markerChanged = (JSON.stringify(curr.marker || null) !== JSON.stringify(orig.marker || null));
             var haloChanged = (JSON.stringify(curr.halo || null) !== JSON.stringify(orig.halo || null));
+            var codeChanged = (String(curr.code || '') !== String(orig.code || ''));
+            var amenitiesChanged = (JSON.stringify(curr.amenities || null) !== JSON.stringify(orig.amenities || null));
+            var siblingsChanged = (JSON.stringify(curr.siblings || null) !== JSON.stringify(orig.siblings || null));
+            var labChanged = (JSON.stringify(curr.lab || null) !== JSON.stringify(orig.lab || null));
 
             var changed = (curr.x !== orig.x || curr.y !== orig.y ||
                 curr.cn !== orig.cn || curr.en !== orig.en ||
                 curr.align !== orig.align || curr.type !== orig.type ||
                 offsetChanged || hideLabelChanged || textScaleChanged ||
-                markerChanged || haloChanged);
+                markerChanged || haloChanged || codeChanged ||
+                amenitiesChanged || siblingsChanged || labChanged);
 
             if (changed) {
                 // 稀疏 patch：只带真正需要的字段，其余交给 patchEntries 以「源码原条目」为底合并。
@@ -478,10 +616,20 @@
                 else if (orig.marker) patch.marker = null;   // null = 从源码条目里删掉该字段
                 if (curr.halo) patch.halo = curr.halo;
                 else if (orig.halo) patch.halo = null;
+                if (curr.code !== undefined && curr.code !== '') patch.code = curr.code;
+                else if (orig.code) patch.code = null;
+                if (curr.amenities) patch.amenities = curr.amenities;
+                else if (orig.amenities) patch.amenities = null;
+                if (curr.siblings) patch.siblings = curr.siblings;
+                else if (orig.siblings) patch.siblings = null;
                 // 香港 / 深圳的站名按绝对坐标的墨迹框（lab）排版：车站挪动后排版框随之平移，
                 // 与画布上看到的一致（StationLayer.followStation 同一算法）
                 var labMoved = shiftLabWithStation(curr, orig);
                 if (labMoved) patch.lab = labMoved;
+                else if (labChanged) {
+                    if (curr.lab) patch.lab = curr.lab;
+                    else if (orig.lab) patch.lab = null;
+                }
                 dirty[nid] = patch;
             }
         });
@@ -558,13 +706,20 @@
                 return;
             }
 
-            // 比较属性：color, name, useStrictRounding, isLoop
+            // 比较属性：color, name, useStrictRounding, isLoop, strokeWidth, strokeDasharray, strokeLinecap, strokeLinejoin
             var changed = false;
+            var strokeWidthChanged = (curr.strokeWidth !== orig.strokeWidth);
+            var strokeDasharrayChanged = (String(curr.strokeDasharray || '') !== String(orig.strokeDasharray || ''));
+            var strokeLinecapChanged = (String(curr.strokeLinecap || '') !== String(orig.strokeLinecap || ''));
+            var strokeLinejoinChanged = (String(curr.strokeLinejoin || '') !== String(orig.strokeLinejoin || ''));
+
             if (String(curr.color || '').toLowerCase() !== String(orig.color || '').toLowerCase() ||
                 curr.name !== orig.name ||
                 String(curr.company || '') !== String(orig.company || '') ||
                 !!curr.useStrictRounding !== !!orig.useStrictRounding ||
-                !!curr.isLoop !== !!orig.isLoop) {
+                !!curr.isLoop !== !!orig.isLoop ||
+                strokeWidthChanged || strokeDasharrayChanged ||
+                strokeLinecapChanged || strokeLinejoinChanged) {
                 changed = true;
             }
 
@@ -628,6 +783,14 @@
                     if (curr.isLoop) patch.isLoop = true;
                     else delete patch.isLoop;
                 }
+                if (curr.strokeWidth !== undefined && curr.strokeWidth !== null) patch.strokeWidth = curr.strokeWidth;
+                else if (orig.strokeWidth !== undefined) patch.strokeWidth = null;
+                if (curr.strokeDasharray) patch.strokeDasharray = curr.strokeDasharray;
+                else if (orig.strokeDasharray) patch.strokeDasharray = null;
+                if (curr.strokeLinecap) patch.strokeLinecap = curr.strokeLinecap;
+                else if (orig.strokeLinecap) patch.strokeLinecap = null;
+                if (curr.strokeLinejoin) patch.strokeLinejoin = curr.strokeLinejoin;
+                else if (orig.strokeLinejoin) patch.strokeLinejoin = null;
                 Object.keys(curr).forEach(function (k) {
                     if (k === 'stationIds' || /^stationIds-/.test(k)) patch[k] = curr[k];
                 });
@@ -778,14 +941,185 @@
     }
 
     /**
+     * 在建与规划未开通线路（data_notopen.js）的外科回写：
+     * 追踪 project.notOpenLines 相比原始快照的增、删、改。
+     */
+    function patchNotOpenSource(currentProject) {
+        var origList = (originalSnapshot && originalSnapshot.notOpenLines) || [];
+        var currList = (currentProject && currentProject.notOpenLines) || [];
+        var origSrc = rawSources['data_notopen.js'];
+
+        if (JSON.stringify(origList) === JSON.stringify(currList)) {
+            return { dirtyCount: 0, patchedSource: origSrc || '' };
+        }
+
+        var io = getCityProjectIO();
+        if (!origSrc) {
+            return {
+                dirtyCount: currList.length || 1,
+                patchedSource: '/**\n * CGo OpenMap - 在建与规划未开通线路走向数据\n */\nconst NOT_OPEN_LINES = ' +
+                    JSON.stringify(currList, null, 4) + ';\n'
+            };
+        }
+
+        var origById = {};
+        origList.forEach(function (it, i) { origById[it && it.id ? it.id : ('#' + i)] = it; });
+        var currIds = {};
+        var update = {}, append = [], dirty = 0;
+        currList.forEach(function (it, i) {
+            if (!it) return;
+            var key = it.id ? it.id : ('#' + i);
+            currIds[key] = true;
+            var o = origById[key];
+            if (!o) { append.push(it); dirty++; return; }
+            if (JSON.stringify(o) === JSON.stringify(it)) return;
+            var patch = {};
+            Object.keys(it).forEach(function (k) { if (JSON.stringify(it[k]) !== JSON.stringify(o[k])) patch[k] = it[k]; });
+            Object.keys(o).forEach(function (k) { if (!(k in it)) patch[k] = null; });
+            update[it.id || i] = patch;
+            dirty++;
+        });
+        var remove = [];
+        origList.forEach(function (it, i) {
+            var key = it && it.id ? it.id : ('#' + i);
+            if (!currIds[key]) { remove.push(it && it.id ? it.id : String(i)); dirty++; }
+        });
+
+        if (!dirty) return { dirtyCount: 0, patchedSource: origSrc };
+
+        var patched = io.patchEntries(origSrc, 'NOT_OPEN_LINES', {
+            update: update,
+            remove: remove,
+            append: append.map(function (it) { return { value: it }; })
+        });
+        return { dirtyCount: dirty, patchedSource: patched };
+    }
+
+    function cleanConnector(c) {
+        var out = { from: c.from, to: c.to };
+        if (c.offsetFrom) {
+            out.offsetFrom = { x: r2(c.offsetFrom.x || 0), y: r2(c.offsetFrom.y || 0) };
+        }
+        if (c.offsetTo) {
+            out.offsetTo = { x: r2(c.offsetTo.x || 0), y: r2(c.offsetTo.y || 0) };
+        }
+        return out;
+    }
+
+    function patchConnectorList(srcText, varName, origList, currList, io) {
+        if (JSON.stringify(origList) === JSON.stringify(currList)) {
+            return { dirty: 0, src: srcText };
+        }
+        var origByKey = {};
+        origList.forEach(function (c, i) {
+            var k = (c.from && c.to) ? (c.from + '->' + c.to) : ('#' + i);
+            origByKey[k] = c;
+        });
+        var currKeys = {};
+        var update = {}, append = [], dirty = 0;
+        currList.forEach(function (c, i) {
+            var k = (c.from && c.to) ? (c.from + '->' + c.to) : ('#' + i);
+            currKeys[k] = true;
+            var o = origByKey[k];
+            var clean = cleanConnector(c);
+            if (!o) {
+                append.push(clean);
+                dirty++;
+                return;
+            }
+            if (JSON.stringify(o) === JSON.stringify(c)) return;
+            update[k] = clean;
+            dirty++;
+        });
+        var remove = [];
+        origList.forEach(function (c, i) {
+            var k = (c.from && c.to) ? (c.from + '->' + c.to) : ('#' + i);
+            if (!currKeys[k]) {
+                remove.push(k);
+                dirty++;
+            }
+        });
+
+        if (!dirty) return { dirty: 0, src: srcText };
+
+        if (io.findDeclaration(srcText, varName) < 0) {
+            var addedSrc = srcText.trimEnd() + '\n\nconst ' + varName + ' = ' + JSON.stringify(currList.map(cleanConnector), null, 4) + ';\n';
+            return { dirty: dirty, src: addedSrc };
+        }
+
+        var patched = io.patchEntries(srcText, varName, {
+            update: update,
+            remove: remove,
+            append: append.map(function (it) { return { value: it }; })
+        });
+        return { dirty: dirty, src: patched };
+    }
+
+    /**
+     * 虚拟换乘连通虚线（data_virtual_transfers.js）的外科回写：
+     * 追踪 project.virtualConnectors 相比原始快照的增、删、改（区分免费与常规换乘连线）。
+     */
+    function patchVirtualTransfersSource(currentProject) {
+        var origFree = ((originalSnapshot && originalSnapshot.virtualConnectors) || []).filter(function (c) { return !!c.free; });
+        var origPaid = ((originalSnapshot && originalSnapshot.virtualConnectors) || []).filter(function (c) { return !c.free; });
+        var currFree = ((currentProject && currentProject.virtualConnectors) || []).filter(function (c) { return !!c.free; });
+        var currPaid = ((currentProject && currentProject.virtualConnectors) || []).filter(function (c) { return !c.free; });
+
+        var origSrc = rawSources['data_virtual_transfers.js'];
+        var io = getCityProjectIO();
+
+        if (JSON.stringify(origFree) === JSON.stringify(currFree) &&
+            JSON.stringify(origPaid) === JSON.stringify(currPaid)) {
+            return { dirtyCount: 0, patchedSource: origSrc || '' };
+        }
+
+        if (!origSrc) {
+            var allConns = (currentProject && currentProject.virtualConnectors) || [];
+            var resFree = currFree.map(cleanConnector);
+            var resPaid = currPaid.map(cleanConnector);
+            var generated = '/**\n * CGo OpenMap - 虚拟换乘与出站连通配置\n */\n\n' +
+                'const VIRTUAL_FREE_TRANSFER_MAP = {};\n' +
+                'const VIRTUAL_FREE_CONNECT_LINES = ' + JSON.stringify(resFree, null, 4) + ';\n\n' +
+                'const VIRTUAL_TRANSFER_MAP = {};\n' +
+                'const VIRTUAL_CONNECT_LINES = ' + JSON.stringify(resPaid, null, 4) + ';\n';
+            return {
+                dirtyCount: allConns.length || 1,
+                patchedSource: generated
+            };
+        }
+
+        var dirtyTotal = 0;
+        var currentSrc = origSrc;
+
+        var freeRes = patchConnectorList(currentSrc, 'VIRTUAL_FREE_CONNECT_LINES', origFree, currFree, io);
+        dirtyTotal += freeRes.dirty;
+        currentSrc = freeRes.src;
+
+        var paidRes = patchConnectorList(currentSrc, 'VIRTUAL_CONNECT_LINES', origPaid, currPaid, io);
+        dirtyTotal += paidRes.dirty;
+        currentSrc = paidRes.src;
+
+        return {
+            dirtyCount: dirtyTotal,
+            patchedSource: currentSrc
+        };
+    }
+
+    /**
      * 提取全文件改动集 (Changeset)
      */
     function computeChangeset(currentProject) {
         var stationsRes = patchStationsSource(currentProject);
         var linesRes = patchLinesSource(currentProject);
         var scatteredRes = patchScatteredSource(currentProject);
+        var notOpenRes = patchNotOpenSource(currentProject);
+        var virtualRes = patchVirtualTransfersSource(currentProject);
 
-        var hasChanges = (stationsRes.dirtyCount > 0 || linesRes.dirtyCount > 0 || scatteredRes.dirtyCount > 0);
+        var hasChanges = (stationsRes.dirtyCount > 0 ||
+            linesRes.dirtyCount > 0 ||
+            scatteredRes.dirtyCount > 0 ||
+            notOpenRes.dirtyCount > 0 ||
+            virtualRes.dirtyCount > 0);
         var files = [
             {
                 filename: 'data_stations.js',
@@ -804,6 +1138,18 @@
                 dirtyCount: scatteredRes.dirtyCount,
                 patchedSource: scatteredRes.patchedSource,
                 changed: scatteredRes.dirtyCount > 0
+            },
+            {
+                filename: 'data_notopen.js',
+                dirtyCount: notOpenRes.dirtyCount,
+                patchedSource: notOpenRes.patchedSource,
+                changed: notOpenRes.dirtyCount > 0
+            },
+            {
+                filename: 'data_virtual_transfers.js',
+                dirtyCount: virtualRes.dirtyCount,
+                patchedSource: virtualRes.patchedSource,
+                changed: virtualRes.dirtyCount > 0
             }
         ];
 
@@ -1078,6 +1424,8 @@
         computeDeletedLineIds: computeDeletedLineIds,
         patchLinesSource: patchLinesSource,
         patchScatteredSource: patchScatteredSource,
+        patchNotOpenSource: patchNotOpenSource,
+        patchVirtualTransfersSource: patchVirtualTransfersSource,
         computeChangeset: computeChangeset,
         collectWaterScattered: collectWaterScattered,
         linkLocalDirectory: linkLocalDirectory,

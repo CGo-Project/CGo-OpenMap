@@ -166,7 +166,7 @@ window.DeepSeekVision = (function () {
         // 1. 转码并打印体积 (保留高达 2800px 原图超清尺寸与 0.95 品质)
         const compressed = await compressImageToBase64(imageEl, 2800, 0.95);
         if (logger) {
-            logger.info(`底图高清转码就绪: 原始尺寸 ${compressed.originalWidth}×${compressed.originalHeight} ➔ 送审分辨率 ${compressed.width}×${compressed.height} | 数据包体积: 约 ${compressed.kbSize} KB`);
+            logger.info(`底图高清转码就绪: 原始尺寸 ${compressed.originalWidth}×${compressed.originalHeight} -> 送审分辨率 ${compressed.width}×${compressed.height} | 数据包体积: 约 ${compressed.kbSize} KB`);
             logger.step(2, 4, '向 DeepSeek 视觉模型发起解析请求', 'Connecting to Vision API');
         }
 
@@ -423,7 +423,7 @@ window.DeepSeekVision = (function () {
                                 reasoningTokens++;
                                 if (!hasLoggedReasoning && logger) {
                                     hasLoggedReasoning = true;
-                                    logger.info('🧠 视觉模型开始深度推理思考...');
+                                    logger.info('[推理] 视觉模型开始深度推理思考...');
                                 }
                             }
 
@@ -434,7 +434,7 @@ window.DeepSeekVision = (function () {
                                 contentTokens++;
                                 if (!hasLoggedGenerating && logger) {
                                     hasLoggedGenerating = true;
-                                    logger.info('⚡ 思考完毕，开始生成拓扑数据...');
+                                    logger.info('[生成] 思考完毕，开始生成拓扑数据...');
                                     if (options.onProgress) {
                                         options.onProgress({
                                             phase: 'generating',
@@ -571,7 +571,7 @@ window.DeepSeekVision = (function () {
                 if (logger) logger.error('JSON 自动修复失败，原始尾部内容:', rawContent.slice(-500));
                 throw new Error(`模型返回数据无法解析为 JSON，请重试。详情: ${e1.message}`);
             } else {
-                if (logger) logger.warn('⚠️ JSON 已通过自动修复成功恢复（部分末尾数据可能被截断）。');
+                if (logger) logger.warn('[警告] JSON 已通过自动修复成功恢复（部分末尾数据可能被截断）。');
             }
         }
 
@@ -652,13 +652,13 @@ window.DeepSeekVision = (function () {
 
         if (!key) {
             if (statusMsg) {
-                statusMsg.innerHTML = '<span style="color: #f85149;">⚠️ 请先输入 DeepSeek API Key (以 sk- 开头)</span>';
+                statusMsg.innerHTML = '<span style="color: #f85149; display: inline-flex; align-items: center; gap: 4px;"><cgo-icon name="warning" size="14"></cgo-icon> 请先输入 DeepSeek API Key (以 sk- 开头)</span>';
             }
             return;
         }
 
         if (statusMsg) {
-            statusMsg.innerHTML = '<span style="color: #58a6ff;">⏳ 正在测试连接 DeepSeek 官方服务器...</span>';
+            statusMsg.innerHTML = '<span style="color: #58a6ff; display: inline-flex; align-items: center; gap: 4px;"><cgo-icon name="time" size="14"></cgo-icon> 正在测试连接 DeepSeek 服务器...</span>';
         }
 
         try {
@@ -683,7 +683,7 @@ window.DeepSeekVision = (function () {
             if (res.ok) {
                 const data = await res.json();
                 if (statusMsg) {
-                    statusMsg.innerHTML = `<span style="color: #3fb950; font-weight: bold;">✅ 连接成功！DeepSeek 接口响应正常 (${model})</span>`;
+                    statusMsg.innerHTML = `<span style="color: #3fb950; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;"><cgo-icon name="check-circle" size="14"></cgo-icon> 连接成功！DeepSeek 接口响应正常 (${model})</span>`;
                 }
                 // 自动保存
                 setApiKey(key);
@@ -698,7 +698,10 @@ window.DeepSeekVision = (function () {
                 if (statusMsg) {
                     const span = document.createElement('span');
                     span.style.color = '#f85149';
-                    span.textContent = `❌ 连接失败 [HTTP ${res.status}]: ${err}`;
+                    span.style.display = 'inline-flex';
+                    span.style.alignItems = 'center';
+                    span.style.gap = '4px';
+                    span.innerHTML = `<cgo-icon name="close" size="14"></cgo-icon> <span>连接失败 [HTTP ${res.status}]: ${err}</span>`;
                     statusMsg.replaceChildren(span);
                 }
             }
@@ -706,7 +709,10 @@ window.DeepSeekVision = (function () {
             if (statusMsg) {
                 const span = document.createElement('span');
                 span.style.color = '#f85149';
-                span.textContent = `❌ 网络连接异常: ${e.message}`;
+                span.style.display = 'inline-flex';
+                span.style.alignItems = 'center';
+                span.style.gap = '4px';
+                span.innerHTML = `<cgo-icon name="close" size="14"></cgo-icon> <span>网络连接异常: ${e.message}</span>`;
                 statusMsg.replaceChildren(span);
             }
         }

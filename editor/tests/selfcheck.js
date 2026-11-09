@@ -2840,6 +2840,226 @@ section('线上编辑器：不提供在线城市库，已有城市只能从本�
     const appSrc2 = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
     check(/isOnlineEditor\(\)/.test(appSrc2) && /blocked-online/.test(appSrc2) && /loadCityFromDirectory/.test(appSrc2),
         'editor-app.js 线上隐藏服务器城市库、拦截 ?city=，并从本地目录载入');
+
+    // ============================================================================
+    // 三十一、编辑器超越标准与五大核心体系升级 (EDITOR_SURPASS_PLAN)
+    // ============================================================================
+    console.log('\n══ 编辑器超越升级核心算法与导入导出自检 (Surpass Plan) ══');
+    global.window = global.window || {};
+
+    // 1. RMP Native Importer
+    require(path.join(ROOT, 'editor/js/tools/rmp-importer.js'));
+    const RMP = global.window.OpenMapEditor.RMPImporter;
+    check(typeof RMP.isRmpJson === 'function' && typeof RMP.convert === 'function',
+        'RMPImporter: 模块完整导出 isRmpJson 与 convert 接口');
+    check(RMP.isRmpJson({ graph: { nodes: [], edges: [] } }),
+        'RMPImporter: 正确嗅探 Graphology 格式 RMP JSON');
+    check(RMP.isRmpJson({ rmpVersion: 1, stations: [] }),
+        'RMPImporter: 正确嗅探结构化 RMP 格式 JSON');
+    check(!RMP.isRmpJson({ nodes: {}, lines: [] }),
+        'RMPImporter: 准确排除常规 CGo 工程，不误判');
+    check(RMP.mapRmpAlign('left', 'top') === 'top-left' && RMP.mapRmpAlign('right', 'bottom') === 'bottom-right',
+        'RMPImporter: 8 方向对齐准确映射');
+
+    const sampleRmp = {
+        graph: {
+            nodes: [
+                { key: 'st1', attributes: { x: -50, y: 100, name: '人民广场', name_en: 'People Square', style: 'interchange' } },
+                { key: 'st2', attributes: { x: 50, y: 200, name: '陆家嘴', name_en: 'Lujiazui', style: 'standard' } }
+            ],
+            edges: [
+                { source: 'st1', target: 'st2', attributes: { line: 'sh2', color: ['shanghai', 'sh2', '#97D700'], routing: 'diagonal' } }
+            ]
+        }
+    };
+    const cgoProj = RMP.convert(sampleRmp, { name: 'Shanghai Demo' });
+    check(cgoProj && cgoProj.nodes && cgoProj.nodes.st1 && cgoProj.nodes.st2,
+        'RMPImporter: 车站节点无损转换为 CGo nodes 结构');
+    check(cgoProj.nodes.st1.x >= 0 && cgoProj.nodes.st1.y >= 0,
+        'RMPImporter: 自动校正负坐标，原点安全归一');
+    check(cgoProj.lines && cgoProj.lines.length >= 1 && cgoProj.lines[0].color === '#97D700',
+        'RMPImporter: 线路提取并保留官方标志色 (#97D700)');
+    check(cgoProj.segments && cgoProj.segments.length >= 1,
+        'RMPImporter: 拓扑边正确转为 CGo 走向线段');
+
+    // 2. HistoryManager 显式事务与选择清理
+    require(path.join(ROOT, 'editor/js/core/history-manager.js'));
+    const HM = global.window.OpenMapEditor.HistoryManager;
+    HM.clear();
+    check(!HM.inTransaction(), 'HistoryManager: 初始不在事务状态');
+    HM.beginTransaction('批量平移');
+    check(HM.inTransaction(), 'HistoryManager: 显式开启事务生效');
+    HM.pushSnapshot({ nodes: { n1: { x: 10, y: 10 } } });
+    HM.pushSnapshot({ nodes: { n1: { x: 20, y: 20 } } });
+    HM.pushSnapshot({ nodes: { n1: { x: 30, y: 30 } } });
+    HM.commitTransaction();
+    check(!HM.inTransaction() && HM.canUndo(), 'HistoryManager: 提交事务后栈内压入合并记录');
+    check(HM.getHistoryList().items.filter(i => i.type === 'undo').length === 1,
+        'HistoryManager: 事务内多次修改合并为单一原子撤销步');
+
+    // runInTransaction 自动捕获与回滚
+    HM.clear();
+    let threw = false;
+    try {
+        HM.runInTransaction('异常操作', () => {
+            HM.pushSnapshot({ a: 1 });
+            throw new Error('boom');
+        });
+    } catch (e) { threw = true; }
+    check(threw && !HM.inTransaction() && !HM.canUndo(),
+        'HistoryManager: runInTransaction 异常时安全回滚且清除脏状态');
+
+    // sanitizeSelection 健壮性
+    const ghostSel = HM.sanitizeSelection({ type: 'node', id: 'deleted_node' }, { nodes: {} });
+    check(ghostSel === null, 'HistoryManager: 撤销后孤儿选中节点被安全置空，消除崩溃');
+    const multiSel = HM.sanitizeSelection({ type: 'multi', nodeIds: ['alive', 'dead'], textIds: [] }, { nodes: { alive: { x: 0, y: 0 } } });
+    check(multiSel && multiSel.type === 'node' && multiSel.id === 'alive',
+        'HistoryManager: 多选中剩余单元素自动平滑降级为单选');
+
+    // 3. SmartGuides 45/135度对角吸附与等距检测
+    new Function(fs.readFileSync(path.join(ROOT, 'editor/js/algorithms/smart-guides.js'), 'utf8'))();
+    const SG = global.window.OpenMapEditor.SmartGuides;
+    const diag = SG.computeDiagonalAlignment({ x: 99, y: 101 }, [{ id: 'ref', x: 0, y: 0 }], 8);
+    check(diag && diag.guide && diag.guide.label === '45°',
+        'SmartGuides: 精准识别 45° 轨交特征斜角对齐');
+    const diag135 = SG.computeDiagonalAlignment({ x: 101, y: -99 }, [{ id: 'ref', x: 0, y: 0 }], 8);
+    check(diag135 && diag135.guide && diag135.guide.label === '135°',
+        'SmartGuides: 精准识别 135° 轨交特征斜角对齐');
+
+    // 4. ParallelCorridorRouter 逆向法向修正与胶囊换乘升级
+    require(path.join(ROOT, 'editor/js/algorithms/parallel-corridor.js'));
+    const PCR = global.window.OpenMapEditor.ParallelCorridorRouter;
+    const pillH = PCR.suggestTransferPillType([{ x: 0, y: 0 }, { x: 0, y: 100 }]);
+    check(pillH === 'tsf_pill_h', 'ParallelCorridorRouter: 垂直走线推荐水平跨轨胶囊 (tsf_pill_h)');
+    const pillV = PCR.suggestTransferPillType([{ x: 0, y: 0 }, { x: 100, y: 0 }]);
+    check(pillV === 'tsf_pill_v', 'ParallelCorridorRouter: 水平走线推荐垂直跨轨胶囊 (tsf_pill_v)');
+    const pillD45 = PCR.suggestTransferPillType([{ x: 0, y: 100 }, { x: 100, y: 0 }]);
+    check(pillD45 === 'tsf_pill_d45', 'ParallelCorridorRouter: 135°斜向走线推荐45°跨轨胶囊 (tsf_pill_d45)');
+
+    // 5. BundleExporter 印刷级无损矢量生成与 CSS 变量固化
+    new Function(fs.readFileSync(path.join(ROOT, 'editor/js/tools/bundle-exporter.js'), 'utf8'))();
+    const BE = global.window.OpenMapEditor.BundleExporter;
+    const testSvgXml = '<svg><rect fill="var(--map-bg)" stroke="var(--station-stroke)"/><circle fill="var(--not-open-color)"/></svg>';
+    const resolvedLight = BE.resolveCssVariables(testSvgXml, 'light');
+    check(!resolvedLight.includes('var(--') && resolvedLight.includes('fill="#ffffff"') && resolvedLight.includes('stroke="#00263b"'),
+        'BundleExporter: resolveCssVariables 亮色模式固化全部 CSS 变量为标准 Hex');
+    const resolvedDark = BE.resolveCssVariables(testSvgXml, 'dark');
+    check(!resolvedDark.includes('var(--') && resolvedDark.includes('fill="#1a1a1a"') && resolvedDark.includes('stroke="#bdcbd2"'),
+        'BundleExporter: resolveCssVariables 暗色模式固化全部 CSS 变量');
+    const standalone = BE.compileStandalonePrintSvg({
+        canvas: { width: 1000, height: 800 },
+        nodes: { st1: { x: 100, y: 100, cn: '站名', en: 'Station' } },
+        lines: [{ id: 'L1', color: '#ff0000' }],
+        segments: [{ id: 's1', lineId: 'L1', points: [{ x: 50, y: 100 }, { x: 150, y: 100 }] }]
+    });
+    check(standalone.startsWith('<?xml') && !standalone.includes('<foreignObject>') && standalone.includes('paint-order="stroke fill"'),
+        'BundleExporter: compileStandalonePrintSvg 生成 100% 纯矢量无外部样式依赖独立 SVG');
+
+    // 6. 缺陷审计回归测试 (EDITOR_DEFECT_AUDIT D-01 ~ D-12)
+    // D-01 & D-02: 多段折线拓扑缝合与新增线路走向回写
+    const d01Project = {
+        lines: [{ id: 'L_NEW_M', name: '新线测试' }],
+        segments: [
+            { id: 'seg_1', lineId: 'L_NEW_M', branchKey: 'main', points: [{ x: 0, y: 0, nid: 'stA' }, { x: 100, y: 0 }] },
+            { id: 'seg_2', lineId: 'L_NEW_M', branchKey: 'main', points: [{ x: 100, y: 0 }, { x: 200, y: 0, nid: 'stB' }] }
+        ]
+    };
+    PipelineSurgical.syncSegmentsToLines(d01Project, { onlyExistingPath: true });
+    check(Array.isArray(d01Project.lines[0].pathPoints) && d01Project.lines[0].pathPoints.length === 3,
+        'D-01/D-02: 多段折线正确拓扑缝合为一条 pathPoints，且新增线路正常生成走向点阵');
+
+    // D-03: data_notopen.js 与 data_virtual_transfers.js 外科回写
+    const d03City = PipelineSurgical.init('d03city', {
+        'data_stations.js': 'const stationsData = { A: { x: 10, y: 20, type: "dot" } };',
+        'data_lines.js': 'const linesData = [];',
+        'data_notopen.js': 'const NOT_OPEN_LINES = [\n    { "points": [{ "x": 10, "y": 20 }, { "x": 30, "y": 40 }] }\n];',
+        'data_virtual_transfers.js': 'const VIRTUAL_FREE_TRANSFER_MAP = {};\nconst VIRTUAL_FREE_CONNECT_LINES = [];\nconst VIRTUAL_TRANSFER_MAP = {};\nconst VIRTUAL_CONNECT_LINES = [\n    {\n        from: "A",\n        to: "B",\n        offsetFrom: { x: 0, y: 0 },\n        offsetTo: { x: 0, y: 0 }\n    }\n];'
+    }, {
+        NOT_OPEN_LINES: [{ points: [{ x: 10, y: 20 }, { x: 30, y: 40 }] }],
+        VIRTUAL_TRANSFERS_BUNDLE: {
+            paidConns: [{ from: 'A', to: 'B', offsetFrom: { x: 0, y: 0 }, offsetTo: { x: 0, y: 0 } }],
+            freeConns: []
+        }
+    });
+    const d03CleanCs = PipelineSurgical.computeChangeset(d03City.project);
+    check(d03CleanCs.hasChanges === false, 'D-03: 初始状态下 notOpen 与 virtualConnectors 无脏变动');
+
+    d03City.project.notOpenLines.splice(0, 1);
+    const d03NotOpenCs = PipelineSurgical.computeChangeset(d03City.project);
+    const d03NotOpenFile = d03NotOpenCs.files.find(f => f.filename === 'data_notopen.js');
+    check(d03NotOpenCs.hasChanges === true && d03NotOpenFile.changed === true && d03NotOpenFile.dirtyCount === 1,
+        'D-03: 删除在建虚线被 computeChangeset 识别并生成 data_notopen.js 补丁');
+
+    d03City.project.virtualConnectors.splice(0, 1);
+    const d03VtCs = PipelineSurgical.computeChangeset(d03City.project);
+    const d03VtFile = d03VtCs.files.find(f => f.filename === 'data_virtual_transfers.js');
+    check(d03VtFile.changed === true && d03VtFile.dirtyCount === 1,
+        'D-03: 删除虚拟换乘连线被 computeChangeset 识别并生成 data_virtual_transfers.js 补丁');
+
+    // D-04: 属性白名单 (code, amenities, siblings, lab 与 line stroke 属性)
+    const d04City = PipelineSurgical.init('d04city', {
+        'data_stations.js': 'const stationsData = {\n    "A": { "x": 10, "y": 20, "type": "dot", "code": "AAA", "amenities": ["lift"] }\n};',
+        'data_lines.js': 'const linesData = [\n    { "id": "L1", "name": "1号线", "color": "#00263b", "strokeWidth": 4, "strokeDasharray": "4,4" }\n];'
+    }, {
+        stationsData: {
+            A: { x: 10, y: 20, type: 'dot', code: 'AAA', amenities: ['lift'] }
+        },
+        linesData: [
+            { id: 'L1', name: '1号线', color: '#00263b', strokeWidth: 4, strokeDasharray: '4,4' }
+        ]
+    });
+    d04City.project.nodes.A.code = 'BBB';
+    d04City.project.nodes.A.siblings = [{ cn: '副站名', en: 'SubStation', color: '#ff0000' }];
+    const d04StDirty = PipelineSurgical.computeDirtyStations(d04City.project);
+    check(d04StDirty.A && d04StDirty.A.code === 'BBB' && Array.isArray(d04StDirty.A.siblings),
+        'D-04: 车站 code 与 siblings 属性修改被识别并生成 dirty 条目');
+    const d04StPatch = PipelineSurgical.patchStationsSource(d04City.project);
+    check(d04StPatch.patchedSource.includes('"BBB"') && d04StPatch.patchedSource.includes('SubStation'),
+        'D-04: 车站 code 与 siblings 属性正确写入 data_stations.js 补丁');
+
+    d04City.project.lines[0].strokeWidth = 6;
+    d04City.project.lines[0].strokeDasharray = '8,8';
+    d04City.project.lines[0].strokeLinecap = 'round';
+    const d04LnDirty = PipelineSurgical.computeDirtyLines(d04City.project);
+    check(d04LnDirty.L1 && d04LnDirty.L1.strokeWidth === 6 && d04LnDirty.L1.strokeLinecap === 'round',
+        'D-04: 线路 strokeWidth 与 strokeLinecap 修改被识别并生成 dirty 条目');
+    const d04LnPatch = PipelineSurgical.patchLinesSource(d04City.project);
+    check(d04LnPatch.patchedSource.includes('6') && d04LnPatch.patchedSource.includes('"round"'),
+        'D-04: 线路 stroke 属性正确写入 data_lines.js 补丁');
+
+    // D-05: 消除重复 deepseekApiBase 绑定
+    const editorAppSrc = fs.readFileSync(path.join(ROOT, 'editor/js/editor-app.js'), 'utf8');
+    check(!editorAppSrc.includes("document.getElementById('deepseekApiBase')"),
+        'D-05: editor-app.js 中无多余的 deepseekApiBase 事件监听器');
+
+    // D-06: open_line 不应压入脏撤销快照
+    check(editorAppSrc.includes("if (targetType === 'segment' && prop === 'open_line')"),
+        'D-06: segment 属性面板 open_line 切换不触发压栈脏快照');
+
+    // D-07: SegmentRouter 端点漂移防退化
+    const SegmentRouterMod = require(path.join(ROOT, 'editor/js/algorithms/segment-router.js'));
+    const d07Pts = [{ x: 0, y: 0 }, { x: 100, y: 100 }, { x: 100.49, y: 100.48 }];
+    const d07Deduped = SegmentRouterMod.dedupePoints(d07Pts);
+    const d07Last = d07Deduped[d07Deduped.length - 1];
+    check(d07Last.x === 100.49 && d07Last.y === 100.48,
+        'D-07: SegmentRouter.dedupePoints 确保终点坐标绝对保留零漂移');
+
+    // D-08: AgentAPI 导出 SVG 不报错
+    require(path.join(ROOT, 'editor/js/tools/agent-api.js'));
+    const AgentAPIMod = global.window.OpenMapEditor.AgentAPI;
+    check(typeof AgentAPIMod.renderSvgString === 'function',
+        'D-08: AgentAPI.renderSvgString 接口就绪');
+
+    // D-09: 角度约束支持非45度斜率
+    const Align45Mod = require(path.join(ROOT, 'editor/js/algorithms/align-45.js'));
+    const d09Res = Align45Mod.alignChain([{ x: 0, y: 0 }, { x: 100, y: 52 }], { slope: { m: 2, n: 1 } });
+    check(Math.abs(d09Res.points[1].y * 2 - d09Res.points[1].x) < 0.1,
+        'D-09: Align45.alignChain 支持 2:1 斜率约束');
+
+    // D-12: 界面文本禁用 Emoji，使用 CGoUI 矢量组件
+    const deepseekSrc = fs.readFileSync(path.join(ROOT, 'editor/js/tools/deepseek-vision.js'), 'utf8');
+    check(!/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u.test(deepseekSrc),
+        'D-12: deepseek-vision.js 中已清理所有原生 Emoji，遵循 CGoUI 规范');
 })().then(finish, err => { failed++; console.log('  ✗ 本地目录载入自检异常：' + (err && err.stack || err)); finish(); });
 
 function finish() {

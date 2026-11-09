@@ -13,6 +13,9 @@
  * 对齐后带 `nid` 的折点会同步移动对应车站，车站与折线不会脱开。
  * 只做几何，不碰任何城市私有字段。
  */
+if (typeof window === 'undefined') {
+    global.window = global.window || {};
+}
 window.OpenMapEditor = window.OpenMapEditor || {};
 
 window.OpenMapEditor.Align45 = (function () {
@@ -26,31 +29,64 @@ window.OpenMapEditor.Align45 = (function () {
     }
 
     /**
-     * 把「起点 → 目标点」约束到 45° 的整数倍方向。
+     * 把「起点 → 目标点」约束到 45° 或指定斜率比例 (m:n) 的整数倍方向。
      * 投影而非截断，所以拖动时长度仍然跟手。
      * @param {{x:number,y:number}} start
      * @param {{x:number,y:number}} point
-     * @param {number} [gridSize] >0 时把长度也量化到网格（轴段取 g 的倍数，斜段取 g·√2 的倍数）
+     * @param {number} [gridSize] >0 时把长度也量化到网格
+     * @param {{m:number,n:number}} [slope] 倾角斜率比例 (默认 1:1 即 45°)
      * @returns {{x:number,y:number}}
      */
-    function constrainTo45(start, point, gridSize) {
+    function constrainTo45(start, point, gridSize, slope) {
         if (!start || !point) return point;
         var dx = point.x - start.x;
         var dy = point.y - start.y;
         var len = Math.sqrt(dx * dx + dy * dy);
         if (!len) return { x: point.x, y: point.y };
 
-        var ang = Math.round(Math.atan2(dy, dx) / STEP) * STEP;
-        var ux = Math.cos(ang), uy = Math.sin(ang);
-        var proj = dx * ux + dy * uy;
-        if (proj < 0) proj = 0;
+        var s = slope || { m: 1, n: 1 };
+        var isStd45 = (!s || (s.m === 1 && s.n === 1));
 
+        var ux, uy, proj;
         var g = Number(gridSize) || 0;
-        if (g > 0) {
-            var axisAligned = Math.abs(ux) < 1e-6 || Math.abs(uy) < 1e-6;
-            proj = axisAligned
-                ? Math.round(proj / g) * g
-                : Math.round(proj / (g * Math.SQRT2)) * g * Math.SQRT2;
+
+        if (isStd45) {
+            var ang = Math.round(Math.atan2(dy, dx) / STEP) * STEP;
+            ux = Math.cos(ang);
+            uy = Math.sin(ang);
+            proj = dx * ux + dy * uy;
+            if (proj < 0) proj = 0;
+
+            if (g > 0) {
+                var axisAligned = Math.abs(ux) < 1e-6 || Math.abs(uy) < 1e-6;
+                proj = axisAligned
+                    ? Math.round(proj / g) * g
+                    : Math.round(proj / (g * Math.SQRT2)) * g * Math.SQRT2;
+            }
+        } else {
+            var cands = [
+                { A: 1, B: 0 }, { A: -1, B: 0 }, { A: 0, B: 1 }, { A: 0, B: -1 },
+                { A: s.m, B: s.n }, { A: -s.m, B: s.n }, { A: s.m, B: -s.n }, { A: -s.m, B: -s.n },
+                { A: s.n, B: s.m }, { A: -s.n, B: s.m }, { A: s.n, B: -s.m }, { A: -s.n, B: -s.m }
+            ];
+            var best = cands[0], bestCos = -2;
+            for (var ci = 0; ci < cands.length; ci++) {
+                var c = cands[ci], cLen = Math.hypot(c.A, c.B) || 1;
+                var cos = (dx * c.A + dy * c.B) / (len * cLen);
+                if (cos > bestCos) { bestCos = cos; best = c; }
+            }
+            var rayStep = Math.hypot(best.A, best.B) || 1;
+            ux = best.A / rayStep;
+            uy = best.B / rayStep;
+            proj = dx * ux + dy * uy;
+            if (proj < 0) proj = 0;
+
+            if (g > 0) {
+                var isAxis = Math.abs(ux) < 1e-6 || Math.abs(uy) < 1e-6;
+                proj = isAxis
+                    ? Math.round(proj / g) * g
+                    : Math.round(proj / (g * rayStep)) * (g * rayStep);
+            }
         }
 
         return {
@@ -60,9 +96,9 @@ window.OpenMapEditor.Align45 = (function () {
     }
 
     /**
-     * 沿一条折线逐段对齐到 45°/90°（首点固定）。
+     * 沿一条折线逐段对齐到 45°/90° 或斜率比例射线（首点固定）。
      * @param {Array<{x:number,y:number,nid?:string}>} points
-     * @param {{grid?:number}} [opts]
+     * @param {{grid?:number,slope?:{m:number,n:number}}} [opts]
      * @returns {{points:Array, moved:number, maxShift:number, changed:boolean}}
      */
     function alignChain(points, opts) {
@@ -84,22 +120,19 @@ window.OpenMapEditor.Align45 = (function () {
         var prev = { x: first.x, y: first.y };
         for (var i = 1; i < points.length; i++) {
             var src = points[i];
-            var aligned = constrainTo45(prev, { x: Number(src.x) || 0, y: Number(src.y) || 0 }, opts.grid);
+            var aligned = constrainTo45(prev, { x: Number(src.x) || 0, y: Number(src.y) || 0 }, opts.grid, opts.slope);
             var shift = Math.sqrt(Math.pow(aligned.x - (Number(src.x) || 0), 2) + Math.pow(aligned.y - (Number(src.y) || 0), 2));
             if (shift > EPS) moved++;
             if (shift > maxShift) maxShift = shift;
 
             var next = {};
             Object.keys(src).forEach(function (k) { next[k] = src[k]; });
-            // 已经在对角线上（偏差不足 0.01px）时保留原值，避免二次取整产生 0.01px 抖动，
-            // 这样重复执行"45/90 对齐"是严格幂等的。
             var srcX = Number(src.x) || 0;
             var srcY = Number(src.y) || 0;
             if (Math.abs(aligned.x - srcX) < 0.01 && Math.abs(aligned.y - srcY) < 0.01) {
                 next.x = r2(srcX);
                 next.y = r2(srcY);
-                if (shift > EPS) moved++;   // 仍在 0.01 以内，不计入移动
-                if (shift <= EPS && out.length) { /* 视为未变 */ }
+                if (shift > EPS) moved++;
             } else {
                 next.x = r2(aligned.x);
                 next.y = r2(aligned.y);
@@ -109,7 +142,12 @@ window.OpenMapEditor.Align45 = (function () {
             prev = { x: next.x, y: next.y };
         }
 
-        return { points: out, moved: moved, maxShift: r2(maxShift), changed: moved > 0 };
+        return {
+            points: out,
+            moved: moved,
+            maxShift: r2(maxShift),
+            changed: moved > 0
+        };
     }
 
     /**
@@ -148,6 +186,8 @@ window.OpenMapEditor.Align45 = (function () {
      */
     function alignProject(project, opts) {
         opts = opts || {};
+        var slope = opts.slope || (project && project.slope) || { m: 1, n: 1 };
+        opts.slope = slope;
         var grid = Number(opts.grid) || 0;
         var result = {
             segments: [],
@@ -237,7 +277,7 @@ window.OpenMapEditor.Align45 = (function () {
                 return nid;
             });
 
-            var res = alignChain(seg.points, { grid: grid });
+            var res = alignChain(seg.points, { grid: grid, slope: opts.slope });
             if (res.changed) {
                 result.segments.push({ id: seg.id, points: res.points });
                 result.stats.polylineCount++;
@@ -305,7 +345,7 @@ window.OpenMapEditor.Align45 = (function () {
                         continue;
                     }
 
-                    var aligned = constrainTo45(prev, { x: node.x, y: node.y }, grid);
+                    var aligned = constrainTo45(prev, { x: node.x, y: node.y }, grid, opts.slope);
                     moveStation(nid, aligned.x, aligned.y);
                     prev = { x: aligned.x, y: aligned.y };
                 }
@@ -315,7 +355,7 @@ window.OpenMapEditor.Align45 = (function () {
         /* 3. 在建 / 规划虚线的折点 */
         (project.notOpenLines || []).forEach(function (ln, idx) {
             if (!ln || !Array.isArray(ln.points) || ln.points.length < 2) return;
-            var res = alignChain(ln.points, { grid: grid });
+            var res = alignChain(ln.points, { grid: grid, slope: opts.slope });
             if (res.changed) {
                 result.notOpen.push({ index: idx, points: res.points });
                 result.stats.polylineCount++;
@@ -338,3 +378,7 @@ window.OpenMapEditor.Align45 = (function () {
 })();
 
 window.Align45 = window.OpenMapEditor.Align45;
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = window.OpenMapEditor.Align45;
+}
