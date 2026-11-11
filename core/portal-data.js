@@ -274,7 +274,7 @@
         'shenzhen': 359,
         'qingdao': 262,
         'nanjing': 259,
-        'suzhou': 236,
+        'suzhou': 278,
         'shenyang': 224,
         'hefei': 211,
         'changchun': 203,
