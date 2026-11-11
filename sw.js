@@ -808,7 +808,15 @@ async function precacheBatch(cache, assets) {
         await Promise.allSettled(batch.map(async (url) => {
             try {
                 const matched = await cache.match(url);
-                if (!matched) await cache.add(url);
+                if (!matched) {
+                    // 关键：cache.add() 会命中浏览器 HTTP 缓存，nginx 对 .svg/.js 设了长缓存，
+                    // 于是新 CACHE_NAME 里存进去的仍是旧文件 —— 表现就是"版本号跳了但页面没变"。
+                    // 显式 fetch(cache:'reload') 强制回源，再手工 cache.put。
+                    const resp = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
+                    if (resp && (resp.ok || resp.type === 'opaque')) {
+                        await cache.put(url, resp);
+                    }
+                }
             } catch (err) {
                 // 单项非核心资源失败只静默跳过，不阻断运行
             }
