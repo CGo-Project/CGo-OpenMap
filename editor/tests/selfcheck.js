@@ -3063,8 +3063,11 @@ section('线上编辑器：不提供在线城市库，已有城市只能从本�
 
     // ══ Ponytail 深度审计缺陷修复验证 ══
     // P-01: 折线控制点拖拽对齐吸附传参及 snapped 属性修复
-    check(editorAppSrc.includes('SmartGuides.computeAlignment(\n                            snappedPt,\n                            targets,\n                            8 / scaleFactor\n                        )') ||
-          editorAppSrc.includes('SmartGuides.computeAlignment(snappedPt, targets, 8 / scaleFactor)'),
+    // 注：下面按多行原文匹配，须先统一行尾——Windows 检出常把源码换成 CRLF，
+    // 直接 includes('\n…') 会假失败（此前一次 P-01 报警就是这个原因）。
+    const appSrcLF = editorAppSrc.replace(/\r\n/g, '\n');
+    check(appSrcLF.includes('SmartGuides.computeAlignment(\n                            snappedPt,\n                            targets,\n                            8 / scaleFactor\n                        )') ||
+          appSrcLF.includes('SmartGuides.computeAlignment(snappedPt, targets, 8 / scaleFactor)'),
         'P-01: 折线控制点拖拽调用 SmartGuides.computeAlignment 传参顺序正确 (snappedPt, targets, threshold)');
     check(editorAppSrc.includes('snappedPt.x = alignResult.snapped.x') && editorAppSrc.includes('snappedPt.y = alignResult.snapped.y'),
         'P-01: 折线控制点拖拽正确读取 alignResult.snapped 坐标');
