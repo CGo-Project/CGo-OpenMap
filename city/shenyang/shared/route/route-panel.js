@@ -1706,9 +1706,9 @@
                                 <b data-jump="${start}">${stationName(start)}</b><em>${action}</em>
                             </span>
                         </div>
-                        <div class="cgo-rt-leg-line" data-role="ride">
+                        <div class="cgo-rt-leg-line cgo-rt-ride-line" data-role="ride">
                             <span class="cgo-rt-line-name">${group.throughName || line?.name || ""}</span>
-                            <span>${directionHtml}</span>
+                            <span class="cgo-rt-toward">${directionHtml}</span>
                         </div>
                         <div class="cgo-rt-leg-line${middle.length ? " cgo-rt-expandable" : ""}" data-role="ride"${middle.length ? ` data-expand="${index}" title="查看途经车站"` : ""}>
                             ${middle.length ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}

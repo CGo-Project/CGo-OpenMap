@@ -19,7 +19,9 @@
  *       ownerLineId,   // 衔接站归属哪条线，缺省取 lineIds[0]
  *       name,          // 接续后的显示名，缺省沿用主条目原名
  *       keepBadges,    // true：被并入的线路仍以徽标形式保留（如支线标识）
- *       through        // true：贯通运行——同一列车直通，通过衔接站不记换乘
+ *       through,       // true：贯通运行——同一列车直通，通过衔接站不记换乘
+ *       toward         // 可选：贯通只走一侧时，声明换乘后要去的终点方向站 ID；
+ *                      //       规划内核只在「沿该方向能坐到此站」时才按同一列车处理
  *   }]
  *
  * 两类声明的分工
@@ -48,7 +50,8 @@
             ownerLineId: String(entry.ownerLineId || lineIds[0]),
             name: entry.name ? String(entry.name) : "",
             keepBadges: Boolean(entry.keepBadges),
-            through: Boolean(entry.through)
+            through: Boolean(entry.through),
+            toward: entry.toward ? String(entry.toward) : ""
         };
     }
 
@@ -72,7 +75,7 @@
         const pairs = [];
         list().filter((link) => link.through).forEach((link) => {
             link.lineIds.forEach((from) => link.lineIds.forEach((to) => {
-                if (from !== to) pairs.push({ at: link.at, from, to, name: link.name });
+                if (from !== to) pairs.push({ at: link.at, from, to, name: link.name, toward: link.toward });
             }));
         });
         return pairs;
