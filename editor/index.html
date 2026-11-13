@@ -52,12 +52,11 @@
         rel="stylesheet">
 
     <!-- 1. CGoUI 基础样式体系 (相对根目录引用) -->
-    <link rel="modulepreload" href="../core/cgo-ui.js?v=261114.022704">
-    <link rel="stylesheet" href="../css/cgo_clr.css?v=261114.022704">
-    <link rel="stylesheet" href="../css/cgo_element.css?v=261114.022704">
-    <link rel="stylesheet" href="../css/cgo_ui.css?v=261114.022704">
-    <link rel="stylesheet" href="../css/cgo_components.css?v=261114.022704">
-
+    <link rel="modulepreload" href="../core/cgo-ui.js?v=261114.023036">
+    <link rel="stylesheet" href="../css/cgo_clr.css?v=261114.023036">
+    <link rel="stylesheet" href="../css/cgo_element.css?v=261114.023036">
+    <link rel="stylesheet" href="../css/cgo_ui.css?v=261114.023036">
+    <link rel="stylesheet" href="../css/cgo_components.css?v=261114.023036">
 
     <!-- 2. OpenMap Editor 专属布局与 Ribbon 样式 -->
     <link rel="stylesheet" href="css/editor-layout.css">
@@ -222,7 +221,7 @@
                                 <span class="btn-text">吸管取色</span>
                             </button>
                             <button class="ribbon-btn-sm" id="btnNewLine"
-                                title="新增一条线路（ID / 名称 / 标志色 / 环线 / 分支）；创建后自动设为当前绘制线路">
+                                title="新增一条线路（ID / 名称 / 标志色 / 环线 / 多交路）；创建后自动设为当前绘制线路">
                                 <div class="ribbon-icon"><cgo-icon name="route" size="18"></cgo-icon></div>
                                 <span class="btn-text">新增线路</span>
                             </button>
@@ -739,7 +738,7 @@
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;">
                 <input type="checkbox" id="newLineHasBranch">
-                <span>分支线 (hasbranch，建 way1/way2 两组站序)</span>
+                <span>多交路线路 (hasbranch，先建交路1 / 交路2 两组站序，之后可继续「新增交路」)</span>
             </label>
         </div>
         <div class="dialog-buttons">
@@ -794,6 +793,10 @@
         <div class="form-row">
             <span class="form-label">目标线路:</span>
             <select class="form-select" id="batchTargetLine"></select>
+        </div>
+        <div class="form-row">
+            <span class="form-label">目标交路:</span>
+            <select class="form-select" id="batchTargetWay"></select>
         </div>
         <div class="form-row">
             <span class="form-label">连线:</span>
@@ -1102,11 +1105,11 @@
     </cgo-modal>
 
     <!-- 模块脚本加载链 -->
-    <script type="module" src="../core/cgo-ui.js?v=261114.022704"></script>
-    <script src="../core/path-geometry.js?v=261114.022704"></script>
-    <script src="../core/station-icons.js?v=261114.022704"></script>
-    <script src="../city/data.js?v=261114.022704"></script>
-
+    <script type="module" src="../core/cgo-ui.js?v=261114.023036"></script>
+    <script src="../core/line-routing.js?v=261114.023036"></script>
+    <script src="../core/path-geometry.js?v=261114.023036"></script>
+    <script src="../core/station-icons.js?v=261114.023036"></script>
+    <script src="../city/data.js?v=261114.023036"></script>
 
     <!-- 外部辅助库 (PDF.js 用于矢量提取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

@@ -298,37 +298,74 @@ window.CityProjectIO = (function () {
     //
     // 线路的站序有两种写法（见 PORTING.md）：
     //   · 普通线路：stationIds + distances
-    //   · 分支线路：hasbranch: true，配 stationIds-way1 / -way2…（及 distances-wayN）
-    // 折线点阵同理：pathPoints，或 pathPoints-main / -branch1 / -branch2…
+    //   · 多交路线路：hasbranch: true，配 stationIds-way1 … stationIds-way99（及 distances-wayN）
+    // 折线点阵同理：pathPoints，或 pathPoints-main / -branch1 … / -branchN
+    //（也可写成 { points, ways: ["way1","way3"] } 显式声明共用归属）
     //
-    // 北京 S2/S6/JX、上海 SH5/SH10/SH11、悉尼 T1/T2/T4/T8 都是分支线路；
+    // 北京 S2/S6/JX、上海 SH5/SH10/SH11、悉尼 T1/T2/T4/T8 都是多交路线路；
     // 合肥全网则只有 stationIds 而没有 distances。凡是遍历线路的代码都必须
     // 走这里的访问器，否则一碰到这些城市就会 `undefined.length` 崩掉。
 
-    /** 线路的全部站序分组，统一成 [{ idsKey, distKey, ids, distances }] */
+    /** 站序键 → 交路键（stationIds → way1，stationIds-branch3/-way3 → way3） */
+    function wayKeyOfGroupKey(idsKey) {
+        const m = /^stationIds-(.+)$/.exec(String(idsKey || ''));
+        if (!m) return 'way1';
+        const n = /(\d+)/.exec(m[1]);
+        return n ? ('way' + parseInt(n[1], 10)) : m[1];
+    }
+
+    /** 线路的全部站序分组，统一成 [{ idsKey, distKey, ids, distances, wayKey }] */
     function lineStationGroups(line) {
         const groups = [];
         if (!line || typeof line !== 'object') return groups;
         if (Array.isArray(line.stationIds)) {
             groups.push({
                 idsKey: 'stationIds', distKey: 'distances',
-                ids: line.stationIds, distances: line.distances
+                ids: line.stationIds, distances: line.distances, wayKey: 'way1'
             });
         }
         Object.keys(line).forEach(key => {
             const m = /^stationIds-(.+)$/.exec(key);
             if (!m || !Array.isArray(line[key])) return;
             const distKey = `distances-${m[1]}`;
-            groups.push({ idsKey: key, distKey, ids: line[key], distances: line[distKey] });
+            groups.push({
+                idsKey: key, distKey, ids: line[key],
+                distances: line[distKey], wayKey: wayKeyOfGroupKey(key)
+            });
         });
         return groups;
     }
 
     /**
-     * 线路的全部折线点阵（主线 + 各分支），统一成 [{ key, points }]。
+     * 新增交路应写入的槽位：已有 N 条交路时取第 N+1 条（way1 … way99）。
+     * 站序键与站距键一起给出；已满 99 条返回 null。
+     */
+    function nextWaySlot(line) {
+        const MAX_WAYS = 99;
+        let maxIndex = 0;
+        lineStationGroups(line).forEach(g => {
+            const m = /^way(\d+)$/.exec(g.wayKey || '');
+            if (m) maxIndex = Math.max(maxIndex, parseInt(m[1], 10));
+        });
+        const index = maxIndex + 1;
+        if (index > MAX_WAYS) return null;
+        return {
+            index,
+            wayKey: `way${index}`,
+            idsKey: `stationIds-way${index}`,
+            distKey: `distances-way${index}`
+        };
+    }
+
+    /**
+     * 线路的全部折线点阵（共用主干 + 各交路独有区段），统一成 [{ key, points, ways? }]。
      * points 是对原数组的**引用**，编辑模式下拖折点即直接改它。
      * 带上 key 是为了让调用方知道该往 line 的哪个字段写回（pathPoints /
      * pathPoints-main / pathPoints-branch1 …）。
+     *
+     * pathPoints-xxx 也允许写成 { points, ways: ["way1","way3"] } 显式声明共用归属，
+     * 这时一并带出 ways 并标记 declared —— 回写必须写回对象形式，不能退化成裸数组，
+     * 否则「这条区段只归哪几条交路」的声明会被静默丢掉。
      */
     function linePathGroups(line) {
         const out = [];
@@ -337,8 +374,18 @@ window.CityProjectIO = (function () {
             out.push({ key: 'pathPoints', points: line.pathPoints });
         }
         Object.keys(line).forEach(key => {
-            if (/^pathPoints-/.test(key) && Array.isArray(line[key]) && line[key].length >= 2) {
-                out.push({ key, points: line[key] });
+            if (!/^pathPoints-/.test(key)) return;
+            const v = line[key];
+            if (Array.isArray(v) && v.length >= 2) {
+                out.push({ key, points: v });
+                return;
+            }
+            if (v && !Array.isArray(v) && Array.isArray(v.points) && v.points.length >= 2) {
+                out.push({
+                    key, points: v.points,
+                    ways: Array.isArray(v.ways) ? v.ways : [],
+                    declared: true
+                });
             }
         });
         return out;
@@ -804,6 +851,8 @@ window.CityProjectIO = (function () {
         lineStationGroups,
         linePathGroups,
         lineAllStationIds,
+        nextWaySlot,
+        wayKeyOfGroupKey,
         // 源码级工具（同时供单元自检使用）
         findDeclaration,
         scanContainer,
