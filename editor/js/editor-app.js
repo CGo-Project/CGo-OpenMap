@@ -1489,17 +1489,21 @@
         } else if (app.selected.type === 'multi') {
             var nList = app.selected.nodeIds || [];
             var tList = app.selected.textIds || [];
-            // 批量入线路：分支线路逐个 way 列出，选哪个就写哪个站序
+            // 批量入线路：多交路线路逐条交路列出（交路1…交路N），选哪条就写哪条的站序
             var multiLineExtraHtml = '<div class="form-row"><span class="form-label">目标站序:</span>' +
                 '<select class="form-select" id="multiLineTarget" style="flex:1;">' +
                 ((app.project.lines || []).map(function (l) {
                     var name = l.name || l.id;
-                    if (!l.hasbranch) return '<option value="' + l.id + '">' + name + '</option>';
-                    var keys = Object.keys(l).filter(function (k) { return /^stationIds(-|$)/.test(k); });
-                    if (!keys.length) keys = ['stationIds'];
-                    return keys.map(function (k) {
-                        var suffix = (k === 'stationIds') ? '' : (' · ' + k.replace('stationIds-', ''));
-                        return '<option value="' + l.id + '|' + k + '">' + name + suffix + '</option>';
+                    var ioML = window.OpenMapEditor.CityProjectIO;
+                    var groups = (ioML && typeof ioML.lineStationGroups === 'function')
+                        ? ioML.lineStationGroups(l)
+                        : [];
+                    if (groups.length <= 1) {
+                        return '<option value="' + l.id + '">' + name + '</option>';
+                    }
+                    return groups.map(function (g) {
+                        return '<option value="' + l.id + '|' + g.idsKey + '">' +
+                            name + ' · ' + groupWayLabel(g) + '</option>';
                     }).join('');
                 }).join('') || '<option value="">（当前没有线路）</option>') +
                 '</select></div>';
@@ -1915,6 +1919,66 @@
         return Math.round(Number(v) * 100) / 100;
     }
 
+    /** 站序分组 → 界面文案：统一叫「交路N」，交路键来自 CityProjectIO.lineStationGroups */
+    function groupWayLabel(group) {
+        var m = /(\d+)/.exec(String((group && group.wayKey) || ''));
+        return '交路' + (m ? m[1] : '1');
+    }
+
+    /**
+     * 线路的站序分组（含 wayKey）。枚举一律走交路模型，编辑侧不自己拼键名。
+     */
+    function lineStationGroupsOf(line) {
+        var io = window.OpenMapEditor.CityProjectIO;
+        return (io && typeof io.lineStationGroups === 'function') ? io.lineStationGroups(line) : [];
+    }
+
+    /** 线路的第一条交路站序键（多交路线路不再固定猜 stationIds-way1） */
+    function primaryStationIdsKey(line) {
+        var groups = lineStationGroupsOf(line);
+        return groups.length ? groups[0].idsKey : 'stationIds';
+    }
+
+    /**
+     * 给线路新增一条交路。
+     *
+     * 已有 N 条交路时新增第 N+1 条（stationIds-way(N+1) / distances-way(N+1)，上限 99），
+     * 新键只作为新字段追加，既有站序与走向字段一个都不动。
+     *
+     * 只有 stationIds 的单交路线路先把它无损升格为第一条交路（stationIds-way1 /
+     * distances-way1）：交路模型里「普通 stationIds」与「stationIds-wayN」不能并存，
+     * 否则老站序会从 ways() 里凭空消失。
+     *
+     * @returns {{ok:boolean, wayKey?:string, index?:number, idsKey?:string, promoted?:boolean, message?:string}}
+     */
+    function addWayToLine(line) {
+        var io = window.OpenMapEditor.CityProjectIO;
+        if (!line || !io || typeof io.nextWaySlot !== 'function') {
+            return { ok: false, message: '交路模型未就绪，无法新增交路' };
+        }
+        var hasWayKeys = io.lineStationGroups(line).some(function (g) { return g.idsKey !== 'stationIds'; });
+        var promoted = false;
+
+        if (!hasWayKeys) {
+            if (Array.isArray(line.stationIds)) {
+                line['stationIds-way1'] = line.stationIds;
+                delete line.stationIds;
+                promoted = true;
+            }
+            if (Array.isArray(line.distances)) {
+                line['distances-way1'] = line.distances;
+                delete line.distances;
+            }
+        }
+
+        var slot = io.nextWaySlot(line);
+        if (!slot) return { ok: false, message: '交路已达上限 99 条，无法再新增' };
+
+        line.hasbranch = true;
+        if (!Array.isArray(line[slot.idsKey])) line[slot.idsKey] = [];
+        return { ok: true, wayKey: slot.wayKey, index: slot.index, idsKey: slot.idsKey, promoted: promoted };
+    }
+
     /**
      * 把一批车站加入某条线路的站序（分支安全）。
      *
@@ -1924,7 +1988,7 @@
      *
      * @param {string[]} nodeIds
      * @param {string} lineId
-     * @param {string} [groupKey] stationIds / stationIds-way1 ...
+     * @param {string} [groupKey] stationIds / stationIds-wayN（交路模型给出的站序键）
      * @returns {{added:number, skipped:number, idsKey:string}}
      */
     function addStationsToLine(nodeIds, lineId, groupKey) {
@@ -1932,7 +1996,7 @@
         var line = (app.project.lines || []).find(function (l) { return l.id === lineId; });
         if (!line || !Array.isArray(nodeIds) || !nodeIds.length) return out;
 
-        var idsKey = groupKey || (line.hasbranch ? 'stationIds-way1' : 'stationIds');
+        var idsKey = groupKey || primaryStationIdsKey(line);
         if (!Array.isArray(line[idsKey])) line[idsKey] = [];
         var distKey = idsKey === 'stationIds' ? 'distances' : ('distances-' + idsKey.replace('stationIds-', ''));
         var ids = line[idsKey];
@@ -1984,7 +2048,7 @@
         var line = (app.project.lines || []).find(function (l) { return l.id === lineId; });
         if (!line || !Array.isArray(nodeIds) || !nodeIds.length) return out;
 
-        var idsKey = groupKey || (line.hasbranch ? 'stationIds-way1' : 'stationIds');
+        var idsKey = groupKey || primaryStationIdsKey(line);
         var ids = line[idsKey];
         if (!Array.isArray(ids)) return out;
         var distKey = idsKey === 'stationIds' ? 'distances' : ('distances-' + idsKey.replace('stationIds-', ''));
@@ -2006,7 +2070,7 @@
 
     /**
      * 读取多选面板里选中的「线路 + 站序分组」。
-     * 下拉的 value 形如 "L1"（普通线）或 "L2|stationIds-way1"（分支线的某个 way）。
+     * 下拉的 value 形如 "L1"（单交路线路）或 "L2|stationIds-way3"（多交路线路的某条交路）。
      */
     function readMultiLinePick() {
         var sel = document.getElementById('multiLineTarget');
@@ -2019,11 +2083,12 @@
         var groupKey = parts[1] || '';
         var line = (app.project.lines || []).find(function (l) { return l.id === lineId; });
         if (!line) return null;
+        var group = null;
+        lineStationGroupsOf(line).forEach(function (g) { if (g.idsKey === groupKey) group = g; });
         return {
             lineId: lineId,
             groupKey: groupKey,
-            label: (line.name || line.id) +
-                (groupKey && groupKey !== 'stationIds' ? (' · ' + groupKey.replace('stationIds-', '')) : '')
+            label: (line.name || line.id) + (group ? (' · ' + groupWayLabel(group)) : '')
         };
     }
 
@@ -2183,7 +2248,8 @@
             } else if (prop === 'add_to_line') {
                 var lObj3 = (app.project.lines || []).find(function (l) { return l.id === value.lineId; });
                 if (lObj3) {
-                    var gk3 = lObj3.hasbranch ? 'stationIds-way1' : 'stationIds';
+                    // 目标站序键由交路模型给出（多交路线路写它已有的第一条交路，不会凭空补 stationIds）
+                    var gk3 = primaryStationIdsKey(lObj3);
                     if (!Array.isArray(lObj3[gk3])) lObj3[gk3] = [];
                     if (lObj3[gk3].indexOf(targetId) === -1) {
                         lObj3[gk3].push(targetId);
@@ -2327,6 +2393,18 @@
             } else if (prop === 'strokeDasharray') {
                 if (value) lineTarget.strokeDasharray = value;
                 else delete lineTarget.strokeDasharray;
+            } else if (prop === 'add_way') {
+                var added = addWayToLine(lineTarget);
+                if (added.ok) {
+                    showToast('给「' + (lineTarget.name || lineTarget.id) + '」新增了交路' + added.index +
+                        '（' + added.idsKey + '）' +
+                        (added.promoted ? '，原单交路站序已升格为 stationIds-way1' : '') +
+                        '，请把车站加进这条交路', 'success');
+                } else {
+                    showToast(added.message || '新增交路失败', 'warning');
+                }
+                renderAll();
+                return;
             } else if (prop === 'apply_parallel_corridor') {
                 var router = window.OpenMapEditor && window.OpenMapEditor.ParallelCorridorRouter;
                 if (router && typeof router.applyParallelOffsetsToProject === 'function') {
@@ -4839,7 +4917,12 @@
                 if (nEl) {
                     var nid = nEl.getAttribute('data-node-id');
                     var nLines = (app.project.lines || []).filter(function (l) {
-                        return (l.stationIds && l.stationIds.indexOf(nid) !== -1);
+                        // 多交路线路的站可能在 wayN 里：取跨交路去重后的车站集合
+                        var ioPick = window.OpenMapEditor.CityProjectIO;
+                        var idsPick = (ioPick && typeof ioPick.lineAllStationIds === 'function')
+                            ? ioPick.lineAllStationIds(l)
+                            : (l.stationIds || []);
+                        return idsPick.indexOf(nid) !== -1;
                     });
                     if (nLines.length > 0 && nLines[0].color) pickedColor = nLines[0].color;
                 }
@@ -6176,9 +6259,13 @@
             if (company) line.company = company;
             if (isLoop) line.isLoop = true;
             if (hasBranch) {
+                // 交路槽位交给交路模型生成：先建交路1，再按「已有 N 条 ⇒ 新增第 N+1 条」建交路2
                 line.hasbranch = true;
-                line['stationIds-way1'] = [];
-                line['stationIds-way2'] = [];
+                var slotA = addWayToLine(line);
+                var slotB = addWayToLine(line);
+                if (!slotA.ok || !slotB.ok) {
+                    showToast((slotA.message || slotB.message || '交路创建失败') + '，可先建普通线路再逐条新增交路', 'warning');
+                }
             } else {
                 line.stationIds = [];
             }
@@ -6286,6 +6373,29 @@
             }
         }
 
+        /**
+         * 批量放站：按所选线路刷新「目标交路」下拉。
+         * 多交路线路必须能指定写入哪条交路，不能一律往 way1 里塞。
+         */
+        function refreshBatchWayOptions() {
+            var lineSel = document.getElementById('batchTargetLine');
+            var waySel = document.getElementById('batchTargetWay');
+            if (!lineSel || !waySel) return;
+            var line = (app.project && app.project.lines || []).find(function (l) { return l.id === lineSel.value; });
+            var groups = line ? lineStationGroupsOf(line) : [];
+            if (!groups.length) {
+                waySel.innerHTML = '<option value="">（该线路还没有站序组）</option>';
+                return;
+            }
+            waySel.innerHTML = groups.map(function (g) {
+                return '<option value="' + g.idsKey + '">' + groupWayLabel(g) +
+                    (groups.length > 1 ? ('（' + g.idsKey + '）') : '') + '</option>';
+            }).join('');
+        }
+
+        var batchTargetLineEl = document.getElementById('batchTargetLine');
+        if (batchTargetLineEl) batchTargetLineEl.addEventListener('change', refreshBatchWayOptions);
+
         var btnOpenBatch = document.getElementById('btnOpenBatchStationModal');
         if (btnOpenBatch) {
             btnOpenBatch.addEventListener('click', function () {
@@ -6299,6 +6409,7 @@
                         return '<option value="' + l.id + '">' + (l.name || l.id) + '</option>';
                     }).join('') || '<option value="">（当前没有线路）</option>';
                 }
+                refreshBatchWayOptions();
                 // 每次打开都清空上一次的解析结果，避免误把旧预览当新结果导入
                 batchPreviewRows = [];
                 renderBatchPreview();
@@ -6358,6 +6469,7 @@
                 }
 
                 var lineId = (document.getElementById('batchTargetLine') || {}).value || '';
+                var groupKey = (document.getElementById('batchTargetWay') || {}).value || '';
                 var connect = !!(document.getElementById('batchAutoConnect') || {}).checked;
                 var dir = (document.getElementById('batchDirection') || {}).value || 'horizontal';
                 var step = parseInt((document.getElementById('batchStepDistance') || {}).value, 10) || 60;
@@ -6374,7 +6486,7 @@
                     app.project,
                     connect ? lineId : '',
                     usable.map(function (r) { return { cn: String(r.cn).trim(), en: String(r.en || '').trim() }; }),
-                    { step: step, direction: dir, autoConnect: connect }
+                    { step: step, direction: dir, autoConnect: connect, groupKey: groupKey }
                 );
 
                 closeModal('modalBatchStation');
@@ -6500,9 +6612,12 @@
                     var newLineId = window.OpenMapEditor.ProjectModel.nextId(app.project, 'line');
                     var clonedLine = JSON.parse(JSON.stringify(l));
                     clonedLine.id = newLineId;
-                    if (Array.isArray(clonedLine.stationIds)) {
-                        clonedLine.stationIds = clonedLine.stationIds.map(function (sid) { return idMap[sid] || sid; });
-                    }
+                    // 站序键逐个映射（普通 stationIds 与交路 stationIds-wayN 一视同仁），
+                    // 只映射 stationIds 会让多交路线路的站序留下悬空 ID。
+                    Object.keys(clonedLine).forEach(function (k) {
+                        if (!/^stationIds(-|$)/.test(k) || !Array.isArray(clonedLine[k])) return;
+                        clonedLine[k] = clonedLine[k].map(function (sid) { return idMap[sid] || sid; });
+                    });
                     app.project.lines.push(clonedLine);
                 });
 

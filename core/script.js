@@ -3,8 +3,7 @@
  */
 
 
-const APP_VERSION = "261113.085800";
-
+const APP_VERSION = "261114.023036";
 const originalTitle = document.title;
 const originalDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || "CGo OpenMap";
 
@@ -192,6 +191,36 @@ const { RADIUS_90, RADIUS_45 } = window.CGoPathGeometry;
 
 // 转义、读屏播报、动效偏好与焦点工具的唯一真源在 core/a11y.js（须早于本文件加载）
 const { escapeHtml, safeNameHtml, plainName, announce, prefersReducedMotion, focusElement } = window.CGoA11y;
+
+/**
+ * 交路（way）模型：一条线路的 1～99 条运营交路（stationIds-way1 … -way99）、
+ * 走向与交路的归属、以及「点某个车站该亮哪些交路」的判定，唯一真源都在
+ * core/line-routing.js（须早于本文件加载）。
+ *
+ * 以前这些判断散落在本文件各处，且写死了 way1 / way2：点支线车站时会把
+ * 自己那条交路淡出、只留主干，或者把另一条支线也一起点亮。现在统一走交路模型：
+ *   点主干车站  → 经过它的交路 = 全部交路 → 主线、支线一起亮；
+ *   点支线车站  → 只亮这条交路 → 支线 + 它贯通的主线区段。
+ */
+const CGoRouting = window.CGoLineRouting;
+
+/** 线路的全部交路（缺交路模块时按单交路兜底，保证页面仍可渲染） */
+const lineWays = (line) => (CGoRouting
+    ? CGoRouting.ways(line)
+    : [{ key: 'way1', index: 1, ids: (line && line.stationIds) || [], distances: (line && line.distances) || [] }]);
+
+/** 线路涉及的全部车站（跨交路去重） */
+const lineAllStationIds = (line) => (CGoRouting
+    ? CGoRouting.allStationIds(line)
+    : Array.from(new Set(lineWays(line).reduce((acc, w) => acc.concat(w.ids), []))));
+
+/** 经过某站的交路；同一站可能同时属于多条交路（主干共用区段） */
+const lineWaysOfStation = (line, sid) => (CGoRouting
+    ? CGoRouting.waysOfStation(line, sid)
+    : lineWays(line).filter((w) => w.ids.includes(sid)));
+
+/** 交路显示名（优先 wayNames，其次按首末站名推导） */
+const lineWayLabel = (line, way) => (CGoRouting ? CGoRouting.wayLabel(line, way, processedStations) : '');
 
 /**
  * 规范化 SVG 徽标文件路径
@@ -610,7 +639,7 @@ function bindSearchAndLegendEvents() {
                             if (index === 0) {
                                 const lineData = linesData.find(l => l.id === lineId);
                                 if (lineData) {
-                                    let firstStationId = lineData.hasbranch ? lineData['stationIds-way1']?.[0] : lineData.stationIds?.[0];
+                                    let firstStationId = lineAllStationIds(lineData)[0];
                                     if (firstStationId) {
                                         const s = processedStations[firstStationId];
                                         if (s) {
@@ -695,13 +724,7 @@ function renderPinModeTree() {
     let treeInnerHtml = '<div class="pin-tree-container">';
     sortedLines.forEach(line => {
         if (line.isVirtual || line.name === '中国铁路') return;
-        let stationIds = [];
-        if (line.hasbranch) {
-            const set = new Set([...(line['stationIds-way1'] || []), ...(line['stationIds-way2'] || [])]);
-            stationIds = Array.from(set);
-        } else {
-            stationIds = line.stationIds || [];
-        }
+        const stationIds = lineAllStationIds(line);
         if (stationIds.length === 0) return;
         let stationsHtml = '';
         stationIds.forEach(sid => {
@@ -756,8 +779,8 @@ function renderPinModeTree() {
                     if (highlightLine(lineId)) {
                         const lineData = linesData.find(l => l.id === lineId);
                         if (lineData) {
-                            // 分支线缺 way1（或普通线缺 stationIds）时不定位，避免点击线路头直接抛错
-                            let firstStationId = lineData.hasbranch ? lineData['stationIds-way1']?.[0] : lineData.stationIds?.[0];
+                            // 交路模型：首站取第一条交路的起点（缺交路时不定位，避免抛错）
+                            let firstStationId = lineAllStationIds(lineData)[0];
                             if (firstStationId && processedStations[firstStationId]) {
                                 const s = processedStations[firstStationId];
                                 currentX = (mapContainer.clientWidth / 2) - (s.x * currentScale);
@@ -957,14 +980,9 @@ function processData() {
         };
     }
     linesData.forEach(line => {
-        let allStationIds = [];
-        if (line.hasbranch) {
-            const set = new Set([...line['stationIds-way1'], ...line['stationIds-way2']]);
-            allStationIds = Array.from(set);
-        } else {
-            allStationIds = line.stationIds || [];
-        }
-        allStationIds.forEach((sid, index) => {
+        // 多交路（branch）线路跨全部交路去重后再统计：一个车站只计一次经停，
+        // 否则主干共用区段的车站会被重复 unshift 上同一条线路的标志色。
+        lineAllStationIds(line).forEach((sid, index) => {
             if (processedStations[sid]) {
                 const s = processedStations[sid];
                 s.codes.push(`${line.name}#${index + 1}`);
@@ -1000,7 +1018,9 @@ function renderLines() {
         // 同一条线路的各段分别绘制时，后画段的白色外描边会盖住先画段的实体色，
         // 在 Y 形分歧处留下白缝；因此先把各层收集起来，再按 外描边 → 实体 → 纹理 → 热区 的顺序统一入组
         const layers = { outer: [], inner: [], overlay: [], interaction: [] };
-        const drawSegment = (points, segmentClass) => {
+        // segmentKey：该段走向在数据里的键（pathPoints / pathPoints-main / pathPoints-branchN），
+        // 高亮时按「交路 → 走向段」的归属逐段增减透明度，不再用位置或硬编码 way1/way2 判段。
+        const drawSegment = (points, segmentClass, segmentKey) => {
             if (!points || points.length < 2) return;
             const d = generateRoundedPath(points, isStrict);
             // 外描边底色（隔离不同相交线路，增强立体可读性）
@@ -1009,12 +1029,14 @@ function renderLines() {
             const pathOuter = document.createElementNS("http://www.w3.org/2000/svg", "path");
             pathOuter.setAttribute("d", d);
             pathOuter.setAttribute("class", `line-visual-outer ${segmentClass}`);
+            if (segmentKey) pathOuter.setAttribute("data-seg-key", segmentKey);
             pathOuter.setAttribute("stroke", line.noOuter ? "none" : "var(--map-bg)");
             pathOuter.setAttribute("stroke-width", "7");
             // 内描边（线路实体主题色）
             const pathInner = document.createElementNS("http://www.w3.org/2000/svg", "path");
             pathInner.setAttribute("d", d);
             pathInner.setAttribute("class", `line-visual-inner ${segmentClass}`);
+            if (segmentKey) pathInner.setAttribute("data-seg-key", segmentKey);
             pathInner.setAttribute("stroke", line.color);
             pathInner.setAttribute("stroke-width", "5.4");
             layers.outer.push(pathOuter);
@@ -1031,6 +1053,7 @@ function renderLines() {
                 pathOverlay.setAttribute("d", d);
                 pathOverlay.setAttribute("class",
                     `line-visual-overlay line-visual-overlay-${ovIndex} ${segmentClass}`);
+                if (segmentKey) pathOverlay.setAttribute("data-seg-key", segmentKey);
                 pathOverlay.setAttribute("stroke", ov.color);
                 pathOverlay.setAttribute("stroke-width", ov.width);
                 pathOverlay.setAttribute("stroke-opacity", ov.opacity);
@@ -1044,6 +1067,7 @@ function renderLines() {
             pathInteraction.setAttribute("d", d);
             pathInteraction.setAttribute("class", "line-interaction");
             pathInteraction.setAttribute("data-line-id", line.id);
+            if (segmentKey) pathInteraction.setAttribute("data-seg-key", segmentKey);
             pathInteraction.setAttribute("stroke", "transparent");
             pathInteraction.setAttribute("stroke-width", "15");
             pathInteraction.setAttribute("fill", "none");
@@ -1079,10 +1103,10 @@ function renderLines() {
             });
             layers.interaction.push(pathInteraction);
         };
-        // 走向来源的判定统一在 core/path-geometry.js（与 OpenMap Editor 编辑器共用同一份），
-        // 避免两边各写一份判定后悄悄漂移。
+        // 走向来源的判定统一在 core/path-geometry.js → core/line-routing.js（与 OpenMap Editor 共用），
+        // 每段走向只出现一次并带自己的段键，多个交路重叠在同一区间时不会重复绘制。
         window.CGoPathGeometry.lineSegments(line, processedStations)
-            .forEach(seg => drawSegment(seg.points, seg.cls));
+            .forEach(seg => drawSegment(seg.points, seg.cls, seg.key));
         layers.outer.forEach(p => visualGroup.appendChild(p));
         layers.inner.forEach(p => visualGroup.appendChild(p));
         layers.overlay.forEach(p => visualGroup.appendChild(p));
@@ -1952,7 +1976,7 @@ function showPanelAt(pageX, pageY) {
 
 /**
  * 高亮指定线路及其关联同组线路 (Line Highlighting)
- * 作用：克隆线路矢量至 highlight-layer 图层并使其他线路淡化；处理 Y 型支线分支淡化。
+ * 作用：克隆线路矢量至 highlight-layer 图层并使其他线路淡化；按「交路」让位局部区段。
  * @param {string} lineId - 线路 ID
  * @param {string} [currentStationId=null] - 当前选中车站 ID
  * @param {boolean} [fromSync=false] - 是否由同组联动发起
@@ -1962,45 +1986,30 @@ function highlightLine(lineId, currentStationId = null, fromSync = false) {
     if (el) {
         el.classList.add('active');
         const lineData = linesData.find(l => l.id === lineId);
-        if (lineData && lineData.hasbranch && currentStationId) {
-            const ids1 = lineData['stationIds-way1'] || [];
-            const ids2 = lineData['stationIds-way2'] || [];
-            const inWay1 = ids1.includes(currentStationId);
-            const inWay2 = ids2.includes(currentStationId);
-            // 类名映射见 core/path-geometry.js：主线是 .seg-main，分支依次是 .seg-way1 / .seg-way2。
-            // 之前这里按「way1=.seg-way1 / way2=.seg-way2」来查，主线 .seg-main 永远查不到，
-            // 点支线站时主线不淡出、反而把支线自己调暗，表现为「点支线还是显示主线」。
-            const segMain = el.querySelectorAll('.seg-main');
-            const segWay1 = el.querySelectorAll('.seg-way1');
-            const segWay2 = el.querySelectorAll('.seg-way2');
-            [segMain, segWay1, segWay2].forEach(list => list.forEach(p => p.style.opacity = '1'));
-            // 淡化另一条交路时，只停靠该交路的车站也要一起淡化，
-            // 否则会出现走向已经变浅、站点与站名却还亮着的割裂感；
-            // 若该站还有别的线路经过（那些线路并未淡化），则保持原样。
-            const dimExclusive = (dimIds, keepIds) => {
-                const keep = new Set(keepIds);
-                dimIds.forEach(sid => {
-                    if (keep.has(sid)) return;
-                    const s = processedStations[sid];
-                    if (s && (s.relatedLines || []).some(id => id !== lineId)) return;
-                    ['node_', 'label_'].forEach(prefix => {
-                        const node = document.getElementById(prefix + sid);
-                        if (node) node.style.opacity = '0.1';
-                    });
+        // 交路方案：点中车站时只保留「经过它的交路」所覆盖的走向段与车站。
+        //   · 主干共用区段归属全部交路 ⇒ 点主干车站时经过它的就是全部交路，主线支线一起亮；
+        //   · 某条交路独有的区段只归属于它 ⇒ 点支线车站时只亮「支线 + 它贯通的主线」。
+        // 段键来自 core/line-routing.js 的 segments()，每段走向只画一次、只亮一次，
+        // 主支线或多个 way 重叠在同一区间时也不会被重复点亮/叠加。
+        const plan = (lineData && CGoRouting)
+            ? CGoRouting.plan(lineData, currentStationId, processedStations)
+            : null;
+        if (plan && !plan.allLit) {
+            el.querySelectorAll('[data-seg-key]:not(.line-interaction)').forEach(p => {
+                const key = p.getAttribute('data-seg-key');
+                p.style.opacity = plan.litSegKeys.has(key) ? '1' : '0.1';
+            });
+            // 只在被淡化的交路上停靠的车站也一起淡化，否则会出现「走向已经变浅、
+            // 站点与站名却还亮着」的割裂感；若该站还有别的线路经过（那些线路并未
+            // 淡化），则保持原样。
+            plan.dimStationIds.forEach(sid => {
+                const s = processedStations[sid];
+                if (s && (s.relatedLines || []).some(id => id !== lineId)) return;
+                ['node_', 'label_'].forEach(prefix => {
+                    const node = document.getElementById(prefix + sid);
+                    if (node) node.style.opacity = '0.1';
                 });
-            };
-            // 车站同时属于两条交路（位于共用主干）时，按 way1 为主线处理：
-            // 车站详情面板判定上/下一站也是先查 way1 再回落 way2，两边保持一致，
-            // 否则会出现面板只报主线、图上却把支线也点亮的矛盾。
-            if (inWay1) {
-                // 选中主线（含共用主干）→ 淡出所有分支走向
-                [segWay1, segWay2].forEach(list => list.forEach(p => p.style.opacity = '0.1'));
-                dimExclusive(ids2, ids1);
-            } else if (inWay2) {
-                // 选中只属于 way2 的站 → 淡出主线与其它分支
-                [segMain, segWay2].forEach(list => list.forEach(p => p.style.opacity = '0.1'));
-                dimExclusive(ids1, ids2);
-            }
+            });
         }
         const highlightLayer = document.getElementById('highlight-layer');
         if (highlightLayer) {
@@ -2009,8 +2018,16 @@ function highlightLine(lineId, currentStationId = null, fromSync = false) {
                 // 高亮层只是线路的视觉副本，不能继承 active 状态；否则原线路和副本会分别应用阴影滤镜，
                 // 换乘站关联线路越多，Android Edge 上看到的阴影叠加层就越多。
                 clone.classList.remove('active');
-                const interactPath = clone.querySelector('.line-interaction');
-                if (interactPath) interactPath.remove();
+                const interactPath = clone.querySelectorAll('.line-interaction');
+                interactPath.forEach(p => p.remove());
+                // 让位（淡化）的区段不再进高亮层：它们本来就只是被压暗的背景，
+                // 再叠一层 10% 透明度的副本会让「这条支线到底亮没亮」变得含糊，
+                // 也违背「同一区间只高亮一次」的要求。
+                if (plan && plan.dimSegKeys.size) {
+                    clone.querySelectorAll('[data-seg-key]').forEach(p => {
+                        if (plan.dimSegKeys.has(p.getAttribute('data-seg-key'))) p.remove();
+                    });
+                }
                 highlightLayer.appendChild(clone);
             }
         }
@@ -2145,14 +2162,11 @@ function renderUserModePanel(station, initialTabIndex = 0) {
         return sName;
     };
     linesData.forEach(line => {
-        let isStationOnLine = false;
-        if (line.isPointOnly) {
-            isStationOnLine = line.stationIds.includes(station.id);
-        } else if (line.hasbranch) {
-            isStationOnLine = line['stationIds-way1'].includes(station.id) || line['stationIds-way2'].includes(station.id);
-        } else {
-            isStationOnLine = line.stationIds.includes(station.id);
-        }
+        // 交路模型：车站只要落在任意一条交路上（stationIds-way1 … -way99）就算经停本线
+        const stationWays = lineWaysOfStation(line, station.id);
+        const isStationOnLine = line.isPointOnly
+            ? (line.stationIds || []).includes(station.id)
+            : stationWays.length > 0;
         if (isStationOnLine) {
             const lineMeta = getLineSvgMeta(line.id) || {};
             const defaultMeta = {
@@ -2170,7 +2184,7 @@ function renderUserModePanel(station, initialTabIndex = 0) {
             const isRwyLine = line.id === 'Rwy' || line.id === 'Rwy2';
             const hasDistanceData = (line.distances && line.distances.length > 0) ||
                 (line.distances2 && line.distances2.length > 0) ||
-                (line['distances-way1'] && line['distances-way1'].length > 0);
+                lineWays(line).some(w => w.distances && w.distances.length > 0);
             if (line.isPointOnly && !hasDistanceData) {
                 relatedLinesInfo.push({
                     name: line.name,
@@ -2191,25 +2205,34 @@ function renderUserModePanel(station, initialTabIndex = 0) {
             let prevInfo = "无";
             let nextInfo = "无";
             const isLoop = line.isLoop === true;
-            if (line.hasbranch) {
-                const dists1 = line['distances-way1'] || line.distances || [];
-                const ids1 = line['stationIds-way1'] || [];
-                let idx = ids1.indexOf(station.id);
-                if (idx !== -1) {
-                    if (idx > 0) prevInfo = getInfoStr(ids1[idx - 1], dists1[idx - 1], station.id);
-                    if (idx < ids1.length - 1) nextInfo = getInfoStr(ids1[idx + 1], dists1[idx], station.id);
-                } else {
-                    const dists2 = line['distances-way2'] || [];
-                    const ids2 = line['stationIds-way2'] || [];
-                    idx = ids2.indexOf(station.id);
-                    if (idx !== -1) {
-                        if (idx > 0) prevInfo = getInfoStr(ids2[idx - 1], dists2[idx - 1], station.id);
-                        if (idx < ids2.length - 1) nextInfo = getInfoStr(ids2[idx + 1], dists2[idx], station.id);
-                    }
-                }
+            const routeWays = lineWays(line);
+            if (routeWays.length > 1) {
+                // 多交路：逐条交路取前后站，去重后并列显示（只有主干车站才会出现
+                // 「上一站 A / B」这种分岔方向不同的情况）。这样面板与图上的
+                // 交路高亮口径一致：车站被哪几条交路经过，就报哪几条交路的方向。
+                const collectNeighbors = (dir) => {
+                    const list = [];
+                    const seen = new Set();
+                    stationWays.forEach(w => {
+                        const ids = w.ids;
+                        const dists = w.distances || [];
+                        const idx = ids.indexOf(station.id);
+                        if (idx < 0) return;
+                        const tgt = dir < 0 ? idx - 1 : idx + 1;
+                        if (tgt < 0 || tgt >= ids.length) return;
+                        if (seen.has(ids[tgt])) return;
+                        seen.add(ids[tgt]);
+                        list.push(getInfoStr(ids[tgt], dir < 0 ? dists[idx - 1] : dists[idx], station.id));
+                    });
+                    return list;
+                };
+                const prevList = collectNeighbors(-1);
+                const nextList = collectNeighbors(1);
+                if (prevList.length) prevInfo = prevList.join(' / ');
+                if (nextList.length) nextInfo = nextList.join(' / ');
             } else {
-                const ids = line.stationIds;
-                const dists = line.distances || [];
+                const ids = (routeWays[0] && routeWays[0].ids) || [];
+                const dists = (routeWays[0] && routeWays[0].distances) || line.distances || [];
                 const distsReverse = line.distances2;
                 const idx = ids.indexOf(station.id);
                 const len = ids.length;
@@ -2243,7 +2266,11 @@ function renderUserModePanel(station, initialTabIndex = 0) {
                 svgtext: defaultMeta.svgtext,
                 isPointOnly: false,
                 prev: prevInfo, next: nextInfo, company: finalCompany,
-                lineColor: line.color, staConfig: staConfig, scheduleUrl: timeUrl
+                lineColor: line.color, staConfig: staConfig, scheduleUrl: timeUrl,
+                // 该站经过的交路（branch 线路才有意义；单交路时为空，面板不渲染该行）
+                ways: routeWays.length > 1
+                    ? Array.from(new Set(stationWays.map(w => lineWayLabel(line, w)).filter(Boolean)))
+                    : []
             });
         }
     });
@@ -3016,10 +3043,7 @@ function getSchematicMetersPerPixel() {
     }
     const ratios = [];
     if (typeof linesData !== "undefined" && linesData && processedStations) {
-        const waysOf = (line) => {
-            if (line.hasbranch) return [line["stationIds-way1"], line["stationIds-way2"]];
-            return [line.stationIds];
-        };
+        const waysOf = (line) => lineWays(line).map(w => w.ids);
         linesData.forEach((line) => {
             waysOf(line).forEach((ids) => {
                 if (!ids) return;

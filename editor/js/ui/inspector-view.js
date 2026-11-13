@@ -77,6 +77,12 @@ window.OpenMapEditor.InspectorView = (function () {
         return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    /** 站序分组 → 界面文案：统一叫「交路N」（way1…way99），不再叫「支线 / 主线」 */
+    function groupWayLabel(group) {
+        var m = /(\d+)/.exec(String((group && group.wayKey) || ''));
+        return '交路' + (m ? m[1] : '1');
+    }
+
     function catalog() {
         return window.OpenMapEditor.StationStyleCatalog;
     }
@@ -422,19 +428,16 @@ window.OpenMapEditor.InspectorView = (function () {
             }
             html += '</div>';
 
-            // 收集此车站所属线路及站序
+            // 收集此车站所属线路及站序（站序组按交路模型枚举，way1…way99 全在，文案用「交路N」）
+            var ioNode = window.OpenMapEditor && window.OpenMapEditor.CityProjectIO;
             var memberLines = [];
             var lines = project ? (project.lines || []) : [];
             lines.forEach(function (line) {
-                var groups = [];
-                if (Array.isArray(line.stationIds)) {
-                    groups.push({ key: 'stationIds', label: line.hasbranch ? '主线' : '全线', ids: line.stationIds });
-                }
-                Object.keys(line).forEach(function (k) {
-                    if (/^stationIds-/.test(k) && Array.isArray(line[k])) {
-                        groups.push({ key: k, label: k.replace('stationIds-', ''), ids: line[k] });
-                    }
-                });
+                var groups = (ioNode && typeof ioNode.lineStationGroups === 'function')
+                    ? ioNode.lineStationGroups(line).map(function (g) {
+                        return { key: g.idsKey, label: groupWayLabel(g), ids: g.ids };
+                    })
+                    : [];
                 groups.forEach(function (g) {
                     var idx = g.ids.indexOf(node.id);
                     if (idx !== -1) {
@@ -1036,9 +1039,11 @@ window.OpenMapEditor.InspectorView = (function () {
         // 分支安全统计（不能直接读 line.stationIds.length，分支线会 undefined）
         var stationCount = 0, poiCount = 0;
         var io = window.OpenMapEditor && window.OpenMapEditor.CityProjectIO;
+        var stationGroups = [];
         if (io) {
             if (typeof io.lineStationGroups === 'function') {
-                io.lineStationGroups(line).forEach(function (g) { stationCount += (g.ids || []).length; });
+                stationGroups = io.lineStationGroups(line);
+                stationGroups.forEach(function (g) { stationCount += (g.ids || []).length; });
             }
             if (typeof io.linePathGroups === 'function') {
                 io.linePathGroups(line).forEach(function (g) { poiCount += (g.points || []).length; });
@@ -1124,8 +1129,35 @@ window.OpenMapEditor.InspectorView = (function () {
             '<span class="form-label">规模:</span>' +
             '<span style="font-size:11px;color:var(--text-main);flex:1;">' +
             stationCount + ' 站 · ' + poiCount + ' 折点 · ' + segCount + ' 线段' +
-            (line.hasbranch ? ' · 分支线' : '') + (line.isLoop ? ' · 环线' : '') +
+            (stationGroups.length > 1 ? (' · ' + stationGroups.length + ' 条交路') : '') +
+            (line.isLoop ? ' · 环线' : '') +
             '</span></div>' +
+
+            '<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border-color,#e2e8f0);">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+            '<span style="font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;">' +
+            '<cgo-icon name="route" size="12"></cgo-icon><span>交路（站序组）</span></span>' +
+            '<span class="cgo-badge" style="font-size:10px;">' + stationGroups.length + ' 条</span>' +
+            '</div>';
+
+        // 全部交路逐个列出（way1…way99 都在，不只 way1/way2）
+        stationGroups.forEach(function (g) {
+            html += '<div class="form-row" style="gap:6px;align-items:center;">' +
+                '<span class="form-label" style="min-width:auto;">' + groupWayLabel(g) + ':</span>' +
+                '<span style="font-size:11px;font-family:monospace;color:var(--text-light);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escAttr(g.idsKey) + '">' + escAttr(g.idsKey) + '</span>' +
+                '<span style="font-size:10px;color:var(--text-light);flex-shrink:0;">' + (g.ids || []).length + ' 站</span>' +
+                '</div>';
+        });
+
+        html += '<div class="form-row" style="margin-top:6px;">' +
+            '<button type="button" class="ribbon-btn-sm" id="btnLineAddWay" style="flex:1;" ' +
+            'title="新增一条交路：已有 N 条时写 stationIds-way(N+1) / distances-way(N+1)，上限 99">' +
+            '<cgo-icon name="add" size="11"></cgo-icon><span>新增交路</span></button>' +
+            '</div>' +
+            '<div style="font-size:10px;color:var(--text-light);margin-top:4px;line-height:1.5;">' +
+            '每条交路都是一条完整运营交路（两端终点站之间），可共用主干区段。' +
+            '</div>' +
+            '</div>' +
 
             '<div class="form-row" style="gap:6px;margin-top:8px;">' +
             '<button type="button" class="ribbon-btn-sm" id="btnLineFocus" style="flex:1;" title="把视口定位到这条线路">' +
@@ -1244,6 +1276,8 @@ window.OpenMapEditor.InspectorView = (function () {
 
         var focusBtn = document.getElementById('btnLineFocus');
         if (focusBtn) focusBtn.addEventListener('click', function () { fireChange('line', line.id, 'focus', true); });
+        var addWayBtn = document.getElementById('btnLineAddWay');
+        if (addWayBtn) addWayBtn.addEventListener('click', function () { fireChange('line', line.id, 'add_way', true); });
         var selStBtn = document.getElementById('btnLineSelectStations');
         if (selStBtn) selStBtn.addEventListener('click', function () { fireChange('line', line.id, 'selectStations', true); });
         var delLineBtn = document.getElementById('btnLineDelete');

@@ -116,7 +116,11 @@
      * 「同向同台」会静默退化成一律用较长的那档时间。
      */
     function headingVector(line, sid, dir, stations) {
-        const ids = line?.stationIds || line?.ways?.[0] || [];
+        // 多交路线路没有 stationIds：取第一条经过本站的交路定朝向
+        // （同一车站在各交路上的走向一致，只借用其中一条就够）
+        const waysOfStation = window.CGoLineRouting?.waysOfStation(line, sid) || [];
+        const ids = waysOfStation.length ? waysOfStation[0].ids
+            : (line?.stationIds || line?.ways?.[0] || []);
         const i = ids.indexOf(sid);
         if (i < 0) return null;
         for (const span of SAME_DIR_SPANS) {
@@ -292,8 +296,20 @@
             .map(([period, label, time]) => ({ dest, period, label, time }));
     }
 
-    /** 站序分组（分支安全访问器） */
+    /**
+     * 站序分组（交路安全访问器）：一条交路一组，空交路先滤掉。
+     *
+     * 规划内核按**组下标**下发 wi，故这里的顺序必须稳定 —— 直接采用交路模型
+     * （way1…wayN 升序）的枚举顺序，路由面板才取得到同一组站序。
+     * 交路模型缺席时退回旧的 way1 / way2。
+     */
     function stationGroups(line) {
+        const routing = window.CGoLineRouting;
+        if (routing) {
+            return routing.ways(line)
+                .map((way) => ({ ids: way.ids, dist: way.distances || [] }))
+                .filter((group) => group.ids.length);
+        }
         if (line.hasbranch) {
             return ["way1", "way2"].map((way) => ({
                 ids: line[`stationIds-${way}`] || [],

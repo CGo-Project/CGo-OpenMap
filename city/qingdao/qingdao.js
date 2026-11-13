@@ -188,8 +188,17 @@
                 const result = { prev: false, next: false };
                 if (!line || !stationId) return result;
 
-                if (line.hasbranch) {
-                    const groups = [
+                // 多交路（分支）线的站序写在各 way 里：逐条交路找本站下标，
+                // 交路数不再固定为两条，故按交路模型枚举（缺席时退回 way1 / way2）
+                const ways = window.CGoLineRouting?.ways(line);
+                const wayGroups = ways
+                    ? ways.map((way) => ({ ids: way.ids, dists: way.distances || [] }))
+                    : null;
+                const isWayLine = ways
+                    ? ways.some((way) => way.idsKey !== "stationIds")
+                    : Boolean(line.hasbranch);
+                if (isWayLine) {
+                    const groups = wayGroups || [
                         { ids: line["stationIds-way1"] || [], dists: line["distances-way1"] || line.distances || [] },
                         { ids: line["stationIds-way2"] || [], dists: line["distances-way2"] || [] }
                     ];
