@@ -59,24 +59,22 @@ window.OpenMapEditor.PipelineIngest = (function () {
             });
 
             var segs = [];
-            if (line.hasbranch) {
-                ['pathPoints-main', 'pathPoints-branch1', 'pathPoints-branch2'].forEach(function (k) {
-                    if (Array.isArray(line[k]) && line[k].length >= 2) {
-                        segs.push({ points: line[k], branchKey: k });
-                    }
-                });
-                Object.keys(line).forEach(function (k) {
-                    if (/^pathPoints-/.test(k) && k !== 'pathPoints-main' && k !== 'pathPoints-branch1' && k !== 'pathPoints-branch2') {
-                        if (Array.isArray(line[k]) && line[k].length >= 2) {
-                            segs.push({ points: line[k], branchKey: k });
-                        }
-                    }
+            // 走向分段统一走交路模型（pathPoints / -main / -branchN / {points,ways}），
+            // 不再维护 main / branch1 / branch2 的固定键表，way3…way99 与自定义区段自然生效。
+            var geom = (typeof window !== 'undefined' && window.CGoPathGeometry)
+                ? window.CGoPathGeometry
+                : (typeof CGoPathGeometry !== 'undefined' ? CGoPathGeometry : null);
+            if (geom && typeof geom.lineSegments === 'function') {
+                (geom.lineSegments(line, project.nodes) || []).forEach(function (s) {
+                    segs.push({ points: s.points, branchKey: s.key || 'pathPoints' });
                 });
             } else {
-                var pts = line.pathPoints || [];
-                if (pts.length >= 2) {
-                    segs.push({ points: pts, branchKey: 'main' });
-                }
+                Object.keys(line).forEach(function (k) {
+                    if (!/^pathPoints(-|$)/.test(k)) return;
+                    var v = line[k];
+                    var pts = Array.isArray(v) ? v : ((v && Array.isArray(v.points)) ? v.points : null);
+                    if (pts && pts.length >= 2) segs.push({ points: pts, branchKey: k });
+                });
             }
 
             segs.forEach(function (s) {

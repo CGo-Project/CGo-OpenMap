@@ -346,8 +346,7 @@
     window.CURRENT_CITY = ShijiazhuangCity;
 
     if (typeof document !== 'undefined' && typeof document.write === 'function') {
-        document.write('<scr' + 'ipt src="./city/shijiazhuang/modules/shijiazhuang_cultural.js?v=261113.085800"><\/scr' + 'ipt>');
-
+        document.write('<scr' + 'ipt src="./city/shijiazhuang/modules/shijiazhuang_cultural.js?v=261114.035217"><\/scr' + 'ipt>');
     }
 
     window.CityDataManager?.registerCity?.({

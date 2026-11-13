@@ -177,6 +177,7 @@ openmap/
 │   ├── cgo-ui.js               # Web Components 组件库 (<cgo-icon> 等)
 │   ├── path-geometry.js        # 折线倒角几何 (引擎与 OpenMap Editor 编辑器共用的唯一真源)
 │   ├── station-icons.js        # 车站图元模板与尺寸 (引擎与 OpenMap Editor 共用的唯一真源)
+│   ├── line-routing.js         # 交路（way1…way99）模型：交路枚举、走向归属与高亮方案的唯一真源
 │   ├── city-neighbors.js       # 邻城衔接：邻城影子、拉到边缘切换城市、缩小后双城并看 (按注册表 neighbors 配置)
 │   ├── settings.js             # 偏好设置面板逻辑 (主题、全屏、清除缓存)
 │   ├── help.js                 # 帮助与关于弹窗逻辑
@@ -337,19 +338,37 @@ const linesData = [
         stationIds: ["M401", "M402", "M403", "M404"],
         distances: [1100, 1250, 1300, 950] // 顺时针站距 (length === stationIds.length)
     },
-    // 3. 分支/Y字形线路 (必须声明 hasbranch: true)
+    // 3. 多交路 / 分支 / Y字形线路 (必须声明 hasbranch: true)
+    //    每条 way 都是一条完整运营交路（两端终点站之间），可以有 way1 … way99
     {
         id: "M11",
         name: "11号线",
         color: "#852655",
         hasbranch: true,
-        "stationIds-way1": ["M1101", "M1102", "M1103"],
-        "stationIds-way2": ["M1101", "M1102", "M1104"],
+        wayNames: { way1: "花桥—迪士尼", way2: "嘉定北—迪士尼" }, // 可选：交路显示名
+        "stationIds-way1": ["M1101", "M1102", "M1103"],  // 花桥 → 分歧站 → 迪士尼
+        "stationIds-way2": ["M1104", "M1102", "M1103"],  // 嘉定北 → 分歧站 → 迪士尼
         "distances-way1": [1300, 1400],
-        "distances-way2": [1300, 1800]
+        "distances-way2": [1800, 1400],
+        // 走向：main = 所有交路共用主干（只画一次、只亮一次），branchN = wayN 独有区段
+        "pathPoints-main": [/* 分歧站 → 迪士尼 */],
+        "pathPoints-branch1": [/* 花桥 → 分歧站 */],
+        "pathPoints-branch2": [/* 嘉定北 → 分歧站 */]
     }
 ];
 ```
+
+> **交路（way）模型**（唯一真源 `core/line-routing.js`）：车站被哪几条交路经过，就点亮哪几条交路。
+> 点共用主干上的车站 ⇒ 主线支线一起亮；点某条交路独有的车站 ⇒ 只亮「支线 + 它贯通的主线」
+> （上海 11 号线点花桥 ⇒ 花桥—嘉定新城—迪士尼）。因此 `pathPoints-main` 必须写**真正共用**
+> 的那一截，不能把某个端部臂当主干。同一段点阵写了两遍会按点阵签名合并，只画/亮一次；
+> 被部分交路共用的区段可用 `pathPoints-xxx: { points, ways: ["way1","way2"] }` 显式声明归属。
+>
+> 走向键与交路的对应关系：`main` / `pathPoints` = 全部交路共用；`branchN` / `wayN` = 仅 wayN。
+> 一条交路有多段独有走向时用字母后缀区分：`pathPoints-way1a`、`pathPoints-way1b`（都归 way1）；
+> 若某条交路自己就是一整条点阵（如金花、台中，两条交路各自画全程），可直接写成
+> `pathPoints-way1` / `pathPoints-way2`。**写错归属会被自检拦住**：`selfcheck.js` 逐条核对
+> 「每条交路的每个车站是否都落在归属于它的走向上」，把某条交路的区段写成别人的分支会直接报错。
 
 ### 4.4 矢量徽标颜色注入机制
 - `assets/svg/icon@01.svg` ~ `icon@57.svg` 为内置矢量模板，内部使用 CSS 变量动态驱动。
@@ -442,19 +461,30 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 正确做法已封装在 `CityProjectIO.patchEntries(源码, 变量名, { update, remove, append })`：
 它扫描出每条条目的字面量区间，**递归比对新旧值，只重写真正变了的那个叶子**，未改动的子树连同注释、缩进、字段顺序、手写换行逐字节保留。实测：改一座车站的 `align` 只产生 1 行 diff，改一条线路的 `color` 也只有 1 行，几百个 `pathPoints` 折点不会被重新排版。
 
-### 5.1.2 🚨 遍历线路时必须使用分支安全访问器
+### 5.1.2 🚨 遍历线路时必须使用分支安全的访问器 / 交路模型
 
-线路的站序有两种写法：普通线 `stationIds` + `distances`；分支线 `hasbranch: true` 配 `stationIds-way1` / `-way2`（及 `distances-wayN`）。折线点阵同理：`pathPoints`，或 `pathPoints-main` / `-branch1` / `-branch2`。
+线路的站序有两种写法：普通线 `stationIds` + `distances`；多交路（分支）线 `hasbranch: true` 配 `stationIds-way1` … `stationIds-way99`（及 `distances-wayN`）。折线点阵同理：`pathPoints`，或 `pathPoints-main` / `-branch1` / `-branchN`（也支持 `{ points, ways: ["way1","way2"] }` 显式声明共用归属）。
 
 北京 `S2`/`S6`/`JX`、上海 `SH5`/`SH10`/`SH11`、悉尼 `T1`/`T2`/`T4`/`T8` 都是分支线路；合肥全网则**只有 `stationIds` 而没有 `distances`**。
 
-> 凡是遍历线路的代码，**必须**走 `CityProjectIO.lineStationGroups(line)` / `linePathGroups(line)` / `lineAllStationIds(line)`，
-> 直接写 `line.stationIds.length` 一碰到这些城市就会 `undefined.length` 崩掉。
+> 凡是遍历线路的代码，**必须**走交路模型 `window.CGoLineRouting`（`core/line-routing.js`）：
+> `ways(line)` / `allStationIds(line)` / `waysOfStation(line, sid)` / `primaryWay(line, sid)` /
+> `neighbors(line, sid)` / `wayLabel(line, way, stations)` / `segments(line, stations)` /
+> `plan(line, sid, stations)`。
+> 编辑器侧仍可用 `CityProjectIO.lineStationGroups(line)` / `linePathGroups(line)` / `lineAllStationIds(line)`。
+> 直接写 `line['stationIds-way1']` 或 `line.stationIds.length`，一碰到分支城市 / 多交路线路
+> 就会算错或 `undefined.length` 崩掉。
 
-返回形状：
-- `lineStationGroups(line)` → `[{ idsKey, distKey, ids, distances }]`
-- `linePathGroups(line)` → `[{ key, points }]`，`points` 是对原数组的**引用**（编辑模式拖折点即直接改它），`key` 用于写回 `line[key]`
-- `lineAllStationIds(line)` → 跨分支去重后的车站 ID 数组
+返回形状（`CGoLineRouting`）：
+- `ways(line)` → `[{ key:'way1', index, name, ids, distances, idsKey:'stationIds-way1', distKey:'distances-way1' }, …]`
+- `allStationIds(line)` → 跨交路去重后的车站 ID 数组（保持首次出现顺序）
+- `waysOfStation(line, sid)` → 经过该站的交路数组（主干车站会有多条）
+- `neighbors(line, sid)` → `{ prev, next, multi }`，每项 `{ id, distance, wayKeys }`；
+  上一站/下一站面板的唯一数据源。多交路时各交路方向可能不一致（厦门 BRT 快5路与快2/快7 同段反向、
+  前埔枢纽站既是快3/快5 的终点又是快6/快9 的起点），所以每条候选都带回「哪几条交路这样走」，
+  面板在信息不足时才补注交路名；**不要**自己写 `ids.indexOf(sid) ± 1` 拼前后站
+- `segments(line, stations)` → `[{ key, cls, points, ways:Set<wayKey> }]`，`ways` 是该段被哪些交路使用
+- `plan(line, sid, stations)` → `{ allLit, litWays, dimWays, litSegKeys, dimSegKeys, litStationIds, dimStationIds }`
 
 另注意：`distances` 允许是空数组（在建线路）或 `"约21千"` 这类人工标注文本，不可假定为等长数字数组。
 
@@ -466,12 +496,16 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 该字段已在实际使用：北京 20 个折点（20/30/400px）、合肥 24 个（28/32/36px），
 上海与悉尼则是逐点 `r: 0` 保持直角（走向本就由密集折点描出）。
 
-**线路走向的来源判定**同样收敛在这里（`lineSegments(line, stations)`），判定链按优先级为：
+**线路走向的来源判定**同样收敛在这里（`lineSegments(line, stations)`，内部转调 `core/line-routing.js` 的交路分段），判定链按优先级为：
 
 1. `isPointOnly: true` → **不画走向**，只在图上落站点图元（国铁等散布全城的车站）；
-2. `hasbranch: true` → 画 `pathPoints-main` / `-branch1` / `-branch2`，**不回退站序**；
-3. `pathPoints` → 画折线点阵；
-4. 都没有 → 按 `stationIds` 顺序取站点坐标连成一段。
+2. 有 `pathPoints*` → 画显式点阵：`pathPoints-main` / `pathPoints` 归**全部交路**共用，
+   `pathPoints-branchN` 只归 wayN，`{ points, ways }` 形式按声明的交路归属；
+3. 多交路（分支）线路但没有任何 `pathPoints*` → **不回退站序**（分叉几何无法由站序唯一确定）；
+4. 单交路且没有 `pathPoints` → 按 `stationIds` 顺序取站点坐标连成一段。
+
+> 返回的每一段都带 `ways: Set<交路键>` 与段键 `key`，引擎靠它决定「点某个车站时哪几段亮」；
+> 同一段点阵被写了两遍会按点阵签名合并成一段并合并交路归属，所以重叠区间只画一次、只亮一次。
 
 > **`core/path-geometry.js` 是倒角算法与走向判定的唯一真源**，`core/script.js` 与
 > `editor/js/editor-app.js` 都必须调用它，**严禁任何一方复刻第二份实现**。
@@ -513,7 +547,7 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 node editor/tests/selfcheck.js
 ```
 
-零依赖、零构建、不需要浏览器。覆盖 `city-project-io.js` 的条目级无损回写、`data-sanitizer.js` 几何校正、折角反算算法、维基百科 HTML 表格提取，断言直接跑在 `city/` 下的**全部真实城市数据**上（当前 221 项断言 / 15 座城市）。改动相关模块后**必须** 100% 跑通再提交。
+零依赖、零构建、不需要浏览器。覆盖 `city-project-io.js` 的条目级无损回写、`data-sanitizer.js` 几何校正、折角反算算法、交路（way）模型与高亮方案、维基百科 HTML 表格提取，断言直接跑在 `city/` 下的**全部真实城市数据**上（当前 1016 项断言 / 40 座城市）。改动相关模块后**必须** 100% 跑通再提交。
 
 ### 5.2 代码生成完整性自检（由 `openmap_codegen.js` 的 `validateData()` 实际执行）
 

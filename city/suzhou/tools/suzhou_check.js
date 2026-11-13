@@ -15,6 +15,9 @@ const dir = path.join(__dirname, '..');
 const read = (f) => fs.readFileSync(path.join(dir, f), 'utf8');
 // 车站图元的真实尺寸（与 css/style.css 同源），换乘站的走向容差由它推导
 const { STATION_SIZE } = require(path.join(__dirname, '../../../core/station-icons.js'));
+// 交路（way）模型与走向判定的唯一真源，与浏览器里 window.CGoLineRouting / CGoPathGeometry 同一份
+const Routing = require(path.join(__dirname, '../../../core/line-routing.js'));
+const { lineSegments } = require(path.join(__dirname, '../../../core/path-geometry.js'));
 
 const ctx = { window: {}, console };
 vm.createContext(ctx);
@@ -28,15 +31,14 @@ const err = [];
 const warn = [];
 const used = new Map();
 
-/* 分支安全访问器：分支线的站序在 stationIds-way1 / -way2，走向在 pathPoints-main / -branchN */
-const stationGroups = (line) => (line.hasbranch
-  ? ['way1', 'way2', 'way3'].map((w) => [w, line[`stationIds-${w}`], line[`distances-${w}`]])
-    .filter(([, ids]) => Array.isArray(ids) && ids.length)
-  : [['', line.stationIds, line.distances]]);
-const pathGroups = (line) => (line.hasbranch
-  ? ['pathPoints-main', 'pathPoints-branch1', 'pathPoints-branch2'].map((k) => line[k])
-    .filter((p) => Array.isArray(p) && p.length >= 2)
-  : [line.pathPoints].filter((p) => Array.isArray(p) && p.length >= 2));
+/* 交路安全访问器：站序按交路枚举（way1…wayN，不再假定只有两条），走向走核心的 lineSegments()。
+   两者都以行 [标签, 站序, 站距] / [点阵] 的形式返回，便于下方循环继续用解构写法。 */
+const stationGroups = (line) => Routing.stationGroups(line)
+  .filter((group) => Array.isArray(group.ids) && group.ids.length)
+  .map((group) => [group.idsKey === 'stationIds' ? '' : group.wayKey, group.ids, group.distances]);
+const pathGroups = (line) => lineSegments(line, stations)
+  .map((segment) => segment.points)
+  .filter((points) => Array.isArray(points) && points.length >= 2);
 
 for (const line of lines) {
   const groups = stationGroups(line);

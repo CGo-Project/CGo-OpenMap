@@ -168,33 +168,25 @@ const linesData = [
         company: "苏州高新有轨电车有限公司",
         /* 有轨电车样式：白色细芯 */
         overlayStyle: { color: "white", width: 1.6, opacity: 1, dashArray: "0, 0" },
-        /* Y 形交路：way1 苏州新区火车站—鸿福路—龙康路，way2 文昌路—鸿福路—龙康路；
-           两 way 在鸿福路—龙康路区间共线，站序自端点排到龙康路。苏州新区火车站与文昌路之间不连通。 */
+        /* 两条交路（2026-11 按运营实际核定：原「5 号线」只是土建编号，运行系统上归 2 号线）：
+             way1 南京大学东 — 龙塘港路 — 航船浜 — … — 鸿福路 — 苏州新区火车站；
+             way2 龙康路 — 航船浜 — … — 鸿福路 — 文昌路。
+           两 way 在航船浜—鸿福路之间共线；南京大学东 / 龙康路 是两个西端，苏州新区火车站 / 文昌路 是两个东端。
+           走向按「共用主干 + 各交路独有段」拆开；一条交路有多段独有走向时用 way1a / way1b 后缀区分。 */
         hasbranch: true,
-        "stationIds-way1": ["TSNZ201", "TSNZ202", "TSNZ203", "TSNZ204", "TSNZ205", "TSNZ206", "TSNZ207", "TSNZ208", "TSNZ209", "TSNZ210", "TSNZ211", "TSNZ212", "TSNZ213"],
-        "stationIds-way2": ["TSNZ214", "TSNZ202", "TSNZ203", "TSNZ204", "TSNZ205", "TSNZ206", "TSNZ207", "TSNZ208", "TSNZ209", "TSNZ210", "TSNZ211", "TSNZ212", "TSNZ213"],
-        /* 主线：苏州新区火车站 → 鸿福路 → 南下 → 折西 → 航船浜 → 龙康路 */
-        "pathPoints-main": [{ x: 515, y: 440, nid: "TSNZ201" }, { x: 475, y: 440 }, { x: 475, y: 475, nid: "TSNZ202" }, { x: 475, y: 505, nid: "TSNZ203" }, { x: 475, y: 535, nid: "TSNZ204" }, { x: 475, y: 565, nid: "TSNZ205" }, { x: 475, y: 595, nid: "TSNZ206" }, { x: 475, y: 625 }, { x: 450, y: 625, nid: "TSNZ207" }, { x: 400, y: 625, nid: "TSNZ208" }, { x: 350, y: 625, nid: "TSNZ209" }, { x: 300, y: 625, nid: "TSNZ210" }, { x: 250, y: 625, nid: "TSNZ211" }, { x: 200, y: 625, nid: "TSNZ212" }, { x: 150, y: 625 }, { x: 150, y: 685, nid: "TSNZ213" }],
-        /* 支线：自鸿福路东折后一线直下到文昌路（只拐一个角，与主线、地铁 3 号线各留 45 / 30px 间距，
-           避免出现与主线并排的"复线"观感）；文昌路与地铁文昌路为站外换乘。 */
-        "pathPoints-branch1": [{ x: 475, y: 475, nid: "TSNZ202" }, { x: 520, y: 475 }, { x: 520, y: 575, nid: "TSNZ214" }],
-        "distances-way1": [1600, 880, 1460, 820, 1250, 1310, 1850, 1900, 1420, 1240, 950, 1470],
-        "distances-way2": [1440, 880, 1460, 820, 1250, 1310, 1850, 1900, 1420, 1240, 950, 1470]
-    },
-    {
-        id: "TSND5",
-        name: "高新有轨电车5号线",
-        en: "SNZ Tram Line 5",
-        color: "#450E65",
-        svg: "./city/suzhou/assets/tram-5.svg",
-        svgclr: "#450E65",
-        svgtext: "#ffffff",
-        company: "苏州高新有轨电车有限公司",
-        /* 有轨电车样式：白色细芯 */
-        overlayStyle: { color: "white", width: 1.6, opacity: 1, dashArray: "0, 0" },
-        /* 与 2 号线在航船浜站内换乘：共用站心 TSNZ212（tsf），自北侧接入 */
-        stationIds: ["TSNZ501", "TSNZ502", "TSNZ212"],
-        pathPoints: [{"x":100,"y":600,"nid":"TSNZ501"},{"x":150,"y":600,"nid":"TSNZ502"},{"x":175,"y":600},{"x":200,"y":625,"nid":"TSNZ212"}],
-        distances: [850, 740]
+        "stationIds-way1": ["TSNZ201", "TSNZ202", "TSNZ203", "TSNZ204", "TSNZ205", "TSNZ206", "TSNZ207", "TSNZ208", "TSNZ209", "TSNZ210", "TSNZ211", "TSNZ212", "TSNZ213", "TSNZ214"],
+        "stationIds-way2": ["TSNZ215", "TSNZ203", "TSNZ204", "TSNZ205", "TSNZ206", "TSNZ207", "TSNZ208", "TSNZ209", "TSNZ210", "TSNZ211", "TSNZ212", "TSNZ213", "TSNZ216"],
+        "distances-way1": [850, 740, 950, 1240, 1420, 1900, 1850, 1310, 1250, 820, 1460, 880, 1600],
+        "distances-way2": [1470, 950, 1240, 1420, 1900, 1850, 1310, 1250, 820, 1460, 880, 1440],
+        /* 共用主干（两交路共线）：航船浜 → 沿 y625 东行 → 折北 → 鸿福路 */
+        "pathPoints-main": [{ x: 180, y: 625, nid: "TSNZ203" }, { x: 230, y: 625, nid: "TSNZ204" }, { x: 280, y: 625, nid: "TSNZ205" }, { x: 330, y: 625, nid: "TSNZ206" }, { x: 380, y: 625, nid: "TSNZ207" }, { x: 430, y: 625, nid: "TSNZ208" }, { x: 475, y: 625 }, { x: 475, y: 595, nid: "TSNZ209" }, { x: 475, y: 565, nid: "TSNZ210" }, { x: 475, y: 535, nid: "TSNZ211" }, { x: 475, y: 505, nid: "TSNZ212" }, { x: 475, y: 475, nid: "TSNZ213" }],
+        /* way1 独有（西段）：南京大学东 → 龙塘港路 → 航船浜 */
+        "pathPoints-way1a": [{ x: 100, y: 625, nid: "TSNZ201" }, { x: 140, y: 625, nid: "TSNZ202" }, { x: 180, y: 625, nid: "TSNZ203" }],
+        /* way1 独有（东段）：鸿福路 → 折东 → 苏州新区火车站 */
+        "pathPoints-way1b": [{ x: 475, y: 475, nid: "TSNZ213" }, { x: 475, y: 440 }, { x: 515, y: 440, nid: "TSNZ214" }],
+        /* way2 独有（西端）：龙康路 正交接入航船浜 */
+        "pathPoints-way2a": [{ x: 150, y: 685, nid: "TSNZ215" }, { x: 150, y: 625 }, { x: 180, y: 625, nid: "TSNZ203" }],
+        /* way2 独有（东端）：自鸿福路东折后一线直下到文昌路；文昌路与地铁文昌路为站外换乘 */
+        "pathPoints-way2b": [{ x: 475, y: 475, nid: "TSNZ213" }, { x: 520, y: 475 }, { x: 520, y: 575, nid: "TSNZ216" }]
     }
 ];

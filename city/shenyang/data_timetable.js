@@ -43,6 +43,18 @@ const SYMTC_OFFICIAL_STATION_ID_RULES = {
 const GLOBAL_SCHEDULE_DATA = {};
 
 /**
+ * 线路站序（跨交路去重，保持首次出现顺序）。
+ * 交路数不再固定为两条，故统一走核心的交路模型；模型未就绪时退回旧的 way1 / way2。
+ */
+function cgoLineStationIds(line) {
+    const routing = typeof window !== "undefined" ? window.CGoLineRouting : null;
+    if (routing) return routing.allStationIds(line);
+    return line.hasbranch
+        ? [...new Set([...(line["stationIds-way1"] || []), ...(line["stationIds-way2"] || [])])]
+        : (line.stationIds || []);
+}
+
+/**
  * 车站层级图地址表（本地车站 ID → 官网剖面图 URL）。
  *
  * 换乘站在多条线路下各有官网编号，此处取先遍历到的线路编号（与核心「官网查询」
@@ -56,9 +68,7 @@ Object.entries(SYMTC_OFFICIAL_STATION_ID_RULES).forEach(([lineId, rules]) => {
     const line = linesData.find((item) => item.id === lineId);
     if (!line) return;
 
-    const stationIds = line.hasbranch
-        ? [...new Set([...(line["stationIds-way1"] || []), ...(line["stationIds-way2"] || [])])]
-        : (line.stationIds || []);
+    const stationIds = cgoLineStationIds(line);
 
     stationIds.forEach((stationId, index) => {
         const rule = rules.find((item) => index >= item.fromIndex
@@ -111,9 +121,7 @@ Object.entries(SHENYANG_TRAM_OFFICIAL_LINE_MAP).forEach(([lineId, officialLineId
     const line = linesData.find((item) => item.id === lineId);
     if (!line) return;
 
-    const stationIds = line.hasbranch
-        ? [...new Set([...(line["stationIds-way1"] || []), ...(line["stationIds-way2"] || [])])]
-        : (line.stationIds || []);
+    const stationIds = cgoLineStationIds(line);
 
     stationIds.forEach((stationId) => {
         const station = stationsData[stationId];

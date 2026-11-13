@@ -355,19 +355,42 @@ window.OpenMapEditor.BatchStationTool = (function () {
         return null;
     }
 
-    /** 目标线路当前站序组的键名（与写入保持同一口径；分支线默认 way1） */
-    function stationGroupKeys(line) {
-        var branch = !!(line && line.hasbranch);
-        return {
-            idsKey: branch ? 'stationIds-way1' : 'stationIds',
-            distKey: branch ? 'distances-way1' : 'distances'
-        };
+    /**
+     * 目标线路的站序组键名。
+     * 枚举走 CityProjectIO.lineStationGroups（多交路线路按 way1…way99 列出），
+     * 因此可以按 groupKey 指定要写入哪条交路；
+     * 未指定时取该线路的第一条交路，绝不在多交路线路上猜一条去写。
+     */
+    function stationGroupKeys(line, groupKey) {
+        var keys = null;
+        var io = window.OpenMapEditor && window.OpenMapEditor.CityProjectIO;
+        var groups = (io && typeof io.lineStationGroups === 'function')
+            ? io.lineStationGroups(line)
+            : [];
+
+        if (groupKey) {
+            var hit = null;
+            groups.forEach(function (g) { if (g.idsKey === groupKey) hit = g; });
+            if (hit) {
+                keys = { idsKey: hit.idsKey, distKey: hit.distKey };
+            } else if (line && Array.isArray(line[groupKey])) {
+                keys = {
+                    idsKey: groupKey,
+                    distKey: groupKey === 'stationIds' ? 'distances' : ('distances-' + groupKey.replace('stationIds-', ''))
+                };
+            }
+        }
+        if (!keys) {
+            if (groups.length) keys = { idsKey: groups[0].idsKey, distKey: groups[0].distKey };
+            else keys = { idsKey: 'stationIds', distKey: 'distances' };
+        }
+        return keys;
     }
 
     /** 目标线路站序里的末站 ID（没有则 null） */
-    function lastStationIdOf(line) {
+    function lastStationIdOf(line, groupKey) {
         if (!line) return null;
-        var idsKey = stationGroupKeys(line).idsKey;
+        var idsKey = stationGroupKeys(line, groupKey).idsKey;
         var ids = line[idsKey];
         return (Array.isArray(ids) && ids.length) ? ids[ids.length - 1] : null;
     }
@@ -383,7 +406,8 @@ window.OpenMapEditor.BatchStationTool = (function () {
      * @param {Object} project
      * @param {string} lineId
      * @param {Array} stations [{ cn, en }]
-     * @param {Object} opts { startX, startY, step, direction: 'horizontal'|'vertical'|'diagonal', autoConnect }
+     * @param {Object} opts { startX, startY, step, direction: 'horizontal'|'vertical'|'diagonal', autoConnect, groupKey }
+     *        groupKey 指定写入哪条交路（stationIds / stationIds-wayN），缺省取该线路第一条交路
      * @returns {string[]} 本次新建的节点 ID（不含原有末站）
      */
     function batchCreateStations(project, lineId, stations, opts) {
@@ -396,7 +420,7 @@ window.OpenMapEditor.BatchStationTool = (function () {
         var dir = o.direction || 'horizontal';
 
         var line = lineId ? findLine(project, lineId) : null;
-        var tailId = (o.autoConnect && line) ? lastStationIdOf(line) : null;
+        var tailId = (o.autoConnect && line) ? lastStationIdOf(line, o.groupKey) : null;
         var tailNode = (tailId && project.nodes) ? project.nodes[tailId] : null;
         if (tailNode && (typeof tailNode.x !== 'number' || typeof tailNode.y !== 'number')) tailNode = null;
 
@@ -457,7 +481,7 @@ window.OpenMapEditor.BatchStationTool = (function () {
             }
 
             if (line) {
-                var keys = stationGroupKeys(line);
+                var keys = stationGroupKeys(line, o.groupKey);
                 var idsKey = keys.idsKey;
                 var distKey = keys.distKey;
                 if (!Array.isArray(line[idsKey])) line[idsKey] = [];
