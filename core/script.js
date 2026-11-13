@@ -3,7 +3,7 @@
  */
 
 
-const APP_VERSION = "261114.023036";
+const APP_VERSION = "261114.035217";
 const originalTitle = document.title;
 const originalDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || "CGo OpenMap";
 
@@ -2000,14 +2000,23 @@ function highlightLine(lineId, currentStationId = null, fromSync = false) {
                 p.style.opacity = plan.litSegKeys.has(key) ? '1' : '0.1';
             });
             // 只在被淡化的交路上停靠的车站也一起淡化，否则会出现「走向已经变浅、
-            // 站点与站名却还亮着」的割裂感；若该站还有别的线路经过（那些线路并未
-            // 淡化），则保持原样。
+            // 站点与站名却还亮着」的割裂感；若该站还有**会画线的**其它线路经过
+            // （那些线路并未淡化），则保持原样。判定收敛在 core/line-routing.js：
+            // 只落点的线路（isPointOnly，如北京「中国铁路」）不算「别的线路」，
+            // 否则北京 S2 点延庆站时沙城站的站名会一直亮着（分支走向却已淡化）。
+            const keepsStationLit = (station) => (CGoRouting
+                ? CGoRouting.hasOtherDrawnLine(station, lineId, linesData)
+                : (station.relatedLines || []).some(id => id !== lineId));
             plan.dimStationIds.forEach(sid => {
                 const s = processedStations[sid];
-                if (s && (s.relatedLines || []).some(id => id !== lineId)) return;
-                ['node_', 'label_'].forEach(prefix => {
-                    const node = document.getElementById(prefix + sid);
-                    if (node) node.style.opacity = '0.1';
+                if (s && keepsStationLit(s)) return;
+                const node = document.getElementById('node_' + sid);
+                if (node) node.style.opacity = '0.1';
+                // 同址异名站（siblings，如莫斯科型换乘）共用图元但各有独立站名，
+                // 只按 label_<id> 淡化会漏掉它们的站名，所以按 data-sid 一起处理；
+                // clearHighlights() 清的就是 .label-group 的内联 opacity，能被还原。
+                document.querySelectorAll(`.label-group[data-sid="${sid}"]`).forEach(el => {
+                    el.style.opacity = '0.1';
                 });
             });
         }
@@ -2207,29 +2216,36 @@ function renderUserModePanel(station, initialTabIndex = 0) {
             const isLoop = line.isLoop === true;
             const routeWays = lineWays(line);
             if (routeWays.length > 1) {
-                // 多交路：逐条交路取前后站，去重后并列显示（只有主干车站才会出现
-                // 「上一站 A / B」这种分岔方向不同的情况）。这样面板与图上的
-                // 交路高亮口径一致：车站被哪几条交路经过，就报哪几条交路的方向。
-                const collectNeighbors = (dir) => {
-                    const list = [];
-                    const seen = new Set();
-                    stationWays.forEach(w => {
-                        const ids = w.ids;
-                        const dists = w.distances || [];
-                        const idx = ids.indexOf(station.id);
-                        if (idx < 0) return;
-                        const tgt = dir < 0 ? idx - 1 : idx + 1;
-                        if (tgt < 0 || tgt >= ids.length) return;
-                        if (seen.has(ids[tgt])) return;
-                        seen.add(ids[tgt]);
-                        list.push(getInfoStr(ids[tgt], dir < 0 ? dists[idx - 1] : dists[idx], station.id));
+                // 多交路：逐条交路取前后站，按目标站去重（core/line-routing.js 的 neighbors）。
+                // 不同交路在这一站的行车方向可能相反（厦门 BRT 快5路与快2/快7 同段反向，
+                // 前埔枢纽站既是快3/快5 的终点又是快6/快9 的起点），只并排列出站名会得到
+                // 「上一站 洪文 / 下一站 洪文」这种读不通的行。因此只在**确实需要区分**时
+                // 才补注候选所属的交路名（wayNames，缺省按首末站推导）：
+                //   · 同一方向出现多个候选（分岔方向不同）；或
+                //   · 上一站与下一站是同一座车站（终点/起点同站，靠交路区分来去方向）。
+                // 其余情况（如花桥这种只被一条交路经过的端部站、所有交路同向的共用主干站）
+                // 仍保持原来的一行干净显示，不添冗余标注。
+                const nb = CGoRouting.neighbors(line, station.id);
+                const prevIds = new Set(nb.prev.map(p => p.id));
+                const showWay = nb.prev.length > 1 || nb.next.length > 1
+                    || nb.next.some(n => prevIds.has(n.id));
+                const renderSide = (items) => {
+                    if (!items.length) return "";
+                    const rows = items.map(it => {
+                        const html = getInfoStr(it.id, it.distance, station.id);
+                        if (!showWay) return html;
+                        const labels = it.wayKeys.map(key => lineWayLabel(line, key)).filter(Boolean);
+                        return labels.length
+                            ? `${html} <span style="color:var(--text-light);font-size:10px;">· ${labels.join("/")}</span>`
+                            : html;
                     });
-                    return list;
+                    // 多候选时每个候选单独一行：值栏很窄，挤在一行会把「· 快5路」折到下一行
+                    return rows.join(items.length > 1 ? '<br>' : '　/　');
                 };
-                const prevList = collectNeighbors(-1);
-                const nextList = collectNeighbors(1);
-                if (prevList.length) prevInfo = prevList.join(' / ');
-                if (nextList.length) nextInfo = nextList.join(' / ');
+                const prevList = renderSide(nb.prev);
+                const nextList = renderSide(nb.next);
+                if (prevList) prevInfo = prevList;
+                if (nextList) nextInfo = nextList;
             } else {
                 const ids = (routeWays[0] && routeWays[0].ids) || [];
                 const dists = (routeWays[0] && routeWays[0].distances) || line.distances || [];
