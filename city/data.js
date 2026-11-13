@@ -1018,6 +1018,30 @@
             }],
             isDefault: false
         },
+        "xiamen": {
+            id: "xiamen",
+            name: "厦门",
+            timezone: "Asia/Shanghai",
+            themeColor: "#032976", // 厦门轨道交通：深蓝
+            svglogo: null, // 已接入 CGoUI 内置 xiamen 官方矢量图标
+            folder: "./city/xiamen",
+            mainLogic: "./city/xiamen/xiamen.js",
+            center: { x: 950, y: 800 },
+            defaultScale: 1.0,
+            mapSize: { width: 1900, height: 1600 },
+            searchCity: "厦门",
+            title: "CGo OpenMap - 厦门轨道交通线路图",
+            keywords: "CGo OpenMap, 厦门地铁, 厦门轨道交通, 线路图, 快速公交, BRT, 快1路",
+            description: "厦门轨道交通 1 / 2 / 3 / 4 / 6 号线与快速公交（BRT）示意图；BRT 为一条线 + 8 条交路，可查快1/2/3/5/6/7/8/9 路经停本站的车次。",
+            officialMapUrl: "https://www.xmgdjt.com.cn/",
+            registerDate: "2026-10-03",
+            stationCount: 169,
+            status: "active",
+            maintainers: [
+                { name: "福南所CRH1A-A-1186", role: "城市主理人", github: "https://github.com/CRH1A-A-1186" }
+            ],
+            isDefault: false
+        },
     };
 
     // ==========================================================================
