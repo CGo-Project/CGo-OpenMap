@@ -363,6 +363,12 @@ const linesData = [
 > （上海 11 号线点花桥 ⇒ 花桥—嘉定新城—迪士尼）。因此 `pathPoints-main` 必须写**真正共用**
 > 的那一截，不能把某个端部臂当主干。同一段点阵写了两遍会按点阵签名合并，只画/亮一次；
 > 被部分交路共用的区段可用 `pathPoints-xxx: { points, ways: ["way1","way2"] }` 显式声明归属。
+>
+> 走向键与交路的对应关系：`main` / `pathPoints` = 全部交路共用；`branchN` / `wayN` = 仅 wayN。
+> 一条交路有多段独有走向时用字母后缀区分：`pathPoints-way1a`、`pathPoints-way1b`（都归 way1）；
+> 若某条交路自己就是一整条点阵（如金花、台中，两条交路各自画全程），可直接写成
+> `pathPoints-way1` / `pathPoints-way2`。**写错归属会被自检拦住**：`selfcheck.js` 逐条核对
+> 「每条交路的每个车站是否都落在归属于它的走向上」，把某条交路的区段写成别人的分支会直接报错。
 
 ### 4.4 矢量徽标颜色注入机制
 - `assets/svg/icon@01.svg` ~ `icon@57.svg` 为内置矢量模板，内部使用 CSS 变量动态驱动。
@@ -463,7 +469,8 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 
 > 凡是遍历线路的代码，**必须**走交路模型 `window.CGoLineRouting`（`core/line-routing.js`）：
 > `ways(line)` / `allStationIds(line)` / `waysOfStation(line, sid)` / `primaryWay(line, sid)` /
-> `wayLabel(line, way, stations)` / `segments(line, stations)` / `plan(line, sid, stations)`。
+> `neighbors(line, sid)` / `wayLabel(line, way, stations)` / `segments(line, stations)` /
+> `plan(line, sid, stations)`。
 > 编辑器侧仍可用 `CityProjectIO.lineStationGroups(line)` / `linePathGroups(line)` / `lineAllStationIds(line)`。
 > 直接写 `line['stationIds-way1']` 或 `line.stationIds.length`，一碰到分支城市 / 多交路线路
 > 就会算错或 `undefined.length` 崩掉。
@@ -472,6 +479,10 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 - `ways(line)` → `[{ key:'way1', index, name, ids, distances, idsKey:'stationIds-way1', distKey:'distances-way1' }, …]`
 - `allStationIds(line)` → 跨交路去重后的车站 ID 数组（保持首次出现顺序）
 - `waysOfStation(line, sid)` → 经过该站的交路数组（主干车站会有多条）
+- `neighbors(line, sid)` → `{ prev, next, multi }`，每项 `{ id, distance, wayKeys }`；
+  上一站/下一站面板的唯一数据源。多交路时各交路方向可能不一致（厦门 BRT 快5路与快2/快7 同段反向、
+  前埔枢纽站既是快3/快5 的终点又是快6/快9 的起点），所以每条候选都带回「哪几条交路这样走」，
+  面板在信息不足时才补注交路名；**不要**自己写 `ids.indexOf(sid) ± 1` 拼前后站
 - `segments(line, stations)` → `[{ key, cls, points, ways:Set<wayKey> }]`，`ways` 是该段被哪些交路使用
 - `plan(line, sid, stations)` → `{ allLit, litWays, dimWays, litSegKeys, dimSegKeys, litStationIds, dimStationIds }`
 
@@ -536,7 +547,7 @@ OpenMap Editor（`editor/index.html`）提供三大核心流水线：
 node editor/tests/selfcheck.js
 ```
 
-零依赖、零构建、不需要浏览器。覆盖 `city-project-io.js` 的条目级无损回写、`data-sanitizer.js` 几何校正、折角反算算法、交路（way）模型与高亮方案、维基百科 HTML 表格提取，断言直接跑在 `city/` 下的**全部真实城市数据**上（当前 988 项断言 / 39 座城市）。改动相关模块后**必须** 100% 跑通再提交。
+零依赖、零构建、不需要浏览器。覆盖 `city-project-io.js` 的条目级无损回写、`data-sanitizer.js` 几何校正、折角反算算法、交路（way）模型与高亮方案、维基百科 HTML 表格提取，断言直接跑在 `city/` 下的**全部真实城市数据**上（当前 1016 项断言 / 40 座城市）。改动相关模块后**必须** 100% 跑通再提交。
 
 ### 5.2 代码生成完整性自检（由 `openmap_codegen.js` 的 `validateData()` 实际执行）
 
