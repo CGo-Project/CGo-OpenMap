@@ -87,7 +87,10 @@
         _routable = {};
         allLines().forEach(l => {
             if (l.isPointOnly || l.drawOnly) return;
-            const ways = l.hasbranch ? [l["stationIds-way1"], l["stationIds-way2"]] : [l.stationIds];
+            // ways 是「每條交路的完整站序」：分支綫可有多條，不再固定 way1 / way2
+            const ways = window.CGoLineRouting
+                ? window.CGoLineRouting.ways(l).map(w => w.ids)
+                : (l.hasbranch ? [l["stationIds-way1"], l["stationIds-way2"]] : [l.stationIds]);
             _routable[l.id] = { id: l.id, ways, ref: ways[0], color: l.color };
         });
         return _routable;
@@ -658,6 +661,11 @@
     function polylinesOf(lid) {
         const l = allLines().find(x => x.id === lid);
         if (!l) return [];
+        // 走向判定（含主幹 / 各交路獨有區段）統一在核心，城市側不再自己拼 pathPoints-*
+        const segments = window.CGoPathGeometry?.lineSegments?.(l, stationMap());
+        if (Array.isArray(segments)) {
+            return segments.map(seg => seg.points).filter(pts => Array.isArray(pts) && pts.length >= 2);
+        }
         return l.hasbranch ? [l["pathPoints-main"], l["pathPoints-branch1"], l["pathPoints-branch2"]].filter(Boolean) : [l.pathPoints];
     }
     /** 把點投影到折綫上，返回所在綫段序號、段內比例、投影點與距離 */

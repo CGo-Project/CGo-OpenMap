@@ -21,6 +21,9 @@ const vm = require("vm");
 const CITY_DIR = path.resolve(__dirname, "..");
 const ROOT = path.resolve(CITY_DIR, "..", "..");
 
+/** 交路（way）模型：站序枚举与走向归属的唯一真源（与浏览器里 window.CGoLineRouting 同一份） */
+const Routing = require(path.join(ROOT, "core", "line-routing.js"));
+
 /** 共享层 route-data.js 的区间用时物理上限（分钟），链判定同口径 */
 const HOP_MAX = 8;
 
@@ -85,6 +88,8 @@ sandbox.window = sandbox;
 sandbox.document = { write() { } };
 sandbox.CityDataManager = { registerCity() { } };
 sandbox.globalThis = sandbox;
+// 城市脚本里的交路访问器要走同一份实现（浏览器里由 main.html 提前加载）
+sandbox.CGoLineRouting = Routing;
 vm.createContext(sandbox);
 // reader() 运行时才取 hourSlots，这里给一份与共享层同形的实现
 sandbox.CGoRouteData = {
@@ -99,9 +104,8 @@ const { stationsData, linesData, schedule, config, officialFare, officialSegment
 /* ── 1. 车站引用完整性 ─────────────────────────────────────────────── */
 section("① 车站引用完整性");
 const stationIds = Object.keys(stationsData);
-const groupIds = (line) => (line.hasbranch
-    ? ["way1", "way2"].flatMap((way) => line[`stationIds-${way}`] || [])
-    : (line.stationIds || []));
+/** 跨交路去重后的车站 ID（支持 way1…way99，不再假定只有两条交路） */
+const groupIds = (line) => Routing.allStationIds(line);
 const referenced = new Set();
 linesData.forEach((line) => groupIds(line).forEach((sid) => referenced.add(sid)));
 
@@ -115,14 +119,14 @@ process.stdout.write(`  车站 ${stationIds.length} 座，线路 ${linesData.len
 section("② 站距长度");
 linesData.forEach((line) => {
     if (line.isPointOnly) return;
-    const ways = line.hasbranch ? ["way1", "way2"] : [null];
-    ways.forEach((way) => {
-        const ids = way ? line[`stationIds-${way}`] : line.stationIds;
-        const dist = way ? line[`distances-${way}`] : line.distances;
-        if (!ids) return;
+    // 一条交路一组站序：站距长度逐条交路校验（way1…wayN 均适用）
+    Routing.stationGroups(line).forEach((group) => {
+        const ids = group.ids;
+        if (!Array.isArray(ids) || !ids.length) return;
+        const tag = group.idsKey === "stationIds" ? "" : "/" + group.wayKey;
         const want = line.isLoop ? ids.length : ids.length - 1;
-        const got = Array.isArray(dist) ? dist.length : 0;
-        check(`${line.id}${way ? "/" + way : ""} 站距长度`,
+        const got = Array.isArray(group.distances) ? group.distances.length : 0;
+        check(`${line.id}${tag} 站距长度`,
             got === want, `期望 ${want}，实为 ${got}`);
     });
 });
