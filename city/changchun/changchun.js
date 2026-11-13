@@ -464,7 +464,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261113.085800";
+        const version = "261114.022704";
 
         // 公共栅格化零件（沿革视频导出与分享卡海报共用；本城导出层先于 poster.js 加载，故置于最前）
         document.write(`<script src="./city/shenyang/shared/base/svg-raster.js?v=${version}"><\/script>`);

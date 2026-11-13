@@ -59,7 +59,7 @@
     /** 票价表弹层根节点 ID（全局单例） */
     const VIEWER_ID = "lanzhou-fare-viewer";
     /** 本模块版本号（与 lanzhou.js 中 document.write 的 ?v= 保持一致） */
-    const VERSION = "261113.085800";
+    const VERSION = "261114.022704";
 
 
     /* ===================================================================== */
