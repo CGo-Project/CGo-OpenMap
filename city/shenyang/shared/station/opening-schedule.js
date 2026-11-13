@@ -153,11 +153,13 @@
     }
 
     /**
-     * 取某条线路的站序 ID。
-     * 分支线（hasbranch）的站序写在 stationIds-way1 / -way2，跨 way 去重后返回。
+     * 取某条线路的站序 ID（跨交路去重，保持首次出现顺序）。
+     * 交路数不再固定为两条，故统一走交路模型；缺席时退回旧的 way1 / way2。
      */
     function lineStationIds(line) {
         if (!line) return [];
+        const routing = window.CGoLineRouting;
+        if (routing) return routing.allStationIds(line).map(String);
         if (line.hasbranch) {
             const ids = [];
             ["stationIds-way1", "stationIds-way2"].forEach((key) => {
@@ -200,9 +202,15 @@
     function rewireStationRefs(oldId, newId) {
         const lines = linesDataRef();
         if (!lines) return;
+        const routing = window.CGoLineRouting;
         lines.forEach((line) => {
-            ["stationIds", "stationIds-way1", "stationIds-way2"].forEach((key) => {
-                const ids = line?.[key];
+            if (!line) return;
+            // 交路模型给的 way.ids 就是线路数据里的数组本身，就地改即改写数据；
+            // 模型缺席时按旧的三个站序键处理
+            const groups = routing
+                ? routing.stationGroups(line).map((group) => group.ids)
+                : ["stationIds", "stationIds-way1", "stationIds-way2"].map((key) => line[key]);
+            groups.forEach((ids) => {
                 if (!Array.isArray(ids)) return;
                 ids.forEach((sid, index) => {
                     if (String(sid) === oldId) ids[index] = newId;

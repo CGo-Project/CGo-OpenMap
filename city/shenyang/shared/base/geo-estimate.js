@@ -78,10 +78,13 @@
         if (candidates.length > 1) {
             // 同城同名（如综合保税区的地铁站与有轨站）：只保留与当前站同线且站序相邻的
             const adjacent = new Set();
+            const routing = window.CGoLineRouting;   // 一条交路一组站序
             lines.forEach((line) => {
-                const groups = line.hasbranch
-                    ? [line["stationIds-way1"] || [], line["stationIds-way2"] || []]
-                    : [line.stationIds || []];
+                const groups = routing
+                    ? routing.ways(line).map((way) => way.ids)
+                    : (line.hasbranch
+                        ? [line["stationIds-way1"] || [], line["stationIds-way2"] || []]
+                        : [line.stationIds || []]);
                 groups.forEach((ids) => {
                     const i = ids.indexOf(activeSid);
                     if (i > 0) adjacent.add(ids[i - 1]);

@@ -59,17 +59,20 @@
             || /有轨电车/.test(String(line.company || ""));
     }
 
-    /** 从线路站序中收集有轨车站 ID（兼容分支线路的 way1 / way2 写法） */
+    /** 从线路站序中收集有轨车站 ID（走交路模型，支持 way1…wayN） */
     function collectTramStationIds() {
         const ids = new Set();
         const lines = (typeof linesData !== "undefined" && Array.isArray(linesData))
             ? linesData
             : window.linesData;
         if (!Array.isArray(lines)) return ids;
+        const routing = window.CGoLineRouting;
         lines.filter(isTramLine).forEach((line) => {
-            const groups = line.hasbranch
-                ? [line["stationIds-way1"], line["stationIds-way2"]]
-                : [line.stationIds];
+            const groups = routing
+                ? routing.ways(line).map((way) => way.ids)
+                : (line.hasbranch
+                    ? [line["stationIds-way1"], line["stationIds-way2"]]
+                    : [line.stationIds]);
             groups.forEach((group) => {
                 if (Array.isArray(group)) group.forEach((sid) => ids.add(sid));
             });

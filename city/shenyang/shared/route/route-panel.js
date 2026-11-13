@@ -1304,16 +1304,22 @@
     };
 
     /**
-     * 该段所在的站序。分支线（hasbranch）的站序写在 stationIds-way1 / -way2，规划内核给的
-     * wi 正是这两个 way 的**有效**下标（空 way 在建图时已滤掉，见 route-data.js 的 stationGroups），
-     * 故这里按同一规则取，不能写死 stationIds——那会把分支段报成主线的端点。
+     * 该段所在的站序。多交路（分支）线的站序写在各 way 里，规划内核给的 wi 正是
+     * route-data.js 的 stationGroups 下标（空交路在建图时已滤掉），故这里必须按
+     * **同一规则**取：交路键升序 + 滤空，不能写死 way1/way2。
      */
     function wayStationIds(line, wi) {
-        if (!line?.hasbranch) return line?.stationIds || [];
-        const ways = ["way1", "way2"]
-            .map((way) => line[`stationIds-${way}`])
-            .filter((ids) => Array.isArray(ids) && ids.length);
-        return ways[wi] || ways[0] || line.stationIds || [];
+        if (!line) return [];
+        const routing = window.CGoLineRouting;
+        const ways = routing
+            ? routing.ways(line).filter((way) => way.ids.length)
+            : (line.hasbranch
+                ? ["way1", "way2"]
+                    .map((way) => ({ ids: line[`stationIds-${way}`] }))
+                    .filter((way) => Array.isArray(way.ids) && way.ids.length)
+                : [{ ids: line.stationIds || [] }]);
+        const ids = (ways[wi] || ways[0] || {}).ids;
+        return Array.isArray(ids) && ids.length ? ids : (line.stationIds || []);
     }
 
     /**

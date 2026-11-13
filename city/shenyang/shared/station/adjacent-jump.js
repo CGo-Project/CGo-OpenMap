@@ -75,6 +75,18 @@
     }
 
     /**
+     * 线路的全部站序，一个交路一组。
+     * 分支线不再是「固定两条交路」，故一律走交路模型；模型缺席时退回旧的 way1 / way2。
+     */
+    function lineStationGroups(line) {
+        const routing = window.CGoLineRouting;
+        if (routing) return routing.ways(line).map((way) => way.ids);
+        return line.hasbranch
+            ? [line["stationIds-way1"] || [], line["stationIds-way2"] || []]
+            : [line.stationIds || []];
+    }
+
+    /**
      * info-value 里的站名：**首个非空文本子节点**。
      * 结构恒为「站名文本 + <span>(距离)</span>」——距离不在文本节点里，
      * 故取文本节点即可；无距离数据时整行就是一个文本节点，同样命中。
@@ -89,16 +101,13 @@
 
     /**
      * 与 activeSid 在任一线路站序上相邻的车站 ID 集合（同名歧义时的收窄判据）。
-     * 分支线按 way1 / way2 分组各自判相邻，环线首尾相接。
+     * 每条交路各自判相邻（分支线各 way、环线首尾相接）。
      */
     function adjacentSids(activeSid) {
         const out = new Set();
         const lines = window.linesData || [];
         lines.forEach((line) => {
-            const groups = line.hasbranch
-                ? [line["stationIds-way1"] || [], line["stationIds-way2"] || []]
-                : [line.stationIds || []];
-            groups.forEach((ids) => {
+            lineStationGroups(line).forEach((ids) => {
                 const i = ids.indexOf(activeSid);
                 if (i < 0) return;
                 if (i > 0) out.add(ids[i - 1]);
@@ -160,16 +169,13 @@
 
     /**
      * 沿线路站序从 activeSid 向 dir（-1 上一站 / +1 下一站）找第一座**未拆除**的站。
-     * 分支线按 way1 / way2 各自查找，环线首尾相接。
+     * 每条交路各自查找，环线首尾相接。
      * @returns {string|null} 找不到（已到尽头 / 线路缺失）返回 null
      */
     function nextLiveSid(lineId, activeSid, dir, retired) {
         const line = (window.linesData || []).find((l) => l.id === lineId);
         if (!line) return null;
-        const groups = line.hasbranch
-            ? [line["stationIds-way1"] || [], line["stationIds-way2"] || []]
-            : [line.stationIds || []];
-        for (const ids of groups) {
+        for (const ids of lineStationGroups(line)) {
             const idx = ids.indexOf(activeSid);
             if (idx < 0) continue;
             const len = ids.length;
