@@ -21,7 +21,9 @@ const warnOnly = process.argv.includes('--warn');
 const swPath = join(root, 'sw.js');
 
 const VERSION_PATTERN = /^\d{6}\.\d{6}$/;
-const SKIP_DIRS = new Set(['.git', 'node_modules']);
+// 跳过不入库的目录：本地临时工程（_tmp_*）、备份、构建产物与截图暂存
+const SKIP_DIRS = new Set(['.git', 'node_modules', '_tmp_suzhou', '.tmp-shot']);
+const SKIP_DIR_PREFIX = /^(?:_tmp|backup|dist|build|\.)/;
 const SCAN_EXT = /\.(?:html|js|css|mjs)$/i;
 
 const swSource = readFileSync(swPath, 'utf8');
@@ -58,7 +60,7 @@ function checkAssets() {
 function collectFiles(dir, out = []) {
     for (const item of readdirSync(dir, { withFileTypes: true })) {
         if (item.isDirectory()) {
-            if (SKIP_DIRS.has(item.name)) continue;
+            if (SKIP_DIRS.has(item.name) || SKIP_DIR_PREFIX.test(item.name)) continue;
             collectFiles(join(dir, item.name), out);
         } else if (SCAN_EXT.test(item.name)) {
             out.push(join(dir, item.name));

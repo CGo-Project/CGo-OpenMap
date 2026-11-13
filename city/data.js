@@ -585,8 +585,8 @@
             // 与苏州衔接：向左滑可见苏州线网影子，继续左滑进入苏州
             neighbors: [{
                 id: "suzhou", edge: "left",
-                // 与苏州侧互为逆变换：7 / 5.4 ≈ 1.2963；花桥（85,693）对准苏州花桥（1825,2000）
-                scale: 7 / 5.4, offset: { x: -2280.74, y: -1899.59 },
+                // 与苏州侧互为逆变换：7 / 5.4 ≈ 1.2963；花桥（85,693）对准苏州花桥（1925,2000）
+                scale: 7 / 5.4, offset: { x: -2410.37, y: -1899.59 },
                 title: ["苏州", "Suzhou"]
             }],
             isDefault: false
@@ -992,16 +992,16 @@
             svglogo: null, // 已接入 CGoUI 内置 suzhou 官方矢量图标
             folder: "./city/suzhou",
             mainLogic: "./city/suzhou/suzhou.js",
-            center: { x: 950, y: 1050 },   // 线网几何中心（古城与园区之间）
+            center: { x: 1050, y: 1050 },   // 线网几何中心（古城与园区之间）
             defaultScale: 0.9,
-            mapSize: { width: 2000, height: 2100 },
+            mapSize: { width: 2100, height: 2100 },
             searchCity: "苏州",
             title: "CGo OpenMap - 苏州轨道交通线路图",
-            keywords: "CGo OpenMap, 苏州地铁, 苏州轨道交通, 线路图, 昆山, 11号线",
-            description: "覆盖 1~8 号线与 11 号线，含 11 号线花桥接驳上海地铁 11 号线。",
+            keywords: "CGo OpenMap, 苏州地铁, 苏州轨道交通, 高新有轨电车, 线路图, 昆山, 11号线",
+            description: "覆盖 1~8 号线、11 号线与高新有轨电车 1 / 2 / 5 号线，含 11 号线花桥接驳上海地铁 11 号线。",
             officialMapUrl: "https://www.sz-mtr.com/service/guide/map/index_zh.html",
             registerDate: "2026-10-28",
-            stationCount: 246,
+            stationCount: 278,
             status: "active",
             maintainers: [
                 { name: "福南所CRH1A-A-1186", role: "城市主理人", github: "https://github.com/CRH1A-A-1186" }
@@ -1012,8 +1012,8 @@
             minScale: 0.18,
             neighbors: [{
                 id: "shanghai", edge: "right",
-                // 两图线宽之比 5.4 / 7 ≈ 0.7714；花桥（1825,2000）对准上海花桥（85,693）
-                scale: 5.4 / 7, offset: { x: 1759.43, y: 1465.4 },
+                // 两图线宽之比 5.4 / 7 ≈ 0.7714；花桥（1925,2000）对准上海花桥（85,693）
+                scale: 5.4 / 7, offset: { x: 1859.43, y: 1465.4 },
                 title: ["上海", "Shanghai"]
             }],
             isDefault: false

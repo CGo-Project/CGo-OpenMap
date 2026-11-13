@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 苏州高新有轨电车线路徽标：样式参照福州滨海快线（assets/svg/icon@fz_BE.svg）的双行描边徽标，
+     底色取线路色（CSS 变量 svgclr），边框与文字取 svgtext 变量，由 data_lines.js 的 svgclr / svgtext 驱动换色。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 150" role="img" aria-label="SNZ Tram Line 1">
+<path style="fill:#ffffff" d="M5,25h180c2.8,0,5,2.2,5,5v90c0,2.8-2.2,5-5,5H5c-2.8,0-5-2.2-5-5V30C0,27.2,2.2,25,5,25z"/>
+<path style="fill:var(--svgclr,#86B57E);stroke:var(--svgtext,#1b3a12);stroke-width:5" d="M6.5,27.5h177c2.2,0,4,1.8,4,4v87c0,2.2-1.8,4-4,4H6.5c-2.2,0-4-1.8-4-4v-87C2.5,29.3,4.3,27.5,6.5,27.5z"/>
+<text x="95" y="74" style="fill:var(--svgtext,#1b3a12);font-family:'Microsoft YaHei','PingFang SC','Noto Sans CJK SC',sans-serif;font-size:34px;font-weight:700" text-anchor="middle" textLength="156" lengthAdjust="spacingAndGlyphs">有轨1号线</text>
+<text x="95" y="102" style="fill:var(--svgtext,#1b3a12);font-family:'ArialMT',Arial,Helvetica,sans-serif;font-size:19px" text-anchor="middle">SNZ Tram Line 1</text>
+</svg>

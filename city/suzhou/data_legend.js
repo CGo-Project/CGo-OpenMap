@@ -25,6 +25,20 @@ const LEGEND_CONFIG = [
     },
     {
         type: "title",
+        title: "有轨电车",
+        subtitle: "Tram Lines"
+    },
+    {
+        type: "grid",
+        cols: 2,
+        items: [
+            { targets: ["TSND1"], name: "有轨1号线 SNZ Tram Line 1" },
+            { targets: ["TSND2"], name: "有轨2号线 SNZ Tram Line 2" },
+            { targets: ["TSND5"], name: "有轨5号线 SNZ Tram Line 5" }
+        ]
+    },
+    {
+        type: "title",
         title: "跨省换乘",
         subtitle: "Cross-province Transfer"
     },

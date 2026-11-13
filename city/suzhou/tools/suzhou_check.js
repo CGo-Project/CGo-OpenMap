@@ -27,18 +27,32 @@ const { stationsData: stations, linesData: lines, LEGEND_CONFIG: legend } = ctx.
 const err = [];
 const warn = [];
 const used = new Map();
+
+/* 分支安全访问器：分支线的站序在 stationIds-way1 / -way2，走向在 pathPoints-main / -branchN */
+const stationGroups = (line) => (line.hasbranch
+  ? ['way1', 'way2', 'way3'].map((w) => [w, line[`stationIds-${w}`], line[`distances-${w}`]])
+    .filter(([, ids]) => Array.isArray(ids) && ids.length)
+  : [['', line.stationIds, line.distances]]);
+const pathGroups = (line) => (line.hasbranch
+  ? ['pathPoints-main', 'pathPoints-branch1', 'pathPoints-branch2'].map((k) => line[k])
+    .filter((p) => Array.isArray(p) && p.length >= 2)
+  : [line.pathPoints].filter((p) => Array.isArray(p) && p.length >= 2));
+
 for (const line of lines) {
-  const ids = line.stationIds || [];
-  if (!ids.length) err.push(`${line.id} 无站序`);
-  if (!Array.isArray(line.pathPoints) || line.pathPoints.length < 2) err.push(`${line.id} 缺走向`);
-  const need = line.isLoop ? ids.length : ids.length - 1;
-  if ((line.distances || []).length !== need) {
-    err.push(`${line.id} 站间距长度 ${(line.distances || []).length} != ${need}`);
-  }
-  for (const id of ids) {
-    if (!stations[id]) err.push(`${line.id} 引用了不存在的车站 ${id}`);
-    if (!used.has(id)) used.set(id, []);
-    used.get(id).push(line.id);
+  const groups = stationGroups(line);
+  if (!groups.length) err.push(`${line.id} 无站序`);
+  if (!pathGroups(line).length) err.push(`${line.id} 缺走向`);
+  for (const [way, ids, dists] of groups) {
+    const tag = line.id + (way ? ` ${way}` : '');
+    const need = line.isLoop ? ids.length : ids.length - 1;
+    if ((dists || []).length !== need) {
+      err.push(`${tag} 站间距长度 ${(dists || []).length} != ${need}`);
+    }
+    for (const id of ids) {
+      if (!stations[id]) err.push(`${tag} 引用了不存在的车站 ${id}`);
+      if (!used.has(id)) used.set(id, []);
+      if (!used.get(id).includes(line.id)) used.get(id).push(line.id); // 两 way 共线的车站只记一次
+    }
   }
 }
 
@@ -77,6 +91,8 @@ const w = (s) => {
 };
 const boxes = [];
 for (const [id, s] of Object.entries(stations)) {
+  // hideLabel 的站（同名站外换乘的副站）引擎根本不画站名，不参与碰撞与外包框统计
+  if (s.hideLabel === true) continue;
   const W = Math.max(w(s.cn), w(s.en) * 0.62) + 2;
   const H = 20.2 + 2;
   const dx = { top: 0, bottom: 0, left: -6, right: 6, 'top-left': -6, 'top-right': 6, 'bottom-left': -6, 'bottom-right': 6 }[s.align] ?? 0;
@@ -126,8 +142,10 @@ for (const [id, s] of Object.entries(stations)) {
 }
 for (const line of lines) {
   if (line.foreign) continue;
-  for (const p of line.pathPoints) {
-    if (p.x % GRID || p.y % GRID) err.push(`${line.id} 折点未对齐 ${GRID}px 网格: (${p.x}, ${p.y})`);
+  for (const pts of pathGroups(line)) {
+    for (const p of pts) {
+      if (p.x % GRID || p.y % GRID) err.push(`${line.id} 折点未对齐 ${GRID}px 网格: (${p.x}, ${p.y})`);
+    }
   }
 }
 // 站心到折线的最近投影：d = 垂直距离，s = 沿走向累计长度
@@ -159,29 +177,47 @@ const TSF_RADIUS = STATION_SIZE.tsf / 2;
 // 它们按官方图排在所属线路站序的端部/交叉处，实际几何画在 data_notopen.js 的虚线层上，
 // 并不落在该线运营段的实线走向里（editor 导出即如此）。运营段仍按 0.75px / 8.75px 严检。
 for (const line of lines) {
-  const pts = line.pathPoints || [];
-  for (const id of line.stationIds || []) {
-    const s = stations[id];
-    if (!s || s.type === 'no') continue;
-    const { d } = projectOnPolyline(s, pts);
-    const limit = s.type === 'tsf' ? TSF_RADIUS : ON_LINE_TOLERANCE;
-    if (d > limit) err.push(`${line.id} 的走向未经过 ${id} ${s.cn}(${s.x},${s.y})，距折线 ${d.toFixed(1)}px`);
+  const groups = pathGroups(line);
+  for (const [, ids] of stationGroups(line)) {
+    for (const id of ids || []) {
+      const s = stations[id];
+      if (!s || s.type === 'no') continue;
+      const d = Math.min(...groups.map((pts) => projectOnPolyline(s, pts).d));
+      const limit = s.type === 'tsf' ? TSF_RADIUS : ON_LINE_TOLERANCE;
+      if (d > limit) err.push(`${line.id} 的走向未经过 ${id} ${s.cn}(${s.x},${s.y})，距折线 ${d.toFixed(1)}px`);
+    }
   }
 }
 
 // 站序必须沿走向单调前进，否则图面走向与 stationIds 顺序脱节（前/后一站会指错方向）。
 // 例：M7 白荡南实际位置在白荡北—板泾之间，站序却曾排在木里之后。
+// 分支线按「每个站归到最近的那段走向」分开校验：文昌路只落在 pathPoints-branch1 上，
+// 与主线站序各自单调即可。
 for (const line of lines) {
-  if (line.isLoop || !Array.isArray(line.pathPoints)) continue;
-  let prevS = null, prevLabel = '';
-  for (const id of line.stationIds || []) {
-    const s = stations[id];
-    if (!s || s.type === 'no') continue;
-    const pos = projectOnPolyline(s, line.pathPoints).s;
-    if (prevS !== null && pos <= prevS) {
-      err.push(`${line.id} 站序与走向不一致：${prevLabel}(${prevS.toFixed(0)}px) 之后是 ${id} ${s.cn}(${pos.toFixed(0)}px)`);
+  if (line.isLoop) continue;
+  const groups = pathGroups(line);
+  for (const [, ids] of stationGroups(line)) {
+    const seq = new Map(); // 走向段下标 → [{ id, s }]
+    for (const id of ids || []) {
+      const s = stations[id];
+      if (!s || s.type === 'no') continue;
+      let bestIdx = 0, best = null;
+      groups.forEach((pts, gi) => {
+        const pos = projectOnPolyline(s, pts);
+        if (!best || pos.d < best.d) { best = pos; bestIdx = gi; }
+      });
+      if (!seq.has(bestIdx)) seq.set(bestIdx, []);
+      seq.get(bestIdx).push({ id, s: best.s });
     }
-    prevS = pos; prevLabel = `${id} ${s.cn}`;
+    for (const list of seq.values()) {
+      let prevS = null, prevLabel = '';
+      for (const { id, s } of list) {
+        if (prevS !== null && s <= prevS) {
+          err.push(`${line.id} 站序与走向不一致：${prevLabel}(${prevS.toFixed(0)}px) 之后是 ${id} ${s.cn}(${s.toFixed(0)}px)`);
+        }
+        prevS = s; prevLabel = `${id} ${s.cn}`;
+      }
+    }
   }
 }
 

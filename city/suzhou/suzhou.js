@@ -14,7 +14,7 @@
         name: "上海地铁11号线换乘",
         slot: "body-top",
         order: 12,
-        shouldRender(ctx) { return Boolean(ctx.station && ctx.station.id === "node_556"); },
+        shouldRender(ctx) { return Boolean(ctx.station && ctx.station.id === "M1128"); },
         render() {
             return `<div class="sz-hq-sh11">
                 <div class="sz-hq-sh11-head"><cgo-icon name="transfer" size="16"></cgo-icon><b>上海地铁 11 号线</b><span>跨省换乘 · Shanghai Metro Line 11</span></div>
@@ -56,12 +56,12 @@
         themeColor: "#0c3674",
         searchCity: "苏州",
         /* 首屏视点：线网几何中心（古城区与工业园区之间） */
-        center: { x: 950, y: 1050 },
+        center: { x: 1050, y: 1050 },
         defaultScale: 0.9,
-        mapSize: { width: 2000, height: 2100 },
+        mapSize: { width: 2100, height: 2100 },
         officialMapUrl: "https://www.sz-mtr.com/service/guide/map/index_zh.html",
         LINE_META: {},
-        LINE_SORT_ORDER: ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L11", "SH11"],
+        LINE_SORT_ORDER: ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L11", "TSND1", "TSND2", "TSND5", "SH11"],
         stationBoard: {
             // 花桥跨省换乘卡片（本城内联定义）+ 官网资料模块（独立脚本注册，此处只配置开关与顺序）
             modules: {
@@ -69,14 +69,26 @@
                 "suzhou-station-info": { enabled: true, order: 15, targetTab: "station-info" }
             }
         },
-        /* 3 号线与 11 号线在唯亭贯通运行（同一列车直通，无需下车），
-           声明为 through 后行程规划不计换乘、车站详情合并显示 */
+        /* 贯通运行（同一列车直通，无需下车）：声明为 through 后行程规划不计换乘、车站详情合并显示。
+           ① 3 号线 ⇄ 11 号线 在唯亭；
+           ② 高新有轨电车 5 号线 ⇄ 2 号线 在航船浜，贯通运行往苏州新区火车站方向。 */
         lineLinks: [{
             id: "L3-L11",
             lineIds: ["L3", "L11"],
-            at: "node_151",
+            at: "M337",
             name: "3 / 11 号线（贯通）",
             through: true,
+            keepBadges: true
+        }, {
+            id: "TSND5-TSND2",
+            lineIds: ["TSND2", "TSND5"],
+            at: "TSNZ212",
+            // 贯通名别塞方向（会把面板「开往 …」挤成竖排）；方向交给面板的「开往」行。
+            // toward = 只在这一侧贯通：只有换乘后沿 2 号线往苏州新区火车站方向才视作同一列车，
+            // 往龙康路 / 文昌路方向仍按正常换乘计（见 shared/route/route-planner.js 的 leadsTo）。
+            name: "有轨 2 / 5 号线（贯通）",
+            through: true,
+            toward: "TSNZ201",
             keepBadges: true
         }],
         LINE_SYNC_GROUPS: [],
@@ -116,8 +128,14 @@
         async renderStaCards(infoPanel, station) {
             return await this.stacard.getRenderer()?.renderPanelCards?.(infoPanel, station);
         },
-        getNavigationUrl(stationName, isRailway = false) {
-            const query = isRailway ? stationName : `${stationName}(地铁站)`;
+        /* 高新有轨电车站 ID 统一为 TSNZ{线路号}{两位序号}，导航检索词与地铁区分 */
+        isTramStation(station) {
+            const sid = typeof station === "string" ? station : station?.id;
+            return typeof sid === "string" && /^TSNZ\d+$/.test(sid);
+        },
+        getNavigationUrl(stationName, isRailway = false, context = {}) {
+            const query = isRailway ? stationName
+                : `${stationName}(${this.isTramStation(context && context.station) ? "有轨电车站" : "地铁站"})`;
             return `https://uri.amap.com/search?keyword=${encodeURIComponent(query)}&city=${encodeURIComponent("苏州")}`;
         },
         getRailway12306Url(stationName) {
@@ -160,7 +178,8 @@
     /* 官网车站资料 + 行程规划共享层（须在核心引擎执行前同步写入） */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261111.174500";
+        const version = "261113.085800";
+
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
@@ -190,8 +209,8 @@
         center: City.center, defaultScale: City.defaultScale, mapSize: City.mapSize,
         searchCity: City.searchCity,
         title: "CGo OpenMap - 苏州轨道交通线路图",
-        keywords: "CGo OpenMap, 苏州地铁, 苏州轨道交通, 线路图",
-        description: "覆盖 1~8 号线与 11 号线，含 4 / 7 号线在建延伸段与花桥接驳上海地铁 11 号线。",
+        keywords: "CGo OpenMap, 苏州地铁, 苏州轨道交通, 高新有轨电车, 线路图",
+        description: "覆盖 1~8 号线、11 号线与高新有轨电车 1 / 2 / 5 号线，含 4 / 7 号线在建延伸段与花桥接驳上海地铁 11 号线。",
         officialMapUrl: City.officialMapUrl,
         isDefault: false,
         ...City

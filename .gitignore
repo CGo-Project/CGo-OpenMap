@@ -27,3 +27,5 @@ tools/_tmp_*.js
 city/fuzhou/tools/_tmp_*.js
 快速启动.bat
 归档.zip
+# 本地截图暂存（PR 用，不入库）
+.tmp-shot/

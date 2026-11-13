@@ -162,6 +162,21 @@
             return next >= 0 && next < line.ways[wi].length;
         }
 
+        /**
+         * 从 (way, idx) 沿 dir 一路往前，能否经过 target；环线两个方向都算能到。
+         * 给「贯通声明带方向」用：城市可以声明「只在某一侧贯通」（如苏州有轨 2 / 5 号线
+         * 只在航船浜往苏州新区火车站方向是同一列车，往龙康路 / 文昌路方向要换车）。
+         */
+        function leadsTo(line, wi, idx, dir, target) {
+            if (!target) return true;
+            if (line.loop) return true;
+            const way = line.ways[wi];
+            for (let i = idx + dir; i >= 0 && i < way.length; i += dir) {
+                if (String(way[i]) === target) return true;
+            }
+            return false;
+        }
+
         function hopMinutes(line, a, b) {
             const value = typeof line.hop === "function" ? line.hop(a, b) : null;
             return Number.isFinite(value) ? value : null;
@@ -338,10 +353,15 @@
                 (boardable.get(sid) || []).forEach(({ lineId: toLineId, wi: toWi, idx: toIdx }) => {
                     if (toLineId === lineId && toWi === wi) return;
                     if (!lineById.has(toLineId)) return;
-                    const direct = throughMap.get(`${sid}|${lineId}|${toLineId}`) || null;
+                    const throughPair = throughMap.get(`${sid}|${lineId}|${toLineId}`) || null;
                     const toLine = lineById.get(toLineId);
                     [1, -1].forEach((toDir) => {
                         if (!hasService(toLine, toWi, toIdx, toDir)) return;
+                        // 贯通可以只声明一侧：声明了 toward 时，只有沿该方向能坐到 toward 才算同一列车，
+                        // 反方向 / 另一条支线仍按正常换乘计（苏州有轨 2 / 5 号线即如此）
+                        const direct = throughPair
+                            && (!throughPair.toward || leadsTo(toLine, toWi, toIdx, toDir, String(throughPair.toward)))
+                            ? throughPair : null;
                         // 换乘方式（同台/节点/站厅/通道换乘）与用时都可能与方向有关
                         // （「同向同台」：同向恰好同台、反向要绕对面站台），
                         // 故对每个 toDir 单独问一次。

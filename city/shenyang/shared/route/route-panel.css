@@ -979,6 +979,25 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     font-weight: 700;
 }
 
+/* 乘车段的「线路名 + 开往 X」一行：线路名可能是很长的贯通名（如「有轨 2 / 5 号线（贯通）」），
+   而 .cgo-rt-line-name 是 flex:none，一旦名字占满整行，「开往 X」会被压到只剩一个字宽、
+   变成逐字竖排。这里让这一行允许换行、禁止「开往 X」自己断字、并允许线路名先换行：
+   放得下仍是一行；放不下时「开往 X」整截挪到下一行。 */
+.cgo-rt-ride-line {
+    flex-wrap: wrap;
+    row-gap: 2px;
+}
+
+.cgo-rt-ride-line .cgo-rt-line-name {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+.cgo-rt-ride-line .cgo-rt-toward {
+    flex: none;
+    white-space: nowrap;
+}
+
 .cgo-rt-leg.arrive .cgo-rt-leg-head {
     padding-bottom: 12px;
 }
