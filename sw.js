@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261114.022704';
+const CACHE_NAME = 'cgo-openmap-v261114.023036';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -36,6 +36,7 @@ const ASSETS_TO_CACHE = [
     './core/city-neighbors.js',
     './core/help.js',
     './core/path-geometry.js',
+    './core/line-routing.js',
     './core/station-icons.js',
     './core/a11y.js',
     './core/settings.js',
@@ -811,15 +812,7 @@ async function precacheBatch(cache, assets) {
         await Promise.allSettled(batch.map(async (url) => {
             try {
                 const matched = await cache.match(url);
-                if (!matched) {
-                    // 关键：cache.add() 会命中浏览器 HTTP 缓存，nginx 对 .svg/.js 设了长缓存，
-                    // 于是新 CACHE_NAME 里存进去的仍是旧文件 —— 表现就是"版本号跳了但页面没变"。
-                    // 显式 fetch(cache:'reload') 强制回源，再手工 cache.put。
-                    const resp = await fetch(url, { cache: 'reload', credentials: 'same-origin' });
-                    if (resp && (resp.ok || resp.type === 'opaque')) {
-                        await cache.put(url, resp);
-                    }
-                }
+                if (!matched) await cache.add(url);
             } catch (err) {
                 // 单项非核心资源失败只静默跳过，不阻断运行
             }
