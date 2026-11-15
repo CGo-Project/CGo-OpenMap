@@ -176,10 +176,24 @@ for (const city of cities) {
         lines.forEach(l => {
             IO.lineStationGroups(l);
             IO.lineAllStationIds(l);
-            // linePathGroups 返回 { key, points }，key 必须真的能在 line 上取到该数组
+            // linePathGroups 返回 { key, points, declared? }，key 必须真的能在 line 上取到该点阵：
+            //   数组形式（pathPoints / pathPoints-branchN）→ 同一份数组引用；
+            //   声明形式 { points, ways }（只被部分交路共用的区段，如厦门 BRT 的物理区段）
+            //   → 同一份对象，且 ways 里声明的每条交路都真实存在。
             IO.linePathGroups(l).forEach(g => {
-                if (!Array.isArray(l[g.key])) throw new Error(`${l.id} 的折线分组 key "${g.key}" 取不到数组`);
-                if (l[g.key] !== g.points) throw new Error(`${l.id} 的折线分组 "${g.key}" 返回的不是原数组引用`);
+                const raw = l[g.key];
+                if (g.declared) {
+                    if (!raw || Array.isArray(raw) || raw.points !== g.points) {
+                        throw new Error(`${l.id} 的折线分组 "${g.key}" 不是同一份 { points, ways } 声明`);
+                    }
+                    const wayKeys = new Set(IO.lineStationGroups(l).map(gr => gr.wayKey));
+                    (g.ways || []).forEach(w => {
+                        if (!wayKeys.has(w)) throw new Error(`${l.id} 的折线分组 "${g.key}" 声明了不存在的交路 "${w}"`);
+                    });
+                    return;
+                }
+                if (!Array.isArray(raw)) throw new Error(`${l.id} 的折线分组 key "${g.key}" 取不到数组`);
+                if (raw !== g.points) throw new Error(`${l.id} 的折线分组 "${g.key}" 返回的不是原数组引用`);
             });
         });
         report = CodeGen.validateData(stations, lines);
@@ -398,6 +412,31 @@ section('交路模型 (core/line-routing.js)');
     check(Routing.wayLabel(line, ways[1], { a: { cn: '甲站' }, e: { cn: '乙站' } }) === '甲站—乙站',
         '缺 wayNames 时按交路首末站名推导');
 
+    // 上一站 / 下一站候选：多交路时必须带回「哪几条交路这样走」，
+    // 否则面板会得出「上一站 洪文 / 下一站 洪文」这种读不通的行（厦门 BRT 前埔枢纽站就是这种站）。
+    const nbTrunk = Routing.neighbors(line, 'b');
+    check(nbTrunk.multi === true
+        && nbTrunk.prev.length === 2
+        && nbTrunk.prev.find(p => p.id === 'a').wayKeys.join(',') === 'way1,way2'
+        && nbTrunk.prev.find(p => p.id === 'f').wayKeys.join(',') === 'way3'
+        && nbTrunk.next.length === 2
+        && nbTrunk.next.find(n => n.id === 'c').wayKeys.join(',') === 'way1,way2,way3'
+        && nbTrunk.next.find(n => n.id === 'g').wayKeys.join(',') === 'way4',
+        'neighbors: 同一邻站被多条交路共用时合并为一条候选并记全交路归属，分岔方向才并列');
+    const terminal = {
+        id: 'T1', name: 'T1线', hasbranch: true,
+        'stationIds-way1': ['a', 'b', 'c'],
+        'stationIds-way2': ['c', 'b']
+    };
+    const nbTerminal = Routing.neighbors(terminal, 'c');
+    check(nbTerminal.prev.length === 1 && nbTerminal.prev[0].id === 'b' && nbTerminal.prev[0].wayKeys.join(',') === 'way1'
+        && nbTerminal.next.length === 1 && nbTerminal.next[0].id === 'b' && nbTerminal.next[0].wayKeys.join(',') === 'way2',
+        'neighbors: 起点与终点同站的交路——上一站与下一站是同一邻站，但归属交路不同');
+    const nbSingle = Routing.neighbors({ id: 'S1', stationIds: ['a', 'b', 'c'], distances: [10, 20] }, 'b');
+    check(nbSingle.multi === false && nbSingle.prev[0].id === 'a' && nbSingle.prev[0].distance === 10
+        && nbSingle.next[0].id === 'c' && nbSingle.next[0].distance === 20,
+        'neighbors: 单交路线路按站序给出前后站与站距，multi 为 false');
+
     // 引擎侧仍从 path-geometry 的统一入口取走向，且拿到的是同一份交路归属
     const viaGeometry = G3.lineSegments(line, {});
     check(viaGeometry.length === segs.length && viaGeometry.every(s => s.ways instanceof Set),
@@ -422,8 +461,64 @@ section('交路模型 (core/line-routing.js)');
         && planHangzhong.dimSegKeys.has('pathPoints-branch1'),
         '上海 10 号线点航中路：亮「航中路—龙溪路—基隆路」，虹桥火车站支线淡化');
 
+    // 苏州有轨 2 号线：两条交路在各端分叉、中间共线，点主线车站不能把龙康路支线一起点亮
+    const szStations = evalData(fs.readFileSync(path.join(ROOT, 'city/suzhou/data_stations.js'), 'utf8'), 'stationsData');
+    const szLines = evalData(fs.readFileSync(path.join(ROOT, 'city/suzhou/data_lines.js'), 'utf8'), 'linesData');
+    const szTram = szLines.find(l => l.id === 'TSND2');
+    const planLongtang = Routing.plan(szTram, 'TSNZ202', szStations);
+    check([...planLongtang.litWays].join(',') === 'way1'
+        && planLongtang.litSegKeys.has('pathPoints-way1a')
+        && planLongtang.litSegKeys.has('pathPoints-main')
+        && planLongtang.litSegKeys.has('pathPoints-way1b')
+        && planLongtang.dimSegKeys.has('pathPoints-way2a')
+        && planLongtang.dimSegKeys.has('pathPoints-way2b'),
+        '苏州有轨 2 号线点龙塘港路：只亮「南京大学东—苏州新区火车站」，龙康路—航船浜与文昌路支线淡化');
+    const planLongkang = Routing.plan(szTram, 'TSNZ215', szStations);
+    check([...planLongkang.litWays].join(',') === 'way2'
+        && planLongkang.litSegKeys.has('pathPoints-way2a')
+        && planLongkang.litSegKeys.has('pathPoints-main')
+        && planLongkang.litSegKeys.has('pathPoints-way2b')
+        && planLongkang.dimSegKeys.has('pathPoints-way1a'),
+        '苏州有轨 2 号线点龙康路：亮「龙康路—航船浜—…—文昌路」整条交路');
+
+    // 厦门 BRT（一条线 + 8 条快线路交路）：反向行驶与「终点/起点同站」两类站的前后站归属
+    const xmStations = evalData(fs.readFileSync(path.join(ROOT, 'city/xiamen/data_stations.js'), 'utf8'), 'stationsData');
+    const xmLines = evalData(fs.readFileSync(path.join(ROOT, 'city/xiamen/data_lines.js'), 'utf8'), 'linesData');
+    const xmBrt = xmLines.find(l => l.id === 'BRT');
+    check(Routing.ways(xmBrt).length === 8, '厦门 BRT：一条线挂 8 条快线路交路（快1/2/3/5/6/7/8/9）');
+    const nbDongan = Routing.neighbors(xmBrt, 'M602_2');
+    check(nbDongan.prev.length === 2 && nbDongan.next.length === 2
+        && nbDongan.prev.find(p => p.id === 'M601_2').wayKeys.join(',') === 'way2,way6'
+        && nbDongan.prev.find(p => p.id === 'M603_2').wayKeys.join(',') === 'way4'
+        && nbDongan.next.find(n => n.id === 'M603_2').wayKeys.join(',') === 'way2,way6',
+        '厦门 BRT 东安：快5路与快2/快7 同段反向，上一站/下一站各两个候选并各带交路归属');
+    const nbQianpu = Routing.neighbors(xmBrt, 'M601_3');
+    check(nbQianpu.prev.length === 1 && nbQianpu.next.length === 1
+        && nbQianpu.prev[0].id === 'M602_3' && nbQianpu.next[0].id === 'M602_3'
+        && nbQianpu.prev[0].wayKeys.join(',') === 'way3,way4'
+        && nbQianpu.next[0].wayKeys.join(',') === 'way5,way8',
+        '厦门 BRT 前埔枢纽站：既是快3/快5 的终点又是快6/快9 的起点，前后站同为洪文但交路不同');
+    const nbWenzao = Routing.neighbors(xmBrt, 'M604');
+    check(nbWenzao.prev.length === 1 && nbWenzao.next.length === 1
+        && nbWenzao.prev[0].wayKeys.length === 4 && nbWenzao.next[0].wayKeys.length === 4,
+        '厦门 BRT 斗西路口：四条快线路同向，前后站各只有一条候选（面板不补注交路名）');
+
+    // 让位淡化时「是否还有别的线路要照顾」的判定：只落点的国铁线不算
+    const bjLines = evalData(fs.readFileSync(path.join(ROOT, 'city/beijing/data_lines.js'), 'utf8'), 'linesData');
+    const relatedOf = (sid) => bjLines.filter(l => Routing.allStationIds(l).includes(sid)).map(l => l.id);
+    check(relatedOf('S204').includes('Rwy2') && relatedOf('S204').includes('S2'),
+        '北京 S2 沙城站同时挂在「中国铁路」（只落点）与 S2 上');
+    check(Routing.hasOtherDrawnLine({ relatedLines: relatedOf('S204') }, 'S2', bjLines) === false,
+        '点延庆站时沙城站应随沙城支线一起淡化（只落点的国铁线不算「别的线路」）');
+    check(Routing.hasOtherDrawnLine({ relatedLines: relatedOf('S205') }, 'S2', bjLines) === false,
+        '延庆站同理只被点状国铁线保护，点沙城时也应淡化');
+    check(Routing.hasOtherDrawnLine({ relatedLines: ['SH11', 'SZ11'] }, 'SH11', shLines) === true,
+        '真正画线的换乘线路（上海 11 ⇄ 苏州 11）仍让车站保持亮着');
+    check(Routing.hasOtherDrawnLine({ relatedLines: ['S2'] }, 'S2', bjLines) === false,
+        '只在本线、且没有其它线路时一定会被淡化');
+
     // 全部真实城市：交路站距长度自洽，且每段走向都能归到至少一条交路
-    let badDist = 0, orphanSeg = 0, multiWay = 0;
+    let badDist = 0, orphanSeg = 0, multiWay = 0, misassigned = [];
     for (const city of cities) {
         const lines = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_lines.js'), 'utf8'), 'linesData');
         const stations = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
@@ -434,12 +529,77 @@ section('交路模型 (core/line-routing.js)');
                 if (!Array.isArray(w.distances) || !w.distances.length) return; // 待补站距合法
                 if (w.distances.length !== w.ids.length - 1 && !l.isLoop) badDist++;
             });
-            Routing.segments(l, stations).forEach(s => { if (!s.ways.size) orphanSeg++; });
+            const pieceList = Routing.segments(l, stations);
+            pieceList.forEach(s => { if (!s.ways.size) orphanSeg++; });
+
+            // 交路归属与站序必须自洽：每条交路的每个车站都要落在「归属于该交路」的某段走向上。
+            // 否则就是把某条交路的独有区段写成了别人的分支——点该支线的车站会朝错误方向亮
+            // （苏州「龙康路—航船浜」曾被写成 way1 的分支，就是这条断言要拦的情况）。
+            if (ws.length < 2) return;
+            const distTo = (p, pts) => {
+                let best = Infinity;
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const a = pts[i], b = pts[i + 1];
+                    const vx = b.x - a.x, vy = b.y - a.y;
+                    const l2 = vx * vx + vy * vy;
+                    let t = l2 < 1e-9 ? 0 : ((p.x - a.x) * vx + (p.y - a.y) * vy) / l2;
+                    t = Math.max(0, Math.min(1, t));
+                    const d = Math.hypot(p.x - (a.x + t * vx), p.y - (a.y + t * vy));
+                    if (d < best) best = d;
+                }
+                return best;
+            };
+            ws.forEach(w => {
+                const own = pieceList.filter(s => s.ways.has(w.key));
+                if (!own.length) { misassigned.push(`${city}/${l.id}/${w.key} 没有任何走向`); return; }
+                w.ids.forEach(sid => {
+                    const st = stations[sid];
+                    if (!st) return;
+                    let bestOwn = Infinity, bestAny = Infinity, anyKey = '';
+                    own.forEach(s => { bestOwn = Math.min(bestOwn, distTo(st, s.points)); });
+                    pieceList.forEach(s => {
+                        const d = distTo(st, s.points);
+                        if (d < bestAny) { bestAny = d; anyKey = s.key + '[' + [...s.ways].join('|') + ']'; }
+                    });
+                    // 站心离折线 10~20px 是正常绘制容差；只拦「明显落在别人区段上」
+                    if (bestAny < 1 && bestOwn > 30 && bestAny < bestOwn / 2) {
+                        misassigned.push(`${city}/${l.id}/${w.key} ${st.cn || sid} 实际落在 ${anyKey}`);
+                    }
+                });
+            });
         });
     }
     check(badDist === 0, `${cities.length} 座城市全部交路的站距长度与站序匹配`);
     check(orphanSeg === 0, '每段走向都归属于至少一条交路（高亮时不会有画了却永远不亮的段）');
     check(multiWay >= 15, `全网共 ${multiWay} 条多交路（分支）线路走同一份交路判定`);
+    check(misassigned.length === 0,
+        '每条交路的车站都落在归属于它的走向上（分支键归属写错会让点支线站朝错误方向亮）'
+        + (misassigned.length ? '：\n      ' + misassigned.slice(0, 8).join('\n      ') : ''));
+
+    // 同一条交路可以有多段独有走向（字母后缀），也可以把「只被部分交路共用」的区段
+    // 显式声明成 { points, ways }
+    const multiPiece = {
+        id: 'X4', name: 'X4线', hasbranch: true,
+        'stationIds-way1': ['a', 'b', 'c'],
+        'stationIds-way2': ['d', 'b', 'c'],
+        'pathPoints-way1a': [{ x: 0, y: 0 }, { x: 10, y: 0 }],
+        'pathPoints-main': { points: [{ x: 10, y: 0 }, { x: 20, y: 0 }], ways: ['way1', 'way2'] },
+        'pathPoints-way1b': [{ x: 20, y: 0 }, { x: 30, y: 0 }],
+        'pathPoints-way2a': [{ x: 10, y: 0 }, { x: 10, y: 10 }]
+    };
+    const mpSegs = Routing.segments(multiPiece, {});
+    const byKey = Object.fromEntries(mpSegs.map(s => [s.key, s]));
+    check(byKey['pathPoints-way1a'].ways.has('way1') && byKey['pathPoints-way1b'].ways.has('way1')
+        && byKey['pathPoints-way2a'].ways.has('way2')
+        && byKey['pathPoints-main'].ways.has('way1') && byKey['pathPoints-main'].ways.has('way2')
+        && !byKey['pathPoints-way1a'].ways.has('way2'),
+        '一条交路的多段独有走向（way1a / way1b）与 {points, ways} 共用段都按声明归属');
+    const planMulti = Routing.plan(multiPiece, 'a', {});
+    check([...planMulti.litWays].join(',') === 'way1'
+        && planMulti.litSegKeys.has('pathPoints-way1a')
+        && planMulti.litSegKeys.has('pathPoints-main')
+        && planMulti.dimSegKeys.has('pathPoints-way2a'),
+        '点「way1 独有段」上的车站：只亮 way1 的全部区段，way2 独有段让位');
 }
 
 // ============================================================================

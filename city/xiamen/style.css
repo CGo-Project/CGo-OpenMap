@@ -1,0 +1,62 @@
+/**
+ * CGo OpenMap - 厦门城市专属样式 (city/xiamen/style.css)
+ *
+ * 快速公交（BRT）是**一条线 + 8 条交路**：快1/2/3/5/6/7/8/9 路共用专用道与车站，
+ * 在 data_lines.js 里写成一个 BRT 条目的 way1…way8，走向按物理区段用
+ * `pathPoints-*: { points, ways }` 显式声明归属，共线段只画一次、也只高亮一次。
+ *
+ * 因此本文件对 BRT 只做配色/线宽层面的处理，**不再**为早期「一条线 + 三条几何分支」
+ * 的写法打「整条线永不淡化」的补丁：点某个 BRT 车站时，核心会按交路模型
+ * （core/line-routing.js）只点亮经停本站的那几条快线路，其余让位淡化。
+ *
+ * 本文件只作用于 city/xiamen/，核心引擎 core/ 不做任何改动。
+ */
+
+:root {
+    --xiamen-brt-color: #00afad;
+    /* 与 core/script.js 的 line-visual-inner 线宽保持一致，避免 BRT 比其它线路显得更粗 */
+    --xiamen-brt-stroke-width: 5.4px;
+    /* BRT 外描边：与其它线路同款，色线外套一圈地图底色，共线/分岔处不会切出白口 */
+    --xiamen-brt-outer-color: var(--map-bg);
+    --xiamen-brt-outer-width: 7px;
+}
+
+/* 快速公交：外描边按上面的变量绘制（含高亮态，避免高亮时泛白或跳变） */
+.line-visual-group[data-visual-id="BRT"] .line-visual-outer,
+.line-visual-group[data-visual-id="BRT"].active .line-visual-outer {
+    stroke: var(--xiamen-brt-outer-color);
+    stroke-width: var(--xiamen-brt-outer-width);
+}
+
+/**
+ * 水域底图（assets/xiamen_sea.svg，见 data_scattered.js）
+ *
+ * 素材本身是「浅蓝海面 + 纯白陆地」的亮色底图：亮色主题下陆地与页面底色同为白，
+ * 海面是一层浅蓝，观感正常。但深色主题下会出现**大片纯白陆地**，而站名在深色主题
+ * 里是浅色文字——压在白陆地上几乎读不出来。
+ *
+ * 这里在深色主题下把整张底图反相并旋回色相：陆地由白变黑（与深色底图融为一体，
+ * 浅色站名与站名描边都清晰），海面仍是偏蓝的深色；略提饱和度、略压亮度，
+ * 避免反相后海面发灰。只作用于带 xiamen_sea 的底图，不影响其它散点素材。
+ */
+[data-theme="dark"] #scattered-layer img[src*="xiamen_sea"] {
+    filter: invert(1) hue-rotate(180deg) saturate(1.15) brightness(0.95);
+}
+
+/**
+ * 站名外描边（地图底色描一圈）
+ *
+ * 站名不可避免会压在线路上；核心只在「选中态」(.label-group.active) 才加描边，
+ * 常态站名直接压在 5.4px 的色线上会难以辨认。这里给常态站名也描一圈底色：
+ *   - 宽度沿用 css/style.css 的 --sta-stroke-width-cn / -en（选中态同款，2px / 1.75px）；
+ *   - 颜色取 --map-bg，随亮/暗主题自动切换；
+ *   - 站点文本已带 paint-order: stroke fill，描边在字形之下，不会吃掉笔画。
+ * 未开通站（.label-group.type-no）的文字颜色仍由核心控制，这里只管描边。
+ */
+.label-group .stacn {
+    -webkit-text-stroke: var(--sta-stroke-width-cn, 2px) var(--map-bg);
+}
+
+.label-group .staen {
+    -webkit-text-stroke: var(--sta-stroke-width-en, 1.75px) var(--map-bg);
+}

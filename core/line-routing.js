@@ -127,6 +127,56 @@
     }
 
     /**
+     * 车站的上一站 / 下一站候选（多交路时逐条交路求，按目标站去重，并记下「哪几条交路这样走」）。
+     *
+     * 分支线路上同一座车站可能被多条交路经过，而各条交路在这一站的行车方向未必一致：
+     *   · 厦门 BRT 快5路写成「同安枢纽站→前埔枢纽站」，与同段的快2/快7 正好反向，
+     *     于是「东安」的上一站既是凤林（快2/快7）又是后田（快5）；
+     *   · 前埔枢纽站是快3/快5 的终点，又是快6/快9 的起点，
+     *     所以上一站是洪文、下一站也是洪文。
+     * 只把两个方向的站名并排列出来，会得到「上一站 洪文 / 下一站 洪文」这种读不通的行，
+     * 因此每条候选都带回产生它的交路键，由展示层在信息不足时补注「哪几条交路」。
+     *
+     * @param {object} line
+     * @param {string} stationId
+     * @returns {{
+     *   prev: Array<{id:string, distance:any, wayKeys:string[]}>,
+     *   next: Array<{id:string, distance:any, wayKeys:string[]}>,
+     *   multi: boolean
+     * }}
+     */
+    function neighbors(line, stationId) {
+        const routeWays = ways(line);
+        const out = { prev: [], next: [], multi: routeWays.length > 1 };
+        if (!stationId) return out;
+        [['prev', -1], ['next', 1]].forEach(([dir, step]) => {
+            const items = [];
+            const byId = new Map();
+            routeWays.forEach((w) => {
+                const ids = w.ids || [];
+                const idx = ids.indexOf(stationId);
+                if (idx < 0) return;
+                const tgt = idx + step;
+                if (tgt < 0 || tgt >= ids.length) return;
+                const dists = w.distances || [];
+                const distance = step < 0 ? dists[idx - 1] : dists[idx];
+                const exist = byId.get(ids[tgt]);
+                if (exist) {
+                    // 同一座邻站被多条交路共用：合并成一行，只记交路归属
+                    if (!exist.wayKeys.includes(w.key)) exist.wayKeys.push(w.key);
+                    if (exist.distance === undefined || exist.distance === null) exist.distance = distance;
+                    return;
+                }
+                const item = { id: ids[tgt], distance: distance, wayKeys: [w.key] };
+                byId.set(item.id, item);
+                items.push(item);
+            });
+            out[dir] = items;
+        });
+        return out;
+    }
+
+    /**
      * 交路的显示名：优先 wayNames，其次用首末站名拼「A—B」，都缺时退回「交路N」。
      * @param {object} line
      * @param {string|{key:string}} wayOrKey
@@ -191,7 +241,9 @@
         if (!Array.isArray(value) || value.length < 2) return null;
         const suffix = (PATH_KEY_RE.exec(key) || [])[1] || '';
         if (!suffix || suffix === 'main') return { points: value, ways: allWayKeys.slice() };
-        const m = /^(?:branch|way)(\d+)$/.exec(suffix);
+        // branchN / wayN 归 wayN；同一条交路若有多段独有走向，可用字母后缀区分
+        // （pathPoints-way1a / pathPoints-way2b），几何上仍是该交路的一部分。
+        const m = /^(?:branch|way)(\d+)[a-z]*$/.exec(suffix);
         if (m) {
             const wayKey = 'way' + parseInt(m[1], 10);
             // 声明的交路不存在时退回「所有交路共用」，避免整段走向消失在图上
@@ -321,6 +373,31 @@
         };
     }
 
+    /**
+     * 高亮让位（淡化）时，某座车站是否应当「保持亮着」。
+     *
+     * 规则：车站若还有**会画线的**其它线路经过，就保持原样（那条线的走向并没有被
+     * 淡化，站名单独变淡反而割裂）；只落点的线路（`isPointOnly`，如北京「中国铁路」）
+     * 不算——它除了站名什么都不画，没有「另一条亮着的走廊」需要照顾。
+     *
+     * 反例（曾经的实际 bug）：北京 S2 线点延庆站时，沙城站因为同时挂在点状的
+     * Rwy2 上而被判为「有别的线路」，站名一直亮着，看起来像沙城支线也被点亮了。
+     *
+     * @param {object} station 车站对象（需要 relatedLines）
+     * @param {string} lineId 当前高亮的线路 ID
+     * @param {Array} lines 全部线路数组（用于查别的线路是否只落点）
+     * @returns {boolean}
+     */
+    function hasOtherDrawnLine(station, lineId, lines) {
+        const list = Array.isArray(lines) ? lines : [];
+        const related = (station && station.relatedLines) || [];
+        return related.some((id) => {
+            if (id === lineId) return false;
+            const other = list.find((l) => l && l.id === id);
+            return other ? !other.isPointOnly : true; // 线路表里查不到就按「有」处理，避免误淡化
+        });
+    }
+
     return {
         MAX_WAYS,
         ways,
@@ -331,10 +408,12 @@
         wayKeysOfStation,
         primaryWay,
         wayLabel,
+        neighbors,
         stationGroups,
         segments,
         segmentsOfWay,
         plan,
+        hasOtherDrawnLine,
         pointsSignature
     };
 });

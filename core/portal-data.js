@@ -54,6 +54,7 @@
         'tianshui': { letter: 'T', pinyin: 'Tianshui', zh: '天水', pyInitials: 'ts' },
         'wenshan': { letter: 'W', pinyin: 'Wenshan', zh: '文山', pyInitials: 'ws' },
         'wuhu': { letter: 'W', pinyin: 'Wuhu', zh: '芜湖', pyInitials: 'wh' },
+        'xiamen': { letter: 'X', pinyin: 'Xiamen', zh: '厦门', pyInitials: 'xm' },
         'xiangxi': { letter: 'X', pinyin: 'Xiangxi', zh: '湘西', pyInitials: 'xx' },
         'yancheng': { letter: 'Y', pinyin: 'Yancheng', zh: '盐城', pyInitials: 'yc' },
         'yibin': { letter: 'Y', pinyin: 'Yibin', zh: '宜宾', pyInitials: 'yb' }
@@ -279,6 +280,7 @@
         'hefei': 211,
         'changchun': 203,
         'sydney': 198,
+        'xiamen': 169,
         'dalian': 156,
         'lanzhou': 140,
         'fuzhou': 105,

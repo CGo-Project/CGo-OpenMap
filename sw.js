@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261114.023036';
+const CACHE_NAME = 'cgo-openmap-v261114.035217';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -664,6 +664,24 @@ const ASSETS_TO_CACHE = [
     './assets/svg/icon@S8.svg',
     './assets/svg/icon@S9.svg',
     './assets/svg/icon@NMA.svg',
+    // 厦门线路徽标（快速公交 BRT 文字徽标）
+    './assets/svg/icon@l06.svg',
+
+    // 城市配置与业务数据 (厦门)
+    './city/xiamen/xiamen.js',
+    './city/xiamen/style.css',
+    './city/xiamen/modules/xiamen_brt_routes.js',
+    './city/xiamen/stacard/script.js',
+    './city/xiamen/data_stations.js',
+    './city/xiamen/data_lines.js',
+    './city/xiamen/data_virtual_transfers.js',
+    './city/xiamen/data_scattered.js',
+    './city/xiamen/data_legend.js',
+    './city/xiamen/data_timetable.js',
+    './city/xiamen/data_notopen.js',
+    './city/xiamen/staname.csv',
+    './city/xiamen/assets/xiamen_sea.svg',
+
     // 图标与清单素材
     './assets/icons/icon-192.png',
     './assets/icons/icon-512.png',

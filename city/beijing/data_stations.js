@@ -482,7 +482,8 @@ const stationsData = {
     "S502": { type: "dot", x: 663, y: 299, cn: "清河站", en: "Qinghe Rwy. Sta.", align: "right", offset: { x: 3, y: -6.5 }, textScale: { cn: 1, en: 1 }, hideLabel: true },
     "S503": { type: "dot", x: 582, y: 55, cn: "昌平北站", en: "Changpingbei Rwy. Sta.", align: "top", offset: { x: 0, y: 0 }, textScale: { cn: 1, en: 1 } },
     "S504": { type: "tsfo", x: 1596, y: 55, cn: "雁栖湖站", en: "Yanqihu<br>Rwy. Sta.", align: "bottom-left", offset: { x: 0, y: -1 }, textScale: { cn: 1, en: 1 } },
-    "S505": { type: "tsfo", x: 1639, y: 55, cn: "怀柔北站", en: "Huairoubei Rwy. Sta.", align: "top", offset: { x: 0, y: 0 }, textScale: { cn: 1, en: 1 }, hideLabel: true },
+    // 怀柔北站：S505（怀柔-密云线，站外换乘）显示站名，S607（通密线 way2）同址相邻只画点
+    "S505": { type: "tsfo", x: 1639, y: 55, cn: "怀柔北站", en: "Huairoubei Rwy. Sta.", align: "top", offset: { x: 0, y: 0 }, textScale: { cn: 1, en: 1 } },
     "S506": { type: "dot", x: 1683, y: 55, cn: "黑山寺站", en: "Heishansi Rwy. Sta.", align: "bottom", offset: { x: 0, y: 0 }, textScale: { cn: 1, en: 1 } },
     "S507": { type: "dot", x: 1726, y: 55, cn: "古北口站", en: "Gubeikou Rwy. Sta.", align: "top", offset: { x: 0, y: 0 }, textScale: { cn: 1, en: 1 } },
     "S601": { type: "dot", x: 1548, y: 760, cn: "通州西站", en: "Tongzhouxi Rwy. Sta.", align: "left", offset: { x: 0, y: 2 }, textScale: { cn: 1, en: 1 } },
