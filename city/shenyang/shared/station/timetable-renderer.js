@@ -148,7 +148,7 @@
      *
      * "line-first" / "line-last" 为线路首站 / 末站代号，其余值按站 ID 处理。
      * 两种情况都统一解析为车站中文名；查不到名称时回退为原始值，便于暴露数据问题。
-     * 分支线沿用既有行为：取 stationIds-way1，缺省回退主站序。
+     * 多交路线路只有**主交路**（way1）的首末站能当代号：各交路首站不同，混在一起没有意义。
      *
      * 代号取自**实际运营的车站**：未开通车站（type "no"）一律跳过，
      * 因此含未开通区段的线路，"line-last" 会落到该线最后一个已开通车站上，
@@ -168,9 +168,12 @@
 
         if (raw === "line-first" || raw === "line-last") {
             if (!line) return "";
-            const stationIds = line.hasbranch
-                ? (line["stationIds-way1"] || line.stationIds || [])
-                : (line.stationIds || []);
+            const ways = window.CGoLineRouting?.ways(line);
+            const stationIds = ways?.length
+                ? ways[0].ids
+                : line.hasbranch
+                    ? (line["stationIds-way1"] || line.stationIds || [])
+                    : (line.stationIds || []);
             if (!Array.isArray(stationIds) || !stationIds.length) return "";
             const operable = stationIds
                 .map(String)

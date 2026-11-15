@@ -140,7 +140,7 @@
             if (line.useStrictRounding) lineObj.useStrictRounding = true;
             project.lines.push(lineObj);
 
-            // 提取走向折线段（无损兼容分支线路 pathPoints-main / -branch1 / -branch2 及普通折线）
+            // 提取走向折线段（交路模型统一判定：pathPoints / -main / -branchN / {points,ways}）
             var geom = (typeof window !== 'undefined' && window.CGoPathGeometry)
                 ? window.CGoPathGeometry
                 : (typeof CGoPathGeometry !== 'undefined' ? CGoPathGeometry : null);
@@ -149,37 +149,29 @@
 
             if (geom && typeof geom.lineSegments === 'function') {
                 var rawSegs = geom.lineSegments(line, project.nodes);
-                (rawSegs || []).forEach(function (s, sIdx) {
+                (rawSegs || []).forEach(function (s) {
                     segmentsToCreate.push({
                         points: s.points,
-                        branchKey: s.key || (line.hasbranch ? ('branch_' + (sIdx + 1)) : 'main')
+                        branchKey: s.key || 'main',
+                        // 交路归属 + 合并时的别名键：写回要按原键名写，别名也要一起同步
+                        wayKeys: s.ways ? Array.from(s.ways) : [],
+                        aliasKeys: Array.isArray(s.aliases) ? s.aliases.slice() : []
                     });
                 });
-            } else {
-                if (line.hasbranch) {
-                    ['pathPoints-main', 'pathPoints-branch1', 'pathPoints-branch2'].forEach(function (k) {
-                        if (Array.isArray(line[k]) && line[k].length >= 2) {
-                            segmentsToCreate.push({ points: line[k], branchKey: k });
-                        }
-                    });
-                    Object.keys(line).forEach(function (k) {
-                        if (/^pathPoints-/.test(k) && k !== 'pathPoints-main' && k !== 'pathPoints-branch1' && k !== 'pathPoints-branch2') {
-                            if (Array.isArray(line[k]) && line[k].length >= 2) {
-                                segmentsToCreate.push({ points: line[k], branchKey: k });
-                            }
-                        }
-                    });
-                } else if (!line.isPointOnly) {
-                    var pts = line.pathPoints;
-                    if (!pts && Array.isArray(line.stationIds) && line.stationIds.length >= 2) {
-                        pts = line.stationIds.map(function (sid) {
-                            var n = project.nodes[sid];
-                            return n ? { x: n.x, y: n.y, nid: sid } : null;
-                        }).filter(Boolean);
-                    }
-                    if (pts && pts.length >= 2) {
-                        segmentsToCreate.push({ points: pts, branchKey: 'pathPoints' });
-                    }
+            } else if (!line.isPointOnly) {
+                // 降级：交路模块缺失时按 pathPoints* 通用收集，不再硬编码 main / branch1 / branch2
+                Object.keys(line).forEach(function (k) {
+                    if (!/^pathPoints(-|$)/.test(k)) return;
+                    var v = line[k];
+                    var pts = Array.isArray(v) ? v : ((v && Array.isArray(v.points)) ? v.points : null);
+                    if (pts && pts.length >= 2) segmentsToCreate.push({ points: pts, branchKey: k });
+                });
+                if (!segmentsToCreate.length && !line.hasbranch && Array.isArray(line.stationIds) && line.stationIds.length >= 2) {
+                    var fallbackPts = line.stationIds.map(function (sid) {
+                        var n = project.nodes[sid];
+                        return n ? { x: n.x, y: n.y, nid: sid } : null;
+                    }).filter(Boolean);
+                    if (fallbackPts.length >= 2) segmentsToCreate.push({ points: fallbackPts, branchKey: 'pathPoints' });
                 }
             }
 
@@ -197,6 +189,9 @@
                     lineId: lid,
                     branchKey: segItem.branchKey,
                     type: 'segaxis',
+                    // 运行期派生：该段由哪些交路使用、以及点阵合并时的别名键（_ 前缀，不写回数据文件）
+                    _wayKeys: segItem.wayKeys || [],
+                    _aliasKeys: segItem.aliasKeys || [],
                     points: (segItem.points || []).map(function (p) {
                         var pt = { x: p.x, y: p.y };
                         if (p.nid) pt.nid = p.nid;
@@ -415,6 +410,35 @@
     }
 
     /**
+     * 编辑用的分支键 → 线路上的 pathPoints 字段名。
+     * 原键名（pathPoints / pathPoints-main / pathPoints-branch3 / pathPoints-way5 …）原样沿用，
+     * 只有老工程遗留的 main / branch_N 才做一次兼容映射，不再维护固定键表。
+     */
+    function resolvePathKey(branchKey, line) {
+        var key = String(branchKey || '');
+        if (/^pathPoints(-|$)/.test(key)) return key;
+        if (!key || key === 'main') return line.hasbranch ? 'pathPoints-main' : 'pathPoints';
+        if (/^branch_?\d+$/.test(key)) return 'pathPoints-branch' + key.replace(/\D/g, '');
+        return 'pathPoints-' + key;
+    }
+
+    /**
+     * 按原键名写回点阵。
+     * 值是 { points, ways } 显式归属写法时只替换点阵、原样保留 ways 声明，
+     * 否则退化成裸数组会把「这条区段归哪几条交路」丢掉。
+     */
+    function writePathPoints(line, pathKey, points) {
+        var prev = line[pathKey];
+        if (prev && !Array.isArray(prev) && Array.isArray(prev.points)) {
+            var next = { points: points };
+            if (Array.isArray(prev.ways)) next.ways = prev.ways.slice();
+            line[pathKey] = next;
+            return;
+        }
+        line[pathKey] = points;
+    }
+
+    /**
      * 把编辑用的 segments 回代成线路的 pathPoints（走向点阵）。
      *
      * opts.onlyExistingPath = true 时：
@@ -442,44 +466,45 @@
                 for (var si = 0; si < snapLines.length; si++) {
                     if (snapLines[si].id === line.id) { snapLine = snapLines[si]; break; }
                 }
-                // 仅当原始快照中存在该线路且原本无点阵时，才跳过（新增线路 snapLine 为 null，应正常写回走向）
+                // 仅当原始快照中存在该线路且原本无点阵时，才跳过（新增线路 snapLine 为 null，应正常写回走向）。
+                // 「有键但点阵为空」（如北京 M11 的 pathPoints: []）也算没有点阵：
+                // 否则载入时按站序兜底算出的派生折线会被写回源文件，零编辑就判脏。
                 if (snapLine) {
                     var hadPath = Object.keys(snapLine).some(function (k) {
-                        return k === 'pathPoints' || /^pathPoints-/.test(k);
+                        if (k !== 'pathPoints' && !/^pathPoints-/.test(k)) return false;
+                        var v = snapLine[k];
+                        if (Array.isArray(v)) return v.length >= 2;
+                        return !!(v && Array.isArray(v.points) && v.points.length >= 2);
                     });
                     if (!hadPath) return;
                 }
             }
 
-            // 按分支分组多段折线，并缝合成统一走向点阵
-            var segsByBranch = {};
+            // 按「要写回的 pathPoints 字段名」分组多段折线，并缝合成统一走向点阵。
+            // 键名一律沿用原键名（pathPoints / -main / -branchN / -wayN …），
+            // 这样 way3…way99 与自定义区段都不需要再维护一张映射表。
+            var segsByTarget = {};
             lineSegs.forEach(function (s) {
-                var bKey = s.branchKey || 'main';
-                segsByBranch[bKey] = segsByBranch[bKey] || [];
-                segsByBranch[bKey].push(s);
+                var targetKey = resolvePathKey(s.branchKey, line);
+                segsByTarget[targetKey] = segsByTarget[targetKey] || [];
+                segsByTarget[targetKey].push(s);
             });
 
-            Object.keys(segsByBranch).forEach(function (bKey) {
-                var branchSegs = segsByBranch[bKey];
+            Object.keys(segsByTarget).forEach(function (pathKey) {
+                var branchSegs = segsByTarget[pathKey];
                 // 优先取在运营段（在建 notOpen 线段不写入已运营 pathPoints）
                 var operationalSegs = branchSegs.filter(function (s) { return !s.notOpen; });
                 if (!operationalSegs.length) operationalSegs = branchSegs;
                 var cleanPts = stitchSegmentsToPath(operationalSegs);
 
-                if (bKey === 'pathPoints' || bKey.startsWith('pathPoints-')) {
-                    line[bKey] = cleanPts;
-                } else if (bKey === 'main') {
-                    if (line.hasbranch) {
-                        line['pathPoints-main'] = cleanPts;
-                    } else {
-                        line.pathPoints = cleanPts;
-                    }
-                } else if (bKey.startsWith('branch_') || bKey.startsWith('branch')) {
-                    var suffix = bKey.replace('branch_', '').replace('branch', '');
-                    line['pathPoints-branch' + suffix] = cleanPts;
-                } else {
-                    line['pathPoints-' + bKey] = cleanPts;
-                }
+                writePathPoints(line, pathKey, cleanPts);
+                // 同一段点阵被多个键各写一遍时已按点阵签名合并成一段：别名键必须一起同步，
+                // 否则回写后两段点阵不再相同，下次载入会又裂成两段互相重叠的走向。
+                branchSegs.forEach(function (s) {
+                    (s._aliasKeys || []).forEach(function (alias) {
+                        if (alias && alias !== pathKey) writePathPoints(line, alias, cleanPts);
+                    });
+                });
             });
         });
     }
@@ -799,6 +824,19 @@
                 });
                 Object.keys(curr).forEach(function (k) {
                     if (k === 'pathPoints' || /^pathPoints-/.test(k)) patch[k] = curr[k];
+                });
+                // 原条目里没有的新字段（如把单交路升级为多交路时的 hasbranch、交路显示名 wayNames）
+                // 必须一并写回，否则新增的交路字段会被静默丢掉。
+                Object.keys(curr).forEach(function (k) {
+                    if (k.charAt(0) === '_') return;
+                    if (!(k in orig)) patch[k] = curr[k];
+                });
+                // 字段被移除时（例如单交路升级为多交路：stationIds → stationIds-way1）必须显式置 null：
+                // patchEntries 会以源码原条目为底合并补丁，不置 null 就会把旧键一起留下，
+                // 变成 stationIds 与 wayN 并存的半升级状态。
+                Object.keys(orig).forEach(function (k) {
+                    if (!/^(stationIds|distances|pathPoints)(-|$)/.test(k)) return;
+                    if (!(k in curr)) patch[k] = null;
                 });
                 dirty[lid] = patch;
             }

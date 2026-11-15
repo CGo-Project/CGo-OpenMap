@@ -4,10 +4,10 @@
  */
 
 (function (root, factory) {
-    const api = factory();
+    const api = factory(root);
     root.CGoPathGeometry = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
-})(typeof window !== 'undefined' ? window : globalThis, function () {
+})(typeof window !== 'undefined' ? window : globalThis, function (root) {
     'use strict';
 
     // 默认圆角半径常量 (px)
@@ -88,46 +88,47 @@
         return d;
     }
 
+    /** 取交路模型模块：浏览器里由 core/line-routing.js 挂到 window，Node 自检里按相对路径兜底 require */
+    function resolveRouting() {
+        if (root && root.CGoLineRouting) return root.CGoLineRouting;
+        if (typeof require === 'function') {
+            try {
+                const mod = require('./line-routing.js');
+                if (mod && typeof mod.segments === 'function') {
+                    if (root) root.CGoLineRouting = mod;
+                    return mod;
+                }
+            } catch (err) { /* 非 CommonJS 环境，忽略 */ }
+        }
+        return null;
+    }
+
     /**
      * 决定一条线路该画哪几段折线——**线路走向来源的唯一判定处**。
      *
      * 判定链（顺序即优先级）：
      * 1. `isPointOnly` → 不画走向，只在图上落站点图元（国铁等散布车站）；
-     * 2. `hasbranch`   → 画 pathPoints-main / -branch1 / -branch2，**不回退站序**；
-     * 3. `pathPoints`  → 画折线点阵；
-     * 4. 都没有        → 按 stationIds 顺序取站点坐标连成一段。
+     * 2. 有 `pathPoints*`   → 画显式点阵：主干预设所有交路共用，`pathPoints-branchN`
+     *                         / `pathPoints-wayN` 归 wayN；点阵写成 `{points, ways}`
+     *                         时可显式声明被部分交路共用的区段；
+     * 3. 都没有              → 按各交路站序取站点坐标连线（共用区段按边去重）。
      *
-     * 抽到这里是因为这套判定曾经在引擎与编辑器里各写一份，结果早期编辑器漏了
-     * 第 1 条，把北京「中国铁路」24 座散布全城的国铁车站从延庆一路连到大兴，
-     * 编辑器画布上凭空多出一堆横穿全图的长斜线；第 4 条也漏了倒角，北京 M11
-     * 的走向与线路图对不上。判定只留一份，这类漂移就不可能再发生。
+     * 「交路（way）」的枚举、走向与交路的归属、以及同一点阵写两遍的合并，
+     * 全部下沉到 core/line-routing.js —— 那里才是交路模型的唯一真源。
+     * 本函数保留为渲染侧的统一入口，因此引擎、编辑器、邻城影子与城市模块
+     * 都会自动拿到同一份、支持 way1…way99 的走向判定。
      *
      * @param {object} line 线路对象
-     * @param {object} [stations] 车站字典，仅第 4 条兜底分支需要
-     * @returns {Array<{cls: string, points: Array<{x,y,r?}>}>} 待绘制的折线段
+     * @param {object} [stations] 车站字典，仅第 3 条兜底分支需要
+     * @returns {Array<{cls: string, points: Array<{x,y,r?}>, key: string, ways: Set<string>}>}
      */
     function lineSegments(line, stations) {
         if (!line || line.isPointOnly) return [];
-        const out = [];
-
-        if (line.hasbranch) {
-            [['pathPoints-main', 'seg-main'],
-            ['pathPoints-branch1', 'seg-way1'],
-            ['pathPoints-branch2', 'seg-way2']].forEach(([key, cls]) => {
-                const points = line[key];
-                if (Array.isArray(points) && points.length >= 2) out.push({ cls, points, key });
-            });
-            Object.keys(line).forEach(k => {
-                if (/^pathPoints-/.test(k) && k !== 'pathPoints-main' && k !== 'pathPoints-branch1' && k !== 'pathPoints-branch2') {
-                    const points = line[k];
-                    if (Array.isArray(points) && points.length >= 2) {
-                        out.push({ cls: 'seg-' + k.replace('pathPoints-', ''), points, key: k });
-                    }
-                }
-            });
-            return out;
+        const routing = resolveRouting();
+        if (routing && typeof routing.segments === 'function') {
+            return routing.segments(line, stations);
         }
-
+        // 降级：线交路模块缺失时仍按老规则画（不应发生，仅防御）
         let points = line.pathPoints;
         if (!points || points.length === 0) {
             points = (line.stationIds || [])
@@ -137,8 +138,7 @@
                 })
                 .filter(Boolean);
         }
-        if (points.length >= 2) out.push({ cls: 'seg-main', points, key: 'pathPoints' });
-        return out;
+        return (points && points.length >= 2) ? [{ cls: 'seg-main', points, key: 'pathPoints', ways: new Set(['way1']) }] : [];
     }
 
     return { RADIUS_90, RADIUS_45, generateRoundedPath, cornerRadiusAt, lineSegments };

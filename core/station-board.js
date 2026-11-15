@@ -739,6 +739,14 @@
             };
 
             let stopsHtml = '';
+            // 多交路（branch）线路：先说明本站有哪几条交路停靠。
+            // 交路名来自 line.wayNames，缺省时按首末站名推导（core/line-routing.js）。
+            // 主干车站会并列列出多条（如「花桥—迪士尼 / 嘉定北—迪士尼」），
+            // 支线独有车站则只列它所在的那一条。
+            const ways = Array.isArray(lineInfo.ways) ? lineInfo.ways : [];
+            if (ways.length > 0) {
+                stopsHtml += createRow(`<cgo-icon name="route" size="14"></cgo-icon> 交路`, ways.join(' / '));
+            }
             if (lineInfo.prev) {
                 if (!(shouldHideNone && lineInfo.prev === "无")) {
                     stopsHtml += createRow("上一站", lineInfo.prev);

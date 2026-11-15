@@ -86,8 +86,17 @@
     /* 行程规划的城市侧配置（window.CGO_ROUTE_CONFIG）：共享层管算法与面板，
        本城只描述数据 —— coords 坐标兜底、lineCodes 徽标编号、reader 时刻摊平、fare 查票价表 */
 
-    /** 站序分组（分支安全，与共享层同口径：福州当前无分支线，属防御性写法） */
+    /**
+     * 站序分组（一条交路一组，与共享层 stationGroups 同口径）。
+     * 福州当前无分支线，但交路数是 1～99 条的开放集合，故一律走交路模型而非 way1 / way2。
+     */
     function lineStationGroups(line) {
+        const routing = window.CGoLineRouting;
+        if (routing) {
+            return routing.ways(line)
+                .map((way) => way.ids)
+                .filter((ids) => Array.isArray(ids) && ids.length);
+        }
         if (line?.hasbranch) {
             return ["way1", "way2"].map((way) => line[`stationIds-${way}`] || []).filter((ids) => ids.length);
         }
@@ -275,8 +284,7 @@
        route-data → route-planner → route-panel 顺序不可颠倒，sidebar-refit / map-tools 须晚于 route-panel */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261113.085800";
-
+        const version = "261114.023036";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 

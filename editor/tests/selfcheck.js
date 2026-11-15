@@ -323,6 +323,126 @@ section('isPointOnly 线路不得绘制走向');
 }
 
 // ============================================================================
+// 四点半、交路（Routing / Way）模型：way1…way99、走向归属与高亮方案
+// ============================================================================
+section('交路模型 (core/line-routing.js)');
+{
+    const Routing = require(path.join(ROOT, 'core/line-routing.js'));
+    const G3 = require(path.join(ROOT, 'core/path-geometry.js'));
+
+    // 三条交路共用一个主干 + 三段独有区段（顺带验证 way3 及更后面的交路都能被枚举）
+    const line = {
+        id: 'X1', name: 'X1线', hasbranch: true,
+        'stationIds-way1': ['a', 'b', 'c', 'd'],
+        'stationIds-way2': ['a', 'b', 'c', 'e'],
+        'stationIds-way3': ['f', 'b', 'c', 'd'],
+        'stationIds-way4': ['b', 'g'],
+        'pathPoints-main': [{ x: 0, y: 0 }, { x: 10, y: 0 }],
+        'pathPoints-branch1': [{ x: 10, y: 0 }, { x: 10, y: 10 }],
+        'pathPoints-branch2': [{ x: 10, y: 0 }, { x: 20, y: 0 }],
+        'pathPoints-branch3': [{ x: 0, y: 0 }, { x: -10, y: 0 }],
+        'pathPoints-branch4': [{ x: 0, y: 0 }, { x: 0, y: 10 }]
+    };
+    const ways = Routing.ways(line);
+    check(ways.map(w => w.key).join(',') === 'way1,way2,way3,way4',
+        'way1…way4 按编号顺序枚举（支持到 way99）');
+    check(ways[3].idsKey === 'stationIds-way4' && ways[3].distKey === 'distances-way4',
+        '每条交路带回自己的站序键与站距键');
+    check(Routing.allStationIds(line).join(',') === 'a,b,c,d,e,f,g',
+        '跨交路去重取全线车站，保持首次出现顺序');
+    check(Routing.wayKeysOfStation(line, 'b').join(',') === 'way1,way2,way3,way4',
+        '主干车站同时属于多条交路');
+    check(Routing.wayKeysOfStation(line, 'e').join(',') === 'way2',
+        '支线独有车站只属于对应交路');
+
+    const segs = Routing.segments(line, {});
+    const segByKey = Object.fromEntries(segs.map(s => [s.key, s]));
+    check([...segByKey['pathPoints-main'].ways].sort().join(',') === 'way1,way2,way3,way4',
+        '共用主干归属全部交路（只画一次，因此也只高亮一次）');
+    check([...segByKey['pathPoints-branch2'].ways].join(',') === 'way2',
+        'pathPoints-branchN 只归属 wayN');
+    check(segs.filter(s => s.key === 'pathPoints-main').length === 1,
+        '主支线共用区段在走向列表里只有一份');
+
+    // 同一段点阵被写了两遍（多个 way 重叠在同一区间）时必须合并成一段
+    const dup = {
+        id: 'X2', name: 'X2线', hasbranch: true,
+        'stationIds-way1': ['a', 'b'], 'stationIds-way2': ['a', 'b'],
+        'pathPoints-branch1': [{ x: 0, y: 0 }, { x: 10, y: 0 }],
+        'pathPoints-branch2': [{ x: 0, y: 0 }, { x: 10, y: 0 }]
+    };
+    const dupSegs = Routing.segments(dup, {});
+    check(dupSegs.length === 1 && [...dupSegs[0].ways].sort().join(',') === 'way1,way2',
+        '多个交路重叠在同一区间的重复点阵合并为一段（只高亮一次）');
+
+    // 高亮方案：点主干车站 ⇒ 整条亮；点支线独有车站 ⇒ 只亮该交路 + 贯通主干
+    const planTrunk = Routing.plan(line, 'b');
+    check(planTrunk.allLit === true && [...planTrunk.litWays].length === 4,
+        '点主干车站：经过它的交路就是全部交路，主线支线一起亮');
+    const planE = Routing.plan(line, 'e');
+    check([...planE.litWays].join(',') === 'way2'
+        && planE.litSegKeys.has('pathPoints-main')
+        && planE.litSegKeys.has('pathPoints-branch2')
+        && planE.dimSegKeys.has('pathPoints-branch1')
+        && planE.dimSegKeys.has('pathPoints-branch3'),
+        '点支线车站：只亮该交路 + 它贯通的主线，其它分支淡化');
+    check(planE.dimStationIds.sort().join(',') === 'd,f,g',
+        '只停靠被淡化交路的车站一并淡化，主干车站保持亮起');
+    const planLegend = Routing.plan(line, null);
+    check(planLegend.allLit === true, '点图例线路头（无车站）时整条线路全亮');
+
+    // wayNames 与首末站名两种交路显示名
+    const named = Routing.ways(Object.assign({ wayNames: { way2: '甲—乙' } }, line));
+    check(Routing.wayLabel(Object.assign({ wayNames: { way2: '甲—乙' } }, line), named[1]) === '甲—乙',
+        'wayNames 优先作为交路显示名');
+    check(Routing.wayLabel(line, ways[1], { a: { cn: '甲站' }, e: { cn: '乙站' } }) === '甲站—乙站',
+        '缺 wayNames 时按交路首末站名推导');
+
+    // 引擎侧仍从 path-geometry 的统一入口取走向，且拿到的是同一份交路归属
+    const viaGeometry = G3.lineSegments(line, {});
+    check(viaGeometry.length === segs.length && viaGeometry.every(s => s.ways instanceof Set),
+        'path-geometry.lineSegments 转调交路模型，交路归属一路带到渲染层');
+
+    // 真实数据回归：上海 10 / 11 号线的交路拆分（端部臂不再是「主干」）
+    const shStations = evalData(fs.readFileSync(path.join(ROOT, 'city/shanghai/data_stations.js'), 'utf8'), 'stationsData');
+    const shLines = evalData(fs.readFileSync(path.join(ROOT, 'city/shanghai/data_lines.js'), 'utf8'), 'linesData');
+    const sh11 = shLines.find(l => l.id === 'SH11');
+    const planHuaqiao = Routing.plan(sh11, 'SH_1114', shStations);
+    check([...planHuaqiao.litWays].join(',') === 'way1'
+        && planHuaqiao.litSegKeys.has('pathPoints-main')
+        && planHuaqiao.litSegKeys.has('pathPoints-branch1')
+        && planHuaqiao.dimSegKeys.has('pathPoints-branch2'),
+        '上海 11 号线点花桥：亮「花桥—嘉定新城—迪士尼」，嘉定北支线淡化');
+    const planDisney = Routing.plan(sh11, 'SH_1163', shStations);
+    check(planDisney.allLit === true, '上海 11 号线点迪士尼（主干末端）：整条线路全亮');
+    const sh10 = shLines.find(l => l.id === 'SH10');
+    const planHangzhong = Routing.plan(sh10, 'SH_1018', shStations);
+    check([...planHangzhong.litWays].join(',') === 'way2'
+        && planHangzhong.litSegKeys.has('pathPoints-main')
+        && planHangzhong.dimSegKeys.has('pathPoints-branch1'),
+        '上海 10 号线点航中路：亮「航中路—龙溪路—基隆路」，虹桥火车站支线淡化');
+
+    // 全部真实城市：交路站距长度自洽，且每段走向都能归到至少一条交路
+    let badDist = 0, orphanSeg = 0, multiWay = 0;
+    for (const city of cities) {
+        const lines = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_lines.js'), 'utf8'), 'linesData');
+        const stations = evalData(fs.readFileSync(path.join(ROOT, 'city', city, 'data_stations.js'), 'utf8'), 'stationsData');
+        lines.forEach(l => {
+            const ws = Routing.ways(l);
+            if (ws.length > 1) multiWay++;
+            ws.forEach(w => {
+                if (!Array.isArray(w.distances) || !w.distances.length) return; // 待补站距合法
+                if (w.distances.length !== w.ids.length - 1 && !l.isLoop) badDist++;
+            });
+            Routing.segments(l, stations).forEach(s => { if (!s.ways.size) orphanSeg++; });
+        });
+    }
+    check(badDist === 0, `${cities.length} 座城市全部交路的站距长度与站序匹配`);
+    check(orphanSeg === 0, '每段走向都归属于至少一条交路（高亮时不会有画了却永远不亮的段）');
+    check(multiWay >= 15, `全网共 ${multiWay} 条多交路（分支）线路走同一份交路判定`);
+}
+
+// ============================================================================
 // 四点九、车站图元：模板与尺寸必须与引擎同源
 // ============================================================================
 section('车站图元 (core/station-icons.js)');
@@ -372,7 +492,8 @@ section('车站图元 (core/station-icons.js)');
         && st.a.lineColors === undefined,
         'computeLineColors 可写入 _lineColors 运行期私有字段');
 
-    // 经停线路标志色次序与引擎 processData 一致：普通线路 unshift、isPointOnly push、分支只计 way1/way2
+    // 经停线路标志色次序与引擎 processData 一致：普通线路 unshift、isPointOnly push、
+    // 多交路（分支）线路跨全部交路去重后逐站计入（way3 也必须算到）
     const ec = Icons.engineLineColors([
         { color: '#111111', stationIds: ['a', 'b'] },
         { color: '#222222', stationIds: ['b'] },
@@ -380,8 +501,10 @@ section('车站图元 (core/station-icons.js)');
         { color: '#444444', hasbranch: true, 'stationIds-way1': ['c'], 'stationIds-way2': ['c', 'd'], 'stationIds-way3': ['e'] }
     ]);
     check(JSON.stringify(ec.b) === '["#222222","#111111","#333333"]'
-        && JSON.stringify(ec.c) === '["#444444"]' && ec.e === undefined,
-        'engineLineColors 与引擎 processData 的标志色次序一致');
+        && JSON.stringify(ec.c) === '["#444444"]'
+        && JSON.stringify(ec.d) === '["#444444"]'
+        && JSON.stringify(ec.e) === '["#444444"]',
+        'engineLineColors 与引擎 processData 的标志色次序一致（way1…wayN 全部计入）');
 
     // 真实数据：统计各城市图元类型分布，确保全部能产出图元
     for (const city of cities) {

@@ -311,7 +311,10 @@ window.OpenMapEditor.NavTreeView = (function () {
                 var nameHtml = highlightText(line.name || line.id, query);
                 var idSub = '<span class="tree-leaf-sub">' + escapeHtml(line.id) + '</span>';
 
-                var stCount = Array.isArray(line.stationIds) ? line.stationIds.length : '';
+                // 站数按交路模型跨交路去重统计：分支线没有 stationIds，旧写法会让它连站数都不显示
+                var stCount = (window.CityProjectIO && typeof window.CityProjectIO.lineAllStationIds === 'function')
+                    ? window.CityProjectIO.lineAllStationIds(line).length
+                    : (Array.isArray(line.stationIds) ? line.stationIds.length : 0);
                 var countBadge = stCount ? '<span class="tree-leaf-badge">' + stCount + ' 站</span>' : '';
 
                 var realIdx = lines.indexOf(line);

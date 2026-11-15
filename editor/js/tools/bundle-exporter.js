@@ -254,6 +254,12 @@ window.OpenMapEditor.BundleExporter = (function () {
             });
             if (!SO) return copy;
 
+            // 多交路（way1…way99）线路：站序与走向已按交路拆分，塌缩成单条 stationIds / pathPoints
+            // 会把 way2…wayN 合成一条，导出即走形。原样保留既有交路字段。
+            if (io && typeof io.lineStationGroups === 'function' && io.lineStationGroups(line).length > 1) {
+                return copy;
+            }
+
             var segs = ((project && project.segments) || []).filter(function (sg) {
                 return sg && sg.lineId === line.id;
             });

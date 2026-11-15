@@ -1734,8 +1734,12 @@
             labels.push(box);
         });
         const segments = [];
+        const routing = window.CGoLineRouting;   // 交路模型：一条交路一组站序（分支线不再固定两条）
         (window.linesData || []).forEach((line) => {
-            [line.stationIds, line["stationIds-way1"], line["stationIds-way2"]].forEach((ids) => {
+            const groups = routing
+                ? routing.ways(line).map((way) => way.ids)
+                : [line.stationIds, line["stationIds-way1"], line["stationIds-way2"]];
+            groups.forEach((ids) => {
                 if (!Array.isArray(ids)) return;
                 for (let i = 1; i < ids.length; i++) {
                     const a = list[ids[i - 1]];

@@ -196,8 +196,10 @@
      * 链接
      * ==================================================================== */
 
-    /** 站点是否在一条线上（兼容分支线：`stationIds` 或 `stationIds-way1/-way2`） */
+    /** 站点是否在一条线上（走交路模型：站序写在哪条 way 上都算，支持 way1…wayN） */
     function lineHasStation(line, sid) {
+        const routing = window.CGoLineRouting;
+        if (routing) return routing.waysOfStation(line, sid).length > 0;
         const groups = [line.stationIds];
         if (line.hasbranch) groups.push(line["stationIds-way1"], line["stationIds-way2"]);
         return groups.some((ids) => Array.isArray(ids) && ids.includes(sid));

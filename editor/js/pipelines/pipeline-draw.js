@@ -179,46 +179,50 @@
         var targetGroupKey = 'stationIds';
 
         if (targetLine) {
-            // 查找最佳目标站序分组（支持多分支线路）
-            var candidateKeys = [];
-            if (seg.branchKey) {
-                var simplifiedKey = seg.branchKey.replace('pathPoints-', '').replace('seg-', '');
-                candidateKeys.push('stationIds-' + simplifiedKey);
-                if (simplifiedKey === 'main') candidateKeys.push('stationIds', 'stationIds-way1');
-                if (simplifiedKey === 'branch1') candidateKeys.push('stationIds-way1');
-                if (simplifiedKey === 'branch2') candidateKeys.push('stationIds-way2');
-            }
-            candidateKeys.push('stationIds');
-            Object.keys(targetLine).forEach(function (k) {
-                if (/^stationIds-/.test(k) && candidateKeys.indexOf(k) === -1) {
-                    candidateKeys.push(k);
-                }
-            });
+            // 站序分组一律取自交路模型（CityProjectIO.lineStationGroups 带 wayKey），
+            // 不再自己拼 stationIds-way1 / -way2，因此 way3、way4… 与新画的支线都能落到正确交路。
+            var io = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.CityProjectIO) ||
+                (typeof CityProjectIO !== 'undefined' ? CityProjectIO : null);
+            var groups = (io && typeof io.lineStationGroups === 'function')
+                ? io.lineStationGroups(targetLine)
+                : [];
 
-            // 优先选取包含 prevNid 或 nextNid 的分组
-            var chosenKey = null;
-            for (var k = 0; k < candidateKeys.length; k++) {
-                var testKey = candidateKeys[k];
-                var arr = targetLine[testKey];
-                if (Array.isArray(arr)) {
-                    var hasPrev = prevNid && arr.indexOf(prevNid) !== -1;
-                    var hasNext = nextNid && arr.indexOf(nextNid) !== -1;
-                    if (hasPrev && hasNext) {
-                        chosenKey = testKey;
-                        break;
-                    }
-                    if (!chosenKey && (hasPrev || hasNext)) {
-                        chosenKey = testKey;
-                    }
-                }
+            // 本段走向归属的交路：载入时由 lineSegments 写在 _wayKeys 上；
+            // pathPoints-branchN / -wayN 这类键名同时直接指向同号交路。
+            var segWayKeys = Array.isArray(seg._wayKeys) ? seg._wayKeys.slice() : [];
+            var segSuffix = String(seg.branchKey || '').replace(/^pathPoints-/, '');
+            var mSegBranch = /^(?:branch|way)(\d+)$/.exec(segSuffix);
+            if (mSegBranch) {
+                var segWayKey = 'way' + parseInt(mSegBranch[1], 10);
+                if (segWayKeys.indexOf(segWayKey) === -1) segWayKeys.unshift(segWayKey);
             }
-            if (!chosenKey) {
-                chosenKey = targetLine.hasbranch ? (candidateKeys[0] || 'stationIds-way1') : 'stationIds';
-                if (!Array.isArray(targetLine[chosenKey])) {
-                    targetLine[chosenKey] = [];
-                }
+
+            // 候选顺序：本段所属交路优先，其余分组兜底；再按「含前后站」挑最贴合的一组
+            var candidateGroups = groups.filter(function (g) {
+                return segWayKeys.indexOf(g.wayKey) !== -1;
+            }).concat(groups.filter(function (g) {
+                return segWayKeys.indexOf(g.wayKey) === -1;
+            }));
+
+            var chosenGroup = null;
+            for (var k = 0; k < candidateGroups.length; k++) {
+                var g = candidateGroups[k];
+                if (!Array.isArray(g.ids)) continue;
+                var hasPrev = prevNid && g.ids.indexOf(prevNid) !== -1;
+                var hasNext = nextNid && g.ids.indexOf(nextNid) !== -1;
+                if (hasPrev && hasNext) { chosenGroup = g; break; }
+                if (!chosenGroup && (hasPrev || hasNext)) chosenGroup = g;
             }
-            targetGroupKey = chosenKey;
+            if (!chosenGroup && candidateGroups.length) chosenGroup = candidateGroups[0];
+
+            if (chosenGroup) {
+                targetGroupKey = chosenGroup.idsKey;
+            } else if (mSegBranch) {
+                // 新画的支线还没有同号交路：按交路号新建一组站序，而不是悄悄塞进 way1
+                targetGroupKey = 'stationIds-' + (segWayKeys[0] || ('way' + parseInt(mSegBranch[1], 10)));
+                targetLine[targetGroupKey] = [];
+            }
+            if (!Array.isArray(targetLine[targetGroupKey])) targetLine[targetGroupKey] = [];
 
             var stList = targetLine[targetGroupKey];
             if (Array.isArray(stList)) {
@@ -493,19 +497,30 @@
                 var addStationToLine = function (nid, anchorNid, position) {
                     if (!nid || !project.nodes[nid] || project.nodes[nid].type === 'temp') return;
                     if (!targetLine) return;
-                    if (!Array.isArray(targetLine.stationIds)) targetLine.stationIds = [];
-                    if (targetLine.stationIds.indexOf(nid) !== -1) return;
+                    // 站序键走交路模型：多交路线路写它已有的第一条交路（如 stationIds-way1 …），
+                    // 绝不会给分支线凭空补一个 stationIds 出来。
+                    var ioDraw = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.CityProjectIO) ||
+                        (typeof CityProjectIO !== 'undefined' ? CityProjectIO : null);
+                    var drawGroups = (ioDraw && typeof ioDraw.lineStationGroups === 'function')
+                        ? ioDraw.lineStationGroups(targetLine)
+                        : [];
+                    var drawIdsKey = drawGroups.length ? drawGroups[0].idsKey : 'stationIds';
+                    if (!Array.isArray(targetLine[drawIdsKey])) targetLine[drawIdsKey] = [];
+                    if (targetLine[drawIdsKey].indexOf(nid) !== -1) return;
 
                     var orderApi = (typeof window !== 'undefined' && window.OpenMapEditor && window.OpenMapEditor.StationOrder) || null;
                     if (orderApi && typeof orderApi.insertStation === 'function') {
                         var opts = position === 'before'
                             ? { beforeId: anchorNid || null }
                             : { afterId: anchorNid || null };
-                        var res = orderApi.insertStation(targetLine.stationIds, nid, opts);
-                        targetLine.stationIds = res.ids;
+                        // 单交路线路就是 stationIds；多交路线路用交路模型给出的那条站序键
+                        var res = drawIdsKey === 'stationIds'
+                            ? orderApi.insertStation(targetLine.stationIds, nid, opts)
+                            : orderApi.insertStation(targetLine[drawIdsKey], nid, opts);
+                        targetLine[drawIdsKey] = res.ids;
                         return;
                     }
-                    targetLine.stationIds.push(nid);
+                    targetLine[drawIdsKey].push(nid);
                 };
 
                 // ---- 自由折线（segaxis）：把新点**追加到当前这条折线**，而不是另起一段 ----

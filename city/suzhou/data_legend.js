@@ -33,8 +33,7 @@ const LEGEND_CONFIG = [
         cols: 2,
         items: [
             { targets: ["TSND1"], name: "有轨1号线 SNZ Tram Line 1" },
-            { targets: ["TSND2"], name: "有轨2号线 SNZ Tram Line 2" },
-            { targets: ["TSND5"], name: "有轨5号线 SNZ Tram Line 5" }
+            { targets: ["TSND2"], name: "有轨2号线 SNZ Tram Line 2" }
         ]
     },
     {

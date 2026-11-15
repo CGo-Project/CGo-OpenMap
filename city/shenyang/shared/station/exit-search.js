@@ -92,11 +92,15 @@
     function onRidable(sid) {
         const lines = window.linesData;
         if (!Array.isArray(lines)) return true;
-        const referenced = lines.some((line) => line && !line.isPointOnly && (
-            (line.stationIds || []).includes(sid)
-            || (line["stationIds-way1"] || []).includes(sid)
-            || (line["stationIds-way2"] || []).includes(sid)
-        ));
+        const routing = window.CGoLineRouting;
+        const referenced = lines.some((line) => {
+            if (!line || line.isPointOnly) return false;
+            // 交路模型：站序写在哪条 way 上都算（分支线不再固定两条交路）
+            if (routing) return routing.waysOfStation(line, sid).length > 0;
+            return (line.stationIds || []).includes(sid)
+                || (line["stationIds-way1"] || []).includes(sid)
+                || (line["stationIds-way2"] || []).includes(sid);
+        });
         return referenced;
     }
 

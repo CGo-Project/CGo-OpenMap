@@ -420,8 +420,10 @@
     const stationMap = () => window.processedStations || window.stationsData || {};
     const linesData = () => (Array.isArray(window.linesData) ? window.linesData : []);
 
-    /** 线路站序（分支线把各 way 顺序拼接） */
+    /** 线路站序（跨交路去重，保持首次出现顺序；交路数不再固定为两条） */
     function lineStations(line) {
+        const routing = window.CGoLineRouting;
+        if (routing) return routing.allStationIds(line);
         if (Array.isArray(line.stationIds)) return line.stationIds;
         const out = [];
         Object.keys(line).forEach((key) => {

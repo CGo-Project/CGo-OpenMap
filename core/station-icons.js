@@ -188,18 +188,40 @@
      * 逐行复刻 core/script.js processData 的经停线路标志色次序，返回 { sid: [color, …] }。
      *
      * 注意引擎的次序并不是「线路书写顺序」：普通线路用 unshift（后写的线路排在前面），
-     * 只有 isPointOnly 的线路用 push；分支线路只统计 way1 / way2。普通站的环色取 [0]，
-     * 城市钩子（长春、沈阳……）也按 [0] 上色——次序不一致，编辑器里的站点就会换一种颜色。
+     * 只有 isPointOnly 的线路用 push；多交路（分支）线路跨全部交路去重后逐站计入。
+     * 普通站的环色取 [0]，城市钩子（长春、沈阳……）也按 [0] 上色——次序不一致，
+     * 编辑器里的站点就会换一种颜色。
+     *
+     * 交路枚举统一走 core/line-routing.js（支持 way1…way99），不在本文件重复推导。
      *
      * @param {Array} lines 线路数组
      * @returns {Object<string, string[]>}
      */
+    /** 取交路模型模块：浏览器里由 core/line-routing.js 挂到 window，Node 自检里按相对路径兜底 require */
+    function routingApi() {
+        const g = (typeof window !== 'undefined') ? window : (typeof globalThis !== 'undefined' ? globalThis : null);
+        if (g && g.CGoLineRouting) return g.CGoLineRouting;
+        if (typeof require === 'function') {
+            try {
+                const mod = require('./line-routing.js');
+                if (mod && typeof mod.allStationIds === 'function') {
+                    if (g) g.CGoLineRouting = mod;
+                    return mod;
+                }
+            } catch (err) { /* 非 CommonJS 环境，忽略 */ }
+        }
+        return null;
+    }
+
     function engineLineColors(lines) {
         const out = {};
+        const routing = routingApi();
         (lines || []).forEach(line => {
             if (!line) return;
             let ids;
-            if (line.hasbranch) {
+            if (routing) {
+                ids = routing.allStationIds(line);
+            } else if (line.hasbranch) {
                 ids = Array.from(new Set([].concat(line['stationIds-way1'] || [], line['stationIds-way2'] || [])));
             } else {
                 ids = line.stationIds || [];

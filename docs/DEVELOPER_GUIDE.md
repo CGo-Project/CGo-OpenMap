@@ -79,6 +79,33 @@
    - 终点 $P_{end} = P_{curr} + \vec{u}_2 \cdot r$；
    - 输出 SVG 二次贝塞尔曲线指令：`L startX,startY Q currX,currY endX,endY`。
 
+### 3.3 走向来源判定与交路（way）模型 (`core/line-routing.js`)
+
+`lineSegments(line, stations)` 是走向判定的唯一入口，它把「这条线该画哪几段」交给
+`core/line-routing.js` 的交路模型，因此**引擎、编辑器、邻城影子、城市模块拿到的分段完全一致**。
+
+- **交路（way）**：`stationIds-way1` … `stationIds-way99` 每条都是一条完整运营交路；
+- **走向归属**：`pathPoints-main` / `pathPoints` 归全部交路共用（只画一次、只亮一次），
+  `pathPoints-branchN` 只归 wayN；`pathPoints-xxx: { points, ways: [...] }` 可显式声明
+  被部分交路共用的区段；
+- **去重**：同一段点阵写了多遍时按点阵签名合并为一段并合并交路归属，重叠区间只画一次；
+- **高亮方案**：`plan(line, stationId)` 以「车站 → 经过它的交路 → 这些交路的全部走向与车站」
+  推导。于是点主干车站时全部交路一起亮；点某条交路独有的车站时只亮该交路，
+  即「支线 + 它贯通的主线区段」。淡化只作用于**只停靠被淡化交路**的车站，
+  还有别的线路经过的换乘站保持原样。
+
+```javascript
+const R = window.CGoLineRouting;
+R.ways(line);                              // way1…wayN（含站序键与站距键）
+R.allStationIds(line);                     // 跨交路去重
+R.waysOfStation(line, stationId);          // 经过该站的交路（主干车站会有多条）
+R.segments(line, stations);                // [{ key, cls, points, ways:Set<wayKey> }]
+R.plan(line, stationId, stations);         // { allLit, litWays, litSegKeys, dimSegKeys, dimStationIds }
+```
+
+> 分段渲染时每段都带 `data-seg-key`，高亮按段键逐段增减透明度；同一区间只对应一段，
+> 所以「主支线 / 多个 way 重叠」时不会出现双重高亮或叠加发光。
+
 ---
 
 ## 4. 车站图元模板与尺寸规范 (`core/station-icons.js`)
