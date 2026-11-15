@@ -209,6 +209,25 @@
          * 计价站距与土建站距不同源，套费率会在档位分界附近错档。
          * 查不到（未开通站 / 同站进出）返回 null，内核按「票价未知」处理。
          */
+        /**
+         * 候车（时间依赖规划用；仅「时间最快」目标 + 指定了出发时刻时生效）。
+         *
+         * 只有滨海快线的**大站快车**（网络线 BE#2）有真实班距可依：
+         * 7:00–22:00、每站每小时一班，各站分钟数见 data_express.js。
+         * 其余口径，宁可保守也不凭空造等车时间：
+         *   - 普通车（BE）：班距最小 7.5 分 ⇒ 期望候车取 4 分；
+         *   - 直达快车（BE#3）：每日仅 05:55 一班且无逐站时刻 → null（不可乘），避免给出纸面方案；
+         *   - 其它线路：0（没有全日出车时刻，硬编班距会污染「时间最快」的比较）。
+         */
+        /**
+         * 乘车段头部扩展：交给 modules/fuzhou_express_service.js 实现。
+         * 这里只做一行转发，本地业务（三颗药丸、途经站、发车提示）全部在该模块里。
+         */
+        rideExtrasHtml(line, fromSid, toSid, stopsCount, minutes) {
+            const mod = window.CGO_FuzhouExpress;
+            return mod && typeof mod.renderPills === "function"
+                ? mod.renderPills(line, fromSid, toSid, stopsCount, minutes) : "";
+        },
         fareSystems: {},
         fare: {
             [FUZHOU_FARE_SYSTEM](km, context = {}) {
@@ -284,12 +303,16 @@
        route-data → route-planner → route-panel 顺序不可颠倒，sidebar-refit / map-tools 须晚于 route-panel */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261114.035217";
+        const version = "261116.005914";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
         // 官方站间票价表（行程规划与票价图唯一价格来源；须早于 route-data / route-panel 建图）
         write("./city/fuzhou/data_official_fare.js");
+      // 大站快车 / 直达快车时刻（同线快慢车的时刻依据；须早于规划面板建图）
+      write("./city/fuzhou/data_express.js");
+      // 滨海快线的车种药丸（普通车 / 大站快车 / 直达快车）；须早于规划面板渲染
+      write("./city/fuzhou/modules/fuzhou_express_service.js");
         // 文旅景点名录（含建库时算好的最近车站与直线距离），供车站信息板的文旅卡片使用
         write("./city/fuzhou/data_attractions.js");
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染

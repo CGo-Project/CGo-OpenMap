@@ -103,8 +103,13 @@ const fail = (msg) => { problems += 1; process.stdout.write(`  ✗ ${msg}\n`); }
     process.stdout.write("\n② 站内换乘（transferAt，区分方向）\n");
     const netLine = (id) => network.lines.find((l) => l.id === id);
     Object.keys(cfg.transferAt || {}).forEach((sid) => {
+        // 交路安全：滨海快线已改为「普通车 / 大站快车」两条交路、不再写 stationIds，
+        // 直接读 stationIds 会把它从本站的线路清单里漏掉（帝封江 / 福州火车站 / 东门 都是 BE 换乘站）。
+        const linesAt = (l) => (sandbox.CGoLineRouting
+            ? sandbox.CGoLineRouting.allStationIds(l)
+            : (l.stationIds || []));
         const ids = sandbox.linesData
-            .filter((l) => (l.stationIds || []).includes(sid))
+            .filter((l) => linesAt(l).includes(sid))
             .map((l) => l.id)
             .filter((id) => netLine(id));
         for (let i = 0; i < ids.length; i += 1) {
