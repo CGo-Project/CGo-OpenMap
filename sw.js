@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261114.035217';
+const CACHE_NAME = 'cgo-openmap-v261116.005914';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -503,6 +503,7 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/modules/fuzhou_cultural.js',
     './city/fuzhou/modules/fuzhou_airport.js',
     './city/fuzhou/modules/fuzhou_railway.js',
+    './city/fuzhou/modules/fuzhou_express_service.js',
     './city/fuzhou/stacard/script.js',
     './city/fuzhou/data_stations.js',
     './city/fuzhou/data_lines.js',
@@ -514,6 +515,7 @@ const ASSETS_TO_CACHE = [
     './city/fuzhou/data_site_space.js',
     // 官方站间票价表（官网「票价线路查询」接口抓取，10302 组）
     './city/fuzhou/data_official_fare.js',
+    './city/fuzhou/data_express.js',
     // 文旅景点名录（含建库时算好的最近车站与直线距离）
     './city/fuzhou/data_attractions.js',
     './city/fuzhou/staname.csv',
