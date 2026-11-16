@@ -77,7 +77,7 @@
 
 #### timetable-renderer.js —— 首末班车渲染与日期 / 季节判定
 
-首末班车「归一化行 → HTML」、日期类型判定（`workday` / `restday`，可选调休日历）、**季节判定（阈值由城市传入）**、终点站代号解析（`line-first` / `line-last` 跳过未开通车站）、未开通车站过滤、按日期类型取行（`rowsForDayType`）、季节与日期类型标签的差异判定。<br>行模型见文件内 typedef：`first` / `last` 一律是字符串，日期类型分档落在**行**上（行带 `dayType`，缺省为通用），共享层不猜值的形状
+首末班车「归一化行 → HTML」、日期类型判定（`workday` / `restday`，内置 2027 年全国节假日日历，城市可覆盖）、**季节判定（阈值由城市传入）**、终点站代号解析（`line-first` / `line-last` 跳过未开通车站）、未开通车站过滤、按日期类型取行（`rowsForDayType`）、季节与日期类型标签的差异判定。<br>行模型见文件内 typedef：`first` / `last` 一律是字符串，日期类型分档落在**行**上（行带 `dayType`，缺省为通用），共享层不猜值的形状
 
 #### stacard-engine.js —— 高德瓦片地图卡片
 
