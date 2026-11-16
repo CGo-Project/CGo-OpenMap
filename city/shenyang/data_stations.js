@@ -643,7 +643,7 @@ const stationsData = {
         en: "CHUANGXINYILU",
         labelStyle: "callout",
         align: "top",
-        offset: { x: 44 , y: 38 },
+        offset: { x: -48, y: -35 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "0225": {
@@ -652,8 +652,8 @@ const stationsData = {
         y: 1520,
         cn: "综合保税区",
         en: "ZONGHEBAOSHUIQU",
-        align: "left",
-        offset: { x: -10, y: 0 },
+        align: "right",
+        offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "0226": {
@@ -1691,9 +1691,11 @@ const stationsData = {
         type: "no",
         x: 1100,
         y: 980,
-        cn: "文萃路",
-        en: "WENCUILU",
-        align: "bottom",
+        // 2026-11-16 批复更名：文萃路 → 自动化所机器人中心（官方全称带「站」，图上按惯例略去）
+        cn: "自动化所机器人中心",
+        en: "ZIDONGHUASUOJIQIRENZHONGXIN",
+        aliases: ["文萃路", "WENCUILU"],
+        align: "bottom-right",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
@@ -1829,6 +1831,8 @@ const stationsData = {
         y: 1420,
         cn: "雪松路",
         en: "XUESONGLU",
+        // 10 号线侧施工暂用名为「苏家屯」，2026-11-16 正式定名「雪松路」，与 6 号线同名换乘
+        aliases: ["苏家屯", "SUJIATUN"],
         labelStyle: "callout",
         align: "top",
         offset: { x: -38, y: -11 },
@@ -1845,9 +1849,10 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     // —— 10 号线南延（未开通，挂在 SYM10 站序尾部，站号即线序 22~36）——
+    // 2026-11-16 经市交通运输局批复正式站名，8 站与施工暂用名不同，旧名一律进 aliases 供检索。
     // 张沙布以南沿 x1280 单弯南下至 y1480 后一路西行，于 (1000,1480) 穿过 2 号线的
     // 创新一路（0224，2×10 换乘在此，不在全运路）；创新一路至沈阳南站两个直角弯
-    // （x800 竖段在两弯之间，白塔街居其上）；沈阳南站起沿 y1420 横排至丁香街，
+    // （x800 竖段在两弯之间，东北大学浑南校区居其上）；沈阳南站起沿 y1420 横排至大格，
     // 雪松路与 6 号线共点（0628，type no）即两条未开通线路的交叉点。
     "1022": {
         type: "no",
@@ -1863,8 +1868,9 @@ const stationsData = {
         type: "no",
         x: 1280,
         y: 1404,
-        cn: "桑林子",
-        en: "SANGLINZI",
+        cn: "孙家寨",
+        en: "SUNJIAZHAI",
+        aliases: ["桑林子", "SANGLINZI"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1873,10 +1879,11 @@ const stationsData = {
         type: "no",
         x: 1250,
         y: 1480,
-        cn: "营城子南",
-        en: "YINGCHENGZINAN",
-        align: "top",
-        offset: { x: -16, y: -4 },
+        cn: "南岭",
+        en: "NANLING",
+        aliases: ["营城子南", "YINGCHENGZINAN"],
+        align: "bottom",
+        offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "1025": {
@@ -1885,8 +1892,8 @@ const stationsData = {
         y: 1480,
         cn: "沈本二街",
         en: "SHENBENERJIE",
-        align: "bottom",
-        offset: { x: 0, y: 4 },
+        align: "top",
+        offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "1026": {
@@ -1895,16 +1902,17 @@ const stationsData = {
         y: 1480,
         cn: "莫子山公园",
         en: "MOZISHANGONGYUAN",
-        align: "top",
-        offset: { x: 0, y: -4 },
+        align: "bottom",
+        offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "1027": {
         type: "no",
         x: 1066,
         y: 1480,
-        cn: "桃仙街",
-        en: "TAOXIANJIE",
+        cn: "自动化所鲁美学院",
+        en: "ZIDONGHUASUOLUMEIXUEYUAN",
+        aliases: ["桃仙街", "TAOXIANJIE"],
         align: "top",
         offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1927,16 +1935,17 @@ const stationsData = {
         y: 1480,
         cn: "智慧大街",
         en: "ZHIHUIDAJIE",
-        align: "top",
-        offset: { x: 0, y: -4 },
+        align: "bottom",
+        offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "1030": {
         type: "no",
         x: 845,
         y: 1480,
-        cn: "白塔二街",
-        en: "BAITAERJIE",
+        cn: "白塔二南街",
+        en: "BAITAERNANJIE",
+        aliases: ["白塔二街", "BAITAERJIE"],
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1945,8 +1954,9 @@ const stationsData = {
         type: "no",
         x: 800,
         y: 1450,
-        cn: "白塔街",
-        en: "BAITAJIE",
+        cn: "东北大学浑南校区",
+        en: "DONGBEIDAXUEHUNNANXIAOQU",
+        aliases: ["白塔街", "BAITAJIE"],
         align: "right",
         offset: { x: 10, y: 0 },
         textScale: { cn: 1.0, en: 1.0 }
@@ -1969,26 +1979,28 @@ const stationsData = {
         y: 1420,
         cn: "体育学院",
         en: "TIYUXUEYUAN",
-        align: "top",
-        offset: { x: 0, y: -4 },
+        align: "bottom",
+        offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "1034": {
         type: "no",
         x: 630,
         y: 1420,
-        cn: "国展中心",
-        en: "GUOZHANZHONGXIN",
-        align: "bottom",
-        offset: { x: 0, y: 4 },
+        cn: "国际展览中心",
+        en: "GUOJIZHANLANZHONGXIN",
+        aliases: ["国展中心", "GUOZHANZHONGXIN"],
+        align: "top",
+        offset: { x: 0, y: -4 },
         textScale: { cn: 1.0, en: 1.0 }
     },
     "1036": {
         type: "no",
         x: 510,
         y: 1420,
-        cn: "丁香街",
-        en: "DINGXIANGJIE",
+        cn: "大格",
+        en: "DAGE",
+        aliases: ["丁香街", "DINGXIANGJIE"],
         align: "bottom",
         offset: { x: 0, y: 4 },
         textScale: { cn: 1.0, en: 1.0 }
