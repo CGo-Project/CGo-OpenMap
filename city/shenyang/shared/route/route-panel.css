@@ -787,6 +787,21 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
     display: flex;
 }
 
+/* 页签用原生 <button>：用零特异度清掉 UA 的边框/底色/字体，
+   保留核心 css/style.css 里 .tab-item 的底部高亮条与 hover 底色 */
+:where(.cgo-rt-routebar .tab-item) {
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    line-height: inherit;
+    text-align: inherit;
+}
+
+/* 页签栏是横向滚动容器，焦点环向内收，避免被裁掉 */
+.cgo-rt-routebar .tab-item:focus-visible {
+    outline-offset: -2px;
+}
+
 .cgo-rt-routebar .tab-item.cgo-rt-tab-active {
     color: var(--text-main);
     font-weight: bold;

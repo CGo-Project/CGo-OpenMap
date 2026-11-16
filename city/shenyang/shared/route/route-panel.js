@@ -1895,10 +1895,10 @@
         bar.innerHTML = `
             <div class="panel-tabs-nav">
                 ${routes.map((route, index) => `
-                    <div class="tab-item${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}"
-                         role="button" tabindex="0" aria-pressed="${index === state.routeIndex ? "true" : "false"}">
+                    <button type="button" class="tab-item${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}"
+                            aria-pressed="${index === state.routeIndex ? "true" : "false"}">
                         ${routeTabLabel(route, index)}
-                    </div>
+                    </button>
                 `).join("")}
             </div>
             <button class="panel-share-btn" title="查看全程" data-fit="route">
