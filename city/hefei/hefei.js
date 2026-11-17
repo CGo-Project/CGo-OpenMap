@@ -87,8 +87,8 @@
     };
 
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        document.write('<scr' + 'ipt src="./city/hefei/modules/hefei_timetable.js?v=261116.170231"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/hefei/modules/hefei_cultural.js?v=261116.170231"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/hefei/modules/hefei_timetable.js?v=261117.104830"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/hefei/modules/hefei_cultural.js?v=261117.104830"><\/scr' + 'ipt>');
     }
 
     window.HEFEI_CITY = HefeiCity;

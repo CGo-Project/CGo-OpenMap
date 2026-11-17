@@ -1646,3 +1646,82 @@ body.legend-pinned #cgo-route-card .section-title-text {
     flex: 0 1 auto;
     min-width: 0;
 }
+
+/* ── 规划起终点波纹 ──────────────────────────────────────────────────
+   点选起终点后，在该站外画一圈由内向外扩散并淡出的圆：起点绿、终点红，1 秒一轮。
+
+   ⚠️ 波纹是**普通 HTML 元素**，与车站节点同类：车站节点在 core/script.js 里就是
+   createElement('div') + style.left/top，即 #stations-layer 是 HTML 容器。
+   往里塞 SVG <g> 不会渲染 —— 那是「DOM 里有、画面看不到」的根因。
+
+   用 left/top 定位到站心，再以 translate(-50%, -50%) 把自身中心对到站心；
+   扩散走 border-radius 圆环的 scale，HTML 的 transform-origin 默认就是自身中心，
+   不存在 SVG 里 transform-box 解析成 view-box 把圆甩出画面的问题。 */
+.cgo-rt-ripple {
+    --cgo-rt-ripple-rgb: 46, 158, 91;
+    position: absolute;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    /* 盖在站点图元之上 */
+    z-index: 4;
+}
+
+.cgo-rt-ripple[data-role="to"] {
+    --cgo-rt-ripple-rgb: 208, 83, 63;
+}
+
+.cgo-rt-ripple-ring {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;          /* 让 30px 的圆心落在站心 */
+    box-sizing: border-box;
+    border: 4px solid rgb(var(--cgo-rt-ripple-rgb));
+    border-radius: 50%;
+    transform-origin: center center;
+    animation: cgo-rt-ripple 1s ease-out infinite;
+}
+
+@keyframes cgo-rt-ripple {
+    0% {
+        transform: scale(0.5);
+        opacity: 0.9;
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+/* 动效敏感用户：保留静止描边，不做扩散 */
+@media (prefers-reduced-motion: reduce) {
+    .cgo-rt-ripple-ring {
+        animation: none;
+        opacity: 0.6;
+    }
+}
+
+/* ── 乘车段头部 ────────────────────────────────────────────────────
+   城市可在 CGO_ROUTE_CONFIG.rideExtrasHtml 里往这一行右侧塞本地控件
+   共享层只保证「站名在左、扩展位靠右」这一布局，不关心里面是什么控件。 */
+.cgo-rt-leg-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cgo-rt-leg-head .cgo-rt-leg-name {
+    min-width: 0;
+}
+
+.cgo-rt-ride-info {
+    white-space: nowrap;
+}
+
+.cgo-rt-leg {
+    overflow: hidden;
+}

@@ -357,6 +357,8 @@
         state[field] = sid;
         if (code !== undefined) state[exitKey(field)] = code;
         if (landmark !== undefined) state[landmarkKey(field)] = landmark;
+        // 选点即上波纹：不能等出结果才有反馈（此时可能还没有终点）
+        paintPickedRipple();
     }
 
     /** 结果标题端点名：该端点是按地标命中的就直接用纯地标名（「起点地标 → 终点地标」），
@@ -569,6 +571,7 @@
         panel.querySelector(".cgo-rt-go").addEventListener("click", runPlan);
         panel.querySelector('[data-quick="clear"]').addEventListener("click", () => {
             state.from = state.to = null;
+        paintPickedRipple();
             state.fromExit = state.toExit = null;
             state.fromExitLandmark = state.toExitLandmark = null;
             syncFields();
@@ -1342,6 +1345,24 @@
      * （如长春 5 号线末端的省妇儿中心、有轨 G54/G55 首站的工农大路），
      * 方向该报该方向最后一个实际运营的车站，而不是那个尚未对外运营的站。
      */
+    /**
+     * 乘车段头部的**城市扩展位**：城市可在 CGO_ROUTE_CONFIG 里实现
+     *   rideExtrasHtml(line, fromSid, toSid, stopsCount, minutes) -> HTML 字符串
+     * 用来在「上车站 出发/上车」右侧放本地特有的控件；共享层不关心它是什么。
+     *
+     * 共享层只负责调用与布局，不含任何城市判断；未实现的城市返回空串，界面零变化。
+     */
+    function rideExtrasHtml(line, fromSid, toSid, stopsCount, minutes) {
+        const fn = window.CGO_ROUTE_CONFIG && window.CGO_ROUTE_CONFIG.rideExtrasHtml;
+        if (typeof fn !== "function") return "";
+        try {
+            const html = fn(line, fromSid, toSid, stopsCount, minutes);
+            return typeof html === "string" ? html : "";
+        } catch (e) {
+            return "";                 // 城市扩展出错不能连累整块结果
+        }
+    }
+
     function rideTerminus(step) {
         const ids = wayStationIds(lineOf(step.line), Number(step.wi) || 0);
         const operable = ids.filter(isOperableStation);
@@ -1711,6 +1732,7 @@
                             <span class="cgo-rt-leg-name">
                                 <b data-jump="${start}">${stationName(start)}</b><em>${action}</em>
                             </span>
+                            ${rideExtrasHtml(line, start, allStops[allStops.length - 1], stopsCount, minutes)}
                         </div>
                         <div class="cgo-rt-leg-line cgo-rt-ride-line" data-role="ride">
                             <span class="cgo-rt-line-name">${group.throughName || line?.name || ""}</span>
@@ -1718,7 +1740,7 @@
                         </div>
                         <div class="cgo-rt-leg-line${middle.length ? " cgo-rt-expandable" : ""}" data-role="ride"${middle.length ? ` data-expand="${index}" title="查看途经车站"` : ""}>
                             ${middle.length ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
-                            <span>乘坐 ${stopsCount} 站 · ${Math.round(minutes)} 分钟</span>
+                            <span class="cgo-rt-ride-info">乘坐 ${stopsCount} 站 · ${Math.round(minutes)} 分钟</span>
                         </div>
                         ${middle.length ? `
                             <div class="cgo-rt-stoplist" data-list="${index}" hidden>
@@ -2045,7 +2067,7 @@
         const body = panel.querySelector(".cgo-rt-result-body");
         body.innerHTML = `
             <div class="cgo-rt-sum">
-                <b>约 ${Math.round(route.minutes + gateOverhead(route))} 分钟</b>
+                <b class="cgo-rt-total">约 ${Math.round(route.minutes + gateOverhead(route))} 分钟</b>
                 <span>${route.distance} 公里 · ${route.stops} 站 · 换乘 ${route.transfers} 次${
                     route.fare === null ? "" : ` · ${route.fare} 元`}</span>
             </div>
@@ -2290,17 +2312,100 @@
     }
 
     /**
+     * 起终点波纹：在车站图元里追加两圈扩散的描边，提示「规划把哪两站当成了起终点」。
+     *
+     * 为什么不另建图层：图元的坐标空间取决于城市（有的把站点画在 `translate(x y)` 里、
+     * 有的直接写绝对坐标），另建图层就得猜变换。这里挂到**节点自身**里，再用 `getBBox()`
+     * 取本地坐标的中心与外接尺寸——不管城市怎么画，圆心都落在图元正中。
+     *
+     * 与核心的 `.active` 一样，波纹也会被图层重建（重置缩放、切换城市、搜索定位）带走，
+     * 故由 restoreEndpoints() 在每次 MutationObserver 回调里补回；已存在就不再插，
+     * 避免「插 → 触发观察 → 再插」的死循环。
+     */
+    const RIPPLE_CLASS = "cgo-rt-ripple";
+    /** 起点绿 / 终点红（RGB 三元组）；同时供 CSS 变量与内联兜底使用 */
+    const RIPPLE_RGB = { from: "46, 158, 91", to: "208, 83, 63" };
+    /** 波纹半径基准：普通站图元 10px、换乘站 17.5px，取 13 让它从图元外缘起跳 */
+    const RIPPLE_RADIUS = 13;
+
+    /** 站心坐标：引擎把处理后的车站挂在 window.processedStations（兜底 stationsData） */
+    function stationPoint(sid) {
+        const grab = (table) => {
+            if (!table) return null;
+            const st = Array.isArray(table) ? table.find((x) => x && x.id === sid) : table[sid];
+            return st && Number.isFinite(st.x) && Number.isFinite(st.y) ? st : null;
+        };
+        return grab(window.processedStations) || grab(window.stationsData) || grab(window.stationsDataRaw) || null;
+    }
+
+    /**
+     * 在**车站图层**里直接画一圈波纹（与站点组同处一个坐标空间，故 cx/cy 就是站心）。
+     *
+     * 为什么不挂到站点组内部、也不用 getBBox()：那条路依赖
+     *   ① `node_<车站ID>` 这个 id 命名、② 图元当时的布局盒，
+     * 任一不成立就静默什么都不画（本站曾因此完全看不到波纹）。
+     * 直接读站心坐标并画在同层，坐标系与站点组天然一致，也不需要节点存在。
+     */
+    function ensureRipple(sid, role) {
+        const layer = window.stationsLayer || document.getElementById("stations-layer");
+        const point = stationPoint(sid);
+        if (!layer || !point) return;
+        const tone = role === "to" ? "to" : "from";
+        const key = `${sid}|${tone}`;
+        if (layer.querySelector(`.${RIPPLE_CLASS}[data-key="${key}"]`)) return;
+
+        // ⚠️ 必须用 HTML 元素，不能是 SVG 元素：
+        // 车站节点本身就是 <div>（core/script.js 里 createElement('div') + style.left/top），
+        // 即 #stations-layer 是 HTML 容器。往里塞 SVG <g> 不会渲染 —— 曾经就是
+        // 「DOM 里查得到（count=1）却完全看不见」的真正原因。
+        const wrap = document.createElement("div");
+        wrap.className = RIPPLE_CLASS;
+        wrap.setAttribute("data-key", key);
+        wrap.setAttribute("data-sid", sid);
+        wrap.setAttribute("data-role", tone);
+        // 与车站 div 同一套坐标（processedStations 的 x/y）
+        wrap.style.left = `${point.x}px`;
+        wrap.style.top = `${point.y}px`;
+
+        const ring = document.createElement("span");
+        ring.className = "cgo-rt-ripple-ring";
+        wrap.appendChild(ring);
+        layer.appendChild(wrap);
+    }
+
+    /**
+     * 由**当前已选中的起终点**驱动波纹，不依赖「出了结果」。
+     *
+     * 之前只在 applyHighlight(route) 里画，于是「选了起点但还没选终点」时地图上毫无反应
+     * —— 用户点了上藤、也点了车站卡片里的「设为出发点」，却看不到任何提示。
+     * 选点那一刻就该有反馈，故改由 setEndpoint() 直接调用这里。
+     */
+    function paintPickedRipple() {
+        const layer = window.stationsLayer || document.getElementById("stations-layer");
+        if (!layer) return;
+        const wanted = new Map();
+        if (state.from) wanted.set(`${state.from}|from`, { sid: state.from, role: "from" });
+        if (state.to) wanted.set(`${state.to}|to`, { sid: state.to, role: "to" });
+        layer.querySelectorAll(`.${RIPPLE_CLASS}`).forEach((el) => {
+            if (!wanted.has(el.getAttribute("data-key"))) el.remove();
+        });
+        wanted.forEach((item) => ensureRipple(item.sid, item.role));
+    }
+
+    /**
      * 保活：起终点的 active 随时可能被核心清掉（每次 selectStation 都会先 clearHighlights()，
      * 点空白处的 resetMapState() 同理），而此时结果窗口还开着、路线高亮也还在，起终点不该跟着熄灭。
      * 这里只做「带标记却丢了 active 就补回来」，只补不删，因此不会影响核心与其它模块给别的车站加 active。
      * 节点可能被图层重建换掉，故每次按车站 ID 重新查找，不缓存元素引用。
      */
     function restoreEndpoints() {
-        endpointIds.forEach((sid) => {
+        endpointIds.forEach((sid, index) => {
             endpointNodes(sid).forEach((el) => {
                 el.setAttribute(`data-${ENDPOINT_FLAG}`, "");
                 if (!el.classList.contains("active")) el.classList.add("active");
             });
+            // 第一个是起点、第二个是终点（单站规划时只有起点）
+            ensureRipple(sid, index === 0 ? "from" : "to");
         });
     }
 
@@ -2333,6 +2438,9 @@
             el.removeAttribute(`data-${ENDPOINT_FLAG}`);
             el.classList.remove("active");
         });
+        // 波纹归「已选中的起终点」所有，不由路线高亮决定：
+        // 这里只按当前选点重算，避免把仍在编辑中的起点波纹一并抹掉
+        paintPickedRipple();
     }
 
     /** 规划路径层：独立于引擎线网层，因此不会被「淡化其余线网」的规则命中 */

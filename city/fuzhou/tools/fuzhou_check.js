@@ -62,6 +62,11 @@ function loadCity(sandbox) {
     expose("FUZHOU_OFFICIAL_FARE");
     expose("FUZHOU_OFFICIAL_SEGMENT_FARE");
     expose("FUZHOU_OFFICIAL_STATION_IDS");
+    run("data_express.js");                  // 大站快车 / 直达快车时刻（第 ②-3 节核对其推演）
+    expose("FUZHOU_EXPRESS_SERVICE");
+    expose("fuzhouExpressToMinutes");
+    expose("fuzhouExpressMinuteOfHour");
+    expose("fuzhouExpressNextDeparture");
     run("data_virtual_transfers.js");
     expose("VIRTUAL_TRANSFER_MAP");
     expose("VIRTUAL_FREE_TRANSFER_MAP");
@@ -131,6 +136,230 @@ linesData.forEach((line) => {
     });
 });
 
+/* ── 2.5 同线快慢车（滨海快线的三条交路）────────────────────────────── */
+section("②-2 同线快慢车（滨海快线 · 交路模型）");
+{
+    /**
+     * 滨海快线用**交路模型**表达同线快慢车：一条线、三条交路。
+     *
+     *   way1 普通车（站站停，13 站）
+     *   way2 大站快车（7 站）：两端终点 + 官网原文「中间仅停靠 东门 / 三叉街（滨海快线）/
+     *        帝封江 / 大数据 / 机场 共 5 个站」
+     *   way3 直达快车（5 站）：福州火车站 / 闽都 / 三叉街（滨海快线）/ 机场 / 文岭
+     *
+     * 下面按「交路清单」逐条钉住，任一被改动都会让快慢车这一层静默失效：
+     *   ① 交路数与交路名（wayNames 决定面板上显示「普通车 / 大站快车 / 直达快车」）；
+     *   ② 每条交路的停靠站清单与顺序（写错就会把慢车站说成快车站）；
+     *   ③ 每条交路的逐跳站距 = 同一轨道上官方区间里程之和；三条端到端合计必须相等
+     *      （跳停车不改变轨道里程；若不等，说明站距被按坐标估算过）；
+     *   ④ 三条交路共用 pathPoints（不写 pathPoints-branchN，否则同一条轨道会被画两遍）。
+     */
+    const PATTERNS = [
+        {
+            key: "way1", name: "普通车",
+            stops: ["M104", "M410", "BE11", "BE10", "BE09", "M423", "BE07", "BE06", "BE05", "BE04", "BE03", "BE02", "BE01"],
+            dists: [2530, 1330, 1260, 3180, 5570, 9470, 9970, 8810, 3420, 1500, 9170, 5560]
+        },
+        {
+            key: "way2", name: "大站快车", mid: true,
+            stops: ["M104", "M410", "BE09", "M423", "BE04", "BE02", "BE01"],
+            dists: [2530, 5770, 5570, 31670, 10670, 5560]
+        },
+        {
+            key: "way3", name: "直达快车", mid: true, oneWay: true,
+            // 单向：每日仅 05:55 自福州火车站发往文岭。该方向与全线参考方向一致，
+            // 故站序与 way1 / way2 同向（2026-11 已把全线站序倒成 福州火车站 → 文岭）。
+            stops: ["M104", "BE11", "BE09", "BE02", "BE01"],
+            dists: [3860, 4440, 47910, 5560]
+        }
+    ];
+
+    const be = linesData.find((line) => line.id === "BE");
+    check("滨海快线存在", Boolean(be), "未找到 BE");
+    if (be) {
+        const sum = (arr) => (arr || []).reduce((a, b) => a + b, 0);
+        const beWays = Routing.ways(be);
+
+        check("滨海快线为多交路（同线快慢车）", beWays.length === PATTERNS.length,
+            `实际 ${beWays.length} 条：${beWays.map((w) => w.key).join(", ")}`);
+
+        PATTERNS.forEach((p) => {
+            const way = beWays.find((w) => w.key === p.key);
+            check(`${p.key}（${p.name}）存在`, Boolean(way), "缺该交路");
+            if (!way) return;
+
+            check(`${p.name} 交路名正确`, be.wayNames?.[p.key] === p.name,
+                `实际 ${JSON.stringify(be.wayNames?.[p.key])}`);
+            check(`${p.name} 站序与既定清单一致`,
+                JSON.stringify(way.ids) === JSON.stringify(p.stops), way.ids.join(","));
+            check(`${p.name} 站名与既定清单一致`,
+                way.ids.map((id) => stationsData[id]?.cn).join("/")
+                === p.stops.map((id) => stationsData[id]?.cn).join("/"),
+                way.ids.map((id) => stationsData[id]?.cn).join("/"));
+            check(`${p.name} 逐跳站距 = 官方区间里程之和`,
+                JSON.stringify(way.distances) === JSON.stringify(p.dists), way.distances.join(","));
+            check(`${p.name} 站距合计与普通车一致（同一轨道端到端等长）`,
+                sum(way.distances) === sum(PATTERNS[0].dists),
+                `${sum(way.distances)} vs ${sum(PATTERNS[0].dists)}`);
+
+            if (p.key !== "way1") {
+                const slowSet = new Set(PATTERNS[0].stops);
+                check(`${p.name} 车站都包含在普通车站序内`,
+                    p.stops.every((id) => slowSet.has(id)),
+                    p.stops.filter((id) => !slowSet.has(id)).join(","));
+
+                // 交路模型的上下站：中间站应能查到本交路的候选
+                const midStops = p.stops.slice(1, -1);
+                const bad = midStops.filter((id) => {
+                    const nb = Routing.neighbors(be, id);
+                    return ![...nb.prev, ...nb.next].some((x) => x.wayKeys.includes(p.key));
+                });
+                check(`${p.name} 中间站能查到本交路上下站`, bad.length === 0,
+                    bad.map((id) => stationsData[id]?.cn).join(","));
+            }
+        });
+
+        // 全线参考方向：福州火车站 → 文岭（2026-11 已按要求把站序倒过来）。
+        // 交路模型里 way1 的首末站决定 line-first / line-last，也决定车站面板
+        // 「上一站 / 下一站」的朝向，故这里钉住它，免得又被改回「文岭在前」。
+        const slowWay = beWays.find((w) => w.key === "way1");
+        check("滨海快线站序自福州火车站起", Boolean(slowWay) && slowWay.ids[0] === "M104",
+            slowWay ? slowWay.ids[0] : "缺 way1");
+        check("滨海快线站序至文岭止",
+            Boolean(slowWay) && slowWay.ids[slowWay.ids.length - 1] === "BE01",
+            slowWay ? slowWay.ids[slowWay.ids.length - 1] : "缺 way1");
+
+        // 直达快车是单向交路（每日 05:55 福州火车站 → 文岭），方向与全线一致
+        const direct = beWays.find((w) => w.key === "way3");
+        check("直达快车与全线同向（福州火车站 → 文岭）",
+            Boolean(direct) && direct.ids[0] === "M104"
+            && direct.ids[direct.ids.length - 1] === "BE01",
+            direct ? `${direct.ids[0]} → ${direct.ids[direct.ids.length - 1]}` : "缺 way3");
+
+        // 慢车独有站（只停普通车的车站）的候选里不该出现任何快车交路
+        const fastStops = new Set([...PATTERNS[1].stops, ...PATTERNS[2].stops]);
+        const slowOnly = PATTERNS[0].stops.filter((id) => !fastStops.has(id));
+        const badSlow = slowOnly.filter((id) => {
+            const nb = Routing.neighbors(be, id);
+            return [...nb.prev, ...nb.next].some((x) =>
+                x.wayKeys.some((k) => k !== "way1"));
+        });
+        check("慢车独有站不显示快车候选", badSlow.length === 0,
+            badSlow.map((id) => stationsData[id]?.cn).join(","));
+
+        // 共用走向：只允许写 pathPoints，不应出现 pathPoints-branchN / pathPoints-wayN
+        const ownPathKeys = Object.keys(be).filter((k) => /^pathPoints-/.test(k));
+        check("快慢车共用同一条走向（不写分支点阵）", ownPathKeys.length === 0,
+            ownPathKeys.join(","));
+        check("滨海快线保留共用 pathPoints", Array.isArray(be.pathPoints) && be.pathPoints.length > 0,
+            String((be.pathPoints || []).length));
+
+        PATTERNS.forEach((p) => {
+            process.stdout.write(`  ${p.name} ${p.stops.length} 站，端到端 ${sum(p.dists)} m：`
+                + `${p.stops.map((id) => stationsData[id]?.cn).join(" → ")}\n`);
+        });
+    }
+}
+
+/* ── 2.75 大站快车时刻表（data_express.js）──────────────────────────── */
+section("②-3 大站快车时刻表（data_express.js · 从 fast 字段推演）");
+{
+    /**
+     * 官网「站点查询」每站有两组时刻：`directions[方向]` 是**普通车**，
+     * `fast[方向]` 才是**快车**（大站 / 直达）。
+     *
+     * 这一节存在的首要目的就是防「取错列」：规划用的快车时刻必须从 `fast` 解析，
+     * 一旦有人（或 AI）拿 `directions` 去推，端到端会从 41/42 分变成 48 分，
+     * 而 48 分正是「误用普通车第三列」的产物。故这里**重新从 `fast` 解析一遍**再比对固化值。
+     */
+    const svc = sandbox.FUZHOU_EXPRESS_SERVICE;
+    check("大站快车时刻表存在", Boolean(svc), "未取到 FUZHOU_EXPRESS_SERVICE");
+
+    if (svc) {
+        check("班距为 60 分钟", svc.headwayMinutes === 60, String(svc.headwayMinutes));
+        check("服务时段为 7:00–22:00",
+            svc.window?.startHour === 7 && svc.window?.endHour === 22,
+            JSON.stringify(svc.window));
+
+        /** 从该站 `fast[方向]` 原文里取「大站」那一项的 HH:MM（直达不算大站） */
+        const bigStopClockOf = (sid, destName) => {
+            const fast = schedule?.BE?.[sid]?.fast?.[destName];
+            if (!fast) return null;
+            const m = /\(大站\)\s*(\d{1,2}:\d{2})/.exec(String(fast.text || ""));
+            return m ? m[1] : null;
+        };
+
+        // 每个方向都逐站核对：固化的 firstExpress 必须等于 fast 字段里的「大站」时刻
+        Object.entries(svc.directions).forEach(([key, dir]) => {
+            const destName = key === "wenling" ? "文岭" : "福州火车站";
+            const mismatched = [];
+            dir.stops.forEach((stop) => {
+                const clock = bigStopClockOf(stop.id, destName);
+                if (clock !== stop.firstExpress) {
+                    mismatched.push(`${stationsData[stop.id]?.cn || stop.id}: 固化 ${stop.firstExpress} ≠ fast ${clock}`);
+                }
+            });
+            check(`${dir.name} 各站首班大站时刻与 fast 字段一致`, mismatched.length === 0,
+                mismatched.join("；"));
+
+            // offset 必须自 0 起逐站递增，且末站等于 totalMinutes
+            const offsets = dir.stops.map((s) => s.offset);
+            const monotonic = offsets.every((v, i) => i === 0 ? v === 0 : v > offsets[i - 1]);
+            check(`${dir.name} 累计用时自 0 递增`, monotonic, offsets.join(","));
+            check(`${dir.name} 端到端用时与末站累计一致`,
+                offsets[offsets.length - 1] === dir.totalMinutes,
+                `${offsets[offsets.length - 1]} vs ${dir.totalMinutes}`);
+
+            // offset 也必须等于「首班大站时刻之差」，两道口径互证
+            const base = sandbox.fuzhouExpressToMinutes(dir.stops[0].firstExpress);
+            const clockDrift = dir.stops.filter((s) => {
+                const t = sandbox.fuzhouExpressToMinutes(s.firstExpress);
+                return t === null || t - base !== s.offset;
+            });
+            check(`${dir.name} 累计用时 = 首班时刻之差`, clockDrift.length === 0,
+                clockDrift.map((s) => `${stationsData[s.id]?.cn}: ${s.firstExpress}`).join("；"));
+        });
+
+        check("去程端到端 41 分", svc.directions.wenling?.totalMinutes === 41,
+            String(svc.directions.wenling?.totalMinutes));
+        check("回程端到端 42 分", svc.directions.fuzhou?.totalMinutes === 42,
+            String(svc.directions.fuzhou?.totalMinutes));
+
+        // 快车站必须与交路 way2（大站快车）的停靠站一致
+        const fastWay = Routing.ways(linesData.find((l) => l.id === "BE"))
+            .find((w) => w.key === "way2");
+        const wayStops = fastWay ? fastWay.ids : [];
+        const dirStops = (svc.directions.wenling?.stops || []).map((s) => s.id);
+        check("时刻表停靠站 = 大站快车交路站序（去程）",
+            JSON.stringify(dirStops) === JSON.stringify(wayStops),
+            `时刻表 ${dirStops.join(",")} ／ 交路 ${wayStops.join(",")}`);
+        check("回程停靠站为去程的逆序",
+            JSON.stringify((svc.directions.fuzhou?.stops || []).map((s) => s.id))
+            === JSON.stringify([...dirStops].reverse()),
+            (svc.directions.fuzhou?.stops || []).map((s) => s.id).join(","));
+
+        // 班次网格与服务时段边界
+        const first = sandbox.fuzhouExpressNextDeparture("wenling", "M104", 6 * 60);
+        check("早于服务时段时取首班 07:00", first === 7 * 60, String(first));
+        const last = sandbox.fuzhouExpressNextDeparture("wenling", "M104", 22 * 60 + 1);
+        check("晚于末班时无快车", last === null, String(last));
+        const grid = sandbox.fuzhouExpressNextDeparture("fuzhou", "M423", 9 * 60 + 30);
+        check("每站按首班分钟每小时一班（帝封江回程应 10:25）",
+            sandbox.fuzhouExpressToClock(grid) === "10:25",
+            sandbox.fuzhouExpressToClock(grid));
+
+        // 直达：单向一班
+        check("直达为单向 05:55 自福州火车站",
+            svc.direct?.from === "M104" && svc.direct?.to === "BE01"
+            && svc.direct?.departAt === "05:55" && svc.direct?.reverse === false,
+            JSON.stringify(svc.direct));
+
+        process.stdout.write(`  去程 ${svc.directions.wenling.totalMinutes} 分 ／ 回程 ${svc.directions.fuzhou.totalMinutes} 分`
+            + `（普通车约 74.7 分，快车单程省约 ${(74.7 - svc.directions.wenling.totalMinutes).toFixed(1)} 分）\n`);
+        process.stdout.write(`  去程各站 :${svc.directions.wenling.stops.map((s) => s.firstExpress.split(":")[1]).join(" :")}\n`);
+    }
+}
+
 /* ── 3. 终点站解析 ─────────────────────────────────────────────────── */
 section("③ 终点站解析（链方向契约）");
 const stationNameIndex = (ids) => {
@@ -154,7 +383,9 @@ let hopBad = 0;
 let unresolved = 0;
 
 linesData.forEach((line) => {
-    const ids = line.stationIds || [];
+    // 交路安全取站序：多交路线路不写 stationIds（滨海快线 = 普通车 / 大站快车 两条交路），
+    // 故走 groupIds()（= CGoLineRouting.allStationIds）。对 BE 而言并集即普通车 13 站、顺序不变。
+    const ids = groupIds(line);
     const names = stationNameIndex(ids);
     const chains = new Map();
     const unknownDest = new Set();
@@ -218,7 +449,13 @@ const binhai = linesData.find((line) => line.id === "BE");
 if (!binhai) {
     check("滨海快线（BE）存在", false, "未找到 BE");
 } else {
-    const ids = binhai.stationIds;
+    // 土木/地图口径的 61770 m 沿用的是**普通车（站站停）**那条交路的逐跳里程，
+    // 故这里必须取交路 way1，不能读 line.stationIds —— BE 已改成普通车 / 大站快车两条交路，
+    // way2 的站距是跳停后的区间和（合计同为 61770 m，但逐跳值不同）。
+    const beWays = Routing.ways(binhai);
+    const localWay = beWays.find((w) => w.key === "way1") || beWays[0];
+    const ids = localWay ? localWay.ids : [];
+    const localDistances = localWay ? localWay.distances : [];
     const split = ids.indexOf("M423");                 // 帝封江
     check("滨海快线以帝封江为分段点", split > 0, `帝封江下标 ${split}`);
 
@@ -226,14 +463,14 @@ if (!binhai) {
     const cum = new Map();
     for (let i = 0; i < ids.length; i += 1) {
         cum.set(ids[i], cumulative);
-        if (i < binhai.distances.length) cumulative += binhai.distances[i];
+        if (i < localDistances.length) cumulative += localDistances[i];
     }
-    // BE 站序自文岭端（索引 0）起算、帝封江在索引 split、福州火车站为末站：
+    // BE 站序自福州火车站端（索引 0）起算、帝封江在索引 split、文岭为末站：
     // distances[i] 是 ids[i] → ids[i+1] 的跳距，故
-    //   新区段（帝封江 — 文岭）  = distances[0 .. split-1]
-    //   主城区段（帝封江 — 福州火车站）= distances[split .. 末]
-    const declaredNew = binhai.distances.slice(0, split).reduce((a, b) => a + b, 0);
-    const declaredMain = binhai.distances.slice(split).reduce((a, b) => a + b, 0);
+    //   主城区段（福州火车站 — 帝封江）= distances[0 .. split-1]
+    //   新区段（帝封江 — 文岭）      = distances[split .. 末]
+    const declaredMain = localDistances.slice(0, split).reduce((a, b) => a + b, 0);
+    const declaredNew = localDistances.slice(split).reduce((a, b) => a + b, 0);
 
     process.stdout.write(`  站距表逐跳求和（土建/地图口径）：主城区段 ${(declaredMain / 1000).toFixed(2)} km，`
         + `新区段 ${(declaredNew / 1000).toFixed(2)} km，`
@@ -389,7 +626,8 @@ section("⑦ 站内换乘方式与用时（transferAt）");
         const badStation = keys.filter((sid) => !stationsData[sid]);
         check("换乘站 ID 都存在于车站数据", badStation.length === 0, badStation.join(", "));
         const notInterchange = keys.filter((sid) => {
-            const ls = linesData.filter((l) => (l.stationIds || []).includes(sid));
+            // 交路安全：BE 已是多交路（无 stationIds），必须走 allStationIds 才能数到它
+            const ls = linesData.filter((l) => groupIds(l).includes(sid));
             return ls.length < 2;
         });
         check("每个键都是真实的换乘站（≥2 条线路经停）", notInterchange.length === 0,
@@ -428,7 +666,7 @@ section("⑦ 站内换乘方式与用时（transferAt）");
         // pairs 的键必须真的是本站的线路组合，且格式为 A|B
         const badPair = [];
         keys.forEach((sid) => {
-            const here = linesData.filter((l) => (l.stationIds || []).includes(sid)).map((l) => l.id);
+            const here = linesData.filter((l) => groupIds(l).includes(sid)).map((l) => l.id);
             Object.keys(table[sid].pairs || {}).forEach((k) => {
                 if (!/^[A-Za-z0-9_]+\|[A-Za-z0-9_]+$/.test(k)) { badPair.push(`${sid}:${k} 格式`); return; }
                 const [a, b] = k.split("|");
