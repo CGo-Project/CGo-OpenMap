@@ -15,6 +15,8 @@
  *   呼钢南路 = hugangdonglu.png（旧名「呼钢东路」）、
  *   北山公园 = xinchengtushuguan.png（旧名「新城图书馆」）、
  *   丝绸之路大道 = dongerhuanlu.png（旧名「东二环路」）；
+ *   2026-11-17 改名的两站同理：内蒙古大剧院 = neimenggubowuguan.png（旧名「内蒙古博物院」）、
+ *   白塔 = bayan（jichang）.png（旧名「坝堰（机场）」）。
  *   图上文字可能仍是旧站名，属官网原始状态，此处不改。
  *
  * 由车站设施板块（city/hohhot/modules/hohhot_facilities.js，渲染在共享层

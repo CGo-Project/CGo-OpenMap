@@ -168,7 +168,7 @@
     /* 官网车站资料 + 行程规划共享层（须在核心引擎执行前同步写入） */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261117.104830";
+        const version = "261117.212445";
         const shared = "./city/shenyang/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 

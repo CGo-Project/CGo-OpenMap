@@ -7,6 +7,10 @@
  * 抓取日期：2026-10-04。官网原文的端点站「朝向本站」方向无服务（页面写作「/」），
  * 本文件同样不写入该方向。
  *
+ * 站名口径：1 号线两站于 2026-11-17 更名（内蒙古博物院→内蒙古大剧院、坝堰（机场）→白塔），
+ * 本文件的 cn 与 directions 方向键已按**新站名**改写；首末班时刻本身不因更名变化，
+ * 仍为 2026-10-04 抓取值，待官网时刻页更新后再复核一遍。
+ *
  * 结构：GLOBAL_SCHEDULE_DATA[线路 ID][车站 ID] = { cn, source, directions, url }，
  * directions[终点站名] = { first, last }；终点站名不含「方向」二字。
  * url（信息板与行程面板「官网查询」按钮的目标）不在表里逐条写，由文件末尾统一按 cn
@@ -20,14 +24,14 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "伊利健康谷",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:00", last: "22:09" }
+                "白塔": { first: "6:00", last: "22:09" }
             }
         },
         "M102": {
             cn: "西二环路",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:04", last: "22:14" },
+                "白塔": { first: "6:04", last: "22:14" },
                 "伊利健康谷": { first: "6:37", last: "22:40" }
             }
         },
@@ -35,7 +39,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "孔家营",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:06", last: "22:16" },
+                "白塔": { first: "6:06", last: "22:16" },
                 "伊利健康谷": { first: "6:35", last: "22:38" }
             }
         },
@@ -43,7 +47,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "呼钢南路",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:08", last: "22:18" },
+                "白塔": { first: "6:08", last: "22:18" },
                 "伊利健康谷": { first: "6:33", last: "22:36" }
             }
         },
@@ -51,7 +55,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "西龙王庙",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:11", last: "22:20" },
+                "白塔": { first: "6:11", last: "22:20" },
                 "伊利健康谷": { first: "6:31", last: "22:34" }
             }
         },
@@ -59,7 +63,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "乌兰夫纪念馆",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:12", last: "22:22" },
+                "白塔": { first: "6:12", last: "22:22" },
                 "伊利健康谷": { first: "6:29", last: "22:32" }
             }
         },
@@ -67,7 +71,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "附属医院",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:15", last: "22:24" },
+                "白塔": { first: "6:15", last: "22:24" },
                 "伊利健康谷": { first: "6:27", last: "22:30" }
             }
         },
@@ -75,7 +79,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "新华广场",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:17", last: "22:28" },
+                "白塔": { first: "6:17", last: "22:28" },
                 "伊利健康谷": { first: "6:25", last: "22:28" }
             }
         },
@@ -83,7 +87,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "人民会堂",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:18", last: "22:29" },
+                "白塔": { first: "6:18", last: "22:29" },
                 "伊利健康谷": { first: "6:23", last: "22:24" }
             }
         },
@@ -91,7 +95,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "将军衙署",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:20", last: "22:31" },
+                "白塔": { first: "6:20", last: "22:31" },
                 "伊利健康谷": { first: "6:21", last: "22:22" }
             }
         },
@@ -99,7 +103,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "艺术学院",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:22", last: "22:33" },
+                "白塔": { first: "6:22", last: "22:33" },
                 "伊利健康谷": { first: "6:19", last: "22:21" }
             }
         },
@@ -107,7 +111,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "东影路",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:24", last: "22:35" },
+                "白塔": { first: "6:24", last: "22:35" },
                 "伊利健康谷": { first: "6:17", last: "22:19" }
             }
         },
@@ -115,15 +119,15 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "内蒙古展览馆",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:26", last: "22:37" },
+                "白塔": { first: "6:26", last: "22:37" },
                 "伊利健康谷": { first: "6:16", last: "22:17" }
             }
         },
         "M114": {
-            cn: "内蒙古博物院",
+            cn: "内蒙古大剧院",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:28", last: "22:39" },
+                "白塔": { first: "6:28", last: "22:39" },
                 "伊利健康谷": { first: "6:14", last: "22:15" }
             }
         },
@@ -131,7 +135,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "市政府",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:30", last: "22:41" },
+                "白塔": { first: "6:30", last: "22:41" },
                 "伊利健康谷": { first: "6:11", last: "22:12" }
             }
         },
@@ -139,7 +143,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "呼和浩特东站",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:33", last: "22:44" },
+                "白塔": { first: "6:33", last: "22:44" },
                 "伊利健康谷": { first: "6:08", last: "22:10" }
             }
         },
@@ -147,7 +151,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "后不塔气",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:35", last: "22:46" },
+                "白塔": { first: "6:35", last: "22:46" },
                 "伊利健康谷": { first: "6:06", last: "22:07" }
             }
         },
@@ -155,7 +159,7 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "什兰岱",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:38", last: "22:49" },
+                "白塔": { first: "6:38", last: "22:49" },
                 "伊利健康谷": { first: "6:03", last: "22:05" }
             }
         },
@@ -163,12 +167,12 @@ const GLOBAL_SCHEDULE_DATA = {
             cn: "白塔西",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
-                "坝堰（机场）": { first: "6:40", last: "22:51" },
+                "白塔": { first: "6:40", last: "22:51" },
                 "伊利健康谷": { first: "6:02", last: "22:03" }
             }
         },
         "M120": {
-            cn: "坝堰（机场）",
+            cn: "白塔",
             source: "呼和浩特地铁官网「列车时刻表」",
             directions: {
                 "伊利健康谷": { first: "6:00", last: "22:01" }
