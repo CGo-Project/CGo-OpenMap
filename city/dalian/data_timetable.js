@@ -6960,7 +6960,8 @@ const DALIAN_TIMETABLE_SOURCE = {
  * holidayDates/workdayDates 用于覆盖国务院公布的放假与调休日期。
  * 2026 年日期依据国务院办公厅国办发明电〔2025〕7 号通知：
  * https://www.beijing.gov.cn/zhengce/zhengcefagui/202511/t20251104_4258873.html
- * 后续年份只需在对应年份键下追加 YYYY-MM-DD，不必改动站卡逻辑。
+ * 2027 年起的全国安排已内置到共享层（shared/station/timetable-renderer.js），
+ * 此处只需登记与全国安排不同的城市级覆盖，不必再逐年追加。
  */
 const DALIAN_TIMETABLE_CALENDAR = {
     holidayDates: {
@@ -7022,6 +7023,10 @@ function getDalianDateOverrideList(calendar, field, year) {
 
 /** 返回当前日期应使用的时刻表类型：workday 或 restday。 */
 function getDalianTimetableDayType(date = new Date(), calendar = DALIAN_TIMETABLE_CALENDAR) {
+    // 共享层已内置全国节假日基线；可用时直接委托，避免本地日历与站卡判定分叉
+    if (typeof window !== "undefined" && window.CGoDayType?.resolve) {
+        return window.CGoDayType.resolve(date, { calendar }).key;
+    }
     const dateParts = getDalianDateParts(date);
     if (!dateParts) return "workday";
     const dateKey = dateParts.iso;

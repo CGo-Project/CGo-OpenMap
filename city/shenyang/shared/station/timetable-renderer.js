@@ -39,6 +39,44 @@
         return [];
     }
 
+    /**
+     * 全国法定节假日与调休上班日（共享基线）
+     *
+     * 来源：国务院办公厅《关于 2027 年部分节假日安排的通知》
+     * （国办发明电〔2026〕10 号，2026-11-05）
+     * https://www.gov.cn/zhengce/content/202611/content_7085101.htm
+     *
+     * 只记录 2027 年；城市 calendar 中显式列出的日期优先于本基线，
+     * 未命中基线的日期再按星期判定。后续年份在此追加即可。
+     */
+    const NATIONAL_HOLIDAY_CALENDAR = {
+        holidayDates: {
+            "2027": [
+                "2027-01-01", "2027-01-02", "2027-01-03",
+                "2027-02-05", "2027-02-06", "2027-02-07", "2027-02-08", "2027-02-09",
+                "2027-02-10", "2027-02-11", "2027-02-12", "2027-02-13",
+                "2027-04-03", "2027-04-04", "2027-04-05",
+                "2027-05-01", "2027-05-02", "2027-05-03", "2027-05-04", "2027-05-05",
+                "2027-06-09",
+                "2027-09-15",
+                "2027-10-01", "2027-10-02", "2027-10-03", "2027-10-04",
+                "2027-10-05", "2027-10-06", "2027-10-07"
+            ]
+        },
+        workdayDates: {
+            "2027": [
+                "2027-01-31", "2027-02-14", "2027-05-08", "2027-09-26", "2027-10-09"
+            ]
+        }
+    };
+
+    /** 按日历分类某日；两个列表都未命中返回 null */
+    function classifyDate(calendar, iso, year) {
+        if (dateList(calendar, "workdayDates", year).includes(iso)) return "workday";
+        if (dateList(calendar, "holidayDates", year).includes(iso)) return "restday";
+        return null;
+    }
+
     /** 取某日在 Asia/Shanghai 时区下的年 / 月 / 日 / 星期 */
     function shanghaiParts(date) {
         const value = date instanceof Date ? date : new Date(date);
@@ -63,12 +101,13 @@
          * 顺序：调休上班日 → 法定假日 → 按星期（周一至周五工作日，周六日节假日）。
          * 调休上班日优先，是因为它是对星期的显式覆盖；两个列表按约定互斥，
          * 若数据有误同时命中，以调休上班为准（与原大连实现一致）。
+         * 城市 calendar 未列出的日期，回退到共享层内置的全国节假日基线。
          *
          * @param {Date} date - 待判定日期，缺省为当前时刻
          * @param {{ calendar?: object }} options
          *        calendar 为城市提供的调休日历，`holidayDates` / `workdayDates`
          *        支持扁平数组或按年份嵌套（如 `{ "2026": [...] }`）两种写法；
-         *        日期格式 "YYYY-MM-DD"；缺省则纯按星期判定
+         *        日期格式 "YYYY-MM-DD"；缺省则仅用全国基线与星期判定
          * @returns {{ key: "workday"|"restday", label: "工作日"|"节假日", date: string }}
          */
         resolve(date = new Date(), options = {}) {
@@ -78,12 +117,10 @@
 
             const iso = `${parts.year}-${parts.month}-${parts.day}`;
             const year = Number(parts.year);
-            if (dateList(calendar, "workdayDates", year).includes(iso)) {
-                return { key: "workday", label: "工作日", date: iso };
-            }
-            if (dateList(calendar, "holidayDates", year).includes(iso)) {
-                return { key: "restday", label: "节假日", date: iso };
-            }
+            const override = classifyDate(calendar, iso, year)
+                || classifyDate(NATIONAL_HOLIDAY_CALENDAR, iso, year);
+            if (override === "workday") return { key: "workday", label: "工作日", date: iso };
+            if (override === "restday") return { key: "restday", label: "节假日", date: iso };
             const isWeekend = parts.weekday === "Sat" || parts.weekday === "Sun";
             return isWeekend
                 ? { key: "restday", label: "节假日", date: iso }
