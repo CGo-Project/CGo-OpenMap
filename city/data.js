@@ -660,7 +660,7 @@
             searchCity: "合肥",
             title: "CGo OpenMap - 合肥轨道交通线路图",
             keywords: "CGo OpenMap, 合肥地铁, 合肥轨道交通, 线路图",
-            description: "覆盖 1–8 号线及 S1 线示意。",
+            description: "覆盖 1–8 号线及 S1 线合肥段。",
             officialMapUrl: "https://www.hfgdjt.com/",
             registerDate: "2026-09-07",
             stationCount: 211,

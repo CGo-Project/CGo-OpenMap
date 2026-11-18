@@ -15,9 +15,9 @@
         mapSize: { width: 2400, height: 3000 },
         officialMapUrl: "https://www.hfgdjt.com/",
         LINE_META: {},
-        LINE_SORT_ORDER: ["HFM1", "HFM2", "HFM3", "HFM4", "HFM5", "HFM6", "HFM7", "HFM8", "HFS1"],
+        LINE_SORT_ORDER: ["HFM1", "HFM2", "HFM3", "HFM4", "HFM5", "HFM6", "HFM7", "HFM8", "HFS1", "HFS1P"],
         LINE_SYNC_GROUPS: [],
-        SUBURBAN_LINES: ["HFS1", "S1线"],
+        SUBURBAN_LINES: ["HFS1", "HFS1P", "S1线", "S1线（未开通）"],
         MERGE_STATIONS: [],
         CROSS_PLATFORM_STATIONS: ["0114"], // 合肥南站：1 号线与 5 号线同台换乘
         MAP_12306: {
@@ -87,8 +87,8 @@
     };
 
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        document.write('<scr' + 'ipt src="./city/hefei/modules/hefei_timetable.js?v=261117.104830"><\/scr' + 'ipt>');
-        document.write('<scr' + 'ipt src="./city/hefei/modules/hefei_cultural.js?v=261117.104830"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/hefei/modules/hefei_timetable.js?v=261118.175247"><\/scr' + 'ipt>');
+        document.write('<scr' + 'ipt src="./city/hefei/modules/hefei_cultural.js?v=261118.175247"><\/scr' + 'ipt>');
     }
 
     window.HEFEI_CITY = HefeiCity;
@@ -104,7 +104,7 @@
         searchCity: HefeiCity.searchCity,
         title: "CGo OpenMap - 合肥轨道交通线路图",
         keywords: "CGo OpenMap, 合肥地铁, 合肥轨道交通, 线路图",
-        description: "包含 1–8 号线及 S1 线示意。",
+        description: "包含 1–8 号线及 S1 线合肥段。",
         officialMapUrl: HefeiCity.officialMapUrl,
         isDefault: false,
         ...HefeiCity
