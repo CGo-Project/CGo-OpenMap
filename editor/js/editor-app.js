@@ -12,7 +12,7 @@
         activeTool: 'select',
         activeLineId: null,
         isAutoRoute: true,
-        // 网格与吸附共用一个状态：显示网格即对齐网格，隐藏即不对齐
+        // 网格显示与对齐联动控制（G 切换显示并对齐，关闭则既不显示也不对齐）
         gridVisible: false,
         snapEnabled: false,
         smartGuidesEnabled: true,
@@ -430,6 +430,143 @@
      * 明显卡顿的来源。这里只把同一帧内的多次请求折叠成一次，不改渲染内容。
      */
     var renderRafId = 0;
+    var dragRenderRafId = 0;
+    var pendingDragKind = null;
+
+    function computeLineColorsMap() {
+        var iconsEngine = window.CGoStationIcons;
+        var lineColorsMap = (iconsEngine && typeof iconsEngine.engineLineColors === 'function')
+            ? iconsEngine.engineLineColors(app.project.lines || []) : {};
+        var segColorById = {};
+        (app.project.lines || []).forEach(function (l) { segColorById[l.id] = l.color; });
+        (app.project.segments || []).forEach(function (seg) {
+            var color = segColorById[seg.lineId];
+            if (!color) return;
+            (seg.points || []).forEach(function (pt) {
+                if (!pt.nid) return;
+                if (!lineColorsMap[pt.nid]) lineColorsMap[pt.nid] = [];
+                if (lineColorsMap[pt.nid].indexOf(color) === -1) lineColorsMap[pt.nid].push(color);
+            });
+        });
+        return lineColorsMap;
+    }
+
+    function renderWaterHandles(handleLayerEl) {
+        var oldWaterHandles = document.getElementById('waterHandlesGroup');
+        if (oldWaterHandles) oldWaterHandles.remove();
+        if (!app.selected || app.selected.type !== 'water' || !handleLayerEl) return;
+        var curWater = (app.project.waters || []).find(function (w) { return w.id === app.selected.id; });
+        if (!curWater || !Array.isArray(curWater.points) || !curWater.points.length) return;
+        var wGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        wGroup.id = 'waterHandlesGroup';
+        var isRiver = (curWater.type === 'path' || curWater.type === 'river');
+        var wPts = curWater.points;
+        var loopLimit = isRiver ? wPts.length - 1 : wPts.length;
+        for (var wi = 0; wi < loopLimit; wi++) {
+            var ptA = wPts[wi], ptB = wPts[(wi + 1) % wPts.length];
+            var midH = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            midH.setAttribute('cx', String((ptA.x + ptB.x) / 2));
+            midH.setAttribute('cy', String((ptA.y + ptB.y) / 2));
+            midH.setAttribute('r', '3.5');
+            midH.setAttribute('fill', '#ffffff');
+            midH.setAttribute('stroke', '#0284c7');
+            midH.setAttribute('stroke-width', '1.5');
+            midH.setAttribute('class', 'water-midpoint-handle');
+            midH.setAttribute('data-water-id', curWater.id);
+            midH.setAttribute('data-insert-after', String(wi));
+            midH.style.cursor = 'pointer';
+            var mTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            mTitle.textContent = '点击插入水域顶点';
+            midH.appendChild(mTitle);
+            wGroup.appendChild(midH);
+        }
+        wPts.forEach(function (wp, pIdx) {
+            var vh = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            vh.setAttribute('cx', String(wp.x));
+            vh.setAttribute('cy', String(wp.y));
+            vh.setAttribute('r', '5');
+            vh.setAttribute('fill', '#0284c7');
+            vh.setAttribute('stroke', '#ffffff');
+            vh.setAttribute('stroke-width', '1.5');
+            vh.setAttribute('class', 'water-point-handle');
+            vh.setAttribute('data-water-id', curWater.id);
+            vh.setAttribute('data-point-idx', String(pIdx));
+            vh.style.cursor = 'grab';
+            var vTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            vTitle.textContent = '水域顶点 #' + pIdx + ' (' + Math.round(wp.x) + ', ' + Math.round(wp.y) + ')';
+            vh.appendChild(vTitle);
+            wGroup.appendChild(vh);
+        });
+        handleLayerEl.appendChild(wGroup);
+    }
+
+    /** 拖拽中轻量化局部刷新：跳过大纲树、检视面板、健康检查、底图等重逻辑 */
+    function renderDragFrame(kind) {
+        if (!app.project) return;
+        var handleLayerEl = document.getElementById('handleLayer');
+        if (kind === 'water') {
+            var selWaterId = (app.selected && app.selected.type === 'water') ? app.selected.id : null;
+            window.OpenMapEditor.WaterLayer.render(app.project.waters, app.project.waterStyle, selWaterId);
+            renderWaterHandles(handleLayerEl);
+            return;
+        }
+        if (kind === 'scattered') {
+            var selScIdx = (app.selected && app.selected.type === 'scattered') ? app.selected.idx : null;
+            if (window.OpenMapEditor.ScatteredLayer) {
+                window.OpenMapEditor.ScatteredLayer.render(app.project, { selectedIdx: selScIdx });
+            }
+            return;
+        }
+        if (kind === 'text') {
+            var selTextIdOnly = (app.selected && app.selected.type === 'text') ? app.selected.id : null;
+            window.OpenMapEditor.TextScatteredLayer.render(app.project.texts, selTextIdOnly);
+            renderTransformHandles(handleLayerEl);
+            return;
+        }
+        var selNodeId = (app.selected && app.selected.type === 'node') ? app.selected.id : null;
+        var selSegId = (app.selected && app.selected.type === 'segment') ? app.selected.id : null;
+        var selSegPtIdx = (app.selected && app.selected.type === 'segment') ? app.selected.pointIdx : null;
+        var selLineId = (app.selected && app.selected.type === 'line') ? app.selected.id : null;
+        var selTextId = (app.selected && app.selected.type === 'text') ? app.selected.id : null;
+        window.OpenMapEditor.VectorRouteLayer.render(app.project, {
+            selectedSegmentId: selSegId,
+            selectedLineId: selLineId,
+            selectedPointIdx: selSegPtIdx,
+            activeLineId: app.activeLineId,
+            enableParallelCorridor: false
+        });
+        var multiNodeIds = [];
+        if (app.selected) {
+            if (app.selected.type === 'node') multiNodeIds = [app.selected.id];
+            else if (app.selected.type === 'multi' && Array.isArray(app.selected.nodeIds)) multiNodeIds = app.selected.nodeIds;
+        }
+        var surgicalForOrigin = window.OpenMapEditor.PipelineSurgical;
+        var originSnap = (surgicalForOrigin && typeof surgicalForOrigin.getOriginalSnapshot === 'function')
+            ? surgicalForOrigin.getOriginalSnapshot() : null;
+        window.OpenMapEditor.StationLayer.render(app.project, {
+            selectedNodeId: selNodeId,
+            selectedNodeIds: multiNodeIds,
+            lineColorsMap: computeLineColorsMap(),
+            originNodes: originSnap ? originSnap.nodes : null
+        });
+        if (kind === 'transform' || (app.selected && app.selected.type === 'multi' && (app.selected.textIds || []).length)) {
+            window.OpenMapEditor.TextScatteredLayer.render(app.project.texts, selTextId);
+        }
+        renderTransformHandles(handleLayerEl);
+    }
+
+    function scheduleDragRender(kind) {
+        pendingDragKind = kind || 'default';
+        if (dragRenderRafId) return;
+        var raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
+        dragRenderRafId = raf(function () {
+            dragRenderRafId = 0;
+            var k = pendingDragKind;
+            pendingDragKind = null;
+            if (app.project) renderDragFrame(k);
+        });
+    }
+
     function scheduleRender() {
         if (renderRafId) return;
         var raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 16); };
@@ -440,6 +577,11 @@
     }
 
     function renderAll() {
+        if (dragRenderRafId && window.cancelAnimationFrame) {
+            window.cancelAnimationFrame(dragRenderRafId);
+            dragRenderRafId = 0;
+            pendingDragKind = null;
+        }
         if (!app.project) return;
 
         // 0. 画布物理画板底色与边界 (Artboard Canvas Boundary)
@@ -512,21 +654,7 @@
 
         // 3. 车站与站名
         // 经停线路标志色的次序必须与引擎 processData 完全一致（普通站环色、城市钩子都取 [0]）
-        var iconsEngine = window.CGoStationIcons;
-        var lineColorsMap = (iconsEngine && typeof iconsEngine.engineLineColors === 'function')
-            ? iconsEngine.engineLineColors(app.project.lines || []) : {};
-        // 编辑器里新画、尚未写出站序的线路：按折线经过的车站补色
-        var segColorById = {};
-        (app.project.lines || []).forEach(function (l) { segColorById[l.id] = l.color; });
-        (app.project.segments || []).forEach(function (seg) {
-            var color = segColorById[seg.lineId];
-            if (!color) return;
-            (seg.points || []).forEach(function (pt) {
-                if (!pt.nid) return;
-                if (!lineColorsMap[pt.nid]) lineColorsMap[pt.nid] = [];
-                if (lineColorsMap[pt.nid].indexOf(color) === -1) lineColorsMap[pt.nid].push(color);
-            });
-        });
+        var lineColorsMap = computeLineColorsMap();
 
         var multiNodeIds = [];
         if (app.selected) {
@@ -550,60 +678,7 @@
         renderTransformHandles(handleLayerEl);
 
         // 3.6 水域多边形顶点手柄 (Water Vertex Handles)
-        var oldWaterHandles = document.getElementById('waterHandlesGroup');
-        if (oldWaterHandles) oldWaterHandles.remove();
-        if (app.selected && app.selected.type === 'water' && handleLayerEl) {
-            var curWater = (app.project.waters || []).find(function (w) { return w.id === app.selected.id; });
-            if (curWater && Array.isArray(curWater.points) && curWater.points.length > 0) {
-                var wGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                wGroup.id = 'waterHandlesGroup';
-                var isRiver = (curWater.type === 'path' || curWater.type === 'river');
-                var wPts = curWater.points;
-
-                // 中段增加顶点手柄
-                var loopLimit = isRiver ? wPts.length - 1 : wPts.length;
-                for (var wi = 0; wi < loopLimit; wi++) {
-                    var ptA = wPts[wi], ptB = wPts[(wi + 1) % wPts.length];
-                    var wmx = (ptA.x + ptB.x) / 2;
-                    var wmy = (ptA.y + ptB.y) / 2;
-                    var midH = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    midH.setAttribute('cx', String(wmx));
-                    midH.setAttribute('cy', String(wmy));
-                    midH.setAttribute('r', '3.5');
-                    midH.setAttribute('fill', '#ffffff');
-                    midH.setAttribute('stroke', '#0284c7');
-                    midH.setAttribute('stroke-width', '1.5');
-                    midH.setAttribute('class', 'water-midpoint-handle');
-                    midH.setAttribute('data-water-id', curWater.id);
-                    midH.setAttribute('data-insert-after', String(wi));
-                    midH.style.cursor = 'pointer';
-                    var mTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-                    mTitle.textContent = '点击插入水域顶点';
-                    midH.appendChild(mTitle);
-                    wGroup.appendChild(midH);
-                }
-
-                // 控制顶点手柄
-                wPts.forEach(function (wp, pIdx) {
-                    var vh = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    vh.setAttribute('cx', String(wp.x));
-                    vh.setAttribute('cy', String(wp.y));
-                    vh.setAttribute('r', '5');
-                    vh.setAttribute('fill', '#0284c7');
-                    vh.setAttribute('stroke', '#ffffff');
-                    vh.setAttribute('stroke-width', '1.5');
-                    vh.setAttribute('class', 'water-point-handle');
-                    vh.setAttribute('data-water-id', curWater.id);
-                    vh.setAttribute('data-point-idx', String(pIdx));
-                    vh.style.cursor = 'grab';
-                    var vTitle = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-                    vTitle.textContent = '水域顶点 #' + pIdx + ' (' + Math.round(wp.x) + ', ' + Math.round(wp.y) + ')';
-                    vh.appendChild(vTitle);
-                    wGroup.appendChild(vh);
-                });
-                handleLayerEl.appendChild(wGroup);
-            }
-        }
+        renderWaterHandles(handleLayerEl);
 
         // 4. 自由注释文本
         window.OpenMapEditor.TextScatteredLayer.render(app.project.texts, selTextId);
@@ -1012,6 +1087,64 @@
         };
     }
 
+    // 车站画布原地快速改名浮层 (双击车站触发)
+    function openInlineStationEditor(nid) {
+        var node = app.project && app.project.nodes && app.project.nodes[nid];
+        if (!node || node.type === 'temp') return;
+        var popup = document.getElementById('inlineStationEditorPopup');
+        var cnInput = document.getElementById('inlineStationCnInput');
+        var enInput = document.getElementById('inlineStationEnInput');
+        var viewportEl = document.getElementById('workbenchViewport');
+        if (!popup || !cnInput || !enInput || !viewportEl) return;
+
+        var vRect = viewportEl.getBoundingClientRect();
+        var screenPt = window.OpenMapEditor.ViewportLayer.worldToScreen(node.x, node.y);
+        popup.style.display = 'flex';
+        popup.style.left = Math.max(10, Math.min(vRect.width - 200, screenPt.x - vRect.left + 12)) + 'px';
+        popup.style.top = Math.max(10, Math.min(vRect.height - 90, screenPt.y - vRect.top - 24)) + 'px';
+        cnInput.value = node.cn || '';
+        enInput.value = node.en || '';
+        cnInput.focus();
+        cnInput.select();
+
+        var isDone = false;
+        var commit = function () {
+            if (isDone) return;
+            isDone = true;
+            popup.style.display = 'none';
+            var nextCn = cnInput.value;
+            var nextEn = enInput.value;
+            if (nextCn !== (node.cn || '') || nextEn !== (node.en || '')) {
+                window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                node.cn = nextCn;
+                node.en = nextEn;
+                renderAll();
+            }
+        };
+        var cancel = function () {
+            isDone = true;
+            popup.style.display = 'none';
+        };
+        var onKey = function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancel();
+            }
+        };
+        var onBlur = function () {
+            setTimeout(function () {
+                if (!popup.contains(document.activeElement)) commit();
+            }, 0);
+        };
+        cnInput.onkeydown = onKey;
+        enInput.onkeydown = onKey;
+        cnInput.onblur = onBlur;
+        enInput.onblur = onBlur;
+    }
+
     // =========================================================================
     // 内存剪贴板系统 (Clipboard System: Ctrl+C / Ctrl+V / Ctrl+D)
     // =========================================================================
@@ -1247,6 +1380,27 @@
             }
             nList.forEach(function (id) { app.project.nodes[id].x = targetX; });
             syncSegmentsForNodes(nList);
+            renderAll();
+        } else if (mode === 'diag45') {
+            var A45 = window.OpenMapEditor.Align45;
+            if (!A45 || typeof A45.constrainTo45 !== 'function') return;
+            var ordered = nList.slice().sort(function (a, b) {
+                var na = app.project.nodes[a], nb = app.project.nodes[b];
+                return (na.x - nb.x) || (na.y - nb.y);
+            });
+            var stepGrid = app.snapEnabled && window.OpenMapEditor.ViewportLayer.getSnapStep
+                ? window.OpenMapEditor.ViewportLayer.getSnapStep() : 0;
+            var slope = (app.project && app.project.slope) || { m: 1, n: 1 };
+            var anchor = app.project.nodes[ordered[0]];
+            var prev = { x: anchor.x, y: anchor.y };
+            for (var ai = 1; ai < ordered.length; ai++) {
+                var nd = app.project.nodes[ordered[ai]];
+                var snapped45 = A45.constrainTo45(prev, { x: nd.x, y: nd.y }, stepGrid, slope);
+                nd.x = snapped45.x;
+                nd.y = snapped45.y;
+                prev = { x: nd.x, y: nd.y };
+            }
+            syncSegmentsForNodes(ordered);
             renderAll();
         }
     }
@@ -1550,6 +1704,10 @@
                     {
                         label: '垂直等距', icon: 'sort',
                         onClick: function () { distributeNodesEvenly('y'); }
+                    },
+                    {
+                        label: '局部45°对齐', icon: 'compass',
+                        onClick: function () { alignNodes('diag45'); }
                     },
                     {
                         label: '复制集合', icon: 'copy',
@@ -2557,6 +2715,49 @@
             ];
         };
 
+        // 0. 折线折点控制手柄右键直达
+        var ptHandle = e.target.closest('.segment-point-handle[data-seg-id][data-point-idx]');
+        if (ptHandle) {
+            var pSegId = ptHandle.getAttribute('data-seg-id');
+            var pIdx = parseInt(ptHandle.getAttribute('data-point-idx'), 10);
+            var pSeg = (app.project.segments || []).find(function (s0) { return s0.id === pSegId; });
+            if (pSeg && pSeg.points && pSeg.points[pIdx]) {
+                var isInterior = pIdx > 0 && pIdx < pSeg.points.length - 1;
+                app.selected = { type: 'segment', id: pSegId, pointIdx: pIdx };
+                items.push({ header: '折点 #' + pIdx + ' (' + Math.round(pSeg.points[pIdx].x) + ', ' + Math.round(pSeg.points[pIdx].y) + ')' });
+                items.push({ label: '设为直角倒角 (r=18)', icon: 'design', onClick: function () {
+                    handlePropertyChange('segment', pSegId, 'point_radius', { pointIdx: pIdx, r: 18 });
+                } });
+                items.push({ label: '设为斜角倒角 (r=8)', icon: 'design', onClick: function () {
+                    handlePropertyChange('segment', pSegId, 'point_radius', { pointIdx: pIdx, r: 8 });
+                } });
+                items.push({ label: '清除倒角 (尖角 r=0)', icon: 'close', onClick: function () {
+                    handlePropertyChange('segment', pSegId, 'point_radius', { pointIdx: pIdx, r: 0 });
+                } });
+                if (isInterior) {
+                    items.push({ separator: true });
+                    items.push({ label: '删除此折点', icon: 'delete', danger: true, shortcut: 'Del', onClick: function () {
+                        handlePropertyChange('segment', pSegId, 'delete_point', { pointIdx: pIdx });
+                    } });
+                }
+                return items.concat(common());
+            }
+        }
+
+        // 0.5 多选状态下的快捷局部对齐菜单
+        if (app.selected && app.selected.type === 'multi' && (app.selected.nodeIds || []).length >= 2) {
+            var mCount = (app.selected.nodeIds || []).length;
+            items.push({ header: '已多选 ' + mCount + ' 座车站' });
+            items.push({ label: '顶端对齐 (Y)', icon: 'arrow-up', onClick: function () { alignNodes('top'); } });
+            items.push({ label: '左端对齐 (X)', icon: 'arrow-left', onClick: function () { alignNodes('left'); } });
+            items.push({ label: '局部 45° 对齐', icon: 'compass', onClick: function () { alignNodes('diag45'); } });
+            if (mCount >= 3) {
+                items.push({ label: '水平等距分布', icon: 'sort', onClick: function () { distributeNodesEvenly('x'); } });
+                items.push({ label: '垂直等距分布', icon: 'sort', onClick: function () { distributeNodesEvenly('y'); } });
+            }
+            items.push({ separator: true });
+        }
+
         // 1. 车站
         var nodeEl = e.target.closest('[data-node-id]');
         if (nodeEl && app.project.nodes[nodeEl.getAttribute('data-node-id')]) {
@@ -2933,7 +3134,7 @@
                     reorderLine(lineId, direction);
                 },
                 onToggleGridSnap: function () {
-                    app.snapEnabled = !app.snapEnabled;
+                    setGridVisible(!app.gridVisible);
                     renderCanvas();
                 }
             });
@@ -3267,20 +3468,29 @@
         var btnHist = document.getElementById('btnHistoryPanel');
         if (btnHist) btnHist.addEventListener('click', openHistoryModal);
 
-        // 翻转折角
-        var flipBtn = document.getElementById('btnFlipCorner');
-        if (flipBtn) flipBtn.addEventListener('click', function () {
+        // 翻转折角（绘制草稿时可即时翻转预览，选中线段时翻转线段）
+        function flipActiveCornerOrDraft() {
+            var pdFlip = window.OpenMapEditor.PipelineDraw;
+            if (pdFlip && typeof pdFlip.hasDraft === 'function' && pdFlip.hasDraft() && typeof pdFlip.flipDraft === 'function') {
+                if (pdFlip.flipDraft()) {
+                    renderDraftLayer();
+                    return true;
+                }
+            }
             if (app.selected && app.selected.type === 'segment') {
                 var seg = (app.project.segments || []).find(function (s) { return s.id === app.selected.id; });
                 if (seg) {
                     window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
                     window.OpenMapEditor.SegmentRouter.flipSegmentCorner(seg, app.project.slope);
                     renderAll();
+                    return true;
                 }
-            } else {
-                showToast('请先选中一条折角线段');
             }
-        });
+            showToast('请先选中一条折角线段，或在走线绘制中按 Q 翻转');
+            return false;
+        }
+        var flipBtn = document.getElementById('btnFlipCorner');
+        if (flipBtn) flipBtn.addEventListener('click', flipActiveCornerOrDraft);
 
         // 自动走线开关
         var autoRouteBtn = document.getElementById('btnToggleAutoRoute');
@@ -3429,29 +3639,28 @@
             });
         }
 
-        // 网格开关：显示网格 = 显示 + 对齐；隐藏网格 = 不显示 + 不对齐。
-        // 两者以前是独立开关，会出现「看得到网格却不对齐」「网格关着却在吸附」这种自相矛盾的状态。
-        function applyGridState() {
+        // 网格显示与坐标对齐联动：开启网格即同步开启对齐（拖拽按住 Alt 可临时免吸附）
+        function setGridVisible(visible, silent) {
+            app.gridVisible = !!visible;
+            app.snapEnabled = !!visible;
             var gridBtnEl = document.getElementById('hudBtnGrid');
             if (gridBtnEl) gridBtnEl.classList.toggle('active', app.gridVisible);
             if (window.OpenMapEditor.GridLayer) {
                 window.OpenMapEditor.GridLayer.setVisible(app.gridVisible);
             }
             var vp = window.OpenMapEditor.ViewportLayer;
-            if (vp) {
-                if (vp.setGrid) vp.setGrid(app.gridVisible);
-                if (vp.setSnap) vp.setSnap(app.snapEnabled);
-                else if (vp.setSnapEnabled) vp.setSnapEnabled(app.snapEnabled);
+            if (vp && vp.setGrid) {
+                vp.setGrid(app.gridVisible);
             }
             try {
                 localStorage.setItem('openmap_editor_grid_visible', app.gridVisible ? '1' : '0');
             } catch (err) { /* 隐私模式下忽略 */ }
-        }
-
-        function setGridVisible(visible, silent) {
-            app.gridVisible = !!visible;
-            app.snapEnabled = !!visible;   // 对齐与显示共用同一个状态
-            applyGridState();
+            if (app.project && typeof updateHealthBadge === 'function') {
+                updateHealthBadge();
+            }
+            if (!silent) {
+                showToast(app.gridVisible ? '已开启背景网格并自动对齐网格 (G)' : '已关闭背景网格与对齐 (G)');
+            }
         }
 
         var gridBtn = document.getElementById('hudBtnGrid');
@@ -3505,13 +3714,13 @@
             setRulerVisible(!app.rulerVisible);
         });
 
-        // 启动时恢复网格偏好（默认关闭：空白画布既不显示网格也不吸附）
+        // 启动时恢复网格偏好（默认关闭：既不显示也不对齐）
         (function initGridState() {
-            var saved = null;
-            try { saved = localStorage.getItem('openmap_editor_grid_visible'); } catch (err) { saved = null; }
-            app.gridVisible = saved === '1';
-            app.snapEnabled = app.gridVisible;
-            applyGridState();
+            var savedGrid = null;
+            try {
+                savedGrid = localStorage.getItem('openmap_editor_grid_visible');
+            } catch (err) { savedGrid = null; }
+            setGridVisible(savedGrid === '1', true);
         })();
 
         // 大纲与检视面板折叠/展开与多端状态联动
@@ -3556,6 +3765,42 @@
         if (hudInspToggle) hudInspToggle.addEventListener('click', function () { toggleInspector(); });
 
         updateSidePanelState();
+
+        // 左右侧栏宽度拖拽调整与记忆
+        (function initSidePanelResizers() {
+            var bindResizer = function (handleId, panelEl, storageKey, minW, maxW, isRight) {
+                var handle = document.getElementById(handleId);
+                if (!handle || !panelEl) return;
+                try {
+                    var savedW = parseInt(localStorage.getItem(storageKey), 10);
+                    if (savedW >= minW && savedW <= maxW) panelEl.style.width = savedW + 'px';
+                } catch (err) {}
+                handle.addEventListener('mousedown', function (e) {
+                    if (e.button !== 0 || panelEl.classList.contains('collapsed')) return;
+                    e.preventDefault();
+                    var startX = e.clientX;
+                    var startW = panelEl.getBoundingClientRect().width;
+                    handle.classList.add('active');
+                    panelEl.style.transition = 'none';
+                    var onMove = function (ev) {
+                        var delta = isRight ? (startX - ev.clientX) : (ev.clientX - startX);
+                        var nextW = Math.max(minW, Math.min(maxW, Math.round(startW + delta)));
+                        panelEl.style.width = nextW + 'px';
+                    };
+                    var onUp = function () {
+                        handle.classList.remove('active');
+                        panelEl.style.transition = '';
+                        window.removeEventListener('mousemove', onMove);
+                        window.removeEventListener('mouseup', onUp);
+                        try { localStorage.setItem(storageKey, String(parseInt(panelEl.style.width, 10) || startW)); } catch (err) {}
+                    };
+                    window.addEventListener('mousemove', onMove);
+                    window.addEventListener('mouseup', onUp);
+                });
+            };
+            bindResizer('navResizeHandle', navDrawer, 'openmap_editor_nav_width', 200, 400, false);
+            bindResizer('inspectorResizeHandle', inspPanel, 'openmap_editor_insp_width', 280, 450, true);
+        })();
 
         // 标题栏：新建画布（已在 bindModals 中处理，这里只打开弹窗）
         var btnHeaderNew = document.getElementById('btnHeaderNewCanvas');
@@ -4461,6 +4706,50 @@
         var hasDragged = false;
         var dragBaseline = null;
 
+        /** 延迟捕获拖拽前基线：仅在首次跨过拖动阈值真正改数据前序列化，点选不卡顿 */
+        function captureDragBaselineOnce() {
+            if (!dragBaseline && app.project) {
+                dragBaseline = JSON.stringify(app.project);
+            }
+        }
+
+        function isAnyDragActive() {
+            return !!(isTransforming || isDraggingLiveCorner || isBoxSelecting || isDraggingMulti ||
+                isDraggingPoint || isDraggingWaterPoint || isDraggingText || isDraggingScattered || isDraggingNode);
+        }
+
+        function resetAllDragFlags() {
+            isTransforming = false;
+            transformType = null;
+            transformHandle = null;
+            transformCorner = null;
+            transformInitBounds = null;
+            transformInitPoints = null;
+            transformCenter = null;
+            isDraggingLiveCorner = false;
+            draggedCornerSegId = null;
+            draggedCornerPointIdx = null;
+            isDraggingWaterPoint = false;
+            draggedWaterId = null;
+            draggedWaterPointIdx = null;
+            isDraggingText = false;
+            draggedTextId = null;
+            isDraggingMulti = false;
+            initialMultiPositions = null;
+            isDraggingPoint = false;
+            draggedSegId = null;
+            draggedPointIdx = null;
+            isDraggingScattered = false;
+            draggedScatteredIdx = null;
+            scatteredDragOrigin = null;
+            isDraggingNode = false;
+            draggedNodeId = null;
+            isBoxSelecting = false;
+            boxStartPos = null;
+            dragStartPos = null;
+            hasDragged = false;
+        }
+
         /** 拖拽结束：只有真正拖动过才把「按下时的基线」压入撤销栈（撤销一步即回到按下前） */
         function commitDragHistory() {
             if (hasDragged && dragBaseline) {
@@ -4572,12 +4861,21 @@
             } else {
                 updateSnapIndicator(null);
             }
+        });
+
+        // 拖拽移动统一绑在 window 上：鼠标划出画布边界依然跟手且不丢状态
+        window.addEventListener('mousemove', function (e) {
+            if (!isAnyDragActive() || !app.project) return;
+            var world = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
+            var coordEl = document.getElementById('cursorCoordinates');
+            if (coordEl) coordEl.textContent = 'X: ' + Math.round(world.x) + ', Y: ' + Math.round(world.y);
 
             // -1. 矢量几何变换 (缩放与旋转)
             if (isTransforming && transformInitPoints && transformType) {
                 var dXTrans = world.x - dragStartPos.x;
                 var dYTrans = world.y - dragStartPos.y;
                 if (!hasDragged && (Math.abs(dXTrans) > 2 || Math.abs(dYTrans) > 2)) {
+                    captureDragBaselineOnce();
                     hasDragged = true;
                 }
                 if (hasDragged) {
@@ -4602,7 +4900,7 @@
                         );
                     }
                     applyTransformedPoints(app.selected, transformedPts);
-                    scheduleRender();
+                    scheduleDragRender('transform');
                 }
                 return;
             }
@@ -4611,12 +4909,12 @@
             if (isDraggingLiveCorner && draggedCornerSegId && draggedCornerPointIdx !== null) {
                 var cSeg = (app.project.segments || []).find(function (s) { return s.id === draggedCornerSegId; });
                 if (cSeg && cSeg.points && cSeg.points[draggedCornerPointIdx]) {
+                    captureDragBaselineOnce();
                     var cp = cSeg.points[draggedCornerPointIdx];
                     var dist = Math.hypot(world.x - cp.x, world.y - cp.y);
-                    var newR = Math.max(0, Math.min(48, Math.round(dist)));
-                    cp.r = newR;
+                    cp.r = Math.max(0, Math.min(48, Math.round(dist)));
                     hasDragged = true;
-                    scheduleRender();
+                    scheduleDragRender('default');
                 }
                 return;
             }
@@ -4636,14 +4934,10 @@
                     handleLayerEl.appendChild(bandEl);
                 }
                 if (bandEl) {
-                    var rx = Math.min(boxStartPos.x, world.x);
-                    var ry = Math.min(boxStartPos.y, world.y);
-                    var rw = Math.abs(world.x - boxStartPos.x);
-                    var rh = Math.abs(world.y - boxStartPos.y);
-                    bandEl.setAttribute('x', String(rx));
-                    bandEl.setAttribute('y', String(ry));
-                    bandEl.setAttribute('width', String(rw));
-                    bandEl.setAttribute('height', String(rh));
+                    bandEl.setAttribute('x', String(Math.min(boxStartPos.x, world.x)));
+                    bandEl.setAttribute('y', String(Math.min(boxStartPos.y, world.y)));
+                    bandEl.setAttribute('width', String(Math.abs(world.x - boxStartPos.x)));
+                    bandEl.setAttribute('height', String(Math.abs(world.y - boxStartPos.y)));
                 }
                 return;
             }
@@ -4652,8 +4946,9 @@
             if (isDraggingMulti && initialMultiPositions && app.selected && app.selected.type === 'multi') {
                 var dX = world.x - dragStartPos.x;
                 var dY = world.y - dragStartPos.y;
-                if (!hasDragged) {
-                    if (Math.abs(dX) > 2 || Math.abs(dY) > 2) hasDragged = true;
+                if (!hasDragged && (Math.abs(dX) > 2 || Math.abs(dY) > 2)) {
+                    captureDragBaselineOnce();
+                    hasDragged = true;
                 }
                 if (hasDragged) {
                     var nList = app.selected.nodeIds || [];
@@ -4680,7 +4975,7 @@
                         }
                     });
                     syncSegmentsForNodes(nList);
-                    scheduleRender();
+                    scheduleDragRender('default');
                 }
                 return;
             }
@@ -4689,12 +4984,12 @@
             if (isDraggingPoint && draggedSegId && draggedPointIdx !== null) {
                 var dragSeg = (app.project.segments || []).find(function (s) { return s.id === draggedSegId; });
                 if (dragSeg && dragSeg.points && dragSeg.points[draggedPointIdx]) {
-                    var snappedPt = app.snapEnabled
+                    var snappedPt = (app.snapEnabled && !e.altKey)
                         ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
                         : { x: world.x, y: world.y };
 
                     // 智能辅助线吸附 (SmartGuides)
-                    if (app.smartGuidesEnabled && window.OpenMapEditor.SmartGuides) {
+                    if (app.smartGuidesEnabled && !e.altKey && window.OpenMapEditor.SmartGuides) {
                         var scaleFactor = window.OpenMapEditor.ViewportLayer.getScale() || 1;
                         var targets = [];
                         var curNid = (dragSeg.points[draggedPointIdx] && dragSeg.points[draggedPointIdx].nid) || null;
@@ -4704,11 +4999,7 @@
                                 if (n) targets.push({ id: nid, x: n.x, y: n.y });
                             }
                         });
-                        var alignResult = window.OpenMapEditor.SmartGuides.computeAlignment(
-                            snappedPt,
-                            targets,
-                            8 / scaleFactor
-                        );
+                        var alignResult = window.OpenMapEditor.SmartGuides.computeAlignment(snappedPt, targets, 8 / scaleFactor);
                         if (alignResult && alignResult.guides && alignResult.guides.length > 0) {
                             snappedPt.x = alignResult.snapped.x;
                             snappedPt.y = alignResult.snapped.y;
@@ -4725,6 +5016,7 @@
                     if (!hasDragged) {
                         var dStartPt = dragStartPos || snappedPt;
                         if (Math.abs(snappedPt.x - dStartPt.x) > 2 || Math.abs(snappedPt.y - dStartPt.y) > 2) {
+                            captureDragBaselineOnce();
                             hasDragged = true;
                         }
                     }
@@ -4747,22 +5039,24 @@
                                 }
                             });
                         }
-                        scheduleRender();
+                        scheduleDragRender('default');
                     }
                 }
+                return;
             }
 
             // 1.5 拖动水域多边形顶点移动
             if (isDraggingWaterPoint && draggedWaterId && draggedWaterPointIdx !== null) {
                 var dragWater = (app.project.waters || []).find(function (w) { return w.id === draggedWaterId; });
                 if (dragWater && dragWater.points && dragWater.points[draggedWaterPointIdx]) {
-                    var snappedW = app.snapEnabled
+                    var snappedW = (app.snapEnabled && !e.altKey)
                         ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
                         : { x: world.x, y: world.y };
 
                     if (!hasDragged) {
                         var dStartW = dragStartPos || snappedW;
                         if (Math.abs(snappedW.x - dStartW.x) > 2 || Math.abs(snappedW.y - dStartW.y) > 2) {
+                            captureDragBaselineOnce();
                             hasDragged = true;
                         }
                     }
@@ -4770,7 +5064,7 @@
                     if (hasDragged) {
                         dragWater.points[draggedWaterPointIdx].x = Math.round(snappedW.x);
                         dragWater.points[draggedWaterPointIdx].y = Math.round(snappedW.y);
-                        scheduleRender();
+                        scheduleDragRender('water');
                     }
                 }
                 return;
@@ -4780,13 +5074,14 @@
             if (isDraggingText && draggedTextId) {
                 var dragTxt = (app.project.texts || []).find(function (t) { return t.id === draggedTextId; });
                 if (dragTxt) {
-                    var snappedT = app.snapEnabled
+                    var snappedT = (app.snapEnabled && !e.altKey)
                         ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
                         : { x: world.x, y: world.y };
 
                     if (!hasDragged) {
                         var dStartT = dragStartPos || snappedT;
                         if (Math.abs(snappedT.x - dStartT.x) > 2 || Math.abs(snappedT.y - dStartT.y) > 2) {
+                            captureDragBaselineOnce();
                             hasDragged = true;
                         }
                     }
@@ -4794,7 +5089,7 @@
                     if (hasDragged) {
                         dragTxt.x = Math.round(snappedT.x);
                         dragTxt.y = Math.round(snappedT.y);
-                        scheduleRender();
+                        scheduleDragRender('text');
                     }
                 }
                 return;
@@ -4804,27 +5099,27 @@
             if (isDraggingScattered && scatteredDragOrigin) {
                 var scItem = (app.project.scattered || [])[draggedScatteredIdx];
                 if (scItem) {
+                    captureDragBaselineOnce();
                     var nx = scatteredDragOrigin.x + (world.x - dragStartPos.x);
                     var ny = scatteredDragOrigin.y + (world.y - dragStartPos.y);
-                    var snappedSc = app.snapEnabled ? window.OpenMapEditor.ViewportLayer.snapPoint(nx, ny) : { x: nx, y: ny };
+                    var snappedSc = (app.snapEnabled && !e.altKey) ? window.OpenMapEditor.ViewportLayer.snapPoint(nx, ny) : { x: nx, y: ny };
                     scItem.x = Math.round(snappedSc.x * 10) / 10;
                     scItem.y = Math.round(snappedSc.y * 10) / 10;
                     hasDragged = true;
-                    scheduleRender();
+                    scheduleDragRender('scattered');
                 }
                 return;
             }
 
             // 2. 拖动节点移动 (带智能对齐参考线与正交导轨协同推移)
             if (isDraggingNode && draggedNodeId && app.project.nodes[draggedNodeId]) {
-                var snapped = app.snapEnabled
+                var snapped = (app.snapEnabled && !e.altKey)
                     ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
                     : { x: world.x, y: world.y };
 
-                // 智能参考线与磁吸 (Smart Guides & Magnetic Snapping)
                 var scale = window.OpenMapEditor.ViewportLayer.getScale() || 1;
                 var snapTol = 6 / scale;
-                if (app.smartGuidesEnabled && window.OpenMapEditor.SmartGuides) {
+                if (app.smartGuidesEnabled && !e.altKey && window.OpenMapEditor.SmartGuides) {
                     var targetList = [];
                     Object.keys(app.project.nodes || {}).forEach(function (otherId) {
                         if (otherId !== draggedNodeId) {
@@ -4841,32 +5136,26 @@
                     window.OpenMapEditor.GridLayer.clearSmartGuides();
                 }
 
-                // 仅在真正移动时才标记 hasDragged
                 if (!hasDragged) {
                     var dStart = dragStartPos || snapped;
                     if (Math.abs(snapped.x - dStart.x) > 2 || Math.abs(snapped.y - dStart.y) > 2) {
+                        captureDragBaselineOnce();
                         hasDragged = true;
                     }
                 }
 
                 if (hasDragged) {
-                    var oldNodeX = app.project.nodes[draggedNodeId].x;
-                    var oldNodeY = app.project.nodes[draggedNodeId].y;
-                    var oldPos = { x: oldNodeX, y: oldNodeY };
+                    var oldPos = { x: app.project.nodes[draggedNodeId].x, y: app.project.nodes[draggedNodeId].y };
                     var newPos = { x: snapped.x, y: snapped.y };
 
                     app.project.nodes[draggedNodeId].x = snapped.x;
                     app.project.nodes[draggedNodeId].y = snapped.y;
 
-                    // 同步线段端点与各折点，并调用 preserveOrthogonalShift 协同推移
                     app.project.segments.forEach(function (seg) {
                         var pts = seg.points || [];
                         var dIdx = -1;
-                        if (pts.length > 0 && pts[0].nid === draggedNodeId) {
-                            dIdx = 0;
-                        } else if (pts.length > 0 && pts[pts.length - 1].nid === draggedNodeId) {
-                            dIdx = pts.length - 1;
-                        }
+                        if (pts.length > 0 && pts[0].nid === draggedNodeId) dIdx = 0;
+                        else if (pts.length > 0 && pts[pts.length - 1].nid === draggedNodeId) dIdx = pts.length - 1;
                         if (dIdx !== -1) {
                             if (window.OpenMapEditor.SegmentRouter && window.OpenMapEditor.SegmentRouter.preserveOrthogonalShift) {
                                 window.OpenMapEditor.SegmentRouter.preserveOrthogonalShift(pts, dIdx, oldPos, newPos, seg.type, app.project.slope);
@@ -4883,7 +5172,7 @@
                         }
                     });
 
-                    scheduleRender();
+                    scheduleDragRender('default');
                 }
             }
         });
@@ -4965,7 +5254,7 @@
                 draggedCornerSegId = targetLiveCorner.getAttribute('data-seg-id');
                 draggedCornerPointIdx = parseInt(targetLiveCorner.getAttribute('data-point-idx'), 10);
                 hasDragged = false;
-                dragBaseline = JSON.stringify(app.project);
+                dragBaseline = null;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                 e.stopPropagation();
                 return;
@@ -4978,7 +5267,7 @@
                 transformType = 'scale';
                 transformHandle = targetHandle.getAttribute('data-handle');
                 hasDragged = false;
-                dragBaseline = JSON.stringify(app.project);
+                dragBaseline = null;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                 transformInitPoints = getTransformPoints(app.selected);
                 transformInitBounds = window.OpenMapEditor.TransformEngine ? window.OpenMapEditor.TransformEngine.computeBounds(transformInitPoints) : null;
@@ -4992,7 +5281,7 @@
                 transformType = 'rotate';
                 transformCorner = targetRotateZone.getAttribute('data-rotate-corner');
                 hasDragged = false;
-                dragBaseline = JSON.stringify(app.project);
+                dragBaseline = null;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                 transformInitPoints = getTransformPoints(app.selected);
                 var tb = window.OpenMapEditor.TransformEngine ? window.OpenMapEditor.TransformEngine.computeBounds(transformInitPoints) : null;
@@ -5011,7 +5300,7 @@
                 draggedWaterId = wid;
                 draggedWaterPointIdx = wpIdx;
                 hasDragged = false;
-                dragBaseline = JSON.stringify(app.project);
+                dragBaseline = null;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                 scheduleRender();
                 e.stopPropagation();
@@ -5034,7 +5323,7 @@
                     draggedWaterId = midWid;
                     draggedWaterPointIdx = wInsAfter + 1;
                     hasDragged = false;
-                    dragBaseline = JSON.stringify(app.project);
+                    dragBaseline = null;
                     dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                     scheduleRender();
                     e.stopPropagation();
@@ -5052,7 +5341,7 @@
                 draggedSegId = segId;
                 draggedPointIdx = pIdx;
                 hasDragged = false;
-                dragBaseline = JSON.stringify(app.project);
+                dragBaseline = null;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                 scheduleRender();
                 e.stopPropagation();
@@ -5075,8 +5364,7 @@
                     draggedSegId = midSegId;
                     draggedPointIdx = insAfter + 1;
                     hasDragged = false;
-                    // 插入已单独记过一次撤销，这里抓的是「插入后、拖动前」的基线
-                    dragBaseline = JSON.stringify(app.project);
+                    dragBaseline = null;
                     dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                     scheduleRender();
                     e.stopPropagation();
@@ -5114,7 +5402,7 @@
                 if (app.selected && app.selected.type === 'multi' && app.selected.nodeIds.indexOf(nid) !== -1) {
                     isDraggingMulti = true;
                     hasDragged = false;
-                    dragBaseline = JSON.stringify(app.project);
+                    dragBaseline = null;
                     dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                     initialMultiPositions = {
                         nodes: {},
@@ -5161,7 +5449,7 @@
                 app.selected = { type: 'node', id: nid };
                 isDraggingNode = true;
                 hasDragged = false;
-                dragBaseline = JSON.stringify(app.project);
+                dragBaseline = null;
                 draggedNodeId = nid;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                 scheduleRender();
@@ -5178,7 +5466,7 @@
                     isDraggingScattered = true;
                     draggedScatteredIdx = scIdx;
                     hasDragged = false;
-                    dragBaseline = JSON.stringify(app.project);
+                    dragBaseline = null;
                     dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                     scatteredDragOrigin = { x: scObj.x, y: scObj.y };
                     scheduleRender();
@@ -5226,7 +5514,7 @@
                 app.selected = { type: 'text', id: tid };
                 isDraggingText = true;
                 hasDragged = false;
-                dragBaseline = JSON.stringify(app.project);
+                dragBaseline = null;
                 draggedTextId = tid;
                 dragStartPos = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                 scheduleRender();
@@ -5260,8 +5548,9 @@
             }
         });
 
-        viewportEl.addEventListener('mouseup', function (e) {
-            // 一次拖拽/变换结束：立刻允许自动保存（此前交互期是压着的）
+        // 拖拽与框选结束统一挂在 window 上，鼠标划出画布松开也能提交
+        window.addEventListener('mouseup', function (e) {
+            if (!isAnyDragActive()) return;
             sessionHoldUntil = 0;
             scheduleSaveSession();
 
@@ -5325,98 +5614,41 @@
                             app.selected = null;
                         }
                     } else {
-                        // 空白处单点点击清空选择
                         app.selected = null;
                     }
                     boxStartPos = null;
                     renderAll();
-                    return;
-                }
-            }
-
-            if (isTransforming) {
-                commitDragHistory();
-                isTransforming = false;
-                transformType = null;
-                transformHandle = null;
-                transformCorner = null;
-                transformInitBounds = null;
-                transformInitPoints = null;
-                transformCenter = null;
-                dragStartPos = null;
-                hasDragged = false;
-                renderAll();
-                return;
-            }
-
-            if (isDraggingLiveCorner) {
-                commitDragHistory();
-                isDraggingLiveCorner = false;
-                draggedCornerSegId = null;
-                draggedCornerPointIdx = null;
-                dragStartPos = null;
-                hasDragged = false;
-                renderAll();
-                return;
-            }
-
-            if (isDraggingWaterPoint) {
-                commitDragHistory();
-                isDraggingWaterPoint = false;
-                draggedWaterId = null;
-                draggedWaterPointIdx = null;
-                dragStartPos = null;
-                hasDragged = false;
-                return;
-            }
-
-            if (isDraggingText) {
-                commitDragHistory();
-                isDraggingText = false;
-                draggedTextId = null;
-                dragStartPos = null;
-                hasDragged = false;
-                return;
-            }
-
-            if (isDraggingMulti) {
-                commitDragHistory();
-                isDraggingMulti = false;
-                initialMultiPositions = null;
-                hasDragged = false;
-                if (window.OpenMapEditor.GridLayer) window.OpenMapEditor.GridLayer.clearSmartGuides();
-                return;
-            }
-
-            if (isDraggingPoint) {
-                commitDragHistory();
-                isDraggingPoint = false;
-                draggedSegId = null;
-                draggedPointIdx = null;
-                hasDragged = false;
-                if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.clearSmartGuides === 'function') {
-                    window.OpenMapEditor.GridLayer.clearSmartGuides();
                 }
                 return;
             }
 
-            if (isDraggingScattered) {
-                commitDragHistory();
-                isDraggingScattered = false;
-                draggedScatteredIdx = null;
-                scatteredDragOrigin = null;
-                hasDragged = false;
-                return;
+            var moved = hasDragged;
+            commitDragHistory();
+            resetAllDragFlags();
+            if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.clearSmartGuides === 'function') {
+                window.OpenMapEditor.GridLayer.clearSmartGuides();
             }
+            if (moved) renderAll();
+        });
 
-            if (isDraggingNode) {
-                commitDragHistory();
-                isDraggingNode = false;
-                hasDragged = false;
-                draggedNodeId = null;
-                if (window.OpenMapEditor.GridLayer) window.OpenMapEditor.GridLayer.clearSmartGuides();
-                return;
+        window.addEventListener('blur', function () {
+            if (!isAnyDragActive()) return;
+            var bandEl = document.getElementById('editorRubberBand');
+            if (bandEl) bandEl.remove();
+            var moved = hasDragged;
+            commitDragHistory();
+            resetAllDragFlags();
+            if (window.OpenMapEditor.GridLayer && typeof window.OpenMapEditor.GridLayer.clearSmartGuides === 'function') {
+                window.OpenMapEditor.GridLayer.clearSmartGuides();
             }
+            if (moved) renderAll();
+        });
+
+        viewportEl.addEventListener('mouseup', function (e) {
+            // 一次交互结束：立刻允许自动保存
+            sessionHoldUntil = 0;
+            scheduleSaveSession();
+            if (e.button !== 0 || viewportEl.classList.contains('panning')) return;
 
             // 轨交资产零件盒落子模式响应
             if (app.activeStamp) {
@@ -5631,7 +5863,7 @@
             menu.show(e.clientX, e.clientY, buildContextMenuItems(e));
         });
 
-        // 双击交互：双击文字启动原地内联编辑，双击折线在线插入车站
+        // 双击交互：双击车站快速改名，双击文字原地内联编辑，双击折线在线插入车站
         viewportEl.addEventListener('dblclick', function (e) {
             // 水域工具：双击直接闭合当前多边形（画水域时不需要也不应该有其它双击行为）
             if (app.activeTool === 'water') {
@@ -5651,6 +5883,17 @@
             }
 
             if (app.activeTool !== 'select' && app.activeTool !== 'points' && app.activeTool !== 'box') return;
+
+            var targetNodeDbl = e.target.closest('[data-node-id]');
+            if (targetNodeDbl && !app.layerState.stations.locked) {
+                var dblNid = targetNodeDbl.getAttribute('data-node-id');
+                if (app.project && app.project.nodes && app.project.nodes[dblNid]) {
+                    app.selected = { type: 'node', id: dblNid };
+                    renderAll();
+                    openInlineStationEditor(dblNid);
+                    return;
+                }
+            }
 
             var targetTxt = e.target.closest('[data-text-id]');
             if (targetTxt && !app.layerState.texts.locked) {
@@ -5676,6 +5919,28 @@
             }
         });
 
+        // 方向键微调防抖撤销事务：连续按住方向键合并成单步撤销
+        var nudgeUndoTimer = 0;
+        var nudgeUndoCaptured = false;
+        function flushNudgeUndo() {
+            if (nudgeUndoTimer) {
+                clearTimeout(nudgeUndoTimer);
+                nudgeUndoTimer = 0;
+            }
+            if (nudgeUndoCaptured) {
+                nudgeUndoCaptured = false;
+                if (app.project) renderAll();
+            }
+        }
+        function beginNudgeTransaction() {
+            if (!nudgeUndoCaptured && app.project) {
+                window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                nudgeUndoCaptured = true;
+            }
+            if (nudgeUndoTimer) clearTimeout(nudgeUndoTimer);
+            nudgeUndoTimer = setTimeout(flushNudgeUndo, 450);
+        }
+
         // 快捷键支持
         window.addEventListener('keydown', function (e) {
             if (e.target.matches('input, textarea, select')) return;
@@ -5691,10 +5956,29 @@
                 }
             }
 
-            // 方向键步进平移 (1px，Shift + 方向键 10px)
-            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) !== -1) {
-                if (app.selected && (app.selected.type === 'node' || app.selected.type === 'multi')) {
+            // Alt + 方向键（或 Alt+Shift+方向键）快切选中车站的 8 方向避让锚点
+            if (e.altKey && !e.ctrlKey && !e.metaKey && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) !== -1) {
+                if (app.selected && (app.selected.type === 'node' || app.selected.type === 'multi') && app.project) {
                     e.preventDefault();
+                    var dirMap = e.shiftKey
+                        ? { ArrowUp: 'top-left', ArrowRight: 'top-right', ArrowDown: 'bottom-right', ArrowLeft: 'bottom-left' }
+                        : { ArrowUp: 'top', ArrowRight: 'right', ArrowDown: 'bottom', ArrowLeft: 'left' };
+                    var nextAlign = dirMap[e.code];
+                    var alignTargets = app.selected.type === 'node' ? [app.selected.id] : (app.selected.nodeIds || []);
+                    if (alignTargets.length) {
+                        window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                        alignTargets.forEach(function (nid) {
+                            if (app.project.nodes[nid]) app.project.nodes[nid].align = nextAlign;
+                        });
+                        renderAll();
+                    }
+                    return;
+                }
+            }
+
+            // 方向键步进平移 (1px，Shift + 方向键 10px)，覆盖车站/多选/折点/水域顶点/文本/散点
+            if (!e.altKey && !e.ctrlKey && !e.metaKey && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) !== -1) {
+                if (app.selected && app.project) {
                     var step = e.shiftKey ? 10 : 1;
                     var dX = 0, dY = 0;
                     if (e.code === 'ArrowUp') dY = -step;
@@ -5702,23 +5986,78 @@
                     else if (e.code === 'ArrowLeft') dX = -step;
                     else if (e.code === 'ArrowRight') dX = step;
 
-                    // 先记撤销基线再改坐标：顺序反了会让第一次撤销变成空操作
-                    window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
                     if (app.selected.type === 'node' && app.project.nodes[app.selected.id]) {
+                        e.preventDefault();
+                        beginNudgeTransaction();
                         app.project.nodes[app.selected.id].x += dX;
                         app.project.nodes[app.selected.id].y += dY;
                         syncSegmentsForNodes([app.selected.id]);
+                        scheduleDragRender('default');
+                        return;
                     } else if (app.selected.type === 'multi') {
+                        e.preventDefault();
+                        beginNudgeTransaction();
                         (app.selected.nodeIds || []).forEach(function (nid) {
                             if (app.project.nodes[nid]) {
                                 app.project.nodes[nid].x += dX;
                                 app.project.nodes[nid].y += dY;
                             }
                         });
+                        (app.selected.textIds || []).forEach(function (tid) {
+                            var txtM = (app.project.texts || []).find(function (t) { return t.id === tid; });
+                            if (txtM) { txtM.x += dX; txtM.y += dY; }
+                        });
                         syncSegmentsForNodes(app.selected.nodeIds);
+                        scheduleDragRender('default');
+                        return;
+                    } else if (app.selected.type === 'segment' && app.selected.pointIdx !== null && app.selected.pointIdx !== undefined) {
+                        var segN = (app.project.segments || []).find(function (s) { return s.id === app.selected.id; });
+                        var ptN = segN && segN.points && segN.points[app.selected.pointIdx];
+                        if (ptN) {
+                            e.preventDefault();
+                            beginNudgeTransaction();
+                            ptN.x += dX;
+                            ptN.y += dY;
+                            if (ptN.nid && app.project.nodes[ptN.nid]) {
+                                app.project.nodes[ptN.nid].x = ptN.x;
+                                app.project.nodes[ptN.nid].y = ptN.y;
+                                syncSegmentsForNodes([ptN.nid]);
+                            }
+                            scheduleDragRender('default');
+                            return;
+                        }
+                    } else if (app.selected.type === 'water' && app.selected.pointIdx !== null && app.selected.pointIdx !== undefined) {
+                        var watN = (app.project.waters || []).find(function (w) { return w.id === app.selected.id; });
+                        var wPtN = watN && watN.points && watN.points[app.selected.pointIdx];
+                        if (wPtN) {
+                            e.preventDefault();
+                            beginNudgeTransaction();
+                            wPtN.x += dX;
+                            wPtN.y += dY;
+                            scheduleDragRender('water');
+                            return;
+                        }
+                    } else if (app.selected.type === 'text') {
+                        var txtN = (app.project.texts || []).find(function (t) { return t.id === app.selected.id; });
+                        if (txtN) {
+                            e.preventDefault();
+                            beginNudgeTransaction();
+                            txtN.x += dX;
+                            txtN.y += dY;
+                            scheduleDragRender('text');
+                            return;
+                        }
+                    } else if (app.selected.type === 'scattered') {
+                        var scN = (app.project.scattered || [])[app.selected.idx];
+                        if (scN) {
+                            e.preventDefault();
+                            beginNudgeTransaction();
+                            scN.x += dX;
+                            scN.y += dY;
+                            scheduleDragRender('scattered');
+                            return;
+                        }
                     }
-                    renderAll();
-                    return;
                 }
             }
 
@@ -5732,6 +6071,20 @@
             } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyY') {
                 e.preventDefault();
                 clickElement('btnRedo');
+            } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyA') {
+                if (!app.project) return;
+                e.preventDefault();
+                var allNodeIds = !(app.layerState.stations && app.layerState.stations.locked)
+                    ? Object.keys(app.project.nodes || {}) : [];
+                var allTextIds = !(app.layerState.texts && app.layerState.texts.locked)
+                    ? (app.project.texts || []).map(function (t) { return t.id; }) : [];
+                if (allNodeIds.length + allTextIds.length > 0) {
+                    app.selected = { type: 'multi', nodeIds: allNodeIds, textIds: allTextIds };
+                    renderAll();
+                }
+            } else if ((e.ctrlKey || e.metaKey) && (e.code === 'Digit0' || e.code === 'Numpad0')) {
+                e.preventDefault();
+                clickElement('hudZoomText');
             } else if ((e.ctrlKey || e.metaKey) && e.code === 'KeyC') {
                 e.preventDefault();
                 copySelection();
@@ -5814,11 +6167,18 @@
                     showToast('已结束连续绘制（Enter）');
                 }
             } else if (e.code === 'Escape') {
-                setTool('select');
-                window.OpenMapEditor.PipelineDraw.cancelDraft();
-                renderAll();
+                var pdEsc = window.OpenMapEditor.PipelineDraw;
+                var hadDraft = pdEsc && ((pdEsc.hasDraft && pdEsc.hasDraft()) || (pdEsc.hasWaterDraft && pdEsc.hasWaterDraft()));
+                if (hadDraft || app.activeTool !== 'select') {
+                    setTool('select');
+                    if (pdEsc && pdEsc.cancelDraft) pdEsc.cancelDraft();
+                    renderAll();
+                } else if (app.selected) {
+                    app.selected = null;
+                    renderAll();
+                }
             } else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-                // 无修饰键工具切换快捷键
+                // 工具切换与视口快捷操作
                 if (e.code === 'KeyV') {
                     setTool('select');
                 } else if (e.code === 'KeyB') {
@@ -5828,7 +6188,6 @@
                 } else if (e.code === 'KeyI') {
                     setTool('eyedropper');
                 } else if (e.code === 'KeyS') {
-                    // 仅在无修饰键时才触发 station 工具
                     setTool('station');
                 } else if (e.code === 'KeyT') {
                     setTool('temp');
@@ -5836,6 +6195,29 @@
                     setTool('water');
                 } else if (e.code === 'KeyX') {
                     setTool('text');
+                } else if (e.code === 'Digit1') {
+                    setTool('seg135');
+                } else if (e.code === 'Digit2') {
+                    setTool('seg90');
+                } else if (e.code === 'Digit3') {
+                    setTool('seg90d');
+                } else if (e.code === 'Digit4') {
+                    setTool('segaxis');
+                } else if (e.code === 'KeyL') {
+                    var segCycle = ['seg135', 'seg90', 'seg90d', 'segaxis'];
+                    var curIdxL = segCycle.indexOf(app.activeTool);
+                    setTool(segCycle[(curIdxL + 1) % segCycle.length]);
+                } else if (e.code === 'KeyQ') {
+                    clickElement('btnFlipCorner');
+                } else if (e.code === 'Equal' || e.code === 'NumpadAdd') {
+                    e.preventDefault();
+                    clickElement('hudBtnZoomIn');
+                } else if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
+                    e.preventDefault();
+                    clickElement('hudBtnZoomOut');
+                } else if (e.code === 'Digit0' || e.code === 'Numpad0') {
+                    e.preventDefault();
+                    clickElement('hudZoomText');
                 } else if (e.code === 'KeyF') {
                     clickElement('hudBtnFit');
                 } else if (e.code === 'KeyG') {

@@ -341,9 +341,15 @@
         if (!p1 || !p2) return [];
         var segSlope = slope || (project && project.slope) || null;
         var pts = (router && typeof router.routeBetweenByType === 'function')
-            ? router.routeBetweenByType(p1, p2, draftSegment.toolType, false, segSlope)
+            ? router.routeBetweenByType(p1, p2, draftSegment.toolType, !!draftSegment.cornerFlip, segSlope)
             : [p1, p2];
         return (pts || []).map(function (p) { return { x: p.x, y: p.y }; });
+    }
+
+    function flipDraft() {
+        if (!draftSegment) return false;
+        draftSegment.cornerFlip = !draftSegment.cornerFlip;
+        return true;
     }
 
     function hasDraft() {
@@ -540,8 +546,9 @@
                 }
 
                 // ---- 其余折角类型：按类型路由出一段，再链式继续 ----
+                var flip = !!draftSegment.cornerFlip;
                 var routeResult = (router && typeof router.routeBetweenByType === 'function')
-                    ? router.routeBetweenByType(p1, p2, activeTool, false, project.slope)
+                    ? router.routeBetweenByType(p1, p2, activeTool, flip, project.slope)
                     : [p1, p2];
                 var segPts = routeResult.map(function (p) { return { x: p.x, y: p.y }; });
 
@@ -554,6 +561,7 @@
                     id: segId,
                     lineId: lineId,
                     type: activeTool,
+                    cornerFlip: flip,
                     points: segPts,
                     routed: true
                 });
@@ -641,6 +649,7 @@
         finishWaterDraft: finishWaterDraft,
         updateDraftPointer: updateDraftPointer,
         getDraftPreviewPoints: getDraftPreviewPoints,
+        flipDraft: flipDraft,
         handleCanvasClick: handleCanvasClick,
         cancelDraft: cancelDraft,
         getActiveTool: function () { return activeTool; },

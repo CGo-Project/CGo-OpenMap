@@ -296,6 +296,26 @@ body.office-app-shell .mobile-status-bar-fill,
     border-right: none;
 }
 
+.drawer-resize-handle {
+    width: 4px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    background: transparent;
+    position: relative;
+    z-index: 12;
+    transition: background-color 0.15s ease;
+}
+
+.drawer-resize-handle:hover,
+.drawer-resize-handle.active {
+    background: var(--office-primary, #0284c7);
+}
+
+.workbench-nav-tree.collapsed + .drawer-resize-handle,
+.drawer-resize-handle.hidden {
+    display: none;
+}
+
 .drawer-header {
     height: 36px;
     display: flex;

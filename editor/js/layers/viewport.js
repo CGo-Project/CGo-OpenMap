@@ -26,7 +26,7 @@ window.OpenMapEditor.ViewportLayer = (function () {
         canvasSize: { width: 2000, height: 1500 },
         gridSize: 5,
         gridVisible: false,
-        snapEnabled: true,
+        snapEnabled: false,
         slope: { m: 1, n: 1 }
     };
 
@@ -35,6 +35,7 @@ window.OpenMapEditor.ViewportLayer = (function () {
     var lastPointer = { x: 0, y: 0 };
     var activePointers = new Map();
     var lastPinchDist = 0;
+    var lastPinchMid = null;
     // 空格拖拽平移状态：keydown 置位、keyup / blur 复位。
     // 必须在 IIFE 内显式声明 —— 否则 mousedown 读它会抛 ReferenceError，
     // 普通左键点击也一并失效（严格模式下未声明变量不可读取）。
@@ -209,18 +210,20 @@ window.OpenMapEditor.ViewportLayer = (function () {
         applyTransform();
     }
 
+    function effectiveGridStep() {
+        if (window.OpenMapEditor && window.OpenMapEditor.GridLayer &&
+            typeof window.OpenMapEditor.GridLayer.getEffectiveGridSize === 'function') {
+            return window.OpenMapEditor.GridLayer.getEffectiveGridSize() || state.gridSize || 5;
+        }
+        return state.gridSize || 5;
+    }
+
     /**
-     * 网格吸附计算
+     * 网格吸附计算（对齐实际 LOD 网格步长）
      */
     function snapPoint(x, y) {
         if (!state.snapEnabled) return { x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 };
-        var g = state.gridSize || 5;
-        // 低缩放时网格会按 LOD 变稀，吸附步长必须跟着变，否则点会落在可见网格线之间
-        if (window.OpenMapEditor && window.OpenMapEditor.GridLayer &&
-            typeof window.OpenMapEditor.GridLayer.getEffectiveGridSize === 'function') {
-            var eff = window.OpenMapEditor.GridLayer.getEffectiveGridSize();
-            if (eff > g) g = eff;
-        }
+        var g = effectiveGridStep();
         return {
             x: Math.round(x / g) * g,
             y: Math.round(y / g) * g
@@ -229,13 +232,7 @@ window.OpenMapEditor.ViewportLayer = (function () {
 
     /** 当前生效的吸附步长（供绘制工具在 45° 约束后继续对齐网格） */
     function getSnapStep() {
-        var g = state.gridSize || 5;
-        if (window.OpenMapEditor && window.OpenMapEditor.GridLayer &&
-            typeof window.OpenMapEditor.GridLayer.getEffectiveGridSize === 'function') {
-            var eff = window.OpenMapEditor.GridLayer.getEffectiveGridSize();
-            if (eff > g) g = eff;
-        }
-        return g;
+        return effectiveGridStep();
     }
 
     /**
@@ -243,7 +240,7 @@ window.OpenMapEditor.ViewportLayer = (function () {
      */
     function snapPointToRays(from, to, slopeRatio) {
         if (!from) return snapPoint(to.x, to.y);
-        var g = state.snapEnabled ? (state.gridSize || 5) : 1;
+        var g = state.snapEnabled ? effectiveGridStep() : 1;
         var dx = to.x - from.x, dy = to.y - from.y;
         if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) {
             return { x: Math.round(from.x * 100) / 100, y: Math.round(from.y * 100) / 100 };
@@ -371,12 +368,64 @@ window.OpenMapEditor.ViewportLayer = (function () {
         // 漫游拖拽支持（中键或按住空格拖拽）
         window.addEventListener('keydown', function (e) {
             if (e.code !== 'Space' || isTypingTarget(e.target)) return;
+            if (typeof document !== 'undefined' && typeof document.querySelector === 'function' &&
+                document.querySelector('cgo-modal.open')) return;
+            if (typeof e.preventDefault === 'function') e.preventDefault();
             spaceHeld = true;
             setPanCursor(true);
         });
 
+        // 触屏双指捏合缩放与双指平移
+        var pinchStats = function () {
+            var pts = Array.from(activePointers.values());
+            if (pts.length < 2) return null;
+            var a = pts[0], b = pts[1];
+            return {
+                dist: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+                mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+            };
+        };
+        dom.viewport.addEventListener('pointerdown', function (e) {
+            if (e.pointerType !== 'touch') return;
+            activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (activePointers.size === 2) {
+                var st = pinchStats();
+                lastPinchDist = st ? st.dist : 0;
+                lastPinchMid = st ? st.mid : null;
+            }
+        });
+        dom.viewport.addEventListener('pointermove', function (e) {
+            if (e.pointerType !== 'touch' || !activePointers.has(e.pointerId)) return;
+            activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (activePointers.size === 2) {
+                var st = pinchStats();
+                if (st && lastPinchDist > 0 && lastPinchMid) {
+                    var ratio = st.dist / lastPinchDist;
+                    var dx = st.mid.x - lastPinchMid.x;
+                    var dy = st.mid.y - lastPinchMid.y;
+                    if (dx || dy) panBy(dx, dy);
+                    if (Math.abs(ratio - 1) > 1e-4) zoomToPoint(state.scale * ratio, st.mid.x, st.mid.y);
+                }
+                lastPinchDist = st ? st.dist : 0;
+                lastPinchMid = st ? st.mid : null;
+            }
+        });
+        var clearTouchPointer = function (e) {
+            if (e.pointerType !== 'touch') return;
+            activePointers.delete(e.pointerId);
+            if (activePointers.size < 2) {
+                lastPinchDist = 0;
+                lastPinchMid = null;
+            }
+        };
+        dom.viewport.addEventListener('pointerup', clearTouchPointer);
+        dom.viewport.addEventListener('pointercancel', clearTouchPointer);
+
         window.addEventListener('keyup', function (e) {
             if (e.code !== 'Space') return;
+            activePointers.clear();
+            lastPinchDist = 0;
+            lastPinchMid = null;
             spaceHeld = false;
             setPanCursor(!!panDrag);
         });
@@ -422,6 +471,9 @@ window.OpenMapEditor.ViewportLayer = (function () {
         // 失焦（切标签页、弹窗抢焦点）时如果漏了 keyup，空格会被"卡住"，
         // 表现为左键点击全被当成平移、画不了东西 —— 这里兜底复位。
         window.addEventListener('blur', function () {
+            activePointers.clear();
+            lastPinchDist = 0;
+            lastPinchMid = null;
             spaceHeld = false;
             panDrag = null;
             isPanning = false;
@@ -463,7 +515,6 @@ window.OpenMapEditor.ViewportLayer = (function () {
         isGridVisible: function () { return !!state.gridVisible; },
         setGrid: function (visible) {
             state.gridVisible = !!visible;
-            // 显示网格 = 对齐网格；隐藏 = 不对齐（两者共用一个状态，不可能自相矛盾）
             state.snapEnabled = state.gridVisible;
             if (window.OpenMapEditor.GridLayer) {
                 window.OpenMapEditor.GridLayer.setVisible(state.gridVisible);
