@@ -158,7 +158,7 @@
 | 初学者入门 | [QUICKSTART.md](./QUICKSTART.md) | 面向零基础用户的开发环境配置与 AI 辅助开发指南 |
 | 线路图智能转换与编辑 | [OpenMap Editor 工作台](./editor/index.html) | 底图矢量化、PDF/AI 直通、AI 视觉拓扑提取，以及已有城市的可视化编辑维护 |
 | AI 辅助开发 | [AGENTS.md](./AGENTS.md) | 面向各类 AI Coding Agent 的项目架构、解耦规范与数据标准 |
-| 多城共享机制 | [城市共享层](./city/shenyang/shared/README.md) | 沈阳 / 大连 / 长春共用的共享层机制清单，含**持续更新中的模块**与开通时刻约定 |
+| 多城共享机制 | [城市共享层](./core/shared/README.md) | 沈阳 / 大连 / 长春共用的共享层机制清单，含**持续更新中的模块**与开通时刻约定 |
 | 城市数据移植 | [PORTING.md](./PORTING.md) | 城市线网数据结构、站点坐标与线路图例配置说明 |
 | 社区贡献规范 | [CONTRIBUTING.md](./CONTRIBUTING.md) | 代码贡献流程、城市主理人机制与 PR 自查清单 |
 

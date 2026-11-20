@@ -3,7 +3,7 @@
  *
  * 记录大连地铁线网逐段开通与单站补开的时间线，供「发展史动态演示」消费。
  * 字段与四种事件（line-open / line-state / station-state / rename）的含义见
- * city/shenyang/data_opening_history.js 的文件头与 city/shenyang/shared/README.md。
+ * city/shenyang/data_opening_history.js 的文件头与 core/shared/README.md。
  *
  * 本城口径
  * --------

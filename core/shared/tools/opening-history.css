@@ -1,5 +1,5 @@
 /**
- * CGo OpenMap - 线网发展史样式（city/shenyang/shared/tools/opening-history.css）
+ * CGo OpenMap - 线网发展史样式（core/shared/tools/opening-history.css）
  *
  * 由 opening-history.js 按脚本自身 URL 自动注入，调用方无需手工引用。
  * 面板外壳（.cgo-mt-panel 系列）复用地图小工具那一套，这里只管发展史自己的正文。

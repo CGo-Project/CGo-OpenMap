@@ -676,7 +676,7 @@ section("⑦ 站内换乘方式与用时（transferAt）");
         check("pairs 的键都是本站真实线路组合", badPair.length === 0, badPair.join(", "));
 
         // 端到端（内核查表是否真的命中）由共享层自己保证 —— 见
-        // editor/tests/selfcheck.js 与 city/shenyang/shared/README.md 的 transferAt 小节。
+        // editor/tests/selfcheck.js 与 core/shared/README.md 的 transferAt 小节。
         // 本文件只守城市侧的不变量：键、取值、pairs 覆盖是否与线路数据自洽。
         //
         // 帝封江是「同站不同线路对换乘方式不同」的唯一案例，单独钉住：

@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 地图小工具（共享层）
  *
- * ⚠️ 临时共享位置：与 route-panel.js、nearest-station.js 等同处 city/shenyang/shared/，
+ * ⚠️ 临时共享位置：与 route-panel.js、nearest-station.js 等同处 core/shared/，
  * 计划随共享层整体迁入 core/。
  *
  * 入口是浮动缩放控制条上「查找最近车站」按钮下方的 plugin 按钮：点开是工具列表浮层

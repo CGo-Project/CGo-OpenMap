@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 跨城市「查找最近车站」（共享层）
  *
- * ⚠️ 临时共享位置：与 route-panel.js 同处 city/shenyang/shared/，计划随共享层整体迁入 core/。
+ * ⚠️ 临时共享位置：与 route-panel.js 同处 core/shared/，计划随共享层整体迁入 core/。
  *
  * 背景：核心的 findNearestStation() 只认当前城市的站点。人出了本市之后，它会算出
  * 几百公里外的「最近车站」，再弹一个同步 confirm 问「距离较远，是否跳转？」——

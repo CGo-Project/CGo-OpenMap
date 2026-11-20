@@ -4,7 +4,7 @@
  * 官方交互图脚本未提供未开通线路的结构化站点与路径数据，暂不从静态图估算，
  * 待取得可核验的官方图层后再补入虚线线路。
  */
-// lineId 用于与开通时刻表 (data_opening.js) 关联，见 city/shenyang/shared/README.md；
+// lineId 用于与开通时刻表 (data_opening.js) 关联，见 core/shared/README.md；
 // 未登记开通时刻的条目一律保持永久未开通。
 const NOT_OPEN_LINES = [
     { // 1号线

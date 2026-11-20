@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 路线规划内核（共享层）
  *
- * ⚠️ 临时共享位置：本文件与 stacard-engine.js 等同处 city/shenyang/shared/，
+ * ⚠️ 临时共享位置：本文件与 stacard-engine.js 等同处 core/shared/，
  * 由沈阳、大连、长春三城共用，计划随共享层整体迁入 core/。
  *
  * 职责边界

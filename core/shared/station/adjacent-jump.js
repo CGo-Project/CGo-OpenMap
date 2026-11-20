@@ -220,6 +220,10 @@
         const meters = (geo && typeof geo.metersBetween === "function")
             ? geo.metersBetween(activeSid, alt) : null;
         applyRowName(valueEl, altName, meters);
+        if (valueEl.hasAttribute(JUMP_ATTR)) {
+            valueEl.setAttribute(JUMP_ATTR, alt);
+            valueEl.setAttribute("aria-label", `跳转到${altName}`);
+        }
         return true;
     }
 

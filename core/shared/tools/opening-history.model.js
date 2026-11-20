@@ -1,5 +1,5 @@
 /**
- * CGo OpenMap - 线网发展史（状态计算层，city/shenyang/shared/tools/opening-history.model.js）
+ * CGo OpenMap - 线网发展史（状态计算层，core/shared/tools/opening-history.model.js）
  *
  * 从 opening-history.js 拆出的「状态计算」：把沿革事件与时间账解析成可播放的步骤（build）。
  * 纯计算、不碰 DOM —— 只读 window 城市数据与共享态 `state`，以及内核暴露的数据准备小工具，

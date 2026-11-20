@@ -1,5 +1,5 @@
 /**
- * CGo OpenMap - 线网发展史动态演示（city/shenyang/shared/tools/opening-history.js）
+ * CGo OpenMap - 线网发展史动态演示（core/shared/tools/opening-history.js）
  *
  * 按 CGO_OPENING_HISTORY（城市数据文件 data_opening_history.js）的时间线，把线网
  * 从**空白画布**上逐段「画」出来：镜头跟着画笔走，笔到之处线路延伸、车站与站名弹出。

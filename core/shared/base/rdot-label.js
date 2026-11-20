@@ -1,5 +1,5 @@
 /**
- * CGo 国铁散点（rdot）站名标签机制（city/shenyang/shared/base/rdot-label.js）
+ * CGo 国铁散点（rdot）站名标签机制（core/shared/base/rdot-label.js）
  *
  * 语义（用户约定的例外规则，**只在「线网发展史」播放中生效**）：
  *   · 国铁站**还没有**轨道交通线路接驳时 —— 站名**强制显示**（图上一个没有名字的孤点没法认）；

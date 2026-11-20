@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 行程规划面板（共享层）
  *
- * ⚠️ 临时共享位置：与 route-planner.js、route-data.js 同处 city/shenyang/shared/，
+ * ⚠️ 临时共享位置：与 route-planner.js、route-data.js 同处 core/shared/，
  * 计划随共享层整体迁入 core/。
  *
  * 拆成两个面板，骨架与行为对齐车站详情面板（复用 .panel-header / .panel-body /

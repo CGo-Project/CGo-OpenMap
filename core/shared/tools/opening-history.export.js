@@ -1,5 +1,5 @@
 /**
- * CGo OpenMap - 线网发展史（视频导出层，city/shenyang/shared/tools/opening-history.export.js）
+ * CGo OpenMap - 线网发展史（视频导出层，core/shared/tools/opening-history.export.js）
  *
  * 从 opening-history.js 拆出的「导出视频」：逐帧栅格化（paintFrame）、进度卡绘制
  * （drawCard / drawDisclaimer / drawWatermark）、WebCodecs 编码与封装（runExport）、
@@ -41,7 +41,7 @@
         fps: 30,
         bitrate: 6000000,
         codec: "avc1.640028",
-        muxerSrc: "./city/shenyang/shared/tools/vendor/mp4-muxer.min.js"
+        muxerSrc: "./core/shared/tools/vendor/mp4-muxer.min.js"
     };
 
     /** 站名的位置与字体样式只量一次 —— 逐帧量 400 个标签的 getComputedStyle 要 60ms */

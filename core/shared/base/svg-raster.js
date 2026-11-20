@@ -1,5 +1,5 @@
 /**
- * CGo OpenMap - 共享层：SVG 栅格化的公共零件（city/shenyang/shared/base/svg-raster.js）
+ * CGo OpenMap - 共享层：SVG 栅格化的公共零件（core/shared/base/svg-raster.js）
  *
  * 服务两处「DOM / SVG → canvas」的成像：
  *   · 一次性成像的海报：`base/poster.js`（车站卡 / 行程卡分享出图）；

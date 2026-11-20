@@ -13,7 +13,7 @@
  * 用法（在仓库根目录执行）：
  *     node city/fuzhou/tools/fuzhou_network_check.js
  *
- * 它只加载 `city/fuzhou/` 与 `city/shenyang/shared/` 下的 classic script，
+ * 它只加载 `city/fuzhou/` 与 `core/shared/` 下的 classic script，
  * 在 Node 的 vm 里按浏览器同构的方式执行，不需要浏览器、不联网
  * （坐标索引的 fetch 被替换为立即返回的空响应）。
  */
@@ -24,7 +24,7 @@ const vm = require("vm");
 const path = require("path");
 
 const CITY_DIR = path.resolve(__dirname, "..");
-const SHARED_DIR = path.resolve(CITY_DIR, "..", "shenyang", "shared");
+const SHARED_DIR = path.resolve(CITY_DIR, "..", "..", "core", "shared");
 
 const readCity = (n) => fs.readFileSync(path.join(CITY_DIR, n), "utf8");
 const readShared = (n) => fs.readFileSync(path.join(SHARED_DIR, n), "utf8");

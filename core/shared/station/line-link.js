@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 线路接续声明解析（共享层）
  *
- * ⚠️ 临时共享位置：与 route-data.js、route-planner.js 等同处 city/shenyang/shared/，
+ * ⚠️ 临时共享位置：与 route-data.js、route-planner.js 等同处 core/shared/，
  * 计划随共享层整体迁入 core/。
  *
  * 为什么需要它

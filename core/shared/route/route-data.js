@@ -1,7 +1,7 @@
 /**
  * CGo OpenMap - 路线规划数据构建（共享层）
  *
- * ⚠️ 临时共享位置：与 route-planner.js、stacard-engine.js 等同处 city/shenyang/shared/，
+ * ⚠️ 临时共享位置：与 route-planner.js、stacard-engine.js 等同处 core/shared/，
  * 计划随共享层整体迁入 core/。
  *
  * 职责边界

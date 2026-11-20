@@ -2,7 +2,7 @@
  * CGo OpenMap - 侧栏站名标题归一化共享层
  *
  * ⚠️ 临时共享位置
- * 本文件与 stacard-engine.js、timetable-renderer.js 目前放在 city/shenyang/shared/ 下，
+ * 本文件与 stacard-engine.js、timetable-renderer.js 目前放在 core/shared/ 下，
  * 供沈阳、大连、长春三城共用。计划在开发团队确认共享位置后迁入 core/，届时只需
  * git mv 并改 6 处引用路径（3 处 {city}.js 的 document.write + 3 处城市模块文件），
  * 零逻辑改动。迁移步骤见 docs/STACARD_TIMETABLE_UNIFICATION.md 第 4.4 节。

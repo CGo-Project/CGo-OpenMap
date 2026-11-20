@@ -2,7 +2,7 @@
  * CGo OpenMap - 车站地图卡片共享引擎
  *
  * ⚠️ 临时共享位置
- * 本文件与 timetable-renderer.js 目前放在 city/shenyang/shared/ 下，供沈阳、大连、
+ * 本文件与 timetable-renderer.js 目前放在 core/shared/ 下，供沈阳、大连、
  * 长春三城共用。计划在开发团队确认共享位置后迁入 core/，届时只需 git mv 并改
  * 3 处 stacard import 路径，零逻辑改动。
  * 迁移步骤见 docs/STACARD_TIMETABLE_UNIFICATION.md 第 4.4 节。

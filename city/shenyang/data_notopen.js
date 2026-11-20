@@ -7,7 +7,7 @@
  *     压在本色线体上形成镂空双线的未开通观感；
  *   - 车站以 type "no" 登记在 data_stations.js（站号 0601~0629）。
  *
- * lineId 用于与开通时刻表 (data_opening.js) 关联，见 city/shenyang/shared/README.md；
+ * lineId 用于与开通时刻表 (data_opening.js) 关联，见 core/shared/README.md；
  * 未登记开通时刻的条目一律保持永久未开通。
  */
 const NOT_OPEN_LINES = [

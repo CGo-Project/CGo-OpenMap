@@ -28,6 +28,8 @@
 (function () {
     "use strict";
     if (typeof window === "undefined") return;
+    // core/panel-tab-swipe.js 已原生支持从交互元素与迷你地图起手横滑，避免双引擎重复切页
+    if (window.CGoPanelTabSwipe && window.CGoPanelTabSwipe.supportsInteractiveStart) return;
 
     const PANEL_ID = "info-panel";
     const MOBILE_MAX = 640;
@@ -138,6 +140,11 @@
 
     /** 面板每次重渲染都会换掉 .panel-body，按「容器是否换过」决定要不要重接管 */
     function ensure() {
+        if (window.CGoPanelTabSwipe && window.CGoPanelTabSwipe.supportsInteractiveStart) {
+            if (release) { release(); release = null; }
+            boundBody = null;
+            return;
+        }
         const panel = document.getElementById(PANEL_ID);
         if (!panel) return;
         const body = panel.querySelector(".panel-body");

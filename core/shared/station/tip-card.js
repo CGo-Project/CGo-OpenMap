@@ -3,7 +3,7 @@
  *
  * ⚠️ 临时共享位置
  * 本文件与 stacard-engine.js、timetable-renderer.js、station-title.js 目前放在
- * city/shenyang/shared/ 下，供多城共用。计划在开发团队确认共享位置后迁入 core/，
+ * core/shared/ 下，供多城共用。计划在开发团队确认共享位置后迁入 core/，
  * 届时只需 git mv 并改各城 {city}.js 的 document.write 路径，零逻辑改动。
  * 迁移步骤见 docs/STACARD_TIMETABLE_UNIFICATION.md 第 4.4 节。
  *
