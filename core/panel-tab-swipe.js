@@ -32,7 +32,7 @@
             reset();
             if (window.innerWidth > 640 || event.touches.length !== 1) return;
             const target = event.target instanceof Element ? event.target : null;
-            if (!target || target.closest('button, a, input, textarea, select, [role="button"], [contenteditable="true"], [data-card-type="map"], .stacard-minimap-viewport, canvas, iframe, [data-panel-swipe-ignore]')) return;
+            if (!target || target.closest('input, textarea, select, label, [contenteditable="true"], [contenteditable=""], canvas, iframe, [data-panel-swipe-ignore]')) return;
             // 横向滚动表格、时刻表等先保留自己的手势，不能把横滑变成切页。
             for (let node = target; node && node !== body; node = node.parentElement) {
                 const style = getComputedStyle(node);
@@ -102,5 +102,5 @@
             body.removeEventListener('touchcancel', end);
         };
     }
-    window.CGoPanelTabSwipe = { attach };
+    window.CGoPanelTabSwipe = { attach, supportsInteractiveStart: true };
 }());

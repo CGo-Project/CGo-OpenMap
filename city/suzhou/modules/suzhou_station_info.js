@@ -120,6 +120,10 @@
 
     function open(url, title) {
         if (!url) return;
+        if (window.CGoImageViewer && typeof window.CGoImageViewer.open === "function") {
+            window.CGoImageViewer.open({ url, title });
+            return;
+        }
         const el = overlay();
         const stage = el.querySelector(".sz-si-stage");
         const spin = el.querySelector(".sz-si-spin");

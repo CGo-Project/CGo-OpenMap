@@ -762,6 +762,110 @@
             }
 
             return stopsHtml;
+        },
+        onMounted(infoPanel, context) {
+            if (!infoPanel || !context) return;
+            const plain = (window.CGoA11y && window.CGoA11y.plainName)
+                ? window.CGoA11y.plainName
+                : (v) => String(v == null ? '' : v).replace(/<[^>]*>/g, '').trim();
+
+            const lineInfo = context.lineInfo || {};
+            const activeSid = context.station && context.station.id;
+            const nextLabel = (lineInfo.nextLabel || '下一站').trim();
+            const pane = (context.tabIndex !== undefined && context.tabIndex !== null)
+                ? infoPanel.querySelector(`.tab-pane[data-tab-index="${context.tabIndex}"]`)
+                : infoPanel;
+            if (!pane) return;
+
+            const stationTable = window.stationsData || {};
+            const linesList = Array.isArray(window.linesData) ? window.linesData : [];
+
+            const extractTargetName = (valueEl) => {
+                const textNode = Array.prototype.slice.call(valueEl.childNodes)
+                    .find((n) => n.nodeType === 3 && n.textContent.trim());
+                if (textNode) return plain(textNode.textContent);
+                return plain(valueEl.textContent).replace(/\s*\(约?\s*[\d.?]+\s*[米m]?\)\s*$/i, '').trim();
+            };
+
+            const resolveAdjacentSid = (name) => {
+                if (!name || name === '无') return null;
+                // 1) 优先从当前线路站序中解析，可消除跨线同名站歧义
+                const lineObj = lineInfo.id ? linesList.find((l) => l && l.id === lineInfo.id) : null;
+                if (lineObj) {
+                    const lineIds = [];
+                    if (Array.isArray(lineObj.stations)) lineIds.push(...lineObj.stations);
+                    Object.keys(lineObj).forEach((k) => {
+                        if (/^way\d+$/.test(k) && Array.isArray(lineObj[k])) {
+                            lineIds.push(...lineObj[k]);
+                        }
+                    });
+                    const uniqueLineMatches = new Set();
+                    lineIds.forEach((sid) => {
+                        if (!sid || sid === activeSid) return;
+                        const st = stationTable[sid];
+                        if (st && plain(st.cn) === name) uniqueLineMatches.add(sid);
+                    });
+                    if (uniqueLineMatches.size === 1) {
+                        return Array.from(uniqueLineMatches)[0];
+                    }
+                }
+                // 2) 回退全网唯一站名匹配（宁缺勿错，同名多站不盲跳）
+                const matches = [];
+                Object.keys(stationTable).forEach((sid) => {
+                    if (sid === activeSid) return;
+                    const st = stationTable[sid];
+                    if (st && plain(st.cn) === name) matches.push(sid);
+                });
+                return matches.length === 1 ? matches[0] : null;
+            };
+
+            const triggerJump = (valueEl) => {
+                const targetSid = valueEl.getAttribute('data-cgo-jump-sid');
+                if (!targetSid) return;
+                const selectFn = (context.helpers && typeof context.helpers.selectStation === 'function')
+                    ? context.helpers.selectStation
+                    : window.selectStation;
+                if (typeof selectFn !== 'function') return;
+                selectFn(targetSid);
+
+                const lineName = (lineInfo.name || '').trim();
+                if (!lineName) return;
+                const panel = document.getElementById('info-panel') || infoPanel;
+                const tabs = Array.prototype.slice.call(panel.querySelectorAll('.tab-item'));
+                const targetTab = tabs.find((tab) => (tab.textContent || '').trim() === lineName);
+                if (targetTab) targetTab.click();
+            };
+
+            pane.querySelectorAll('.info-row').forEach((row) => {
+                const labelEl = row.querySelector('.info-label');
+                const valueEl = row.querySelector('.info-value');
+                if (!labelEl || !valueEl) return;
+                const labelText = (labelEl.textContent || '').trim();
+                if (labelText !== '上一站' && labelText !== '下一站' && labelText !== nextLabel) return;
+                if (valueEl.hasAttribute('data-cgo-jump-sid') || valueEl.dataset.cgoJumpBound === '1') return;
+
+                const targetName = extractTargetName(valueEl);
+                const targetSid = resolveAdjacentSid(targetName);
+                if (!targetSid) return;
+
+                valueEl.setAttribute('data-cgo-jump-sid', targetSid);
+                valueEl.setAttribute('role', 'button');
+                valueEl.setAttribute('tabindex', '0');
+                valueEl.setAttribute('aria-label', `跳转到${targetName}`);
+                valueEl.dataset.cgoJumpBound = '1';
+
+                valueEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    triggerJump(valueEl);
+                });
+                valueEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        triggerJump(valueEl);
+                    }
+                });
+            });
         }
     });
 
@@ -822,24 +926,50 @@
         targetTab: 'station-info',
         order: 20,
         render(context) {
-            const relatedLinesInfo = context.relatedLinesInfo || [];
-            let opInfoHtml = '';
+            const esc = (window.CGoA11y && window.CGoA11y.escapeHtml)
+                ? window.CGoA11y.escapeHtml
+                : (v) => String(v == null ? '' : v)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const relatedLinesInfo = (context && context.relatedLinesInfo) || [];
+            const groups = [];
 
+            // 同属一家运营单位时合并为同一行并按徽标去重
             relatedLinesInfo.forEach(info => {
-                const styleStr = info.svgclr
-                    ? `height:28px; width:auto; vertical-align:middle; margin-right:10px; margin-top:3px; --svgclr:${info.svgclr}; --svgtext:${info.svgtext};`
-                    : 'height:28px; width:auto; vertical-align:middle; margin-right:10px; margin-top:3px;';
-                const iconHtml = info.svg
-                    ? `<span class="svg-icon-placeholder line-badge" data-src="${info.svg}" style="${styleStr}"></span>`
-                    : `<span class="text-badge" style="font-size:10px; margin-right:10px; vertical-align:middle;">${info.name}</span>`;
+                if (!info) return;
+                const company = info.company || '未知运营';
+                let group = groups.find(g => g.company === company);
+                if (!group) {
+                    group = { company, badges: [], seen: new Set() };
+                    groups.push(group);
+                }
+                const key = info.svg || info.name || info.id || '';
+                if (key && group.seen.has(key)) return;
+                if (key) group.seen.add(key);
+                group.badges.push(info);
+            });
 
-                opInfoHtml += `
+            const opInfoHtml = groups.map(group => {
+                const badgesHtml = group.badges.map(info => {
+                    const styleStr = info.svgclr
+                        ? `height:28px; width:auto; vertical-align:middle; margin-right:10px; margin-top:3px; --svgclr:${esc(info.svgclr)}; --svgtext:${esc(info.svgtext || '')};`
+                        : 'height:28px; width:auto; vertical-align:middle; margin-right:10px; margin-top:3px;';
+                    return info.svg
+                        ? `<span class="svg-icon-placeholder line-badge" data-src="${esc(info.svg)}" style="${styleStr}"></span>`
+                        : `<span class="text-badge" style="font-size:10px; margin-right:10px; vertical-align:middle;">${esc(info.name || '')}</span>`;
+                }).join('');
+
+                const leftHtml = group.badges.length > 1
+                    ? `<div style="display:flex; align-items:center; flex-wrap:wrap;">${badgesHtml}</div>`
+                    : badgesHtml;
+
+                return `
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; padding-left:10px;">
-                        ${iconHtml}
-                        <span style="font-size:13px; color:var(--text-main); font-weight:bold; text-align:right;">${info.company || '未知运营'}</span>
+                        ${leftHtml}
+                        <span style="font-size:13px; color:var(--text-main); font-weight:bold; text-align:right;">${esc(group.company)}</span>
                     </div>
                 `;
-            });
+            }).join('');
 
             return `
                 <div style="margin-bottom:5px; font-size: 13px;">

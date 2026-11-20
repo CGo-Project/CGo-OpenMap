@@ -119,53 +119,10 @@
             '</div>';
     }
 
-    // ---------------------------------------------------------------------
-    // 1. 「运营单位」按公司合并：同属一家公司时只显示一行一个徽标
-    //    （同 id 覆盖核心内置模块 operators；核心先加载，城市脚本后加载生效）
-    // ---------------------------------------------------------------------
-    if (window.StationBoard && typeof window.StationBoard.registerModule === "function") {
-        window.StationBoard.registerModule({
-            id: "operators",
-            name: "运营单位（厦门：按公司合并）",
-            targetTab: "station-info",
-            order: 20,
-            render: function (context) {
-                var list = (context && context.relatedLinesInfo) || [];
-                var groups = [];
-                list.forEach(function (info) {
-                    var company = info.company || "未知运营";
-                    var group = null;
-                    groups.forEach(function (g) { if (g.company === company) group = g; });
-                    if (!group) { group = { company: company, badges: [], seen: {} }; groups.push(group); }
-                    var key = info.svg || info.name || info.id;
-                    if (group.seen[key]) return;          // 同一家公司下的相同徽标只留一个
-                    group.seen[key] = true;
-                    group.badges.push(info);
-                });
-                var rows = groups.map(function (group) {
-                    var icons = group.badges.map(function (info) {
-                        var styleStr = info.svgclr
-                            ? "height:28px; width:auto; vertical-align:middle; margin-right:10px; margin-top:3px; --svgclr:" + info.svgclr + "; --svgtext:" + info.svgtext + ";"
-                            : "height:28px; width:auto; vertical-align:middle; margin-right:10px; margin-top:3px;";
-                        return info.svg
-                            ? '<span class="svg-icon-placeholder line-badge" data-src="' + info.svg + '" style="' + styleStr + '"></span>'
-                            : '<span class="text-badge" style="font-size:10px; margin-right:10px; vertical-align:middle;">' + esc(info.name) + '</span>';
-                    }).join("");
-                    return '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; padding-left:10px;">' +
-                        icons +
-                        '<span style="font-size:13px; color:var(--text-main); font-weight:bold; text-align:right;">' + esc(group.company) + '</span>' +
-                        '</div>';
-                }).join("");
-                return '<div style="margin-bottom:5px; font-size: 13px;">' +
-                    '<div class="info-label" style="margin-bottom:8px;">运营单位</div>' +
-                    rows +
-                    '</div>';
-            }
-        });
-    }
+    // 「运营单位」按公司合并与徽标去重已收编进 core/station-board.js 原生内置 operators 模块。
 
     // ---------------------------------------------------------------------
-    // 2. 车站信息板模块：经停本站的快速公交快线路（含本站角色与相邻站站距）
+    // 车站信息板模块：经停本站的快速公交快线路（含本站角色与相邻站站距）
     // ---------------------------------------------------------------------
     if (window.StationBoard && typeof window.StationBoard.registerModule === "function") {
         window.StationBoard.registerModule({
