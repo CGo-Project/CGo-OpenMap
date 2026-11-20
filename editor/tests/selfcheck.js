@@ -2076,11 +2076,12 @@ section('Milestone 3 多选框选与智能对齐参考线');
     check(/function scheduleRender\(\)/.test(editorAppSrc) && /requestAnimationFrame/.test(editorAppSrc),
         'Perf: 拖动类高频渲染用 requestAnimationFrame 合并成每帧一次');
     const mmStart = editorAppSrc.indexOf("viewportEl.addEventListener('mousemove'");
-    const mmEnd = editorAppSrc.indexOf("viewportEl.addEventListener('mouseup'");
+    const mmEnd = editorAppSrc.indexOf("viewportEl.addEventListener('mousedown'", mmStart);
     const mmBody = mmStart >= 0 && mmEnd > mmStart ? editorAppSrc.slice(mmStart, mmEnd) : '';
-    check(mmBody.length > 0 && !/^\s+renderAll\(\);/m.test(mmBody) &&
-        (mmBody.match(/scheduleRender\(\);/g) || []).length >= 10,
-        'Perf: mousemove 里不再整屏同步重建（全部走 scheduleRender）');
+    check(mmBody.length > 0 && !/\brenderAll\s*\(/.test(mmBody) &&
+        (mmBody.match(/(scheduleRender|scheduleDragRender)\([^)]*\);/g) || []).length >= 8 &&
+        /function renderDragFrame\s*\(/.test(editorAppSrc),
+        'Perf: mousemove 里不再整屏同步重建（全部走 scheduleRender/scheduleDragRender）');
     check(/function structureSignature/.test(navSrc) && /sig === lastSignature/.test(navSrc),
         'Perf: 大纲树结构未变时跳过整棵 DOM 重建（拖站/拖折点不再重排树）');
     check(/function updateHealthBadgeNow/.test(editorAppSrc) && /INTERVAL/.test(editorAppSrc),
@@ -3388,6 +3389,132 @@ section('线上编辑器：不提供在线城市库，已有城市只能从本�
     const alignSolverSrc = fs.readFileSync(path.join(ROOT, 'editor/js/algorithms/align-solver.js'), 'utf8');
     check(!alignSolverSrc.includes('"Yingk Maintain"'),
         'P-07: align-solver.js 天津词典已清理重复键 Yingk Maintain');
+
+    // E-UX & Perf: 编辑器交互顺滑度与快捷键补齐回归
+    check(/function renderDragFrame\s*\(/.test(editorAppSrc) &&
+        /function scheduleDragRender\s*\(/.test(editorAppSrc) &&
+        /function captureDragBaselineOnce\s*\(/.test(editorAppSrc),
+        'EditorUX: 拖拽提供局部微更新 renderDragFrame、帧合批 scheduleDragRender 与首帧延迟基线序列化');
+    check(/window\.addEventListener\('mouseup'/.test(editorAppSrc) &&
+        /window\.addEventListener\('blur'/.test(editorAppSrc) &&
+        /!e\.altKey/.test(editorAppSrc),
+        'EditorUX: 拖拽释放挂载于 window + blur 兜底，支持 Alt 临时免吸附');
+    const vpSrc = fs.readFileSync(path.join(ROOT, 'editor/js/layers/viewport.js'), 'utf8');
+    check(/function openInlineStationEditor\s*\(/.test(editorAppSrc) &&
+        /alignNodes\('diag45'\)/.test(editorAppSrc) &&
+        /e\.code\s*===\s*'Digit1'/.test(editorAppSrc) &&
+        /e\.code\s*===\s*'KeyQ'/.test(editorAppSrc) &&
+        /e\.code\s*===\s*'Equal'/.test(editorAppSrc),
+        'EditorUX: 补齐双击行内改名、45°局部对齐与 1-4/Q/+/-/0 快捷键');
+    check(/lastPinchMid/.test(vpSrc) &&
+        /e\.code\s*!==\s*'Space'[\s\S]{0,320}e\.preventDefault\(\)/.test(vpSrc),
+        'EditorUX: ViewportLayer 支持双指捏合缩放平移并拦截 Space 滚屏');
+
+    // Tier-1 / Tier-2 Core 融合回归检查
+    check(
+        fs.existsSync(path.join(ROOT, 'core/shared/station/stacard-engine.js')) &&
+        fs.existsSync(path.join(ROOT, 'core/shared/tools/opening-history.js')) &&
+        fs.existsSync(path.join(ROOT, 'core/shared/base/panel-tab-swipe-relay.js')) &&
+        fs.existsSync(path.join(ROOT, 'core/shared/station/adjacent-jump.js')) &&
+        !fs.existsSync(path.join(ROOT, 'city/shenyang/shared')),
+        'Core: city/shenyang/shared 已整体迁移至 core/shared/');
+
+    const mainHtmlSrc = fs.readFileSync(path.join(ROOT, 'main.html'), 'utf8');
+    const swFileSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+    check(!/city\/shenyang\/shared/.test(mainHtmlSrc) && !/city\/shenyang\/shared/.test(swFileSrc),
+        'Core: main.html 与 sw.js 已全部切换至 core/shared/ 路径');
+    check(mainHtmlSrc.includes('core/image-viewer.js') && mainHtmlSrc.includes('core/station-addons.js') &&
+        swFileSrc.includes("'./core/image-viewer.js'") && swFileSrc.includes("'./core/station-addons.js'"),
+        'Core: main.html 与 sw.js 已加载并缓存 core/image-viewer.js 与 core/station-addons.js');
+
+    const swipeSrc = fs.readFileSync(path.join(ROOT, 'core/panel-tab-swipe.js'), 'utf8');
+    const swipeRelaySrc = fs.readFileSync(path.join(ROOT, 'core/shared/base/panel-tab-swipe-relay.js'), 'utf8');
+    check(/supportsInteractiveStart:\s*true/.test(swipeSrc) &&
+        /window\.CGoPanelTabSwipe\s*&&\s*window\.CGoPanelTabSwipe\.supportsInteractiveStart/.test(swipeRelaySrc),
+        'Core Tier-1: panel-tab-swipe 原生支持交互元素起手，且共享层中继安全让权');
+
+    const stationBoardSrc = fs.readFileSync(path.join(ROOT, 'core/station-board.js'), 'utf8');
+    const compCssSrc = fs.readFileSync(path.join(ROOT, 'css/cgo_components.css'), 'utf8');
+    const adjJumpSrc = fs.readFileSync(path.join(ROOT, 'core/shared/station/adjacent-jump.js'), 'utf8');
+    const xiamenBrtSrc = fs.readFileSync(path.join(ROOT, 'city/xiamen/modules/xiamen_brt_routes.js'), 'utf8');
+    check(/id:\s*'adjacent-stations'[\s\S]*onMounted\s*\(infoPanel,\s*context\)/.test(stationBoardSrc) &&
+        /data-cgo-jump-sid/.test(stationBoardSrc) &&
+        /\.info-value\[data-cgo-jump-sid\]/.test(compCssSrc) &&
+        /valueEl\.setAttribute\(JUMP_ATTR,\s*alt\)/.test(adjJumpSrc),
+        'Core Tier-1: adjacent-stations 原生支持邻站跳转，并与 retired 改写保持幂等同步');
+    check(!/id:\s*["']operators["']/.test(xiamenBrtSrc),
+        'Core Tier-2: city/xiamen 已移除冗余的 operators 覆写，统一走 core/station-board.js');
+
+    // Tier-2 VM 运行时冒烟：operators 合并去重 + CGoImageViewer + CGoStationAddons + suzhou 代理
+    const suzhouInfoSrc = fs.readFileSync(path.join(ROOT, 'city/suzhou/modules/suzhou_station_info.js'), 'utf8');
+    check(/window\.CGoImageViewer\s*&&\s*typeof window\.CGoImageViewer\.open === ['"]function['"]/.test(suzhouInfoSrc),
+        'Core Tier-2: 苏州车站信息图片预览优先委托给 core/image-viewer.js');
+
+    const coreVm = require('vm');
+    const mockWindow = {
+        console,
+        navigator: {},
+        matchMedia: () => ({ matches: false }),
+        addEventListener() {},
+        removeEventListener() {}
+    };
+    mockWindow.window = mockWindow;
+    mockWindow.document = {
+        readyState: 'loading',
+        head: { appendChild() {} },
+        body: { style: {}, appendChild() {} },
+        getElementById: () => null,
+        querySelector: () => null,
+        querySelectorAll: () => [],
+        addEventListener() {},
+        createElement: () => ({ style: {}, setAttribute() {}, addEventListener() {}, appendChild() {}, querySelector() { return null; } })
+    };
+    const coreSbCtx = coreVm.createContext(mockWindow);
+    coreVm.runInContext(fs.readFileSync(path.join(ROOT, 'core/a11y.js'), 'utf8'), coreSbCtx, { filename: 'core/a11y.js' });
+    coreVm.runInContext(stationBoardSrc, coreSbCtx, { filename: 'core/station-board.js' });
+    coreVm.runInContext(fs.readFileSync(path.join(ROOT, 'core/image-viewer.js'), 'utf8'), coreSbCtx, { filename: 'core/image-viewer.js' });
+    coreVm.runInContext(fs.readFileSync(path.join(ROOT, 'core/station-addons.js'), 'utf8'), coreSbCtx, { filename: 'core/station-addons.js' });
+
+    const opMod = coreSbCtx.StationBoard.getModule('operators');
+    const opHtml = opMod.render({
+        relatedLinesInfo: [
+            { id: '1', name: '1号线', svg: './a.svg', company: '甲公司' },
+            { id: '2', name: '2号线', svg: './b.svg', company: '甲公司' },
+            { id: '3', name: '1号线支', svg: './a.svg', company: '甲公司' },
+            { id: '4', name: '3号线', svg: './c.svg', company: '乙公司' }
+        ]
+    });
+    check((opHtml.match(/甲公司/g) || []).length === 1 &&
+        (opHtml.match(/乙公司/g) || []).length === 1 &&
+        (opHtml.match(/data-src="\.\/a\.svg"/g) || []).length === 1 &&
+        (opHtml.match(/data-src="\.\/b\.svg"/g) || []).length === 1,
+        'Core Tier-2: operators 原生模块按 company 合并分组并对同公司重复徽标去重');
+
+    const nhMod = coreSbCtx.StationBoard.getModule('cgo-station-name-history');
+    const tipMod = coreSbCtx.StationBoard.getModule('cgo-station-tips');
+    check(nhMod && nhMod.enabled === false && nhMod.order === 12 &&
+        tipMod && tipMod.enabled === false && tipMod.order === 15,
+        'Core Tier-2: cgo-station-name-history (order 12) 与 cgo-station-tips (order 15) 默认按需关闭');
+    const declCity = { stationBoard: { modules: { 'cgo-station-name-history': true } } };
+    const declCfg = coreSbCtx.StationBoard.resolveCityConfig(declCity);
+    const declMods = coreSbCtx.StationBoard.getActiveModulesForSlot(declCfg, 'station-info');
+    const declNh = declMods.find(m => m.id === 'cgo-station-name-history');
+    const declCtx = { city: declCity, station: { id: 'S0', engineeringName: '声明工程名', formerName: '声明曾用名' } };
+    check(declNh && declNh.shouldRender(declCtx) && declNh.render(declCtx).includes('声明工程名'),
+        'Core Tier-2: 城市可通过 stationBoard.modules 布尔开关声明式启用站名沿革');
+    const sampleTipHtml = coreSbCtx.CGoStationAddons.renderTipCardHtml({ title: '文旅提示', body: '邻近<strong>故宫博物院</strong>' });
+    const escapedTipHtml = coreSbCtx.CGoStationAddons.renderTipCardHtml({ title: '安全测试', bodyText: '<script>x</script>' });
+    const emptyTipHtml = coreSbCtx.CGoStationAddons.renderTipCardHtml({ title: '空', body: '' });
+    check(sampleTipHtml.includes('cgo-tip-card') && sampleTipHtml.includes('<cgo-icon') &&
+        escapedTipHtml.includes('&lt;script&gt;x&lt;/script&gt;') && emptyTipHtml === '',
+        'Core Tier-2: CGoStationAddons.renderTipCardHtml 正常生成主题适配卡片、转义 bodyText 并跳过空正文');
+    coreSbCtx.CGoStationAddons.registerNameHistory({ enabled: true });
+    const nhModOn = coreSbCtx.StationBoard.getModule('cgo-station-name-history');
+    const nhHtml = nhModOn.render({ station: { id: 'S1', engineeringName: '测试工程站', formerName: '老站名' } });
+    check(nhModOn.enabled === true && nhHtml.includes('测试工程站') && nhHtml.includes('老站名') &&
+        coreSbCtx.CGoImageViewer && typeof coreSbCtx.CGoImageViewer.open === 'function' &&
+        typeof coreSbCtx.CGoImageViewer.close === 'function' && typeof coreSbCtx.CGoImageViewer.isTouchFirst === 'function',
+        'Core Tier-2: CGoStationAddons 按需启用后正确渲染沿革字段，CGoImageViewer API 就绪');
 })().then(finish, err => { failed++; console.log('  ✗ 本地目录载入自检异常：' + (err && err.stack || err)); finish(); });
 
 function finish() {
