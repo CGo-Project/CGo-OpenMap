@@ -143,7 +143,7 @@
     /**
      * 官网时刻表的「终点站中文名 → 车站 ID」索引（惰性构建一次）
      *
-     * 官网接口以终点站**站名**为方向键（如「白塔」，2026-11-17 前为「坝堰（机场）」），而规划契约要的是
+     * 官网接口以终点站**站名**为方向键（如「白塔」，2026-11-26 前为「坝堰（机场）」），而规划契约要的是
      * **车站 ID**（内核靠它判行进方向），故按 stationsData 反查。
      * 只在本城站名表里出现首个同名项处登记，重名站不会互相覆盖。
      */
@@ -282,7 +282,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261117.212445";
+        const version = "261120.105800";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./city/shenyang/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
