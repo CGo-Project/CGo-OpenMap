@@ -2025,7 +2025,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S104": {
-        type: "no",
+        type: "dot",
         x: 347,
         y: 817,
         cn: "新桥2号航站楼",
@@ -2035,7 +2035,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S105": {
-        type: "no",
+        type: "dot",
         x: 445,
         y: 847,
         cn: "迎宾大道",
@@ -2045,7 +2045,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S106": {
-        type: "no",
+        type: "dot",
         x: 537,
         y: 850,
         cn: "未来湖",
@@ -2055,7 +2055,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S107": {
-        type: "no",
+        type: "dot",
         x: 634,
         y: 849,
         cn: "长兴湖",
@@ -2065,7 +2065,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S108": {
-        type: "no",
+        type: "dot",
         x: 732,
         y: 847,
         cn: "未来大科学城",
@@ -2075,7 +2075,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S109": {
-        type: "no",
+        type: "dot",
         x: 804,
         y: 917,
         cn: "岗集",
@@ -2085,7 +2085,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S110": {
-        type: "no",
+        type: "dot",
         x: 804,
         y: 990,
         cn: "大杨",
@@ -2095,7 +2095,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S111": {
-        type: "no",
+        type: "dot",
         x: 805,
         y: 1064,
         cn: "庐州公园",
@@ -2105,7 +2105,7 @@ const stationsData = {
         textScale: { cn: 1.0, en: 1.0 }
     },
     "S113": {
-        type: "no",
+        type: "dot",
         x: 1008,
         y: 1279,
         cn: "省中医院西区",
