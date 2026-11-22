@@ -3,8 +3,7 @@
  *
  * 使用高德地铁图接口返回的 GCJ-02 坐标，在车站详情面板中渲染可缩放的
  * 高德地图切片。卡片只处理地图展示，不写入线路或站点排版数据。
- * 渲染逻辑位于三城共享引擎（临时位置 core/shared/station/stacard-engine.js，
- * 计划在开发团队确认后迁入 core/，详见 docs/STACARD_TIMETABLE_UNIFICATION.md）。
+ * 渲染逻辑位于多城共享层（core/shared/station/stacard-engine.js）。
  */
 
 import { createStaCard } from "../../../core/shared/station/stacard-engine.js";
