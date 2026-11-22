@@ -690,16 +690,13 @@ body[header-mode="floating"] .tool-header:not(:has(.header-island)),
     overflow: visible !important;
 }
 
-/* 下拉菜单在浮动岛屿/菜单栏内展开时提权并保障溢出可见 */
-.header-island:has(.dropdown-content.show),
-.tool-header:has(.dropdown-content.show),
-.cgoauth-header:has(.dropdown-content.show),
-.header-island:has(.dropdown.is-open),
-.tool-header:has(.dropdown.is-open),
-.cgoauth-header:has(.dropdown.is-open),
-.header-island:has(cgo-dropdown[open]),
-.tool-header:has(cgo-dropdown[open]),
-.cgoauth-header:has(cgo-dropdown[open]),
+/* 下拉菜单在浮动岛屿/菜单栏内展开时提权并保障溢出可见（Top Layer Popover 无需解除父级磨砂） */
+.header-island:has(.dropdown-content.show:not(:popover-open)),
+.tool-header:has(.dropdown-content.show:not(:popover-open)),
+.cgoauth-header:has(.dropdown-content.show:not(:popover-open)),
+.header-island:has(.dropdown.is-open:not(:has(:popover-open))),
+.tool-header:has(.dropdown.is-open:not(:has(:popover-open))),
+.cgoauth-header:has(.dropdown.is-open:not(:has(:popover-open))),
 .header-island:has(cgo-toolbar-select[open]),
 .tool-header:has(cgo-toolbar-select[open]),
 .cgoauth-header:has(cgo-toolbar-select[open]),
@@ -808,11 +805,16 @@ body[header-mode="floating"] .header-island-left .header-left .btn,
     overflow: visible !important;
 }
 [data-theme='dark'] .header-island.glass-surface,
-[data-theme='dark'] .tool-header.glass-surface,
-:root:not([data-theme='light']) .header-island.glass-surface,
-:root:not([data-theme='light']) .tool-header.glass-surface {
+[data-theme='dark'] .tool-header.glass-surface {
     background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
     overflow: visible !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .header-island.glass-surface,
+    :root:not([data-theme='light']) .tool-header.glass-surface {
+        background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
+        overflow: visible !important;
+    }
 }
 .header-island.glass-surface::after {
     display: none !important;
@@ -1961,22 +1963,19 @@ body.map-page {
         box-shadow: var(--glass-shadow) !important;
     }
 
-    /* 移动端菜单栏/胶囊顶栏内展开下拉菜单时提权并解除底座 backdrop-filter，杜绝父子双层滤镜抵消，保障子面板完整呈现次世代液态磨砂折射 */
-    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(.dropdown-content.show),
-    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(.dropdown.is-open),
-    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(cgo-dropdown[open]),
+    /* 仅当内部存在未升入 Top Layer 的旧式下拉面板时才临时提权并解除底座 backdrop-filter；
+       Top Layer Popover 菜单已彻底脱离顶栏 Backdrop Root，顶栏自身始终保持稳定磨砂，也不因常驻 <cgo-notice-center> 失效 */
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(.dropdown-content.show:not(:popover-open)),
+    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(.dropdown.is-open:not(:has(:popover-open))),
     :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(cgo-toolbar-select[open]),
     :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(cgo-admin-select[open]),
     :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:has(.cgo-toolbar-select.is-open),
-    .header-island:has(.dropdown-content.show),
-    .tool-header:has(.dropdown-content.show),
-    .cgoauth-header:has(.dropdown-content.show),
-    .header-island:has(.dropdown.is-open),
-    .tool-header:has(.dropdown.is-open),
-    .cgoauth-header:has(.dropdown.is-open),
-    .header-island:has(cgo-dropdown[open]),
-    .tool-header:has(cgo-dropdown[open]),
-    .cgoauth-header:has(cgo-dropdown[open]),
+    .header-island:has(.dropdown-content.show:not(:popover-open)),
+    .tool-header:has(.dropdown-content.show:not(:popover-open)),
+    .cgoauth-header:has(.dropdown-content.show:not(:popover-open)),
+    .header-island:has(.dropdown.is-open:not(:has(:popover-open))),
+    .tool-header:has(.dropdown.is-open:not(:has(:popover-open))),
+    .cgoauth-header:has(.dropdown.is-open:not(:has(:popover-open))),
     .header-island:has(cgo-toolbar-select[open]),
     .tool-header:has(cgo-toolbar-select[open]),
     .cgoauth-header:has(cgo-toolbar-select[open]),
@@ -1992,19 +1991,6 @@ body.map-page {
         -webkit-backdrop-filter: none !important;
     }
 
-    /*
-     * Fix: 补充 cgo-notice-center 展开时的父容器 backdrop-filter 清除规则。
-     * position: fixed 已从根本上解决嵌套问题；此规则兼容旧版 Light DOM 嵌套场景。
-     */
-    .header-island:has(cgo-notice-center),
-    .tool-header:has(cgo-notice-center),
-    .cgoauth-header:has(cgo-notice-center),
-    .glass-surface:has(cgo-notice-center),
-    .glass-panel:has(cgo-notice-center) {
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-    }
-
     /* 交互效果集中在更多按钮本身，而非整个顶栏发生边框/位移突变 */
     .dropdown:has(.dropdown-content.show) > .dropbtn,
     .dropdown.is-open > .dropbtn {
@@ -2016,16 +2002,16 @@ body.map-page {
         background: rgba(255, 255, 255, 0.12) !important;
     }
 
-    /* 按钮在小屏仅显示图标 */
-    .btn span {
+    /* 按钮在小屏仅显示图标（排除通知红点等角标节点） */
+    .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge) {
         display: none;
     }
     .btn {
         padding: 6px;
     }
     .header-right > span,
-    .header-right > .btn span,
-    .header-right > .dropdown > .btn span {
+    .header-right > .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge),
+    .header-right > .dropdown > .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge) {
         display: none;
     }
 

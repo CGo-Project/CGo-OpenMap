@@ -328,8 +328,8 @@ cgo-toolbar-btn:hover:not(:disabled)::before,
             rgba(255, 255, 255, 0.08) 100%);
 }
 
-/* 按钮内部文字与图标保证 Layer 3 (z-index: 3) 绝对锐利清晰 */
-.btn > * {
+/* 按钮内部文字与图标保证 Layer 3 (z-index: 3) 绝对锐利清晰；排除 corner 红点等角标 */
+.btn > *:not(.options-btn-badge):not(.btn-dot):not(.btn-badge) {
     position: relative;
     z-index: 3;
 }
@@ -2199,6 +2199,17 @@ cgo-modal .modal-card:hover,
     animation: dropdownIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.dropdown-content[popover],
+.dropdown-content:popover-open {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    border: none;
+    color: inherit;
+    background: transparent;
+    z-index: 100000;
+}
+
 .dropdown-content::after {
     content: '';
     position: absolute;
@@ -2261,16 +2272,13 @@ cgo-modal .modal-card:hover,
     z-index: 3;
 }
 
-/* C-02: \u4f7f\u7528\u72ec\u7acb CSS translate \u5c5e\u6027\u800c\u975e transform\uff0c
-   \u907f\u514d\u5c45\u4e2d\u5c55\u5f00\u65f6 translateX(-50%) \u88ab\u8986\u76d6\u5bfc\u81f4\u52a8\u753b\u7ed3\u675f\u4f4d\u7f6e\u7a81\u8df3 */
+/* 避免在磨砂容器自身做 opacity: 0 -> 1 导致动画帧形成临时 Backdrop Root 引发模糊迟滞 */
 @keyframes dropdownIn {
     from {
-        opacity: 0;
         translate: 0 -6px;
     }
 
     to {
-        opacity: 1;
         translate: 0 0;
     }
 }
@@ -2627,25 +2635,33 @@ a.tool-card:hover::after {
 }
 
 [data-theme='dark'] .tool-item::after,
-:root:not([data-theme='light']) .tool-item::after,
 [data-theme='dark'] .glass-card::after,
-:root:not([data-theme='light']) .glass-card::after,
 [data-theme='dark'] .tool-card.interactive::after,
-:root:not([data-theme='light']) .tool-card.interactive::after,
-[data-theme='dark'] a.tool-card::after,
-:root:not([data-theme='light']) a.tool-card::after {
+[data-theme='dark'] a.tool-card::after {
     background: var(--glass-bg-card, rgba(31, 32, 34, 0.60));
 }
 
 [data-theme='dark'] .tool-item:hover::after,
-:root:not([data-theme='light']) .tool-item:hover::after,
 [data-theme='dark'] .glass-card:hover::after,
-:root:not([data-theme='light']) .glass-card:hover::after,
 [data-theme='dark'] .tool-card.interactive:hover::after,
-:root:not([data-theme='light']) .tool-card.interactive:hover::after,
-[data-theme='dark'] a.tool-card:hover::after,
-:root:not([data-theme='light']) a.tool-card:hover::after {
+[data-theme='dark'] a.tool-card:hover::after {
     background: var(--glass-bg-card-hover, rgba(38, 40, 44, 0.68));
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .tool-item::after,
+    :root:not([data-theme='light']) .glass-card::after,
+    :root:not([data-theme='light']) .tool-card.interactive::after,
+    :root:not([data-theme='light']) a.tool-card::after {
+        background: var(--glass-bg-card, rgba(31, 32, 34, 0.60));
+    }
+
+    :root:not([data-theme='light']) .tool-item:hover::after,
+    :root:not([data-theme='light']) .glass-card:hover::after,
+    :root:not([data-theme='light']) .tool-card.interactive:hover::after,
+    :root:not([data-theme='light']) a.tool-card:hover::after {
+        background: var(--glass-bg-card-hover, rgba(38, 40, 44, 0.68));
+    }
 }
 
 /* Tier A Layer 2: 双轴微光圈层 (完全对齐 tool.html 极简微边框) */
@@ -2754,11 +2770,16 @@ body[data-glass-mode='liquid'] .glass-panel,
 }
 
 [data-theme='dark'] .glass-panel::after,
-:root:not([data-theme='light']) .glass-panel::after,
 [data-theme='dark'] .text-dialog::after,
 [data-theme='dark'] .help-dialog::after,
 [data-theme='dark'] .modal-dialog::after {
     background: var(--glass-bg-panel, rgba(31, 32, 34, 0.9));
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .glass-panel::after {
+        background: var(--glass-bg-panel, rgba(31, 32, 34, 0.9));
+    }
 }
 
 /* Tier B Layer 2: 弱化微光圈 */
@@ -2785,7 +2806,6 @@ body[data-glass-mode='liquid'] .glass-panel,
 }
 
 [data-theme='dark'] .glass-panel::before,
-:root:not([data-theme='light']) .glass-panel::before,
 [data-theme='dark'] .text-dialog::before,
 [data-theme='dark'] .help-dialog::before,
 [data-theme='dark'] .modal-dialog::before {
@@ -2793,6 +2813,15 @@ body[data-glass-mode='liquid'] .glass-panel,
         rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 0,
         rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 1px,
         rgba(255, 255, 255, 0) 8px);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .glass-panel::before {
+        background: linear-gradient(to bottom,
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 0,
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 1px,
+            rgba(255, 255, 255, 0) 8px);
+    }
 }
 
 .glass-panel > *:not(.liquid-glass-effect):not(.glass-refraction) {
@@ -2808,9 +2837,13 @@ body[data-glass-mode='liquid'] .glass-panel,
 .glass-panel:hover::after {
     background: var(--glass-bg-panel, rgba(255, 255, 255, 0.9)) !important;
 }
-[data-theme='dark'] .glass-panel:hover::after,
-:root:not([data-theme='light']) .glass-panel:hover::after {
+[data-theme='dark'] .glass-panel:hover::after {
     background: var(--glass-bg-panel, rgba(31, 32, 34, 0.9)) !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .glass-panel:hover::after {
+        background: var(--glass-bg-panel, rgba(31, 32, 34, 0.9)) !important;
+    }
 }
 
 
@@ -2850,10 +2883,10 @@ body[data-glass-mode='liquid'] .glass-panel,
     overflow: visible !important;
 }
 
-/* 下拉菜单展开时解除 .glass-surface 的 backdrop-filter，防止抑制子组件的次世代液态磨砂折射 */
-.glass-surface:has(.dropdown-content.show),
-.glass-surface:has(.dropdown.is-open),
-.glass-surface:has(cgo-dropdown[open]),
+/* 仅当内部存在未升入 Top Layer 的旧式下拉面板时才临时解除 .glass-surface 的 backdrop-filter；
+   Top Layer Popover 菜单无需破坏顶栏自身的稳定磨砂 */
+.glass-surface:has(.dropdown-content.show:not(:popover-open)),
+.glass-surface:has(.dropdown.is-open:not(:has(:popover-open))),
 .glass-surface:has(cgo-toolbar-select[open]),
 .glass-surface:has(cgo-admin-select[open]),
 .glass-surface:has(.cgo-toolbar-select.is-open) {
@@ -2895,9 +2928,13 @@ body[data-glass-mode='liquid'] .glass-surface,
     pointer-events: none;
 }
 
-[data-theme='dark'] .glass-surface::after,
-:root:not([data-theme='light']) .glass-surface::after {
+[data-theme='dark'] .glass-surface::after {
     background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .glass-surface::after {
+        background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
+    }
 }
 
 /* Tier C Layer 2: 完整双轴微光圈 (保留完整 lit 0.95) */
@@ -2941,9 +2978,13 @@ body[data-glass-mode='liquid'] .glass-surface,
 .glass-surface:hover::after {
     background: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
 }
-[data-theme='dark'] .glass-surface:hover::after,
-:root:not([data-theme='light']) .glass-surface:hover::after {
+[data-theme='dark'] .glass-surface:hover::after {
     background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .glass-surface:hover::after {
+        background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
+    }
 }
 
 /* 兼容未显式分档的普通 .tool-card (默认采用 Tier C 不可交互强调板规范，避免非交互元素误触发 hover 上浮) */
@@ -2973,9 +3014,13 @@ body[data-glass-mode='liquid'] .glass-surface,
     pointer-events: none;
 }
 
-[data-theme='dark'] .tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::after,
-:root:not([data-theme='light']) .tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::after {
+[data-theme='dark'] .tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::after {
     background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::after {
+        background: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
+    }
 }
 
 .tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface)::before {
