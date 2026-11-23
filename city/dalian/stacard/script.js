@@ -2,8 +2,7 @@
  * CGo OpenMap - 大连车站地图卡片
  *
  * 首末班车由 modules/dalian_timetable.js 渲染，本模块只负责车站周边地图。
- * 渲染逻辑位于三城共享引擎（临时位置 core/shared/station/stacard-engine.js，
- * 计划在开发团队确认后迁入 core/，详见 docs/STACARD_TIMETABLE_UNIFICATION.md）。
+ * 渲染逻辑位于多城共享层（core/shared/station/stacard-engine.js）。
  */
 
 import { createStaCard } from "../../../core/shared/station/stacard-engine.js";

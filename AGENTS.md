@@ -579,8 +579,8 @@ AI Agent 在处理用户任务（如新增城市特性、扩展车站信息板�
 ### 6.0 🚨 多城共享层与「持续更新中的模块」
 
 沈阳（`city/shenyang/`）、大连（`city/dalian/`）、长春（`city/changchun/`）、哈尔滨（`city/harbin/`）、
-呼和浩特（`city/hohhot/`）五城共用一份位于 `core/shared/` 的**共享层**（临时位置，计划
-迁入 `core/`）；福州（`city/fuzhou/`）另接入了其中的行程规划链、最近车站、侧栏形态与地图小工具。
+呼和浩特（`city/hohhot/`）五城共用一份位于 `core/shared/` 的**多城共享层**（已由原 `city/shenyang/shared/`
+迁入 `core/shared/`）；福州（`city/fuzhou/`）与苏州（`city/suzhou/`）也按需接入了其中的行程规划链等能力。
 上游开发团队建议：这类持续演进的功能**由各城市自行维护、不设为核心强制字段**。
 
 - **完整清单、对外接口与开发约定**：[core/shared/README.md](core/shared/README.md)；
