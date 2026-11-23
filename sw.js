@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261123.094234';
+const CACHE_NAME = 'cgo-openmap-v261123.131500';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -17,6 +17,11 @@ const ASSETS_TO_CACHE = [
     './readme.html',
     './privacy.html',
     './offline.html',
+    './CONTRIBUTING.md',
+    './PORTING.md',
+    './QUICKSTART.md',
+    './README.md',
+    './docs/QUALITY_STANDARDS.md',
 
     // 样式表
     './css/style.css',
@@ -25,6 +30,30 @@ const ASSETS_TO_CACHE = [
     './css/cgo_element.css',
     './css/cgo_ui.css',
     './css/cgo_components.css',
+    './core/cgo-wm/styles.css',
+    './css/cgowm-openmap.css',
+
+    // CGoWM 统一窗口管理系统与适配层
+    './core/cgo-wm/addons.js',
+    './core/cgo-wm/bridge.js',
+    './core/cgo-wm/builtin-addons.js',
+    './core/cgo-wm/constants.js',
+    './core/cgo-wm/dialogs.js',
+    './core/cgo-wm/emitter.js',
+    './core/cgo-wm/flags.js',
+    './core/cgo-wm/global.js',
+    './core/cgo-wm/index.js',
+    './core/cgo-wm/layout-tree.js',
+    './core/cgo-wm/manager.js',
+    './core/cgo-wm/sanitize.js',
+    './core/cgo-wm/sheet-controller.js',
+    './core/cgo-wm/sidebar-state.js',
+    './core/cgo-wm/storage.js',
+    './core/cgo-wm/utils.js',
+    './core/cgo-wm/workspace.js',
+    './core/cgowm-adapter.js',
+    './core/cgowm-dialogs.js',
+    './core/markdown-viewer.js',
 
     // 核心通用 JS 库
     './core/cgo-ui.js',
