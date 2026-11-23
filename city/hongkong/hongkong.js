@@ -772,7 +772,8 @@
         const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
         const pad = 80;
         const card = document.getElementById("hk-route-card");
-        const reserveW = card && window.innerWidth > 640 ? card.offsetWidth + 40 : 0;
+        const hkDocked = window.CGoWMAdapter?.isActive?.() && window.CGoWMAdapter?.isSidebar?.("hk-route");
+        const reserveW = !hkDocked && card && card.offsetWidth > 0 && window.innerWidth > 640 ? card.offsetWidth + 40 : 0;
         const reserveH = card && window.innerWidth <= 640 ? card.offsetHeight + 16 : 0;
         const ctrl = document.getElementById("modern-zoom-control");
         const left = ctrl && window.innerWidth > 640 ? ctrl.getBoundingClientRect().right - cont.getBoundingClientRect().left + 10 : 0;
@@ -1011,43 +1012,83 @@
         html += `</ol><div class="hk-rt-foot">行車時間按站間實際距離估算，換乘另加 5 分鐘；實時班次與車費來自港鐵開放數據，僅供參考。點選路段可在圖上放大查看。</div>`;
         return html;
     }
+    let hkRouteWmRegistered = false;
+    let hkClosingRouteFromWm = false;
+    const isHkWmDesktop = () => window.innerWidth > 640 && !!window.CGoWMAdapter?.isActive?.();
+
     function ensureRouteCard() {
         let card = document.getElementById("hk-route-card");
-        if (card) return card;
-        card = document.createElement("div");
-        card.id = "hk-route-card";
-        card.innerHTML = `
-            <div class="hk-rt-top">
-                <cgo-icon name="route" size="18"></cgo-icon>
-                <span class="hk-rt-title">行程規劃</span>
-                <button class="hk-rt-close" title="結束行程"><cgo-icon name="close" size="18"></cgo-icon></button>
-            </div>
-            <div class="hk-rt-fields">
-                <button class="hk-rt-field" data-pick="from"></button>
-                <button class="hk-rt-field" data-pick="to"></button>
-                <button class="hk-rt-swap" title="對調起訖站"><cgo-icon name="reverse" size="16"></cgo-icon></button>
-            </div>
-            <div class="hk-rt-result"></div>`;
-        document.body.appendChild(card);
-        card.querySelector(".hk-rt-swap").addEventListener("click", (e) => {
-            e.stopPropagation();
-            [routeState.from, routeState.to] = [routeState.to, routeState.from];
-            updateRoute();
-        });
-        card.querySelector(".hk-rt-close").addEventListener("click", cancelTrip);
-        card.addEventListener("click", (e) => {
-            const f = e.target.closest("[data-pick]");
-            if (f) { e.stopPropagation(); openStationPicker(f.dataset.pick); return; }
-            const a = e.target.closest("[data-jump]");
-            if (a) { if (window.selectStation) window.selectStation(a.dataset.jump); return; }
-            const leg = e.target.closest(".hk-rt-ride[data-step]");
-            if (leg && card._route) {
-                const st = card._route.steps[+leg.dataset.step];
-                card.querySelectorAll(".hk-rt-ride").forEach(el => el.classList.toggle("focus", el === leg));
-                fitToStations(st.stops);
-            }
-        });
-        ["pointerdown", "wheel", "touchstart"].forEach(ev => card.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+        if (!card) {
+            card = document.createElement("div");
+            card.id = "hk-route-card";
+            card.innerHTML = `
+                <div class="hk-rt-top">
+                    <cgo-icon name="route" size="18"></cgo-icon>
+                    <span class="hk-rt-title">行程規劃</span>
+                    <button class="hk-rt-close" title="結束行程"><cgo-icon name="close" size="18"></cgo-icon></button>
+                </div>
+                <div class="hk-rt-fields">
+                    <button class="hk-rt-field" data-pick="from"></button>
+                    <button class="hk-rt-field" data-pick="to"></button>
+                    <button class="hk-rt-swap" title="對調起訖站"><cgo-icon name="reverse" size="16"></cgo-icon></button>
+                </div>
+                <div class="hk-rt-result"></div>`;
+            document.body.appendChild(card);
+            card.querySelector(".hk-rt-swap").addEventListener("click", (e) => {
+                e.stopPropagation();
+                [routeState.from, routeState.to] = [routeState.to, routeState.from];
+                updateRoute();
+            });
+            card.querySelector(".hk-rt-close").addEventListener("click", cancelTrip);
+            card.addEventListener("click", (e) => {
+                const f = e.target.closest("[data-pick]");
+                if (f) { e.stopPropagation(); openStationPicker(f.dataset.pick); return; }
+                const a = e.target.closest("[data-jump]");
+                if (a) { if (window.selectStation) window.selectStation(a.dataset.jump); return; }
+                const leg = e.target.closest(".hk-rt-ride[data-step]");
+                if (leg && card._route) {
+                    const st = card._route.steps[+leg.dataset.step];
+                    card.querySelectorAll(".hk-rt-ride").forEach(el => el.classList.toggle("focus", el === leg));
+                    fitToStations(st.stops);
+                }
+            });
+            ["pointerdown", "wheel", "touchstart"].forEach(ev => card.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+        }
+        if (!hkRouteWmRegistered && window.CGoWMAdapter?.isActive?.() && typeof window.CGoWMAdapter.registerResponsivePanel === "function") {
+            hkRouteWmRegistered = true;
+            window.CGoWMAdapter.registerResponsivePanel({
+                id: "hk-route",
+                title: "行程規劃",
+                icon: "route",
+                className: "openmap-route-window hk-route-wm-window",
+                element: card,
+                mobileHome: document.body,
+                allowModes: ["float", "sidebar"],
+                sidebarSide: "right",
+                showMinimize: true,
+                resizable: true,
+                autoHeight: false,
+                defaultWidth: 350,
+                defaultHeight: 540,
+                minWidth: 280,
+                minHeight: 280,
+                onClose: () => {
+                    if (!hkClosingRouteFromWm) cancelTrip({ fromCgoWm: true });
+                },
+                onViewportSwitch: (mob) => {
+                    const isOpen = document.body.classList.contains("hk-route-open");
+                    card.classList.toggle("show", isOpen);
+                    if (!mob) {
+                        if (isOpen) {
+                            window.CGoWMAdapter.open("hk-route");
+                        } else if (window.CGoWMAdapter.isOpen("hk-route")) {
+                            hkClosingRouteFromWm = true;
+                            try { window.CGoWMAdapter.close("hk-route"); } finally { hkClosingRouteFromWm = false; }
+                        }
+                    }
+                }
+            });
+        }
         return card;
     }
     /** 起訖站欄位：顯示已選車站（含所屬綫路色點），未選時顯示提示 */
@@ -1277,16 +1318,23 @@
     function openRoute() {
         ensureRouteCard().classList.add("show");
         document.body.classList.add("hk-route-open");
+        if (isHkWmDesktop() && hkRouteWmRegistered) {
+            window.CGoWMAdapter.open("hk-route");
+        }
         updateRoute();
     }
     /** 結束行程：清空起訖站、收起行程卡與提示條、移除圖上路綫 */
-    function cancelTrip() {
+    function cancelTrip(opts) {
         if (track.on) stopTracking();
         const bar = document.getElementById("hk-track-bar");
         if (bar) bar.classList.remove("show");
         const card = document.getElementById("hk-route-card");
         if (card) card.classList.remove("show");
         document.body.classList.remove("hk-route-open", "hk-picking");
+        if (isHkWmDesktop() && hkRouteWmRegistered && !(opts && opts.fromCgoWm) && window.CGoWMAdapter.isOpen("hk-route")) {
+            hkClosingRouteFromWm = true;
+            try { window.CGoWMAdapter.close("hk-route"); } finally { hkClosingRouteFromWm = false; }
+        }
         routeState.from = routeState.to = null;
         hideTripBanner();
         drawRoute(null);

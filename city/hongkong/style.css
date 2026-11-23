@@ -759,6 +759,46 @@ body.hk-route-open #modern-zoom-control button#hk-route-btn {
     }
 }
 
+@media (min-width: 641px) {
+    .cgowm-window.hk-route-wm-window #hk-route-card {
+        position: static !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-height: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        display: flex !important;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .cgowm-window.hk-route-wm-window #hk-route-card .hk-rt-top {
+        display: none !important;
+    }
+
+    body.cgowm-active {
+        --hk-wm-l: 0px;
+        --hk-wm-r: 0px;
+    }
+
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"] {
+        --hk-wm-l: var(--cwm-sidebar-left-width, 0px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"] {
+        --hk-wm-r: var(--cwm-sidebar-right-width, 0px);
+    }
+
+    body.cgowm-active :is(#hk-focus-chip, #hk-trip-banner, #hk-track-bar) {
+        left: calc(50% + (var(--hk-wm-l, 0px) - var(--hk-wm-r, 0px)) / 2);
+        max-width: calc(100vw - var(--hk-wm-l, 0px) - var(--hk-wm-r, 0px) - 24px);
+        z-index: 19500;
+    }
+}
+
 /* ==========================================================================
    香港定制車站資訊板（只作用於 .map-hongkong，不影響其他城市）
    ========================================================================== */

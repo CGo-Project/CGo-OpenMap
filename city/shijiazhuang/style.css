@@ -38,6 +38,27 @@
 }
 .cgo-glass-card > * { position: relative; z-index: 2; }
 
+@media (min-width: 641px) {
+    body.cgowm-active {
+        --sjz-wm-l: 0px;
+        --sjz-wm-r: 0px;
+    }
+
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"] {
+        --sjz-wm-l: var(--cwm-sidebar-left-width, 0px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"] {
+        --sjz-wm-r: var(--cwm-sidebar-right-width, 0px);
+    }
+
+    body.cgowm-active .cgo-glass-card {
+        left: calc(50% + (var(--sjz-wm-l, 0px) - var(--sjz-wm-r, 0px)) / 2);
+        max-width: min(540px, calc(100vw - var(--sjz-wm-l, 0px) - var(--sjz-wm-r, 0px) - 32px));
+        z-index: 19500;
+    }
+}
+
 /* ── 虚拟终点站卡 ── */
 .line-info-card { padding: 16px 20px; }
 .tc-row1 {

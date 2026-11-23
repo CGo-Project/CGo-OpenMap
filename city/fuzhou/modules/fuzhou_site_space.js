@@ -130,10 +130,8 @@
      * @param {string} stationName 站点中文名（用于标题与 alt）
      */
     function openLightboxDesktop(entry, stationName) {
-        const modal = lightboxEl();
         const name = stationName || entry.cn || "本站";
-        modal.title = `${name} 车站空间示意图`;
-        modal.innerHTML = `
+        const contentHtml = `
             <div class="fuzhou-space-lightbox" style="display:flex; flex-direction:column; gap:8px;">
                 <img src="${esc(entry.map)}" alt="${esc(name)}站点空间示意图（大图）"
                      decoding="async" referrerpolicy="no-referrer"
@@ -153,6 +151,41 @@
                 </div>
             </div>
         `;
+
+        if (window.CGoDialogs?.dialog) {
+            const wrap = document.createElement("div");
+            wrap.innerHTML = contentHtml;
+            const img = wrap.querySelector("img");
+            img?.addEventListener("error", () => {
+                img.replaceWith(Object.assign(document.createElement("div"), {
+                    textContent: "大图加载失败，请检查网络后重试，或点下方「官网原图」打开。",
+                    style: "padding:28px 16px; text-align:center; color:var(--text-light); font-size:12px;"
+                }));
+            }, { once: true });
+            const dlg = window.CGoDialogs.dialog({
+                panelId: "fuzhou-site-space",
+                title: `${name} 车站空间示意图`,
+                icon: "image",
+                className: "openmap-image-dialog",
+                content: wrap,
+                modal: true,
+                width: 1080,
+                maxWidth: MODAL_MAX_WIDTH,
+                resizable: true,
+                closeOnOverlay: true,
+                destroyOnClose: true
+            });
+            if (dlg) {
+                activeClose = () => {
+                    try { dlg.close(); } catch (err) { /* 忽略 */ }
+                };
+                return;
+            }
+        }
+
+        const modal = lightboxEl();
+        modal.title = `${name} 车站空间示意图`;
+        modal.innerHTML = contentHtml;
         // 外链可能取不到（离线 / CDN 变动）：给一句可读的提示，而不是留一片空白
         const img = modal.querySelector("img");
         img?.addEventListener("error", () => {

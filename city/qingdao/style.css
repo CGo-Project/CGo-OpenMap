@@ -335,6 +335,36 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
     transform: translateY(0);
 }
 
+@media (min-width: 641px) {
+    body.cgowm-active {
+        --qd-wm-l: 0px;
+        --qd-wm-r: 0px;
+    }
+
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"],
+    body.cgowm-active[data-cgowm-left-sidebar="rail"] {
+        --qd-wm-l: var(--cwm-sidebar-left-width, 0px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"],
+    body.cgowm-active[data-cgowm-right-sidebar="rail"] {
+        --qd-wm-r: var(--cwm-sidebar-right-width, 0px);
+    }
+
+    body.cgowm-active #qd-interval-time-hint,
+    body.cgowm-active #qd-construction-legend {
+        right: calc(var(--qd-wm-r, 0px) + 22px);
+    }
+
+    body.cgowm-active #qd-interval-time-hint {
+        max-width: min(340px, calc(100vw - var(--qd-wm-l, 0px) - var(--qd-wm-r, 0px) - 44px));
+    }
+
+    body.cgowm-active #qd-construction-legend {
+        max-width: min(660px, calc(100vw - var(--qd-wm-l, 0px) - var(--qd-wm-r, 0px) - 44px));
+    }
+}
+
 #qd-construction-legend .qd-construction-legend-title {
     margin: 0 0 10px;
     font-size: 16px;

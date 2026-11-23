@@ -271,7 +271,7 @@
         document.addEventListener("click", (event) => {
             const target = event.target;
             if (!target || typeof target.closest !== "function") return;
-            if (!target.closest(".panel-tabs-container, .panel-badges, #station-selector")) return;
+            if (!target.closest(".panel-tabs-container, .panel-badges, #station-selector, .cgowm-btn-dock, .cgowm-btn-minimize, .cgowm-titlebar")) return;
             scheduleRefitSoon();
         }, true);
     }
@@ -410,6 +410,7 @@
         observer.observe(root, { childList: true, subtree: true });
         root.dataset.hohhotLineBadgeObserver = "true";
         installPanelClickRefit();
+        window.addEventListener("cgowm:insets-changed", scheduleRefitSoon);
         scheduleSync();
         scheduleRefit();
     }

@@ -449,12 +449,17 @@
         const scrollY = window.pageYOffset;
         const viewportW = window.innerWidth;
         const viewportH = window.innerHeight;
+        const mapRect = document.getElementById("map-container")?.getBoundingClientRect();
+        const minX = (mapRect && mapRect.width >= 1 ? mapRect.left : 0) + scrollX + 10;
+        const maxX = (mapRect && mapRect.width >= 1 ? mapRect.right : viewportW) + scrollX - 10;
+        const minY = scrollY + 10;
+        const maxY = viewportH + scrollY - 10;
         let left = pageX + pad;
         let top = pageY + pad;
-        if (left + pw > viewportW + scrollX) left = pageX - pw - pad;
-        if (left < scrollX) left = scrollX + 10;
-        if (top + ph > viewportH + scrollY) top = pageY - ph - pad;
-        if (top < scrollY) top = scrollY + 10;
+        if (left + pw > maxX) left = pageX - pw - pad;
+        if (left < minX) left = minX;
+        if (top + ph > maxY) top = pageY - ph - pad;
+        if (top < minY) top = minY;
         popup.style.left = `${left - scrollX}px`;
         popup.style.top = `${top - scrollY}px`;
     }
@@ -1162,7 +1167,13 @@
                         if (keyboardNavigationIntent) {
                             const panel = document.getElementById("info-panel");
                             if (panel && panel.style.display !== "none") {
-                                const heading = panel.querySelector(".panel-cn-name") || panel;
+                                const rawHeading = panel.querySelector(".panel-cn-name");
+                                const heading = (rawHeading && rawHeading.offsetParent !== null)
+                                    ? rawHeading
+                                    : (panel.querySelector(".tab-item.active, .tab-item")
+                                        || panel.closest(".cgowm-window")?.querySelector(".cgowm-btn-minimize, .cgowm-titlebar")
+                                        || panel.closest(".cgowm-window")
+                                        || panel);
                                 if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
                                 heading.focus({ preventScroll: true });
                             }

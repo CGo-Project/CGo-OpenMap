@@ -159,6 +159,14 @@
             tram.slice(1).forEach(function (el) { el.remove(); });
         }
 
+        function resolveActiveSid(root) {
+            const wmWin = root && root.closest ? root.closest(".cgowm-window.openmap-station-window[data-station-id]") : null;
+            if (wmWin && wmWin.dataset.stationId) return wmWin.dataset.stationId;
+            const activeNode = document.querySelector('#map-content .station.active[id^="node_"]');
+            if (activeNode) return activeNode.id.slice(5);
+            return lastSid;
+        }
+
         function tidyTabs(root) {
             const nav = root.querySelector(".panel-tabs-nav");
             const body = root.querySelector(".panel-tabs-body");
@@ -168,7 +176,7 @@
             const tramIdx = items.map(function (el, i) { return isTramTab(el) ? i : -1; })
                                  .filter(function (i) { return i >= 0; });
             if (!tramIdx.length) return;
-            const keepCount = (lastSid === JUNCTION) ? 2 : 1;
+            const keepCount = (resolveActiveSid(root) === JUNCTION) ? 2 : 1;
             const drop = tramIdx.slice(keepCount);
             drop.sort(function (a, b) { return b - a; }).forEach(function (i) {
                 if (items[i]) items[i].remove();

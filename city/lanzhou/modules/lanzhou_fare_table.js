@@ -59,7 +59,7 @@
     /** 票价表弹层根节点 ID（全局单例） */
     const VIEWER_ID = "lanzhou-fare-viewer";
     /** 本模块版本号（与 lanzhou.js 中 document.write 的 ?v= 保持一致） */
-    const VERSION = "261123.094234";
+    const VERSION = "261123.112538";
 
     /* ===================================================================== */
     /* ====== 可自由编辑区：票价表配置表 (EDIT HERE) ========================= */
@@ -543,6 +543,17 @@
     }
 
     function openViewer() {
+        const cfg = LANZHOU_FARE_TABLE;
+        if (window.CGoImageViewer && typeof window.CGoImageViewer.open === "function") {
+            window.CGoImageViewer.open({
+                url: cfg.image,
+                alt: cfg.imageAlt,
+                title: cfg.viewerTitle || cfg.buttonText,
+                caption: cfg.hint,
+                maxWidth: "min(960px, 94vw)"
+            });
+            return;
+        }
         const root = buildViewer();
         if (isViewerOpen()) return;
 
