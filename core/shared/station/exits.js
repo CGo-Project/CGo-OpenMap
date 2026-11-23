@@ -147,11 +147,32 @@
         return linesData.find((line) => line.name === lineName)?.color || "";
     }
 
+    /** 站名归一化：去掉「（…）」括注与结尾「站」，供兜底匹配（更名、加注航站楼等差异） */
+    function baseNameOf(name) {
+        return String(name || "")
+            .replace(/[（(][^）)]*[）)]/g, "")
+            .replace(/站\s*$/, "")
+            .trim();
+    }
+
     /** 标记点：每条线一份站厅坐标（amap_data 的线路级坐标）+ 每个有坐标的出口 */
     function collectMarkers(geoData, stationName, exits) {
+        // 更名过渡期：站名会被 rename-schedule 回退成旧名，而 amap_data 里存的是新名
+        const aliasName = (window.CGO_STATION_NAME_ALIASES || {})[stationName] || "";
+        const wanted = [stationName, aliasName].filter(Boolean);
+        const wantedBase = baseNameOf(stationName);
+        const matchesStation = (entry) => {
+            const name = String(entry?.n || "");
+            if (!name) return false;
+            if (wanted.includes(name)) return true;
+            // 兜底：括注 / 结尾「站」不同也认（如「坝堰（机场）」对「坝堰（机场）（国内航站楼）」）
+            const entryBase = baseNameOf(name);
+            return Boolean(wantedBase) && entryBase === wantedBase;
+        };
+
         const markers = [];
         for (const group of geoData?.l || []) {
-            const station = (group.st || []).find((s) => String(s.n || "") === stationName);
+            const station = (group.st || []).find(matchesStation);
             const [lng, lat] = String(station?.sl || "").split(",").map(Number);
             if (!lng) continue;
             const lineName = String(group.ln || "").trim();

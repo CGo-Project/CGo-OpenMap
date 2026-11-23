@@ -303,7 +303,7 @@
        route-data → route-planner → route-panel 顺序不可颠倒，sidebar-refit / map-tools 须晚于 route-panel */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261120.214516";
+        const version = "261123.100900";
         const shared = "./core/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 

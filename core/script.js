@@ -3,7 +3,7 @@
  */
 
 
-const APP_VERSION = "261120.214516";
+const APP_VERSION = "261123.100900";
 const originalTitle = document.title;
 const originalDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || "CGo OpenMap";
 
@@ -300,6 +300,18 @@ function applyOpeningSchedule() {
     if (!window.CGoOpening || typeof window.CGoOpening.applySchedule !== 'function') return;
     const schedule = (typeof CGO_OPENING_SCHEDULE !== 'undefined') ? CGO_OPENING_SCHEDULE : [];
     window.CGoOpening.applySchedule(schedule);
+}
+
+/**
+ * 应用站名更名的定时回退 (城市可选能力)
+ *
+ * 站点数据存的是更名后的现名；更名日之前由 core/shared/station/rename-schedule.js
+ * 按沿革里的 rename 事件把显示名回退成旧名，到点整页刷新即可切换到新名。
+ * 同样要早于 processData()，否则派生数据（站名索引、检索别名）会先按新名建好。
+ */
+function applyRenameSchedule() {
+    if (!window.CGoRenameSchedule || typeof window.CGoRenameSchedule.apply !== 'function') return;
+    window.CGoRenameSchedule.apply();
 }
 
 /**
@@ -4124,6 +4136,9 @@ initContextMenu();
 
 // 开通时刻的应用要早于渲染，也要早于 DOMContentLoaded（notice.js 在后者推送新开通通知）
 applyOpeningSchedule();
+
+// 站名更名的定时回退同样要早于渲染：更名日之前显示旧名，到点刷新后显示新名
+applyRenameSchedule();
 
 init();
 

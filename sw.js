@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261120.214516';
+const CACHE_NAME = 'cgo-openmap-v261123.100900';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -279,6 +279,7 @@ const ASSETS_TO_CACHE = [
     './core/shared/feedback/feedback.css',
     './core/shared/station/opening-schedule.js',
     './core/shared/station/opening-schedule.css',
+    './core/shared/station/rename-schedule.js',
     // 行程规划（三城共用）：线路接续声明解析 / 数据构建器 / 规划内核 / 面板
     './core/shared/station/line-link.js',
     './core/shared/route/route-data.js',

@@ -4,7 +4,9 @@
  * 将跨城高频需求收敛为声明式、按需启用（opt-in）的核心能力：
  *   1. cgo-station-name-history（order: 12 @ station-info）：工程名 / 曾用名 / 站名沿革只读展示；
  *   2. cgo-station-tips（order: 15 @ station-info）：专题提示卡片（如文旅贴士 / 换乘提醒）；
- *   3. renderTipCardHtml：供各城复用的标准化提示卡片 HTML 渲染器（使用 CGoUI 图标与主题变量）。
+ *   3. cgo-station-rename-countdown（order: 13 @ station-info）：更名预告与倒计时——
+ *      直接读开通沿革（CGO_OPENING_HISTORY）里的 rename 事件，不另存一份更名时间；
+ *   4. renderTipCardHtml：供各城复用的标准化提示卡片 HTML 渲染器（使用 CGoUI 图标与主题变量）。
  */
 (function () {
     'use strict';
@@ -12,7 +14,11 @@
 
     const NAME_HISTORY_MOD_ID = 'cgo-station-name-history';
     const TIP_CARDS_MOD_ID = 'cgo-station-tips';
+    const RENAME_COUNTDOWN_MOD_ID = 'cgo-station-rename-countdown';
     const DEFAULT_PRIMARY_FALLBACK = '#1a73e8';
+
+    /** 更名已发生后，仍展示「已于 … 更名」的天数（与开通通知的推送窗口同口径） */
+    const RENAME_NOTICE_WINDOW_DAYS = 30;
 
     const DEFAULT_HISTORY_FIELDS = [
         { label: '工程名', keys: ['engineeringName', 'engineering'] },
@@ -21,6 +27,7 @@
 
     let activeHistoryConfig = null;
     let activeTipConfig = null;
+    let activeRenameConfig = null;
 
     function esc(value) {
         if (window.CGoA11y && typeof window.CGoA11y.escapeHtml === 'function') {
@@ -175,7 +182,9 @@
     }
 
     function getCityModuleOverride(context, modId) {
-        const board = context && context.city && (context.city.stationBoard || context.city.stationPanel);
+        // context.city 并非所有调用路径都会带（面板渲染时才注入），兜底取当前城市
+        const city = (context && context.city) || window.CURRENT_CITY || null;
+        const board = city && (city.stationBoard || city.stationPanel);
         const mods = board && board.modules;
         if (!mods) return null;
         if (Array.isArray(mods)) {
@@ -306,10 +315,151 @@
         };
     }
 
+    /* ======================================================================
+     * 更名预告与倒计时
+     *
+     * 数据源只有一个：开通沿革（window.CGO_OPENING_HISTORY）里的 kind === "rename"
+     * 事件。倒计时本体复用「未开通车站」那套（CGoOpening.renderCountdown /
+     * mountCountdown），不再另存一份更名时间、也不再养第二份定时器。
+     * ==================================================================== */
+
+    /** 沿革里的日期写作 YYYY-MM-DD，按东八区当日 00:00 解释 */
+    function parseRenameDate(value) {
+        if (typeof value !== 'string') return null;
+        const text = value.trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+        const date = new Date(`${text}T00:00:00+08:00`);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function formatRenameDate(date) {
+        return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    function stationRecordOf(stationId) {
+        const table = (typeof stationsData !== 'undefined' && stationsData) ? stationsData : null;
+        return (table && stationId) ? (table[stationId] || null) : null;
+    }
+
+    /**
+     * 一对更名是否指向该站：优先认 sid；老数据没有 sid 时按
+     * 「新名 = 该站现名或曾用名」反查（与 selfcheck 的更名校验同口径）。
+     */
+    function renameSpecTargets(spec, stationId) {
+        if (!spec) return false;
+        if (spec.sid) return String(spec.sid) === String(stationId);
+        const station = stationRecordOf(stationId);
+        if (!station) return false;
+        if (station.cn && station.cn === spec.to) return true;
+        return Array.isArray(station.aliases) && station.aliases.includes(spec.to);
+    }
+
+    /** 当前站最近的一条更名事件：未来优先；已发生的不超过 noticeWindowDays 天 */
+    function resolveRenameNotice(context, config) {
+        const cfg = config || {};
+        // 引擎已按城市配置过滤过一遍；这里再兜一层，避免别处直接调用时把「未启用」的模块渲染出来
+        if (!cfg.enabled) return null;
+        const stationId = context && context.station && context.station.id;
+        if (!stationId) return null;
+        const events = Array.isArray(window.CGO_OPENING_HISTORY) ? window.CGO_OPENING_HISTORY : [];
+        if (!events.length) return null;
+
+        const now = Date.now();
+        const windowMs = (Number(cfg.noticeWindowDays) > 0 ? Number(cfg.noticeWindowDays) : RENAME_NOTICE_WINDOW_DAYS) * 86400000;
+        let upcoming = null;
+        let past = null;
+
+        events.forEach((ev) => {
+            if (!ev || ev.kind !== 'rename') return;
+            const at = parseRenameDate(ev.date);
+            if (!at) return;
+            const specs = (Array.isArray(ev.renames) && ev.renames.length) ? ev.renames : [ev];
+            specs.forEach((spec) => {
+                if (!renameSpecTargets(spec, stationId)) return;
+                const item = { at, ev, spec };
+                if (at.getTime() > now) {
+                    if (!upcoming || at < upcoming.at) upcoming = item;
+                } else if (now - at.getTime() <= windowMs) {
+                    if (!past || at > past.at) past = item;
+                }
+            });
+        });
+        return upcoming || past;
+    }
+
+    function buildRenameCountdownModule(config) {
+        const cfg = config || {};
+        return {
+            id: cfg.id || RENAME_COUNTDOWN_MOD_ID,
+            name: cfg.name || '更名预告',
+            // 默认挂在底部操作栏之前：不随选项卡切换而消失，任何时候点开车站都能看到
+            targetTab: cfg.targetTab || 'footer',
+            order: typeof cfg.order === 'number' ? cfg.order : 5,
+            enabled: Boolean(cfg.enabled),
+            shouldRender(context) {
+                const cityCfg = getCityModuleOverride(context, cfg.id || RENAME_COUNTDOWN_MOD_ID);
+                const mergedCfg = mergeModuleConfig(cfg, activeRenameConfig, cityCfg);
+                return Boolean(resolveRenameNotice(context, mergedCfg));
+            },
+            render(context) {
+                const cityCfg = getCityModuleOverride(context, cfg.id || RENAME_COUNTDOWN_MOD_ID);
+                const mergedCfg = mergeModuleConfig(cfg, activeRenameConfig, cityCfg);
+                const notice = resolveRenameNotice(context, mergedCfg);
+                if (!notice) return '';
+                const { at, spec } = notice;
+                const future = at.getTime() > Date.now();
+                const fromText = spec.from ? `「${spec.from}」` : '本站';
+                const title = future
+                    ? `${fromText}将于 ${formatRenameDate(at)} 更名为「${spec.to}」`
+                    : `${fromText}已于 ${formatRenameDate(at)} 更名为「${spec.to}」`;
+
+                // 未来事件且城市接入了倒计时（opening-schedule.js）：复用同一套视觉与计时
+                const opening = window.CGoOpening;
+                if (future && opening && typeof opening.renderCountdown === 'function') {
+                    const html = opening.renderCountdown({
+                        at: at.toISOString(),
+                        title,
+                        prefixHtml: '距更名<br>还有'
+                    });
+                    if (html) return html;
+                }
+
+                // 没有倒计时能力（或已过期）：退化为一张纯文案卡片
+                return `<div class="cgo-station-rename-notice" style="margin-bottom:15px; padding:10px 12px; border:1px solid var(--divider); border-radius:8px; font-size:13px; line-height:1.5;">
+                    <cgo-icon name="info" size="14" style="vertical-align:-2px; margin-right:4px; color:var(--primary-color, ${DEFAULT_PRIMARY_FALLBACK});"></cgo-icon>
+                    <span>${esc(title)}</span>
+                </div>`;
+            },
+            onMounted(infoPanel) {
+                // ⚠️ 行程规划的底栏入口（core/shared/route/route-panel.js）在挂载时会把
+                // .panel-footer 里除自己以外的子节点全部 display:none —— 倒计时块若留在
+                // footer 内会被一起藏掉（表现为「闪一下就没了」）。
+                // 故这里把它挪到 .panel-footer **之前**当兄弟节点：既仍在操作按钮栏上方，
+                // 又不再是 footer 的子节点，躲开那轮隐藏。
+                const block = infoPanel.querySelector('.panel-footer > .cgo-opening-pending');
+                if (block && block.parentElement) {
+                    const footer = block.parentElement;
+                    block.style.display = '';
+                    block.style.padding = '10px 15px';
+                    block.style.borderTop = '1px solid var(--divider)';
+                    block.style.background = 'var(--bg-color)';
+                    block.style.boxSizing = 'border-box';
+                    footer.parentElement.insertBefore(block, footer);
+                }
+                // 倒计时块由「未开通车站」那套通用实现负责秒级刷新
+                const opening = window.CGoOpening;
+                if (opening && typeof opening.mountCountdown === 'function') {
+                    opening.mountCountdown(infoPanel);
+                }
+            }
+        };
+    }
+
     function registerDefaults() {
         if (!window.StationBoard || typeof window.StationBoard.registerModule !== 'function') return;
         window.StationBoard.registerModule(buildNameHistoryModule({ enabled: false }));
         window.StationBoard.registerModule(buildTipCardsModule({ enabled: false }));
+        window.StationBoard.registerModule(buildRenameCountdownModule({ enabled: false }));
     }
 
     /** 城市按需接入「工程名 / 曾用名 / 站名沿革」信息板模块 */
@@ -328,11 +478,20 @@
         }
     }
 
+    /** 城市按需接入「更名预告与倒计时」（数据来自开通沿革的 rename 事件） */
+    function registerRenameCountdown(config = {}) {
+        activeRenameConfig = { enabled: config.enabled !== false, ...config };
+        if (window.StationBoard && typeof window.StationBoard.registerModule === 'function') {
+            window.StationBoard.registerModule(buildRenameCountdownModule(activeRenameConfig));
+        }
+    }
+
     registerDefaults();
 
     window.CGoStationAddons = {
         registerNameHistory,
         registerTipCards,
+        registerRenameCountdown,
         renderTipCardHtml
     };
 })();
