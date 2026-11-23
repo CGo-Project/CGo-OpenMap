@@ -134,6 +134,11 @@
                 // 车站层级图（官网剖面图，折叠行默认展开、缩略图懒加载）挂在「车站信息」选项卡；
                 // order 与沈阳设施板块一致（车站类型之后、运营单位之前）
                 "hohhot-facilities": { enabled: true, order: 6, targetTab: "station-info" },
+                // 更名预告：数据取自 data_opening_history.js 的 rename 事件（11-26 两站更名），
+                // 倒计时复用 opening-schedule.js 的通用倒计时块；过期后自动只留「已于…更名」30 天。
+                // 挂在底部操作按钮栏之前（footer 槽 order 5 < footer-actions 的 10），
+                // 不随选项卡切换消失，点开任一车站都能看到
+                "cgo-station-rename-countdown": { enabled: true, order: 5 },
                 // 出入口页签（自定义 tab，见上方 tabs）
                 "hohhot-exits": { enabled: true, targetTab: "hohhot-exits", order: 10 }
             }
@@ -282,7 +287,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261122.180500";
+        const version = "261123.094234";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./core/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -326,6 +331,11 @@
         document.write(`<script src="./city/hohhot/data_hotspots.js?v=${version}"><\/script>`);
         // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
         document.write(`<script src="./city/hohhot/data_opening_history.js?v=${version}"><\/script>`);
+        // 开通时刻与倒计时共享层：本城没有待开通区段（空表），引入是为了复用其倒计时块，
+        // 给「站名更名预告」提供同一套视觉与秒级刷新（见 core/station-addons.js 的 rename-countdown 模块）
+        document.write(`<script src="./core/shared/station/opening-schedule.js?v=${version}"><\/script>`);
+        // 更名的定时生效：11-26 之前把两站显示名回退成旧名（新名仍在检索别名里），到点整页刷新切新名
+        document.write(`<script src="./core/shared/station/rename-schedule.js?v=${version}"><\/script>`);
         // 线网发展史：把沿革时间线播成生长动画，经 CGoMapTools.registerTool 挂进「地图小工具」
         document.write(`<script src="./core/shared/tools/opening-history.js?v=${version}"><\/script>`);
         // 线网发展史拆成三层：内核 + 状态计算（model）+ 视频导出（export），后两者必须晚于内核加载

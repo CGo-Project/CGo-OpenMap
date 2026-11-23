@@ -167,7 +167,12 @@
     /** 站名匹配规则与核心 lookupStationLngLat 一致（原样 → 补「站」→ 去「站」） */
     function lookupGeo(index, cn) {
         if (!cn) return null;
-        return index.get(cn) || index.get(cn + "站") || index.get(String(cn).replace(/站$/, "")) || null;
+        const direct = index.get(cn) || index.get(cn + "站") || index.get(String(cn).replace(/站$/, "")) || null;
+        if (direct) return direct;
+        // 更名日之前站名被回退成旧名（CGO_STATION_NAME_ALIASES：旧名 → 新名），
+        // 而 amap_data.json 里存的仍是新名 —— 按别名再查一次
+        const alias = (window.CGO_STATION_NAME_ALIASES || {})[cn];
+        return alias ? (index.get(alias) || null) : null;
     }
 
     function nearestIn(points, lat, lng) {

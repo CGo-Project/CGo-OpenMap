@@ -189,6 +189,10 @@ export function createStaCard(config = {}) {
         getStation(stationId, stationInfo = {}, lineId = "") {
             const stationName = stationInfo.cn || stationInfo.name || stationInfo.stationName || "";
             const candidates = [stationName];
+            // 更名日之前站名被回退成旧名（CGO_STATION_NAME_ALIASES：旧名 → 新名），
+            // amap_data.json 里存的仍是新名，补一个别名候选
+            const aliasName = (window.CGO_STATION_NAME_ALIASES || {})[stationName];
+            if (aliasName) candidates.push(aliasName);
             if (stationName && index.stripSuffix) candidates.push(stationName.replace(/站$/, ""));
             candidates.push(String(stationId || ""));
 

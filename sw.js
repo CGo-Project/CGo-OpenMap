@@ -2,7 +2,7 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261122.180500';
+const CACHE_NAME = 'cgo-openmap-v261123.094234';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
@@ -10,6 +10,8 @@ const ASSETS_TO_CACHE = [
     './',
     './index.html',
     './main.html',
+    './core/portal-data.js',
+    './core/portal-view.js',
     './core/mobile-sheet.js',
     './core/panel-tab-swipe.js',
     './readme.html',
@@ -149,7 +151,6 @@ const ASSETS_TO_CACHE = [
     './city/sanya/data_stations.js',
     './city/sanya/data_timetable.js',
     './city/sanya/data_virtual_transfers.js',
-    './city/sanya/staname.csv',
     './city/sanya/assets/logo.svg',
     './city/sanya/stacard/script.js',
 
@@ -162,7 +163,6 @@ const ASSETS_TO_CACHE = [
     './city/nanping/data_stations.js',
     './city/nanping/data_timetable.js',
     './city/nanping/data_virtual_transfers.js',
-    './city/nanping/staname.csv',
     './city/nanping/assets/logo.svg',
     './city/nanping/stacard/script.js',
 
@@ -175,7 +175,6 @@ const ASSETS_TO_CACHE = [
     './city/liaoyuan/data_stations.js',
     './city/liaoyuan/data_timetable.js',
     './city/liaoyuan/data_virtual_transfers.js',
-    './city/liaoyuan/staname.csv',
     './city/liaoyuan/stacard/script.js',
 
     // 城市配置与业务数据 (示例：文山)
@@ -187,7 +186,6 @@ const ASSETS_TO_CACHE = [
     './city/wenshan/data_stations.js',
     './city/wenshan/data_timetable.js',
     './city/wenshan/data_virtual_transfers.js',
-    './city/wenshan/staname.csv',
     './city/wenshan/stacard/script.js',
 
     // 城市配置与业务数据 (示例：澳門)
@@ -199,7 +197,6 @@ const ASSETS_TO_CACHE = [
     './city/macau/data_stations.js',
     './city/macau/data_timetable.js',
     './city/macau/data_virtual_transfers.js',
-    './city/macau/staname.csv',
     './city/macau/assets/logo.svg',
     './city/macau/assets/lrt-hengqin.svg',
     './city/macau/assets/lrt-seacpai.svg',
@@ -282,12 +279,11 @@ const ASSETS_TO_CACHE = [
     './core/shared/feedback/feedback.css',
     './core/shared/station/opening-schedule.js',
     './core/shared/station/opening-schedule.css',
+    './core/shared/station/rename-schedule.js',
     // 行程规划（三城共用）：线路接续声明解析 / 数据构建器 / 规划内核 / 面板
     './core/shared/station/line-link.js',
     './core/shared/route/route-data.js',
     './core/shared/route/route-planner.js',
-    './core/shared/route/route-panel-icons.js',
-    './core/shared/route/route-panel-search.js',
     './core/shared/route/route-panel.js',
     './core/shared/route/route-panel.css',
     // 跨城市「查找最近车站」（三城共用）：接管核心 LBS 的 confirm，改用 cgo-modal 三选一
@@ -299,7 +295,6 @@ const ASSETS_TO_CACHE = [
     // 车站详情卡片的 Tier B 液态玻璃底板（由 sidebar-refit.js 一并注入）
     './core/shared/base/station-panel-glass.css',
     // 地图小工具（东北四市共用）：票价图 / 等时圈，入口在「查找最近车站」按钮下方
-    './core/shared/tools/map-tools-color.js',
     './core/shared/tools/map-tools.js',
     './core/shared/tools/map-tools.css',
     // 线网发展史（沈阳）：按开通沿革把线网逐段「长」出来，作为免选站工具挂进地图小工具。

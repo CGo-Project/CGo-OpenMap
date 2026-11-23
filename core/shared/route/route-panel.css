@@ -500,7 +500,17 @@ body.mobile-panel-expanded #info-panel.cgo-rt-stacked-hidden,
        侧栏（section）形态的兜底值；浮层形态见下方「浮层高度分配」的增强覆盖 */
     max-height: 250px;
     overflow-y: auto;
-    padding-right: 2px;
+    /* 卡片描边是**外扩**的 box-shadow（0 0 0 1px 环 + 0 1px 2px 投影），而滚动容器只在 padding
+       box 内绘制：原来仅留 padding-right: 2px，左 / 上 / 下三条边的描边与投影就永远被裁掉，
+       首末行与左列卡片看起来「缺一条边」（即「快速前往把卡片描边裁掉一部分」）。
+       四面留 4px、再用负外边距把盒子拉回原位：裁剪区外扩 4px 而卡片位置与列宽分毫不动，
+       描边与投影都落在裁剪区内；列表真的超高时，这 4px 也是滚到底后最后一行描边的呼吸空间。 */
+    padding: 4px;
+    margin: -4px;
+    /* 地点多到需要滚动时（如沈阳 18 项、呼市 9 项），默认的粗滚动条会把两列挤窄、观感突兀；
+       收成与 .panel-body 同档的细滚动条，滚动条本身也提示「下面还有」。 */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
 }
 
 /* ── 浮层高度分配：grid 优先吃剩余空间 ──────────────────────────────

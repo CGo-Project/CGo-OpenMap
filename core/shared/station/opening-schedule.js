@@ -495,6 +495,9 @@
 
     const pad2 = (value) => String(value).padStart(2, "0");
 
+    /** 倒计时左侧文案的默认值（开通）；更名等复用方可通过参数覆盖 */
+    const DEFAULT_COUNTDOWN_PREFIX = "距开通<br>还有";
+
     /** 把剩余毫秒拆成天 / 时 / 分 / 秒 */
     function splitRemain(ms) {
         const total = Math.max(0, Math.floor(ms / 1000));
@@ -511,10 +514,21 @@
 
     /**
      * 「距开通 / 还有」这五个字占一个格子、在格子内部换行，四个方块组紧随其后。
+     * prefixHtml 允许复用方换成「距更名 / 还有」等文案（按 HTML 传入，调用方负责转义）。
      */
-    const countdownUnitsHtml = () =>
-        `<span class="cgo-opening-countdown-prefix">距开通<br>还有</span>`
+    const countdownUnitsHtml = (prefixHtml = DEFAULT_COUNTDOWN_PREFIX) =>
+        `<span class="cgo-opening-countdown-prefix">${prefixHtml}</span>`
         + COUNTDOWN_UNITS.map(countdownItemHtml).join("");
+
+    /** 标题等纯文本入 HTML 前的转义（本文件不依赖 CGoA11y，模块可能在它之前加载） */
+    function escapeText(value) {
+        return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
 
     /**
      * 未开通车站的 footer 内容。
@@ -532,6 +546,36 @@
 
     /** 启动秒级倒计时刷新（由 footer-actions 的 onMounted 调用，未接入时为空操作） */
     function mountPendingNotice(container) {
+        mountCountdown(container);
+    }
+
+    /**
+     * 通用倒计时块（与「未开通车站」共用同一套视觉与计时逻辑）。
+     *
+     * 供「更名预告」等非开通场景复用：调用方只给时刻与文案，不复制定时器与 DOM 结构，
+     * 避免再养一份倒计时实现。
+     *
+     * @param {{ at: string|Date, title?: string, prefixHtml?: string }} options
+     *        at        目标时刻（ISO 8601，必须带时区偏移量）
+     *        title     倒计时上方的说明文字（纯文本，内部转义）
+     *        prefixHtml 计时块左侧文案（HTML，默认「距开通 / 还有」）
+     * @returns {string} 可直接插入面板的 HTML；时刻非法时返回空串
+     */
+    function renderCountdown({ at, title = "", prefixHtml = DEFAULT_COUNTDOWN_PREFIX } = {}) {
+        const when = parseOpensAt(at instanceof Date ? at.toISOString() : at);
+        if (!when) return "";
+        injectStyle();
+        const titleHtml = title
+            ? `<div class="cgo-opening-pending-title">${escapeText(title)}</div>`
+            : "";
+        return `<div class="cgo-opening-pending" data-cgo-opens-at="${when.toISOString()}">
+            ${titleHtml}
+            <div class="cgo-opening-countdown">${countdownUnitsHtml(prefixHtml)}</div>
+        </div>`;
+    }
+
+    /** 启动秒级倒计时刷新（通用入口，供复用方在 onMounted 中调用） */
+    function mountCountdown(container) {
         if (noticeTimer) {
             clearInterval(noticeTimer);
             noticeTimer = null;
@@ -591,6 +635,9 @@
         formatOpensAtText,
         renderPendingNotice,
         mountPendingNotice,
+        /** 通用倒计时（更名预告等复用）：渲染 / 挂载 */
+        renderCountdown,
+        mountCountdown,
         getOpenNotices
     };
 
