@@ -234,10 +234,7 @@
         const info = { ...ctx, kind: kindId, cityId, cityName: cityNameOf(cityId) };
         const base = `${kind.context(info).join("\n")}\n\n补充说明（选填）：`;
         const scenes = ctx.switchable ? pickable() : [];
-
-        const modal = feedbackModal();
-        modal.title = kind.modalTitle;
-        modal.innerHTML = `
+        const innerHtml = `
             <div class="cgo-fb">
                 ${scenes.length > 1 ? `<div class="cgo-fb-scene">
                     ${scenes.map(([id, t]) => `<button type="button" class="cgo-fb-scene-btn${id === kindId ? " is-on" : ""}" data-scene="${escapeHtml(id)}">${escapeHtml(t.label)}</button>`).join("")}
@@ -253,9 +250,40 @@
                 </div>
             </div>
         `;
-        const contextEl = modal.querySelector("[data-context]");
-        const noteEl = modal.querySelector("[data-note]");
-        const copyLabel = modal.querySelector("[data-copy-label]");
+
+        let host = null;
+        let closeFeedback = null;
+        let wmDlg = null;
+
+        if (window.CGoDialogs?.dialog) {
+            host = document.createElement("div");
+            host.innerHTML = innerHtml;
+            wmDlg = window.CGoDialogs.dialog({
+                panelId: "feedback",
+                title: kind.modalTitle,
+                icon: "chat",
+                content: host,
+                modal: true,
+                width: 460,
+                resizable: false,
+                destroyOnClose: true
+            });
+            if (wmDlg) {
+                closeFeedback = () => wmDlg.close();
+            }
+        }
+
+        if (!closeFeedback) {
+            const modal = feedbackModal();
+            modal.title = kind.modalTitle;
+            modal.innerHTML = innerHtml;
+            host = modal;
+            closeFeedback = () => { modal.open = false; };
+        }
+
+        const contextEl = host.querySelector("[data-context]");
+        const noteEl = host.querySelector("[data-note]");
+        const copyLabel = host.querySelector("[data-copy-label]");
         // 正文用 textContent 落地（不拼 HTML），备注由用户自己填
         contextEl.textContent = base;
         noteEl.value = ctx.note || "";
@@ -282,29 +310,29 @@
         };
 
         // 场景切换：换一套模板重开面板，把用户已写的备注带过去
-        modal.querySelectorAll("[data-scene]").forEach((btn) => {
+        host.querySelectorAll("[data-scene]").forEach((btn) => {
             btn.addEventListener("click", () => {
                 if (btn.dataset.scene === kindId) return;
                 open({ ...ctx, kind: btn.dataset.scene, note: noteEl.value });
             });
         });
 
-        modal.querySelectorAll("[data-act]").forEach((btn) => {
+        host.querySelectorAll("[data-act]").forEach((btn) => {
             btn.addEventListener("click", async () => {
                 const act = btn.dataset.act;
-                if (act === "close") { modal.open = false; return; }
+                if (act === "close") { closeFeedback(); return; }
                 if (act === "issue") {
                     const query = new URLSearchParams();
                     query.set("title", kind.subject(info));
                     query.set("body", compose());
                     window.open(`${feedbackRepo()}/issues/new?${query.toString()}`, "_blank", "noopener");
-                    modal.open = false;
+                    closeFeedback();
                     return;
                 }
                 if (act === "qq") {
                     // 群分享链接（qm.qq.com）：移动端唤起 QQ、桌面端打开加群页
                     window.open(qqGroupUrl(), "_blank", "noopener");
-                    modal.open = false;
+                    closeFeedback();
                     return;
                 }
                 // 复制：剪贴板 API 需要安全上下文（https / localhost），失败就退回手动选中
@@ -319,7 +347,7 @@
             });
         });
 
-        modal.open = true;
+        if (!wmDlg && host) host.open = true;
         document.dispatchEvent(new CustomEvent("cgo:feedback-opened", { detail: { kind: kindId } }));
     }
 

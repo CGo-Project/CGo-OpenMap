@@ -439,6 +439,17 @@
                 document.body.style.setProperty("--sy-cali-line-color", picked.color);
                 document.body.style.setProperty("--sy-cali-on-color", onColor);
 
+                if (infoPanel && !infoPanel.dataset.syCaliCloseWatch) {
+                    infoPanel.dataset.syCaliCloseWatch = "true";
+                    new MutationObserver(() => {
+                        if (infoPanel.style.display === "none") {
+                            document.body.classList.remove(ACTIVE_CLASS);
+                            document.body.style.removeProperty("--sy-cali-line-color");
+                            document.body.style.removeProperty("--sy-cali-on-color");
+                        }
+                    }).observe(infoPanel, { attributes: true, attributeFilter: ["style"] });
+                }
+
                 onHeaderMounted?.(header, {
                     station,
                     info,

@@ -234,7 +234,7 @@
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;      /* 纯读数，不能挡住底下地图的拖拽 */
-    z-index: 2400;
+    z-index: 19500;
     transform: translate(-50%, -100%);
 }
 
@@ -1033,6 +1033,24 @@ body[data-glass-mode='none'] .cgo-mt-panel::before {
    故整体让开半个侧栏列宽，改到画布正中（画布区 = [侧栏列, 100%]，其中点即 50% + 列宽/2） */
 body.legend-pinned:not(.pinned-hidden) .cgo-mt-pick-tip {
     left: calc(50% + var(--cgo-sb-column, 0px) / 2);
+}
+
+body.cgowm-active {
+    --cgo-mt-wm-l: 0px;
+    --cgo-mt-wm-r: 0px;
+}
+
+body.cgowm-active[data-cgowm-left-sidebar="expanded"] {
+    --cgo-mt-wm-l: var(--cwm-sidebar-left-width, 0px);
+}
+
+body.cgowm-active[data-cgowm-right-sidebar="expanded"] {
+    --cgo-mt-wm-r: var(--cwm-sidebar-right-width, 0px);
+}
+
+body.cgowm-active .cgo-mt-pick-tip {
+    left: calc(50% + (var(--cgo-mt-wm-l, 0px) - var(--cgo-mt-wm-r, 0px)) / 2);
+    max-width: calc(100vw - var(--cgo-mt-wm-l, 0px) - var(--cgo-mt-wm-r, 0px) - 32px);
 }
 
 .cgo-mt-pick-dot {

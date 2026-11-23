@@ -360,10 +360,72 @@
      * ==================================================================== */
     const SECTION_ID = "cgo-map-tools-section";
     const SIDEBAR_CONTENT_ID = "legend-content";
+    const WM_HOST_ID = "cgo-map-tools-wm-host";
     /** 区块标题：各层会把当前工具名写进它，收尾时要复位（见 closePanel） */
     const SECTION_TITLE = "地图小工具";
-    const inPinnedSidebar = () => window.innerWidth > 640 && document.body.classList.contains("legend-pinned");
+    const isCgoWmDesktop = () => window.innerWidth > 640 && !!window.CGoWMAdapter?.isActive?.();
+    const inPinnedSidebar = () => !isCgoWmDesktop() && window.innerWidth > 640 && document.body.classList.contains("legend-pinned");
     const toolsSection = () => document.getElementById(SECTION_ID);
+
+    let wmHostEl = null;
+    let wmRegistered = false;
+    let closingToolsFromSelf = false;
+
+    function ensureWmHost() {
+        if (!window.CGoWMAdapter?.isActive?.()) return null;
+        if (!wmHostEl) {
+            wmHostEl = document.createElement("div");
+            wmHostEl.id = WM_HOST_ID;
+            wmHostEl.className = "cgowm-tools-wm-host";
+        }
+        if (!wmRegistered) {
+            wmRegistered = true;
+            window.CGoWMAdapter.registerResponsivePanel({
+                id: "map-tools",
+                title: SECTION_TITLE,
+                icon: "plugin",
+                className: "openmap-tools-window",
+                element: wmHostEl,
+                mobileHome: document.body,
+                allowModes: ["float", "sidebar"],
+                sidebarSide: "right",
+                defaultWidth: 340,
+                defaultHeight: 460,
+                minWidth: 280,
+                minHeight: 240,
+                onClose: () => {
+                    if (!closingToolsFromSelf && !state.picking) {
+                        closePanel({ fromCgoWm: true });
+                        hidePanel(MENU_ID, { fromCgoWm: true });
+                    }
+                },
+                onViewportSwitch: (mob) => {
+                    const panels = [document.getElementById(MENU_ID), document.getElementById(PANEL_ID)].filter(Boolean);
+                    if (mob) {
+                        panels.forEach((p) => {
+                            if (p.parentElement !== document.body) document.body.appendChild(p);
+                            p.classList.remove("cgo-mt-in-section");
+                            p.setAttribute(INSET_ATTR, "right bottom");
+                        });
+                    } else {
+                        let anyShow = false;
+                        panels.forEach((p) => {
+                            if (p.parentElement !== wmHostEl) wmHostEl.appendChild(p);
+                            p.classList.remove("cgo-mt-in-section");
+                            p.removeAttribute(INSET_ATTR);
+                            if (p.classList.contains("show")) anyShow = true;
+                        });
+                        if (anyShow) window.CGoWMAdapter.open("map-tools");
+                        else if (window.CGoWMAdapter.isOpen("map-tools")) {
+                            closingToolsFromSelf = true;
+                            try { window.CGoWMAdapter.close("map-tools"); } finally { closingToolsFromSelf = false; }
+                        }
+                    }
+                }
+            });
+        }
+        return wmHostEl;
+    }
 
     /** 取（必要时创建并挂回）侧栏里的「地图小工具」区块：**紧贴搜索栏下方** */
     function ensureToolsSection() {
@@ -506,6 +568,7 @@
         }
         // 侧栏形态：把面板搬进工具区块；.cgo-mt-in-section 由 CSS 把它从「贴右下浮层」复位成区块内的普通容器。
         // 同时撤销右下留白声明——它不再吃画布空间了（侧栏自己让位）。
+        const wmHost = isCgoWmDesktop() ? ensureWmHost() : null;
         if (section) {
             const body = section.querySelector(".section-body");
             if (body && el.parentElement !== body) body.appendChild(el);
@@ -513,6 +576,13 @@
             el.removeAttribute(INSET_ATTR);
             // 结果层：把「返回」补进工具自己的操作行（内容渲染完成后注入）
             if (id === PANEL_ID) watchResultActions(el);
+        } else if (wmHost) {
+            if (el.parentElement !== wmHost) wmHost.appendChild(el);
+            el.classList.remove("cgo-mt-in-section");
+            el.removeAttribute(INSET_ATTR);
+            if (id === PANEL_ID) watchResultActions(el);
+            const plainTitle = asHtml ? String(title).replace(/<[^>]*>/g, "").trim() : String(title || SECTION_TITLE);
+            window.CGoWMAdapter.update("map-tools", { title: plainTitle || SECTION_TITLE });
         } else {
             if (el.parentElement !== document.body) document.body.appendChild(el);
             el.classList.remove("cgo-mt-in-section");
@@ -526,11 +596,31 @@
         if (!el) return;
         // 侧栏形态：显示某一层 = 展开区块（并收起其余占高区块）
         if (inPinnedSidebar()) expandToolsSection();
+        if (isCgoWmDesktop()) {
+            const otherId = id === MENU_ID ? PANEL_ID : MENU_ID;
+            document.getElementById(otherId)?.classList.remove("show");
+            el.classList.add("show");
+            ensureWmHost();
+            window.CGoWMAdapter.open("map-tools");
+            return;
+        }
         el.classList.add("show");
     }
 
-    function hidePanel(id) {
+    function hidePanel(id, opts = {}) {
         document.getElementById(id)?.classList.remove("show");
+        if (isCgoWmDesktop() && !opts?.fromCgoWm) {
+            const menuShow = document.getElementById(MENU_ID)?.classList.contains("show");
+            const panelShow = document.getElementById(PANEL_ID)?.classList.contains("show");
+            if (!menuShow && !panelShow && window.CGoWMAdapter.isOpen("map-tools")) {
+                closingToolsFromSelf = true;
+                try {
+                    window.CGoWMAdapter.close("map-tools");
+                } finally {
+                    closingToolsFromSelf = false;
+                }
+            }
+        }
     }
 
     const menuEl = () => document.getElementById(MENU_ID);
@@ -660,7 +750,11 @@
 
     function startPick(tool, presetStationId) {
         if (!TOOLS[tool]) return;
-        if (!Object.keys(stations()).length) { alert("线路图尚未就绪，请稍后再试。"); return; }
+        if (!Object.keys(stations()).length) {
+            if (window.cgoAlert) window.cgoAlert("线路图尚未就绪，请稍后再试。", { title: SECTION_TITLE });
+            else alert("线路图尚未就绪，请稍后再试。");
+            return;
+        }
         stopPick();
         state.picking = tool;
         // 从面板带过来的预设车站：直接算作已选（汇合图即 A 已定，只差 B）
@@ -2303,13 +2397,13 @@
         panel.querySelector(".cgo-mt-body").innerHTML = `<p class="cgo-mt-notice">${text}</p>`;
     }
 
-    function closePanel() {
+    function closePanel(opts = {}) {
         const tool = state.tool;
         // 免选站工具（如线网发展史）自带的画布叠加层与定时器由注册方自己回收
         if (tool && AUTO_TOOLS[tool]) AUTO_TOOLS[tool].unmount?.();
         stopPick();
         syncMeetAdd(false);
-        hidePanel(PANEL_ID);
+        hidePanel(PANEL_ID, opts);
         clearCanvas();
         clearOverlay();
         state.tool = null;

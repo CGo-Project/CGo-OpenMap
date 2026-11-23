@@ -132,6 +132,18 @@
                 // 仅在确有差异时写入，避免 MutationObserver 自触发死循环
                 if (next && titleEl.textContent !== next) titleEl.textContent = next;
             });
+            document.querySelectorAll(".cgowm-window.openmap-station-window[data-station-id]").forEach((win) => {
+                const sid = win.dataset?.stationId;
+                const station = sid ? stations[sid] : null;
+                if (!station) return;
+                const titleEl = win.querySelector(":scope > .cgowm-titlebar .cgowm-title");
+                if (!titleEl) return;
+                const next = buildTitle(station, stations);
+                if (next && titleEl.textContent !== next) {
+                    titleEl.textContent = next;
+                    win.setAttribute("aria-label", next);
+                }
+            });
         }
 
         function install() {

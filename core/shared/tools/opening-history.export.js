@@ -1365,17 +1365,48 @@
         if (e.expTo) e.expTo.disabled = on;
         if (e.expCard) e.expCard.querySelectorAll(".cgo-rt-need-opt").forEach((b) => { b.disabled = on; });
         if (e.expStart) e.expStart.hidden = on;
-        // 进度 / 剩余时间 / 帧率 / 取消都在 CGoUI 的浮层里（导出期间不随面板乱动）
-        if (e.expModal) e.expModal.open = !!on;
+        // 进度 / 剩余时间 / 帧率 / 取消都在 CGoWM/CGoUI 的浮层里（导出期间不随面板乱动）
+        if (state.expDialog) {
+            if (on) state.expDialog.open();
+            else state.expDialog.close();
+        } else if (e.expModal) {
+            e.expModal.open = !!on;
+        }
         if (e.expBar) e.expBar.style.width = on ? "0%" : e.expBar.style.width;
     }
 
     /* ── 导出浮层与控件绑定（原在 mount 里，随导出逻辑一起搬来） ─────────── */
 
-    /** 导出浮层改挂到 body：面板容器可能带 transform，留在里面会盖不住整屏 */
+    /** 导出浮层：优先接入 CGoWM 统一模态框，回落原生 <cgo-modal> */
     function mountModal() {
         const el = state.els;
         if (!el || !el.expModal) return;
+        if (window.CGoDialogs?.dialog) {
+            const body = document.createElement("div");
+            body.className = "cgo-oh-exp-modal-body";
+            while (el.expModal.firstChild) body.appendChild(el.expModal.firstChild);
+            el.expModal.remove();
+            state.expDialogBody = body;
+            state.expDialog = window.CGoDialogs.dialog({
+                panelId: "opening-export",
+                title: "正在导出视频",
+                icon: "export-img",
+                className: "openmap-export-dialog",
+                content: body,
+                modal: true,
+                width: 420,
+                resizable: false,
+                closeOnOverlay: false,
+                destroyOnClose: false,
+                onClose: () => {
+                    if (state.exporting) state.exportCancelled = true;
+                }
+            });
+            if (state.expDialog) {
+                state.expDialog.close();
+                return;
+            }
+        }
         document.body.appendChild(el.expModal);
         // 安全冗余：关掉浮层（点右上角 ×）即视为取消导出
         state.modalObserver = new MutationObserver(() => {

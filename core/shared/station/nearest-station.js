@@ -320,8 +320,12 @@
         return el;
     }
 
+    function notifyNearest(message) {
+        if (window.cgoAlert) return window.cgoAlert(message, { title: "查找最近车站" });
+        alert(message);
+    }
+
     function openChooser({ city, local, overall }) {
-        const modal = modalEl();
         const cityName = (city && city.name) || "当前城市";
         const better = overall && overall.city.id !== city.id ? overall : null;
         // 全局最近的城市都还在覆盖半径之外：这时真正该说清的是「这儿没有收录的线路图」，
@@ -349,8 +353,7 @@
             blocks.push(`<p class="cgo-near-sub">建议走 <b>${local.exit.name} 口</b>，距您约 ${formatDistance(local.exit.distance)}。</p>`);
         }
 
-        modal.title = "查找最近车站";
-        modal.innerHTML = `
+        const innerHtml = `
             <div class="cgo-near-body">
                 ${blocks.join("\n")}
             </div>
@@ -361,19 +364,54 @@
             </div>
         `;
 
+        const handleAct = (act) => {
+            if (act === "switch" && better) {
+                emit("cgo:nearest-jump", { cityId: better.city.id, stationId: null, distance: better.station.distance });
+                jumpTo(better.city.id);
+            } else if (act === "local") {
+                emit("cgo:nearest-jump", { cityId: city && city.id, stationId: local.sid, distance: local.distance });
+                window.selectStation?.(local.sid);
+            } else {
+                emit("cgo:nearest-cancel", {});
+            }
+        };
+
+        if (window.CGoDialogs?.dialog) {
+            const wrap = document.createElement("div");
+            wrap.innerHTML = innerHtml;
+            let handled = false;
+            const dlg = window.CGoDialogs.dialog({
+                panelId: "nearest-city",
+                title: "查找最近车站",
+                icon: "location",
+                content: wrap,
+                modal: true,
+                width: 420,
+                resizable: false,
+                destroyOnClose: true,
+                onClose: () => {
+                    if (!handled) emit("cgo:nearest-cancel", {});
+                }
+            });
+            if (dlg) {
+                wrap.querySelectorAll("[data-act]").forEach((btn) => {
+                    btn.addEventListener("click", () => {
+                        handled = true;
+                        dlg.close();
+                        handleAct(btn.dataset.act);
+                    });
+                });
+                return;
+            }
+        }
+
+        const modal = modalEl();
+        modal.title = "查找最近车站";
+        modal.innerHTML = innerHtml;
         modal.querySelectorAll("[data-act]").forEach((btn) => {
             btn.addEventListener("click", () => {
-                const act = btn.dataset.act;
                 modal.open = false;
-                if (act === "switch" && better) {
-                    emit("cgo:nearest-jump", { cityId: better.city.id, stationId: null, distance: better.station.distance });
-                    jumpTo(better.city.id);
-                } else if (act === "local") {
-                    emit("cgo:nearest-jump", { cityId: city && city.id, stationId: local.sid, distance: local.distance });
-                    window.selectStation?.(local.sid);
-                } else {
-                    emit("cgo:nearest-cancel", {});
-                }
+                handleAct(btn.dataset.act);
             });
         });
         modal.open = true;
@@ -442,12 +480,12 @@
         setBusy(true);
         try {
             const city = activeCity();
-            if (!city || !amapUrlOf(city)) { alert("当前城市未配置站点坐标，无法查找最近车站。"); return; }
+            if (!city || !amapUrlOf(city)) { notifyNearest("当前城市未配置站点坐标，无法查找最近车站。"); return; }
             const fix = await getFix();
             const points = await loadCityGeo(city);
-            if (!points) { alert("站点坐标数据加载失败，无法查找最近车站。"); return; }
+            if (!points) { notifyNearest("站点坐标数据加载失败，无法查找最近车站。"); return; }
             const local = nearestOfActiveCity(points, fix.lat, fix.lng);
-            if (!local) { alert("无法定位最近车站（数据匹配失败）"); return; }
+            if (!local) { notifyNearest("无法定位最近车站（数据匹配失败）"); return; }
             local.exit = nearestExitOf(city.id, local.name, fix.lat, fix.lng);
 
             const overall = local.distance > FAR_THRESHOLD
@@ -473,7 +511,7 @@
             }
             openChooser({ city, local, overall });
         } catch (err) {
-            alert((err && err.message) || "定位失败");
+            notifyNearest((err && err.message) || "定位失败");
         } finally {
             busy = false;
             setBusy(false);

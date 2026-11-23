@@ -508,15 +508,50 @@
         const built = kind === "route" ? buildRouteCard() : buildStationCard(panel);
         if (!built) return;
 
-        const modal = modalEl();
-        modal.title = kind === "route" ? "分享行程" : "分享车站";
-        modal.innerHTML = shellHtml();
-        modal.querySelector(".cgo-share-stage").appendChild(built.card);
-        refreshCardBadges(built.card);   // 徽标按「无染色 header」的原形重画（城市可选钩子）
-        modal.querySelectorAll("[data-cgo-act]").forEach((btn) => {
-            btn.addEventListener("click", () => onAction(btn.dataset.cgoAct, btn));
-        });
-        modal.open = true;
+        const modalTitle = kind === "route" ? "分享行程" : "分享车站";
+        let hostEl = null;
+        let usedWmDialog = false;
+
+        if (window.CGoDialogs?.dialog) {
+            hostEl = document.createElement("div");
+            hostEl.innerHTML = shellHtml();
+            hostEl.querySelector(".cgo-share-stage").appendChild(built.card);
+            hostEl.querySelectorAll("[data-cgo-act]").forEach((btn) => {
+                btn.addEventListener("click", () => onAction(btn.dataset.cgoAct, btn));
+            });
+            const dlg = window.CGoDialogs.dialog({
+                panelId: "share-card",
+                title: modalTitle,
+                icon: "share",
+                content: hostEl,
+                modal: true,
+                width: 480,
+                resizable: false,
+                destroyOnClose: true,
+                onClose: () => {
+                    current = null;
+                }
+            });
+            usedWmDialog = !!dlg;
+            if (usedWmDialog) {
+                refreshCardBadges(built.card);
+                requestAnimationFrame(() => {
+                    if (built.card.isConnected) refreshCardBadges(built.card);
+                });
+            }
+        }
+
+        if (!usedWmDialog) {
+            const modal = modalEl();
+            modal.title = modalTitle;
+            modal.innerHTML = shellHtml();
+            modal.querySelector(".cgo-share-stage").appendChild(built.card);
+            refreshCardBadges(built.card);   // 徽标按「无染色 header」的原形重画（城市可选钩子）
+            modal.querySelectorAll("[data-cgo-act]").forEach((btn) => {
+                btn.addEventListener("click", () => onAction(btn.dataset.cgoAct, btn));
+            });
+            modal.open = true;
+        }
 
         // 非官方域：卡片打「测试环境」水印（预览与导出图都带 —— renderPoster 是克隆本卡，
         // is-test 类与水印节点一并被克隆进 foreignObject）。

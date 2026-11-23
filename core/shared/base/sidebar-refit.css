@@ -385,6 +385,41 @@
         transform-origin: center center;
     }
 
+    /* CGoWM 侧栏折叠车站窗口：复用同款线路编号小方标/正圆标 */
+    body.cgowm-active .cgowm-window.openmap-station-window[data-mode="sidebar"].cgowm-minimized .cgowm-station-title-lines {
+        gap: 3px;
+        max-width: 112px;
+    }
+
+    body.cgowm-active .cgowm-window.openmap-station-window[data-mode="sidebar"].cgowm-minimized .cgowm-station-title-lines .header-color-square[data-cgo-sidebar-refit="1"] {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--cgo-sb-badge, 16px);
+        height: var(--cgo-sb-badge, 16px);
+        margin: 0;
+        border-radius: 4px;
+        overflow: hidden;
+        color: #fff;
+        font-family: Arial, Helvetica, var(--font-en, Arimo, sans-serif);
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    body.cgowm-active .cgowm-window.openmap-station-window[data-mode="sidebar"].cgowm-minimized .cgowm-station-title-lines .header-color-square[data-cgo-sidebar-refit="1"].circle {
+        border-radius: 999px;
+    }
+
+    body.cgowm-active .cgowm-window.openmap-station-window[data-mode="sidebar"].cgowm-minimized .cgowm-station-title-lines .header-color-square > .cgo-rt-code {
+        flex: none;
+        display: block;
+        white-space: nowrap;
+        transform: scaleX(var(--cgo-rt-code-sx, 1));
+        transform-origin: center center;
+    }
+
     /* 标题保持「贴着内容」宽度：徽标才能紧跟在站名之后；
        长标题（起点站→终点站）仍靠 min-width: 0 + ellipsis 截断，折叠箭头位置不受影响 */
     body.legend-pinned .section-title-text {

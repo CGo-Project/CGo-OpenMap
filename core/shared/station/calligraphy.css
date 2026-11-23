@@ -118,6 +118,10 @@ body.sy-calligraphy-active .mobile-top-bar-backdrop {
     background: rgba(255, 255, 255, 0.2);
 }
 
+.sy-calligraphy-header .cgowm-inline-controls .cgowm-control {
+    color: var(--sy-cali-on-color, #ffffff);
+}
+
 .sy-calligraphy-header .panel-en-name {
     color: var(--sy-cali-on-color, #ffffff);
     opacity: 0.85;

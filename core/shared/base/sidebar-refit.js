@@ -61,7 +61,8 @@
     })();
 
     const root = () => document.documentElement;
-    const pinned = () => document.body.classList.contains("legend-pinned") && window.innerWidth > MOBILE_MAX;
+    const wmManaged = () => !!window.CGoWMAdapter?.isActive?.();
+    const pinned = () => !wmManaged() && document.body.classList.contains("legend-pinned") && window.innerWidth > MOBILE_MAX;
 
     /* ======================================================================
      * 1. 侧栏几何：跟随标题栏浮岛
@@ -108,6 +109,7 @@
      * 保证两种顶栏形态下侧栏都不会盖住标题栏。
      */
     function syncGeometry() {
+        if (wmManaged()) return;
         const header = document.querySelector(".tool-header");
         const island = document.querySelector(ISLAND_SELECTOR);
         const islandRect = island ? island.getBoundingClientRect() : null;
@@ -136,6 +138,7 @@
     let pinMoved = false;
 
     function syncPinButton() {
+        if (wmManaged()) return;
         const btn = document.getElementById(PIN_ID);
         const zoom = document.getElementById(ZOOM_ID);
         if (!btn || !zoom) return;
@@ -384,6 +387,10 @@
      * @returns {boolean} 面板已就位并完成注入（或此前已注入）时为 true
      */
     function injectAutocleanPref() {
+        if (wmManaged()) {
+            document.getElementById(AUTOCLEAN_ROW_ID)?.remove();
+            return true;
+        }
         if (document.getElementById(AUTOCLEAN_ROW_ID)) return true;
         const historySelect = document.getElementById("pref-history-limit");
         if (!historySelect) return false;
@@ -434,7 +441,7 @@
     let prefWaiter = null;
 
     function watchForAutocleanPref() {
-        if (injectAutocleanPref()) return;
+        if (wmManaged() || injectAutocleanPref()) return;
         if (prefWaiter) return;
         prefWaiter = new MutationObserver(() => {
             if (!injectAutocleanPref()) return;
@@ -808,6 +815,20 @@
 
     let contentObserver = null;
 
+    const watchedWmSidebars = new WeakSet();
+
+    function syncWmSidebars() {
+        if (!wmManaged()) return;
+        document.querySelectorAll(".cgowm-sidebar-body").forEach((bodyEl) => {
+            decorateSquares(bodyEl);
+            if (watchedWmSidebars.has(bodyEl)) return;
+            watchedWmSidebars.add(bodyEl);
+            new MutationObserver(() => {
+                if (wmManaged()) decorateSquares(bodyEl);
+            }).observe(bodyEl, { childList: true, subtree: true });
+        });
+    }
+
     /** 盯住侧栏内容区：搜索/图例/历史车站区块重建、路线结果与被固定进来的面板都会落到这里 */
     function observeContent() {
         const content = document.getElementById(CONTENT_ID);
@@ -816,15 +837,17 @@
         // 只盯子节点：压扁编号会写内联样式，若连属性一起盯就会自触发
         contentObserver = new MutationObserver(() => {
             decorateSquares(content);
-            // 各区块标题栏的「展开/收缩」（车站窗口另有「关闭」）——核心重建侧栏后要补挂
-            decorateSectionHeaders(content);
-            // 侧栏重建（renderLegend → container.innerHTML = …）会连 #sidebar-dynamic-content
-            // 一并换掉，顺带把高度兜底的观察器重挂到新节点上
-            watchForHistoryContainer();
+            if (!wmManaged()) {
+                // 各区块标题栏的「展开/收缩」（车站窗口另有「关闭」）——核心重建侧栏后要补挂
+                decorateSectionHeaders(content);
+                // 侧栏重建（renderLegend → container.innerHTML = …）会连 #sidebar-dynamic-content
+                // 一并换掉，顺带把高度兜底的观察器重挂到新节点上
+                watchForHistoryContainer();
+            }
         });
         contentObserver.observe(content, { childList: true, subtree: true });
         decorateSquares(content);
-        decorateSectionHeaders(content);
+        if (!wmManaged()) decorateSectionHeaders(content);
     }
 
     function refresh() {
@@ -832,6 +855,7 @@
         syncPinButton();
         observeContent();
         watchForHistoryContainer();
+        syncWmSidebars();
     }
 
     function start() {
@@ -840,9 +864,15 @@
         watchForAutocleanPref();
         // body 的 class 决定形态（legend-pinned / pinned-hidden）与侧栏显隐
         new MutationObserver(() => {
+            if (wmManaged()) {
+                document.getElementById(AUTOCLEAN_ROW_ID)?.remove();
+                syncWmSidebars();
+                return;
+            }
             syncPinButton();
             decorateSquares(document.getElementById(CONTENT_ID) || document);
         }).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+        window.addEventListener("cgowm:insets-changed", syncWmSidebars);
         // html 的 header-mode 决定浮岛是否存在（切换顶栏形态后几何要重量一次）
         new MutationObserver(syncGeometry).observe(root(), {
             attributes: true,

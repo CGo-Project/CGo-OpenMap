@@ -374,8 +374,9 @@
      * 判定条件与核心 renderLegend() 的分叉保持一致；浮层弹窗与移动端抽屉仍用原有浮动面板，
      * 两套形态随 pin 状态自动迁移（见 syncRoutePanels）。
      */
+    const isCgoWmDesktop = () => window.innerWidth > 640 && !!window.CGoWMAdapter?.isActive?.();
     const inPinnedSidebar = () =>
-        window.innerWidth > 640 && document.body.classList.contains("legend-pinned");
+        !isCgoWmDesktop() && window.innerWidth > 640 && document.body.classList.contains("legend-pinned");
     const panelMode = () => (inPinnedSidebar() ? "section" : "float");
 
     /**
@@ -391,6 +392,98 @@
      */
     const panelRefs = new Map();
     const trackPanel = (panel) => panelRefs.set(panel.id, panel);
+    let closingPlanFromWm = false;
+    let closingResultFromWm = false;
+    const cgoWmRegistered = { plan: false, result: false };
+
+    function registerCgoWmRoutePanel(kind, panel) {
+        if (!panel || !window.CGoWMAdapter?.isActive?.()) return;
+        if (kind === "plan" && !cgoWmRegistered.plan) {
+            cgoWmRegistered.plan = true;
+            window.CGoWMAdapter.registerResponsivePanel({
+                id: "route-plan",
+                title: "规划行程",
+                icon: "route",
+                className: "openmap-route-window",
+                element: panel,
+                mobileHome: document.body,
+                allowModes: ["float", "sidebar"],
+                sidebarSide: "right",
+                showMinimize: true,
+                resizable: true,
+                autoHeight: false,
+                defaultWidth: 340,
+                defaultHeight: 420,
+                minWidth: 280,
+                minHeight: 260,
+                onClose: () => {
+                    if (!closingPlanFromWm) closePanel("plan", { fromCgoWm: true });
+                },
+                onViewportSwitch: (mob) => {
+                    if (mob) {
+                        if (panel.classList.contains("show")) resetDrawer(panel);
+                        syncPanels();
+                    } else {
+                        panel.style.removeProperty("left");
+                        panel.style.removeProperty("top");
+                        panel.style.removeProperty("right");
+                        panel.style.removeProperty("width");
+                        panel.style.removeProperty("height");
+                        panel.style.removeProperty("max-height");
+                        panel.classList.remove("drawer-min", "drawer-full", "cgo-rt-dragging", STACK_HIDDEN);
+                        if (panel.classList.contains("show")) {
+                            window.CGoWMAdapter.open("route-plan");
+                        } else if (window.CGoWMAdapter.isOpen("route-plan")) {
+                            closingPlanFromWm = true;
+                            try { window.CGoWMAdapter.close("route-plan"); } finally { closingPlanFromWm = false; }
+                        }
+                    }
+                }
+            });
+        } else if (kind === "result" && !cgoWmRegistered.result) {
+            cgoWmRegistered.result = true;
+            window.CGoWMAdapter.registerResponsivePanel({
+                id: "route-result",
+                title: "行程结果",
+                icon: "route",
+                className: "openmap-route-window",
+                element: panel,
+                mobileHome: document.body,
+                allowModes: ["float", "sidebar"],
+                sidebarSide: "right",
+                showMinimize: true,
+                resizable: true,
+                autoHeight: false,
+                defaultWidth: 360,
+                defaultHeight: 540,
+                minWidth: 280,
+                minHeight: 280,
+                onClose: () => {
+                    if (!closingResultFromWm) closePanel("result", { fromCgoWm: true });
+                },
+                onViewportSwitch: (mob) => {
+                    if (mob) {
+                        if (panel.classList.contains("show")) resetDrawer(panel);
+                        syncPanels();
+                    } else {
+                        panel.style.removeProperty("left");
+                        panel.style.removeProperty("top");
+                        panel.style.removeProperty("right");
+                        panel.style.removeProperty("width");
+                        panel.style.removeProperty("height");
+                        panel.style.removeProperty("max-height");
+                        panel.classList.remove("drawer-min", "drawer-full", "cgo-rt-dragging", STACK_HIDDEN);
+                        if (panel.classList.contains("show") && (state.routes || []).length > 0) {
+                            window.CGoWMAdapter.open("route-result");
+                        } else if (window.CGoWMAdapter.isOpen("route-result")) {
+                            closingResultFromWm = true;
+                            try { window.CGoWMAdapter.close("route-result"); } finally { closingResultFromWm = false; }
+                        }
+                    }
+                }
+            });
+        }
+    }
     // 重建或切回桌面侧栏时一并释放抽屉监听与固定底栏。
     function removePanel(panel) {
         panel._cgoSheetCleanup?.();
@@ -499,7 +592,7 @@
     /** 浮层形态：独立窗口，保留可拖动的标题栏 */
     function planFloatHtml() {
         return `
-            <div class="panel-header">
+            <div class="panel-header" data-cgowm-drag-handle>
                 <cgo-icon name="route" size="18"></cgo-icon>
                 <span class="cgo-rt-title">规划行程</span>
                 <button class="panel-close-btn" data-close="plan" title="关闭"><cgo-icon name="close" size="18"></cgo-icon></button>
@@ -554,8 +647,14 @@
         let panel = livePanel(PLAN_ID);
         if (panel && panel.dataset.cgoMode !== panelMode()) panel = null;
         if (!panel) panel = buildPlanPanel(panelMode());
-        if (panel.dataset.cgoMode === "section") mountPlanSection(panel);   // 由侧栏槽位决定落点
-        else document.body.appendChild(panel);
+        if (panel.dataset.cgoMode === "section") {
+            mountPlanSection(panel);   // 由侧栏槽位决定落点
+        } else if (window.CGoWMAdapter?.isActive?.()) {
+            registerCgoWmRoutePanel("plan", panel);
+            if (!isCgoWmDesktop() && panel.parentElement !== document.body) document.body.appendChild(panel);
+        } else {
+            document.body.appendChild(panel);
+        }
         return panel;
     }
 
@@ -1250,22 +1349,30 @@
         const resultPanel = ensureResultPanel();
         resultPanel.classList.remove("collapsed");
         resultPanel.classList.add("show");
-        if (resultPanel.dataset.cgoMode === "section") {
-            // 固定侧栏：结果面板入驻动态内容区，独占侧栏的剩余高度
-            mountResultSection(resultPanel);
-            makeRoomForResult();
+        if (isCgoWmDesktop()) {
+            resultPanel.style.removeProperty("left");
+            resultPanel.style.removeProperty("top");
+            resultPanel.style.removeProperty("right");
+            renderRoutes(routes);
+            window.CGoWMAdapter.open("route-result");
         } else {
-            // 浮层形态：结果面板接替规划面板的位置，避免拖动过后面板“跳回”初始角落
-            if (planPanel?.style.left) {
-                resultPanel.style.left = planPanel.style.left;
-                resultPanel.style.top = planPanel.style.top;
-                resultPanel.style.right = "auto";
+            if (resultPanel.dataset.cgoMode === "section") {
+                // 固定侧栏：结果面板入驻动态内容区，独占侧栏的剩余高度
+                mountResultSection(resultPanel);
+                makeRoomForResult();
+            } else {
+                // 浮层形态：结果面板接替规划面板的位置，避免拖动过后面板“跳回”初始角落
+                if (planPanel?.style.left) {
+                    resultPanel.style.left = planPanel.style.left;
+                    resultPanel.style.top = planPanel.style.top;
+                    resultPanel.style.right = "auto";
+                }
+                resetDrawer(resultPanel);
             }
-            resetDrawer(resultPanel);
+            // 结果面板上到栈顶，规划面板由栈自动隐去（不摘它的 show，否则关掉结果后就回不来了）
+            renderRoutes(routes);
+            pushPanel(RESULT_ID);
         }
-        // 结果面板上到栈顶，规划面板由栈自动隐去（不摘它的 show，否则关掉结果后就回不来了）
-        renderRoutes(routes);
-        pushPanel(RESULT_ID);
         emit("cgo:route-planned", {
             from: state.from, to: state.to,
             fromExit: state.fromExit, toExit: state.toExit,
@@ -1291,6 +1398,10 @@
                 const sum = panel.querySelector(".cgo-rt-sum");
                 if (sum) sum.remove();
             }
+        }
+        if (isCgoWmDesktop() && window.CGoWMAdapter.isOpen("route-result")) {
+            closingResultFromWm = true;
+            try { window.CGoWMAdapter.close("route-result"); } finally { closingResultFromWm = false; }
         }
         popPanel(RESULT_ID);
         clearHighlight();
@@ -1381,7 +1492,7 @@
     /** 浮层形态：标题栏显示起讫站（+ 需求徽记位），并带关闭按钮 */
     function resultFloatHtml() {
         return `
-            <div class="panel-header cgo-rt-result-head">
+            <div class="panel-header cgo-rt-result-head" data-cgowm-drag-handle>
                 <cgo-icon class="cgo-rt-need-mark" size="14" hidden></cgo-icon>
                 <span class="cgo-rt-od">
                     <b class="cgo-rt-od-from">起点</b>
@@ -1438,8 +1549,14 @@
         let panel = livePanel(RESULT_ID);
         if (panel && panel.dataset.cgoMode !== panelMode()) panel = null;
         if (!panel) panel = buildResultPanel(panelMode());
-        if (panel.dataset.cgoMode === "section") mountResultSection(panel);
-        else document.body.appendChild(panel);
+        if (panel.dataset.cgoMode === "section") {
+            mountResultSection(panel);
+        } else if (window.CGoWMAdapter?.isActive?.()) {
+            registerCgoWmRoutePanel("result", panel);
+            if (!isCgoWmDesktop() && panel.parentElement !== document.body) document.body.appendChild(panel);
+        } else {
+            document.body.appendChild(panel);
+        }
         return panel;
     }
 
@@ -2063,6 +2180,11 @@
         if (odFrom) odFrom.textContent = endpointTitle(head, "from");
         if (odTo) odTo.textContent = endpointTitle(tail, "to");
         if (panel.dataset.cgoMode === "section") syncResultSectionHeader(panel, route, head, tail);
+        if (isCgoWmDesktop()) {
+            window.CGoWMAdapter.update("route-result", {
+                title: `${endpointTitle(head, "from")}→${endpointTitle(tail, "to")}`
+            });
+        }
 
         const body = panel.querySelector(".cgo-rt-result-body");
         body.innerHTML = `
@@ -2224,7 +2346,7 @@
         if (!route) return;
         const box = routeBounds(route);
         if (!box) return;
-        if (options.park !== false && panelMode() === "float") parkFloatPanel();
+        if (options.park !== false && panelMode() === "float" && !isCgoWmDesktop()) parkFloatPanel();
         window.CGoViewportInset?.refresh?.();
         window.CGoViewportInset?.fit?.(box, { padding: 60 });
     }
@@ -2688,7 +2810,7 @@
         header.addEventListener("mousedown", (event) => {
             // 移动端抽屉布局（≤640px，与车站详情面板同一断点）下不拖：那里面板是全宽贴底，
             // 拖动时由 right 切到 left 会触发 shrink-to-fit 而突然变窄
-            if (window.innerWidth <= 640) return;
+            if (window.innerWidth <= 640 || isCgoWmDesktop()) return;
             if (event.target.closest("button") || event.target.closest("a")) return;
             const rect = panel.getBoundingClientRect();
             dragging = true;
@@ -2938,6 +3060,12 @@
      * 天然不会互相遮挡，故整套「只显示栈顶」的规则在此停用。
      */
     function syncPanels() {
+        if (isCgoWmDesktop()) {
+            [PLAN_ID, RESULT_ID, INFO_PANEL_ID].forEach((id) => {
+                document.getElementById(id)?.classList.remove(STACK_HIDDEN);
+            });
+            return;
+        }
         const pinned = inPinnedSidebar();
         // 栈里可能留着已经不在文档里的面板：形态迁移时它被拆掉（见 syncRoutePanels 里
         // 「已无结果 / 形状不符」那几条 current.remove() 分支），核心重建外壳时也会被摘出文档。
@@ -2973,6 +3101,7 @@
         // （从顶栏入口进入时必现；经「设为起点/终点」进入因为先关掉了车站面板才侥幸避开）。
         let lastOpen = isOpen();
         new MutationObserver(() => {
+            if (isCgoWmDesktop()) return;
             const open = isOpen();
             if (open === lastOpen) return;
             lastOpen = open;
@@ -3014,7 +3143,14 @@
         stopPicking();
         hideSuggests();
         let panel;
-        if (panelMode() === "section") {
+        if (isCgoWmDesktop()) {
+            panel = ensurePlanPanel();
+            panel.classList.add("show");
+            panel.style.removeProperty("left");
+            panel.style.removeProperty("top");
+            panel.style.removeProperty("right");
+            window.CGoWMAdapter.open("route-plan");
+        } else if (panelMode() === "section") {
             // 固定侧栏：面板常驻，这里只是把它展开（内部会顺带让位给搜索 / 图例 / 车站详情 / 路线结果）
             panel = ensurePlanSection(true);
             setPlanExpanded(true);
@@ -3043,7 +3179,31 @@
         emit("cgo:route-opened", { from: state.from, to: state.to, fromExit: state.fromExit, toExit: state.toExit });
     }
 
-    function closePanel(which) {
+    function closePanel(which, opts = {}) {
+        if (isCgoWmDesktop()) {
+            if (which !== "result") {
+                stopPicking();
+                hideSuggests();
+                const planPanel = document.getElementById(PLAN_ID);
+                if (planPanel) planPanel.classList.remove("show");
+                popPanel(PLAN_ID);
+                if (!opts?.fromCgoWm && window.CGoWMAdapter.isOpen("route-plan")) {
+                    closingPlanFromWm = true;
+                    try { window.CGoWMAdapter.close("route-plan"); } finally { closingPlanFromWm = false; }
+                }
+            } else {
+                const resultPanel = document.getElementById(RESULT_ID);
+                if (resultPanel) resultPanel.classList.remove("show");
+                popPanel(RESULT_ID);
+                if (!opts?.fromCgoWm && window.CGoWMAdapter.isOpen("route-result")) {
+                    closingResultFromWm = true;
+                    try { window.CGoWMAdapter.close("route-result"); } finally { closingResultFromWm = false; }
+                }
+            }
+            if (!isResultVisible()) clearHighlight();
+            emit("cgo:route-closed", {});
+            return;
+        }
         if (panelMode() === "section") {
             // 固定侧栏里「规划行程」是常驻区块，没有关闭一说，收起即折叠（内容与状态都留着）；
             // 结果面板则是按需存在的窗口，收起它同样保留内容，展开可恢复
@@ -3075,6 +3235,12 @@
     }
 
     function toggle() {
+        if (isCgoWmDesktop()) {
+            if (window.CGoWMAdapter.isOpen("route-result")) closePanel("result");
+            else if (window.CGoWMAdapter.isOpen("route-plan")) closePanel("plan");
+            else openPlan();
+            return;
+        }
         if (panelMode() === "section") {
             // 固定侧栏：面板是常驻区块，入口按钮只切换它的展开 / 折叠
             setPlanExpanded(!planExpanded);
@@ -3170,6 +3336,9 @@
     function isResultVisible() {
         const panel = livePanel(RESULT_ID);
         if (!panel) return false;
+        if (isCgoWmDesktop()) {
+            return !!window.CGoWMAdapter.isOpen("route-result") && panel.classList.contains("show");
+        }
         return panel.dataset.cgoMode === "section"
             ? !panel.classList.contains("collapsed")
             : panel.classList.contains("show");
@@ -3502,7 +3671,7 @@
                     rebuilt.classList.add("show");
                     document.body.appendChild(rebuilt);
                     modeChanged = true;
-                } else if (!current.isConnected) {
+                } else if (!current.isConnected && !isCgoWmDesktop()) {
                     document.body.appendChild(current);
                 }
             } else if (current && !current.isConnected) {
@@ -3523,7 +3692,7 @@
                 if (panel.dataset.cgoMode === mode) {
                     // 形状已经对了：只需确保它待在当前形态的槽位上（含被核心摘掉后的补挂）
                     if (mode === "section") mountResultSection(panel);
-                    else if (!panel.isConnected) document.body.appendChild(panel);
+                    else if (!panel.isConnected && !isCgoWmDesktop()) document.body.appendChild(panel);
                 } else if (!hasResult) {
                     // 已经没有结果了（浮层形态下只是清了内容没拆窗口），不必搬过去
                     removePanel(panel);
@@ -3764,6 +3933,10 @@
 
     /** 关闭车站信息面板：点它自己的关闭按钮，复用核心的收尾逻辑（不改核心代码） */
     function closeInfoPanel() {
+        if (isCgoWmDesktop()) {
+            window.resetMapState?.();
+            return;
+        }
         document.getElementById(INFO_PANEL_ID)?.querySelector(".panel-close-btn")?.click();
     }
 
@@ -3776,6 +3949,7 @@
         bindStationOpenSources();
         // 视口跨过 640px 断点会切换浮层 / 侧栏两套形态，核心的 resize 收口不一定重渲图例，故自行补一刀
         window.addEventListener("resize", scheduleRouteSync);
+        window.addEventListener("cgowm:insets-changed", refitIfLayoutChanged);
         scheduleRouteSync();
     }
 

@@ -608,7 +608,11 @@
         window.clearHighlights?.();   // 核心那套：清 .active（车站/站名/线路）并清空 #highlight-layer
         // 核心这个函数是全文档扫 .active 的，会顺手把侧栏「固定面板」按钮的激活态也清掉，还回去
         if (pinWasActive) pinBtn.classList.add("active");
-        routeApi?.close?.();          // 收起行程规划 / 路线结果面板
+        routeApi?.close?.("plan");          // 收起行程规划 / 路线结果面板
+        routeApi?.close?.("result");
+        if (window.innerWidth > MOBILE_MAX && window.CGoWMAdapter?.isActive?.()) {
+            window.CGoWMAdapter.deactivateStation?.({ clearFloat: true });
+        }
         const info = document.getElementById("info-panel");
         // #info-panel 走行内 display；只在它是「浮在地图上的卡片」时收起 ——
         // 固定侧栏形态下它是侧栏里的常驻区块，不算画布残留（口径同核心自身）
@@ -1313,13 +1317,27 @@
         const hr = host.getBoundingClientRect();
         const insets = window.CGoViewportInsets || {};
         let left = 0;
-        const modal = document.querySelector("#legend-overlay .legend-modal");
-        if (modal && document.body.classList.contains("legend-pinned")) {
-            left = Math.max(0, Math.min(hr.width, modal.getBoundingClientRect().right - hr.left));
+        let right = 0;
+        if (window.innerWidth > MOBILE_MAX && window.CGoWMAdapter?.isActive?.()) {
+            const leftSb = document.querySelector('.cgowm-sidebar[data-side="left"]');
+            if (leftSb && !leftSb.hidden) {
+                const r = leftSb.getBoundingClientRect();
+                if (r.width >= 1 && r.height >= 1) left = Math.max(0, Math.min(hr.width * 0.45, r.right - hr.left));
+            }
+            const rightSb = document.querySelector('.cgowm-sidebar[data-side="right"]');
+            if (rightSb && !rightSb.hidden) {
+                const r = rightSb.getBoundingClientRect();
+                if (r.width >= 1 && r.height >= 1) right = Math.max(0, Math.min(hr.width * 0.45, hr.right - r.left));
+            }
+        } else {
+            const modal = document.querySelector("#legend-overlay .legend-modal");
+            if (modal && document.body.classList.contains("legend-pinned")) {
+                left = Math.max(0, Math.min(hr.width, modal.getBoundingClientRect().right - hr.left));
+            }
         }
         const bottom = window.innerWidth <= MOBILE_MAX ? Math.max(0, Number(insets.bottom) || 0) : 0;
         let top = 0;
-        let vw = Math.max(120, hr.width - left);
+        let vw = Math.max(120, hr.width - left - right);
         let vh = Math.max(120, hr.height - bottom);
 
         // 导出时用「安全区」代替可见区：视频是 16:9，且以**覆盖 + 居中裁剪**出画 —— 真正看得见的
@@ -3125,6 +3143,7 @@
         state.modalObserver?.disconnect();
         state.modalObserver = null;
         state.els?.expModal?.remove();   // 导出浮层挂在 body 上，得自己摘掉
+        window.CGoWMAdapter?.get?.("opening-export")?.destroy?.();
         state.els = null;
     }
 

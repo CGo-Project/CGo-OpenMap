@@ -46,16 +46,33 @@
     }
 
     function compute() {
+        const screenW = window.innerWidth;
+        const screenH = window.innerHeight;
+        const wmDesktop = screenW > MOBILE_MAX && !!window.CGoWMAdapter?.isActive?.();
+        const mapContainer = wmDesktop ? document.getElementById("map-container") : null;
+        const mapRect = mapContainer ? mapContainer.getBoundingClientRect() : null;
+        const mapLeft = mapRect && mapRect.width >= 1 ? mapRect.left : 0;
+        const mapRight = mapRect && mapRect.width >= 1 ? mapRect.right : screenW;
+        const mapW = mapRect && mapRect.width >= 1 ? mapRect.width : screenW;
+
         const rects = PANEL_IDS
             .map((id) => visibleFloatRect(document.getElementById(id)))
             .filter(Boolean);
         const declared = declaredInsets();
-        if (!rects.length && !declared.length) return { left: 0, right: 0, bottom: 0 };
+        if (wmDesktop) {
+            document.querySelectorAll('.cgowm-window[data-mode="float"]:not([hidden]):not(.cgowm-minimized), .cgowm-sidebar[data-collapsed="rail"]:not([hidden])').forEach((el) => {
+                const st = window.getComputedStyle(el);
+                if (st.display === "none" || st.visibility === "hidden") return;
+                const r = el.getBoundingClientRect();
+                if (r.width >= 1 && r.height >= 1) rects.push(r);
+            });
+        }
+        if (!rects.length && !declared.length) {
+            return { left: 0, right: 0, bottom: 0 };
+        }
 
-        const screenW = window.innerWidth;
-        const screenH = window.innerHeight;
         const zoom = document.getElementById(ZOOM_CONTROL_ID)?.getBoundingClientRect();
-        const zoomRight = zoom && zoom.width ? Math.ceil(zoom.right) : 0;
+        const zoomRight = zoom && zoom.width ? Math.max(0, Math.ceil(zoom.right - mapLeft)) : 0;
 
         // 自行声明了 bottom 的浮层（贴底那一类）：按它遮住的高度留出底部
         const declaredBottom = Math.max(0, ...declared
@@ -73,20 +90,24 @@
             return { left: zoomRight, right: 0, bottom: Math.max(0, bottom) };
         }
 
-        // 浮层在左半就留左边（留到它的右边缘），在右半就留右边（留到它的左边缘）
+        // 浮层在地图可视区左半就留左边（相对 mapLeft 扣减已被侧栏推开的部分），在右半就留右边
         let left = zoomRight;
         let right = 0;
+        const midX = mapLeft + mapW / 2;
         rects.forEach((rect) => {
-            if (rect.left + rect.width / 2 < screenW / 2) left = Math.max(left, Math.ceil(rect.right));
-            else right = Math.max(right, Math.ceil(screenW - rect.left));
+            if (rect.left + rect.width / 2 < midX) {
+                left = Math.max(left, Math.max(0, Math.ceil(rect.right - mapLeft)));
+            } else {
+                right = Math.max(right, Math.max(0, Math.ceil(mapRight - rect.left)));
+            }
         });
         declared.forEach((item) => {
-            if (item.sides.includes("right")) right = Math.max(right, Math.ceil(screenW - item.rect.left));
-            else if (item.sides.includes("left")) left = Math.max(left, Math.ceil(item.rect.right));
+            if (item.sides.includes("right")) right = Math.max(right, Math.max(0, Math.ceil(mapRight - item.rect.left)));
+            else if (item.sides.includes("left")) left = Math.max(left, Math.max(0, Math.ceil(item.rect.right - mapLeft)));
         });
         // 窄窗口下两侧预留可能把可用区挤成负数（可用区一负，居中与边界都会失去意义），
         // 故按比例等比收缩，保证至少留下画布三分之一的可用区
-        const maxTotal = (screenW * 2) / 3;
+        const maxTotal = (mapW * 2) / 3;
         if (left + right > maxTotal) {
             const shrink = maxTotal / (left + right);
             left = Math.ceil(left * shrink);
@@ -156,6 +177,11 @@
 
     /** 顶部遮挡：浮动标题栏浮岛的实际底边（与引擎 getMapTopOffset 同口径，移动端标题栏也是浮岛式） */
     function topOffset() {
+        if (window.innerWidth > MOBILE_MAX && window.CGoWMAdapter?.isActive?.()) {
+            const leftExp = document.body.dataset.cgowmLeftSidebar === "expanded";
+            const rightExp = document.body.dataset.cgowmRightSidebar === "expanded";
+            if (leftExp && rightExp) return 12;
+        }
         const floating = document.documentElement.getAttribute("header-mode") === "floating"
             || document.body.getAttribute("header-mode") === "floating";
         if (!floating) return 0;
@@ -260,6 +286,14 @@
             if (watched.has(el)) return;
             watched.add(el);
             attrObserver.observe(el, { attributes: true, attributeFilter: ["class", "style"] });
+        });
+        document.querySelectorAll(".cgowm-sidebar, .cgowm-window").forEach((el) => {
+            if (watched.has(el)) return;
+            watched.add(el);
+            attrObserver.observe(el, {
+                attributes: true,
+                attributeFilter: ["class", "style", "hidden", "data-mode", "data-collapsed"]
+            });
         });
     }
 
