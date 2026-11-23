@@ -1,0 +1,1250 @@
+/**
+ * CGo OpenMap - CGoWM 统一窗口管理系统适配样式 (css/cgowm-openmap.css)
+ *
+ * 目标：
+ *   1. 将 CGoWM 视觉 Token 映射到 CGoUI / OpenMap 变量体系，兼容亮暗主题与 Liquid Glass 质感；
+ *   2. 托管检索面板、车站详情、行程规划/结果、地图小工具与各类模态窗的铺满与无双标题栏复位；
+ *   3. 桌面左侧栏展开或收为 Icon Rail 时自动右移 #modern-zoom-control，避免控件重叠；
+ *   4. 模态窗防背景滚动链（overscroll-behavior: contain）。
+ */
+
+:root,
+.cgowm-host {
+    --cwm-panel-bg: var(--card-bg, #ffffff);
+    --cwm-title-bg: var(--card-bg, #ffffff);
+    --cwm-border: var(--divider, var(--border-color, #dee2e6));
+    --cwm-text: var(--text-main, #00263b);
+    --cwm-text-muted: var(--text-light, #636f75);
+    --cwm-primary: var(--primary-color, #00263b);
+    --cwm-danger: var(--danger-color, #ea4335);
+    --cwm-radius: var(--radius-lg, 12px);
+    --cwm-radius-sidebar: var(--radius-lg, 12px);
+    --cwm-titlebar-h: 36px;
+    --cwm-titlebar-compact-h: 32px;
+    --cwm-shadow: 0 18px 46px -10px rgba(0, 38, 59, 0.2), 0 6px 18px -4px rgba(0, 38, 59, 0.12);
+    --cwm-shadow-focus: 0 22px 54px -10px rgba(0, 38, 59, 0.26), 0 8px 24px -4px rgba(0, 38, 59, 0.16);
+    --cgowm-sidebar-top: calc(env(safe-area-inset-top, 0px) + 76px);
+    --cgowm-sidebar-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+
+[data-theme="dark"],
+[data-theme="dark"] .cgowm-host {
+    --cwm-shadow: 0 22px 56px -10px rgba(0, 0, 0, 0.65), 0 8px 22px -4px rgba(0, 0, 0, 0.45);
+    --cwm-shadow-focus: 0 26px 64px -10px rgba(0, 0, 0, 0.78), 0 10px 26px -4px rgba(0, 0, 0, 0.55);
+}
+
+/* CGoWM 接管后隐藏旧版 #legend-overlay 遮罩（内容节点已迁入 openmap:legend 窗口） */
+body.cgowm-active #legend-overlay {
+    display: none !important;
+    pointer-events: none !important;
+}
+
+/* 模态对话框防背景滚动链 (Modern Web Guidance: prevent-page-scroll-under-modal-dialog) */
+.cgowm-window[data-mode="modal"] {
+    overscroll-behavior: contain;
+    max-width: min(94vw, var(--cwm-modal-width, 460px)) !important;
+}
+
+.cgowm-modal-overlay {
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background: rgba(8, 20, 31, 0.46);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* 确认表单与确认按钮共用 .cgowm-dialog-confirm，防止底色误染表单本体 */
+.cgowm-window[role="alertdialog"] form.cgowm-dialog-confirm {
+    color: var(--cwm-text);
+    background: transparent;
+    border: 0;
+}
+
+/* ── Liquid Glass Tier B 视觉对齐（底板放在 ::after，避免把固定定位下拉菜单锁进局部容器）── */
+:root[glass-mode="liquid"] .cgowm-window:not([data-mode="sidebar"]):not([data-mode="fullscreen"]),
+:root[glass-mode="liquid"] .cgowm-sidebar:not([data-mount="flow"]) {
+    border-color: color-mix(in srgb, var(--cwm-border) 72%, transparent);
+}
+
+:root[glass-mode="liquid"] .cgowm-window:not([data-mode="sidebar"]):not([data-mode="fullscreen"]) {
+    background: var(--glass-bg-panel, rgba(255, 255, 255, 0.86));
+    backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+}
+
+[data-theme="dark"]:root[glass-mode="liquid"] .cgowm-window:not([data-mode="sidebar"]):not([data-mode="fullscreen"]) {
+    background: var(--glass-bg-panel, rgba(31, 32, 34, 0.86));
+}
+
+/* Toast 通知层高于 CGoWM 模态对话框（zBase.dialog: 100500） */
+cgo-toast-container {
+    z-index: 110000 !important;
+}
+
+/* 设置与工具窗口有 <cgo-toolbar-select> 固定定位下拉，不可在其自身施加 backdrop-filter 或 overflow:hidden */
+:root[glass-mode="liquid"] .cgowm-window.openmap-settings-dialog,
+:root[glass-mode="liquid"] .cgowm-window.openmap-tools-window {
+    background: var(--cwm-panel-bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+:root[glass-mode="liquid"] .cgowm-window > .cgowm-titlebar {
+    background: color-mix(in srgb, var(--cwm-title-bg) 82%, transparent);
+}
+
+/* ── 侧边栏通栏列形态：推开地图边界并收纳对应侧顶部浮动标题栏（对标 map2）── */
+@media (min-width: 641px) {
+    body.cgowm-active #map-container {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: auto;
+        height: 100%;
+        transition: left 0.22s ease, right 0.22s ease;
+    }
+
+    body.cgowm-active[data-cgowm-resizing-sidebar] #map-container {
+        transition: none !important;
+    }
+
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"] #map-container {
+        left: var(--cwm-sidebar-left-width, 0px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"] #map-container {
+        right: var(--cwm-sidebar-right-width, 0px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"] #nal-notice-container {
+        top: calc(env(safe-area-inset-top, 0px) + 16px);
+        right: calc(var(--cwm-sidebar-right-width, 360px) + 16px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="rail"] #nal-notice-container {
+        right: calc(var(--cwm-sidebar-right-width, 76px) + 16px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"] #theme-tooltip {
+        right: calc(var(--cwm-sidebar-right-width, 360px) + 18px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="rail"] #theme-tooltip {
+        right: calc(var(--cwm-sidebar-right-width, 76px) + 18px);
+    }
+
+    body.cgowm-active[data-cgowm-left-sidebar="rail"] #nb-hint[data-edge="left"] {
+        left: calc(var(--cwm-sidebar-left-width, 76px) + 14px);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="rail"] #nb-hint[data-edge="right"] {
+        right: calc(var(--cwm-sidebar-right-width, 76px) + 14px);
+    }
+
+    .cgowm-sidebar:not([data-mount="flow"]):not([data-collapsed="rail"]) {
+        top: 0;
+        bottom: 0;
+        z-index: 900;
+        padding: calc(env(safe-area-inset-top, 0px) + 68px) 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
+        background: var(--bg-color, var(--cwm-panel-bg));
+        pointer-events: auto;
+        box-sizing: border-box;
+    }
+
+    .cgowm-sidebar:not([data-mount="flow"]):not([data-collapsed="rail"])[data-side="left"] {
+        padding-left: calc(8px + env(safe-area-inset-left, 0px));
+        border-right: 1px solid var(--cwm-border);
+    }
+
+    .cgowm-sidebar:not([data-mount="flow"]):not([data-collapsed="rail"])[data-side="right"] {
+        padding-right: calc(8px + env(safe-area-inset-right, 0px));
+        border-left: 1px solid var(--cwm-border);
+    }
+
+    .cgowm-sidebar:not([data-mount="flow"]) > .cgowm-sidebar-body {
+        padding: 0;
+        gap: 8px;
+    }
+
+    .cgowm-sidebar:not([data-mount="flow"]) > .cgowm-sidebar-topbar {
+        border-radius: 10px 10px 0 0;
+        border: 1px solid var(--cwm-border);
+        margin-bottom: -1px;
+        background: var(--cwm-panel-bg);
+        pointer-events: auto;
+    }
+
+    .cgowm-sidebar:not([data-mount="flow"])[data-collapsed="rail"] {
+        top: var(--cgowm-sidebar-top, 76px);
+        bottom: var(--cgowm-sidebar-bottom, 12px);
+        width: 56px !important;
+        padding: 0;
+        margin: 0 10px;
+        border: 1px solid var(--cwm-border) !important;
+        border-radius: 14px;
+        box-shadow: var(--cwm-shadow);
+        background: var(--cwm-panel-bg);
+    }
+
+    :root[glass-mode="liquid"] .cgowm-sidebar:not([data-mount="flow"])[data-collapsed="rail"] {
+        background: var(--glass-bg-panel, rgba(255, 255, 255, 0.86));
+        backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+        -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
+    }
+
+    [data-theme="dark"]:root[glass-mode="liquid"] .cgowm-sidebar:not([data-mount="flow"])[data-collapsed="rail"] {
+        background: var(--glass-bg-panel, rgba(31, 32, 34, 0.86));
+    }
+
+    /* 左侧栏展开时收纳上方左半个浮动标题栏，并与侧栏宽度等宽对齐 */
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"] .tool-header .header-island-left,
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"] .tool-header .header-island-left.glass-surface {
+        top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+        left: calc(8px + env(safe-area-inset-left, 0px)) !important;
+        right: auto !important;
+        width: calc(var(--cwm-sidebar-left-width, 320px) - 16px) !important;
+        max-width: calc(var(--cwm-sidebar-left-width, 320px) - 16px) !important;
+        box-shadow: 0 1px 4px rgba(0, 38, 59, 0.08);
+    }
+
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"] .tool-header .header-island-left .header-center {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"] .tool-header .header-island-left .app-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* 右侧栏展开时收纳右侧浮动标题栏内容，并与右侧栏等宽对齐 */
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"] .tool-header .header-island-right,
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"] .tool-header .header-island-right.glass-surface {
+        top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+        right: calc(8px + env(safe-area-inset-right, 0px)) !important;
+        left: auto !important;
+        width: calc(var(--cwm-sidebar-right-width, 360px) - 16px) !important;
+        max-width: calc(var(--cwm-sidebar-right-width, 360px) - 16px) !important;
+        box-shadow: 0 1px 4px rgba(0, 38, 59, 0.08);
+    }
+
+    body.cgowm-active[data-cgowm-right-sidebar="expanded"] .tool-header .header-island-right .header-right {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    /* 左侧有停靠侧边栏时缩放控件移至侧栏外侧顶部对齐；仅 Icon Rail 时保持让开左浮岛 */
+    body.cgowm-active[data-cgowm-left-sidebar="expanded"] #modern-zoom-control {
+        left: calc(var(--cwm-sidebar-left-width, 0px) + 14px);
+        top: calc(env(safe-area-inset-top, 0px) + 20px);
+        transition: left 0.2s ease, top 0.2s ease;
+    }
+
+    body.cgowm-active[data-cgowm-left-sidebar="rail"] #modern-zoom-control {
+        left: calc(var(--cwm-sidebar-left-width, 0px) + 14px);
+        transition: left 0.2s ease;
+    }
+
+    body.cgowm-active[data-cgowm-resizing-sidebar] #modern-zoom-control,
+    body.cgowm-active[data-cgowm-resizing-sidebar] .tool-header .header-island-left,
+    body.cgowm-active[data-cgowm-resizing-sidebar] .tool-header .header-island-right {
+        transition: none !important;
+    }
+
+    /* 禁用 main.html 依赖 #legend-overlay.is-open 的旧偏移，避免双规则冲突 */
+    body.cgowm-active #modern-zoom-control {
+        transform: none;
+    }
+}
+
+.cgowm-window[data-mode="sidebar"] {
+    max-height: none;
+    box-shadow: 0 8px 24px rgba(0, 38, 59, 0.12), 0 2px 6px rgba(0, 38, 59, 0.06);
+}
+
+/* 浮动与侧栏窗口缩放热区贴边并置顶，避免被内部面板背景或 overflow:hidden 裁切 */
+.cgowm-window > .cgowm-resizer {
+    z-index: 30;
+}
+
+.cgowm-window > .cgowm-resizer-n { top: 0; }
+.cgowm-window > .cgowm-resizer-s { bottom: 0; }
+.cgowm-window > .cgowm-resizer-e { right: 0; }
+.cgowm-window > .cgowm-resizer-w { left: 0; }
+.cgowm-window > .cgowm-resizer-ne { top: 0; right: 0; }
+.cgowm-window > .cgowm-resizer-se { right: 0; bottom: 0; }
+.cgowm-window > .cgowm-resizer-sw { bottom: 0; left: 0; }
+.cgowm-window > .cgowm-resizer-nw { top: 0; left: 0; }
+
+.cgowm-window[data-mode="float"] > .cgowm-resizer-se::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid color-mix(in srgb, var(--cwm-text-muted) 45%, transparent);
+    border-bottom: 2px solid color-mix(in srgb, var(--cwm-text-muted) 45%, transparent);
+    border-bottom-right-radius: 2px;
+    pointer-events: none;
+}
+
+/* 标题栏停靠快捷按钮 */
+.cgowm-btn-dock.is-docked {
+    color: var(--cwm-primary);
+    background: color-mix(in srgb, var(--cwm-primary) 12%, transparent);
+}
+
+/* ── 1. 搜索与线路面板 (openmap:legend) ──────────────────────── */
+.cgowm-window.openmap-legend-window > .cgowm-content {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.cgowm-window.openmap-legend-window .legend-modal {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    animation: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    max-height: none !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border: 0 !important;
+    display: flex !important;
+    flex-direction: column;
+}
+
+.cgowm-window.openmap-legend-window .legend-modal::before {
+    display: none !important;
+}
+
+.cgowm-window.openmap-legend-window .legend-close-btn,
+.cgowm-window.openmap-legend-window .legend-pin-btn {
+    display: none !important;
+}
+
+.cgowm-window.openmap-legend-window .search-container {
+    padding-top: 12px;
+    background: var(--cwm-panel-bg) !important;
+}
+
+.cgowm-window.openmap-legend-window #legend-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 14px 16px;
+    overflow-y: auto;
+}
+
+@media (min-width: 641px) {
+    .cgowm-window.openmap-legend-window[data-mode="sidebar"]:not(.cgowm-minimized):not(.cgowm-has-dock-height) {
+        flex: 1 1 0;
+        min-height: min(260px, 38dvh);
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-legend-window[data-mode="sidebar"]:not(.cgowm-minimized):not(.cgowm-has-dock-height):has(#section-legend-tree.collapsed) {
+        flex: 0 0 auto;
+        min-height: 0;
+        height: auto;
+    }
+
+    .cgowm-window.openmap-legend-window[data-mode="sidebar"].cgowm-minimized {
+        flex: 0 0 auto;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-legend-window[data-mode="sidebar"].cgowm-has-dock-height {
+        flex: 0 0 auto;
+        max-height: none;
+    }
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] #legend-content {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] #sidebar-dynamic-content:empty {
+    display: none;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] .search-container {
+    padding: 10px 12px 8px;
+    margin-bottom: 0;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] #section-search {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] #search-results-list {
+    max-height: min(240px, 34dvh);
+    margin-bottom: 0;
+    border-bottom: 0 !important;
+    overscroll-behavior: contain;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] .panel-section {
+    border-bottom: 1px solid var(--cwm-border);
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] .section-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 12px;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--cwm-text);
+    background: var(--list-hover, rgba(0, 0, 0, 0.03));
+    user-select: none;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] #section-legend-tree {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    border-bottom: 0;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] #section-legend-tree.collapsed {
+    flex: 0 0 auto;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] #section-legend-tree > .section-header {
+    flex: 0 0 auto;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] #section-legend-tree > .section-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] .panel-section.collapsed .section-body {
+    display: none !important;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] .panel-section.collapsed .section-arrow {
+    transform: rotate(-90deg);
+}
+
+.cgowm-window.openmap-legend-window .section-arrow {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.2s ease;
+}
+
+.cgowm-window.openmap-legend-window:not([data-mode="sidebar"]) .pin-tree-container {
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] .pin-tree-container {
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.cgowm-window.openmap-legend-window[data-mode="sidebar"] .tree-line-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 移动端全屏图例面板 */
+@media (max-width: 640px) {
+    .cgowm-window.openmap-legend-window[data-mode="fullscreen"] {
+        z-index: 60000 !important;
+        background: var(--cwm-panel-bg);
+    }
+
+    .cgowm-window.openmap-legend-window[data-mode="fullscreen"] .legend-modal {
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0;
+    }
+
+    .cgowm-window.openmap-legend-window[data-mode="fullscreen"] .cgowm-titlebar {
+        min-height: 44px;
+    }
+}
+
+/* ── 2. 车站详情面板 (浮窗无独立标题栏；侧栏恢复 CGoWM 原版顶栏与最小化按钮) ── */
+@media (max-width: 640px) {
+    .cgowm-inline-controls {
+        display: none !important;
+    }
+}
+
+@media (min-width: 641px) {
+    .cgowm-window.openmap-station-window > .cgowm-content {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .cgowm-window.openmap-station-window #info-panel {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: 100% !important;
+        max-height: none !important;
+        min-height: 0 !important;
+        resize: none !important;
+        flex: 1 1 auto;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .cgowm-window.openmap-station-window #info-panel::before,
+    .cgowm-window.openmap-station-window #info-panel::after {
+        display: none !important;
+    }
+
+    .cgowm-window.openmap-station-window #info-panel .panel-close-btn {
+        display: none !important;
+    }
+
+    .cgowm-window.openmap-station-window #info-panel > .panel-tabs-container {
+        flex-shrink: 0;
+    }
+
+    /* 浮窗模式：隐藏 CGoWM 顶栏，保留深色信息头与内嵌 Pin/Close 按钮 */
+    .cgowm-window.openmap-station-window[data-mode="float"] #info-panel > .panel-header {
+        cursor: grab;
+        padding-right: 76px !important;
+    }
+
+    .cgowm-window.openmap-station-window .cgowm-inline-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        z-index: 12;
+    }
+
+    .cgowm-window.openmap-station-window .cgowm-inline-controls .cgowm-control {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        color: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.1);
+        transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .cgowm-window.openmap-station-window .cgowm-inline-controls .cgowm-control:hover,
+    .cgowm-window.openmap-station-window .cgowm-inline-controls .cgowm-control:focus-visible {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.22);
+    }
+
+    .cgowm-window.openmap-station-window .cgowm-inline-controls .cgowm-btn-dock.is-docked {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.28);
+    }
+
+    .cgowm-window.openmap-station-window .cgowm-inline-controls .cgowm-btn-close:hover,
+    .cgowm-window.openmap-station-window .cgowm-inline-controls .cgowm-btn-close:focus-visible {
+        color: #ffffff;
+        background: var(--cwm-danger, #ea4335);
+    }
+
+    /* 侧边栏模式：恢复 CGoWM 原版顶栏与最小化按钮，隐藏 #info-panel 信息头避免双标题栏；
+       沈阳站名题字与香港专属站头在侧栏保留精简视觉横幅 */
+    .cgowm-window.openmap-station-window[data-mode="sidebar"] #info-panel > .panel-header,
+    .cgowm-window.openmap-station-window[data-mode="sidebar"] .cgowm-inline-controls {
+        display: none !important;
+    }
+
+    .cgowm-window.openmap-station-window[data-mode="sidebar"] #info-panel > .panel-header.sy-calligraphy-header {
+        display: flex !important;
+        padding: 12px 16px !important;
+    }
+
+    .map-hongkong .cgowm-window.openmap-station-window[data-mode="sidebar"] #info-panel > .panel-header {
+        display: flex !important;
+        padding: 12px 16px 16px !important;
+    }
+
+    .cgowm-window.openmap-station-window[data-mode="sidebar"].cgowm-minimized {
+        flex: 0 0 auto;
+        height: auto;
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-station-window[data-mode="sidebar"]:not(.cgowm-minimized):not(.cgowm-has-dock-height) {
+        flex: 1 1 0;
+        min-height: min(320px, 46dvh);
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-station-window[data-mode="sidebar"].cgowm-has-dock-height {
+        flex: 0 0 auto;
+    }
+
+    .cgowm-window.openmap-station-window .cgowm-station-title-lines {
+        display: none;
+        align-items: center;
+        gap: 3px;
+        margin-left: auto;
+        margin-right: 0;
+        max-width: 96px;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .cgowm-window.openmap-station-window[data-mode="sidebar"].cgowm-minimized .cgowm-station-title-lines {
+        display: inline-flex;
+    }
+
+    .cgowm-window.openmap-station-window .cgowm-station-title-lines .header-color-square {
+        width: 10px;
+        height: 10px;
+        margin-right: 0;
+        border-radius: 3px;
+        flex-shrink: 0;
+        display: inline-block;
+    }
+
+    /* 超出历史上限时的侧栏窗口顶出离场动画 */
+    .cgowm-sidebar[data-side="left"] .cgowm-window.openmap-station-window.is-pushed-out {
+        animation: cgowmStationPushRight 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        pointer-events: none !important;
+    }
+
+    .cgowm-sidebar[data-side="right"] .cgowm-window.openmap-station-window.is-pushed-out {
+        animation: cgowmStationPushLeft 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        pointer-events: none !important;
+    }
+
+    @keyframes cgowmStationPushRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(340px); opacity: 0; }
+    }
+
+    @keyframes cgowmStationPushLeft {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(-340px); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .cgowm-sidebar[data-side="left"] .cgowm-window.openmap-station-window.is-pushed-out,
+        .cgowm-sidebar[data-side="right"] .cgowm-window.openmap-station-window.is-pushed-out {
+            animation: cgowmStationFadeOut 0.15s ease forwards;
+        }
+
+        @keyframes cgowmStationFadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    }
+
+    .cgowm-window.openmap-station-window #info-panel > .panel-body {
+        background-color: transparent !important;
+    }
+
+    .cgowm-window.openmap-station-window #info-panel > .panel-footer {
+        background-color: color-mix(in srgb, var(--cwm-panel-bg) 92%, transparent) !important;
+    }
+}
+
+/* ── 3. 行程规划与结果面板 (openmap:route-plan / openmap:route-result) ── */
+@media (min-width: 641px) {
+    .cgowm-window.openmap-route-window[data-mode="sidebar"]:not(.cgowm-minimized):not(.cgowm-has-dock-height) {
+        flex: 1 1 0;
+        min-height: min(280px, 42dvh);
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-route-window[data-mode="sidebar"].cgowm-minimized {
+        flex: 0 0 auto;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-route-window[data-mode="sidebar"].cgowm-has-dock-height {
+        flex: 0 0 auto;
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-route-window > .cgowm-content {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .cgowm-window.openmap-route-window :is(#cgo-route-card, #cgo-route-result) {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        z-index: auto !important;
+        isolation: auto !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: 100% !important;
+        max-height: none !important;
+        flex: 1 1 auto;
+        min-height: 0;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        display: flex !important;
+    }
+
+    .cgowm-window.openmap-route-window .cgo-rt-panel .panel-body {
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-route-window :is(#cgo-route-card, #cgo-route-result)::before,
+    .cgowm-window.openmap-route-window :is(#cgo-route-card, #cgo-route-result)::after {
+        display: none !important;
+    }
+
+    .cgowm-window.openmap-route-window :is(#cgo-route-card, #cgo-route-result) > .panel-header,
+    .cgowm-window.openmap-route-window :is(#cgo-route-card, #cgo-route-result) .panel-close-btn {
+        display: none !important;
+    }
+}
+
+/* ── 4. 地图小工具面板 (openmap:map-tools) ──────────────────── */
+@media (min-width: 641px) {
+    .cgowm-window.openmap-tools-window[data-mode="sidebar"]:not(.cgowm-minimized):not(.cgowm-has-dock-height) {
+        flex: 1 1 0;
+        min-height: min(280px, 42dvh);
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-tools-window[data-mode="sidebar"].cgowm-minimized {
+        flex: 0 0 auto;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-tools-window[data-mode="sidebar"].cgowm-has-dock-height {
+        flex: 0 0 auto;
+        max-height: none;
+    }
+
+    .cgowm-window.openmap-tools-window > .cgowm-content {
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .cgowm-window.openmap-tools-window .cgo-mt-body.cgo-oh-body {
+        max-height: none;
+        flex: 1 1 0;
+        min-height: 0;
+    }
+
+    .cgowm-tools-wm-host {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        width: 100%;
+    }
+
+    .cgowm-window.openmap-tools-window :is(#cgo-map-tools-menu, #cgo-map-tools-panel) {
+        position: static !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        z-index: auto !important;
+        isolation: auto !important;
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        flex: 1 1 auto;
+        min-height: 0;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+    .cgowm-window.openmap-tools-window :is(#cgo-map-tools-menu, #cgo-map-tools-panel)::before,
+    .cgowm-window.openmap-tools-window :is(#cgo-map-tools-menu, #cgo-map-tools-panel)::after {
+        display: none !important;
+    }
+
+    .cgowm-window.openmap-tools-window .cgo-mt-head {
+        display: none !important;
+    }
+}
+
+/* ── 5. 偏好设置弹窗 (openmap:settings) ──────────────────────── */
+.cgowm-window.openmap-settings-dialog {
+    overflow: visible;
+}
+
+.cgowm-window.openmap-settings-dialog > .cgowm-titlebar {
+    border-radius: calc(var(--cwm-radius) - 1px) calc(var(--cwm-radius) - 1px) 0 0;
+}
+
+.cgowm-window.openmap-settings-dialog > .cgowm-content {
+    padding: 0;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    container-type: normal;
+    border-radius: 0 0 calc(var(--cwm-radius) - 1px) calc(var(--cwm-radius) - 1px);
+}
+
+.cgowm-window[data-mode="modal"] .cgowm-btn-close:focus-visible:not(:hover) {
+    background: transparent;
+    color: var(--cwm-text);
+    outline: 2px solid var(--cwm-primary);
+    outline-offset: -2px;
+}
+
+.cgowm-window.openmap-settings-dialog .settings-modal {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    animation: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: min(78dvh, 660px);
+    border: 0 !important;
+    border-radius: 0 0 calc(var(--cwm-radius) - 1px) calc(var(--cwm-radius) - 1px) !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    z-index: auto !important;
+}
+
+.cgowm-window.openmap-settings-dialog .settings-header {
+    display: none;
+}
+
+.cgowm-window.openmap-settings-dialog .settings-content {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.cgowm-settings-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+    .cgowm-window.openmap-settings-dialog > .cgowm-content {
+        overflow: auto;
+    }
+}
+
+/* ── 6. 帮助与关于弹窗 (cgowm-help-dialog) ──────────────────── */
+.cgowm-window.cgowm-help-dialog > .cgowm-content {
+    padding: 16px 20px 18px;
+}
+
+.cgowm-window.cgowm-help-dialog .help-container {
+    padding: 0;
+    max-height: none;
+    overflow: visible;
+}
+
+/* ── 7. 设置操作按钮与内置 Markdown 文档阅读器 ───────────────── */
+.cgowm-wm-mgr-btn {
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--cwm-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--cwm-text);
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.cgowm-wm-mgr-btn:hover {
+    border-color: var(--cwm-primary);
+    color: var(--cwm-primary);
+}
+
+.cgowm-wm-mgr-btn.is-active {
+    border-color: var(--cwm-primary);
+    background: var(--cwm-primary);
+    color: #ffffff;
+}
+
+.cgowm-window.openmap-markdown-dialog {
+    --cwm-modal-height: min(82dvh, 660px);
+}
+
+.cgowm-window.openmap-markdown-dialog > .cgowm-content {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.cgo-md-shell {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    color: var(--cwm-text);
+    background: var(--cwm-panel-bg);
+}
+
+.cgo-md-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--cwm-border);
+    background: color-mix(in srgb, var(--cwm-panel-bg) 92%, var(--cwm-border) 8%);
+    flex-shrink: 0;
+}
+
+.cgo-md-tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--cwm-border);
+    border-radius: 7px;
+    background: var(--cwm-panel-bg);
+    color: var(--cwm-text);
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.cgo-md-tool-btn:hover:not(:disabled) {
+    border-color: var(--cwm-primary);
+    color: var(--cwm-primary);
+}
+
+.cgo-md-tool-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.cgo-md-toc-select {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--cwm-border);
+    border-radius: 7px;
+    background: var(--cwm-panel-bg);
+    color: var(--cwm-text);
+    font-size: 12px;
+}
+
+.cgo-md-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 24px 28px;
+    overscroll-behavior: contain;
+}
+
+.cgo-md-body {
+    max-width: 720px;
+    margin: 0 auto;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--cwm-text);
+    word-break: break-word;
+}
+
+.cgo-md-body h1,
+.cgo-md-body h2,
+.cgo-md-body h3,
+.cgo-md-body h4 {
+    margin: 1.25em 0 0.55em;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--cwm-text);
+}
+
+.cgo-md-body h1 {
+    font-size: 1.55em;
+    margin-top: 0.1em;
+    padding-bottom: 0.35em;
+    border-bottom: 1px solid var(--cwm-border);
+}
+
+.cgo-md-body h2 {
+    font-size: 1.28em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid color-mix(in srgb, var(--cwm-border) 65%, transparent);
+}
+
+.cgo-md-body h3 {
+    font-size: 1.1em;
+}
+
+.cgo-md-body p {
+    margin: 0.65em 0;
+}
+
+.cgo-md-body a {
+    color: var(--accent-color, #007aff);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.cgo-md-body ul,
+.cgo-md-body ol {
+    margin: 0.6em 0;
+    padding-left: 1.5em;
+}
+
+.cgo-md-body li {
+    margin: 0.25em 0;
+}
+
+.cgo-md-body li.cgo-md-task {
+    list-style: none;
+    margin-left: -1.1em;
+}
+
+.cgo-md-body blockquote {
+    margin: 0.8em 0;
+    padding: 8px 14px;
+    border-left: 3px solid var(--cwm-primary);
+    border-radius: 0 8px 8px 0;
+    background: color-mix(in srgb, var(--cwm-primary) 6%, transparent);
+    color: var(--cwm-text);
+}
+
+.cgo-md-alert {
+    margin: 0.9em 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-left: 4px solid var(--cwm-primary);
+    background: color-mix(in srgb, var(--cwm-primary) 7%, transparent);
+}
+
+.cgo-md-alert-tip { border-left-color: #16a34a; background: rgba(22, 163, 74, 0.08); }
+.cgo-md-alert-important { border-left-color: #7c3aed; background: rgba(124, 58, 237, 0.08); }
+.cgo-md-alert-warning { border-left-color: #d97706; background: rgba(217, 119, 6, 0.08); }
+.cgo-md-alert-caution { border-left-color: #dc2626; background: rgba(220, 38, 38, 0.08); }
+
+.cgo-md-alert-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-bottom: 4px;
+}
+
+.cgo-md-body code {
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88em;
+    background: color-mix(in srgb, var(--cwm-text-muted) 12%, transparent);
+}
+
+.cgo-md-codewrap {
+    position: relative;
+    margin: 0.8em 0;
+    border: 1px solid var(--cwm-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--cwm-text) 4%, var(--cwm-panel-bg));
+}
+
+.cgo-md-codebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--cwm-border);
+    font-size: 11px;
+    color: var(--cwm-text-muted);
+}
+
+.cgo-md-copy-btn {
+    border: 1px solid var(--cwm-border);
+    border-radius: 5px;
+    background: var(--cwm-panel-bg);
+    color: var(--cwm-text);
+    font-size: 11px;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+
+.cgo-md-codewrap pre {
+    margin: 0;
+    padding: 10px 12px;
+    overflow-x: auto;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.cgo-md-codewrap pre code {
+    padding: 0;
+    background: transparent;
+}
+
+.cgo-md-table-wrap {
+    margin: 0.85em 0;
+    overflow-x: auto;
+    border: 1px solid var(--cwm-border);
+    border-radius: 8px;
+}
+
+.cgo-md-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.cgo-md-body th,
+.cgo-md-body td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--cwm-border);
+    text-align: left;
+    vertical-align: top;
+}
+
+.cgo-md-body th {
+    font-weight: 600;
+    background: color-mix(in srgb, var(--cwm-text-muted) 8%, transparent);
+}
+
+.cgo-md-body tr:last-child td {
+    border-bottom: 0;
+}
+
+.cgo-md-body hr {
+    border: 0;
+    border-top: 1px solid var(--cwm-border);
+    margin: 1.4em 0;
+}
+
+.cgo-md-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+.cgo-md-state {
+    padding: 36px 16px;
+    text-align: center;
+    color: var(--cwm-text-muted);
+    font-size: 13.5px;
+}
+
+.cgo-md-fallback-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 120000;
+    background: rgba(8, 20, 31, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.cgo-md-fallback-card {
+    width: min(94vw, 760px);
+    height: min(86dvh, 660px);
+    border-radius: 12px;
+    border: 1px solid var(--cwm-border);
+    background: var(--cwm-panel-bg);
+    box-shadow: var(--cwm-shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cgo-md-fallback-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--cwm-border);
+    font-weight: 650;
+    font-size: 13.5px;
+}
+
+@media (max-width: 640px) {
+    .cgo-md-scroll {
+        padding: 14px 14px 22px;
+    }
+}
+
+/* ── 8. 图片预览与共享层弹窗内部间距对齐 ───────────────────── */
+.cgowm-window.openmap-image-dialog .cgo-iv-desktop-wrap {
+    padding: 2px 0;
+}
+
+.cgowm-window.openmap-image-dialog .cgo-iv-desktop-img {
+    max-height: 74dvh;
+}
+
+.cgowm-window.openmap-export-dialog .cgo-oh-exp-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
