@@ -1947,19 +1947,29 @@
         if (line) line.style.setProperty("--cgo-oh-pop-alpha", String(alpha));
     }
 
-    /** 站点涟漪：笔到人到时那一圈扩散（同一条时间线，散够就收） */
+    /** 站点涟漪：笔到人到时那一圈扩散（同一条时间线，散够就收）
+     *
+     * 形态对齐行程规划的起终点波纹：**加粗的彩色实环**，远看是一圈亮环，而不是一根细线。
+     * 早先只有 2.2px 的单环，缩到概览比例后几乎看不见（用户反馈「沿革里的涟漪不明显」）。
+     * 现在画两层同心圆一起扩散：内层 3.8px 主环 + 外层 1.4px 光晕，边界更清楚；
+     * 两层各占一条 ripple 记录，随同一条时间线收放（避免依赖 <g> 的 CSS transform-box）。
+     */
     function ripple(st, color) {
         const group = liveGroup();
         if (!group || REDUCE) return;
-        const dot = document.createElementNS(NS, "circle");
-        dot.setAttribute("class", "cgo-oh-pulse");
-        dot.setAttribute("cx", st.x);
-        dot.setAttribute("cy", st.y);
-        dot.setAttribute("r", 5);
-        dot.setAttribute("stroke", color);
-        dot.setAttribute("vector-effect", "non-scaling-stroke");
-        group.appendChild(dot);
-        state.ripples.push({ el: dot, t0: state.frameT, life: state.rippleDur });
+        [[6.5, 3.8, 1], [10, 1.4, 0.6]].forEach(([radius, width, opacity]) => {
+            const ring = document.createElementNS(NS, "circle");
+            ring.setAttribute("class", "cgo-oh-pulse");
+            ring.setAttribute("cx", st.x);
+            ring.setAttribute("cy", st.y);
+            ring.setAttribute("r", String(radius));
+            ring.setAttribute("stroke", color);
+            ring.setAttribute("stroke-width", String(width));
+            ring.setAttribute("stroke-opacity", String(opacity));
+            ring.setAttribute("vector-effect", "non-scaling-stroke");
+            group.appendChild(ring);
+            state.ripples.push({ el: ring, t0: state.frameT, life: state.rippleDur });
+        });
     }
 
     /**

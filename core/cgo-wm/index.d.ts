@@ -48,6 +48,10 @@ export interface CgoWindowConfig {
   dockHeight?: number | 'auto';
   minWidth?: number;
   minHeight?: number;
+  /** 最大宽度（px）；0 或省略 = 不限，只受视口比例上限约束 */
+  maxWidth?: number;
+  /** 最大高度（px）；0 或省略 = 不限，只受视口/工作区上限约束 */
+  maxHeight?: number;
   resizable?: boolean;
   groupable?: boolean;
   rememberPosition?: boolean;
