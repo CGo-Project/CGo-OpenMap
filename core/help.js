@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return `• ${m.role ? m.role + '：' : ''}${link}`;
             }).join('<br>');
         } else {
-            maintainersHtml = `<span style="color: var(--accent-color); font-weight: 500;"><cgo-icon name="sparkle" size="14" style="vertical-align: -2px; margin-right: 2px;"></cgo-icon> 该城市主理人虚位以待，欢迎提交 PR 认领！</span><br><a href="./CONTRIBUTING.md" target="_blank" style="font-size: 11px; text-decoration: underline; color: var(--accent-color);">查看城市主理人计划与贡献指南 &rarr;</a>`;
+            maintainersHtml = `<span style="color: var(--accent-color); font-weight: 500;"><cgo-icon name="sparkle" size="14" style="vertical-align: -2px; margin-right: 2px;"></cgo-icon> 该城市主理人虚位以待，欢迎提交 PR 认领！</span><br><a href="./CONTRIBUTING.md" target="_blank" data-md-title="贡献与主理人指南" style="font-size: 11px; text-decoration: underline; color: var(--accent-color);">查看城市主理人计划与贡献指南 &rarr;</a>`;
         }
 
         const modalContent = `
@@ -82,11 +82,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span>开源说明</span>
                     <span class="btn-arrow"><cgo-icon name="chevron-right" size="12"></cgo-icon></span>
                 </a>
-                <a href="./CONTRIBUTING.md" target="_blank" class="help-link-btn" style="flex: 1; min-width: 95px; margin: 0; padding: 7px 6px;">
+                <a href="./CONTRIBUTING.md" target="_blank" data-md-title="贡献与主理人指南" class="help-link-btn" style="flex: 1; min-width: 95px; margin: 0; padding: 7px 6px;">
                     <span>贡献指南</span>
                     <span class="btn-arrow"><cgo-icon name="chevron-right" size="12"></cgo-icon></span>
                 </a>
-                <a href="./PORTING.md" target="_blank" class="help-link-btn" style="flex: 1; min-width: 95px; margin: 0; padding: 7px 6px;">
+                <a href="./PORTING.md" target="_blank" data-md-title="城市移植手册" class="help-link-btn" style="flex: 1; min-width: 95px; margin: 0; padding: 7px 6px;">
                     <span>移植手册</span>
                     <span class="btn-arrow"><cgo-icon name="chevron-right" size="12"></cgo-icon></span>
                 </a>
@@ -119,7 +119,28 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         `;
 
-        if (window.CGO?.showHelpModal) {
+        if (window.CGoDialogs?.showHelp) {
+            const container = document.createElement('div');
+            container.className = 'help-container';
+            container.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+                    <img src="./assets/icons/mapicon.png" alt="CGo OpenMap" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0;">
+                    <div style="min-width:0;">
+                        <div style="font-size:16px;font-weight:700;color:var(--text-main);">CGo OpenMap</div>
+                        <div style="font-size:12px;color:var(--text-light);">开放地图平台</div>
+                    </div>
+                </div>
+                ${modalContent}
+                <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--divider, #e5e7eb);display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--text-light);">
+                    <img src="./assets/icons/beian.png" alt="备案图标" style="width:14px;height:14px;object-fit:contain;">
+                    <span>Copyright &copy; 2026 Central Go</span>
+                </div>
+            `;
+            window.CGoDialogs.showHelp(container, {
+                title: 'CGo OpenMap · 关于与帮助',
+                width: 560
+            });
+        } else if (window.CGO?.showHelpModal) {
             CGO.showHelpModal({
                 title: 'CGo OpenMap',
                 subtitle: '🍈开放地图平台 - 2026年10月版本🍊',

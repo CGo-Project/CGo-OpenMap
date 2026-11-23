@@ -1897,8 +1897,8 @@ html.nb-fadein #map-content {
 .swal-overlay,
 .swal2-container,
 .custom-modal-overlay,
-div[class*="overlay"],
-div[id*="overlay"] {
+div[class*="overlay"]:not(.cgowm-modal-overlay),
+div[id*="overlay"]:not(.cgowm-modal-overlay) {
     z-index: 99999 !important;
 }
 

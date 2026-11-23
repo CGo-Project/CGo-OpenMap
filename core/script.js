@@ -3,7 +3,7 @@
  */
 
 
-const APP_VERSION = "261123.094234";
+const APP_VERSION = "261123.131500";
 const originalTitle = document.title;
 const originalDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || "CGo OpenMap";
 
@@ -21,6 +21,79 @@ function resolveScheduleHref(entry) {
     return null;
 }
 
+const isCgoWmActive = () => !!window.CGoWMAdapter?.isActive?.();
+const isCgoWmDesktop = () => window.innerWidth > 640 && isCgoWmActive();
+let closingStationFromScript = false;
+let cgoWmPanelsRegistered = false;
+
+function getStationHistoryLimit() {
+    const savedLimit = localStorage.getItem('cgo_openmap_history_limit') || localStorage.getItem('nal_sidebar_history_limit');
+    const parsed = savedLimit ? parseInt(savedLimit, 10) : 5;
+    return Number.isFinite(parsed) && parsed > 0 ? Math.min(9, parsed) : 5;
+}
+
+function formatStationWindowTitle(station) {
+    if (!station) return '车站详情';
+    const cn = typeof plainName === 'function' ? plainName(station.cn || '') : String(station.cn || '').replace(/<[^>]*>/g, '').trim();
+    if (!cn) return '车站详情';
+    if (/^[\x00-\x7F]+$/.test(cn)) return cn;
+    if (cn.endsWith('站')) {
+        const hasDuplicate = Object.values(processedStations || {}).some(other => {
+            if (!other || other.id === station.id) return false;
+            const otherCn = typeof plainName === 'function' ? plainName(other.cn || '') : String(other.cn || '').replace(/<[^>]*>/g, '').trim();
+            return otherCn === cn;
+        });
+        if (hasDuplicate) {
+            const isRail = (station.relatedLines && station.relatedLines.some(lid => lid === 'Rwy' || lid === 'Rwy2' || isSuburbanLine(lid))) || station.type === 'rdot';
+            return isRail ? `${cn} (火车站)` : `${cn} (地铁站)`;
+        }
+        return cn;
+    }
+    return `${cn}站`;
+}
+
+function buildStationWindowMeta(station) {
+    if (!station) return { title: '车站详情', lines: [] };
+    const lines = [];
+    const seen = new Set();
+    const sortedIds = (station.relatedLines || []).slice().sort((a, b) => window.getLineSortIndex(a) - window.getLineSortIndex(b));
+    sortedIds.forEach(lid => {
+        if (seen.has(lid)) return;
+        seen.add(lid);
+        const line = (typeof linesData !== 'undefined' && Array.isArray(linesData))
+            ? linesData.find(l => l.id === lid)
+            : null;
+        if (!line) return;
+        lines.push({
+            id: line.id,
+            name: line.name || line.id,
+            color: line.color || 'var(--primary-color, #00263b)'
+        });
+    });
+    return {
+        id: station.id,
+        title: formatStationWindowTitle(station),
+        lines
+    };
+}
+
+function recordStationHistory(station, options = {}) {
+    if (!station || !station.id) return;
+    const preserveOrder = options.preserveOrder === true;
+    const maxLimit = getStationHistoryLimit();
+    const history = Array.isArray(window.STATION_HISTORY) ? window.STATION_HISTORY : [];
+    if (history.includes(station.id)) {
+        if (preserveOrder) return;
+        window.STATION_HISTORY = history.filter(id => id !== station.id);
+    } else {
+        window.STATION_HISTORY = history.slice();
+    }
+    window.STATION_HISTORY.push(station.id);
+    while (window.STATION_HISTORY.length > maxLimit) {
+        window.STATION_HISTORY.shift();
+    }
+}
+
 /**
  * 重建常驻侧边栏中的历史车站折叠面板列表
  */
@@ -33,6 +106,9 @@ function rebuildSidebarHistory() {
         panel.style.display = 'none';
     }
     container.innerHTML = '';
+    if (isCgoWmActive()) {
+        return;
+    }
     if (!document.body.classList.contains('legend-pinned')) return;
     window.STATION_HISTORY.forEach(sid => {
         const station = processedStations[sid];
@@ -619,7 +695,16 @@ function bindSearchAndLegendEvents() {
             if (item) {
                 const sid = item.dataset.sid;
                 selectStation(sid);
-                if (document.body.classList.contains('legend-pinned')) {
+                if (isCgoWmActive()) {
+                    if (isCgoWmDesktop() && window.CGoWMAdapter.isSidebar('legend')) {
+                        searchInput.value = '';
+                        setListOpen(false);
+                        clearBtn.style.display = 'none';
+                    } else {
+                        window.CGoWMAdapter.close('legend');
+                        if (document.activeElement === searchInput) searchInput.blur();
+                    }
+                } else if (document.body.classList.contains('legend-pinned')) {
                     searchInput.value = '';
                     setListOpen(false);
                     clearBtn.style.display = 'none';
@@ -676,7 +761,13 @@ function bindSearchAndLegendEvents() {
                 } catch (err) {
                     console.error("Legend interaction error", err);
                 } finally {
-                    if (!document.body.classList.contains('legend-pinned')) {
+                    if (isCgoWmActive()) {
+                        if (!isCgoWmDesktop() || !window.CGoWMAdapter.isSidebar('legend')) {
+                            const hadFocus = item.contains(document.activeElement);
+                            window.CGoWMAdapter.close('legend');
+                            if (hadFocus) focusElement(mapContainer);
+                        }
+                    } else if (!document.body.classList.contains('legend-pinned')) {
                         const hadFocus = item.contains(document.activeElement);
                         document.getElementById('legend-overlay').style.display = 'none';
                         // 浮层收起后焦点所在的条目已不可见，交给地图本身（方向键可直接平移）
@@ -726,7 +817,7 @@ function renderPinModeTree() {
     const container = document.getElementById('legend-content');
     if (!container) return;
     const panel = document.getElementById('info-panel');
-    if (panel && panel.parentElement !== document.body) {
+    if (panel && panel.closest('#legend-content')) {
         document.body.appendChild(panel);
         panel.style.display = 'none';
     }
@@ -781,7 +872,11 @@ function renderPinModeTree() {
                 clearHighlights();
                 lastSelectedStationId = null;
                 const infoPanel = document.getElementById('info-panel');
-                if (infoPanel) infoPanel.style.display = 'none';
+                if (isCgoWmDesktop()) {
+                    window.CGoWMAdapter.deactivateStation({ clearFloat: true });
+                } else if (infoPanel) {
+                    infoPanel.style.display = 'none';
+                }
                 const dynamicContainer = document.getElementById('sidebar-dynamic-content');
                 if (dynamicContainer) {
                     const sections = dynamicContainer.querySelectorAll('.station-history-section');
@@ -865,7 +960,7 @@ function renderDefaultLegend() {
     }
 
     const panel = document.getElementById('info-panel');
-    if (panel && panel.parentElement !== document.body) {
+    if (panel && panel.closest('#legend-content')) {
         document.body.appendChild(panel);
         panel.style.display = 'none';
     }
@@ -964,9 +1059,10 @@ function createPanelSection(title, content, isExpanded = true) {
  * 渲染图例面板 (根据是否固定侧边栏自动选择平铺或树状树状结构)
  */
 function renderLegend() {
-    const isPinned = document.body.classList.contains('legend-pinned');
     const isDesktop = window.innerWidth > 640;
-    if (isPinned && isDesktop) {
+    const isWmSidebar = isCgoWmDesktop() && window.CGoWMAdapter.isSidebar('legend');
+    const isPinned = document.body.classList.contains('legend-pinned');
+    if (isDesktop && (isWmSidebar || isPinned)) {
         renderPinModeTree();
     } else {
         renderDefaultLegend();
@@ -1357,9 +1453,12 @@ function focusPanelTitle() {
     const panel = document.getElementById('info-panel');
     if (!panel) return;
     const title = panel.querySelector('.panel-cn-name') || panel.querySelector('.panel-header');
-    if (!title) return;
-    if (!title.hasAttribute('tabindex')) title.setAttribute('tabindex', '-1');
-    focusElement(title);
+    if (title && title.offsetParent !== null && focusElement(title)) return;
+    const fallback = panel.querySelector('.tab-item.active, .tab-item')
+        || panel.closest('.cgowm-window')?.querySelector('.cgowm-btn-minimize, .cgowm-titlebar')
+        || panel;
+    if (fallback && !fallback.hasAttribute('tabindex')) fallback.setAttribute('tabindex', '-1');
+    focusElement(fallback);
 }
 
 function restorePanelFocus() {
@@ -1423,7 +1522,23 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
     const dynamicContainer = document.getElementById('sidebar-dynamic-content');
     const viewportW = mapContainer.clientWidth;
     const viewportH = mapContainer.clientHeight;
-    if (window.innerWidth > 640 && isPinned && dynamicContainer) {
+    if (isCgoWmDesktop()) {
+        document.body.classList.remove('mobile-split-active');
+        recordStationHistory(s, { preserveOrder: true });
+        rebuildSidebarHistory();
+        window.CGoWMAdapter.openStation(s.id, buildStationWindowMeta(s));
+        mapContent.classList.add('animate-zoom');
+        const focus = getViewportCenter();
+        currentX = focus.x - (s.x * currentScale);
+        currentY = focus.y - (s.y * currentScale);
+        const zoomVal = document.getElementById('zoom-val');
+        const mzSlider = document.getElementById('mz-slider');
+        if (mzSlider) mzSlider.value = currentScale;
+        if (zoomVal) zoomVal.innerText = Math.round(currentScale * 100) + '%';
+        enforceBoundaries();
+        updateMapTransform();
+        if (shouldMoveFocus) focusPanelTitle();
+    } else if (window.innerWidth > 640 && isPinned && dynamicContainer) {
         document.body.classList.remove('pinned-hidden');
         const overlay = document.getElementById('legend-overlay');
         if (overlay) overlay.style.display = 'block';
@@ -1439,11 +1554,14 @@ function selectStation(sid, pageX, pageY, initialTabIndex = 0) {
         enforceBoundaries();
         updateMapTransform();
     } else {
-        if (dynamicContainer) {
+        if (isCgoWmActive()) {
+            recordStationHistory(s);
+        } else if (dynamicContainer) {
             dockStationPanel(s);
         }
-        if (panel.parentElement !== document.body) {
-            document.body.appendChild(panel);
+        const fallbackParent = document.body;
+        if (panel && panel.parentElement !== fallbackParent) {
+            fallbackParent.appendChild(panel);
         }
         const isMobile = window.innerWidth <= 640;
         if (isMobile) {
@@ -1488,6 +1606,10 @@ function bindEvents() {
         menuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             hideLineTooltipNow();
+            if (isCgoWmActive()) {
+                window.CGoWMAdapter.toggle('legend');
+                return;
+            }
             const isPinned = document.body.classList.contains('legend-pinned');
             const isHidden = document.body.classList.contains('pinned-hidden');
             if (isPinned) {
@@ -1523,6 +1645,10 @@ function bindEvents() {
         });
     }
     const closeLegend = () => {
+        if (isCgoWmActive()) {
+            window.CGoWMAdapter.close('legend');
+            return;
+        }
         // 焦点在图例面板内时，关闭后归还给检索面板入口按钮
         const focusWasInLegend = Boolean(legendModal && legendModal.contains(document.activeElement));
         resetMapState();
@@ -1541,6 +1667,7 @@ function bindEvents() {
     // Esc 关闭：监听挂在面板自身，只有焦点位于其内时才会触发，不影响地图快捷键
     if (legendModal) {
         legendModal.addEventListener('keydown', (e) => {
+            if (isCgoWmActive()) return;
             if (e.key !== 'Escape' || e.defaultPrevented) return;
             e.stopPropagation();
             closeLegend();
@@ -1551,9 +1678,15 @@ function bindEvents() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const wantLines = link.dataset.skipTarget === 'lines';
-            const legendVisible = legendOverlay && legendOverlay.style.display === 'block'
-                && !document.body.classList.contains('pinned-hidden');
-            if (!legendVisible && menuBtn) menuBtn.click();
+            if (isCgoWmActive()) {
+                if (!window.CGoWMAdapter.isOpen('legend')) {
+                    window.CGoWMAdapter.open('legend');
+                }
+            } else {
+                const legendVisible = legendOverlay && legendOverlay.style.display === 'block'
+                    && !document.body.classList.contains('pinned-hidden');
+                if (!legendVisible && menuBtn) menuBtn.click();
+            }
             // 打开面板的流程会在 100ms 后聚焦搜索框，这里排在其后
             setTimeout(() => {
                 const sectionId = wantLines ? 'section-legend-tree' : 'section-search';
@@ -1667,6 +1800,95 @@ function bindEvents() {
 function initLegendPin() {
     const pinBtn = document.getElementById('legend-pin-btn');
     const overlay = document.getElementById('legend-overlay');
+    if (window.CGoWMAdapter) {
+        window.CGoWMAdapter.init?.();
+        if (isCgoWmActive()) {
+            document.body.classList.remove('legend-pinned');
+            document.body.classList.remove('pinned-hidden');
+            if (overlay) overlay.style.display = 'none';
+            if (!cgoWmPanelsRegistered) {
+                cgoWmPanelsRegistered = true;
+                const legendModalEl = document.querySelector('#legend-overlay .legend-modal');
+                if (legendModalEl) {
+                    window.CGoWMAdapter.registerPanel({
+                        id: 'legend',
+                        title: '搜索与线路',
+                        icon: 'search',
+                        className: 'openmap-legend-window',
+                        content: {
+                            kind: 'factory',
+                            mount: (contentEl) => {
+                                contentEl.appendChild(legendModalEl);
+                            }
+                        },
+                        allowModes: ['float', 'sidebar'],
+                        sidebarSide: 'left',
+                        mobileMode: 'fullscreen',
+                        mobileShowTitleBar: true,
+                        defaultWidth: 320,
+                        defaultHeight: 560,
+                        minWidth: 260,
+                        minHeight: 240,
+                        resizable: true,
+                        autoHeight: false,
+                        showMinimize: false,
+                        open: window.CGoWMAdapter.shouldAutoOpenLegend(),
+                        onOpen: () => {
+                            renderLegend();
+                            const input = document.getElementById('station-search-input');
+                            if (input && window.innerWidth > 640) {
+                                setTimeout(() => {
+                                    try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+                                }, 80);
+                            }
+                        },
+                        onClose: () => {
+                            const menuEl = document.getElementById('mz-menu');
+                            if (legendModalEl.contains(document.activeElement) && menuEl) {
+                                focusElement(menuEl);
+                            }
+                        },
+                        onModeChange: () => {
+                            renderLegend();
+                        }
+                    });
+                }
+
+                const stationPanelEl = document.getElementById('info-panel');
+                if (stationPanelEl && typeof window.CGoWMAdapter.configureStationManager === 'function') {
+                    window.CGoWMAdapter.configureStationManager({
+                        element: stationPanelEl,
+                        mobileHome: document.body,
+                        getHistoryIds: () => (window.STATION_HISTORY || []).filter(sid => processedStations[sid]),
+                        getHistoryLimit: getStationHistoryLimit,
+                        getStationMeta: (sid) => processedStations[sid] ? buildStationWindowMeta(processedStations[sid]) : null,
+                        onSelect: (sid) => {
+                            if (sid && processedStations[sid]) {
+                                selectStation(sid);
+                            }
+                        },
+                        onDeactivate: (opts) => {
+                            resetMapState({ fromCgoWm: true, preserveSidebarStations: true, ...(opts || {}) });
+                        },
+                        onRemoveHistory: (sid) => {
+                            window.STATION_HISTORY = (window.STATION_HISTORY || []).filter(id => id !== sid);
+                        }
+                    });
+                }
+            }
+
+            if (pinBtn && pinBtn.dataset.cgowmBound !== 'true') {
+                pinBtn.dataset.cgowmBound = 'true';
+                pinBtn.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 640) return;
+                    e.stopPropagation();
+                    window.CGoWMAdapter.toggleDock('legend');
+                });
+            }
+            renderLegend();
+            return;
+        }
+    }
     if (!pinBtn || !overlay) return;
 
     const isLegendPinnedInStorage = () => (localStorage.getItem('cgo_openmap_legend_pinned') || localStorage.getItem('nal_legend_pinned')) === 'true';
@@ -2398,7 +2620,7 @@ function renderUserModePanel(station, initialTabIndex = 0) {
                </button>`
         : '';
     infoPanel.innerHTML = `
-        <div class="panel-header">
+        <div class="panel-header" data-cgowm-drag-handle>
             <button class="panel-close-btn" title="关闭面板" aria-label="关闭面板">
                 <cgo-icon name="close" size="24"></cgo-icon>
             </button>
@@ -2586,7 +2808,7 @@ async function renderStationCardsInPanel(panel, targetStation) {
     }, 50);
 }
 
-function resetMapState() {
+function resetMapState(opts = {}) {
     hideLineTooltipNow();
     const infoPanel = document.getElementById('info-panel');
     const dynamicContainer = document.getElementById('sidebar-dynamic-content');
@@ -2597,7 +2819,14 @@ function resetMapState() {
     if (infoPanel) infoPanel._tabSwipeCleanup = null;
     infoPanel?._mobileSheetDragCleanup?.();
     if (infoPanel) infoPanel._mobileSheetDragCleanup = null;
-    if (infoPanel && (window.innerWidth <= 640 || !document.body.classList.contains('legend-pinned'))) {
+    if (isCgoWmDesktop()) {
+        if (!opts?.fromCgoWm) {
+            window.CGoWMAdapter.deactivateStation({ clearFloat: true });
+        }
+        if (infoPanel && !opts?.fromMinimize && !opts?.preserveSidebarStations && !window.CGoWMAdapter.hasStationSidebar?.()) {
+            infoPanel.style.display = 'none';
+        }
+    } else if (infoPanel && (window.innerWidth <= 640 || !document.body.classList.contains('legend-pinned'))) {
         infoPanel.style.display = 'none';
     }
     const selector = document.getElementById('station-selector');
@@ -2609,7 +2838,9 @@ function resetMapState() {
     document.body.classList.remove('mobile-panel-docked-full');
     clearHighlights();
     lastSelectedStationId = null;
-    if (window.innerWidth > 640 && document.body.classList.contains('legend-pinned') && dynamicContainer) {
+    if (isCgoWmDesktop()) {
+        rebuildSidebarHistory();
+    } else if (window.innerWidth > 640 && document.body.classList.contains('legend-pinned') && dynamicContainer) {
         const sections = dynamicContainer.querySelectorAll('.station-history-section');
         sections.forEach(sec => sec.classList.add('collapsed'));
     }
@@ -2738,7 +2969,7 @@ function showToast(message, type = 'success') {
             padding: 8px 16px;
             border-radius: 20px;
             font-size: 13px;
-            z-index: 10000;
+            z-index: 110000;
             transition: opacity 0.3s;
             pointer-events: none;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
@@ -2864,7 +3095,7 @@ function triggerUpdateZoom(newScale) {
 }
 
 function adjustPanelPosition() {
-    if (window.innerWidth <= 640) return;
+    if (window.innerWidth <= 640 || isCgoWmDesktop()) return;
     const infoPanel = document.getElementById('info-panel');
     if (!infoPanel) return;
     const rect = infoPanel.getBoundingClientRect();
@@ -3219,9 +3450,13 @@ function applyTheme(theme) {
  */
 function initContextMenu() {
     window.addEventListener('contextmenu', (e) => {
+        if (e.target.closest('#theme-btn, .theme-btn')) return;
+        if (e.target.closest('.cgowm-window, .cgowm-sidebar, .cgowm-modal-overlay, .cgowm-overlay')
+            && !e.target.closest('[data-ctx-longpress]')) {
+            return;
+        }
         e.preventDefault();
         e.stopPropagation();
-        if (e.target.closest('#theme-btn, .theme-btn')) return false;
         showMenu(e.clientX, e.clientY, e.target);
         return false;
     }, { capture: true });
@@ -3737,6 +3972,7 @@ function initPanelDrag() {
         panel._panelDragCleanup();
         panel._panelDragCleanup = null;
     }
+    if (isCgoWmDesktop()) return;
     const header = panel.querySelector('.panel-header');
     const ghost = document.getElementById('drag-ghost');
     if (!header) return;
@@ -4166,6 +4402,52 @@ init();
         const domNode = activeStationId ? document.getElementById('node_' + activeStationId) : null;
         const isActuallyActive = activeStationId && domNode && domNode.classList.contains('active');
         const activeStation = isActuallyActive && processedStations ? processedStations[activeStationId] : null;
+
+        if (isCgoWmActive()) {
+            const infoPanelEl = document.getElementById('info-panel');
+            document.body.classList.remove('legend-pinned', 'pinned-hidden');
+            document.body.classList.remove('mobile-panel-expanded', 'panel-sheet-collapsed', 'panel-sheet-dragging', 'mobile-panel-docked-full');
+            window.CGoWMAdapter.syncViewport();
+            renderLegend();
+            if (isMobile) {
+                if (activeStation) {
+                    renderUserModePanel(activeStation);
+                    if (infoPanelEl) infoPanelEl.style.display = 'flex';
+                    document.body.classList.add('mobile-split-active');
+                    setTimeout(() => {
+                        const viewportH = window.innerHeight;
+                        const targetVisualY = viewportH * 0.2;
+                        const targetVisualX = window.innerWidth / 2;
+                        if (typeof currentScale !== 'undefined') {
+                            currentX = targetVisualX - (activeStation.x * currentScale);
+                            currentY = targetVisualY - (activeStation.y * currentScale);
+                            if (typeof updateMapTransform === 'function') updateMapTransform();
+                        }
+                    }, 50);
+                } else {
+                    document.body.classList.remove('mobile-split-active');
+                    if (infoPanelEl) infoPanelEl.style.display = 'none';
+                }
+            } else {
+                document.body.classList.remove('mobile-split-active');
+                if (activeStation) {
+                    renderUserModePanel(activeStation);
+                    window.CGoWMAdapter.openStation(activeStation.id, buildStationWindowMeta(activeStation));
+                    const focus = getViewportCenter();
+                    currentX = focus.x - (activeStation.x * currentScale);
+                    currentY = focus.y - (activeStation.y * currentScale);
+                    if (typeof updateMapTransform === 'function') updateMapTransform();
+                } else {
+                    window.CGoWMAdapter.deactivateStation({ clearFloat: true });
+                    window.CGoWMAdapter.syncStationSidebarHistory?.();
+                    if (infoPanelEl && !window.CGoWMAdapter.hasStationSidebar?.()) infoPanelEl.style.display = 'none';
+                }
+            }
+            document.body.style.overflow = '';
+            if (typeof enforceBoundaries === 'function') enforceBoundaries();
+            lastWidth = currentWidth;
+            return;
+        }
 
         const userWantsPin = (localStorage.getItem('cgo_openmap_legend_pinned') || localStorage.getItem('nal_legend_pinned')) === 'true';
         const overlay = document.getElementById('legend-overlay');

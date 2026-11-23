@@ -416,7 +416,7 @@
             // ==================================================================
             infoPanel.style.height = '';
             infoPanel.innerHTML = `
-                <div class="panel-header">
+                <div class="panel-header" data-cgowm-drag-handle>
                     ${headerInnerHtml}
                 </div>
                 <div class="panel-tabs-container">

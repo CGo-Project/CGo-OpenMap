@@ -44,7 +44,7 @@
             #${TOUCH_ID} {
                 position: fixed;
                 inset: 0;
-                z-index: 100500;
+                z-index: 110500;
                 background: rgba(10, 12, 16, 0.94);
                 color: #f5f7fa;
                 display: none;
@@ -181,11 +181,6 @@
 
     function openDesktop(opts) {
         ensureStyles();
-        const modal = ensureDesktopModal();
-        modal.title = opts.title || opts.alt || '图片预览';
-        modal.maxWidth = opts.maxWidth || '880px';
-        modal.innerHTML = '';
-
         const wrap = document.createElement('div');
         wrap.className = 'cgo-iv-desktop-wrap';
 
@@ -206,6 +201,37 @@
             wrap.appendChild(cap);
         }
 
+        if (window.CGoDialogs?.dialog) {
+            const wmInstance = window.CGoDialogs.dialog({
+                panelId: 'image-viewer',
+                title: opts.title || opts.alt || '图片预览',
+                icon: 'image',
+                className: 'openmap-image-dialog',
+                content: wrap,
+                modal: true,
+                width: 900,
+                maxWidth: opts.maxWidth || 'min(920px, 92vw)',
+                resizable: true,
+                closeOnOverlay: true,
+                destroyOnClose: true,
+                onClose: () => {
+                    if (activeState && activeState.mode === 'desktop' && activeState.wmInstance === wmInstance) {
+                        const onClose = activeState.onClose;
+                        activeState = null;
+                        if (typeof onClose === 'function') onClose();
+                    }
+                }
+            });
+            if (wmInstance) {
+                activeState = { mode: 'desktop', wmInstance, onClose: opts.onClose };
+                return;
+            }
+        }
+
+        const modal = ensureDesktopModal();
+        modal.title = opts.title || opts.alt || '图片预览';
+        modal.maxWidth = opts.maxWidth || '880px';
+        modal.innerHTML = '';
         modal.appendChild(wrap);
         activeState = { mode: 'desktop', modal, onClose: opts.onClose };
         if (typeof modal.show === 'function') modal.show();
@@ -456,7 +482,9 @@
         activeState = null;
 
         if (cur.mode === 'desktop') {
-            if (cur.modal) {
+            if (cur.wmInstance) {
+                cur.wmInstance.close();
+            } else if (cur.modal) {
                 if (!immediate && typeof cur.modal._close === 'function' && cur.modal.open) {
                     cur.modal._close();
                 } else {
