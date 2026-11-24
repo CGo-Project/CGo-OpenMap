@@ -221,6 +221,12 @@
 
         const timeZone = cityTimeZone();
         if (!timeZone) {
+            // 有活跃城市上下文却未在 city/data.js 声明 timezone 时按契约告警并判无效；
+            // 独立单测无城市上下文时仍回退本地时区。
+            if (currentCityId()) {
+                warnTimeZone('');
+                return undefined;
+            }
             return new Date(year, month - 1, day, hour, minute, second, 0);
         }
         const formatter = tzFormatter(timeZone);
@@ -315,7 +321,7 @@
                 category: 'app',
                 deadline: 'permanent',
                 summary: "欢迎加入 CGo OpenMap 官方交流群",
-                detail: "官方 QQ 交流群（群号：619357751）现已开放！欢迎轨道交通爱好者、前端开发者及城市主理人加入交流线网规划与城市移植。<br><a href='https://qm.qq.com/q/nHfgBDS68o' target='_blank' style='color:#12b7f5; text-decoration:underline; font-weight:600; display:inline-flex; align-items:center; gap:4px;'><cgo-icon name='arrow-right' size='12'></cgo-icon><span>点击一键加入官方 QQ 群</span></a>"
+                detail: "官方 QQ 交流群（群号：619357751）现已开放！欢迎轨道交通爱好者、前端开发者及城市主理人加入交流线网规划与城市移植。<br><a href='https://qm.qq.com/q/nHfgBDS68o' target='_blank' rel='noopener noreferrer' style='color:#12b7f5; text-decoration:underline; font-weight:600; display:inline-flex; align-items:center; gap:4px;'><cgo-icon name='arrow-right' size='12'></cgo-icon><span>点击一键加入官方 QQ 群</span></a>"
             },
             {
                 id: '20261022_sy_tram5_last',

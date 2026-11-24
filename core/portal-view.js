@@ -33,15 +33,6 @@
         }
     }
 
-    // 全局彻底杜绝浏览器原生 alert 与 confirm，统一使用 CGoUI 标准 Toast
-    window.alert = function (message) {
-        showToast(String(message), 'warning');
-    };
-    window.confirm = function (message) {
-        showToast(String(message), 'info');
-        return true;
-    };
-
     // 运行时状态与缓存
     let userLocation = null;
     let locationLoading = false;
@@ -254,7 +245,7 @@
                             <cgo-icon name="sparkle" size="13"></cgo-icon>
                             <span>城市主理人虚位以待</span>
                         </div>
-                        <a href="${maintainers[0].github || 'https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md'}" target="_blank" class="recruiting-link" onclick="event.stopPropagation()">
+                        <a href="${maintainers[0].github || 'https://github.com/NokiaimuL/CGo-OpenMap/blob/main/CONTRIBUTING.md'}" target="_blank" rel="noopener noreferrer" class="recruiting-link" onclick="event.stopPropagation()">
                             <span>认领该城市</span>
                             <cgo-icon name="arrow-right" size="11"></cgo-icon>
                         </a>
@@ -265,7 +256,7 @@
                     <div class="maintainers-list">
                         ${maintainers.map(m => {
                     const ghBtn = m.github ? `
-                                <a href="${m.github}" target="_blank" class="maintainer-gh" title="${m.name} 的 GitHub" onclick="event.stopPropagation()">
+                                <a href="${m.github}" target="_blank" rel="noopener noreferrer" class="maintainer-gh" title="${m.name} 的 GitHub" onclick="event.stopPropagation()">
                                     <cgo-icon name="code" size="12"></cgo-icon>
                                     <span>GitHub</span>
                                 </a>
@@ -286,7 +277,7 @@
 
             // 官方参考链接
             const officialLinkHtml = city.officialMapUrl ? `
-                <a href="${city.officialMapUrl}" target="_blank" class="city-meta-link" title="官方地铁运营单位线网参考" onclick="event.stopPropagation()">
+                <a href="${city.officialMapUrl}" target="_blank" rel="noopener noreferrer" class="city-meta-link" title="官方地铁运营单位线网参考" onclick="event.stopPropagation()">
                     <cgo-icon name="external" size="12"></cgo-icon>
                     <span>官方参考</span>
                 </a>
@@ -890,7 +881,7 @@
         if (clearAllBtn) {
             clearAllBtn.addEventListener('click', () => {
                 const key = dataTool.RECENT_VIEWS_KEY || 'cgo_openmap_recent_views';
-                try { localStorage.removeItem(key); } catch (e) { }
+                try { localStorage.setItem(key, '[]'); } catch (e) { }
                 renderRecentView();
                 showToast('已清空全部最近浏览记录', 'info');
             });

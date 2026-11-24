@@ -166,7 +166,8 @@
         'wuhu': { lat: 31.3528, lng: 118.4329 },
         'lijiang': { lat: 26.8550, lng: 100.2277 },
         'saigon': { lat: 10.8231, lng: 106.6297 },
-        'chuanxi': { lat: 30.9882, lng: 103.6194 }
+        'chuanxi': { lat: 30.9882, lng: 103.6194 },
+        'xiamen': { lat: 24.4798, lng: 118.0894 }
     };
 
     /**
@@ -229,7 +230,7 @@
             const raw = localStorage.getItem(RECENT_VIEWS_KEY);
             if (raw) {
                 const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                if (Array.isArray(parsed)) return parsed;
             }
         } catch (e) { }
         // 首次访问兜底：若本地有激活城市偏好，则作为初始访问记录收录

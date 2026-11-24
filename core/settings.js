@@ -166,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
         prefWheel.addEventListener('cgo-change', (e) => {
             localStorage.setItem('cgo_openmap_wheel_mode', e.detail.value);
             localStorage.setItem('nal_pref_wheel_mode', e.detail.value);
+            window.dispatchEvent(new CustomEvent('cgo:wheel-mode-change', { detail: e.detail.value }));
         });
     }
 

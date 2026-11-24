@@ -102,6 +102,25 @@ export function createDialogApi(manager) {
     const existing = manager.get(key);
     if (existing && existing.state.lifecycle !== 'destroyed') {
       if (options.title) existing.update({ title: options.title });
+      if (Object.hasOwn(options, 'content') && existing.contentElement) {
+        if (typeof existing.contentCleanup === 'function') {
+          try { existing.contentCleanup(); } catch (_) { }
+          existing.contentCleanup = null;
+        }
+        const doc = manager.documentRef;
+        const c = options.content;
+        if (c && typeof c === 'object' && c.nodeType) {
+          existing.contentElement.replaceChildren(c);
+        } else if (typeof c === 'function') {
+          existing.contentElement.replaceChildren();
+          const cleanup = c(existing.contentElement, existing.publicContext?.());
+          if (typeof cleanup === 'function') existing.contentCleanup = cleanup;
+        } else if (c != null) {
+          const box = doc.createElement('div');
+          box.textContent = String(c);
+          existing.contentElement.replaceChildren(box);
+        }
+      }
       existing.__cgowmDialogOnClose = typeof options.onClose === 'function' ? options.onClose : existing.__cgowmDialogOnClose;
       existing.__cgowmDialogClosedNotified = false;
       existing.open();

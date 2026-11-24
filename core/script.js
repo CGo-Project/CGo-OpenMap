@@ -3,7 +3,7 @@
  */
 
 
-const APP_VERSION = "261123.131500";
+const APP_VERSION = "261124.235734";
 const originalTitle = document.title;
 const originalDesc = document.querySelector('meta[name="description"]')?.getAttribute('content') || "CGo OpenMap";
 
@@ -421,13 +421,13 @@ function handleUrlParams() {
     const search = window.location.search;
     if (!search.startsWith('?=')) return;
 
-    // 格式: ?=属性&lineid&stationid
+    // 格式: ?=属性&lineid&stationid[&city=xxx]
     const params = search.substring(2).split('&');
     if (params.length < 3) return;
 
     const attr = params[0]; // nmlsta
     const lineId = params[1];
-    let stationId = params[2];
+    let stationId = decodeURIComponent(params[2] || '').split('=')[0];
     let tabIndex = 0;
 
     // 解析 tab 后缀 (例如 M123tab2 代表直接打开第2个选项卡)
@@ -2608,140 +2608,7 @@ function renderUserModePanel(station, initialTabIndex = 0) {
         window.StationBoard.render(infoPanel, context);
         return;
     }
-
-    // 兜底：若 StationBoard 引擎未就绪，使用内联基础渲染流程
-    let enNameDisplay = (station.en || '').replace(/<br>/gi, ' ');
-    if (station.cn === '首经贸') enNameDisplay = (station.en || '').replace(/<br>/gi, '<span class="special-br"></span>');
-    const headerLeftHtml = `<div class="header-name-group"><div class="panel-cn-name" role="heading" aria-level="2" tabindex="-1">${station.cn}</div><div class="panel-en-name" lang="en">${enNameDisplay}</div></div>`;
-    infoPanel.style.height = '';
-    const expandBtnHtml = (window.innerWidth <= 640)
-        ? `<button class="panel-expand-btn" title="展开/收起" aria-label="展开或收起面板">
-                 <cgo-icon name="expand-less" size="18"></cgo-icon>
-               </button>`
-        : '';
-    infoPanel.innerHTML = `
-        <div class="panel-header" data-cgowm-drag-handle>
-            <button class="panel-close-btn" title="关闭面板" aria-label="关闭面板">
-                <cgo-icon name="close" size="24"></cgo-icon>
-            </button>
-            ${expandBtnHtml}
-            ${headerLeftHtml}
-            <div class="panel-badges">${badgesHtml}</div>
-        </div>
-        
-        <div class="panel-tabs-container">
-            ${tabsNavHtml}
-            <button class="panel-share-btn" title="分享车站信息" aria-label="分享车站信息">
-                <cgo-icon name="external" size="20"></cgo-icon>
-            </button>
-        </div>
-        
-        <div class="panel-body">
-            ${commonStaCardHtml}
-            ${tabsContentHtml}
-        </div>
-        <div class="panel-footer">${footerContent}</div>
-    `;
-    if (document.body.classList.contains('legend-pinned')) {
-        updateStationSectionTitle(station.cn);
-    }
-    const tabItems = infoPanel.querySelectorAll('.tab-item');
-    const tabPanes = infoPanel.querySelectorAll('.tab-pane');
-    tabItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.stopPropagation();
-            tabItems.forEach(t => t.classList.remove('active'));
-            tabPanes.forEach(p => p.classList.remove('active'));
-            item.classList.add('active');
-            const targetIndex = item.dataset.tabIndex;
-            const targetPane = infoPanel.querySelector(`.tab-pane[data-tab-index="${targetIndex}"]`);
-            if (targetPane) targetPane.classList.add('active');
-
-            const footerScheduleBtn = infoPanel.querySelector('#footer-schedule-btn') || infoPanel._cgoSheetFooter?.querySelector('#footer-schedule-btn');
-            if (footerScheduleBtn) {
-                let targetUrl = null;
-                if (targetIndex !== 'station-info') {
-                    const idx = parseInt(targetIndex, 10);
-                    if (displayLines && displayLines[idx] && displayLines[idx].scheduleUrl) {
-                        targetUrl = displayLines[idx].scheduleUrl;
-                    }
-                }
-                if (!targetUrl) {
-                    targetUrl = displayLines.find(l => l.scheduleUrl)?.scheduleUrl || null;
-                }
-                if (targetUrl) {
-                    footerScheduleBtn.href = targetUrl;
-                    footerScheduleBtn.style.display = 'flex';
-                } else {
-                    footerScheduleBtn.style.display = 'none';
-                }
-            }
-
-            if (typeof adjustPanelPosition === 'function') {
-                setTimeout(adjustPanelPosition, 50);
-            }
-        });
-    });
-    // 选项卡语义与方向键（须在上面的 click 监听之后绑定）
-    window.CGoA11y.enhanceTabs(infoPanel);
-    const shareBtn = infoPanel.querySelector('.panel-share-btn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const activeTab = infoPanel.querySelector('.tab-item.active');
-            let lineId = '';
-            if (activeTab && activeTab.dataset.tabIndex !== 'station-info') {
-                const idx = parseInt(activeTab.dataset.tabIndex);
-                if (displayLines && displayLines[idx]) lineId = displayLines[idx].id;
-            }
-            handleShare(station, lineId);
-        });
-    }
-    updateShareMeta(station);
-    const closeBtn = infoPanel.querySelector('.panel-close-btn');
-    if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); resetMapState(); });
-    const expandBtn = infoPanel.querySelector('.panel-expand-btn');
-    if (expandBtn) {
-        expandBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleMobilePanelSize(station);
-        });
-        if (document.body.classList.contains('mobile-panel-expanded')) {
-            updateExpandIcon(expandBtn, true);
-        }
-    }
-    renderStationCardsInPanel(infoPanel, station);
-    const transferLinks = infoPanel.querySelectorAll('.transfer-link');
-    transferLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const targetSid = link.dataset.jumpSid;
-            if (targetSid && typeof selectStation === 'function') {
-                selectStation(targetSid);
-            }
-        });
-    });
-    injectInlineSvgs(infoPanel);
-    // 移动端：注入抽屉把手并初始化三档拖拽
-    if (window.innerWidth <= 640) {
-        // 把手内容动态注入到 panel-header 顶部
-        const panelHeader = infoPanel.querySelector('.panel-header');
-        if (panelHeader && !panelHeader.querySelector('.sheet-grabber')) {
-            const grabberEl = document.createElement('div');
-            grabberEl.className = 'sheet-grabber';
-            grabberEl.innerHTML = '<span class="sheet-grabber-bar"></span>';
-            panelHeader.insertBefore(grabberEl, panelHeader.firstChild);
-        }
-        initMobileSheetDrag();
-    }
-    initPanelDrag();
-
-    if (initialTabIndex > 0) {
-        const allTabs = infoPanel.querySelectorAll('.tab-item');
-        if (allTabs[initialTabIndex]) {
-            allTabs[initialTabIndex].click();
-        }
-    }
+    console.warn('[CGo-OpenMap] StationBoard 模块未就绪，跳过车站面板渲染');
 }
 function toggleMobilePanelSize(station) {
     // 三档循环：收起 → 半屏 → 全屏 → 半屏
@@ -2918,8 +2785,10 @@ function handleShare(station, lineId = "") {
     }
 
     const baseUrl = window.location.origin + window.location.pathname;
-    const shareUrl = `${baseUrl}?=${attr}&${lineId}&${station.id}${tabSuffix}`;
-    const shareTitle = `${station.cn}运营信息`;
+    const activeCid = window.CityDataManager?.getCurrentCityId?.() || getActiveCity()?.id || '';
+    const citySuffix = activeCid ? `&city=${encodeURIComponent(activeCid)}` : '';
+    const shareUrl = `${baseUrl}?=${attr}&${encodeURIComponent(lineId)}&${encodeURIComponent(station.id)}${tabSuffix}${citySuffix}`;
+    const shareTitle = `${formatStationWindowTitle(station)}运营信息`;
     const shareText = shareUrl;
 
     if (navigator.share) {
@@ -2987,7 +2856,7 @@ function showToast(message, type = 'success') {
 }
 
 function updateShareMeta(station) {
-    const title = station ? `${station.cn}站详细信息` : originalTitle;
+    const title = station ? `${formatStationWindowTitle(station)}详细信息` : originalTitle;
     const desc = station ? "CGo OpenMap" : originalDesc;
     const logo = new URL('./assets/icons/mapicon.png', window.location.href).href;
 
@@ -3167,27 +3036,29 @@ async function initGeoSystem() {
 /**
  * 检索距离用户当前地理位置最近的车站 (Find Nearest Station via Geolocation)
  */
+let isLocatingNearestStation = false;
 function findNearestStation() {
+    if (isLocatingNearestStation) return;
     if (!isGeoLoaded) {
         showToast("地图数据加载中，请稍后再试...", "warning");
         return;
     }
     const btn = document.getElementById('locate-btn');
     const originalIcon = `<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>`;
-    btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;animation:spin 1s linear infinite;"><path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z"/></svg>`;
+    if (btn) btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;animation:spin 1s linear infinite;"><path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z"/></svg>`;
     if (!navigator.geolocation) {
         showToast("您的浏览器不支持定位功能", "warning");
-        btn.innerHTML = originalIcon;
+        if (btn) btn.innerHTML = originalIcon;
         return;
     }
+    isLocatingNearestStation = true;
     const geoOptions = {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0
     };
-    let watchId;
     const successCallback = (position) => {
-        navigator.geolocation.clearWatch(watchId);
+        isLocatingNearestStation = false;
         const wgsLat = position.coords.latitude;
         const wgsLng = position.coords.longitude;
         const [gcjLng, gcjLat] = wgs2gcj(wgsLng, wgsLat);
@@ -3208,7 +3079,7 @@ function findNearestStation() {
                 }
             }
         }
-        btn.innerHTML = originalIcon;
+        if (btn) btn.innerHTML = originalIcon;
         if (nearestSid) {
             let distText = minDist < 1000 ? `${Math.round(minDist)}米` : `${(minDist / 1000).toFixed(1)}公里`;
             showToast(`离您最近的车站是【${nearestName}】(约 ${distText})`, "info");
@@ -3218,8 +3089,8 @@ function findNearestStation() {
         }
     };
     const errorCallback = (error) => {
-        navigator.geolocation.clearWatch(watchId);
-        btn.innerHTML = originalIcon;
+        isLocatingNearestStation = false;
+        if (btn) btn.innerHTML = originalIcon;
         let msg = "定位失败";
         switch (error.code) {
             case 1: msg = "定位权限被拒绝，请在系统设置中允许浏览器使用位置信息。"; break;
@@ -3228,7 +3099,7 @@ function findNearestStation() {
         }
         showToast(msg, "warning");
     };
-    watchId = navigator.geolocation.watchPosition(successCallback, errorCallback, geoOptions);
+    navigator.geolocation.getCurrentPosition(successCallback, errorCallback, geoOptions);
 }
 
 /**
@@ -3511,7 +3382,7 @@ function initContextMenu() {
             if (!station) return;
             htmlContent = generateMergedMenuHtml(station);
         } else {
-            const defScale = 1.1;
+            const defScale = getActiveCity().defaultScale || 1.1;
             htmlContent = `
                 <div class="ctx-header">地图操作</div>
                 <button type="button" class="ctx-menu-btn" onclick="triggerUpdateZoom(${defScale})">
@@ -3608,7 +3479,7 @@ function initContextMenu() {
             // 「有轨」属城市私有知识，core 只负责把事实数据交出去
             const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(name, isRail, { station: navStation }) : `https://uri.amap.com/search?keyword=${encodeURIComponent(name)}`;
             html += `<div class="ctx-divider">导航</div>`;
-            html += `<a href="${mapUrl}" target="_blank" rel="noreferrer" class="ctx-menu-btn"><cgo-icon name="map" size="16"></cgo-icon> 高德导航</a>`;
+            html += `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="ctx-menu-btn"><cgo-icon name="map" size="16"></cgo-icon> 高德导航</a>`;
         }
         return html;
     };
@@ -3625,7 +3496,7 @@ function initContextMenu() {
         }
         html += getStationButtons(station, type);
         const mapUrl = city.getNavigationUrl ? city.getNavigationUrl(station.cn, type === 'rail', { station }) : `https://uri.amap.com/search?keyword=${encodeURIComponent(station.cn)}`;
-        html += `<a href="${mapUrl}" target="_blank" rel="noreferrer" class="ctx-menu-btn"><cgo-icon name="map" size="16"></cgo-icon> 高德导航</a>`;
+        html += `<a href="${mapUrl}" target="_blank" rel="noopener noreferrer" class="ctx-menu-btn"><cgo-icon name="map" size="16"></cgo-icon> 高德导航</a>`;
         return html;
     };
     const getStationButtons = (station, type, groupArray = []) => {
@@ -3646,11 +3517,11 @@ function initContextMenu() {
             if (hasSuburban) {
                 const suburbanLinks = (typeof city.getSuburbanLinks === 'function') ? city.getSuburbanLinks() : null;
                 if (suburbanLinks) {
-                    if (suburbanLinks.timetableUrl) btns += `<a href="${suburbanLinks.timetableUrl}" target="_blank" rel="noreferrer" class="ctx-menu-btn"><cgo-icon name="calendar" size="16"></cgo-icon> 市郊时刻表</a>`;
-                    if (suburbanLinks.ticketUrl) btns += `<a href="${suburbanLinks.ticketUrl}" target="_blank" rel="noreferrer" class="ctx-menu-btn"><cgo-icon name="ticket" size="16"></cgo-icon> 市郊票务</a>`;
+                    if (suburbanLinks.timetableUrl) btns += `<a href="${suburbanLinks.timetableUrl}" target="_blank" rel="noopener noreferrer" class="ctx-menu-btn"><cgo-icon name="calendar" size="16"></cgo-icon> 市郊时刻表</a>`;
+                    if (suburbanLinks.ticketUrl) btns += `<a href="${suburbanLinks.ticketUrl}" target="_blank" rel="noopener noreferrer" class="ctx-menu-btn"><cgo-icon name="ticket" size="16"></cgo-icon> 市郊票务</a>`;
                 }
             }
-            btns += `<a href="${url12306}" target="_blank" rel="noreferrer" class="ctx-menu-btn ctx-btn-primary"><cgo-icon name="search" size="16"></cgo-icon> 12306查询</a>`;
+            btns += `<a href="${url12306}" target="_blank" rel="noopener noreferrer" class="ctx-menu-btn ctx-btn-primary"><cgo-icon name="search" size="16"></cgo-icon> 12306查询</a>`;
         } else {
             let staScheduleUrl = null;
             if (station.relatedLines && typeof GLOBAL_SCHEDULE_DATA !== 'undefined' && GLOBAL_SCHEDULE_DATA) {
@@ -3662,10 +3533,10 @@ function initContextMenu() {
                 }
             }
             if (staScheduleUrl) {
-                btns += `<a href="${staScheduleUrl}" target="_blank" rel="noreferrer" class="ctx-menu-btn ctx-btn-primary"><cgo-icon name="time" size="16"></cgo-icon> 官网查询</a>`;
+                btns += `<a href="${staScheduleUrl}" target="_blank" rel="noopener noreferrer" class="ctx-menu-btn ctx-btn-primary"><cgo-icon name="time" size="16"></cgo-icon> 官网查询</a>`;
             }
             if (station.relatedLines && station.relatedLines.includes('Rwy2')) {
-                btns += `<a href="${url12306}" target="_blank" rel="noreferrer" class="ctx-menu-btn"><cgo-icon name="search" size="16"></cgo-icon> 12306查询</a>`;
+                btns += `<a href="${url12306}" target="_blank" rel="noopener noreferrer" class="ctx-menu-btn"><cgo-icon name="search" size="16"></cgo-icon> 12306查询</a>`;
             }
         }
         return btns;
@@ -3701,16 +3572,19 @@ function initContextMenu() {
     }, { passive: true });
 }
 
-// 缓存内嵌的 SVG 文本内容
+// 缓存内嵌的 SVG 文本内容与标准化颜色
 const INLINE_SVG_CACHE = new Map();
+const NORMALIZED_COLOR_CACHE = new Map();
 
 function getNormalizedColor(colorStr) {
     if (!colorStr || colorStr === 'none' || colorStr === 'transparent') return '';
+    if (NORMALIZED_COLOR_CACHE.has(colorStr)) return NORMALIZED_COLOR_CACHE.get(colorStr);
     const div = document.createElement('div');
     div.style.color = colorStr;
     document.body.appendChild(div);
     const rgb = window.getComputedStyle(div).color;
     document.body.removeChild(div);
+    NORMALIZED_COLOR_CACHE.set(colorStr, rgb);
     return rgb;
 }
 
@@ -3798,7 +3672,22 @@ const TARGET_GREY_RGB = getNormalizedColor('#78848b');
  * @param {HTMLElement} container - 待处理的父容器 DOM 元素
  */
 async function injectInlineSvgs(container) {
-    const placeholders = container.querySelectorAll('.svg-icon-placeholder');
+    const placeholders = Array.from(container.querySelectorAll('.svg-icon-placeholder'));
+    const missingUrls = new Set();
+    for (const el of placeholders) {
+        const src = el.dataset.src;
+        if (src && !INLINE_SVG_CACHE.has(src)) missingUrls.add(src);
+    }
+    if (missingUrls.size > 0) {
+        await Promise.all(Array.from(missingUrls).map(async (src) => {
+            try {
+                const resp = await fetch(src);
+                if (resp.ok) {
+                    INLINE_SVG_CACHE.set(src, await resp.text());
+                }
+            } catch (e) { console.warn('Icon load failed:', src); }
+        }));
+    }
     for (const el of placeholders) {
         const src = el.dataset.src;
         if (!src) continue;
@@ -3813,16 +3702,7 @@ async function injectInlineSvgs(container) {
             if (lineMeta.color) el.style.setProperty('--data3', lineMeta.color);
         }
 
-        let svgContent = INLINE_SVG_CACHE.get(src);
-        if (!svgContent) {
-            try {
-                const resp = await fetch(src);
-                if (resp.ok) {
-                    svgContent = await resp.text();
-                    INLINE_SVG_CACHE.set(src, svgContent);
-                }
-            } catch (e) { console.warn('Icon load failed:', src); }
-        }
+        const svgContent = INLINE_SVG_CACHE.get(src);
         if (svgContent) {
             el.innerHTML = svgContent;
             el.classList.remove('svg-icon-placeholder');
@@ -4198,6 +4078,22 @@ function initInputControls() {
         if (typeof enforceBoundaries === 'function') enforceBoundaries();
         if (typeof updateMapTransform === 'function') updateMapTransform();
     };
+    let cachedWheelMode = null;
+    const readWheelMode = () => {
+        try {
+            return localStorage.getItem('cgo_openmap_wheel_mode') || localStorage.getItem('nal_pref_wheel_mode') || 'smart';
+        } catch (_) {
+            return 'smart';
+        }
+    };
+    window.addEventListener('storage', (ev) => {
+        if (!ev.key || ev.key === 'cgo_openmap_wheel_mode' || ev.key === 'nal_pref_wheel_mode') {
+            cachedWheelMode = readWheelMode();
+        }
+    });
+    window.addEventListener('cgo:wheel-mode-change', (ev) => {
+        cachedWheelMode = (ev && ev.detail) || readWheelMode();
+    });
     slider.addEventListener('wheel', (e) => {
         e.preventDefault();
         if (e.ctrlKey) {
@@ -4205,7 +4101,7 @@ function initInputControls() {
             zoomToPoint(currentScale + zoomStep, e.clientX, e.clientY);
             return;
         }
-        const wheelMode = localStorage.getItem('cgo_openmap_wheel_mode') || localStorage.getItem('nal_pref_wheel_mode') || 'smart';
+        const wheelMode = cachedWheelMode || (cachedWheelMode = readWheelMode());
         const doPan = () => {
             panMap(-e.deltaX * 1.5, -e.deltaY * 1.5);
         };

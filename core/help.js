@@ -43,11 +43,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (validMaintainers.length > 0) {
             maintainersHtml = validMaintainers.map(m => {
-                const link = m.github ? `<a href="${m.github}" target="_blank" style="color: var(--accent-color); text-decoration: none;">${m.name}</a>` : m.name;
+                const link = m.github ? `<a href="${m.github}" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color, #007aff); text-decoration: none;">${m.name}</a>` : m.name;
                 return `• ${m.role ? m.role + '：' : ''}${link}`;
             }).join('<br>');
         } else {
-            maintainersHtml = `<span style="color: var(--accent-color); font-weight: 500;"><cgo-icon name="sparkle" size="14" style="vertical-align: -2px; margin-right: 2px;"></cgo-icon> 该城市主理人虚位以待，欢迎提交 PR 认领！</span><br><a href="./CONTRIBUTING.md" target="_blank" data-md-title="贡献与主理人指南" style="font-size: 11px; text-decoration: underline; color: var(--accent-color);">查看城市主理人计划与贡献指南 &rarr;</a>`;
+            maintainersHtml = `<span style="color: var(--primary-color, #007aff); font-weight: 500;"><cgo-icon name="sparkle" size="14" style="vertical-align: -2px; margin-right: 2px;"></cgo-icon> 该城市主理人虚位以待，欢迎提交 PR 认领！</span><br><a href="./CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" data-md-title="贡献与主理人指南" style="font-size: 11px; text-decoration: underline; color: var(--primary-color, #007aff);">查看城市主理人计划与贡献指南 &rarr;</a>`;
         }
 
         const modalContent = `

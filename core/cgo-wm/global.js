@@ -1,7 +1,12 @@
-import { registerBuiltinAddons } from './builtin-addons.js';
 import { CGOWM_VERSION } from './constants.js';
 import { resolveCgoWmFlag, runWithCgoWmFallback } from './flags.js';
-import { getDefaultManager } from './index.js';
+import { CgoWindowManager } from './manager.js';
+
+const defaultManagers = new WeakMap();
+function getDefaultManager(windowRef) {
+  if (!defaultManagers.has(windowRef)) defaultManagers.set(windowRef, new CgoWindowManager({ window: windowRef }));
+  return defaultManagers.get(windowRef);
+}
 
 export function installGlobalCgoWm(windowRef = globalThis.window) {
   if (!windowRef) return null;
@@ -56,7 +61,10 @@ export function installGlobalCgoWm(windowRef = globalThis.window) {
     },
     registerAddon: (manifest) => manager.addons.registerAddon(manifest),
     registerAddons: (list) => manager.addons.registerAddons(list),
-    registerBuiltinAddons: (options) => registerBuiltinAddons(manager, options),
+    registerBuiltinAddons: async (options) => {
+      const mod = await import('./builtin-addons.js');
+      return mod.registerBuiltinAddons(manager, options);
+    },
     openAddonManager: (options) => requireApi().openAddonManager(options),
     registerCapability: (name, handler) => manager.addons.registerCapability(name, handler),
     invokeCapability: (name, payload) => manager.addons.invokeCapability(name, payload),

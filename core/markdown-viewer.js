@@ -93,10 +93,11 @@
             var m;
             while ((m = attrRe.exec(attrsRaw)) !== null) {
                 var name = m[1].toLowerCase();
-                if (name.indexOf('on') === 0 || name === 'style' && /expression|javascript:|url\(/i.test(m[2] || m[3] || '')) {
+                var styleVal = (m[2] != null ? m[2] : (m[3] != null ? m[3] : (m[4] != null ? m[4] : '')));
+                if (name.indexOf('on') === 0 || name === 'style' && /expression|javascript:|url\(/i.test(styleVal)) {
                     continue;
                 }
-                var val = m[2] != null ? m[2] : (m[3] != null ? m[3] : (m[4] || ''));
+                var val = styleVal;
                 if (name === 'href' || name === 'src') {
                     var resolved = resolveUrl(val, baseUrl);
                     if (!isSafeUrl(resolved)) continue;
@@ -423,6 +424,7 @@
 
     async function loadAndRender(state, targetUrl, opts) {
         opts = opts || {};
+        var reqSeq = (state.reqSeq = (state.reqSeq || 0) + 1);
         var fullUrl = resolveUrl(targetUrl);
         var parts = fullUrl.split('#');
         var docUrl = parts[0];
@@ -451,6 +453,7 @@
                 mdText = await resp.text();
                 docCache.set(docUrl, mdText);
             }
+            if (reqSeq !== state.reqSeq) return;
 
             var rendered = renderMarkdown(mdText, { baseUrl: docUrl });
             state.bodyEl.innerHTML = rendered.html || '<div class="cgo-md-state">文档内容为空</div>';
