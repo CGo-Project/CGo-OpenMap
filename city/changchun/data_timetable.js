@@ -9,6 +9,7 @@
  * （1/2/3/4/5/6/7/8 号线；5 号线按 2026-09-28 开通版时间表整线录入）。
  * 录入约定：每个方向的行一律按 data_lines.js 的 stationIds 顺序排列 —— 官网图里
  * 站序与该顺序相反的方向，在录入时已整体倒序，避免运行时再判断方向。
+ * 例外：3 号线已拆除的历史演示站辽宁路（0323）不占行，见 CC_TIMETABLE_SKIPPED_STATIONS。
  */
 
 const CHANGCHUN_OFFICIAL_MAP_URL = "http://www.ccqg.com/metro-map/metromap_new/ccSubwayMap1.html";
@@ -40,9 +41,20 @@ const ccParseRow = (value) => {
 };
 
 const CHANGCHUN_TIMETABLE_DATA = {};
+
+/**
+ * 不参与时刻表对齐的「历史演示站」。
+ *
+ * 3 号线一期地面老站「辽宁路」（0323）已于 2021-03-08 随东延入地拆除、并入芙蓉桥，
+ * 官方时刻表按 34 站（伪满皇宫→长影世纪城）编排，不含该站；但底图为了沿革演示
+ * 仍把它留在 data_lines 的站序里。若不在对齐时剔除，从辽宁路起整列时刻会向后错位
+ * 一站，且长影世纪城（0355）会被挤出表外。
+ */
+const CC_TIMETABLE_SKIPPED_STATIONS = new Set(["0323"]);
+
 const ccLine = (lineId, firstDestination, firstRows, lastDestination, lastRows) => {
     const line = (typeof linesData !== "undefined" ? linesData : []).find((item) => item?.id === lineId);
-    const stationIds = line?.stationIds || [];
+    const stationIds = (line?.stationIds || []).filter((id) => !CC_TIMETABLE_SKIPPED_STATIONS.has(id));
     const result = {};
     const append = (rows, destination) => {
         (rows || []).forEach((value, index) => {
@@ -90,6 +102,8 @@ ccLine("CCM02", "line-last", [
 ]);
 
 // 3 号线：上行为长影世纪城→伪满皇宫，下行为伪满皇宫→长影世纪城；stationIds 与下行同序。
+// 官方表按 34 站（长影世纪城…伪满皇宫）编排，不含 2021-03-08 拆除的辽宁路（0323），
+// 故两个方向各 34 行；剔除该站后 row[0] 对应伪满皇宫、row[33] 对应长影世纪城。
 ccLine("CCM03", "line-first", [
     "5:59/5:55,23:37,23:07", "5:57/5:55,23:35,23:05", "5:55,23:33,23:03", "5:58/5:55,23:30,23:00",
     "5:56/5:55,23:27,22:57", "5:55,23:26,22:56", "5:55/6:00,23:24,22:54", "5:55,23:22,22:52",

@@ -287,7 +287,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261123.170415";
+        const version = "261124.160620";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./core/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
