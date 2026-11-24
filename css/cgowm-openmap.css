@@ -77,6 +77,7 @@ body.cgowm-active #legend-overlay {
 }
 
 /* Toast 通知层高于 CGoWM 模态对话框（zBase.dialog: 100500） */
+cgo-notice-popup,
 cgo-toast-container {
     z-index: 110000 !important;
 }

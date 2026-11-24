@@ -68,7 +68,7 @@ html[data-bg-mode="solid"] body {
    ══════════════════════════════════════════════════════ */
 html.has-custom-bg body,
 body.has-custom-bg {
-    --lg-wallpaper: url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=2560&q=80");
+    --lg-wallpaper: none;
     background-image:
         linear-gradient(rgba(248, 249, 250, 0.2), rgba(248, 249, 250, 0.2)),
         var(--cgo-wallpaper, var(--lg-wallpaper)) !important;
@@ -401,6 +401,7 @@ body[data-header-mode="floating"]:not(.office-app-shell):has(.tool-header:not([h
    ② 下方 16px 渐变淡出到透明，内容自然消融到信号栏后方
    var(--bg-color) 自动跟随深色模式，无需额外 dark 选择器 */
 .mobile-status-bar-fill {
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
@@ -419,8 +420,13 @@ body[data-header-mode="floating"]:not(.office-app-shell):has(.tool-header:not([h
         var(--theme-bg, var(--bg-color, #f8f9fa)) env(safe-area-inset-top, 0px),
         transparent calc(env(safe-area-inset-top, 0px) + 16px)
     );
-    z-index: 50001;
+    z-index: 49999;
     pointer-events: none;
+}
+@media (max-width: 640px) {
+    .mobile-status-bar-fill {
+        display: block;
+    }
 }
 
 :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .header-island,
@@ -2002,11 +2008,13 @@ body.map-page {
         background: rgba(255, 255, 255, 0.12) !important;
     }
 
-    /* 按钮在小屏仅显示图标（排除通知红点等角标节点） */
-    .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge) {
+    /* 顶栏按钮在小屏仅显示图标（排除通知红点等角标节点） */
+    .tool-header .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge),
+    .header-island .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge) {
         display: none;
     }
-    .btn {
+    .tool-header .btn,
+    .header-island .btn {
         padding: 6px;
     }
     .header-right > span,

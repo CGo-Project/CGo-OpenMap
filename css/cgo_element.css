@@ -1091,12 +1091,12 @@ body[data-glass-mode='none'] .btn {
         0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
-.form-control::placeholder {
+.floating-label .form-control::placeholder {
     color: transparent;
     transition: color var(--transition-fast);
 }
 
-.form-control:focus::placeholder {
+.floating-label .form-control:focus::placeholder {
     color: var(--text-light) !important;
 }
 
@@ -1363,7 +1363,7 @@ body[data-glass-mode='none'] .btn {
 /* 激活选中态：液态流光实心胶囊（兼容所有线路背景赋色） */
 .filter-tag.active {
     font-weight: 600;
-    color: #ffffff !important;
+    color: #ffffff;
     background: var(--primary-color, #00263b);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset,
                 0 4px 14px rgba(0, 38, 59, 0.28);
@@ -3142,12 +3142,40 @@ body[data-glass-mode='flat'] .glass-surface,
 body[glass-mode='flat'] .tool-item,
 body[data-glass-mode='flat'] .tool-item,
 .tool-item[glass-mode='flat'],
-.tool-item[data-glass-mode='flat'] {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
+.tool-item[data-glass-mode='flat'],
+:root[glass-mode='none'] .glass-card,
+:root[data-glass-mode='none'] .glass-card,
+body[glass-mode='none'] .glass-card,
+body[data-glass-mode='none'] .glass-card,
+.glass-card[glass-mode='none'],
+.glass-card[data-glass-mode='none'],
+:root[glass-mode='none'] .glass-panel,
+:root[data-glass-mode='none'] .glass-panel,
+body[glass-mode='none'] .glass-panel,
+body[data-glass-mode='none'] .glass-panel,
+.glass-panel[glass-mode='none'],
+.glass-panel[data-glass-mode='none'],
+:root[glass-mode='none'] .glass-surface,
+:root[data-glass-mode='none'] .glass-surface,
+body[glass-mode='none'] .glass-surface,
+body[data-glass-mode='none'] .glass-surface,
+.glass-surface[glass-mode='none'],
+.glass-surface[data-glass-mode='none'],
+:root[glass-mode='none'] .tool-card,
+:root[data-glass-mode='none'] .tool-card,
+body[glass-mode='none'] .tool-card,
+body[data-glass-mode='none'] .tool-card,
+.tool-card[glass-mode='none'],
+.tool-card[data-glass-mode='none'],
+body[glass-mode='none'] .tool-item,
+body[data-glass-mode='none'] .tool-item,
+.tool-item[glass-mode='none'],
+.tool-item[data-glass-mode='none'] {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border-color) !important;
     box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.06));
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
 }
 :root[glass-mode='flat'] .tool-card::before,
 :root[data-glass-mode='flat'] .tool-card::before,
@@ -3196,8 +3224,68 @@ body[data-glass-mode='flat'] .tool-item,
 :root[glass-mode='flat'] .tool-item .liquid-glass-effect,
 :root[data-glass-mode='flat'] .tool-item .liquid-glass-effect,
 :root[glass-mode='flat'] .tool-item .glass-refraction,
-:root[data-glass-mode='flat'] .tool-item .glass-refraction {
+:root[data-glass-mode='flat'] .tool-item .glass-refraction,
+:root[glass-mode='none'] .tool-card::before,
+:root[data-glass-mode='none'] .tool-card::before,
+.tool-card[glass-mode='none']::before,
+:root[glass-mode='none'] .tool-card::after,
+:root[data-glass-mode='none'] .tool-card::after,
+.tool-card[glass-mode='none']::after,
+:root[glass-mode='none'] .tool-card .liquid-glass-effect,
+:root[data-glass-mode='none'] .tool-card .liquid-glass-effect,
+:root[glass-mode='none'] .glass-card::before,
+:root[data-glass-mode='none'] .glass-card::before,
+.glass-card[glass-mode='none']::before,
+:root[glass-mode='none'] .glass-card::after,
+:root[data-glass-mode='none'] .glass-card::after,
+.glass-card[glass-mode='none']::after,
+:root[glass-mode='none'] .glass-card .liquid-glass-effect,
+:root[data-glass-mode='none'] .glass-card .liquid-glass-effect,
+:root[glass-mode='none'] .glass-card .glass-refraction,
+:root[data-glass-mode='none'] .glass-card .glass-refraction,
+:root[glass-mode='none'] .glass-panel::before,
+:root[data-glass-mode='none'] .glass-panel::before,
+.glass-panel[glass-mode='none']::before,
+:root[glass-mode='none'] .glass-panel::after,
+:root[data-glass-mode='none'] .glass-panel::after,
+.glass-panel[glass-mode='none']::after,
+:root[glass-mode='none'] .glass-panel .liquid-glass-effect,
+:root[data-glass-mode='none'] .glass-panel .liquid-glass-effect,
+:root[glass-mode='none'] .glass-panel .glass-refraction,
+:root[data-glass-mode='none'] .glass-panel .glass-refraction,
+:root[glass-mode='none'] .glass-surface::before,
+:root[data-glass-mode='none'] .glass-surface::before,
+.glass-surface[glass-mode='none']::before,
+:root[glass-mode='none'] .glass-surface::after,
+:root[data-glass-mode='none'] .glass-surface::after,
+.glass-surface[glass-mode='none']::after,
+:root[glass-mode='none'] .glass-surface .liquid-glass-effect,
+:root[data-glass-mode='none'] .glass-surface .liquid-glass-effect,
+:root[glass-mode='none'] .glass-surface .glass-refraction,
+:root[data-glass-mode='none'] .glass-surface .glass-refraction,
+:root[glass-mode='none'] .tool-item::before,
+:root[data-glass-mode='none'] .tool-item::before,
+.tool-item[glass-mode='none']::before,
+:root[glass-mode='none'] .tool-item::after,
+:root[data-glass-mode='none'] .tool-item::after,
+.tool-item[glass-mode='none']::after,
+:root[glass-mode='none'] .tool-item .liquid-glass-effect,
+:root[data-glass-mode='none'] .tool-item .liquid-glass-effect,
+:root[glass-mode='none'] .tool-item .glass-refraction,
+:root[data-glass-mode='none'] .tool-item .glass-refraction {
     display: none;
+}
+
+@media (prefers-reduced-motion: reduce), (max-width: 640px) {
+    :root {
+        --glass-refraction-filter: none;
+    }
+    .liquid-glass-effect,
+    .glass-refraction {
+        filter: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
 }
 
 /* 视口外非首屏卡片渲染性能优化 */

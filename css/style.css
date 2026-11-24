@@ -212,7 +212,7 @@ html.nb-fadein #map-content {
 .line-visual-overlay {
     fill: none;
     pointer-events: none;
-    transition: all 0.2s;
+    transition: opacity 0.2s ease;
 }
 
 .line-visual-outer,
@@ -220,7 +220,7 @@ html.nb-fadein #map-content {
     fill: none;
     stroke-linecap: round;
     stroke-linejoin: round;
-    transition: all 0.2s;
+    transition: opacity 0.2s ease;
     pointer-events: none;
 }
 
@@ -587,6 +587,8 @@ html.nb-fadein #map-content {
    ========================================= 
 */
 #info-panel {
+    display: none;
+    flex-direction: column;
     width: 360px;
     padding: 0;
     background: var(--card-bg) !important;
@@ -600,7 +602,10 @@ html.nb-fadein #map-content {
     font-weight: 400;
     overscroll-behavior: contain;
     touch-action: pan-y;
-    display: none;
+    max-height: 80vh;
+    transition: min-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        border-radius 0.3s;
 }
 
 #info-panel.panel-adjust-anim {
@@ -785,7 +790,7 @@ html.nb-fadein #map-content {
     word-break: break-word;
 }
 
-[data-theme="dark"].line-badge {
+[data-theme="dark"] .line-badge {
     background-color: transparent;
     padding: 0;
 }
@@ -1599,28 +1604,7 @@ html.nb-fadein #map-content {
    ========================================= 
 */
 
-#info-panel {
-    display: flex;
-    flex-direction: column;
-    width: 360px;
-    padding: 0;
-    /* 移除内边距，统一管理 */
-    background: var(--card-bg) !important;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-    /* 任何模式下都隐藏溢出 */
-    position: fixed;
-    z-index: 2000;
-    top: 0;
-    left: 0;
-    font-weight: 400;
-    /* 确保悬浮模式也有最大高度，防止撑出屏幕 */
-    max-height: 80vh;
-    transition: min-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-        max-height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-        border-radius 0.3s;
-}
+/* 详情面板 Flex 布局已合并至 §8 */
 
 /* 当 info-panel 被放入侧边栏 (Pinned Mode) 时的特定样式 - 仅限桌面端 */
 @media (min-width: 641px) {
@@ -1888,25 +1872,21 @@ html.nb-fadein #map-content {
     animation: settingsPopIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* 全局对话框与遮罩层级保障：设置面板、关于面板、帮助对话框必须高于顶栏与浮动菜单栏 */
+/* 全局对话框与遮罩层级保障：设置面板、关于面板、帮助对话框必须高于顶栏与浮动菜单栏，且低于 <cgo-modal> (99990) */
 #settings-overlay,
 #help-overlay,
 .help-overlay,
 .modal-overlay,
 .dialog-overlay,
-.swal-overlay,
-.swal2-container,
-.custom-modal-overlay,
-div[class*="overlay"]:not(.cgowm-modal-overlay),
-div[id*="overlay"]:not(.cgowm-modal-overlay) {
-    z-index: 99999 !important;
+.custom-modal-overlay {
+    z-index: 99980;
 }
 
 .settings-modal,
 .text-dialog,
 .help-dialog,
 .modal-dialog {
-    z-index: 100000 !important;
+    z-index: 99985;
 }
 
 @keyframes settingsPopIn {
@@ -2227,11 +2207,9 @@ input,
 button,
 select,
 textarea {
-    font-family: inherit !important;
-    font-weight: inherit !important;
-    -webkit-user-select: auto !important;
-    user-select: auto !important;
-    pointer-events: auto !important;
+    font-family: inherit;
+    -webkit-user-select: auto;
+    user-select: auto;
 }
 
 /* 
@@ -2840,7 +2818,6 @@ textarea {
         top: 50% !important;
         transform: translate(-50%, -50%) !important;
         transform-origin: center center !important;
-        animation: mobileExpand 0.2s ease-out;
         padding-bottom: 15px;
         max-height: 80dvh !important;
         display: flex;
@@ -3069,7 +3046,7 @@ cgo-icon:not(:defined) {
         right: 0;
         bottom: 0;
         z-index: 2001;
-        background: var(--theme-bg);
+        background: var(--card-bg, #ffffff);
     }
 
     .cgo-mobile-sheet-dock[hidden] {

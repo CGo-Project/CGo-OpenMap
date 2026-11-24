@@ -472,8 +472,10 @@ body[data-glass-mode='none'],
     --glass-refraction-filter: none;
     --glass-backdrop-blur: none;
     --glass-backdrop-blur-surface: none;
+    --glass-backdrop-blur-panel: none;
     --glass-backdrop-filter: none;
     --glass-backdrop-filter-surface: none;
+    --glass-backdrop-filter-panel: none;
     --glass-bg: var(--card-bg, #ffffff);
     --glass-bg-hover: var(--card-bg, #ffffff);
     --glass-bg-card: var(--card-bg, #ffffff);
