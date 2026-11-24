@@ -384,16 +384,22 @@ window.DeepSeekVision = (function () {
             activeAbortController = null;
         } else {
             // 【通道 B】：真正的 SSE 流式响应 (精准支持 reasoning_content 思考流与 content 正文流)
+            if (!response.body || typeof response.body.getReader !== 'function') {
+                clearInterval(timerInterval);
+                activeAbortController = null;
+                throw new Error('SSE 响应体不可读');
+            }
             const reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let streamBuffer = '';
             let hasLoggedReasoning = false;
             let hasLoggedGenerating = false;
+            let streamDone = false;
 
             try {
                 while (true) {
                     const { done, value } = await reader.read();
-                    if (done) break;
+                    if (done) { streamDone = true; break; }
 
                     const chunkText = decoder.decode(value, { stream: true });
                     streamBuffer += chunkText;
@@ -470,6 +476,9 @@ window.DeepSeekVision = (function () {
             } finally {
                 clearInterval(timerInterval);
                 activeAbortController = null;
+                if (!streamDone && reader && typeof reader.cancel === 'function') {
+                    try { await reader.cancel(); } catch (_) {}
+                }
             }
         }
 
@@ -683,7 +692,15 @@ window.DeepSeekVision = (function () {
             if (res.ok) {
                 const data = await res.json();
                 if (statusMsg) {
-                    statusMsg.innerHTML = `<span style="color: #3fb950; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;"><cgo-icon name="check-circle" size="14"></cgo-icon> 连接成功！DeepSeek 接口响应正常 (${model})</span>`;
+                    const okSpan = document.createElement('span');
+                    okSpan.style.cssText = 'color:#3fb950;font-weight:bold;display:inline-flex;align-items:center;gap:4px;';
+                    const icon = document.createElement('cgo-icon');
+                    icon.setAttribute('name', 'check-circle');
+                    icon.setAttribute('size', '14');
+                    const msgSpan = document.createElement('span');
+                    msgSpan.textContent = `连接成功！DeepSeek 接口响应正常 (${model})`;
+                    okSpan.append(icon, msgSpan);
+                    statusMsg.replaceChildren(okSpan);
                 }
                 // 自动保存
                 setApiKey(key);
@@ -701,7 +718,12 @@ window.DeepSeekVision = (function () {
                     span.style.display = 'inline-flex';
                     span.style.alignItems = 'center';
                     span.style.gap = '4px';
-                    span.innerHTML = `<cgo-icon name="close" size="14"></cgo-icon> <span>连接失败 [HTTP ${res.status}]: ${err}</span>`;
+                    const icon = document.createElement('cgo-icon');
+                    icon.setAttribute('name', 'close');
+                    icon.setAttribute('size', '14');
+                    const txt = document.createElement('span');
+                    txt.textContent = `连接失败 [HTTP ${res.status}]: ${err}`;
+                    span.append(icon, txt);
                     statusMsg.replaceChildren(span);
                 }
             }
@@ -712,7 +734,12 @@ window.DeepSeekVision = (function () {
                 span.style.display = 'inline-flex';
                 span.style.alignItems = 'center';
                 span.style.gap = '4px';
-                span.innerHTML = `<cgo-icon name="close" size="14"></cgo-icon> <span>网络连接异常: ${e.message}</span>`;
+                const icon = document.createElement('cgo-icon');
+                icon.setAttribute('name', 'close');
+                icon.setAttribute('size', '14');
+                const txt = document.createElement('span');
+                txt.textContent = `网络连接异常: ${e.message}`;
+                span.append(icon, txt);
                 statusMsg.replaceChildren(span);
             }
         }

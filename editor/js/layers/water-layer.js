@@ -109,17 +109,23 @@ window.OpenMapEditor.WaterLayer = (function () {
         });
         if (!wList.length) return '';
 
+        var safeColor = function (c, fb) {
+            var s = String(c || '').trim();
+            return /^(?:#[0-9a-fA-F]{3,8}|rgba?\(\s*[\d.\s,%]+\))$/.test(s) ? s : fb;
+        };
         var st = style || { fillLight: '#a5d7e8', fillDark: '#13354d', opacity: 0.6 };
+        var fillLight = safeColor(st.fillLight, '#a5d7e8');
+        var fillDark = safeColor(st.fillDark, '#13354d');
         var svgParts = [
             '<?xml version="1.0" encoding="UTF-8"?>',
-            '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height +
-            '" viewBox="0 0 ' + width + ' ' + height + '">',
+            '<svg xmlns="http://www.w3.org/2000/svg" width="' + round2(width) + '" height="' + round2(height) +
+            '" viewBox="0 0 ' + round2(width) + ' ' + round2(height) + '">',
             '  <style>',
-            '    .sea { fill: ' + st.fillLight + '; }',
-            '    .sea-line { fill: none; stroke: ' + st.fillLight + '; stroke-linecap: round; stroke-linejoin: round; }',
+            '    .sea { fill: ' + fillLight + '; }',
+            '    .sea-line { fill: none; stroke: ' + fillLight + '; stroke-linecap: round; stroke-linejoin: round; }',
             '    @media (prefers-color-scheme: dark) {',
-            '      .sea { fill: ' + st.fillDark + '; }',
-            '      .sea-line { stroke: ' + st.fillDark + '; }',
+            '      .sea { fill: ' + fillDark + '; }',
+            '      .sea-line { stroke: ' + fillDark + '; }',
             '    }',
             '  </style>'
         ];

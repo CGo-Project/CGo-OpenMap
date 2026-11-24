@@ -58,11 +58,16 @@ window.OpenMapEditor.WaterExporter = (function () {
         var pts = (water && water.points) || [];
         var st = waterStyle || {};
         var style = water.style || {};
-        var fillLight = style.fillLight || st.fillLight || '#a5d7e8';
-        var fillDark = style.fillDark || st.fillDark || '#13354d';
-        var opacity = (water.opacity != null) ? Number(water.opacity)
+        var safeCssColor = function (c, fb) {
+            var s = String(c || '').trim();
+            return /^(?:#[0-9a-fA-F]{3,8}|rgba?\(\s*[\d.\s,%]+\))$/.test(s) ? s : fb;
+        };
+        var fillLight = safeCssColor(style.fillLight || st.fillLight, '#a5d7e8');
+        var fillDark = safeCssColor(style.fillDark || st.fillDark, '#13354d');
+        var rawOp = (water.opacity != null) ? Number(water.opacity)
             : (style.opacity != null ? Number(style.opacity)
                 : (st.opacity != null ? Number(st.opacity) : 0.6));
+        var opacity = isFinite(rawOp) ? Math.max(0, Math.min(1, rawOp)) : 0.6;
 
         var d = pts.map(function (p, i) {
             return (i === 0 ? 'M' : 'L') + r2((Number(p.x) || 0) - bounds.minX) + ' ' + r2((Number(p.y) || 0) - bounds.minY);

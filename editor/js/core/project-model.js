@@ -189,7 +189,7 @@ window.OpenMapEditor.ProjectModel = (function () {
         p.lines = Array.isArray(p.lines) ? p.lines : [];
         p.waters = Array.isArray(p.waters) ? p.waters : [];
         p.texts = Array.isArray(p.texts) ? p.texts : [];
-        p.virtualTransfers = Array.isArray(p.virtualTransfers) ? p.virtualTransfers : [];
+        p.virtualTransfers = (p.virtualTransfers && typeof p.virtualTransfers === 'object') ? p.virtualTransfers : [];
         p.virtualConnectors = Array.isArray(p.virtualConnectors) ? p.virtualConnectors : [];
         p.notOpenLines = Array.isArray(p.notOpenLines) ? p.notOpenLines : [];
         p.scattered = Array.isArray(p.scattered) ? p.scattered : [];

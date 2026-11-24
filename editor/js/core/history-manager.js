@@ -240,6 +240,11 @@ window.OpenMapEditor.HistoryManager = (function () {
      * @param {Function} fn 执行逻辑
      */
     function runInTransaction(project, label, fn) {
+        if (typeof label === 'function' && fn === undefined) {
+            fn = label;
+            label = typeof project === 'string' ? project : '';
+        }
+        if (typeof fn !== 'function') return undefined;
         beginTransaction(project, label);
         try {
             var res = fn();
@@ -492,6 +497,7 @@ window.OpenMapEditor.HistoryManager = (function () {
         markSaved: markSaved,
         onChange: onChange,
         getDirtyCount: function () { return dirtyCounter; },
+        isDirty: function () { return dirtyCounter > 0; },
         getHistoryList: getHistoryList,
         jumpToStep: jumpToStep
     };

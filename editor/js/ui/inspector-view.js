@@ -76,6 +76,7 @@ window.OpenMapEditor.InspectorView = (function () {
     function escAttr(v) {
         return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
+    var escapeHtml = escAttr;
 
     /** 站序分组 → 界面文案：统一叫「交路N」（way1…way99），不再叫「支线 / 主线」 */
     function groupWayLabel(group) {
@@ -674,7 +675,8 @@ window.OpenMapEditor.InspectorView = (function () {
      * 渲染线段属性检视
      */
     function renderSegmentInspector(segment, project, opts) {
-        if (!dom.body) return;
+        if (!dom.body || !segment) return;
+        closeTypeMenu();
 
         var opt = opts || {};
         var selPtIdx = (opt.selectedPointIdx !== undefined && opt.selectedPointIdx !== null) ? Number(opt.selectedPointIdx) : -1;
@@ -872,6 +874,7 @@ window.OpenMapEditor.InspectorView = (function () {
      */
     function renderScatteredInspector(item, idx, project) {
         if (!dom.body) return;
+        closeTypeMenu();
         var resolve = (window.OpenMapEditor.ScatteredLayer && window.OpenMapEditor.ScatteredLayer.resolveSvgPath) || function (f) { return f; };
         var pickable = window.OpenMapEditor.ScatteredLayer && window.OpenMapEditor.ScatteredLayer.isPickable
             ? window.OpenMapEditor.ScatteredLayer.isPickable(item) : true;
@@ -963,6 +966,7 @@ window.OpenMapEditor.InspectorView = (function () {
 
     function renderGenericInspector(title, iconName, fields, actions, extraHtml) {
         if (!dom.body) return;
+        closeTypeMenu();
         var html = '<div class="inspector-section">' +
             '<div class="inspector-section-title" style="display:flex;align-items:center;gap:6px;">' +
             '<cgo-icon name="' + (iconName || 'info') + '" size="14"></cgo-icon>' +
@@ -1011,11 +1015,12 @@ window.OpenMapEditor.InspectorView = (function () {
      */
     function renderEmpty(ctx) {
         if (!dom.body) return;
+        closeTypeMenu();
         var hint = '<div>点击画布或左侧大纲中的车站、折线、要素进行属性检视与微调</div>';
         var activeLine = ctx && ctx.activeLine;
         if (activeLine) {
-            var color = activeLine.color || '#0284c7';
-            var name = activeLine.name || activeLine.id;
+            var color = escAttr(activeLine.color || '#0284c7');
+            var name = escAttr(activeLine.name || activeLine.id);
             hint = '<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:6px;">' +
                 '<span style="width:10px;height:10px;border-radius:50%;display:inline-block;background:' + color + ';"></span>' +
                 '<span style="font-size:11px;color:var(--text-main);">当前绘制线路：' + name + '</span>' +
@@ -1035,6 +1040,7 @@ window.OpenMapEditor.InspectorView = (function () {
      */
     function renderLineInspector(line, project) {
         if (!dom.body || !line) return;
+        closeTypeMenu();
 
         // 分支安全统计（不能直接读 line.stationIds.length，分支线会 undefined）
         var stationCount = 0, poiCount = 0;
@@ -1050,7 +1056,7 @@ window.OpenMapEditor.InspectorView = (function () {
             }
         }
         var segCount = (project && project.segments ? project.segments.filter(function (s) { return s.lineId === line.id; }) : []).length;
-        var color = line.color || '#0284c7';
+        var color = escAttr(line.color || '#0284c7');
 
         var html = '<div class="inspector-section">' +
             '<div class="inspector-section-title">' +
@@ -1058,17 +1064,17 @@ window.OpenMapEditor.InspectorView = (function () {
             '<span style="width:10px;height:10px;border-radius:50%;background:' + color +
             ';box-shadow:0 0 0 1px var(--office-border,#cbd5e1);"></span>' +
             '<span>线路属性</span></span>' +
-            '<span class="cgo-badge">' + line.id + '</span>' +
+            '<span class="cgo-badge">' + escAttr(line.id) + '</span>' +
             '</div>' +
 
             '<div class="form-row">' +
             '<span class="form-label">线路 ID:</span>' +
-            '<span style="font-size:11px;font-family:monospace;color:var(--text-light);flex:1;">' + line.id + '</span>' +
+            '<span style="font-size:11px;font-family:monospace;color:var(--text-light);flex:1;">' + escAttr(line.id) + '</span>' +
             '</div>' +
 
             '<div class="form-row">' +
             '<span class="form-label">线路名称:</span>' +
-            '<input type="text" class="form-input" id="propLineName" value="' + (line.name || '') + '" style="flex:1;">' +
+            '<input type="text" class="form-input" id="propLineName" value="' + escAttr(line.name || '') + '" style="flex:1;">' +
             '</div>' +
 
             '<div class="form-row">' +
@@ -1079,12 +1085,12 @@ window.OpenMapEditor.InspectorView = (function () {
 
             '<div class="form-row">' +
             '<span class="form-label">运营公司:</span>' +
-            '<input type="text" class="form-input" id="propLineCompany" value="' + (line.company || '') + '" style="flex:1;" placeholder="（可留空）">' +
+            '<input type="text" class="form-input" id="propLineCompany" value="' + escAttr(line.company || '') + '" style="flex:1;" placeholder="（可留空）">' +
             '</div>' +
 
             '<div class="form-row">' +
             '<span class="form-label">线宽:</span>' +
-            '<input type="number" class="form-input" id="propLineStrokeWidth" value="' + ((line.strokeWidth !== undefined && line.strokeWidth !== null) ? line.strokeWidth : 5.4) + '" step="0.5" min="1" max="24" style="flex:0 0 54px;width:54px;">' +
+            '<input type="number" class="form-input" id="propLineStrokeWidth" value="' + escAttr((line.strokeWidth !== undefined && line.strokeWidth !== null) ? line.strokeWidth : 5.4) + '" step="0.5" min="1" max="24" style="flex:0 0 54px;width:54px;">' +
             '<span style="font-size:11px;color:var(--text-light);margin-right:auto;">px</span>' +
             '<div style="display:flex;gap:4px;">' +
             '<button type="button" class="btn-line-sw-preset" data-sw="3.5" style="padding:2px 6px;font-size:10px;border-radius:4px;border:1px solid var(--office-border);background:var(--card-bg);cursor:pointer;" title="细线 (有轨电车/单轨)">细 3.5</button>' +
@@ -1120,7 +1126,7 @@ window.OpenMapEditor.InspectorView = (function () {
 
             '<div class="form-row">' +
             '<span class="form-label">虚线分段:</span>' +
-            '<input type="text" class="form-input" id="propLineDash" value="' + (line.strokeDasharray || '') + '" placeholder="如 10,6 或留空为实线" style="flex:1;font-family:monospace;">' +
+            '<input type="text" class="form-input" id="propLineDash" value="' + escAttr(line.strokeDasharray || '') + '" placeholder="如 10,6 或留空为实线" style="flex:1;font-family:monospace;">' +
             '</div>' +
 
             '<div id="lineSwatchesContainer"></div>' +
@@ -1289,18 +1295,19 @@ window.OpenMapEditor.InspectorView = (function () {
      */
     function renderTextInspector(textItem, project) {
         if (!dom.body || !textItem) return;
+        closeTypeMenu();
 
         var html = '<div class="inspector-section">' +
             '<div class="inspector-section-title">' +
             '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="vi-text" size="14"></cgo-icon> 注释文本属性</span>' +
-            '<cgo-badge variant="info">' + textItem.id + '</cgo-badge>' +
+            '<cgo-badge variant="info">' + escAttr(textItem.id) + '</cgo-badge>' +
             '</div>';
 
         // 文本内容
         html += '<div class="form-row" style="flex-direction:column;align-items:stretch;gap:4px;">' +
             '<span class="form-label" style="min-width:auto;">文本内容 (支持换行):</span>' +
             '<textarea class="form-textarea" id="propTextContent" style="height:64px;resize:vertical;font-family:inherit;">' +
-            (textItem.text || '') + '</textarea>' +
+            escAttr(textItem.text || '') + '</textarea>' +
             '</div>';
 
         // 字号大小 (带预设药丸)
@@ -1350,7 +1357,7 @@ window.OpenMapEditor.InspectorView = (function () {
             '</div>';
 
         // 字体颜色
-        var curColor = textItem.color || '';
+        var curColor = escAttr(textItem.color || '');
         html += '<div class="form-row">' +
             '<span class="form-label">字体颜色:</span>' +
             '<input type="color" class="form-input" id="propTextColorPicker" value="' + (curColor || '#1e293b') + '" style="flex:0 0 36px;width:36px;padding:2px;">' +
@@ -1490,6 +1497,7 @@ window.OpenMapEditor.InspectorView = (function () {
      */
     function renderWaterInspector(waterItem, project) {
         if (!dom.body || !waterItem) return;
+        closeTypeMenu();
 
         var isPath = (waterItem.type === 'path' || waterItem.type === 'river');
         var pts = waterItem.points || [];
@@ -1497,7 +1505,7 @@ window.OpenMapEditor.InspectorView = (function () {
         var html = '<div class="inspector-section">' +
             '<div class="inspector-section-title">' +
             '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="map" size="14"></cgo-icon> ' + (isPath ? '河道线要素' : '水域多边形') + '</span>' +
-            '<cgo-badge variant="info">' + waterItem.id + '</cgo-badge>' +
+            '<cgo-badge variant="info">' + escAttr(waterItem.id) + '</cgo-badge>' +
             '</div>';
 
         html += '<div class="form-row">' +
@@ -1535,7 +1543,7 @@ window.OpenMapEditor.InspectorView = (function () {
                 '<span class="form-label">运算目标:</span>' +
                 '<select class="form-select" id="propWaterBoolTarget" style="flex:1;">';
             otherWaters.forEach(function (ow) {
-                html += '<option value="' + ow.id + '">' + ow.id + ' (' + (ow.points ? ow.points.length : 0) + ' 顶点)</option>';
+                html += '<option value="' + escAttr(ow.id) + '">' + escAttr(ow.id) + ' (' + (ow.points ? ow.points.length : 0) + ' 顶点)</option>';
             });
             html += '</select></div>' +
                 '<div style="display:flex;gap:4px;margin-top:6px;">' +

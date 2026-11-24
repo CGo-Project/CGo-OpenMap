@@ -261,11 +261,10 @@ window.CityKnowledgeMatcher = (function () {
 
             for (const cat of possibleCategories) {
                 const catUrl = `https://zh.wikipedia.org/w/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(cat)}&cmlimit=500&format=json&origin=*`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4500);
                 try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 4500);
                     const res = await fetch(catUrl, { signal: controller.signal });
-                    clearTimeout(timeoutId);
 
                     if (res.ok) {
                         const json = await res.json();
@@ -275,7 +274,10 @@ window.CityKnowledgeMatcher = (function () {
                             break;
                         }
                     }
-                } catch (_) {}
+                } catch (_) {
+                } finally {
+                    clearTimeout(timeoutId);
+                }
             }
 
             // 3. 解析分类树或主词条中的线路与车站
@@ -303,11 +305,10 @@ window.CityKnowledgeMatcher = (function () {
                     }
 
                     const subUrl = `https://zh.wikipedia.org/w/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(sc.title)}&cmlimit=500&format=json&origin=*`;
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000);
                     try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 4000);
                         const subRes = await fetch(subUrl, { signal: controller.signal });
-                        clearTimeout(timeoutId);
 
                         if (subRes.ok) {
                             const subJson = await subRes.json();
@@ -340,7 +341,10 @@ window.CityKnowledgeMatcher = (function () {
                                 };
                             }
                         }
-                    } catch (_) {}
+                    } catch (_) {
+                    } finally {
+                        clearTimeout(timeoutId);
+                    }
                     return null;
                 });
 
@@ -362,12 +366,11 @@ window.CityKnowledgeMatcher = (function () {
 
                 const mainArticles = [`${standardName}地铁`, `${standardName}轨道交通`];
                 for (const art of mainArticles) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000);
                     try {
                         const artUrl = `https://zh.wikipedia.org/w/api.php?action=parse&format=json&origin=*&prop=text&page=${encodeURIComponent(art)}`;
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 4000);
                         const artRes = await fetch(artUrl, { signal: controller.signal });
-                        clearTimeout(timeoutId);
 
                         if (artRes.ok) {
                             const artJson = await artRes.json();
@@ -377,7 +380,10 @@ window.CityKnowledgeMatcher = (function () {
                                 if (Object.keys(stationsByName).length >= 20) break;
                             }
                         }
-                    } catch (_) {}
+                    } catch (_) {
+                    } finally {
+                        clearTimeout(timeoutId);
+                    }
                 }
             }
 

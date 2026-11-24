@@ -44,14 +44,21 @@ window.OpenMapEditor.GhostTransformer = (function () {
         return { x: state.x + state.w / 2, y: state.y + state.h / 2 };
     }
 
+    var ownedBlobUrl = null;
+
     /**
      * 载入底图图片文件或 URL
      */
     function loadImage(fileOrUrl, onLoaded) {
-        var url = typeof fileOrUrl === 'string' ? fileOrUrl : URL.createObjectURL(fileOrUrl);
-        var name = typeof fileOrUrl === 'object' && fileOrUrl.name ? fileOrUrl.name : '参考底图';
+        var isFile = (typeof fileOrUrl !== 'string' && fileOrUrl);
+        var url = isFile ? URL.createObjectURL(fileOrUrl) : fileOrUrl;
+        var name = typeof fileOrUrl === 'object' && fileOrUrl && fileOrUrl.name ? fileOrUrl.name : '参考底图';
         var img = new Image();
         img.onload = function () {
+            if (ownedBlobUrl && ownedBlobUrl !== url) {
+                try { URL.revokeObjectURL(ownedBlobUrl); } catch (_) {}
+            }
+            ownedBlobUrl = isFile ? url : null;
             state.src = url;
             state.img = img;
             state.name = name;
@@ -59,6 +66,11 @@ window.OpenMapEditor.GhostTransformer = (function () {
             state.h = img.naturalHeight || img.height || 600;
             state.visible = true;
             if (typeof onLoaded === 'function') onLoaded(state);
+        };
+        img.onerror = function () {
+            if (isFile && url) {
+                try { URL.revokeObjectURL(url); } catch (_) {}
+            }
         };
         img.src = url;
     }

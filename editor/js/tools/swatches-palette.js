@@ -37,6 +37,11 @@ window.OpenMapEditor.SwatchesPalette = (function () {
         try { localStorage.setItem(RECENT_KEY, JSON.stringify(list)); } catch (e) {}
     }
 
+    function sanitizeHex(hex) {
+        var s = String(hex || '').trim().toUpperCase();
+        return /^#[0-9A-F]{3,8}$/.test(s) ? s : null;
+    }
+
     /**
      * 自动从当前工程中提取所有使用中的主题色彩
      * @param {Object} project 
@@ -45,14 +50,20 @@ window.OpenMapEditor.SwatchesPalette = (function () {
     function extractProjectSwatches(project) {
         if (!project) return [];
         var colorSet = {};
+        var add = function (c) {
+            var h = sanitizeHex(c);
+            if (h) colorSet[h] = true;
+        };
         (project.lines || []).forEach(function (l) {
-            if (l.color) colorSet[l.color.toUpperCase()] = true;
+            if (l && l.color) add(l.color);
         });
         (project.texts || []).forEach(function (t) {
-            if (t.color) colorSet[t.color.toUpperCase()] = true;
+            if (t && t.color) add(t.color);
         });
-        if (project.waterStyle && project.waterStyle.fill) {
-            colorSet[project.waterStyle.fill.toUpperCase()] = true;
+        if (project.waterStyle) {
+            add(project.waterStyle.fillLight);
+            add(project.waterStyle.fillDark);
+            add(project.waterStyle.fill);
         }
         return Object.keys(colorSet);
     }
@@ -66,7 +77,6 @@ window.OpenMapEditor.SwatchesPalette = (function () {
     function renderSwatches(container, project, onSelectColor) {
         if (!container) return;
         var projColors = extractProjectSwatches(project);
-        var recents = getRecentSwatches();
 
         var html = '<div class="swatches-widget-box">' +
             '<div class="swatches-label">当前工程色板</div>' +

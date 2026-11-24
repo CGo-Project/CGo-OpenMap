@@ -275,7 +275,7 @@ window.OpenMapEditor.VectorRouteLayer = (function () {
                         var l1 = Math.hypot(v1x, v1y) || 1;
                         var l2 = Math.hypot(v2x, v2y) || 1;
                         var bx = (v1x / l1 + v2x / l2);
-                        var by = (v1y / l2 + v2y / l2);
+                        var by = (v1y / l1 + v2y / l2);
                         var blen = Math.hypot(bx, by);
                         if (blen > 0.01) {
                             var curR = (p.r !== undefined && p.r !== null) ? p.r : 18;

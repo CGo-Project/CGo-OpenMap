@@ -18,12 +18,14 @@ window.OpenMapEditor.ContextMenu = (function () {
 
     var el = null;
     var cleanup = [];
+    var showToken = 0;
 
     function esc(v) {
         return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     function hide() {
+        showToken++;
         if (el) { el.remove(); el = null; }
         cleanup.forEach(function (fn) { fn(); });
         cleanup = [];
@@ -74,7 +76,9 @@ window.OpenMapEditor.ContextMenu = (function () {
             if (e.key === 'ArrowDown') { e.preventDefault(); (buttons[idx + 1] || buttons[0]).focus(); }
             else if (e.key === 'ArrowUp') { e.preventDefault(); (buttons[idx - 1] || buttons[buttons.length - 1]).focus(); }
         });
+        var token = ++showToken;
         setTimeout(function () {
+            if (token !== showToken || !el) return;
             on(document, 'mousedown', function (e) { if (el && !el.contains(e.target)) hide(); }, true);
             on(document, 'keydown', function (e) { if (e.key === 'Escape') hide(); }, true);
             on(window, 'blur', hide);

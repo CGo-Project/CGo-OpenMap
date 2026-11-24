@@ -106,17 +106,19 @@ window.OpenMapEditor.TextScatteredLayer = (function () {
         ];
 
         tList.forEach(function (t) {
+            var anchor = (t.anchor === 'middle' || t.anchor === 'end') ? t.anchor : 'start';
             var attr = [
                 'x="' + round2(t.x) + '"',
                 'y="' + round2(t.y) + '"',
                 'font-size="' + round2(t.size || 14) + '"',
-                'text-anchor="' + (t.anchor || 'start') + '"'
+                'text-anchor="' + anchor + '"'
             ];
             if (t.bold) attr.push('font-weight="700"');
             if (t.rotate) attr.push('transform="rotate(' + round2(t.rotate) + ' ' + round2(t.x) + ' ' + round2(t.y) + ')"');
-            var followsTheme = !/^#[0-9a-fA-F]{6}$/.test(String(t.color || ''));
-            if (followsTheme) attr.push('class="txt"');
-            else attr.push('fill="' + t.color + '"');
+            var rawClr = String(t.color || '').trim();
+            var isHex = /^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$/.test(rawClr);
+            if (!isHex) attr.push('class="txt"');
+            else attr.push('fill="' + rawClr + '"');
 
             var lines = String(t.text).split('\n');
             var lineHeight = (t.size || 14) * 1.25;

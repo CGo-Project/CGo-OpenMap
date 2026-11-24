@@ -8,54 +8,57 @@ window.OpenMapEditor = window.OpenMapEditor || {};
 window.OpenMapEditor.PipelineIngest = (function () {
     'use strict';
 
-    /**
-     * 运行 PDF / AI 矢量直通解析流水线
-     * @param {File} file PDF 或 AI 文件
-     * @param {Function} onProgress 进度回调 (msg, pct)
-     * @returns {Promise<Object>} 转换后的 Project 数据对象
-     */
-    async function runPdfIngest(file, onProgress) {
-        var extractor = window.OpenMapEditor.PdfVectorExtractor || window.PdfVectorExtractor;
-        if (!extractor) throw new Error('PdfVectorExtractor 未加载');
+    function toSanitizerStations(stations) {
+        if (Array.isArray(stations)) return stations;
+        if (!stations || typeof stations !== 'object') return [];
+        return Object.keys(stations).map(function (id) {
+            var st = stations[id] || {};
+            return Object.assign({}, st, { id: id, name: st.cn || st.name || id });
+        });
+    }
 
-        if (onProgress) onProgress('正在解析 PDF/AI 矢量对象...', 20);
-        var result = await extractor.extractPdfData(file);
+    function populateIngestedProject(project, cleanResult) {
+        var nameToId = {};
+        var rawStations = (cleanResult && cleanResult.stations) || [];
+        var entries = Array.isArray(rawStations)
+            ? rawStations.map(function (st) {
+                var id = (st && st.id) || window.OpenMapEditor.ProjectModel.nextId(project, 'station_');
+                return { id: id, st: st || {} };
+            })
+            : Object.keys(rawStations).map(function (id) {
+                return { id: id, st: rawStations[id] || {} };
+            });
 
-        if (onProgress) onProgress('正在进行拓扑净化与噪点过滤...', 60);
-        var sanitizer = window.OpenMapEditor.DataSanitizer || window.DrunkSanitizer;
-        var cleanResult = sanitizer ? sanitizer.sanitize({
-            stations: result.stations || {},
-            lines: result.lines || [],
-            width: result.width,
-            height: result.height
-        }) : { stations: result.stations, lines: result.lines };
-
-        if (onProgress) onProgress('正在生成 OpenMap 标准工程模型...', 90);
-        var project = window.OpenMapEditor.ProjectModel.createProject(result.width, result.height);
-
-        // 写入站点
-        var stationObj = cleanResult.stations || {};
-        Object.keys(stationObj).forEach(function (id) {
-            var st = stationObj[id];
+        entries.forEach(function (entry) {
+            var id = entry.id;
+            var st = entry.st;
+            var cn = st.cn || st.name || '';
             project.nodes[id] = {
                 id: id,
                 x: st.x,
                 y: st.y,
-                cn: st.cn || '',
+                cn: cn,
                 en: st.en || '',
                 type: st.type || 'dot',
                 align: st.align || 'top',
                 offset: st.offset || { x: 0, y: 0 }
             };
+            if (cn && !nameToId[cn]) nameToId[cn] = id;
         });
 
-        // 写入线路与线段
-        (cleanResult.lines || []).forEach(function (line, lineIdx) {
+        ((cleanResult && cleanResult.lines) || []).forEach(function (line, lineIdx) {
             var lid = line.id || ('L' + (lineIdx + 1));
+            var stationIds = Array.isArray(line.stationIds) ? line.stationIds.slice() : [];
+            if (!stationIds.length && Array.isArray(line.stations)) {
+                stationIds = line.stations.map(function (nameOrId) {
+                    return project.nodes[nameOrId] ? nameOrId : (nameToId[nameOrId] || null);
+                }).filter(Boolean);
+            }
             project.lines.push({
                 id: lid,
                 name: line.name || ('线路 ' + (lineIdx + 1)),
-                color: line.color || '#00263b'
+                color: line.color || '#00263b',
+                stationIds: stationIds
             });
 
             var segs = [];
@@ -95,7 +98,33 @@ window.OpenMapEditor.PipelineIngest = (function () {
                 });
             });
         });
+    }
 
+    /**
+     * 运行 PDF / AI 矢量直通解析流水线
+     * @param {File} file PDF 或 AI 文件
+     * @param {Function} onProgress 进度回调 (msg, pct)
+     * @returns {Promise<Object>} 转换后的 Project 数据对象
+     */
+    async function runPdfIngest(file, onProgress) {
+        var extractor = window.OpenMapEditor.PdfVectorExtractor || window.PdfVectorExtractor;
+        if (!extractor) throw new Error('PdfVectorExtractor 未加载');
+
+        if (onProgress) onProgress('正在解析 PDF/AI 矢量对象...', 20);
+        var result = await extractor.extractPdfData(file);
+
+        if (onProgress) onProgress('正在进行拓扑净化与噪点过滤...', 60);
+        var sanitizer = window.OpenMapEditor.DataSanitizer || window.DrunkSanitizer;
+        var cleanResult = sanitizer ? sanitizer.sanitize({
+            stations: toSanitizerStations(result.stations),
+            lines: result.lines || [],
+            width: result.width,
+            height: result.height
+        }) : { stations: result.stations, lines: result.lines };
+
+        if (onProgress) onProgress('正在生成 OpenMap 标准工程模型...', 90);
+        var project = window.OpenMapEditor.ProjectModel.createProject(result.width, result.height);
+        populateIngestedProject(project, cleanResult);
         return project;
     }
 
@@ -114,37 +143,14 @@ window.OpenMapEditor.PipelineIngest = (function () {
         if (onProgress) onProgress('模型解析完成，正在净化拓扑...', 70);
         var sanitizer = window.OpenMapEditor.DataSanitizer || window.DrunkSanitizer;
         var cleanResult = sanitizer ? sanitizer.sanitize({
-            stations: res.stations || {},
+            stations: toSanitizerStations(res.stations),
             lines: res.lines || [],
             width: res.width || 2000,
             height: res.height || 1500
         }) : res;
 
         var project = window.OpenMapEditor.ProjectModel.createProject(res.width || 2000, res.height || 1500);
-
-        Object.keys(cleanResult.stations || {}).forEach(function (id) {
-            var st = cleanResult.stations[id];
-            project.nodes[id] = {
-                id: id,
-                x: st.x,
-                y: st.y,
-                cn: st.cn || '',
-                en: st.en || '',
-                type: st.type || 'dot',
-                align: st.align || 'top',
-                offset: { x: 0, y: 0 }
-            };
-        });
-
-        (cleanResult.lines || []).forEach(function (line, lineIdx) {
-            var lid = line.id || ('L' + (lineIdx + 1));
-            project.lines.push({
-                id: lid,
-                name: line.name || ('线路 ' + (lineIdx + 1)),
-                color: line.color || '#00263b'
-            });
-        });
-
+        populateIngestedProject(project, cleanResult);
         return project;
     }
 

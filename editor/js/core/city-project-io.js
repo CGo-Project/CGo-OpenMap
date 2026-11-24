@@ -95,6 +95,22 @@ window.CityProjectIO = (function () {
             // eslint-disable-next-line no-new-func
             return new Function(body)();
         }
+        const openIdx = findDeclaration(source, globalName);
+        if (openIdx >= 0) {
+            const valEnd = skipValue(source, openIdx);
+            const beforeOpen = source.slice(0, openIdx);
+            const afterVal = source.slice(valEnd);
+            const trailing = afterVal.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '').trim();
+            if ((trailing === '' || trailing === ';') && beforeOpen.split('\n').every(line => {
+                const s = line.trim();
+                return !s || s.startsWith('//') || s.startsWith('/*') || s.startsWith('*') ||
+                    new RegExp(`^(?:const|let|var)\\s+${globalName}\\s*=|^window\\s*\\.\\s*${globalName}\\s*=`).test(s);
+            })) {
+                try {
+                    return parseStaticValue(source.slice(openIdx, valEnd));
+                } catch (_) { /* fall through to sandboxed Function eval for computed expressions */ }
+            }
+        }
         const body = `${source}\n;return (typeof ${globalName} !== "undefined") ? ${globalName} : null;`;
         // eslint-disable-next-line no-new-func
         return new Function(body)();
@@ -405,12 +421,30 @@ window.CityProjectIO = (function () {
     const WS = /\s/;
     const IDENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
+    function skipTemplateInterpolation(text, i) {
+        let depth = 1;
+        while (i < text.length && depth > 0) {
+            const ch = text[i];
+            const cmt = skipComment(text, i);
+            if (cmt >= 0) { i = cmt; continue; }
+            if (ch === '"' || ch === "'" || ch === '`') { i = skipString(text, i); continue; }
+            if (ch === '{') depth++;
+            else if (ch === '}') depth--;
+            i++;
+        }
+        return i;
+    }
+
     function skipString(text, i) {
         const quote = text[i];
         i++;
         while (i < text.length) {
             const ch = text[i];
             if (ch === '\\') { i += 2; continue; }
+            if (quote === '`' && ch === '$' && text[i + 1] === '{') {
+                i = skipTemplateInterpolation(text, i + 2);
+                continue;
+            }
             if (ch === quote) return i + 1;
             i++;
         }
@@ -429,6 +463,205 @@ window.CityProjectIO = (function () {
             return n < 0 ? text.length : n + 2;
         }
         return -1;
+    }
+
+    /** 跳过空白与注释 */
+    function skipWsAndComments(text, i) {
+        while (i < text.length) {
+            if (WS.test(text[i])) { i++; continue; }
+            const cmt = skipComment(text, i);
+            if (cmt >= 0) { i = cmt; continue; }
+            break;
+        }
+        return i;
+    }
+
+    /** 解析静态 JS 字符串字面量（单引号 / 双引号 / 无插值模板串） */
+    function decodeStringLiteral(rawToken) {
+        const quote = rawToken[0];
+        if (quote === '"') {
+            try { return JSON.parse(rawToken); } catch (_) { /* fall through */ }
+        }
+        let out = '';
+        for (let i = 1; i < rawToken.length - 1; i++) {
+            const ch = rawToken[i];
+            if (ch !== '\\') {
+                if (quote === '`' && ch === '$' && rawToken[i + 1] === '{') {
+                    throw new Error('Template interpolation not static');
+                }
+                out += ch;
+                continue;
+            }
+            i++;
+            if (i >= rawToken.length - 1) break;
+            const esc = rawToken[i];
+            if (esc === 'n') out += '\n';
+            else if (esc === 'r') out += '\r';
+            else if (esc === 't') out += '\t';
+            else if (esc === 'b') out += '\b';
+            else if (esc === 'f') out += '\f';
+            else if (esc === 'v') out += '\v';
+            else if (esc === '0' && !/[0-9]/.test(rawToken[i + 1] || '')) out += '\0';
+            else if (esc === 'x') {
+                const hex = rawToken.slice(i + 1, i + 3);
+                if (!/^[0-9a-fA-F]{2}$/.test(hex)) throw new Error('Invalid \\x escape');
+                out += String.fromCharCode(parseInt(hex, 16));
+                i += 2;
+            } else if (esc === 'u') {
+                if (rawToken[i + 1] === '{') {
+                    const end = rawToken.indexOf('}', i + 2);
+                    const cpHex = end > 0 ? rawToken.slice(i + 2, end) : '';
+                    if (!/^[0-9a-fA-F]+$/.test(cpHex)) throw new Error('Invalid \\u{} escape');
+                    out += String.fromCodePoint(parseInt(cpHex, 16));
+                    i = end;
+                } else {
+                    const hex4 = rawToken.slice(i + 1, i + 5);
+                    if (!/^[0-9a-fA-F]{4}$/.test(hex4)) throw new Error('Invalid \\u escape');
+                    out += String.fromCharCode(parseInt(hex4, 16));
+                    i += 4;
+                }
+            } else if (esc === '\r' && rawToken[i + 1] === '\n') {
+                i++;
+            } else if (esc === '\n') {
+                // line continuation
+            } else {
+                out += esc;
+            }
+        }
+        return out;
+    }
+
+    /**
+     * 纯静态 JS 数据字面量解析器（无 eval / new Function）。
+     * 支持注释、单/双引号/无插值模板串、裸键、尾随逗号、+/- 数字、hex/oct/bin、true/false/null/undefined/NaN/Infinity。
+     */
+    function parseStaticValue(text) {
+        let pos = 0;
+
+        function parseValue() {
+            pos = skipWsAndComments(text, pos);
+            if (pos >= text.length) throw new Error('Unexpected end of static value');
+            const ch = text[pos];
+            if (ch === '{') return parseObject();
+            if (ch === '[') return parseArray();
+            if (ch === '"' || ch === "'" || ch === '`') {
+                const end = skipString(text, pos);
+                const tok = text.slice(pos, end);
+                pos = end;
+                return decodeStringLiteral(tok);
+            }
+            if (ch === '+' || ch === '-' || ch === '.' || (ch >= '0' && ch <= '9')) {
+                return parseNumberOrSign();
+            }
+            const mIdent = /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(text.slice(pos));
+            if (mIdent) {
+                const word = mIdent[0];
+                pos += word.length;
+                if (word === 'true') return true;
+                if (word === 'false') return false;
+                if (word === 'null') return null;
+                if (word === 'undefined') return undefined;
+                if (word === 'NaN') return NaN;
+                if (word === 'Infinity') return Infinity;
+            }
+            throw new Error(`Unsupported token at ${pos}`);
+        }
+
+        function parseNumberOrSign() {
+            let sign = 1;
+            if (text[pos] === '+' || text[pos] === '-') {
+                if (text[pos] === '-') sign = -1;
+                pos++;
+                pos = skipWsAndComments(text, pos);
+                if (text.slice(pos, pos + 8) === 'Infinity') {
+                    pos += 8;
+                    return sign * Infinity;
+                }
+                if (text.slice(pos, pos + 3) === 'NaN') {
+                    pos += 3;
+                    return NaN;
+                }
+            }
+            const rest = text.slice(pos);
+            const mHex = /^0[xX][0-9a-fA-F_]+/.exec(rest);
+            if (mHex) {
+                pos += mHex[0].length;
+                return sign * parseInt(mHex[0].replace(/_/g, '').slice(2), 16);
+            }
+            const mBin = /^0[bB][01_]+/.exec(rest);
+            if (mBin) {
+                pos += mBin[0].length;
+                return sign * parseInt(mBin[0].replace(/_/g, '').slice(2), 2);
+            }
+            const mOct = /^0[oO][0-7_]+/.exec(rest);
+            if (mOct) {
+                pos += mOct[0].length;
+                return sign * parseInt(mOct[0].replace(/_/g, '').slice(2), 8);
+            }
+            const mDec = /^(?:\d[\d_]*\.[\d_]*|\.\d[\d_]*|\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?/.exec(rest);
+            if (mDec) {
+                pos += mDec[0].length;
+                const clean = mDec[0].replace(/_/g, '');
+                const num = Number(clean);
+                if (!Number.isNaN(num)) return sign * num;
+            }
+            throw new Error(`Invalid numeric literal at ${pos}`);
+        }
+
+        function parseArray() {
+            const arr = [];
+            pos++; // '['
+            while (pos < text.length) {
+                pos = skipWsAndComments(text, pos);
+                if (text[pos] === ']') { pos++; return arr; }
+                if (text[pos] === ',') {
+                    arr.push(undefined);
+                    pos++;
+                    continue;
+                }
+                arr.push(parseValue());
+                pos = skipWsAndComments(text, pos);
+                if (text[pos] === ',') pos++;
+                else if (text[pos] === ']') { pos++; return arr; }
+                else throw new Error(`Expected ',' or ']' at ${pos}`);
+            }
+            throw new Error('Unterminated array');
+        }
+
+        function parseObject() {
+            const obj = {};
+            pos++; // '{'
+            while (pos < text.length) {
+                pos = skipWsAndComments(text, pos);
+                if (text[pos] === '}') { pos++; return obj; }
+                let key;
+                const ch = text[pos];
+                if (ch === '"' || ch === "'") {
+                    const end = skipString(text, pos);
+                    key = decodeStringLiteral(text.slice(pos, end));
+                    pos = end;
+                } else {
+                    const mKey = /^[A-Za-z0-9_$\-]+/.exec(text.slice(pos));
+                    if (!mKey) throw new Error(`Invalid object key at ${pos}`);
+                    key = mKey[0];
+                    pos += key.length;
+                }
+                pos = skipWsAndComments(text, pos);
+                if (text[pos] !== ':') throw new Error(`Expected ':' after key at ${pos}`);
+                pos++;
+                obj[key] = parseValue();
+                pos = skipWsAndComments(text, pos);
+                if (text[pos] === ',') pos++;
+                else if (text[pos] === '}') { pos++; return obj; }
+                else throw new Error(`Expected ',' or '}' at ${pos}`);
+            }
+            throw new Error('Unterminated object');
+        }
+
+        const val = parseValue();
+        pos = skipWsAndComments(text, pos);
+        if (pos < text.length) throw new Error(`Unexpected trailing token at ${pos}`);
+        return val;
     }
 
     /**
@@ -481,7 +714,11 @@ window.CityProjectIO = (function () {
                 entryStart = i;
                 if (ch === '"' || ch === "'") {
                     const end = skipString(text, i);
-                    keyText = text.slice(i + 1, end - 1);
+                    try {
+                        keyText = decodeStringLiteral(text.slice(i, end));
+                    } catch (_) {
+                        keyText = text.slice(i + 1, end - 1);
+                    }
                     i = end;
                 } else {
                     let j = i;
@@ -489,8 +726,8 @@ window.CityProjectIO = (function () {
                     keyText = text.slice(i, j);
                     i = j;
                 }
-                while (i < text.length && text[i] !== ':') i++;
-                i++;
+                i = skipWsAndComments(text, i);
+                if (text[i] === ':') i++;
                 expectKey = false;
                 continue;
             }
@@ -687,17 +924,47 @@ window.CityProjectIO = (function () {
         const append = ops.append || [];
 
         const byKey = new Map();
+        const parsedCache = new Map();
         entries.forEach(e => {
             byKey.set(String(e.key != null ? e.key : e.index), e);
+        });
+        entries.forEach(e => {
             if (e.raw && e.raw.charCodeAt(0) === 123) {
-                const mId = e.raw.match(/["']?id["']?\s*:\s*["']([^"']+)["']/);
-                if (mId && mId[1]) {
-                    byKey.set(mId[1], e);
+                let parsedTop = null;
+                try {
+                    parsedTop = parseStaticValue(e.raw);
+                } catch (_) {
+                    parsedTop = null;
                 }
-                const mFrom = e.raw.match(/["']?from["']?\s*:\s*["']([^"']+)["']/);
-                const mTo = e.raw.match(/["']?to["']?\s*:\s*["']([^"']+)["']/);
-                if (mFrom && mTo && mFrom[1] && mTo[1]) {
-                    byKey.set(mFrom[1] + '->' + mTo[1], e);
+                if (parsedTop && typeof parsedTop === 'object' && !Array.isArray(parsedTop)) {
+                    parsedCache.set(e, parsedTop);
+                    if (typeof parsedTop.id === 'string' && parsedTop.id && !byKey.has(parsedTop.id)) {
+                        byKey.set(parsedTop.id, e);
+                    }
+                    if (typeof parsedTop.from === 'string' && typeof parsedTop.to === 'string' && parsedTop.from && parsedTop.to) {
+                        const connKey = parsedTop.from + '->' + parsedTop.to;
+                        if (!byKey.has(connKey)) byKey.set(connKey, e);
+                    }
+                } else {
+                    // 非静态字面量退化：仅扫顶层键值，避免正则误中嵌套子对象的 id/from/to
+                    const topScan = scanContainer(e.raw, 0);
+                    let topId = null, topFrom = null, topTo = null;
+                    topScan.entries.forEach(te => {
+                        if (!te || !te.raw) return;
+                        const first = te.raw[0];
+                        if (first !== '"' && first !== "'" && first !== '`') return;
+                        let strVal = null;
+                        try { strVal = decodeStringLiteral(te.raw); } catch (_) { strVal = null; }
+                        if (!strVal) return;
+                        if (te.key === 'id' && topId == null) topId = strVal;
+                        else if (te.key === 'from' && topFrom == null) topFrom = strVal;
+                        else if (te.key === 'to' && topTo == null) topTo = strVal;
+                    });
+                    if (topId && !byKey.has(topId)) byKey.set(topId, e);
+                    if (topFrom && topTo) {
+                        const connKey = topFrom + '->' + topTo;
+                        if (!byKey.has(connKey)) byKey.set(connKey, e);
+                    }
                 }
             }
         });
@@ -717,11 +984,17 @@ window.CityProjectIO = (function () {
 
             // 优先走递归最小编辑：只重写真正变了的那个叶子，其余逐字节保留。
             // 只有当条目里增删了键（结构变动）时才回退为整条重写。
-            let original = null;
-            try {
-                // eslint-disable-next-line no-new-func
-                original = new Function(`return (${entry.raw});`)();
-            } catch (err) { original = null; }
+            let original = parsedCache.has(entry) ? parsedCache.get(entry) : null;
+            if (!original) {
+                try {
+                    original = parseStaticValue(entry.raw);
+                } catch (_) {
+                    try {
+                        // eslint-disable-next-line no-new-func
+                        original = new Function(`return (${entry.raw});`)();
+                    } catch (err) { original = null; }
+                }
+            }
 
             if (original && typeof original === 'object' && !Array.isArray(original)) {
                 // update[key] 视为「对原条目的局部覆盖」：以源码里的原文为底合并，

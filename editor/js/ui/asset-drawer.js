@@ -151,10 +151,10 @@ window.OpenMapEditor.AssetDrawer = (function () {
                 '</div>' +
                 '<div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:5px;">';
             cityStyles.forEach(function (cs) {
-                var title = (cs.label + '\n' + cs.desc).replace(/"/g, '&quot;');
-                html += '<button type="button" class="asset-tile-btn" data-category="station" data-id="' + cs.key + '" data-glyph="' + (cs.patch.type || 'dot') + '" data-style="' + cs.key + '" title="' + title + '" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:4px;transition:all 0.15s;">' +
+                var title = escHtml(cs.label + '\n' + cs.desc);
+                html += '<button type="button" class="asset-tile-btn" data-category="station" data-id="' + escHtml(cs.key) + '" data-glyph="' + escHtml(cs.patch.type || 'dot') + '" data-style="' + escHtml(cs.key) + '" title="' + title + '" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;border:1px solid var(--border-light, rgba(0,0,0,0.08));background:var(--card-bg, #ffffff);border-radius:6px;cursor:pointer;gap:4px;transition:all 0.15s;">' +
                     stationAssetPreview(cs.patch.type || 'dot', cs.patch) +
-                    '<span style="font-size:10px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + cs.label + '</span>' +
+                    '<span style="font-size:10px;font-weight:500;color:var(--text-color, #334155);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">' + escHtml(cs.label) + '</span>' +
                     '</button>';
             });
             html += '</div></div>';
@@ -321,7 +321,6 @@ window.OpenMapEditor.AssetDrawer = (function () {
     function refresh() {
         if (!dom.container) return;
         renderDrawer();
-        bindTileEvents();
     }
 
     /**

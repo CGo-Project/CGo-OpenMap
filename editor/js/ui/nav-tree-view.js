@@ -877,42 +877,49 @@ window.OpenMapEditor.NavTreeView = (function () {
         var targetSelector = null;
         var parentBranchKey = null;
 
+        var escSel = function (val) {
+            var s = String(val == null ? '' : val);
+            return (typeof CSS !== 'undefined' && typeof CSS.escape === 'function')
+                ? CSS.escape(s)
+                : s.replace(/["\\]/g, '\\$&');
+        };
+
         if (selected && selected.type) {
             if (selected.type === 'node') {
-                targetSelector = '.station-leaf[data-node-id="' + selected.id + '"]';
+                targetSelector = '.station-leaf[data-node-id="' + escSel(selected.id) + '"]';
                 parentBranchKey = 'stations';
             } else if (selected.type === 'water') {
-                targetSelector = '.water-leaf[data-water-id="' + selected.id + '"]';
+                targetSelector = '.water-leaf[data-water-id="' + escSel(selected.id) + '"]';
                 parentBranchKey = 'water';
             } else if (selected.type === 'text') {
-                targetSelector = '.text-leaf[data-text-id="' + selected.id + '"]';
+                targetSelector = '.text-leaf[data-text-id="' + escSel(selected.id) + '"]';
                 parentBranchKey = 'texts';
             } else if (selected.type === 'virtual') {
-                targetSelector = '.virtual-leaf[data-virtual-idx="' + selected.idx + '"]';
+                targetSelector = '.virtual-leaf[data-virtual-idx="' + escSel(selected.idx) + '"]';
                 parentBranchKey = 'virtuals';
             } else if (selected.type === 'notopen') {
-                targetSelector = '.notopen-leaf[data-notopen-idx="' + selected.idx + '"]';
+                targetSelector = '.notopen-leaf[data-notopen-idx="' + escSel(selected.idx) + '"]';
                 parentBranchKey = 'notopen';
             } else if (selected.type === 'scattered') {
-                targetSelector = '.scattered-leaf[data-scattered-idx="' + selected.idx + '"]';
+                targetSelector = '.scattered-leaf[data-scattered-idx="' + escSel(selected.idx) + '"]';
                 parentBranchKey = 'scattered';
             } else if (selected.type === 'line') {
-                targetSelector = '.line-leaf[data-line-id="' + selected.id + '"]';
+                targetSelector = '.line-leaf[data-line-id="' + escSel(selected.id) + '"]';
                 parentBranchKey = 'lines';
             } else if (selected.type === 'layer') {
-                targetSelector = '.nav-tree-branch-header[data-branch-key="' + selected.id + '"]';
+                targetSelector = '.nav-tree-branch-header[data-branch-key="' + escSel(selected.id) + '"]';
             } else if (selected.type === 'segment' && selected.id) {
                 // 如果选中了线段，关联高亮其所属的线路
                 if (lastProject && lastProject.segments) {
                     var sg = lastProject.segments.find(function (s) { return s.id === selected.id; });
                     if (sg && sg.lineId) {
-                        targetSelector = '.line-leaf[data-line-id="' + sg.lineId + '"]';
+                        targetSelector = '.line-leaf[data-line-id="' + escSel(sg.lineId) + '"]';
                         parentBranchKey = 'lines';
                     }
                 }
             }
         } else if (activeLineId) {
-            targetSelector = '.line-leaf[data-line-id="' + activeLineId + '"]';
+            targetSelector = '.line-leaf[data-line-id="' + escSel(activeLineId) + '"]';
             parentBranchKey = 'lines';
         }
 

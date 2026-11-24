@@ -54,6 +54,12 @@
         console.log('[CGoUI Toast ' + t + ']', msg);
     }
 
+    function escapeHtml(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, function (ch) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+        });
+    }
+
     /**
      * 模态框打开助手 (完美驱动 <cgo-modal>)
      */
@@ -533,7 +539,7 @@
             selectedLineId: selLineId,
             selectedPointIdx: selSegPtIdx,
             activeLineId: app.activeLineId,
-            enableParallelCorridor: false
+            enableParallelCorridor: !!app.enableParallelCorridor
         });
         var multiNodeIds = [];
         if (app.selected) {
@@ -636,7 +642,8 @@
             selectedSegmentId: selSegId,
             selectedLineId: selLineId,
             selectedPointIdx: selSegPtIdx,
-            activeLineId: app.activeLineId
+            activeLineId: app.activeLineId,
+            enableParallelCorridor: !!app.enableParallelCorridor
         });
 
         // 2.4 走线过程中的实时预览（还没落笔的那一段）
@@ -873,6 +880,60 @@
             else btnRuler.classList.remove('active');
         }
         if (app.rulerVisible) renderRulers();
+    }
+
+    function setGridVisible(visible, silent) {
+        app.gridVisible = !!visible;
+        app.snapEnabled = !!visible;
+        var gridBtnEl = document.getElementById('hudBtnGrid');
+        if (gridBtnEl) gridBtnEl.classList.toggle('active', app.gridVisible);
+        if (window.OpenMapEditor.GridLayer) {
+            window.OpenMapEditor.GridLayer.setVisible(app.gridVisible);
+        }
+        var vp = window.OpenMapEditor.ViewportLayer;
+        if (vp && vp.setGrid) {
+            vp.setGrid(app.gridVisible);
+        }
+        try {
+            localStorage.setItem('openmap_editor_grid_visible', app.gridVisible ? '1' : '0');
+        } catch (err) { /* 隐私模式下忽略 */ }
+        if (app.project && typeof updateHealthBadge === 'function') {
+            updateHealthBadge();
+        }
+        if (!silent) {
+            showToast(app.gridVisible ? '已开启背景网格并自动对齐网格 (G)' : '已关闭背景网格与对齐 (G)');
+        }
+    }
+
+    function updateSidePanelState() {
+        var navDrawer = document.getElementById('workbenchNavDrawer');
+        var inspPanel = document.getElementById('workbenchInspector');
+        var btnNavExpand = document.getElementById('btnExpandNavDrawer');
+        var btnInspExpand = document.getElementById('btnExpandInspector');
+        var hudNavToggle = document.getElementById('hudBtnToggleNav');
+        var hudInspToggle = document.getElementById('hudBtnToggleInspector');
+        var isNavCol = navDrawer ? navDrawer.classList.contains('collapsed') : false;
+        var isInspCol = inspPanel ? inspPanel.classList.contains('collapsed') : false;
+        if (btnNavExpand) btnNavExpand.classList.toggle('visible', isNavCol);
+        if (btnInspExpand) btnInspExpand.classList.toggle('visible', isInspCol);
+        if (hudNavToggle) hudNavToggle.classList.toggle('active', !isNavCol);
+        if (hudInspToggle) hudInspToggle.classList.toggle('active', !isInspCol);
+    }
+
+    function toggleNavDrawer(forceExpand) {
+        var navDrawer = document.getElementById('workbenchNavDrawer');
+        if (!navDrawer) return;
+        var willCollapse = (typeof forceExpand === 'boolean') ? !forceExpand : !navDrawer.classList.contains('collapsed');
+        navDrawer.classList.toggle('collapsed', willCollapse);
+        updateSidePanelState();
+    }
+
+    function toggleInspector(forceExpand) {
+        var inspPanel = document.getElementById('workbenchInspector');
+        if (!inspPanel) return;
+        var willCollapse = (typeof forceExpand === 'boolean') ? !forceExpand : !inspPanel.classList.contains('collapsed');
+        inspPanel.classList.toggle('collapsed', willCollapse);
+        updateSidePanelState();
     }
 
     function renderRulers() {
@@ -1848,6 +1909,20 @@
                 window.OpenMapEditor.ViewportLayer.centerOn(t.x, t.y);
             }
             renderAll();
+        } else if (type === 'ghost') {
+            if (app.project && app.project.ghostImage) {
+                var gInfo = app.project.ghostImage;
+                var gx = Number(gInfo.x) || 0;
+                var gy = Number(gInfo.y) || 0;
+                var gw = Number(gInfo.width) || 0;
+                var gh = Number(gInfo.height) || 0;
+                if (gw > 0 && gh > 0) {
+                    window.OpenMapEditor.ViewportLayer.centerOn(gx + gw / 2, gy + gh / 2);
+                }
+                showToast('参考底图：' + (gInfo.name || '已载入') + '（可通过工具栏「导入参考底图」替换或锁定图层）', 'info');
+            } else {
+                clickElement('btnImportGhostImage');
+            }
         }
     }
 
@@ -3239,10 +3314,10 @@
         // 6. 模态框与弹窗事件
         bindModals();
 
-        // 关闭/刷新页面前同步落盘，避免丢掉最后 1 秒内的改动
-        window.addEventListener('beforeunload', function () { saveSessionNow(); });
+        // 关闭/刷新页面前强制同步落盘，避免 2s 节流吞掉最后一次改动
+        window.addEventListener('beforeunload', function () { saveSessionNow(true); });
         document.addEventListener('visibilitychange', function () {
-            if (document.visibilityState === 'hidden') saveSessionNow();
+            if (document.visibilityState === 'hidden') saveSessionNow(true);
         });
 
         // 7. 填充已有城市列表
@@ -3309,10 +3384,10 @@
         return payload;
     }
 
-    function saveSessionNow() {
-        // 2 秒内重复触发（例如连续 mouseup）直接忽略，避免反复序列化整个工程
+    function saveSessionNow(force) {
+        // 2 秒内重复触发（例如连续 mouseup）直接忽略，避免反复序列化整个工程；关闭/隐藏页面时传入 force=true 强制落盘
         var now = Date.now();
-        if (now - lastSessionAt < 2000) return;
+        if (!force && now - lastSessionAt < 2000) return;
         var payload = buildSessionPayload();
         if (!payload) return;
         try {
@@ -3333,6 +3408,19 @@
                 console.warn('[Editor] 自动保存失败（可能是隐私模式或配额不足）：', e2);
             }
         }
+    }
+
+    async function confirmDiscardDirty(actionTitle) {
+        var hm = window.OpenMapEditor.HistoryManager;
+        var dirty = hm && typeof hm.getDirtyCount === 'function' ? hm.getDirtyCount() : 0;
+        if (!app.project || dirty <= 0) return true;
+        return await askConfirm({
+            title: actionTitle || '放弃当前未保存修改？',
+            message: '当前工程有 ' + dirty + ' 处修改尚未保存/导出，继续操作将会替换当前工程并清空撤销历史。',
+            confirmText: '继续并放弃修改',
+            cancelText: '取消',
+            danger: true
+        });
     }
 
     /** 标记"正在交互"，这段时间内跳过自动保存（拖拽结束由 mouseup 再触发一次） */
@@ -3630,37 +3718,13 @@
             btnApplyParallel.addEventListener('click', function () {
                 var router = window.OpenMapEditor && window.OpenMapEditor.ParallelCorridorRouter;
                 if (!router || !app.project) return;
-                window.OpenMapEditor.HistoryManager.runInTransaction('应用平行走线与胶囊换乘', function () {
+                window.OpenMapEditor.HistoryManager.runInTransaction(app.project, '应用平行走线与胶囊换乘', function () {
                     var count = router.applyParallelOffsetsToProject(app.project, { spacing: 5.4 });
                     var pillCount = router.autoUpgradeCorridorTransferGlyphs(app.project);
                     renderAll();
                     showToast('已完成 ' + count + ' 处共线段平行走线重构' + (pillCount > 0 ? '，并自动升级 ' + pillCount + ' 处换乘胶囊' : '') + '！', 'success');
                 });
             });
-        }
-
-        // 网格显示与坐标对齐联动：开启网格即同步开启对齐（拖拽按住 Alt 可临时免吸附）
-        function setGridVisible(visible, silent) {
-            app.gridVisible = !!visible;
-            app.snapEnabled = !!visible;
-            var gridBtnEl = document.getElementById('hudBtnGrid');
-            if (gridBtnEl) gridBtnEl.classList.toggle('active', app.gridVisible);
-            if (window.OpenMapEditor.GridLayer) {
-                window.OpenMapEditor.GridLayer.setVisible(app.gridVisible);
-            }
-            var vp = window.OpenMapEditor.ViewportLayer;
-            if (vp && vp.setGrid) {
-                vp.setGrid(app.gridVisible);
-            }
-            try {
-                localStorage.setItem('openmap_editor_grid_visible', app.gridVisible ? '1' : '0');
-            } catch (err) { /* 隐私模式下忽略 */ }
-            if (app.project && typeof updateHealthBadge === 'function') {
-                updateHealthBadge();
-            }
-            if (!silent) {
-                showToast(app.gridVisible ? '已开启背景网格并自动对齐网格 (G)' : '已关闭背景网格与对齐 (G)');
-            }
         }
 
         var gridBtn = document.getElementById('hudBtnGrid');
@@ -3733,29 +3797,6 @@
         var hudNavToggle = document.getElementById('hudBtnToggleNav');
         var hudInspToggle = document.getElementById('hudBtnToggleInspector');
 
-        function updateSidePanelState() {
-            var isNavCol = navDrawer ? navDrawer.classList.contains('collapsed') : false;
-            var isInspCol = inspPanel ? inspPanel.classList.contains('collapsed') : false;
-            if (btnNavExpand) btnNavExpand.classList.toggle('visible', isNavCol);
-            if (btnInspExpand) btnInspExpand.classList.toggle('visible', isInspCol);
-            if (hudNavToggle) hudNavToggle.classList.toggle('active', !isNavCol);
-            if (hudInspToggle) hudInspToggle.classList.toggle('active', !isInspCol);
-        }
-
-        function toggleNavDrawer(forceExpand) {
-            if (!navDrawer) return;
-            var willCollapse = (typeof forceExpand === 'boolean') ? !forceExpand : !navDrawer.classList.contains('collapsed');
-            navDrawer.classList.toggle('collapsed', willCollapse);
-            updateSidePanelState();
-        }
-
-        function toggleInspector(forceExpand) {
-            if (!inspPanel) return;
-            var willCollapse = (typeof forceExpand === 'boolean') ? !forceExpand : !inspPanel.classList.contains('collapsed');
-            inspPanel.classList.toggle('collapsed', willCollapse);
-            updateSidePanelState();
-        }
-
         if (btnNavToggle) btnNavToggle.addEventListener('click', function () { toggleNavDrawer(); });
         if (btnNavExpand) btnNavExpand.addEventListener('click', function () { toggleNavDrawer(true); });
         if (hudNavToggle) hudNavToggle.addEventListener('click', function () { toggleNavDrawer(); });
@@ -3818,34 +3859,9 @@
                 var file = e.target.files[0];
                 if (!file) return;
                 var reader = new FileReader();
-                reader.onload = function (ev) {
-                    try {
-                        var parsed = JSON.parse(ev.target.result);
-                        if (window.OpenMapEditor.RMPImporter && window.OpenMapEditor.RMPImporter.isRmpJson(parsed)) {
-                            parsed = window.OpenMapEditor.RMPImporter.convert(parsed, { name: file.name.replace(/\.json$/i, '') });
-                            showToast('检测到 Rail Map Painter 工程，已无损转换为 OpenMap 项目', 'info');
-                        }
-                        if (!parsed || !parsed.nodes) throw new Error('不是有效的工程 JSON 文件');
-                        if (window.OpenMapEditor.PipelineSurgical && window.OpenMapEditor.PipelineSurgical.resetContext) {
-                            window.OpenMapEditor.PipelineSurgical.resetContext();
-                        }
-                        if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.cancelDraft) {
-                            window.OpenMapEditor.PipelineDraw.cancelDraft();
-                        }
-                        app.project = window.OpenMapEditor.ProjectModel.normalize(parsed);
-                        app.activeLineId = (parsed.lines && parsed.lines[0]) ? parsed.lines[0].id : null;
-                        if (app.activeLineId) window.OpenMapEditor.PipelineDraw.setActiveLine(app.activeLineId);
-                        document.getElementById('currentDocLabel').textContent = file.name.replace('.json', '');
-                        if (parsed.canvas) {
-                            window.OpenMapEditor.ViewportLayer.fitCanvas(parsed.canvas.width, parsed.canvas.height);
-                        }
-                        // 换工程即清历史，禁止跨工程撤销（issue #39）
-                        window.OpenMapEditor.HistoryManager.clear();
-                        renderAll();
-                        showToast('已导入工程: ' + file.name, 'success');
-                    } catch (err) {
-                        showToast('导入失败: ' + (err.message || err), 'error');
-                    }
+                reader.onload = async function (ev) {
+                    if (!(await confirmDiscardDirty('打开工程「' + file.name + '」？'))) return;
+                    loadProjectJsonData(ev.target.result, file.name);
                 };
                 reader.readAsText(file);
             };
@@ -3868,6 +3884,7 @@
                     window.OpenMapEditor.PipelineDraw.cancelDraft();
                 }
                 app.project = window.OpenMapEditor.ProjectModel.normalize(parsed);
+                app.selected = null;
                 app.activeLineId = (parsed.lines && parsed.lines[0]) ? parsed.lines[0].id : null;
                 if (app.activeLineId) window.OpenMapEditor.PipelineDraw.setActiveLine(app.activeLineId);
                 document.getElementById('currentDocLabel').textContent = (fileName || 'project').replace('.json', '');
@@ -3893,8 +3910,9 @@
                 var file = e.target.files[0];
                 if (!file) return;
                 var reader = new FileReader();
-                reader.onload = function (ev) {
-                    loadProjectJsonData(ev.target.result, file.name);
+                reader.onload = async function (ev) {
+                    var ok = await confirmDiscardDirty('导入 RMP 工程「' + file.name + '」？');
+                    if (ok) loadProjectJsonData(ev.target.result, file.name);
                     inputImportRmpFile.value = '';
                 };
                 reader.readAsText(file);
@@ -3914,8 +3932,10 @@
                     var f = e.dataTransfer.files[0];
                     if (f.name.endsWith('.json') || f.type === 'application/json') {
                         var reader = new FileReader();
-                        reader.onload = function (ev) {
-                            loadProjectJsonData(ev.target.result, f.name);
+                        reader.onload = async function (ev) {
+                            if (await confirmDiscardDirty('导入拖入的工程「' + f.name + '」？')) {
+                                loadProjectJsonData(ev.target.result, f.name);
+                            }
                         };
                         reader.readAsText(f);
                     }
@@ -3969,8 +3989,16 @@
                 showToast('正在解析 PDF/AI 文件，请稍候…');
                 window.OpenMapEditor.PipelineIngest.runPdfIngest(file, function (msg, pct) {
                     showToast(msg + ' (' + (pct || 0) + '%)');
-                }).then(function (project) {
+                }).then(async function (project) {
+                    if (!(await confirmDiscardDirty('导入 PDF 工程「' + file.name + '」？'))) return;
+                    if (window.OpenMapEditor.PipelineSurgical && window.OpenMapEditor.PipelineSurgical.resetContext) {
+                        window.OpenMapEditor.PipelineSurgical.resetContext();
+                    }
+                    if (window.OpenMapEditor.PipelineDraw && window.OpenMapEditor.PipelineDraw.cancelDraft) {
+                        window.OpenMapEditor.PipelineDraw.cancelDraft();
+                    }
                     app.project = project;
+                    app.selected = null;
                     app.activeLineId = (project.lines && project.lines[0]) ? project.lines[0].id : null;
                     if (app.activeLineId) window.OpenMapEditor.PipelineDraw.setActiveLine(app.activeLineId);
                     document.getElementById('currentDocLabel').textContent = '[PDF] ' + file.name;
@@ -4004,7 +4032,9 @@
                 if (!file) return;
                 showToast('正在调用 DeepSeek Vision 识图，请稍候…');
                 var img = new Image();
+                var objUrl = URL.createObjectURL(file);
                 img.onload = function () {
+                    URL.revokeObjectURL(objUrl);
                     window.DeepSeekVision.recognizeLineMap(img, {
                         onProgress: function (msg, pct) { showToast(msg); },
                         onDone: function (result) {
@@ -4019,7 +4049,11 @@
                         }
                     });
                 };
-                img.src = URL.createObjectURL(file);
+                img.onerror = function () {
+                    URL.revokeObjectURL(objUrl);
+                    showToast('识图图片加载失败', 'error');
+                };
+                img.src = objUrl;
             };
             input.click();
         });
@@ -4036,69 +4070,126 @@
 
                 window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
 
-                var stationsIn = {};
-                Object.keys(app.project.nodes || {}).forEach(function (id) {
-                    stationsIn[id] = app.project.nodes[id];
+                var rawNodes = app.project.nodes || {};
+                var stationsIn = Object.keys(rawNodes).map(function (id) {
+                    return Object.assign({}, rawNodes[id], {
+                        id: id,
+                        name: rawNodes[id].cn || rawNodes[id].name || id
+                    });
+                });
+                var linesIn = (app.project.lines || []).map(function (l) {
+                    var ids = [];
+                    Object.keys(l).forEach(function (k) {
+                        if (/^stationIds(-|$)/.test(k) && Array.isArray(l[k])) {
+                            l[k].forEach(function (sid) {
+                                var st = rawNodes[sid];
+                                if (st && (st.cn || st.name)) ids.push(st.cn || st.name);
+                            });
+                        }
+                    });
+                    return Object.assign({}, l, { stations: ids });
                 });
 
                 var result = sanitizer.sanitize({
                     stations: stationsIn,
-                    lines: app.project.lines || [],
+                    lines: linesIn,
                     width: app.project.canvas.width,
                     height: app.project.canvas.height,
                     options: { minStationDist: 8, noiseThreshold: 0.002 }
                 });
 
-                // 写回净化后的节点
-                app.project.nodes = {};
-                Object.keys(result.stations || {}).forEach(function (id) {
-                    app.project.nodes[id] = result.stations[id];
+                // 写回净化后的节点并保留原 ID 键
+                var nextNodes = {};
+                var movedIds = [];
+                (result.stations || []).forEach(function (st) {
+                    var sid = st.id || (window.OpenMapEditor.ProjectModel && window.OpenMapEditor.ProjectModel.nextId(app.project, 'station_'));
+                    if (!sid) return;
+                    var clean = Object.assign({}, st);
+                    delete clean.name;
+                    clean.id = sid;
+                    nextNodes[sid] = clean;
+                    movedIds.push(sid);
+                });
+                app.project.nodes = nextNodes;
+
+                // 清理线段与线路站序/虚拟换乘中的悬空节点引用
+                (app.project.segments || []).forEach(function (seg) {
+                    (seg.points || []).forEach(function (p) {
+                        if (!p.nid) return;
+                        if (nextNodes[p.nid]) {
+                            p.x = nextNodes[p.nid].x;
+                            p.y = nextNodes[p.nid].y;
+                        } else {
+                            delete p.nid;
+                        }
+                    });
+                });
+                (app.project.lines || []).forEach(function (l) {
+                    Object.keys(l).forEach(function (idsKey) {
+                        if (!/^stationIds(-|$)/.test(idsKey) || !Array.isArray(l[idsKey])) return;
+                        var origIds = l[idsKey];
+                        var filteredIds = origIds.filter(function (sid) { return !!nextNodes[sid]; });
+                        if (filteredIds.length !== origIds.length) {
+                            l[idsKey] = filteredIds;
+                            var distKey = idsKey === 'stationIds' ? 'distances' : ('distances-' + idsKey.replace('stationIds-', ''));
+                            if (Array.isArray(l[distKey])) {
+                                l[distKey] = filteredIds.length > 1 ? new Array(filteredIds.length - 1).fill(null) : [];
+                            }
+                        }
+                    });
+                });
+                app.project.virtualConnectors = (app.project.virtualConnectors || []).filter(function (c) {
+                    return c && nextNodes[c.from] && nextNodes[c.to];
                 });
 
                 renderAll();
                 var rep = result.report || {};
-                showToast('拓扑净化完成：移除噪点 ' + (rep.removed || 0) + '，合并重叠 ' + (rep.merged || 0), 'success');
+                var dropped = rep.dropped || {};
+                var removedCount = (dropped.junkName || 0) + (dropped.badGeometry || 0) + (dropped.offCanvas || 0) + (dropped.duplicate || 0) + (dropped.unreferenced || 0);
+                showToast('拓扑净化完成：移除噪点 ' + removedCount + '，合并重叠 ' + (rep.merged || 0), 'success');
             } catch (err) {
                 showToast('净化失败: ' + (err.message || err), 'error');
             }
         });
 
-        // 工具化 Tab：几何校准 (Affine 仿射)
+        // 工具化 Tab：几何居中对齐
         var btnCalibrate = document.getElementById('btnAutoCalibrateAffine');
         if (btnCalibrate) btnCalibrate.addEventListener('click', function () {
             if (!app.project) return;
             try {
-                var sanitizer = (window.OpenMapEditor && window.OpenMapEditor.DataSanitizer) || window.DataSanitizer || window.DrunkSanitizer;
-                if (!sanitizer || !sanitizer.fitSimilarity) {
-                    showToast('几何校准模块未加载 (fitSimilarity 缺失)', 'error');
-                    return;
-                }
-
                 var nodes = app.project.nodes || {};
                 var ids = Object.keys(nodes);
-                if (ids.length < 4) { showToast('至少需要 4 个节点才能执行几何校准'); return; }
+                if (ids.length < 2) { showToast('至少需要 2 个节点才能执行画布居中对齐'); return; }
 
                 window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
 
-                // 基于 PCA 中心化让所有节点趋向画布中央 (保守仿射：不旋转，仅平移+缩放)
-                var cx = ids.reduce(function (s, id) { return s + nodes[id].x; }, 0) / ids.length;
-                var cy = ids.reduce(function (s, id) { return s + nodes[id].y; }, 0) / ids.length;
+                var cx = ids.reduce(function (s, id) { return s + (Number(nodes[id].x) || 0); }, 0) / ids.length;
+                var cy = ids.reduce(function (s, id) { return s + (Number(nodes[id].y) || 0); }, 0) / ids.length;
                 var dx = app.project.canvas.width / 2 - cx;
                 var dy = app.project.canvas.height / 2 - cy;
                 ids.forEach(function (id) {
                     nodes[id].x = Math.round(nodes[id].x + dx);
                     nodes[id].y = Math.round(nodes[id].y + dy);
                 });
-                // 同步线段点
                 (app.project.segments || []).forEach(function (seg) {
                     (seg.points || []).forEach(function (p) {
                         p.x = Math.round(p.x + dx);
                         p.y = Math.round(p.y + dy);
                     });
                 });
+                (app.project.waters || []).forEach(function (w) {
+                    (w.points || []).forEach(function (p) {
+                        p.x = Math.round(p.x + dx);
+                        p.y = Math.round(p.y + dy);
+                    });
+                });
+                (app.project.texts || []).forEach(function (t) {
+                    t.x = Math.round(t.x + dx);
+                    t.y = Math.round(t.y + dy);
+                });
 
                 renderAll();
-                showToast('几何校准完成 (偏移 Δx=' + Math.round(dx) + ', Δy=' + Math.round(dy) + ')', 'success');
+                showToast('几何居中完成 (偏移 Δx=' + Math.round(dx) + ', Δy=' + Math.round(dy) + ')', 'success');
             } catch (err) {
                 showToast('校准失败: ' + (err.message || err), 'error');
             }
@@ -4415,16 +4506,17 @@
                 if (notes.length) {
                     showToast('以下线路存在"没有画线段的车站"，已从站序剔除（请补画走向）：' + notes.join('、'), 'warning');
                 }
+        var summaryEl = document.getElementById('exportValidationSummary');
                 if (summaryEl && result) {
                     if (result.errors.length) {
                         summaryEl.style.color = '#f44';
                         summaryEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="close" size="14"></cgo-icon> <strong>' + result.errors.length + ' 项错误：</strong></span><br>' +
-                            result.errors.slice(0, 5).join('<br>') +
+                            result.errors.slice(0, 5).map(escapeHtml).join('<br>') +
                             (result.errors.length > 5 ? '<br>…' : '');
                     } else if (result.warnings.length) {
                         summaryEl.style.color = '#fa3';
                         summaryEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="warning" size="14"></cgo-icon> <strong>' + result.warnings.length + ' 项警告：</strong></span> ' +
-                            result.warnings.slice(0, 3).join(' | ');
+                            result.warnings.slice(0, 3).map(escapeHtml).join(' | ');
                     } else {
                         summaryEl.style.color = '#4c4';
                         summaryEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:4px;"><cgo-icon name="check-circle" size="14"></cgo-icon> <span>数据完整性校验通过，可安全打包</span></span>';
@@ -4452,6 +4544,10 @@
             var label = (document.getElementById('currentDocLabel') || {}).textContent || 'openmap-project';
             var filename = label.replace(/[^a-z0-9\u4e00-\u9fff\-_]/gi, '_') + '.json';
             window.OpenMapEditor.BundleExporter.download(filename, json, 'application/json');
+            if (window.OpenMapEditor.HistoryManager && window.OpenMapEditor.HistoryManager.markSaved) {
+                window.OpenMapEditor.HistoryManager.markSaved();
+            }
+            saveSessionNow(true);
             showToast('已保存工程 JSON: ' + filename, 'success');
         } catch (err) {
             showToast('保存失败: ' + (err.message || err), 'error');
@@ -4603,8 +4699,8 @@
                 var badgeText = f.changed ? ('改动 ' + f.dirtyCount + ' 处') : '无改动';
 
                 row.innerHTML = '<div>' +
-                    '<span style="font-family:monospace;font-weight:600;">' + f.filename + '</span>' +
-                    '<span style="margin-left:8px;padding:2px 6px;border-radius:4px;font-size:11px;' + badgeStyle + '">' + badgeText + '</span>' +
+                    '<span style="font-family:monospace;font-weight:600;">' + escapeHtml(f.filename) + '</span>' +
+                    '<span style="margin-left:8px;padding:2px 6px;border-radius:4px;font-size:11px;' + badgeStyle + '">' + escapeHtml(badgeText) + '</span>' +
                     '</div>' +
                     '<div><button class="ribbon-btn-sm" style="width:auto;padding:3px 10px;" id="btnDownloadPatch_' + f.filename.replace(/[^a-z0-9]/gi, '_') + '">' +
                     (f.changed ? '下载补丁' : '下载源码') + '</button></div>';
@@ -4705,6 +4801,25 @@
         var dragStartPos = null;
         var hasDragged = false;
         var dragBaseline = null;
+        var cachedSmartGuideTargets = null;
+        var cachedSmartGuideExcludeId = null;
+
+        function getSmartGuideTargets(excludeNodeId) {
+            if (cachedSmartGuideTargets && cachedSmartGuideExcludeId === (excludeNodeId || null)) {
+                return cachedSmartGuideTargets;
+            }
+            var list = [];
+            var nodesMap = (app.project && app.project.nodes) || {};
+            Object.keys(nodesMap).forEach(function (nid) {
+                if (nid !== excludeNodeId) {
+                    var n = nodesMap[nid];
+                    if (n) list.push({ id: nid, x: n.x, y: n.y, label: n.cn || nid });
+                }
+            });
+            cachedSmartGuideTargets = list;
+            cachedSmartGuideExcludeId = excludeNodeId || null;
+            return list;
+        }
 
         /** 延迟捕获拖拽前基线：仅在首次跨过拖动阈值真正改数据前序列化，点选不卡顿 */
         function captureDragBaselineOnce() {
@@ -4748,6 +4863,8 @@
             boxStartPos = null;
             dragStartPos = null;
             hasDragged = false;
+            cachedSmartGuideTargets = null;
+            cachedSmartGuideExcludeId = null;
         }
 
         /** 拖拽结束：只有真正拖动过才把「按下时的基线」压入撤销栈（撤销一步即回到按下前） */
@@ -4991,14 +5108,8 @@
                     // 智能辅助线吸附 (SmartGuides)
                     if (app.smartGuidesEnabled && !e.altKey && window.OpenMapEditor.SmartGuides) {
                         var scaleFactor = window.OpenMapEditor.ViewportLayer.getScale() || 1;
-                        var targets = [];
                         var curNid = (dragSeg.points[draggedPointIdx] && dragSeg.points[draggedPointIdx].nid) || null;
-                        Object.keys(app.project.nodes || {}).forEach(function (nid) {
-                            if (nid !== curNid) {
-                                var n = app.project.nodes[nid];
-                                if (n) targets.push({ id: nid, x: n.x, y: n.y });
-                            }
-                        });
+                        var targets = getSmartGuideTargets(curNid);
                         var alignResult = window.OpenMapEditor.SmartGuides.computeAlignment(snappedPt, targets, 8 / scaleFactor);
                         if (alignResult && alignResult.guides && alignResult.guides.length > 0) {
                             snappedPt.x = alignResult.snapped.x;
@@ -5120,13 +5231,7 @@
                 var scale = window.OpenMapEditor.ViewportLayer.getScale() || 1;
                 var snapTol = 6 / scale;
                 if (app.smartGuidesEnabled && !e.altKey && window.OpenMapEditor.SmartGuides) {
-                    var targetList = [];
-                    Object.keys(app.project.nodes || {}).forEach(function (otherId) {
-                        if (otherId !== draggedNodeId) {
-                            var otherNode = app.project.nodes[otherId];
-                            if (otherNode) targetList.push({ id: otherId, x: otherNode.x, y: otherNode.y, label: otherNode.cn || otherId });
-                        }
-                    });
+                    var targetList = getSmartGuideTargets(draggedNodeId);
                     var alignRes = window.OpenMapEditor.SmartGuides.computeAlignment(snapped, targetList, snapTol);
                     snapped = alignRes.snapped;
                     if (window.OpenMapEditor.GridLayer && window.OpenMapEditor.GridLayer.renderSmartGuides) {
@@ -5754,43 +5859,43 @@
                 var snapped = app.snapEnabled
                     ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
                     : { x: roundCoord(world.x), y: roundCoord(world.y) };
-                // 按住 Shift：落点也约束到 45° 方向，保证与预览一致
-                var pdClick = window.OpenMapEditor.PipelineDraw;
-                if (e.shiftKey && pdClick && typeof pdClick.hasDraft === 'function' && pdClick.hasDraft() &&
-                    typeof pdClick.constrainTo45 === 'function') {
-                    var draft5 = pdClick.getDraft();
-                    var step5 = (window.OpenMapEditor.ViewportLayer.getSnapStep)
-                        ? window.OpenMapEditor.ViewportLayer.getSnapStep() : 0;
-                    if (draft5) snapped = pdClick.constrainTo45(draft5.startPoint, snapped, app.snapEnabled ? step5 : 0);
-                }
-                var result = window.OpenMapEditor.PipelineDraw.handleCanvasClick(app.project, snapped, null, { button: e.button });
-                if (result.action === 'draft_water_point') {
+                var stRes = window.OpenMapEditor.PipelineDraw.handleCanvasClick(app.project, snapped, null, { button: e.button });
+                if (stRes.updated) {
+                    if (stRes.createdId) app.selected = { type: 'node', id: stRes.createdId };
+                    renderAll();
+                } else {
                     renderDraftLayer();
-                    if (result.pointCount === 1) {
+                }
+                return;
+            }
+
+            if (app.activeTool === 'water') {
+                var wWorld = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
+                var wSnapped = app.snapEnabled
+                    ? window.OpenMapEditor.ViewportLayer.snapPoint(wWorld.x, wWorld.y)
+                    : { x: roundCoord(wWorld.x), y: roundCoord(wWorld.y) };
+                var pdWaterClick = window.OpenMapEditor.PipelineDraw;
+                var waterBaseline = (pdWaterClick && pdWaterClick.hasWaterDraft && pdWaterClick.hasWaterDraft())
+                    ? JSON.stringify(app.project)
+                    : null;
+                var waterRes = pdWaterClick.handleCanvasClick(app.project, wSnapped, null, { button: e.button });
+                if (waterRes.action === 'draft_water_point') {
+                    renderDraftLayer();
+                    if (waterRes.pointCount === 1) {
                         showToast('已落下水域第 1 个顶点：继续点击添加顶点；点回起点、双击、右键或按 Enter 都能闭合');
-                    } else if (result.pointCount === 2) {
+                    } else if (waterRes.pointCount === 2) {
                         showToast('已有 2 个顶点：再点 1 个即可成面（双击 / 右键 / Enter 闭合）', 'info');
                     }
                     return;
                 }
-                if (result.action === 'create_water') {
-                    app.selected = { type: 'water', id: result.createdId };
+                if (waterRes.action === 'create_water') {
+                    if (waterBaseline) window.OpenMapEditor.HistoryManager.pushSnapshotRaw(waterBaseline);
+                    app.selected = { type: 'water', id: waterRes.createdId };
                     renderAll();
                     showToast('已创建水域多边形（选中后可在右侧调样式 / 删除）', 'success');
                     return;
                 }
-                if (result.updated) {
-                    // create_segment 返回的是线段 id，不能当节点 id 选中
-                    if (result.action === 'create_segment' || result.action === 'extend_segment') {
-                        app.selected = { type: 'segment', id: result.createdId };
-                    } else if (result.createdId) {
-                        app.selected = { type: 'node', id: result.createdId };
-                    }
-                    renderAll();
-                } else {
-                    // 首击（起点已定）/ 原地重复点击：也刷新一次，让预览立刻出现
-                    renderDraftLayer();
-                }
+                renderDraftLayer();
                 return;
             }
 
@@ -5798,7 +5903,7 @@
                 var world = window.OpenMapEditor.ViewportLayer.screenToWorld(e.clientX, e.clientY);
                 var snapped = app.snapEnabled
                     ? window.OpenMapEditor.ViewportLayer.snapPoint(world.x, world.y)
-                    : { x: world.x, y: world.y };
+                    : { x: roundCoord(world.x), y: roundCoord(world.y) };
                 var targetNodeEl = e.target.closest('[data-node-id]');
                 var targetNid = targetNodeEl ? targetNodeEl.getAttribute('data-node-id') : null;
 
@@ -5820,6 +5925,8 @@
                 if (result.updated) {
                     if (result.action === 'create_segment' || result.action === 'extend_segment') {
                         app.selected = { type: 'segment', id: result.createdId };
+                    } else if (result.action === 'create_text') {
+                        app.selected = { type: 'text', id: result.createdId };
                     } else if (result.createdId) {
                         app.selected = { type: 'node', id: result.createdId };
                     }
@@ -5838,6 +5945,10 @@
             if (app.activeTool === 'water' && pd && typeof pd.finishWaterDraft === 'function' &&
                 typeof pd.hasWaterDraft === 'function' && pd.hasWaterDraft()) {
                 e.preventDefault();
+                var dwCtx = typeof pd.getWaterDraft === 'function' ? pd.getWaterDraft() : null;
+                if (dwCtx && dwCtx.points && dwCtx.points.length >= 3) {
+                    window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                }
                 var widCtx = pd.finishWaterDraft(app.project);
                 if (widCtx) {
                     app.selected = { type: 'water', id: widCtx };
@@ -5869,6 +5980,10 @@
             if (app.activeTool === 'water') {
                 var pdDbl = window.OpenMapEditor.PipelineDraw;
                 if (pdDbl && typeof pdDbl.finishWaterDraft === 'function') {
+                    var dwDbl = typeof pdDbl.getWaterDraft === 'function' ? pdDbl.getWaterDraft() : null;
+                    if (dwDbl && dwDbl.points && dwDbl.points.length >= 3) {
+                        window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                    }
                     var widDbl = pdDbl.finishWaterDraft(app.project);
                     if (widDbl) {
                         app.selected = { type: 'water', id: widDbl };
@@ -5958,7 +6073,8 @@
 
             // Alt + 方向键（或 Alt+Shift+方向键）快切选中车站的 8 方向避让锚点
             if (e.altKey && !e.ctrlKey && !e.metaKey && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) !== -1) {
-                if (app.selected && (app.selected.type === 'node' || app.selected.type === 'multi') && app.project) {
+                if (app.selected && (app.selected.type === 'node' || app.selected.type === 'multi') && app.project &&
+                    !(app.layerState.stations && app.layerState.stations.locked)) {
                     e.preventDefault();
                     var dirMap = e.shiftKey
                         ? { ArrowUp: 'top-left', ArrowRight: 'top-right', ArrowDown: 'bottom-right', ArrowLeft: 'bottom-left' }
@@ -5986,7 +6102,7 @@
                     else if (e.code === 'ArrowLeft') dX = -step;
                     else if (e.code === 'ArrowRight') dX = step;
 
-                    if (app.selected.type === 'node' && app.project.nodes[app.selected.id]) {
+                    if (app.selected.type === 'node' && app.project.nodes[app.selected.id] && !(app.layerState.stations && app.layerState.stations.locked)) {
                         e.preventDefault();
                         beginNudgeTransaction();
                         app.project.nodes[app.selected.id].x += dX;
@@ -5995,22 +6111,29 @@
                         scheduleDragRender('default');
                         return;
                     } else if (app.selected.type === 'multi') {
+                        var stLocked = !!(app.layerState.stations && app.layerState.stations.locked);
+                        var txtLocked = !!(app.layerState.texts && app.layerState.texts.locked);
+                        if (stLocked && txtLocked) return;
                         e.preventDefault();
                         beginNudgeTransaction();
-                        (app.selected.nodeIds || []).forEach(function (nid) {
-                            if (app.project.nodes[nid]) {
-                                app.project.nodes[nid].x += dX;
-                                app.project.nodes[nid].y += dY;
-                            }
-                        });
-                        (app.selected.textIds || []).forEach(function (tid) {
-                            var txtM = (app.project.texts || []).find(function (t) { return t.id === tid; });
-                            if (txtM) { txtM.x += dX; txtM.y += dY; }
-                        });
-                        syncSegmentsForNodes(app.selected.nodeIds);
+                        if (!stLocked) {
+                            (app.selected.nodeIds || []).forEach(function (nid) {
+                                if (app.project.nodes[nid]) {
+                                    app.project.nodes[nid].x += dX;
+                                    app.project.nodes[nid].y += dY;
+                                }
+                            });
+                            syncSegmentsForNodes(app.selected.nodeIds);
+                        }
+                        if (!txtLocked) {
+                            (app.selected.textIds || []).forEach(function (tid) {
+                                var txtM = (app.project.texts || []).find(function (t) { return t.id === tid; });
+                                if (txtM) { txtM.x += dX; txtM.y += dY; }
+                            });
+                        }
                         scheduleDragRender('default');
                         return;
-                    } else if (app.selected.type === 'segment' && app.selected.pointIdx !== null && app.selected.pointIdx !== undefined) {
+                    } else if (app.selected.type === 'segment' && app.selected.pointIdx !== null && app.selected.pointIdx !== undefined && !(app.layerState.lines && app.layerState.lines.locked)) {
                         var segN = (app.project.segments || []).find(function (s) { return s.id === app.selected.id; });
                         var ptN = segN && segN.points && segN.points[app.selected.pointIdx];
                         if (ptN) {
@@ -6026,7 +6149,7 @@
                             scheduleDragRender('default');
                             return;
                         }
-                    } else if (app.selected.type === 'water' && app.selected.pointIdx !== null && app.selected.pointIdx !== undefined) {
+                    } else if (app.selected.type === 'water' && app.selected.pointIdx !== null && app.selected.pointIdx !== undefined && !(app.layerState.water && app.layerState.water.locked)) {
                         var watN = (app.project.waters || []).find(function (w) { return w.id === app.selected.id; });
                         var wPtN = watN && watN.points && watN.points[app.selected.pointIdx];
                         if (wPtN) {
@@ -6037,7 +6160,7 @@
                             scheduleDragRender('water');
                             return;
                         }
-                    } else if (app.selected.type === 'text') {
+                    } else if (app.selected.type === 'text' && !(app.layerState.texts && app.layerState.texts.locked)) {
                         var txtN = (app.project.texts || []).find(function (t) { return t.id === app.selected.id; });
                         if (txtN) {
                             e.preventDefault();
@@ -6047,7 +6170,7 @@
                             scheduleDragRender('text');
                             return;
                         }
-                    } else if (app.selected.type === 'scattered') {
+                    } else if (app.selected.type === 'scattered' && !(app.layerState.scattered && app.layerState.scattered.locked)) {
                         var scN = (app.project.scattered || [])[app.selected.idx];
                         if (scN) {
                             e.preventDefault();
@@ -6131,7 +6254,16 @@
                         handlePropertyChange('water', app.selected.id, 'delete_point', { pointIdx: app.selected.pointIdx });
                     } else if (app.selected.type === 'multi') {
                         var nListDel = app.selected.nodeIds || [];
-                        confirmDeleteStations(nListDel);
+                        var tListDel = app.selected.textIds || [];
+                        if (nListDel.length > 0) {
+                            confirmDeleteStations(nListDel);
+                        } else if (tListDel.length > 0) {
+                            window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                            var delTextSet = new Set(tListDel);
+                            app.project.texts = (app.project.texts || []).filter(function (t) { return !delTextSet.has(t.id); });
+                            app.selected = null;
+                            renderAll();
+                        }
                     } else if (app.selected.type === 'line') {
                         // 线路删除走专用流程（内部自带确认框与准确提示），
                         // 以前落到下面的通用分支，只弹了「已删除选中图元」而线路纹丝不动。
@@ -6148,6 +6280,10 @@
                 if (app.activeTool === 'water' && pdEnter &&
                     typeof pdEnter.hasWaterDraft === 'function' && pdEnter.hasWaterDraft()) {
                     e.preventDefault();
+                    var dwEnter = typeof pdEnter.getWaterDraft === 'function' ? pdEnter.getWaterDraft() : null;
+                    if (dwEnter && dwEnter.points && dwEnter.points.length >= 3) {
+                        window.OpenMapEditor.HistoryManager.pushSnapshot(app.project);
+                    }
                     var widEnter = pdEnter.finishWaterDraft(app.project);
                     if (widEnter) {
                         app.selected = { type: 'water', id: widEnter };
@@ -6307,7 +6443,8 @@
 
         // 新建画布
         var btnConfirmNew = document.getElementById('btnConfirmNewCanvas');
-        if (btnConfirmNew) btnConfirmNew.addEventListener('click', function () {
+        if (btnConfirmNew) btnConfirmNew.addEventListener('click', async function () {
+            if (!(await confirmDiscardDirty('新建空白画布？'))) return;
             var w = parseInt(document.getElementById('newCanvasWidth').value, 10) || 2000;
             var h = parseInt(document.getElementById('newCanvasHeight').value, 10) || 1500;
             var slope = (document.getElementById('newCanvasSlope').value || '1:1').split(':');
@@ -6429,27 +6566,7 @@
             });
         }
 
-        // 外科手术保存
-        var btnSurgicalSave = document.getElementById('btnSurgicalPatchSave');
-        if (btnSurgicalSave) {
-            btnSurgicalSave.addEventListener('click', function () {
-                try {
-                    var res = window.OpenMapEditor.PipelineSurgical.patchStationsSource(app.project);
-                    if (res.dirtyCount === 0) {
-                        showToast('当前未修改任何车站条目');
-                    } else {
-                        window.OpenMapEditor.BundleExporter.download(
-                            'data_stations.patched.js',
-                            res.patchedSource,
-                            'text/javascript'
-                        );
-                        showToast('已安全生成 ' + res.dirtyCount + ' 个车站改动补丁并开始下载（服务端保持安全只读，未覆盖写入）', 'success');
-                    }
-                } catch (e) {
-                    showToast('生成补丁失败: ' + (e.message || e), 'error');
-                }
-            });
-        }
+        // #btnSurgicalPatchSave 已在 bindToolbarButtons() 中统一绑定 openChangesetModal()
 
         // 导出纯 SVG 与高清 PNG
         var btnExportSvg = document.getElementById('btnExportRenderedSvg');

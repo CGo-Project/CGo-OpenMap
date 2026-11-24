@@ -1756,7 +1756,7 @@ section('Milestone 3 多选框选与智能对齐参考线');
     check(/function constrainTo45/.test(drawSrc) && /constrainTo45: constrainTo45/.test(drawSrc),
         'CAD: 提供 45°/90° 方向约束（按 Shift）');
     check(/constrainTo45\(draftNow\.startPoint/.test(editorAppSrc) &&
-        /constrainTo45\(draft5\.startPoint/.test(editorAppSrc),
+        /constrainTo45\(draft6\.startPoint/.test(editorAppSrc),
         'CAD: 预览与最终落点都套用同一方向约束');
     check(/extend_segment/.test(drawSrc) && /segmentId: \(activeTool === 'segaxis'\)/.test(drawSrc),
         'CAD: 自由折线连画时延长同一条折线（不会断成多段而露出拐角缺口）');
@@ -2460,13 +2460,13 @@ section('撤销历史：切换工程 / 新建画布后清空（#39）');
     check(!/HistoryManager\.reset\b/.test(editorAppSrc), '不再调用不存在的 HistoryManager.reset');
     check(/btnConfirmNewCanvas[\s\S]{0,1400}HistoryManager\.clear\(\)/.test(editorAppSrc),
         '新建画布后清空撤销历史');
-    check(/btnHeaderOpenFile[\s\S]{0,2200}HistoryManager\.clear\(\)/.test(editorAppSrc),
+    check(/btnHeaderOpenFile[\s\S]{0,800}loadProjectJsonData[\s\S]{0,1600}HistoryManager\.clear\(\)/.test(editorAppSrc),
         '导入工程 JSON 后清空撤销历史');
     check(/HistoryManager\.clear\(\)[\s\S]{0,200}renderAll\(\)[\s\S]{0,200}已无损载入城市/.test(editorAppSrc),
         '载入城市后清空撤销历史（不会 Undo 回上一座城市）');
     check(/HistoryManager\.markSaved\(\)/.test(editorAppSrc),
         '直接写回本地目录成功后同步保存状态');
-    check(/btnHeaderOpenFile[\s\S]{0,1600}ProjectModel\.normalize\(parsed\)/.test(editorAppSrc),
+    check(/btnHeaderOpenFile[\s\S]{0,800}loadProjectJsonData[\s\S]{0,1600}ProjectModel\.normalize\(parsed\)/.test(editorAppSrc),
         '导入工程 JSON 先做 normalize，再接管为当前工程');
 }
 
@@ -3414,10 +3414,10 @@ section('线上编辑器：不提供在线城市库，已有城市只能从本�
     check(
         fs.existsSync(path.join(ROOT, 'core/shared/station/stacard-engine.js')) &&
         fs.existsSync(path.join(ROOT, 'core/shared/tools/opening-history.js')) &&
-        fs.existsSync(path.join(ROOT, 'core/shared/base/panel-tab-swipe-relay.js')) &&
+        !fs.existsSync(path.join(ROOT, 'core/shared/base/panel-tab-swipe-relay.js')) &&
         fs.existsSync(path.join(ROOT, 'core/shared/station/adjacent-jump.js')) &&
         !fs.existsSync(path.join(ROOT, 'city/shenyang/shared')),
-        'Core: city/shenyang/shared 已整体迁移至 core/shared/');
+        'Core: city/shenyang/shared 已整体迁移至 core/shared/ 且已清理过时中继文件');
 
     const mainHtmlSrc = fs.readFileSync(path.join(ROOT, 'main.html'), 'utf8');
     const swFileSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
@@ -3428,10 +3428,8 @@ section('线上编辑器：不提供在线城市库，已有城市只能从本�
         'Core: main.html 与 sw.js 已加载并缓存 core/image-viewer.js 与 core/station-addons.js');
 
     const swipeSrc = fs.readFileSync(path.join(ROOT, 'core/panel-tab-swipe.js'), 'utf8');
-    const swipeRelaySrc = fs.readFileSync(path.join(ROOT, 'core/shared/base/panel-tab-swipe-relay.js'), 'utf8');
-    check(/supportsInteractiveStart:\s*true/.test(swipeSrc) &&
-        /window\.CGoPanelTabSwipe\s*&&\s*window\.CGoPanelTabSwipe\.supportsInteractiveStart/.test(swipeRelaySrc),
-        'Core Tier-1: panel-tab-swipe 原生支持交互元素起手，且共享层中继安全让权');
+    check(/supportsInteractiveStart:\s*true/.test(swipeSrc),
+        'Core Tier-1: panel-tab-swipe 原生支持交互元素起手，不再需要额外中继脚本');
 
     const stationBoardSrc = fs.readFileSync(path.join(ROOT, 'core/station-board.js'), 'utf8');
     const compCssSrc = fs.readFileSync(path.join(ROOT, 'css/cgo_components.css'), 'utf8');
@@ -3515,6 +3513,36 @@ section('线上编辑器：不提供在线城市库，已有城市只能从本�
         coreSbCtx.CGoImageViewer && typeof coreSbCtx.CGoImageViewer.open === 'function' &&
         typeof coreSbCtx.CGoImageViewer.close === 'function' && typeof coreSbCtx.CGoImageViewer.isTouchFirst === 'function',
         'Core Tier-2: CGoStationAddons 按需启用后正确渲染沿革字段，CGoImageViewer API 就绪');
+
+    // Audit 回归检查（CityProjectIO / HistoryManager / ProjectModel / 图层与城市模块）
+    const nestedIdSrc = `const linesData = [\n  { meta /* comment : 1 */: { id: "L2" }, id: "L1", color: "#111111" },\n  { id: "L2", color: "#222222" }\n];\n`;
+    const patchedLinesSrc = IO.patchEntries(nestedIdSrc, 'linesData', { update: { L2: { color: '#333333' } } });
+    const parsedAfterPatch = evalData(patchedLinesSrc, 'linesData');
+    check(Array.isArray(parsedAfterPatch) && parsedAfterPatch[0].color === '#111111' && parsedAfterPatch[1].color === '#333333',
+        'Audit: CityProjectIO.patchEntries 仅按顶层 id 索引且跳过键后注释，不被嵌套 id 劫持');
+
+    const normWithBundle = ProjectModel.normalize({ nodes: {}, lines: [], virtualTransfers: { paidConns: [], freeConns: [] } });
+    check(normWithBundle.virtualTransfers && !Array.isArray(normWithBundle.virtualTransfers) && Array.isArray(normWithBundle.virtualTransfers.paidConns),
+        'Audit: ProjectModel.normalize 保留对象形态的 virtualTransfers bundle');
+
+    const hmMod = require(path.join(ROOT, 'editor/js/core/history-manager.js'));
+    hmMod.clear();
+    const hmProj = { nodes: { a: { x: 1 } } };
+    hmMod.pushSnapshot(hmProj, 'test');
+    hmProj.nodes.a.x = 2;
+    check(hmMod.isDirty() === true, 'Audit: HistoryManager.isDirty 在修改后返回 true');
+    hmMod.runInTransaction(hmProj, 'tx', () => { hmProj.nodes.a.x = 3; });
+    hmMod.markSaved();
+    check(hmMod.isDirty() === false && hmProj.nodes.a.x === 3, 'Audit: HistoryManager.markSaved 清零脏状态且事务正常执行');
+
+    const vrSrc = fs.readFileSync(path.join(ROOT, 'editor/js/layers/vector-route-layer.js'), 'utf8');
+    check(vrSrc.includes('v1y / l1 + v2y / l2'), 'Audit: VectorRouteLayer 修正圆角手柄角平分线 v1y/l1 分母');
+
+    const hrbBadgesSrc = fs.readFileSync(path.join(ROOT, 'city/harbin/modules/harbin_line_badges.js'), 'utf8');
+    const syBoardSrc = fs.readFileSync(path.join(ROOT, 'city/shenyang/modules/shenyang_station_board.js'), 'utf8');
+    check(hrbBadgesSrc.includes('slice(2, 4)') && hrbBadgesSrc.includes('slice(4, 6)') &&
+        /width:\s*totalWidth,\s*\n\s*height\b/.test(syBoardSrc),
+        'Audit: Harbin RGB 解析与 Shenyang 紧凑徽标 height 均已修复');
 })().then(finish, err => { failed++; console.log('  ✗ 本地目录载入自检异常：' + (err && err.stack || err)); finish(); });
 
 function finish() {
