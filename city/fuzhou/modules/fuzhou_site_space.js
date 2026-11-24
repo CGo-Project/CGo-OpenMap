@@ -831,51 +831,53 @@
         `;
     }
 
-    window.StationBoard.registerModule({
-        id: "fuzhou-station-space",
-        name: "福州车站空间示意图",
-        targetTab: "station-info",
-        order: 15,
-        shouldRender(context) {
-            const entry = getEntry(context);
-            return Boolean(entry && entry.map);
-        },
-        render(context) {
-            const entry = getEntry(context);
-            if (!entry || !entry.map) return "";
-            const exits = Array.isArray(entry.exits) ? entry.exits : [];
-            const cn = entry.cn || (context.station && context.station.cn) || "本站";
-            const updated = entry.updatedAt ? " · 更新于 " + entry.updatedAt : "";
+    if (window.StationBoard?.registerModule) {
+        window.StationBoard.registerModule({
+            id: "fuzhou-station-space",
+            name: "福州车站空间示意图",
+            targetTab: "station-info",
+            order: 15,
+            shouldRender(context) {
+                const entry = getEntry(context);
+                return Boolean(entry && entry.map);
+            },
+            render(context) {
+                const entry = getEntry(context);
+                if (!entry || !entry.map) return "";
+                const exits = Array.isArray(entry.exits) ? entry.exits : [];
+                const cn = entry.cn || (context.station && context.station.cn) || "本站";
+                const updated = entry.updatedAt ? " · 更新于 " + esc(entry.updatedAt) : "";
 
-            return `
-                <div style="margin:0 0 15px; padding:8px 10px; background:var(--card-bg); border-radius:6px; font-size:11px; line-height:1.45;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px;">
-                        <span style="font-weight:600; color:var(--text-main); display:inline-flex; align-items:center; gap:4px;">
-                            <cgo-icon name="map" size="13"></cgo-icon><span>车站空间示意图</span>
-                        </span>
+                return `
+                    <div style="margin:0 0 15px; padding:8px 10px; background:var(--card-bg); border-radius:6px; font-size:11px; line-height:1.45;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px;">
+                            <span style="font-weight:600; color:var(--text-main); display:inline-flex; align-items:center; gap:4px;">
+                                <cgo-icon name="map" size="13"></cgo-icon><span>车站空间示意图</span>
+                            </span>
+                            <button type="button" data-fz-space-view="${esc(entry.map)}" data-fz-space-name="${esc(cn)}"
+                               style="border:0; background:none; padding:0; cursor:pointer; font:inherit;
+                                      color:var(--primary-color, #006098); display:inline-flex; align-items:center;
+                                      gap:3px; white-space:nowrap;">
+                                <span>查看大图</span><cgo-icon name="zoom-in" size="12"></cgo-icon>
+                            </button>
+                        </div>
                         <button type="button" data-fz-space-view="${esc(entry.map)}" data-fz-space-name="${esc(cn)}"
-                           style="border:0; background:none; padding:0; cursor:pointer; font:inherit;
-                                  color:var(--primary-color, #006098); display:inline-flex; align-items:center;
-                                  gap:3px; white-space:nowrap;">
-                            <span>查看大图</span><cgo-icon name="zoom-in" size="12"></cgo-icon>
+                                title="点开看大图"
+                                style="display:block; width:100%; padding:0; border:0; background:none; cursor:zoom-in;">
+                            <img src="${esc(entry.map)}" alt="${esc(cn)}站点空间示意图"
+                                 loading="lazy" decoding="async" referrerpolicy="no-referrer"
+                                 style="display:block; width:100%; height:auto; border:1px solid var(--border-color); border-radius:6px; background:var(--card-bg);">
                         </button>
+                        <div style="margin-top:8px; font-weight:600; color:var(--text-main); display:inline-flex; align-items:center; gap:4px;">
+                            <cgo-icon name="gate" size="13"></cgo-icon><span>出入口${exits.length ? "（" + exits.length + "）" : ""}</span>
+                        </div>
+                        <div style="margin-top:4px;">
+                            ${exits.length ? exits.map(exitRow).join("") : `<span style="color:var(--text-light);">官网暂未登记本站出入口信息。</span>`}
+                        </div>
+                        <div style="margin-top:6px; color:var(--text-light); font-size:10px;">${SOURCE_LABEL}${updated} · 图片为官网外链，需联网加载</div>
                     </div>
-                    <button type="button" data-fz-space-view="${esc(entry.map)}" data-fz-space-name="${esc(cn)}"
-                            title="点开看大图"
-                            style="display:block; width:100%; padding:0; border:0; background:none; cursor:zoom-in;">
-                        <img src="${esc(entry.map)}" alt="${esc(cn)}站点空间示意图"
-                             loading="lazy" decoding="async" referrerpolicy="no-referrer"
-                             style="display:block; width:100%; height:auto; border:1px solid var(--border-color); border-radius:6px; background:var(--card-bg);">
-                    </button>
-                    <div style="margin-top:8px; font-weight:600; color:var(--text-main); display:inline-flex; align-items:center; gap:4px;">
-                        <cgo-icon name="gate" size="13"></cgo-icon><span>出入口${exits.length ? "（" + exits.length + "）" : ""}</span>
-                    </div>
-                    <div style="margin-top:4px;">
-                        ${exits.length ? exits.map(exitRow).join("") : `<span style="color:var(--text-light);">官网暂未登记本站出入口信息。</span>`}
-                    </div>
-                    <div style="margin-top:6px; color:var(--text-light); font-size:10px;">${SOURCE_LABEL}${updated} · 图片为官网外链，需联网加载</div>
-                </div>
-            `;
-        }
-    });
+                `;
+            }
+        });
+    }
 })();

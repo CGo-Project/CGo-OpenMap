@@ -258,6 +258,10 @@
         return legend;
     }
 
+    function stripBreakTags(value) {
+        return String(value ?? "").replace(/<br\s*\/?>/gi, "").trim();
+    }
+
     function escapeHtml(value) {
         return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
             "&": "&amp;",
@@ -511,12 +515,12 @@
         const subtitle = popup.querySelector(".qd-construction-segment-panel-subtitle");
         const slot = popup.querySelector(".qd-construction-segment-card-slot");
 
-        if (title) title.textContent = segment.name || "区间";
+        if (title) title.textContent = stripBreakTags(segment.name || "区间") || "区间";
 
         if (subtitle) {
             const stations = getStations();
-            const fromName = stations?.[segment.from]?.cn || "";
-            const toName = stations?.[segment.to]?.cn || "";
+            const fromName = stripBreakTags(stations?.[segment.from]?.cn || "");
+            const toName = stripBreakTags(stations?.[segment.to]?.cn || "");
             subtitle.textContent = fromName && toName ? `${fromName}~${toName}区间` : "";
             subtitle.style.display = subtitle.textContent ? "block" : "none";
         }
@@ -1143,12 +1147,12 @@
                 el.setAttribute("role", "button");
                 el.setAttribute("tabindex", "0");
                 const stationName = meta.kind === "station"
-                    ? (stations[meta.stationId]?.cn || meta.stationId)
+                    ? stripBreakTags(stations[meta.stationId]?.cn || meta.stationId)
                     : "";
-                const fromName = meta.kind === "segment" ? (stations[meta.fromId]?.cn || meta.fromId) : "";
-                const toName = meta.kind === "segment" ? (stations[meta.toId]?.cn || meta.toId) : "";
+                const fromName = meta.kind === "segment" ? stripBreakTags(stations[meta.fromId]?.cn || meta.fromId) : "";
+                const toName = meta.kind === "segment" ? stripBreakTags(stations[meta.toId]?.cn || meta.toId) : "";
                 const lineName = meta.kind === "segment"
-                    ? (lines.find((item) => item?.id === meta.lineId)?.name || meta.lineId)
+                    ? stripBreakTags(lines.find((item) => item?.id === meta.lineId)?.name || meta.lineId)
                     : "";
                 el.setAttribute("aria-label", meta.kind === "station"
                     ? `新：${stationName}站，按 Enter 或空格键查看车站信息`
@@ -2070,7 +2074,7 @@
         btn.title = "建设进度";
     }
 
-    function showLayer(layer) {
+    function showLayer(layer, { skipMarkerRebuild = false } = {}) {
         installConstructionFocusScrollGuard();
         installKeyboardNavigationModality();
         layer.setAttribute("aria-hidden", "false");
@@ -2082,7 +2086,7 @@
         const badgeLayer = ensureBadgeLayer();
         const latestLayer = ensureLatestMarkerLayer();
         const legend = ensureLegend();
-        buildLatestMarkers(getStations(), getLines());
+        if (!skipMarkerRebuild) buildLatestMarkers(getStations(), getLines());
         orderConstructionKeyboardLayers();
         if (latestLayer) latestLayer.querySelectorAll(".qd-construction-latest-marker").forEach((node) => node.setAttribute("tabindex", "0"));
         layer.querySelectorAll(".qd-construction-line-keyboard-entry").forEach((node) => node.setAttribute("tabindex", "0"));
@@ -2151,6 +2155,7 @@
                 layer.style.display = "none";
                 if (labelLayer) labelLayer.style.display = "none";
                 if (badgeLayer) badgeLayer.style.display = "none";
+                if (latestLayer) latestLayer.style.display = "none";
                 if (legend) legend.style.display = "none";
                 setOriginalLabelsHidden(false);
                 setOriginalBadgesHidden(false);
@@ -2170,19 +2175,22 @@
         const layer = ensureLayer();
         if (!layer) return;
 
+        let justBuilt = false;
         if (visible && !built) {
-            if (!buildLayer()) {
+            if (buildLayer()) {
+                justBuilt = true;
+            } else {
                 requestAnimationFrame(() => {
                     if (!visible || !buildLayer()) return;
                     const readyLayer = document.getElementById(LAYER_ID);
-                    if (readyLayer) showLayer(readyLayer);
+                    if (readyLayer) showLayer(readyLayer, { skipMarkerRebuild: true });
                 });
             }
         }
 
         if (visible) {
             suppressBaseLineHighlight();
-            showLayer(layer);
+            showLayer(layer, { skipMarkerRebuild: justBuilt });
         } else {
             closeSegmentPopup();
             hideLayer(layer);

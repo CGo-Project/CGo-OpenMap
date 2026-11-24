@@ -113,8 +113,8 @@
             const value = hex[1];
             return [
                 parseInt(value.slice(0, 2), 16),
-                parseInt(value.slice(4, 6), 16),
-                parseInt(value.slice(2, 4), 16)
+                parseInt(value.slice(2, 4), 16),
+                parseInt(value.slice(4, 6), 16)
             ];
         }
         if (rgb) return rgb.slice(1, 4).map(Number);

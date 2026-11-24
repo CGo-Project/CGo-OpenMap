@@ -4,6 +4,10 @@
 (function () {
     if (!window.StationBoard || typeof window.StationBoard.registerModule !== "function") return;
 
+    const esc = (text) => String(text == null ? "" : text).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+
     function getEntry(lineId, stationId) {
         if (typeof GLOBAL_SCHEDULE_DATA === "undefined" || !GLOBAL_SCHEDULE_DATA) return null;
         return GLOBAL_SCHEDULE_DATA[lineId]?.[stationId] || null;
@@ -34,9 +38,9 @@
                 const last = formatSlot(bound && bound.last);
                 return `
                     <div style="display:grid; grid-template-columns: 72px 1fr 1fr; gap:4px 8px; align-items:center; padding:4px 0; border-bottom:1px solid var(--border-color);">
-                        <span style="color:var(--text-main); font-weight:600;">开往${dest}</span>
-                        <span style="color:var(--text-light);">首班 ${first}</span>
-                        <span style="color:var(--text-light);">末班 ${last}</span>
+                        <span style="color:var(--text-main); font-weight:600;">开往${esc(dest)}</span>
+                        <span style="color:var(--text-light);">首班 ${esc(first)}</span>
+                        <span style="color:var(--text-light);">末班 ${esc(last)}</span>
                     </div>
                 `;
             }).join("");

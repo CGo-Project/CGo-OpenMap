@@ -16,7 +16,7 @@ const SHENYANG_STACARD_DATA = {
             serviceHours: [
                 {
                     destination: "line-last",
-                    summer: { first: "05:30", last: "22:30" },
+                    summer: { first: "05:30", last: "23:00" },
                     winter: { first: "05:30", last: "22:20" }
                 }
             ]
@@ -147,7 +147,7 @@ const SHENYANG_STACARD_DATA = {
             serviceHours: [
                 {
                     destination: "line-first",
-                    summer: { first: "06:11", last: "00:57" },
+                    summer: { first: "06:11", last: "23:57" },
                     winter: { first: "06:11", last: "23:17" }
                 },
                 {
@@ -164,7 +164,7 @@ const SHENYANG_STACARD_DATA = {
             serviceHours: [
                 {
                     destination: "line-first",
-                    summer: { first: "06:09", last: "00:55" },
+                    summer: { first: "06:09", last: "23:55" },
                     winter: { first: "06:09", last: "23:15" }
                 },
                 {
@@ -181,7 +181,7 @@ const SHENYANG_STACARD_DATA = {
             serviceHours: [
                 {
                     destination: "line-first",
-                    summer: { first: "06:07", last: "00:53" },
+                    summer: { first: "06:07", last: "23:53" },
                     winter: { first: "06:07", last: "23:13" }
                 },
                 {
@@ -198,7 +198,7 @@ const SHENYANG_STACARD_DATA = {
             serviceHours: [
                 {
                     destination: "line-first",
-                    summer: { first: "06:05", last: "00:51" },
+                    summer: { first: "06:05", last: "23:51" },
                     winter: { first: "06:05", last: "23:11" }
                 },
                 {
@@ -328,12 +328,12 @@ const SHENYANG_STACARD_DATA = {
             serviceHours: [
                 {
                     destination: "line-first",
-                    summer: { first: "05:59", last: "23:29" },
+                    summer: { first: "05:50", last: "23:40" },
                     winter: { first: "05:50", last: "23:00" }
                 },
                 {
                     destination: "line-last",
-                    summer: { first: "05:58", last: "23:27" },
+                    summer: { first: "06:10", last: "23:36" },
                     winter: { first: "06:10", last: "22:56" }
                 }
             ]

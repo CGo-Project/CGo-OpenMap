@@ -21,9 +21,19 @@
         "M0714": "可去往青岛有轨电车示范线农业大学站"
     };
 
-    function registerTravelGuideModule() {
+    function esc(text) {
+        return String(text == null ? "" : text).replace(/[&<>"']/g, (ch) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[ch]));
+    }
+
+    function registerTravelGuideModule(attempt = 0) {
         if (!window.StationBoard) {
-            setTimeout(registerTravelGuideModule, 50);
+            if (attempt < 100) setTimeout(() => registerTravelGuideModule(attempt + 1), 50);
             return;
         }
 
@@ -44,7 +54,8 @@
                 const tip = station.travelTip || QINGDAO_TRAVEL_TIPS[station.id] || "";
                 const hasNameHistory = Boolean(
                     station?.id
-                    && window.QINGDAO_STATION_NAME_HISTORY?.[station.id]?.rows?.length
+                    && (window.QINGDAO_STATION_NAME_HISTORY?.[station.id]?.rows?.length
+                        || window.QINGDAO_STATION_HISTORICAL_TRANSLATIONS?.[station.id])
                 );
                 const dividerStyle = hasNameHistory
                     ? "padding-bottom:10px; margin-bottom:10px; border-bottom:1px dashed var(--divider);"
@@ -78,7 +89,7 @@
                                 font-size: 12px;
                                 color: var(--text-light);
                                 line-height: 1.5;
-                            ">${tip}</div>
+                            ">${esc(tip)}</div>
                         </div>
                     </div>
                 `;

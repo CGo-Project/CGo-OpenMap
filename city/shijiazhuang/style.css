@@ -12,7 +12,7 @@
  */
 
 /* ── 三层玻璃卡：渐变底 + 模糊中层 + 内容顶层 ── */
-.cgo-glass-card {
+.map-shijiazhuang .cgo-glass-card {
     position: fixed;
     left: 50%;
     bottom: 40px;
@@ -26,7 +26,7 @@
     min-width: 340px;
     max-width: 540px;
 }
-.cgo-glass-card::before {
+.map-shijiazhuang .cgo-glass-card::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -36,23 +36,23 @@
     z-index: 1;
     pointer-events: none;
 }
-.cgo-glass-card > * { position: relative; z-index: 2; }
+.map-shijiazhuang .cgo-glass-card > * { position: relative; z-index: 2; }
 
 @media (min-width: 641px) {
-    body.cgowm-active {
+    .map-shijiazhuang body.cgowm-active {
         --sjz-wm-l: 0px;
         --sjz-wm-r: 0px;
     }
 
-    body.cgowm-active[data-cgowm-left-sidebar="expanded"] {
+    .map-shijiazhuang body.cgowm-active[data-cgowm-left-sidebar="expanded"] {
         --sjz-wm-l: var(--cwm-sidebar-left-width, 0px);
     }
 
-    body.cgowm-active[data-cgowm-right-sidebar="expanded"] {
+    .map-shijiazhuang body.cgowm-active[data-cgowm-right-sidebar="expanded"] {
         --sjz-wm-r: var(--cwm-sidebar-right-width, 0px);
     }
 
-    body.cgowm-active .cgo-glass-card {
+    .map-shijiazhuang body.cgowm-active .cgo-glass-card {
         left: calc(50% + (var(--sjz-wm-l, 0px) - var(--sjz-wm-r, 0px)) / 2);
         max-width: min(540px, calc(100vw - var(--sjz-wm-l, 0px) - var(--sjz-wm-r, 0px) - 32px));
         z-index: 19500;
@@ -60,31 +60,34 @@
 }
 
 /* ── 虚拟终点站卡 ── */
-.line-info-card { padding: 16px 20px; }
-.tc-row1 {
+.map-shijiazhuang .line-info-card {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, var(--tc-line, #3c9726) 0%, color-mix(in srgb, var(--tc-line, #3c9726) 72%, #000) 100%);
+}
+.map-shijiazhuang .tc-row1 {
     display: flex;
     align-items: center;
     gap: 8px;
     white-space: nowrap;
 }
-.tc-line {
+.map-shijiazhuang .tc-line {
     flex: 1;
     height: 1.5px;
     background: rgba(255,255,255,.6);
 }
-.tc-icon {
+.map-shijiazhuang .tc-icon {
     width: 23px; height: 23px;
     border-radius: 50%;
     background: rgba(255,255,255,.2);
     display: flex; align-items: center; justify-content: center;
     font-size: 12px;
 }
-.tc-text { font-size: 15px; font-weight: 700; }
-.tc-body { margin-top: 30px; }
-.tc-dir { font-size: 15px; font-weight: 600; }
-.tc-train { display: flex; gap: 24px; margin-top: 6px; }
-.tc-train b { font-size: 22px; font-weight: 700; }
-.tc-other {
+.map-shijiazhuang .tc-text { font-size: 15px; font-weight: 700; }
+.map-shijiazhuang .tc-body { margin-top: 30px; }
+.map-shijiazhuang .tc-dir { font-size: 15px; font-weight: 600; }
+.map-shijiazhuang .tc-train { display: flex; gap: 24px; margin-top: 6px; }
+.map-shijiazhuang .tc-train b { font-size: 22px; font-weight: 700; }
+.map-shijiazhuang .tc-other {
     margin-top: 14px;
     padding: 8px 12px;
     background: #1A3A6B;
@@ -95,19 +98,19 @@
 }
 
 /* ── 景区卡 ── */
-.scenery-card {
+.map-shijiazhuang .scenery-card {
     padding: 0;
     overflow: hidden;
     border-radius: 12px;
 }
 
-.sc-header {
+.map-shijiazhuang .sc-header {
     position: relative;
     height: 30px;
     margin-top: 10px;
 }
 
-.sc-line {
+.map-shijiazhuang .sc-line {
     position: absolute;
     left: 0;
     right: 0;
@@ -117,7 +120,7 @@
     transform: translateY(-50%);
 }
 
-.sc-capsule {
+.map-shijiazhuang .sc-capsule {
     position: absolute;
     left: 15px;
     top: 50%;
@@ -134,7 +137,7 @@
     z-index: 1;
 }
 
-.sc-capsule-icon {
+.map-shijiazhuang .sc-capsule-icon {
     width: 18px;
     height: 18px;
     border-radius: 50%;
@@ -145,32 +148,32 @@
     font-size: 10px;
 }
 
-.sc-body {
+.map-shijiazhuang .sc-body {
     background: rgba(0,0,0,.7);
     padding: 16px 12px;
     margin-top: 15px;
 }
-.sc-title-row { display: flex; align-items: center; gap: 8px; }
-.sc-title { font-size: 15px; font-weight: 700; }
-.sc-tri {
+.map-shijiazhuang .sc-title-row { display: flex; align-items: center; gap: 8px; }
+.map-shijiazhuang .sc-title { font-size: 15px; font-weight: 700; }
+.map-shijiazhuang .sc-tri {
     width: 0; height: 0;
     border-top: 7.5px solid transparent;
     border-bottom: 7.5px solid transparent;
     border-left: 15px solid #fff;
 }
-.sc-sub-line {
+.map-shijiazhuang .sc-sub-line {
     flex: 1;
     height: 1.9px;
     background: rgba(255,255,255,.8);
     position: relative;
 }
-.sc-sub-line .sc-en {
+.map-shijiazhuang .sc-sub-line .sc-en {
     position: absolute;
     bottom: 2px; left: 0;
     font-size: 11px;
 }
-.sc-intro-title { font-size: 15px; font-weight: 700; margin-top: 12px; }
-.sc-text {
+.map-shijiazhuang .sc-intro-title { font-size: 15px; font-weight: 700; margin-top: 12px; }
+.map-shijiazhuang .sc-text {
     font-size: 13px;
     margin-top: 6px;
     font-family: "Songti SC", "SimSun", serif;
@@ -178,7 +181,7 @@
     text-align: left;
     text-indent: 2em;
 }
-.sc-btn {
+.map-shijiazhuang .sc-btn {
     display: inline-block;
     margin-top: 10px;
     padding: 6px 24px;
@@ -190,25 +193,25 @@
 }
 
 /* ── 国铁卡 ── 下次更新*/
-.rail-card {
+.map-shijiazhuang .rail-card {
     display: flex;
     align-items: stretch;
     padding: 0;
 }
-.rail-left { width: 5.7px; background: rgba(255,255,255,.6); }
-.rail-right { width: 19px; background: rgba(255,255,255,.6); }
-.rail-mid { flex: 1; padding: 14px 12px; }
-.rail-row1 { display: flex; align-items: center; gap: 8px; }
-.rail-circle {
+.map-shijiazhuang .rail-left { width: 5.7px; background: rgba(255,255,255,.6); }
+.map-shijiazhuang .rail-right { width: 19px; background: rgba(255,255,255,.6); }
+.map-shijiazhuang .rail-mid { flex: 1; padding: 14px 12px; }
+.map-shijiazhuang .rail-row1 { display: flex; align-items: center; gap: 8px; }
+.map-shijiazhuang .rail-circle {
     width: 23px; height: 23px;
     border-radius: 50%;
     background: rgba(255,255,255,.2);
     display: flex; align-items: center; justify-content: center;
     font-size: 12px;
 }
-.rail-bold { font-size: 17px; font-weight: 700; }
-.rail-row2 { font-size: 13px; margin-top: 6px; opacity: .9; }
-.rail-btn {
+.map-shijiazhuang .rail-bold { font-size: 17px; font-weight: 700; }
+.map-shijiazhuang .rail-row2 { font-size: 13px; margin-top: 6px; opacity: .9; }
+.map-shijiazhuang .rail-btn {
     display: inline-block;
     margin-top: 10px;
     padding: 6px 24px;
@@ -220,7 +223,7 @@
 }
 
 /* ── 区间卡 ── */
-.segment-card {
+.map-shijiazhuang .segment-card {
     position: absolute;
     left: 0; top: 0;
     transform: translate(-50%, -50%);
@@ -234,52 +237,55 @@
     box-shadow: 0 8px 32px rgba(0,0,0,.25);
     color: #fff;
 }
-.seg-bar {
+.map-shijiazhuang .seg-bar {
     height: 9.5px;
     background: rgba(255,255,255,.9);
 }
-.seg-body {
+.map-shijiazhuang .seg-body {
     padding: 12px 14px;
     background: rgba(0,0,0,.5);
     border-bottom-left-radius: 12px;
     border-bottom-right-radius: 12px;
 }
-.seg-station { font-size: 18px; font-weight: 700; }
-.seg-station-en { font-size: 13px; opacity: .85; }
-.seg-arrow { text-align: center; margin: 4px 0; font-size: 16px; }
-.seg-time {
+.map-shijiazhuang .seg-station { font-size: 18px; font-weight: 700; }
+.map-shijiazhuang .seg-station-en { font-size: 13px; opacity: .85; }
+.map-shijiazhuang .seg-arrow { text-align: center; margin: 4px 0; font-size: 16px; }
+.map-shijiazhuang .seg-time {
     margin-top: 8px;
     font-size: 13px;
     display: flex; align-items: center; gap: 6px;
 }
-.seg-time b { font-size: 22px; }
+.map-shijiazhuang .seg-time b { font-size: 22px; }
 
 /* ── 可点击图元指针提示 ── */
-.station.scenery, .station.rdot, .station.railcity, .station.terminus { cursor: pointer; }
+.map-shijiazhuang .station.scenery,
+.map-shijiazhuang .station.rdot,
+.map-shijiazhuang .station.railcity,
+.map-shijiazhuang .station.terminus { cursor: pointer; }
 
 /* ── 景区连线宽 10px ── */
-.line-visual-group[data-visual-id^="SC_"] .line-visual-inner,
-.line-visual-group[data-visual-id^="SC_"] .line-visual-outer {
+.map-shijiazhuang .line-visual-group[data-visual-id^="SC_"] .line-visual-inner,
+.map-shijiazhuang .line-visual-group[data-visual-id^="SC_"] .line-visual-outer {
     stroke-width: 10px !important;
     stroke-linecap: round;
 }
 
 /* ── 虚拟站文字颜色与线路一致 ── */
-.station.terminus[data-sid="M100"] .stacn,
-.station.terminus[data-sid="M100"] .staen,
-.station.terminus[data-sid="M1000"] .stacn,
-.station.terminus[data-sid="M1000"] .staen { color: #E4002B !important; }
-.station.terminus[data-sid="M200"] .stacn,
-.station.terminus[data-sid="M200"] .staen,
-.station.terminus[data-sid="M2000"] .stacn,
-.station.terminus[data-sid="M2000"] .staen { color: #C4A35A !important; }
-.station.terminus[data-sid="M300"] .stacn,
-.station.terminus[data-sid="M300"] .staen,
-.station.terminus[data-sid="M3000"] .stacn,
-.station.terminus[data-sid="M3000"] .staen { color: #4A90D9 !important; }
+.map-shijiazhuang .station.terminus[data-sid="M100"] .stacn,
+.map-shijiazhuang .station.terminus[data-sid="M100"] .staen,
+.map-shijiazhuang .station.terminus[data-sid="M1000"] .stacn,
+.map-shijiazhuang .station.terminus[data-sid="M1000"] .staen { color: #E4002B !important; }
+.map-shijiazhuang .station.terminus[data-sid="M200"] .stacn,
+.map-shijiazhuang .station.terminus[data-sid="M200"] .staen,
+.map-shijiazhuang .station.terminus[data-sid="M2000"] .stacn,
+.map-shijiazhuang .station.terminus[data-sid="M2000"] .staen { color: #C4A35A !important; }
+.map-shijiazhuang .station.terminus[data-sid="M300"] .stacn,
+.map-shijiazhuang .station.terminus[data-sid="M300"] .staen,
+.map-shijiazhuang .station.terminus[data-sid="M3000"] .stacn,
+.map-shijiazhuang .station.terminus[data-sid="M3000"] .staen { color: #4A90D9 !important; }
 
 /* ── 左下角景区提示 ── */
-.sjz-scenery-hint {
+.map-shijiazhuang .sjz-scenery-hint {
     position: absolute;
     left: 20px;
     bottom: 20px;
@@ -294,22 +300,22 @@
     white-space: nowrap;
 }
 /* ── 换乘城市卡 ── */
-.railcity-card {
+.map-shijiazhuang .railcity-card {
     padding: 0;
 }
 
-.rc-header {
+.map-shijiazhuang .rc-header {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 14px 20px 10px;
 }
-.rc-bar {
+.map-shijiazhuang .rc-bar {
     width: 1.5px;
     height: 20px;
     background: rgba(255,255,255,.7);
 }
-.rc-icon {
+.map-shijiazhuang .rc-icon {
     width: 26px;
     height: 26px;
     border-radius: 50%;
@@ -320,31 +326,31 @@
     font-size: 13px;
     font-weight: 700;
 }
-.rc-title {
+.map-shijiazhuang .rc-title {
     font-size: 20px;
     font-weight: 700;
     letter-spacing: 1px;
 }
 
-.rc-body {
+.map-shijiazhuang .rc-body {
     padding: 0 20px 12px;
 }
-.rc-sub {
+.map-shijiazhuang .rc-sub {
     font-size: 13px;
     opacity: .85;
     margin-bottom: 6px;
 }
-.rc-intro {
+.map-shijiazhuang .rc-intro {
     font-size: 14px;
     line-height: 1.6;
     opacity: .95;
 }
 
-.rc-action {
+.map-shijiazhuang .rc-action {
     padding: 0 20px 16px;
     text-align: right;
 }
-.rc-btn {
+.map-shijiazhuang .rc-btn {
     display: inline-block;
     background: #1A3A6B;
     color: #fff;
@@ -354,6 +360,6 @@
     font-weight: 600;
     text-decoration: none;
 }
-.rc-btn:hover {
+.map-shijiazhuang .rc-btn:hover {
     background: #142c50;
 }

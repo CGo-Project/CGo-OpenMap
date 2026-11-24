@@ -429,7 +429,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261123.112538";
+        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261124.235734";
         // 共享层（临时位于 core/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./core/shared/route/loop-direction.js?v=${version}"><\/script>`);
@@ -442,8 +442,6 @@
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./core/shared/base/viewport-inset.js?v=${version}"><\/script>`);
         // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
-        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
-        document.write(`<script src="./core/shared/base/panel-tab-swipe-relay.js?v=${version}"><\/script>`);
         // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
         document.write(`<script src="./core/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）

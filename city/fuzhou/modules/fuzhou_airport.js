@@ -45,6 +45,8 @@
         `).join("");
     }
 
+    if (!window.StationBoard?.registerModule) return;
+
     window.StationBoard.registerModule({
         id: "fuzhou-airport-tip",
         name: "福州机场联络",

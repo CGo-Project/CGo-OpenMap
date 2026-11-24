@@ -317,16 +317,22 @@
     const DECO_URL = "./city/shenzhen/assets/shenzhen_deco.svg" + (VER ? `?v=${VER}` : "");
     const decoText = fetch(DECO_URL).then((r) => (r.ok ? r.text() : "")).catch(() => "");
     /** 把装饰层 <img> 换成内联 SVG（深色模式按 class 重新着色）；<img> 本身由样式表隐藏，避免先闪一帧浅色底图 */
+    let szDecoObserver = null;
     function inlineDeco() {
         const layer = document.getElementById("scattered-layer");
         if (layer && !layer.dataset.szObs) {
             layer.dataset.szObs = "1";
-            new MutationObserver(inlineDeco).observe(layer, { childList: true, subtree: true });
+            szDecoObserver = new MutationObserver(inlineDeco);
+            szDecoObserver.observe(layer, { childList: true, subtree: true });
         }
         const img = document.querySelector('#scattered-layer img[src*="shenzhen_deco.svg"]');
         if (!img || img.dataset.szInline) return;
         img.dataset.szInline = "1";
         decoText.then((txt) => {
+            if (szDecoObserver) {
+                szDecoObserver.disconnect();
+                szDecoObserver = null;
+            }
             if (!txt) { img.classList.add("sz-deco-fallback"); return; }
             const wrap = document.createElement("div");
             wrap.className = "sz-deco-svg";

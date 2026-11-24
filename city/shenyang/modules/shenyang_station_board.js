@@ -243,6 +243,7 @@
 
         return {
             width: totalWidth,
+            height,
             svg: `
                 <svg class="shenyang-line-badge-svg" viewBox="0 0 ${totalWidth} ${height}" aria-hidden="true" focusable="false" xmlns="${SVG_NS}">
                     ${circleMarkup}
@@ -471,7 +472,25 @@
                 syncCompactLineBadges();
             });
         };
-        const observer = new MutationObserver(scheduleSync);
+        const RELEVANT_SELECTOR = ".line-badge, .search-line-icon, .svg-icon-inlined[data-src], .panel-badges, #station-selector, .transfer-section, #line-tooltip, .search-item, .cgo-rt-item";
+        const isRelevantNode = (node) => {
+            if (!node || node.nodeType !== 1) return false;
+            return Boolean(node.matches?.(RELEVANT_SELECTOR) || node.querySelector?.(RELEVANT_SELECTOR));
+        };
+        const observer = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+                if (m.target?.closest?.(".panel-badges, #station-selector, .transfer-section, #line-tooltip, .search-item, .cgo-rt-item")) {
+                    scheduleSync();
+                    return;
+                }
+                for (const node of m.addedNodes) {
+                    if (isRelevantNode(node)) {
+                        scheduleSync();
+                        return;
+                    }
+                }
+            }
+        });
         observer.observe(root, { childList: true, subtree: true });
         root.dataset.shenyangLineBadgeObserver = "true";
         scheduleSync();

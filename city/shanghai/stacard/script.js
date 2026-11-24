@@ -61,6 +61,13 @@ export const AMapTile = {
 // ==========================================
 // 3. ShanghaiStaCard 核心实现
 // ==========================================
+const escapeHtml = (value) => String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
 export const ShanghaiStaCard = {
     name: "ShanghaiStaCard",
     basePath: "./city/shanghai/stacard/",
@@ -91,16 +98,11 @@ export const ShanghaiStaCard = {
                 } else if (!data && typeof globalThis !== 'undefined' && globalThis.SHANGHAI_AMAP_DATA) {
                     data = globalThis.SHANGHAI_AMAP_DATA;
                 } else if (!data && this.geoDataUrl && typeof fetch === 'function') {
-                    try {
-                        const res = await fetch(this.geoDataUrl);
-                        if (res.ok) {
-                            data = await res.json();
-                            if (typeof window !== 'undefined') {
-                                window.SHANGHAI_AMAP_DATA = data;
-                            }
-                        }
-                    } catch (fetchErr) {
-                        console.warn("[ShanghaiStaCard] fetch 坐标文件提示:", fetchErr.message);
+                    const res = await fetch(this.geoDataUrl);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    data = await res.json();
+                    if (typeof window !== 'undefined') {
+                        window.SHANGHAI_AMAP_DATA = data;
                     }
                 }
 
@@ -110,7 +112,7 @@ export const ShanghaiStaCard = {
                         line.st.forEach(sta => {
                             if (!sta.sl) return;
                             const coords = sta.sl.split(',').map(Number);
-                            if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                            if (coords.length === 2 && Number.isFinite(coords[0]) && Number.isFinite(coords[1]) && (coords[0] !== 0 || coords[1] !== 0)) {
                                 const pt = [coords[0], coords[1]];
                                 if (sta.n) {
                                     this.geoMapByName[sta.n] = pt;
@@ -132,7 +134,8 @@ export const ShanghaiStaCard = {
                 console.log(`[ShanghaiStaCard] 上海高德切片地图卡片模块加载成功，共索引 ${pointCount} 个车站坐标。`);
             } catch (err) {
                 console.warn("[ShanghaiStaCard] 地理坐标数据索引加载异常:", err);
-                this.isInitialized = true;
+                this.isInitialized = false;
+                this.initPromise = null;
             }
             return this;
         })();
@@ -146,10 +149,14 @@ export const ShanghaiStaCard = {
     getStationCoords(station) {
         if (!station) return null;
 
-        if (typeof station.lng === 'number' && typeof station.lat === 'number') {
+        if (typeof station.lng === 'number' && typeof station.lat === 'number'
+            && Number.isFinite(station.lng) && Number.isFinite(station.lat)
+            && (station.lng !== 0 || station.lat !== 0)) {
             return [station.lng, station.lat];
         }
-        if (typeof station.longitude === 'number' && typeof station.latitude === 'number') {
+        if (typeof station.longitude === 'number' && typeof station.latitude === 'number'
+            && Number.isFinite(station.longitude) && Number.isFinite(station.latitude)
+            && (station.longitude !== 0 || station.latitude !== 0)) {
             return [station.longitude, station.latitude];
         }
 
@@ -215,11 +222,11 @@ export const ShanghaiStaCard = {
 
         return `
             <div class="stacard-container stacard-minimap-box ${extraClass}"
-                 data-sid="${sid}"
-                 data-sname="${stationName}"
-                 data-lid="${lineId}"
-                 data-color="${lineColor}"
-                 data-coords="${coordsAttr}"
+                 data-sid="${escapeHtml(sid)}"
+                 data-sname="${escapeHtml(stationName)}"
+                 data-lid="${escapeHtml(lineId)}"
+                 data-color="${escapeHtml(lineColor)}"
+                 data-coords="${escapeHtml(coordsAttr)}"
                  style="${extraStyle}">
                 <div class="stacard-loading-tip">
                     <svg class="stacard-spin" viewBox="0 0 24 24" width="16" height="16">
@@ -236,6 +243,8 @@ export const ShanghaiStaCard = {
      */
     async renderCard(container, context = {}) {
         if (!container) return;
+        container._shanghaiStaCardResizeObserver?.disconnect();
+        delete container._shanghaiStaCardResizeObserver;
         if (!this.isInitialized) await this.init();
 
         try {
@@ -263,7 +272,7 @@ export const ShanghaiStaCard = {
                 const imgSrc = stationObj.cardImg || stationObj.image;
                 container.innerHTML = `
                     <div style="width:100%; border-radius:8px; overflow:hidden;">
-                        <img src="${imgSrc}" alt="${stationName}" style="width:100%; height:auto; display:block;" />
+                        <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(stationName)}" style="width:100%; height:auto; display:block;" />
                     </div>
                 `;
                 return;
@@ -423,14 +432,23 @@ export const ShanghaiStaCard = {
         });
 
         if (typeof ResizeObserver !== 'undefined') {
+            let rafId = 0;
             const ro = new ResizeObserver((entries) => {
-                for (const entry of entries) {
-                    if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                if (entries.some((entry) => entry.contentRect.width > 0 && entry.contentRect.height > 0)) {
+                    if (rafId) return;
+                    rafId = requestAnimationFrame(() => {
+                        rafId = 0;
                         renderTiles();
-                    }
+                    });
                 }
             });
             ro.observe(viewport);
+            container._shanghaiStaCardResizeObserver = {
+                disconnect() {
+                    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+                    ro.disconnect();
+                }
+            };
         }
     },
 

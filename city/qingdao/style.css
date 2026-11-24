@@ -310,7 +310,7 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
     opacity: 0 !important;
 }
 
-#qd-construction-legend {
+.map-qingdao #qd-construction-legend {
     position: fixed;
     right: 22px;
     bottom: 24px;
@@ -330,62 +330,62 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
     backdrop-filter: blur(2px);
 }
 
-#qd-construction-legend.show {
+.map-qingdao #qd-construction-legend.show {
     opacity: 1;
     transform: translateY(0);
 }
 
 @media (min-width: 641px) {
-    body.cgowm-active {
+    .map-qingdao body.cgowm-active {
         --qd-wm-l: 0px;
         --qd-wm-r: 0px;
     }
 
-    body.cgowm-active[data-cgowm-left-sidebar="expanded"],
-    body.cgowm-active[data-cgowm-left-sidebar="rail"] {
+    .map-qingdao body.cgowm-active[data-cgowm-left-sidebar="expanded"],
+    .map-qingdao body.cgowm-active[data-cgowm-left-sidebar="rail"] {
         --qd-wm-l: var(--cwm-sidebar-left-width, 0px);
     }
 
-    body.cgowm-active[data-cgowm-right-sidebar="expanded"],
-    body.cgowm-active[data-cgowm-right-sidebar="rail"] {
+    .map-qingdao body.cgowm-active[data-cgowm-right-sidebar="expanded"],
+    .map-qingdao body.cgowm-active[data-cgowm-right-sidebar="rail"] {
         --qd-wm-r: var(--cwm-sidebar-right-width, 0px);
     }
 
-    body.cgowm-active #qd-interval-time-hint,
-    body.cgowm-active #qd-construction-legend {
+    .map-qingdao body.cgowm-active #qd-interval-time-hint,
+    .map-qingdao body.cgowm-active #qd-construction-legend {
         right: calc(var(--qd-wm-r, 0px) + 22px);
     }
 
-    body.cgowm-active #qd-interval-time-hint {
+    .map-qingdao body.cgowm-active #qd-interval-time-hint {
         max-width: min(340px, calc(100vw - var(--qd-wm-l, 0px) - var(--qd-wm-r, 0px) - 44px));
     }
 
-    body.cgowm-active #qd-construction-legend {
+    .map-qingdao body.cgowm-active #qd-construction-legend {
         max-width: min(660px, calc(100vw - var(--qd-wm-l, 0px) - var(--qd-wm-r, 0px) - 44px));
     }
 }
 
-#qd-construction-legend .qd-construction-legend-title {
+.map-qingdao #qd-construction-legend .qd-construction-legend-title {
     margin: 0 0 10px;
     font-size: 16px;
     line-height: 1.2;
     font-weight: 700;
 }
 
-#qd-construction-legend .qd-construction-legend-grid {
+.map-qingdao #qd-construction-legend .qd-construction-legend-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(135px, max-content));
     column-gap: 22px;
     row-gap: 12px;
 }
 
-#qd-construction-legend .qd-construction-legend-item {
+.map-qingdao #qd-construction-legend .qd-construction-legend-item {
     display: flex;
     align-items: center;
     min-width: 0;
 }
 
-#qd-construction-legend .qd-construction-legend-text {
+.map-qingdao #qd-construction-legend .qd-construction-legend-text {
     font-size: 15px;
     line-height: 1.2;
     font-weight: 700;
@@ -393,7 +393,7 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
     white-space: nowrap;
 }
 
-#qd-construction-legend .qd-construction-legend-station {
+.map-qingdao #qd-construction-legend .qd-construction-legend-station {
     position: relative;
     display: inline-block;
     width: 22px;
@@ -404,32 +404,32 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
     background: #fff;
 }
 
-#qd-construction-legend .qd-construction-legend-station-not-started::before,
-#qd-construction-legend .qd-construction-legend-station-building::before,
-#qd-construction-legend .qd-construction-legend-station-topped::before {
+.map-qingdao #qd-construction-legend .qd-construction-legend-station-not-started::before,
+.map-qingdao #qd-construction-legend .qd-construction-legend-station-building::before,
+.map-qingdao #qd-construction-legend .qd-construction-legend-station-topped::before {
     content: "";
     position: absolute;
     inset: 2px;
     border-radius: 50%;
 }
 
-#qd-construction-legend .qd-construction-legend-station-not-started::before {
+.map-qingdao #qd-construction-legend .qd-construction-legend-station-not-started::before {
     background: #7d7d7d;
 }
 
-#qd-construction-legend .qd-construction-legend-station-building {
+.map-qingdao #qd-construction-legend .qd-construction-legend-station-building {
     background: #b224b2;
 }
 
-#qd-construction-legend .qd-construction-legend-station-building::before {
+.map-qingdao #qd-construction-legend .qd-construction-legend-station-building::before {
     background: #fff;
 }
 
-#qd-construction-legend .qd-construction-legend-station-topped::before {
+.map-qingdao #qd-construction-legend .qd-construction-legend-station-topped::before {
     background: #b224b2;
 }
 
-#qd-construction-legend .qd-construction-legend-track {
+.map-qingdao #qd-construction-legend .qd-construction-legend-track {
     position: relative;
     display: inline-block;
     width: 18px;
@@ -438,8 +438,8 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
     flex: 0 0 18px;
 }
 
-#qd-construction-legend .qd-construction-legend-track::before,
-#qd-construction-legend .qd-construction-legend-track::after {
+.map-qingdao #qd-construction-legend .qd-construction-legend-track::before,
+.map-qingdao #qd-construction-legend .qd-construction-legend-track::after {
     content: "";
     position: absolute;
     top: 0;
@@ -447,43 +447,34 @@ html[data-theme="dark"] .map-qingdao #qd-construction-label-layer .qd-constructi
     width: 6px;
 }
 
-#qd-construction-legend .qd-construction-legend-track::before { left: 2px; }
-#qd-construction-legend .qd-construction-legend-track::after { right: 2px; }
+.map-qingdao #qd-construction-legend .qd-construction-legend-track::before { left: 2px; }
+.map-qingdao #qd-construction-legend .qd-construction-legend-track::after { right: 2px; }
 
-#qd-construction-legend .qd-construction-legend-track-not-started::before,
-#qd-construction-legend .qd-construction-legend-track-not-started::after {
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-not-started::before,
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-not-started::after {
     background: #7d7d7d;
 }
 
-#qd-construction-legend .qd-construction-legend-track-complete::before,
-#qd-construction-legend .qd-construction-legend-track-complete::after {
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-complete::before,
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-complete::after {
     background: #b224b2;
 }
 
-#qd-construction-legend .qd-construction-legend-track-progress::before,
-#qd-construction-legend .qd-construction-legend-track-progress::after {
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-progress::before,
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-progress::after {
     background: #b224b2;
 }
 
-#qd-construction-legend .qd-construction-legend-track-progress > span,
-#qd-construction-legend .qd-construction-legend-track-progress::marker { display:none; }
-#qd-construction-legend .qd-construction-legend-track-progress i { display:none; }
-#qd-construction-legend .qd-construction-legend-track-progress::selection { background: transparent; }
-#qd-construction-legend .qd-construction-legend-track-progress::before,
-#qd-construction-legend .qd-construction-legend-track-progress::after { box-sizing: border-box; }
-#qd-construction-legend .qd-construction-legend-track-progress::after { }
-#qd-construction-legend .qd-construction-legend-track-progress em { display:none; }
-#qd-construction-legend .qd-construction-legend-track-progress b { display:none; }
-#qd-construction-legend .qd-construction-legend-track-progress::after { }
-#qd-construction-legend .qd-construction-legend-track-progress::before { }
-#qd-construction-legend .qd-construction-legend-track-progress::before,
-#qd-construction-legend .qd-construction-legend-track-progress::after {
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-progress > span,
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-progress::before,
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-progress::after { box-sizing: border-box; }
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-progress::before,
+.map-qingdao #qd-construction-legend .qd-construction-legend-track-progress::after {
     background-image: linear-gradient(to right, transparent 0, transparent 1.9px, #fff 1.9px, #fff 4.1px, transparent 4.1px);
     background-color: #b224b2;
     background-repeat: no-repeat;
 }
 
-html[data-theme="dark"] #qd-construction-legend,
 html[data-theme="dark"].map-qingdao #qd-construction-legend,
 html[data-theme="dark"] .map-qingdao #qd-construction-legend {
     background: rgba(35,35,35,0.94);
@@ -491,7 +482,7 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
 }
 
 @media (max-width: 900px) {
-    #qd-construction-legend {
+    .map-qingdao #qd-construction-legend {
         right: 10px;
         bottom: 14px;
         width: min(320px, calc(100vw - 20px));
@@ -499,21 +490,21 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
         box-sizing: border-box;
         padding: 10px 12px;
     }
-    #qd-construction-legend .qd-construction-legend-title {
+    .map-qingdao #qd-construction-legend .qd-construction-legend-title {
         margin-bottom: 8px;
         font-size: 14px;
     }
-    #qd-construction-legend .qd-construction-legend-grid {
+    .map-qingdao #qd-construction-legend .qd-construction-legend-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         row-gap: 8px;
         column-gap: 10px;
     }
-    #qd-construction-legend .qd-construction-legend-text {
+    .map-qingdao #qd-construction-legend .qd-construction-legend-text {
         font-size: 12.5px;
     }
     /* 仅等比缩放符号：尺寸、间隔、白芯全部继承桌面版的同一几何。 */
-    #qd-construction-legend .qd-construction-legend-station,
-    #qd-construction-legend .qd-construction-legend-track {
+    .map-qingdao #qd-construction-legend .qd-construction-legend-station,
+    .map-qingdao #qd-construction-legend .qd-construction-legend-track {
         transform: scale(0.78);
         transform-origin: center center;
         margin-right: 4px;
@@ -524,7 +515,7 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
 
 /* ── 建设进度区间弹窗 ───────────────────────────────────────────── */
 /* 建设进度区间信息卡：直接沿用 StationBoard 的 panel-header / panel-body 结构。 */
-#qd-construction-segment-popup {
+.map-qingdao #qd-construction-segment-popup {
     width: 360px;
     max-width: calc(100vw - 20px);
     padding: 0;
@@ -541,30 +532,30 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
     transition: opacity 160ms ease, transform 160ms ease;
 }
 
-#qd-construction-segment-popup.show {
+.map-qingdao #qd-construction-segment-popup.show {
     opacity: 1;
     transform: translateY(0) scale(1);
 }
 
-#qd-construction-segment-popup .panel-header {
+.map-qingdao #qd-construction-segment-popup .panel-header {
     min-height: 0;
 }
 
-#qd-construction-segment-popup .panel-body {
+.map-qingdao #qd-construction-segment-popup .panel-body {
     overflow-y: auto;
     min-height: 0;
 }
 
-#qd-construction-segment-popup .qd-construction-segment-card-slot {
+.map-qingdao #qd-construction-segment-popup .qd-construction-segment-card-slot {
     width: 100%;
 }
 
 @media (min-width: 641px) {
-    #qd-construction-segment-popup .panel-header {
+    .map-qingdao #qd-construction-segment-popup .panel-header {
         cursor: move;
         user-select: none;
     }
-    #qd-construction-segment-popup.qd-construction-segment-dragging {
+    .map-qingdao #qd-construction-segment-popup.qd-construction-segment-dragging {
         transition: opacity 160ms ease;
     }
 }
@@ -714,20 +705,20 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
 
 /* Qingdao sea layer styling (previously injected by data_scattered.js) */
 
-            :root { --qingdao-sea-color: #dceff4; }
-            html[data-theme="light"] { --qingdao-sea-color: #dceff4; }
-            html[data-theme="dark"] { --qingdao-sea-color: #17323b; }
+            .map-qingdao { --qingdao-sea-color: #dceff4; }
+            html[data-theme="light"].map-qingdao { --qingdao-sea-color: #dceff4; }
+            html[data-theme="dark"].map-qingdao { --qingdao-sea-color: #17323b; }
             @media (prefers-color-scheme: dark) {
-                html:not([data-theme]) { --qingdao-sea-color: #17323b; }
+                html.map-qingdao:not([data-theme]) { --qingdao-sea-color: #17323b; }
             }
-            #scattered-layer .qingdao-sea-inline {
+            .map-qingdao #scattered-layer .qingdao-sea-inline {
                 width: 100%;
                 height: 100%;
                 display: block;
                 color: var(--qingdao-sea-color);
                 pointer-events: none;
             }
-            #scattered-layer .qingdao-sea-inline .sea {
+            .map-qingdao #scattered-layer .qingdao-sea-inline .sea {
                 fill: var(--qingdao-sea-color) !important;
             }
         
@@ -763,11 +754,11 @@ html[data-theme="dark"] .map-qingdao #qd-construction-legend {
 
 /* Transport scattered symbol theme rules */
 
-            html[data-theme="dark"] .scattered-item img[src*="China_Railway.svg"],
-            html[data-theme="dark"] .scattered-item img[src*="Aircraft.svg"],
-            html[data-theme="dark"] .scattered-item img[src*="Long_Distance_Bus.svg"],
-            html[data-theme="dark"] .scattered-item img[src*="Ship.svg"],
-            html[data-theme="dark"] .scattered-item img[src*="Streetcar.svg"] {
+            html[data-theme="dark"].map-qingdao .scattered-item img[src*="China_Railway.svg"],
+            html[data-theme="dark"].map-qingdao .scattered-item img[src*="Aircraft.svg"],
+            html[data-theme="dark"].map-qingdao .scattered-item img[src*="Long_Distance_Bus.svg"],
+            html[data-theme="dark"].map-qingdao .scattered-item img[src*="Ship.svg"],
+            html[data-theme="dark"].map-qingdao .scattered-item img[src*="Streetcar.svg"] {
                 filter: invert(1);
             }
         

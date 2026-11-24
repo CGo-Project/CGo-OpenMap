@@ -168,12 +168,10 @@
     /* 官网车站资料 + 行程规划共享层（须在核心引擎执行前同步写入） */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261123.112538";
+        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261124.235734";
         const shared = "./core/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
-        // 首末班车数据（行程规划 reader 依赖，须早于 route-data 建图）
-        write("./city/suzhou/data_timetable.js");
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒；面板自带 CSS 注入）
         write(`${shared}/station/line-link.js`);
         write(`${shared}/route/route-data.js`);
@@ -183,8 +181,6 @@
         write(`${shared}/route/route-panel.js`);
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         write(`${shared}/base/viewport-inset.js`);
-        // 车站信息板横滑切页补充通道
-        write(`${shared}/base/panel-tab-swipe-relay.js`);
 
         // 城市专属：官网站厅示意图/设施/结构图 + 首末班车模块
         write("./city/suzhou/data_station_info.js");

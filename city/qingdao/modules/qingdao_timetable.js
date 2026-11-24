@@ -15,6 +15,16 @@
         return GLOBAL_SCHEDULE_DATA[lineId]?.[stationId] || null;
     }
 
+    function esc(text) {
+        return String(text ?? "").replace(/[&<>"']/g, (ch) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[ch]));
+    }
+
     function cleanTime(v) {
         if (v == null || v === "" || v === "-") return "—";
         return String(v).trim();
@@ -68,19 +78,19 @@
         }
 
         if (validLasts.length === 1) {
-            return `<span style="font-size:14px; font-weight:650; color:var(--text-main); font-variant-numeric:tabular-nums; white-space:nowrap;">${validLasts[0].value}</span>`;
+            return `<span style="font-size:14px; font-weight:650; color:var(--text-main); font-variant-numeric:tabular-nums; white-space:nowrap;">${esc(validLasts[0].value)}</span>`;
         }
 
         return `
             <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
                 ${validLasts.map((x) => {
                     const chip = x.label
-                        ? `<span style="display:inline-flex; align-items:center; justify-content:center; padding:2px 5px; border:1px solid var(--border-color); border-radius:4px; background:rgba(127,127,127,.08); font-size:9.5px; line-height:1.2; color:var(--text-light); white-space:nowrap; flex:0 0 auto;">${x.label}</span>`
+                        ? `<span style="display:inline-flex; align-items:center; justify-content:center; padding:2px 5px; border:1px solid var(--border-color); border-radius:4px; background:rgba(127,127,127,.08); font-size:9.5px; line-height:1.2; color:var(--text-light); white-space:nowrap; flex:0 0 auto;">${esc(x.label)}</span>`
                         : "";
                     return `
                         <div style="display:inline-flex; align-items:center; justify-content:center; gap:5px; max-width:100%; white-space:nowrap;">
                             ${chip}
-                            <span style="font-size:13.5px; font-weight:650; color:var(--text-main); font-variant-numeric:tabular-nums; flex:0 0 auto;">${x.value}</span>
+                            <span style="font-size:13.5px; font-weight:650; color:var(--text-main); font-variant-numeric:tabular-nums; flex:0 0 auto;">${esc(x.value)}</span>
                         </div>
                     `;
                 }).join("")}
@@ -196,7 +206,7 @@
                                 white-space:nowrap;
                                 overflow:hidden;
                                 text-overflow:clip;
-                            ">往&nbsp;${dest}</span>
+                            ">往&nbsp;${esc(dest)}</span>
                             <span style="
                                 display:block;
                                 margin-top:3px;
@@ -224,7 +234,7 @@
                                 color:${d.first === "—" ? "var(--text-light)" : "var(--text-main)"};
                                 font-variant-numeric:tabular-nums;
                                 white-space:nowrap;
-                            ">${d.first}</span>
+                            ">${esc(d.first)}</span>
                         </div>
 
                         <div style="
@@ -271,7 +281,7 @@
                             background:var(--card-bg);
                             overflow:hidden;
                         ">
-                            <span style="font-size:9px; color:var(--text-light); line-height:1.1; white-space:nowrap;">第${x.no}班</span>
+                            <span style="font-size:9px; color:var(--text-light); line-height:1.1; white-space:nowrap;">第${esc(x.no)}班</span>
                             <span style="
                                 margin-top:3px;
                                 font-size:11px;
@@ -280,7 +290,7 @@
                                 line-height:1.2;
                                 white-space:nowrap;
                                 font-variant-numeric:tabular-nums;
-                            ">${formatFastTime(x.value)}</span>
+                            ">${esc(formatFastTime(x.value))}</span>
                         </div>
                     `).join("");
 
@@ -300,7 +310,7 @@
 
                 return `
                     <div style="padding:8px 14px 0; box-sizing:border-box; width:100%;">
-                        <div style="font-size:11.5px; font-weight:650; color:var(--text-main); margin-bottom:2px; white-space:nowrap;">${period}</div>
+                        <div style="font-size:11.5px; font-weight:650; color:var(--text-main); margin-bottom:2px; white-space:nowrap;">${esc(period)}</div>
                         ${rowHtml}
                     </div>
                 `;

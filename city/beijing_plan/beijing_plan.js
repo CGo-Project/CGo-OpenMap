@@ -10,7 +10,8 @@
         if (document.querySelector('link[href^="' + href + '"]')) return;
         const link = document.createElement("link");
         link.rel = "stylesheet";
-        link.href = href + "?v=" + (window.CGoVersion || Date.now());
+        const v = typeof window !== "undefined" ? window.CGO_ASSET_VERSION : "";
+        link.href = v ? `${href}?v=${v}` : href;
         document.head.appendChild(link);
     })();
 
@@ -32,5 +33,15 @@
         }
     };
 
+    window.BEIJING_PLAN_CITY = BeijingPlanCity;
     window.BeijingPlanCity = BeijingPlanCity;
+    window.CURRENT_CITY = BeijingPlanCity;
+    window.CityDataManager?.registerCity?.({
+        id: BeijingPlanCity.id,
+        name: BeijingPlanCity.name,
+        folder: "./city/beijing_plan",
+        mainLogic: "./city/beijing_plan/beijing_plan.js",
+        isDefault: false,
+        ...BeijingPlanCity
+    });
 })();

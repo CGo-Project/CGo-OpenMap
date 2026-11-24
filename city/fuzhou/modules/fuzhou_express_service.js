@@ -14,6 +14,10 @@
 
     const PILL_ATTR = "data-fz-svc";
 
+    const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+
     const serviceTable = () => (typeof window !== "undefined" ? window.FUZHOU_EXPRESS_SERVICE : null);
 
     const stationName = (sid) => {
@@ -86,7 +90,7 @@
         if (direct) {
             const ia = direct.indexOf(from);
             const ib = direct.indexOf(to);
-            if (ia >= 0 && ib >= 0 && ia !== ib) {
+            if (ia >= 0 && ib >= 0 && ia < ib) {
                 // 直达同样能从时刻表推算：官网 fast.文岭 的「第一列(直达)」在 5 个停靠站都有时刻，
                 // 逐站相减即区间用时（4 / 3 / 28 / 4 分，端到端 39 分）。
                 const off = svc.direct.directOffsets || {};
@@ -98,7 +102,7 @@
                     key: "direct", label: "直达快车",
                     stops: Math.abs(ib - ia),
                     mins: span,
-                    middle: direct.slice(Math.min(ia, ib) + 1, Math.max(ia, ib)).map((x) => stationName(x)),
+                    middle: direct.slice(ia + 1, ib),
                     depart: `直达快车 每日仅 05:55 自福州火车站发一班（单向，全线 ${svc.direct.totalMinutes || 39} 分钟）`
                 });
             }
@@ -131,14 +135,17 @@
         // 站数 / 用时
         const info = leg.querySelector(".cgo-rt-ride-info");
         // 顶部「约 N 分钟」随本段一起变：只按**本段的差值**加减，不猜任何固定开销。
-        // 首次点击时先取当前显示值当基线（否则第一次切换拿不到 prev，顶部就不会动）。
-        const totalEl = document.querySelector(".cgo-rt-total");
+        // 首次点击时先取当前显示值当基线并写入 fzMins（即使切到无逐站时刻的直达快车也要保留，否则切回无从恢复）。
+        const totalScope = leg.closest(".cgo-rt-panel, .cgowm-window, #cgo-route-result");
+        const totalEl = totalScope?.querySelector(".cgo-rt-total") || document.querySelector(".cgo-rt-total");
         if (info && totalEl) {
             const rawMins = button.dataset.mins;
             const nextMins = rawMins === "" || rawMins === undefined ? null : Number(rawMins);
-            const prevMins = leg.dataset.fzMins !== undefined && leg.dataset.fzMins !== ""
+            const cachedMins = leg.dataset.fzMins !== undefined && leg.dataset.fzMins !== ""
                 ? Number(leg.dataset.fzMins)
-                : readMinutes(info.textContent);
+                : NaN;
+            const parsedMins = readMinutes(info.textContent);
+            const prevMins = Number.isFinite(cachedMins) ? cachedMins : parsedMins;
             if (nextMins !== null && Number.isFinite(prevMins)) {
                 const now = readMinutes(totalEl.textContent);
                 if (Number.isFinite(now)) {
@@ -146,6 +153,7 @@
                 }
             }
             if (nextMins !== null) leg.dataset.fzMins = String(nextMins);
+            else if (Number.isFinite(prevMins)) leg.dataset.fzMins = String(prevMins);
         }
         if (info) {
             const mins = button.dataset.mins;
@@ -162,7 +170,7 @@
             list.innerHTML = key === "slow" || !stops
                 ? list.dataset.slowHtml
                 : stops.split(",").filter(Boolean)
-                    .map((sid) => `<span data-jump="${sid}">${stationName(sid)}</span>`).join("");
+                    .map((sid) => `<span data-jump="${esc(sid)}">${esc(stationName(sid))}</span>`).join("");
         }
 
         // 发车提示
@@ -189,7 +197,7 @@
         }
         hint.innerHTML = `<span style="flex:0 0 auto;display:inline-flex;line-height:16px">`
             + `<cgo-icon name="time" size="12"></cgo-icon></span>`
-            + `<span style="flex:1 1 auto;min-width:0">${text}</span>`;
+            + `<span style="flex:1 1 auto;min-width:0">${esc(text)}</span>`;
     }
 
     /** 首次渲染时挂一次委托监听（捕获阶段，压住「展开途经车站」） */

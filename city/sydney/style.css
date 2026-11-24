@@ -132,16 +132,16 @@
 }
 
 /* ── 站点图元 ─────────────────────────────────────────────────── */
-.station.syd-marker {
+.map-sydney .station.syd-marker {
     overflow: visible;
     z-index: 16;
 }
 
-.station.syd-marker.syd-interchange {
+.map-sydney .station.syd-marker.syd-interchange {
     z-index: 22;
 }
 
-.station.syd-marker svg {
+.map-sydney .station.syd-marker svg {
     overflow: visible;
     shape-rendering: geometricPrecision;
 }

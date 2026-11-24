@@ -1,52 +1,52 @@
 /* CGo OpenMap - 沈阳城市专属样式 */
 
 /* 沈阳装饰物与车站共用 map-content 堆叠上下文，由各元素自身 z-index 决定覆盖关系。 */
-#scattered-layer,
-#stations-layer {
+.map-shenyang #scattered-layer,
+.map-shenyang #stations-layer {
     z-index: auto;
 }
 
 /* 上面放弃图层隔离后，未开通站图元（core 默认 z=5）会落到线路层（z=10）之下被线体盖住
    ——沈阳此前没有 type "no" 车站，隐患一直未暴露。这里提到 14：高于线路(10)/未开通
    芯线层(12)/高亮层(13)，但仍低于 .dot(15)，准换乘孪生处彩色圆点继续压在 ⊘ 之上。 */
-.station.no {
+.map-shenyang .station.no {
     z-index: 14;
 }
 
 /* 深色主题下提高沈阳黑色装饰线与地图背景的对比度。 */
-[data-theme="dark"] #scattered-layer img[src$="/backslash.svg"],
-[data-theme="dark"] #scattered-layer img[src$="/slash.svg"],
-[data-theme="dark"] #scattered-layer img[src$="/underline_90.svg"] {
+html[data-theme="dark"].map-shenyang #scattered-layer img[src$="/backslash.svg"],
+html[data-theme="dark"].map-shenyang #scattered-layer img[src$="/slash.svg"],
+html[data-theme="dark"].map-shenyang #scattered-layer img[src$="/underline_90.svg"] {
     filter: invert(1);
 }
 
 /* 换乘站呼出标签：用底边框替代需要反复旋转定位的图片资源。 */
-.label-group.label-callout {
+.map-shenyang .label-group.label-callout {
     padding: 2px 4px 1px;
     border-bottom: 1.4px solid var(--text-main);
     z-index: 31;
 }
 
 /* 呼出线由城市脚本按标签实际尺寸动态绘制。外描边隔离底图，内线跟随主题文字色。 */
-#lines-layer #shenyang-label-callout-lines {
+.map-shenyang #lines-layer #shenyang-label-callout-lines {
     pointer-events: none;
     overflow: visible;
 }
 
-#lines-layer .shenyang-label-callout-line-halo,
-#lines-layer .shenyang-label-callout-line {
+.map-shenyang #lines-layer .shenyang-label-callout-line-halo,
+.map-shenyang #lines-layer .shenyang-label-callout-line {
     fill: none;
     stroke-linecap: round;
     pointer-events: none;
     vector-effect: non-scaling-stroke;
 }
 
-#lines-layer .shenyang-label-callout-line-halo {
+.map-shenyang #lines-layer .shenyang-label-callout-line-halo {
     stroke: var(--map-bg);
     stroke-width: 4px;
 }
 
-#lines-layer .shenyang-label-callout-line {
+.map-shenyang #lines-layer .shenyang-label-callout-line {
     stroke: var(--text-main);
     stroke-width: 1.2px;
 }
@@ -54,11 +54,11 @@
 /* 呼出线属于标签的一部分：标签进入 active（核心选中、路线起终点）时，呼出框底边与引线
    随标签文字一起转红，颜色同核心 .label-group.active 的文字色。
    引线与标签没有 DOM 关系，active 类由共享层 label-active.js 按 data-cgo-callout 同步过来。 */
-.label-group.label-callout.active {
+.map-shenyang .label-group.label-callout.active {
     border-bottom-color: #D0021B;
 }
 
-#lines-layer .shenyang-label-callout-line.cgo-callout-active {
+.map-shenyang #lines-layer .shenyang-label-callout-line.cgo-callout-active {
     stroke: #D0021B;
     stroke-width: 1.6px;
 }
@@ -66,7 +66,7 @@
 /* 报站目的地指引：均匀细线框 + 填色的小信息块（不再是「左侧强调条 + 无底色」的卡片），
    结构为「speaker 图标 + 正文」，正文折行后仍与首行左对齐。
    线与底色都取主题变量，亮暗两套自动跟随。 */
-.sy-report-card {
+.map-shenyang .sy-report-card {
     display: flex;
     align-items: flex-start;
     gap: 8px;
@@ -77,21 +77,21 @@
     background: var(--ctrl-btn-bg, rgba(0, 0, 0, 0.03));
 }
 
-.sy-report-card cgo-icon {
+.map-shenyang .sy-report-card cgo-icon {
     flex: none;
     /* 与正文首行视觉居中，而不是整块居中（正文折行时图标会浮到中间） */
     margin-top: 2px;
     color: var(--primary-color);
 }
 
-.sy-report-text {
+.map-shenyang .sy-report-text {
     font-size: 12px;
     line-height: 1.6;
     color: var(--text-light);
 }
 
 /* 详情弹窗标题中的沈阳城市专属站点图标。 */
-.shenyang-station-header-decoration {
+.map-shenyang .shenyang-station-header-decoration {
     flex: 0 0 32px;
     width: 32px;
     height: 32px;
@@ -109,7 +109,7 @@
    shenyang_station_board.js 的 headerTint / colorsClose。 */
 
 /* 沈阳专属紧凑线路徽标：地铁使用彩色编号圆，有轨电车沿用矩形描边与线路色填充。 */
-.shenyang-line-badge {
+.map-shenyang .shenyang-line-badge {
     display: inline-flex;
     align-items: center;
     overflow: visible;
@@ -117,19 +117,19 @@
     background: transparent;
 }
 
-.shenyang-line-badge-svg {
+.map-shenyang .shenyang-line-badge-svg {
     display: block;
     width: 100%;
     height: 100%;
     overflow: visible;
 }
 
-.panel-badges .shenyang-line-badge {
+.map-shenyang .panel-badges .shenyang-line-badge {
     flex: 0 0 auto;
 }
 
 /* 线路悬停提示使用主题卡片底色，避免线路徽标与线网重叠。 */
-#line-tooltip {
+.map-shenyang #line-tooltip {
     box-sizing: border-box;
     background: var(--header-bg);
     border: 1px solid var(--border-color);
@@ -138,7 +138,7 @@
 }
 
 /* 悬停提示沿用同一徽标，但保留核心引擎规定的 34px 展示高度。 */
-#line-tooltip .shenyang-line-badge {
+.map-shenyang #line-tooltip .shenyang-line-badge {
     display: block;
     color: inherit;
 }

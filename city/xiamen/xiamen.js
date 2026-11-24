@@ -70,6 +70,7 @@
     // 快速公交 8 条营运快线路的站序/站距已并入 data_lines.js 的 BRT 交路（way1…way8），
     // 不再单独维护 data_brt_routes.js；模块只负责把交路信息展示到车站卡片里。
     if (typeof document !== "undefined" && typeof document.write === "function") {
+        document.documentElement?.classList?.add("map-xiamen");
         const suffix = window.CGO_ASSET_VERSION ? "?v=" + window.CGO_ASSET_VERSION : "";
         document.write('<link rel="stylesheet" href="./city/xiamen/style.css' + suffix + '">');
         document.write('<scr' + 'ipt src="./city/xiamen/modules/xiamen_brt_routes.js' + suffix + '"><\/scr' + 'ipt>');

@@ -107,8 +107,15 @@ const SuzhouStaCard = {
      * @returns {[number, number]|null}
      */
     getStationCoords(station) {
-        if (Number.isFinite(Number(station?.lng)) && Number.isFinite(Number(station?.lat))) {
-            return [Number(station.lng), Number(station.lat)];
+        const rawLng = station?.lng;
+        const rawLat = station?.lat;
+        if (rawLng !== null && rawLng !== undefined && rawLng !== ""
+            && rawLat !== null && rawLat !== undefined && rawLat !== "") {
+            const lng = Number(rawLng);
+            const lat = Number(rawLat);
+            if (Number.isFinite(lng) && Number.isFinite(lat) && (lng !== 0 || lat !== 0)) {
+                return [lng, lat];
+            }
         }
         const name = station?.cn || station?.name || station?.stationName || "";
         const shortName = String(name).split("·")[0];
@@ -195,7 +202,25 @@ const SuzhouStaCard = {
         container.querySelector(".zoom-in").addEventListener("click", () => changeZoom(1));
         container.querySelector(".zoom-out").addEventListener("click", () => changeZoom(-1));
         viewport.addEventListener("wheel", (event) => { event.preventDefault(); changeZoom(event.deltaY < 0 ? 1 : -1); }, { passive: false });
-        if (typeof ResizeObserver !== "undefined") { const observer = new ResizeObserver(renderMap); observer.observe(viewport); container._suzhouStaCardResizeObserver = observer; }
+        if (typeof ResizeObserver !== "undefined") {
+            container._suzhouStaCardResizeObserver?.disconnect();
+            let rafId = 0;
+            const scheduleRender = () => {
+                if (rafId) return;
+                rafId = requestAnimationFrame(() => {
+                    rafId = 0;
+                    renderMap();
+                });
+            };
+            const observer = new ResizeObserver(scheduleRender);
+            observer.observe(viewport);
+            container._suzhouStaCardResizeObserver = {
+                disconnect() {
+                    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+                    observer.disconnect();
+                }
+            };
+        }
         renderMap();
     },
 

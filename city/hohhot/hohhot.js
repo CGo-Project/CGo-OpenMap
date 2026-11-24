@@ -287,7 +287,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261123.112538";
+        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261124.235734";
         // 首末班车共享渲染层（须早于城市时刻表模块）
         document.write(`<script src="./core/shared/station/timetable-renderer.js?v=${version}"><\/script>`);
         // 行程规划：数据构建器 → 内核 → 面板（顺序不可颠倒）
@@ -311,8 +311,6 @@
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区（须晚于上面三者）
         document.write(`<script src="./core/shared/base/viewport-inset.js?v=${version}"><\/script>`);
         // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
-        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
-        document.write(`<script src="./core/shared/base/panel-tab-swipe-relay.js?v=${version}"><\/script>`);
         // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
         document.write(`<script src="./core/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         // 车站设施共享渲染层（须早于本城设施模块与数据文件；样式表由共享层按自身 URL 注入）

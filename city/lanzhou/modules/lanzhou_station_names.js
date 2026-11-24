@@ -51,8 +51,8 @@
 (function () {
     /** 模块 ID（与 lanzhou.js 中 stationBoard.modules 的键名一致） */
     const MODULE_ID = "lanzhou-station-names";
-    /** 版本号（与 lanzhou.js 中 document.write 的 ?v= 保持一致） */
-    const VERSION = "261123.112538";
+    /** 版本号（优先读全局发布号，与 lanzhou.js 中 ?v= 保持一致） */
+    const VERSION = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261124.235734";
 
     /**
      * 两个字段定义（顺序即卡片中的行顺序）
@@ -210,10 +210,9 @@
     /* ============================ 模块注册 =============================== */
     /* ===================================================================== */
 
-    function registerStationNamesModule() {
+    function registerStationNamesModule(attempt = 0) {
         if (!window.StationBoard || typeof window.StationBoard.registerModule !== "function") {
-            console.warn("[lanzhou_station_names] StationBoard 尚未加载，延迟等待注册...");
-            setTimeout(registerStationNamesModule, 50);
+            if (attempt < 100) setTimeout(() => registerStationNamesModule(attempt + 1), 50);
             return;
         }
 

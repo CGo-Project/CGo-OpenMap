@@ -6,6 +6,20 @@
 (function () {
     'use strict';
 
+    if (typeof document !== 'undefined') {
+        document.documentElement?.classList?.add("map-shijiazhuang");
+    }
+
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+
+    const safeHref = (url) => {
+        const s = String(url || '').trim();
+        if (!s || s === '#') return '';
+        return /^https?:\/\//i.test(s) ? s : '';
+    };
+
     (function loadCityStylesheet() {
         const href = "./city/shijiazhuang/style.css";
         if (document.querySelector(`link[href^="${href}"]`)) return;
@@ -40,8 +54,8 @@
             const nameFor12306 = this.MAP_12306[stationName] || stationName.replace(/站$/, '');
             return `https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc&fs=${encodeURIComponent(nameFor12306)}`;
         },
-        getSuburbanLinks() { return { timetableUrl: "预留网址", ticketUrl: "预留网址" }; },
-        officialMapUrl: "预留网址",
+        getSuburbanLinks() { return { timetableUrl: null, ticketUrl: null }; },
+        officialMapUrl: null,
         dataFiles: {
             stanameCsvUrl: './city/shijiazhuang/staname.csv',
         },
@@ -119,27 +133,28 @@
         if (!station || !station.lineInfo) return;
         removeExistingCard('.line-info-card');
         const info = station.lineInfo;
+        const lineId = String(info.lineId || '');
         let lineColor = '#E4002B';
-        if (typeof linesData !== 'undefined') {
-            const line = linesData.find(l => l.id === info.lineId);
+        if (typeof linesData !== 'undefined' && Array.isArray(linesData)) {
+            const line = linesData.find(l => l.id === lineId);
             if (line) lineColor = line.color;
         }
-        const lineNum = info.lineId.replace(/[^0-9]/g, '');
+        const lineNum = lineId.replace(/[^0-9]/g, '');
         const card = document.createElement('div');
         card.className = 'cgo-glass-card line-info-card';
         card.style.setProperty('--tc-line', lineColor);
         card.innerHTML = `
             <div class="tc-row1">
                 <span class="tc-line"></span>
-                <span class="tc-icon">${lineNum}</span>
-                <span class="tc-text">${lineNum}号线 · Line ${lineNum}</span>
+                <span class="tc-icon">${esc(lineNum)}</span>
+                <span class="tc-text">${esc(lineNum)}号线 · Line ${esc(lineNum)}</span>
                 <span class="tc-line"></span>
             </div>
             <div class="tc-body">
-                <div class="tc-dir">${info.from} → ${info.to}</div>
+                <div class="tc-dir">${esc(info.from || '')} → ${esc(info.to || '')}</div>
                 <div class="tc-train">
-                    <span>首班车 <b>${info.firstTrain}</b></span>
-                    <span>末班车 <b>${info.lastTrain}</b></span>
+                    <span>首班车 <b>${esc(info.firstTrain || '—')}</b></span>
+                    <span>末班车 <b>${esc(info.lastTrain || '—')}</b></span>
                 </div>
             </div>
         `;
@@ -148,9 +163,9 @@
     };
 
     function getSceneryLineInfo(sceneryCn) {
-        if (typeof sceneryLines === 'undefined') return { lineName: '', stationName: '', stationNameEn: '', color: '#E4002B' };
+        if (typeof sceneryLines === 'undefined' || !Array.isArray(sceneryLines)) return { lineName: '', stationName: '', stationNameEn: '', color: '#E4002B' };
         const sl = sceneryLines.find(s => {
-            if (!s.stationIds || s.stationIds.length < 2) return false;
+            if (!Array.isArray(s?.stationIds) || s.stationIds.length < 2) return false;
             const sc = (typeof stationsData !== 'undefined') ? stationsData[s.stationIds[1]] : null;
             return sc && sc.cn === sceneryCn;
         });
@@ -159,8 +174,8 @@
         const metroSta = (typeof stationsData !== 'undefined') ? stationsData[metroSid] : null;
         let lineName = '';
         let color = '#E4002B';
-        if (typeof linesData !== 'undefined') {
-            const line = linesData.find(l => l.stationIds && l.stationIds.includes(metroSid));
+        if (typeof linesData !== 'undefined' && Array.isArray(linesData)) {
+            const line = linesData.find(l => Array.isArray(l?.stationIds) && l.stationIds.includes(metroSid));
             if (line) {
                 lineName = line.name;
                 color = line.color;
@@ -184,6 +199,7 @@
         const lineStationText = (lineName && stationName) ? `${lineName} · ${stationName}` : (lineName || stationName || '—');
         const lineNum = lineName.replace(/[^0-9]/g, '');
         const lineStationEn = (lineNum && stationNameEn) ? `Line ${lineNum} · ${stationNameEn} Station` : '';
+        const siteUrl = safeHref(station.website);
 
         const card = document.createElement('div');
         card.className = 'cgo-glass-card scenery-card';
@@ -192,20 +208,20 @@
               <div class="sc-line"></div>
               <div class="sc-capsule">
                <span class="sc-capsule-icon">景</span>
-               <span>${lineStationText}</span>
+               <span>${esc(lineStationText)}</span>
              </div>
             </div>
             <div class="sc-body">
                 <div class="sc-title-row">
-                    <div class="sc-title">${station.cn || ''}</div>
+                    <div class="sc-title">${esc(station.cn || '')}</div>
                     <div class="sc-tri"></div>
                     <div class="sc-sub-line">
-                        <span class="sc-en">${lineStationEn}</span>
+                        <span class="sc-en">${esc(lineStationEn)}</span>
                     </div>
                 </div>
                 <div class="sc-intro-title">简介 · Introduction</div>
-                <div class="sc-text">${station.intro || '暂无简介'}</div>
-                <a class="sc-btn" href="${station.website || '#'}" target="_blank" rel="noopener">百度百科</a>
+                <div class="sc-text">${esc(station.intro || '暂无简介')}</div>
+                ${siteUrl ? `<a class="sc-btn" href="${esc(siteUrl)}" target="_blank" rel="noopener noreferrer">百度百科</a>` : ''}
             </div>
         `;
         document.body.appendChild(card);
@@ -226,24 +242,16 @@
         card.innerHTML = `
             <div class="seg-bar"></div>
             <div class="seg-body">
-                <div class="seg-station">${fromStation.cn}</div>
-                <div class="seg-station-en">${fromStation.en || ''}</div>
+                <div class="seg-station">${esc(fromStation.cn || '')}</div>
+                <div class="seg-station-en">${esc(fromStation.en || '')}</div>
                 <div class="seg-arrow"><cgo-icon name="unfold"></cgo-icon></div>
-                <div class="seg-station">${toStation.cn}</div>
-                <div class="seg-station-en">${toStation.en || ''}</div>
-                <div class="seg-time">约 <b>${time}</b> 分钟</div>
+                <div class="seg-station">${esc(toStation.cn || '')}</div>
+                <div class="seg-station-en">${esc(toStation.en || '')}</div>
+                <div class="seg-time">约 <b>${esc(time)}</b> 分钟</div>
             </div>
         `;
         content.appendChild(card);
-        setTimeout(() => {
-            const closeHandler = (e) => {
-                if (!card.contains(e.target)) {
-                    card.remove();
-                    document.removeEventListener('click', closeHandler);
-                }
-            };
-            document.addEventListener('click', closeHandler);
-        }, 0);
+        bindOutsideClose(card);
     };
 
     window.showRailCityCard = function (station) {
@@ -251,11 +259,11 @@
         removeExistingCard('.railcity-card');
 
         let railNames = '';
-        if (typeof railCityLines !== 'undefined') {
+        if (typeof railCityLines !== 'undefined' && Array.isArray(railCityLines)) {
             const rc = railCityLines.find(r =>
                 r.name === station.cn ||
                 (r.toStation && r.toStation === ('C_' + station.cn)) ||
-                (r.stationIds && r.stationIds.some(id => {
+                (Array.isArray(r.stationIds) && r.stationIds.some(id => {
                     const st = typeof stationsData !== 'undefined' ? stationsData[id] : null;
                     return st && st.cn === station.cn;
                 }))
@@ -263,9 +271,11 @@
             if (rc && rc.railName) railNames = rc.railName;
         }
 
+        const cnName = station.cn || '';
         const intro = railNames
-            ? `从石家庄站乘坐${railNames}出发，可达${station.cn}。`
-            : `从石家庄站乘坐铁路出发，可达${station.cn}。`;
+            ? `从石家庄站乘坐${railNames}出发，可达${cnName}。`
+            : `从石家庄站乘坐铁路出发，可达${cnName}。`;
+        const siteUrl = safeHref(station.website);
 
         const card = document.createElement('div');
         card.className = 'cgo-glass-card railcity-card';
@@ -273,16 +283,16 @@
             <div class="rc-header">
                 <span class="rc-bar"></span>
                 <span class="rc-icon">城</span>
-                <span class="rc-title">${station.cn || ''}</span>
+                <span class="rc-title">${esc(cnName)}</span>
                 <span class="rc-bar"></span>
             </div>
             <div class="rc-body">
-                <div class="rc-sub">${station.en || ''}</div>
-                <div class="rc-intro">${intro}</div>
+                <div class="rc-sub">${esc(station.en || '')}</div>
+                <div class="rc-intro">${esc(intro)}</div>
             </div>
-            <div class="rc-action">
-                <a class="rc-btn" href="${station.website || '#'}" target="_blank" rel="noopener">前往${station.cn || ''}</a>
-            </div>
+            ${siteUrl ? `<div class="rc-action">
+                <a class="rc-btn" href="${esc(siteUrl)}" target="_blank" rel="noopener noreferrer">前往${esc(cnName)}</a>
+            </div>` : ''}
         `;
         document.body.appendChild(card);
         bindOutsideClose(card);
@@ -295,7 +305,8 @@
     window.showRailCard = function (station) {
         if (!station) return;
         removeExistingCard('.rail-card');
-        const name12306 = ShijiazhuangCity.MAP_12306[station.cn] || station.cn.replace(/站$/, '');
+        const cnName = String(station.cn || '');
+        const name12306 = ShijiazhuangCity.MAP_12306[cnName] || cnName.replace(/站$/, '');
         const url12306 = `https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc&fs=${encodeURIComponent(name12306)}`;
         const card = document.createElement('div');
         card.className = 'cgo-glass-card rail-card';
@@ -304,10 +315,10 @@
             <div class="rail-mid">
                 <div class="rail-row1">
                     <span class="rail-circle">铁</span>
-                    <span class="rail-bold">${station.cn || ''}</span>
+                    <span class="rail-bold">${esc(cnName)}</span>
                 </div>
-                <div class="rail-row2">${station.en || ''}</div>
-                <a class="rail-btn" href="${url12306}" target="_blank" rel="noopener">12306 查询</a>
+                <div class="rail-row2">${esc(station.en || '')}</div>
+                <a class="rail-btn" href="${esc(url12306)}" target="_blank" rel="noopener noreferrer">12306 查询</a>
             </div>
             <div class="rail-right"></div>
         `;
@@ -326,17 +337,39 @@
         }
     };
 
+    let activeCardCleanup = null;
     function removeExistingCard(selector) {
+        if (activeCardCleanup) {
+            activeCardCleanup();
+            activeCardCleanup = null;
+        }
         const old = document.querySelector(selector);
         if (old) old.remove();
     }
     function bindOutsideClose(card) {
-        setTimeout(() => {
-            const closeHandler = (e) => {
-                if (!card.contains(e.target)) {
-                    card.remove();
-                    document.removeEventListener('click', closeHandler);
-                }
+        if (activeCardCleanup) {
+            activeCardCleanup();
+            activeCardCleanup = null;
+        }
+        let timerId = null;
+        let closeHandler = null;
+        const cleanup = () => {
+            if (timerId !== null) {
+                clearTimeout(timerId);
+                timerId = null;
+            }
+            if (closeHandler) {
+                document.removeEventListener('click', closeHandler);
+                closeHandler = null;
+            }
+            card.remove();
+            if (activeCardCleanup === cleanup) activeCardCleanup = null;
+        };
+        activeCardCleanup = cleanup;
+        timerId = setTimeout(() => {
+            timerId = null;
+            closeHandler = (e) => {
+                if (!card.contains(e.target)) cleanup();
             };
             document.addEventListener('click', closeHandler);
         }, 0);
@@ -346,7 +379,8 @@
     window.CURRENT_CITY = ShijiazhuangCity;
 
     if (typeof document !== 'undefined' && typeof document.write === 'function') {
-        document.write('<scr' + 'ipt src="./city/shijiazhuang/modules/shijiazhuang_cultural.js?v=261123.112538"><\/scr' + 'ipt>');
+        const v = (typeof window !== 'undefined' && window.CGO_ASSET_VERSION) || '261124.235734';
+        document.write(`<scr` + `ipt src="./city/shijiazhuang/modules/shijiazhuang_cultural.js?v=${v}"><\/scr` + `ipt>`);
     }
 
     window.CityDataManager?.registerCity?.({
@@ -428,7 +462,7 @@
                 if (!group) return;
                 if (group.querySelector('.line-segment-hotspot')) return;
 
-                if (typeof processedStations === 'undefined') return;
+                if (typeof processedStations === 'undefined' || !Array.isArray(line?.stationIds)) return;
                 const pts = line.stationIds.map(sid => {
                     const s = processedStations[sid];
                     return s ? { x: s.x, y: s.y } : null;

@@ -23,6 +23,14 @@
         return "#9aa0a6";
     }
 
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[ch]));
+
     function stationName(id) {
         return window.stationsData?.[id]?.cn?.replace(/<br\s*\/?>/gi, "") || id;
     }
@@ -106,7 +114,7 @@
                         color:var(--text-light);
                         white-space:nowrap;
                         text-align:left;
-                    ">${side}</div>
+                    ">${escapeHtml(side)}</div>
                 ` : ""}
                 <div style="
                     font-size:12.25px;
@@ -114,7 +122,7 @@
                     white-space:nowrap;
                     font-variant-numeric:tabular-nums;
                     text-align:left;
-                ">${displayDate}</div>
+                ">${escapeHtml(displayDate)}</div>
                 <div style="
                     display:grid;
                     grid-template-columns:9px minmax(0,1fr);
@@ -126,7 +134,7 @@
                     line-height:1.35;
                 ">
                     ${renderStatusMark(status, date)}
-                    <span style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${status}</span>
+                    <span style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(status)}</span>
                 </div>
             </div>
         `;
@@ -144,7 +152,7 @@
                     overflow:hidden;
                     text-overflow:ellipsis;
                     margin-bottom:5px;
-                ">${stationName(id)}</div>
+                ">${escapeHtml(stationName(id))}</div>
                 ${renderProgressItem(detail, false)}
             </div>
         `;
@@ -161,7 +169,7 @@
                     overflow:hidden;
                     text-overflow:ellipsis;
                     margin-bottom:5px;
-                ">${name}</div>
+                ">${escapeHtml(name)}</div>
                 <div style="display:flex; flex-direction:column; gap:3px;">
                     ${(details || []).map(d => renderProgressItem(d, true)).join("")}
                 </div>

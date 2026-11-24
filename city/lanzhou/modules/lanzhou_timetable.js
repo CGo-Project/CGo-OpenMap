@@ -23,6 +23,10 @@
 (function () {
     if (!window.StationBoard || typeof window.StationBoard.registerModule !== "function") return;
 
+    const esc = (text) => String(text == null ? "" : text).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+
     function getEntry(lineId, stationId) {
         if (typeof GLOBAL_SCHEDULE_DATA === "undefined" || !GLOBAL_SCHEDULE_DATA) return null;
         if (!lineId || !stationId) return null;
@@ -77,19 +81,19 @@
         }
 
         if (validLasts.length === 1) {
-            return `<span style="font-size:14px; font-weight:650; color:var(--text-main); font-variant-numeric:tabular-nums; white-space:nowrap;">${validLasts[0].value}</span>`;
+            return `<span style="font-size:14px; font-weight:650; color:var(--text-main); font-variant-numeric:tabular-nums; white-space:nowrap;">${esc(validLasts[0].value)}</span>`;
         }
 
         return `
             <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:100%; box-sizing:border-box;">
                 ${validLasts.map((x) => {
                     const chip = x.label
-                        ? `<span style="display:inline-flex; align-items:center; justify-content:center; padding:2px 5px; border:1px solid var(--border-color); border-radius:4px; background:rgba(127,127,127,.08); font-size:9.5px; line-height:1.2; color:var(--text-light); white-space:nowrap; flex:0 0 auto;">${x.label}</span>`
+                        ? `<span style="display:inline-flex; align-items:center; justify-content:center; padding:2px 5px; border:1px solid var(--border-color); border-radius:4px; background:rgba(127,127,127,.08); font-size:9.5px; line-height:1.2; color:var(--text-light); white-space:nowrap; flex:0 0 auto;">${esc(x.label)}</span>`
                         : "";
                     return `
                         <div style="display:inline-flex; align-items:center; justify-content:center; gap:5px; max-width:100%; white-space:nowrap;">
                             ${chip}
-                            <span style="font-size:13.5px; font-weight:650; color:var(--text-main); font-variant-numeric:tabular-nums; flex:0 0 auto;">${x.value}</span>
+                            <span style="font-size:13.5px; font-weight:650; color:var(--text-main); font-variant-numeric:tabular-nums; flex:0 0 auto;">${esc(x.value)}</span>
                         </div>
                     `;
                 }).join("")}
@@ -206,7 +210,7 @@
                                 white-space:nowrap;
                                 overflow:hidden;
                                 text-overflow:clip;
-                            ">往&nbsp;${dest}</span>
+                            ">往&nbsp;${esc(dest)}</span>
                         </div>
 
                         <div style="
@@ -225,7 +229,7 @@
                                 color:${d.first === "—" ? "var(--text-light)" : "var(--text-main)"};
                                 font-variant-numeric:tabular-nums;
                                 white-space:nowrap;
-                            ">${d.first}</span>
+                            ">${esc(d.first)}</span>
                         </div>
 
                         <div style="

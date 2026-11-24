@@ -36,6 +36,7 @@
         // 缓存键带上坐标：OpenMap Editor 里拖动车站后要按新位置重新推断朝向
         const cacheKey = `${stationId}@${station.x},${station.y}`;
         if (tangentAngleCache.has(cacheKey)) return tangentAngleCache.get(cacheKey);
+        if (tangentAngleCache.size > 4000) tangentAngleCache.clear();
         let angle = 90;
         const lines = (typeof linesData !== "undefined" && Array.isArray(linesData)) ? linesData : [];
         let best = null;

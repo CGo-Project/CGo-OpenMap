@@ -62,6 +62,13 @@ export const AMapTile = {
 // ==========================================
 // 3. LanzhouStaCard 核心实现
 // ==========================================
+const escapeHtml = (value) => String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
 export const LanzhouStaCard = {
     name: "LanzhouStaCard",
     basePath: "./city/lanzhou/stacard/",
@@ -93,17 +100,11 @@ export const LanzhouStaCard = {
                 } else if (!data && typeof globalThis !== 'undefined' && globalThis.LANZHOU_AMAP_DATA) {
                     data = globalThis.LANZHOU_AMAP_DATA;
                 } else if (!data && this.geoDataUrl && typeof fetch === 'function') {
-                    try {
-                        const res = await fetch(this.geoDataUrl);
-                        if (res.ok) {
-                            data = await res.json();
-                            if (typeof window !== 'undefined') {
-                                window.LANZHOU_AMAP_DATA = data;
-                            }
-                        }
-                    } catch (fetchErr) {
-                        // 浏览器环境下通常正常，非浏览器环境如果报错则继续向下 fallback
-                        console.warn("[LanzhouStaCard] fetch 坐标文件提示:", fetchErr.message);
+                    const res = await fetch(this.geoDataUrl);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    data = await res.json();
+                    if (typeof window !== 'undefined') {
+                        window.LANZHOU_AMAP_DATA = data;
                     }
                 }
 
@@ -114,7 +115,7 @@ export const LanzhouStaCard = {
                         line.st.forEach(sta => {
                             if (!sta.sl) return;
                             const coords = sta.sl.split(',').map(Number);
-                            if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                            if (coords.length === 2 && Number.isFinite(coords[0]) && Number.isFinite(coords[1]) && (coords[0] !== 0 || coords[1] !== 0)) {
                                 const pt = [coords[0], coords[1]];
                                 if (sta.n) {
                                     this.geoMapByName[sta.n] = pt;
@@ -137,7 +138,8 @@ export const LanzhouStaCard = {
                 console.log(`[LanzhouStaCard] 高德切片地图卡片模块加载成功，共索引 ${pointCount} 个车站坐标。`);
             } catch (err) {
                 console.warn("[LanzhouStaCard] 地理坐标数据索引加载异常:", err);
-                this.isInitialized = true;
+                this.isInitialized = false;
+                this.initPromise = null;
             }
             return this;
         })();
@@ -152,10 +154,14 @@ export const LanzhouStaCard = {
         if (!station) return null;
 
         // 1. 如果 station 本身含有 lng, lat
-        if (typeof station.lng === 'number' && typeof station.lat === 'number') {
+        if (typeof station.lng === 'number' && typeof station.lat === 'number'
+            && Number.isFinite(station.lng) && Number.isFinite(station.lat)
+            && (station.lng !== 0 || station.lat !== 0)) {
             return [station.lng, station.lat];
         }
-        if (typeof station.longitude === 'number' && typeof station.latitude === 'number') {
+        if (typeof station.longitude === 'number' && typeof station.latitude === 'number'
+            && Number.isFinite(station.longitude) && Number.isFinite(station.latitude)
+            && (station.longitude !== 0 || station.latitude !== 0)) {
             return [station.longitude, station.latitude];
         }
 
@@ -233,11 +239,11 @@ export const LanzhouStaCard = {
 
         return `
             <div class="stacard-container stacard-minimap-box ${extraClass}"
-                 data-sid="${sid}"
-                 data-sname="${stationName}"
-                 data-lid="${lineId}"
-                 data-color="${lineColor}"
-                 data-coords="${coordsAttr}"
+                 data-sid="${escapeHtml(sid)}"
+                 data-sname="${escapeHtml(stationName)}"
+                 data-lid="${escapeHtml(lineId)}"
+                 data-color="${escapeHtml(lineColor)}"
+                 data-coords="${escapeHtml(coordsAttr)}"
                  style="${extraStyle}">
                 <div class="stacard-loading-tip">
                     <svg class="stacard-spin" viewBox="0 0 24 24" width="16" height="16">
@@ -256,6 +262,8 @@ export const LanzhouStaCard = {
      */
     async renderCard(container, context = {}) {
         if (!container) return;
+        container._lanzhouStaCardResizeObserver?.disconnect();
+        delete container._lanzhouStaCardResizeObserver;
         if (!this.isInitialized) await this.init();
 
         try {
@@ -286,7 +294,7 @@ export const LanzhouStaCard = {
                 const imgSrc = stationObj.cardImg || stationObj.image;
                 container.innerHTML = `
                     <div style="width:100%; border-radius:8px; overflow:hidden;">
-                        <img src="${imgSrc}" alt="${stationName}" style="width:100%; height:auto; display:block;" />
+                        <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(stationName)}" style="width:100%; height:auto; display:block;" />
                     </div>
                 `;
                 return;
@@ -353,10 +361,10 @@ export const LanzhouStaCard = {
                 <div class="stacard-tiles-wrapper"></div>
                 
                 <!-- 中心定位 Pin -->
-                <div class="stacard-pin-marker" style="--marker-color: ${lineColor};">
+                <div class="stacard-pin-marker" style="--marker-color: ${escapeHtml(lineColor)};">
                     <div class="stacard-pin-pulse"></div>
                     <div class="stacard-pin-dot"></div>
-                    <div class="stacard-pin-label">${name}</div>
+                    <div class="stacard-pin-label">${escapeHtml(name)}</div>
                 </div>
 
                 <!-- 缩放控制按钮 (不包含分享外链按钮) -->
@@ -450,14 +458,23 @@ export const LanzhouStaCard = {
 
         // 监听容器尺寸变化（例如切换 Tab 显示时自动补全渲染切片）
         if (typeof ResizeObserver !== 'undefined') {
+            let rafId = 0;
             const ro = new ResizeObserver((entries) => {
-                for (const entry of entries) {
-                    if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                if (entries.some((entry) => entry.contentRect.width > 0 && entry.contentRect.height > 0)) {
+                    if (rafId) return;
+                    rafId = requestAnimationFrame(() => {
+                        rafId = 0;
                         renderTiles();
-                    }
+                    });
                 }
             });
             ro.observe(viewport);
+            container._lanzhouStaCardResizeObserver = {
+                disconnect() {
+                    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+                    ro.disconnect();
+                }
+            };
         }
     },
 
@@ -473,5 +490,4 @@ export const LanzhouStaCard = {
 };
 
 window.LanzhouStaCard = LanzhouStaCard;
-window.BeijingStaCard = LanzhouStaCard;
 window.StaCard = LanzhouStaCard;

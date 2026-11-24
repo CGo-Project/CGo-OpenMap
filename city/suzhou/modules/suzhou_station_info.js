@@ -146,6 +146,7 @@
         img.src = url;
         stage.appendChild(img);
 
+        if (activeCleanup) { const f = activeCleanup; activeCleanup = null; f(); }
         const onKey = (e) => { if (e.key === "Escape") close(); };
         document.addEventListener("keydown", onKey);
         activeCleanup = () => document.removeEventListener("keydown", onKey);
@@ -174,7 +175,7 @@
                 <p class="sz-si-desc">上方地图卡片给出本站位置；这张官网《街区示意图》另标出各出入口编号、周边道路与公交站点，可据此确认从哪个口出站。</p>
                 <div class="sz-si-actions">
                     <button type="button" class="sz-si-btn" data-sz-si-zoom="block" data-title="${esc(cn)} · 街区示意图（出入口）"><cgo-icon name="unfold" size="13"></cgo-icon>查看大图</button>
-                    <a class="sz-si-btn" href="${esc(navUrl)}" target="_blank" rel="noopener"><cgo-icon name="location" size="13"></cgo-icon>在高德地图中搜索本站</a>
+                    <a class="sz-si-btn" href="${esc(navUrl)}" target="_blank" rel="noopener noreferrer"><cgo-icon name="location" size="13"></cgo-icon>在高德地图中搜索本站</a>
                 </div>
             </div>` : "";
 
@@ -198,7 +199,7 @@
         const travels = Array.isArray(entry.travels) && entry.travels.length ? `
             <div class="sz-si-head" style="margin-top:10px"><cgo-icon name="tourist" size="14"></cgo-icon>周边景点</div>
             <ul class="sz-si-travels">${entry.travels.map((t) =>
-                `<li><a href="${esc(t[1])}" target="_blank" rel="noopener"><cgo-icon name="tourist" size="12"></cgo-icon>${esc(t[0])}</a></li>`).join("")}</ul>` : "";
+                `<li><a href="${esc(t[1])}" target="_blank" rel="noopener noreferrer"><cgo-icon name="tourist" size="12"></cgo-icon>${esc(t[0])}</a></li>`).join("")}</ul>` : "";
 
         const facCard = (facRows || travels) ? `
             <div class="sz-si-section">
@@ -232,15 +233,17 @@
         });
     }
 
-    window.StationBoard.registerModule({
-        id: "suzhou-station-info",
-        name: "苏州车站资料（地图位置 / 结构示意图 / 设施）",
-        targetTab: "station-info",
-        order: 15,
-        shouldRender(context) {
-            return Boolean(entryOf(context));
-        },
-        render,
-        onMounted
-    });
+    if (window.StationBoard?.registerModule) {
+        window.StationBoard.registerModule({
+            id: "suzhou-station-info",
+            name: "苏州车站资料（地图位置 / 结构示意图 / 设施）",
+            targetTab: "station-info",
+            order: 15,
+            shouldRender(context) {
+                return Boolean(entryOf(context));
+            },
+            render,
+            onMounted
+        });
+    }
 })();

@@ -39,10 +39,15 @@
         return LANZHOU_TRAVEL_GUIDE[raw] || LANZHOU_TRAVEL_GUIDE[raw.replace(/站$/, "")] || "";
     }
 
-    function registerTravelGuideModule() {
+    function esc(text) {
+        return String(text == null ? "" : text).replace(/[&<>"']/g, (c) => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[c]));
+    }
+
+    function registerTravelGuideModule(attempt = 0) {
         if (!window.StationBoard || typeof window.StationBoard.registerModule !== "function") {
-            console.warn("[lanzhou_travel_guide] StationBoard 尚未加载，延迟等待注册...");
-            setTimeout(registerTravelGuideModule, 50);
+            if (attempt < 100) setTimeout(() => registerTravelGuideModule(attempt + 1), 50);
             return;
         }
 
@@ -64,7 +69,7 @@
                 // 词条内的中英文逗号统一转为换行（保留原文措辞，仅改分行）
                 const guideLines = String(guide)
                     .split(/[，,]\s*/)
-                    .map(line => line.trim())
+                    .map(line => esc(line.trim()))
                     .filter(Boolean)
                     .join("<br>");
 

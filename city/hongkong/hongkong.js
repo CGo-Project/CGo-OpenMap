@@ -25,6 +25,10 @@
 (function () {
     "use strict";
 
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+
     const VER = window.CGO_ASSET_VERSION;
     /** 插入樣式表，返回其加載完成（或失敗）的 Promise */
     function addStylesheet(href, versioned) {
@@ -256,7 +260,6 @@
     // 2. 按墨跡包圍盒逐行貼合排版（站名、區域名、圖例文字共用）
     // ==========================================================================
     const measureCtx = document.createElement("canvas").getContext("2d");
-    const isCjk = (t) => /[㐀-鿿]/.test(t);
 
     /**
      * 讓一行文字的墨跡恰好落在 box 內：
@@ -538,10 +541,40 @@
         const key = (s, l, d) => `${s}|${l}|${d}`;
         const dist = new Map(), prev = new Map();
         const heap = [];
+        const heapPush = (item) => {
+            heap.push(item);
+            let i = heap.length - 1;
+            while (i > 0) {
+                const p = (i - 1) >> 1;
+                if (heap[p][0] <= heap[i][0]) break;
+                [heap[p], heap[i]] = [heap[i], heap[p]];
+                i = p;
+            }
+        };
+        const heapPop = () => {
+            const top = heap[0];
+            const last = heap.pop();
+            if (heap.length) {
+                heap[0] = last;
+                let i = 0;
+                const n = heap.length;
+                while (true) {
+                    let best = i;
+                    const l = i * 2 + 1;
+                    const r = l + 1;
+                    if (l < n && heap[l][0] < heap[best][0]) best = l;
+                    if (r < n && heap[r][0] < heap[best][0]) best = r;
+                    if (best === i) break;
+                    [heap[i], heap[best]] = [heap[best], heap[i]];
+                    i = best;
+                }
+            }
+            return top;
+        };
         const push = (k, c, p, info) => {
             if (dist.has(k) && dist.get(k) <= c) return;
             dist.set(k, c); prev.set(k, { p, info });
-            heap.push([c, k]);
+            heapPush([c, k]);
         };
         const nextOn = (lid, sid, dir) => {
             const out = new Set();
@@ -565,8 +598,7 @@
         prev.set("WALK0", { p: null, info: { t: "start" } });
         let goal = null;
         while (heap.length) {
-            heap.sort((a, b) => a[0] - b[0]);
-            const [c, k] = heap.shift();
+            const [c, k] = heapPop();
             if (c > dist.get(k)) continue;
             if (k === "GOAL") { goal = k; break; }
             const [sid, lid, ds] = k.split("|");
@@ -844,12 +876,12 @@
     /** 渲染實時列車行：「2 號月台 · 即將抵達 · 4 分 · 8 分」 */
     function liveHtml(res, list, end, emptyText = "暫無此方向班次") {
         if (!res) return "";
-        if (!res.ok) return `<span class="hk-live-off">${res.message}</span>`;
-        if (!list.length) return `<span class="hk-live-off">${emptyText}</span>`;
-        const plat = list[0].plat ? `<span class="hk-platnum"><span class="hk-plat-no">${list[0].plat}</span>號月台</span>` : "";
+        if (!res.ok) return `<span class="hk-live-off">${esc(res.message)}</span>`;
+        if (!list.length) return `<span class="hk-live-off">${esc(emptyText)}</span>`;
+        const plat = list[0].plat ? `<span class="hk-platnum"><span class="hk-plat-no">${esc(list[0].plat)}</span>號月台</span>` : "";
         const items = list.slice(0, 3).map((t, i) => {
-            const other = end && t.dest !== end ? `<i>往${stName(t.dest)}</i>` : "";
-            return `<span class="${i ? "" : "hk-live-first"}">${minsText(t)}${other}</span>`;
+            const other = end && t.dest !== end ? `<i>往${esc(stName(t.dest))}</i>` : "";
+            return `<span class="${i ? "" : "hk-live-first"}">${esc(minsText(t))}${other}</span>`;
         }).join("");
         return `<span class="hk-live-dot"></span>${plat}${items}${res.delay ? `<span class="hk-live-delay">服務延誤</span>` : ""}`;
     }
@@ -912,7 +944,15 @@
     // ── 車費 ────────────────────────────────────────────────────────────────────
     const FARE_KEY = "hk_fare_type";
     const FARE_TYPES = [["oct", "成人"], ["std", "學生"], ["joy", "樂悠咭"], ["chd", "小童"], ["eld", "長者"], ["sgl", "單程票"]];
-    let fareType = (() => { try { return localStorage.getItem(FARE_KEY) || "oct"; } catch (e) { return "oct"; } })();
+    const ALLOWED_FARE_TYPES = new Set(FARE_TYPES.map(x => x[0]));
+    let fareType = (() => {
+        try {
+            const saved = localStorage.getItem(FARE_KEY);
+            return ALLOWED_FARE_TYPES.has(saved) ? saved : "oct";
+        } catch (e) {
+            return "oct";
+        }
+    })();
     function fareBetween(F, a, b, type) {
         if (a === b) return 0;
         const n = F.stations.length;
@@ -996,17 +1036,17 @@
                 const L = routableLines()[s.line];
                 const endWay = L && s.dir > 0 ? L.ways.find(w => w.includes(b)) : null;
                 const end = s.dir > 0 ? (endWay ? endWay[endWay.length - 1] : "") : (L ? L.ref[0] : "");
-                html += `<li class="hk-rt-ride" data-step="${i}" style="--lc:${lineColor(s.line)}">` +
-                    `<div class="hk-rt-head">${badge(s.line)}<span>往 <b>${towardsText(s.line, s.dir, b)}</b></span><em>${s.stops.length - 1} 站 · 約 ${Math.round(legMinutes(s.stops))} 分</em></div>` +
-                    `<div class="hk-rt-body"><a data-jump="${a}">${stName(a)}</a> 上車 → <a data-jump="${b}">${stName(b)}</a> 落車</div>` +
-                    (NT_LINES.includes(s.line) ? `<div class="hk-live hk-rt-live" data-live="${s.line}|${a}|${s.dir}|${end}">載入實時班次…</div>` : "") +
+                html += `<li class="hk-rt-ride" data-step="${i}" style="--lc:${esc(lineColor(s.line))}">` +
+                    `<div class="hk-rt-head">${badge(s.line)}<span>往 <b>${esc(towardsText(s.line, s.dir, b))}</b></span><em>${s.stops.length - 1} 站 · 約 ${Math.round(legMinutes(s.stops))} 分</em></div>` +
+                    `<div class="hk-rt-body"><a data-jump="${esc(a)}">${esc(stName(a))}</a> 上車 → <a data-jump="${esc(b)}">${esc(stName(b))}</a> 落車</div>` +
+                    (NT_LINES.includes(s.line) ? `<div class="hk-live hk-rt-live" data-live="${esc(s.line)}|${esc(a)}|${s.dir}|${esc(end)}">載入實時班次…</div>` : "") +
                     `</li>`;
             } else if (s.t === "xfer") {
                 html += s.xp
-                    ? `<li class="hk-rt-x hk-xp"><cgo-icon name="transfer" size="16"></cgo-icon><span>於 <a data-jump="${s.at}">${stName(s.at)}</a> <b>同台換乘</b>：落車後直接步往對面月台</span></li>`
-                    : `<li class="hk-rt-x"><cgo-icon name="stairs" size="16"></cgo-icon><span>於 <a data-jump="${s.at}">${stName(s.at)}</a> 換乘，跟隨站內指示前往${(LINE_NAMES[s.toLine] || [""])[0]}月台</span></li>`;
+                    ? `<li class="hk-rt-x hk-xp"><cgo-icon name="transfer" size="16"></cgo-icon><span>於 <a data-jump="${esc(s.at)}">${esc(stName(s.at))}</a> <b>同台換乘</b>：落車後直接步往對面月台</span></li>`
+                    : `<li class="hk-rt-x"><cgo-icon name="stairs" size="16"></cgo-icon><span>於 <a data-jump="${esc(s.at)}">${esc(stName(s.at))}</a> 換乘，跟隨站內指示前往${esc((LINE_NAMES[s.toLine] || [""])[0])}月台</span></li>`;
             } else if (s.t === "walk") {
-                html += `<li class="hk-rt-x hk-walk"><cgo-icon name="walk" size="16"></cgo-icon><span>由 <a data-jump="${s.a}">${stName(s.a)}</a> 步行至 <a data-jump="${s.b}">${stName(s.b)}</a>（約 ${s.w.min} 分鐘，${s.w.text}）</span></li>`;
+                html += `<li class="hk-rt-x hk-walk"><cgo-icon name="walk" size="16"></cgo-icon><span>由 <a data-jump="${esc(s.a)}">${esc(stName(s.a))}</a> 步行至 <a data-jump="${esc(s.b)}">${esc(stName(s.b))}</a>（約 ${s.w.min} 分鐘，${esc(s.w.text)}）</span></li>`;
             }
         });
         html += `</ol><div class="hk-rt-foot">行車時間按站間實際距離估算，換乘另加 5 分鐘；實時班次與車費來自港鐵開放數據，僅供參考。點選路段可在圖上放大查看。</div>`;
@@ -1099,8 +1139,8 @@
             const label = which === "from" ? "起點" : "目的地";
             const dot = `<i class="hk-dot ${which === "from" ? "hk-o" : "hk-d"}"></i>`;
             if (!sid) return `${dot}<span class="hk-rf-main hk-rf-ph">選擇${label}</span><cgo-icon name="chevron-right" size="15"></cgo-icon>`;
-            const lines = linesOfStation(sid).map(l => `<i class="hk-rf-ln" style="background:${lineColor(l)}"></i>`).join("");
-            return `${dot}<span class="hk-rf-main"><small>${label}</small><b>${stName(sid)}</b><em>${stEn(sid)}</em></span>` +
+            const lines = linesOfStation(sid).map(l => `<i class="hk-rf-ln" style="background:${esc(lineColor(l))}"></i>`).join("");
+            return `${dot}<span class="hk-rf-main"><small>${label}</small><b>${esc(stName(sid))}</b><em>${esc(stEn(sid))}</em></span>` +
                 `<span class="hk-rf-lns">${lines}</span><cgo-icon name="chevron-right" size="15"></cgo-icon>`;
         };
         card.querySelector('[data-pick="from"]').innerHTML = field("from");
@@ -1222,13 +1262,13 @@
     function stationRow(sid, opts = {}) {
         const other = routeState[pickerState.which === "from" ? "to" : "from"];
         const lines = linesOfStation(sid);
-        const dots = lines.filter(l => l !== opts.line).map(l => `<i class="hk-pk-ln" style="background:${lineColor(l)}" title="${(LINE_NAMES[l] || [l])[0]}"></i>`).join("");
+        const dots = lines.filter(l => l !== opts.line).map(l => `<i class="hk-pk-ln" style="background:${esc(lineColor(l))}" title="${esc((LINE_NAMES[l] || [l])[0])}"></i>`).join("");
         const tag = sid === other ? `<span class="hk-pk-tag">${pickerState.which === "from" ? "目的地" : "起點"}</span>` : "";
         const cur = sid === routeState[pickerState.which] ? " current" : "";
-        return `<button class="hk-pk-st${sid === other ? " disabled" : ""}${cur}" data-psid="${sid}"${opts.line ? ` style="--lc:${lineColor(opts.line)}"` : ""}>
+        return `<button class="hk-pk-st${sid === other ? " disabled" : ""}${cur}" data-psid="${esc(sid)}"${opts.line ? ` style="--lc:${esc(lineColor(opts.line))}"` : ""}>
             ${opts.line ? `<span class="hk-pk-rail"><i></i></span>` : ""}
-            <span class="hk-pk-name"><b>${stName(sid)}</b><em>${stEn(sid)}</em></span>
-            <span class="hk-pk-meta">${dots}${tag}<code>${sid}</code></span>
+            <span class="hk-pk-name"><b>${esc(stName(sid))}</b><em>${esc(stEn(sid))}</em></span>
+            <span class="hk-pk-meta">${dots}${tag}<code>${esc(sid)}</code></span>
         </button>`;
     }
     function renderPicker() {
@@ -1239,12 +1279,12 @@
         // 最近選過
         const rec = recentStations();
         pk.querySelector(".hk-pk-recent").innerHTML = !q && rec.length
-            ? `<span>最近</span>${rec.map(sid => `<button data-psid="${sid}" class="hk-pk-chip">${stName(sid)}</button>`).join("")}` : "";
+            ? `<span>最近</span>${rec.map(sid => `<button data-psid="${esc(sid)}" class="hk-pk-chip">${esc(stName(sid))}</button>`).join("")}` : "";
         // 綫路欄
         pk.querySelector(".hk-pk-lines").innerHTML = PICK_LINES.map(l => {
             const n = LINE_NAMES[l];
-            return `<button data-pline="${l}" class="${!q && l === pickerState.line ? "on" : ""}" style="--lc:${lineColor(l)}">
-                <i></i><span><b>${n[0]}</b><em>${n[1]}</em></span></button>`;
+            return `<button data-pline="${esc(l)}" class="${!q && l === pickerState.line ? "on" : ""}" style="--lc:${esc(lineColor(l))}">
+                <i></i><span><b>${esc(n[0])}</b><em>${esc(n[1])}</em></span></button>`;
         }).join("");
         const list = pk.querySelector(".hk-pk-list");
         if (q) {
@@ -1260,12 +1300,12 @@
             });
             list.innerHTML = hits.length
                 ? `<div class="hk-pk-h">搜尋結果 · ${hits.length} 個車站</div>` + hits.map(sid => stationRow(sid)).join("")
-                : `<div class="hk-pk-empty">找不到「${q.replace(/[<>&]/g, "")}」，試試英文站名或車站代號</div>`;
+                : `<div class="hk-pk-empty">找不到「${esc(q)}」，試試英文站名或車站代號</div>`;
         } else {
             const l = pickerState.line;
             const n = LINE_NAMES[l];
             const ids = orderedStations(l);
-            list.innerHTML = `<div class="hk-pk-h" style="--lc:${lineColor(l)}"><i></i>${n[0]} · ${ids.length} 站${lineSummary(l) ? `<small>${lineSummary(l)}</small>` : ""}</div>` +
+            list.innerHTML = `<div class="hk-pk-h" style="--lc:${esc(lineColor(l))}"><i></i>${esc(n[0])} · ${ids.length} 站${lineSummary(l) ? `<small>${esc(lineSummary(l))}</small>` : ""}</div>` +
                 `<div class="hk-pk-rails">${ids.map(sid => stationRow(sid, { line: l })).join("")}</div>`;
             const cur = list.querySelector(".hk-pk-st.current");
             if (cur) cur.scrollIntoView({ block: "center" });
@@ -1287,6 +1327,7 @@
         const b = e.target.closest && e.target.closest(".hk-fare-types [data-fare]");
         if (!b) return;
         e.stopPropagation();
+        if (!ALLOWED_FARE_TYPES.has(b.dataset.fare)) return;
         fareType = b.dataset.fare;
         try { localStorage.setItem(FARE_KEY, fareType); } catch (err) { /* 忽略 */ }
         const root = b.closest(".hk-rt-result"), card = document.getElementById("hk-route-card");
@@ -1331,7 +1372,7 @@
         const card = document.getElementById("hk-route-card");
         if (card) card.classList.remove("show");
         document.body.classList.remove("hk-route-open", "hk-picking");
-        if (isHkWmDesktop() && hkRouteWmRegistered && !(opts && opts.fromCgoWm) && window.CGoWMAdapter.isOpen("hk-route")) {
+        if (isHkWmDesktop() && hkRouteWmRegistered && !(opts && opts.fromCgoWm)) {
             hkClosingRouteFromWm = true;
             try { window.CGoWMAdapter.close("hk-route"); } finally { hkClosingRouteFromWm = false; }
         }
@@ -1504,43 +1545,103 @@
         const card = document.getElementById("hk-route-card");
         const box = card && card.querySelector(".hk-track");
         let bar = document.getElementById("hk-track-bar");
-        if (!track.on) { if (box) box.innerHTML = trackIdleHtml(); return; }
+        if (!track.on) {
+            if (box) {
+                delete box.dataset.hkTrackKey;
+                box.innerHTML = trackIdleHtml();
+            }
+            if (bar) delete bar.dataset.hkBarKey;
+            return;
+        }
+        const ensureBar = () => {
+            if (!bar) {
+                bar = document.createElement("div");
+                bar.id = "hk-track-bar";
+                document.body.appendChild(bar);
+                bar.addEventListener("click", (e) => { e.stopPropagation(); openRoute(); });
+            }
+            return bar;
+        };
         const leg = track.legs[track.idx];
         let html = "", barHtml = "";
         if (track.phase === "done") {
-            html = `<div class="hk-tk-done"><cgo-icon name="check-circle" size="20"></cgo-icon>已到達 <b>${stName(track.route.to)}</b></div>
+            const trackKey = `done:${track.route.to}`;
+            html = `<div class="hk-tk-done"><cgo-icon name="check-circle" size="20"></cgo-icon>已到達 <b>${esc(stName(track.route.to))}</b></div>
                 <button class="hk-tk-btn hk-tk-stop">結束追蹤</button>`;
-            barHtml = `<cgo-icon name="check-circle" size="16"></cgo-icon>已到達 ${stName(track.route.to)}`;
-        } else if (track.phase === "wait") {
+            barHtml = `<cgo-icon name="check-circle" size="16"></cgo-icon>已到達 ${esc(stName(track.route.to))}`;
+            if (box && box.dataset.hkTrackKey !== trackKey) {
+                box.dataset.hkTrackKey = trackKey;
+                box.innerHTML = html;
+            }
+            bar = ensureBar();
+            if (bar.dataset.hkBarKey !== trackKey) {
+                bar.dataset.hkBarKey = trackKey;
+                bar.innerHTML = barHtml;
+            }
+            bar.classList.add("show");
+            return;
+        }
+        if (track.phase === "wait") {
             const s = leg.s, a = s.stops[0];
             const prevX = track.route.steps[leg.i - 1];
             const how = prevX && prevX.t === "xfer" ? (prevX.xp ? "同台換乘：步往對面月台，" : "換乘：跟隨站內指示，") : "";
-            html = `<div class="hk-tk-now">${how}在 <b>${stName(a)}</b> 乘 ${badge(s.line)} 往 <b>${towardsText(s.line, s.dir, s.stops[s.stops.length - 1])}</b></div>
-                <div class="hk-live" data-live="${s.line}|${a}|${s.dir}|">載入實時班次…</div>
-                <button class="hk-tk-btn hk-tk-board"><cgo-icon name="train" size="16"></cgo-icon>我已上車</button>`;
-            barHtml = `${badge(s.line)}<span>在 <b>${stName(a)}</b> 上車 · 往${towardsText(s.line, s.dir, s.stops[s.stops.length - 1])}</span>`;
-        } else {
-            const s = leg.s, stops = s.stops, k = progressOf(leg);
-            const left = stops.length - 1 - k, next = stops[Math.min(k + 1, stops.length - 1)];
-            const mins = Math.max(0, Math.round((track.eta - Date.now()) / 60000));
-            const alert = document.body.classList.contains("hk-track-alert");
-            html = `<div class="hk-tk-now">${badge(s.line)} 往 <b>${towardsText(s.line, s.dir, stops[stops.length - 1])}</b></div>
-                <div class="hk-tk-eta"><b>${hhmm(track.eta)}</b> 到達 ${stName(stops[stops.length - 1])}<span>約 ${mins} 分鐘 · 還有 ${left} 站</span></div>
-                <div class="hk-tk-strip" style="--lc:${lineColor(s.line)}">${stops.map((sid, i) => `<i class="${i < k ? "past" : i === k ? "here" : ""}${i === stops.length - 1 ? " end" : ""}" title="${stName(sid)}"></i>`).join("")}</div>
-                ${alert ? `<div class="hk-tk-alert"><cgo-icon name="warning" size="16"></cgo-icon>下一站 <b>${stName(stops[stops.length - 1])}</b> 落車</div>` : `<div class="hk-tk-next">下一站 ${stName(next)}</div>`}
-                <div class="hk-tk-row"><button class="hk-tk-btn hk-tk-arrive">已落車</button><button class="hk-tk-link hk-tk-stop">結束追蹤</button></div>`;
-            barHtml = alert
-                ? `<cgo-icon name="warning" size="16"></cgo-icon><span><b>下一站 ${stName(stops[stops.length - 1])} 落車</b></span>`
-                : `${badge(s.line)}<span>下一站 <b>${stName(next)}</b> · 還有 ${left} 站 · ${hhmm(track.eta)} 到</span>`;
+            const dest = towardsText(s.line, s.dir, s.stops[s.stops.length - 1]);
+            const trackKey = `wait:${track.idx}:${s.line}:${a}`;
+            if (box && box.dataset.hkTrackKey !== trackKey) {
+                box.dataset.hkTrackKey = trackKey;
+                box.innerHTML = `<div class="hk-tk-now">${how}在 <b>${esc(stName(a))}</b> 乘 ${badge(s.line)} 往 <b>${esc(dest)}</b></div>
+                    <div class="hk-live" data-live="${esc(s.line)}|${esc(a)}|${s.dir}|">載入實時班次…</div>
+                    <button class="hk-tk-btn hk-tk-board"><cgo-icon name="train" size="16"></cgo-icon>我已上車</button>`;
+                mountLive(box);
+            }
+            bar = ensureBar();
+            if (bar.dataset.hkBarKey !== trackKey) {
+                bar.dataset.hkBarKey = trackKey;
+                bar.innerHTML = `${badge(s.line)}<span>在 <b>${esc(stName(a))}</b> 上車 · 往${esc(dest)}</span>`;
+            }
+            bar.classList.add("show");
+            return;
         }
-        if (box) { box.innerHTML = html; mountLive(box); }
-        if (!bar) {
-            bar = document.createElement("div");
-            bar.id = "hk-track-bar";
-            document.body.appendChild(bar);
-            bar.addEventListener("click", (e) => { e.stopPropagation(); openRoute(); });
+        const s = leg.s, stops = s.stops, k = progressOf(leg);
+        const left = stops.length - 1 - k, next = stops[Math.min(k + 1, stops.length - 1)];
+        const mins = Math.max(0, Math.round((track.eta - Date.now()) / 60000));
+        const alert = document.body.classList.contains("hk-track-alert");
+        const trackKey = `ride:${track.idx}:${alert ? 1 : 0}`;
+        const dest = towardsText(s.line, s.dir, stops[stops.length - 1]);
+        const endName = stName(stops[stops.length - 1]);
+        if (box) {
+            if (box.dataset.hkTrackKey !== trackKey) {
+                box.dataset.hkTrackKey = trackKey;
+                box.innerHTML = `<div class="hk-tk-now">${badge(s.line)} 往 <b>${esc(dest)}</b></div>
+                    <div class="hk-tk-eta"><b data-hk-eta-time>${esc(hhmm(track.eta))}</b> 到達 ${esc(endName)}<span data-hk-eta-meta>約 ${mins} 分鐘 · 還有 ${left} 站</span></div>
+                    <div class="hk-tk-strip" style="--lc:${esc(lineColor(s.line))}">${stops.map((sid, i) => `<i class="${i < k ? "past" : i === k ? "here" : ""}${i === stops.length - 1 ? " end" : ""}" title="${esc(stName(sid))}"></i>`).join("")}</div>
+                    ${alert ? `<div class="hk-tk-alert"><cgo-icon name="warning" size="16"></cgo-icon>下一站 <b>${esc(endName)}</b> 落車</div>` : `<div class="hk-tk-next">下一站 <span data-hk-next-name>${esc(stName(next))}</span></div>`}
+                    <div class="hk-tk-row"><button class="hk-tk-btn hk-tk-arrive">已落車</button><button class="hk-tk-link hk-tk-stop">結束追蹤</button></div>`;
+            } else {
+                const etaTime = box.querySelector("[data-hk-eta-time]");
+                const etaMeta = box.querySelector("[data-hk-eta-meta]");
+                const nextNameEl = box.querySelector("[data-hk-next-name]");
+                if (etaTime) etaTime.textContent = hhmm(track.eta);
+                if (etaMeta) etaMeta.textContent = `約 ${mins} 分鐘 · 還有 ${left} 站`;
+                if (nextNameEl) nextNameEl.textContent = stName(next);
+                const dots = box.querySelectorAll(".hk-tk-strip > i");
+                dots.forEach((dot, i) => {
+                    dot.className = `${i < k ? "past" : i === k ? "here" : ""}${i === stops.length - 1 ? " end" : ""}`;
+                });
+            }
         }
-        bar.innerHTML = barHtml;
+        bar = ensureBar();
+        if (bar.dataset.hkBarKey !== trackKey) {
+            bar.dataset.hkBarKey = trackKey;
+            bar.innerHTML = alert
+                ? `<cgo-icon name="warning" size="16"></cgo-icon><span><b>下一站 ${esc(endName)} 落車</b></span>`
+                : `${badge(s.line)}<span data-hk-bar-ride>下一站 <b>${esc(stName(next))}</b> · 還有 ${left} 站 · ${esc(hhmm(track.eta))} 到</span>`;
+        } else if (!alert) {
+            const rideSpan = bar.querySelector("[data-hk-bar-ride]");
+            if (rideSpan) {
+                rideSpan.innerHTML = `下一站 <b>${esc(stName(next))}</b> · 還有 ${left} 站 · ${esc(hhmm(track.eta))} 到`;
+            }
+        }
         bar.classList.add("show");
     }
     function trackIdleHtml() {
@@ -1883,9 +1984,9 @@
             const st = ctx.station || {};
             const r = regionOf(st.id);
             return `<div class="header-name-group hk-head">
-                <div class="panel-cn-name">${st.cn || ""}</div>
-                <div class="panel-en-name">${st.en || ""}</div>
-                <div class="hk-head-meta"><span class="hk-code">${st.id}</span><span>${r[0]}</span></div>
+                <div class="panel-cn-name">${esc(st.cn || "")}</div>
+                <div class="panel-en-name">${esc(st.en || "")}</div>
+                <div class="hk-head-meta"><span class="hk-code">${esc(st.id || "")}</span><span>${esc(r[0])}</span></div>
             </div>`;
         }
     };
@@ -2043,12 +2144,12 @@
             const all = (ctx.relatedLinesInfo || []).map(l => l.id.replace("_PT", ""));
             const kind = XP[sid] ? "同台換乘站" : all.length > 1 ? "轉綫站" :
                 (Object.values(routableLines()).some(L => L.ways.some(w => w[0] === sid || w[w.length - 1] === sid)) ? "終點站" : "一般車站");
-            const tips = tipsOf(sid).map(([ic, tx]) => `<li><cgo-icon name="${ic}" size="15"></cgo-icon><span>${tx}</span></li>`).join("");
+            const tips = tipsOf(sid).map(([ic, tx]) => `<li><cgo-icon name="${esc(ic)}" size="15"></cgo-icon><span>${esc(tx)}</span></li>`).join("");
             return `<div class="hk-info">
                 <div class="hk-info-grid">
-                    <div><small>車站代號</small><b class="hk-mono">${sid}</b></div>
-                    <div><small>所屬區域</small><b>${r[0]}</b></div>
-                    <div><small>車站類型</small><b>${kind}</b></div>
+                    <div><small>車站代號</small><b class="hk-mono">${esc(sid)}</b></div>
+                    <div><small>所屬區域</small><b>${esc(r[0])}</b></div>
+                    <div><small>車站類型</small><b>${esc(kind)}</b></div>
                 </div>
                 <div class="hk-info-lines"><small>服務綫路</small><div>${all.map(badge).join("")}</div></div>
                 <div class="hk-info-pay"><small>車費支付</small><div><span>八達通</span><span>感應式銀行卡</span><span>乘車二維碼</span></div></div>
@@ -2075,9 +2176,9 @@
         const ql = (q || "").trim().toUpperCase();
         const shown = rows.filter(x => (!opFilter || x.r[0] === opFilter) && (!ql || x.r[1].toUpperCase().startsWith(ql) || x.r[2].includes(q.trim())));
         const chips = `<div class="hk-bus-ops"><button data-op="" class="${!opFilter ? "on" : ""}">全部 ${rows.length}</button>` +
-            ops.map(o => `<button data-op="${o}" class="${o === opFilter ? "on" : ""}">${OP_NAMES[o] || o} ${counts[o]}</button>`).join("") + `</div>`;
+            ops.map(o => `<button data-op="${esc(o)}" class="${o === opFilter ? "on" : ""}">${esc(OP_NAMES[o] || o)} ${counts[o]}</button>`).join("") + `</div>`;
         const list = shown.slice(0, 60).map(x => `<div class="hk-bus-r hk-k-${OP_KIND[x.r[0]] || "bus"}">
-                <b>${x.r[1]}</b><span>往 ${x.r[2]}</span><small>${OP_NAMES[x.r[0]] || x.r[0]} · ${x.d} 米</small></div>`).join("");
+                <b>${esc(x.r[1])}</b><span>往 ${esc(x.r[2])}</span><small>${esc(OP_NAMES[x.r[0]] || x.r[0])} · ${x.d} 米</small></div>`).join("");
         return chips + `<div class="hk-bus-list">${list || `<div class="hk-bus-empty">沒有符合的路綫</div>`}</div>` +
             (shown.length > 60 ? `<div class="hk-bus-more">另有 ${shown.length - 60} 條，請用上方篩選或輸入路綫號碼</div>` : "");
     }
@@ -2087,7 +2188,7 @@
         targetTab: "station-info",
         order: 20,
         render(ctx) {
-            return `<div class="hk-bus" data-sid="${ctx.station.id}">
+            return `<div class="hk-bus" data-sid="${esc(ctx.station.id)}">
                 <button class="hk-bus-open"><cgo-icon name="bus" size="16"></cgo-icon>附近巴士 · 小巴路綫<cgo-icon name="chevron-down" size="15"></cgo-icon></button>
                 <div class="hk-bus-body" hidden>
                     <input class="hk-bus-q" type="search" placeholder="輸入路綫號碼或目的地" autocomplete="off">
@@ -2268,13 +2369,19 @@
         mo.observe(lines, { childList: true });
     }
 
-    function boot() {
-        startIntroWhenReady();
-        if (!installLabelObserver()) setTimeout(boot, 60);
-        installControls();
-        inlineDeco();
-        installLegendHotspot();
-        installTapGuard();
+    let hkBooted = false;
+    function boot(attempt = 0) {
+        if (!hkBooted) {
+            hkBooted = true;
+            startIntroWhenReady();
+            installControls();
+            inlineDeco();
+            installLegendHotspot();
+            installTapGuard();
+        }
+        if (!installLabelObserver() && attempt < 150) {
+            setTimeout(() => boot(attempt + 1), 60);
+        }
     }
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => setTimeout(boot, 0));

@@ -310,6 +310,8 @@
                     if (mn) fitVertical(mn);
                 });
             });
+        } else {
+            visibleObserver.disconnect();
         }
         layer.querySelectorAll(".label-group").forEach((el) => visibleObserver.observe(el));
     }

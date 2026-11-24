@@ -27,6 +27,8 @@
             + encodeURIComponent(String(railName).replace(/站$/, ""));
     }
 
+    if (!window.StationBoard?.registerModule) return;
+
     window.StationBoard.registerModule({
         id: "fuzhou-railway-tip",
         name: "福州国铁联络",

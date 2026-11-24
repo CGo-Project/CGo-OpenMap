@@ -240,7 +240,12 @@
         if (s.rotate) el.classList.add("syd-rot");
         if (s.labelLines) {
             const sp = el.querySelector(".stacn");
-            if (sp) sp.innerHTML = s.labelLines.join("<br>");
+            if (sp) {
+                const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({
+                    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+                }[c]));
+                sp.innerHTML = s.labelLines.map(esc).join("<br>");
+            }
         }
         placeLabel(el, s);
     }
@@ -333,13 +338,18 @@
         return true;
     }
 
+    function waitInstallLabelObserver(attempt = 0) {
+        if (installLabelObserver()) return;
+        if (attempt < 100) setTimeout(() => waitInstallLabelObserver(attempt + 1), 60);
+    }
+
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => {
-            if (!installLabelObserver()) setTimeout(installLabelObserver, 60);
+            waitInstallLabelObserver();
             setTimeout(() => { syncLabels(); syncHalos(); }, 150);
         });
     } else {
-        installLabelObserver();
+        waitInstallLabelObserver();
         setTimeout(() => { syncLabels(); syncHalos(); }, 150);
     }
 

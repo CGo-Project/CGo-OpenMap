@@ -56,6 +56,8 @@ sandbox.CGoRouteData = {
         .filter((e) => e[2])
         .map(([period, label, time]) => ({ dest, period, label, time }))
 };
+const CORE_DIR = path.resolve(SHARED_DIR, "..");
+run(fs.readFileSync(path.join(CORE_DIR, "line-routing.js"), "utf8"), "line-routing.js");
 run(readShared("route/route-data.js"), "route-data.js");
 run(readShared("route/route-planner.js"), "route-planner.js");
 run(readCity("fuzhou.js"), "fuzhou.js");

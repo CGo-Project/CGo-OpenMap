@@ -464,7 +464,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261123.112538";
+        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261124.235734";
         // 公共栅格化零件（沿革视频导出与分享卡海报共用；本城导出层先于 poster.js 加载，故置于最前）
         document.write(`<script src="./core/shared/base/svg-raster.js?v=${version}"><\/script>`);
         // 开通沿革时间线（发展史动态演示的数据源，约定全局 CGO_OPENING_HISTORY）
@@ -486,8 +486,6 @@
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./core/shared/base/viewport-inset.js?v=${version}"><\/script>`);
         // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
-        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
-        document.write(`<script src="./core/shared/base/panel-tab-swipe-relay.js?v=${version}"><\/script>`);
         // 上一站 / 下一站点击跳转：面板装配完成后给 info-value 绑定目标站（core 零改动）
         document.write(`<script src="./core/shared/station/adjacent-jump.js?v=${version}"><\/script>`);
         // 未开通区段与车站的开通时刻（共享层读取并应用）

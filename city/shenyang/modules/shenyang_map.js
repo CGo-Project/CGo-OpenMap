@@ -155,7 +155,7 @@
         const mapContent = document.getElementById("map-content");
         if (mapContent) {
             const mapObserver = new MutationObserver(scheduleSync);
-            mapObserver.observe(mapContent, { attributes: true, attributeFilter: ["class", "style"] });
+            mapObserver.observe(mapContent, { attributes: true, attributeFilter: ["class"] });
         }
 
         window.addEventListener("resize", scheduleSync, { passive: true });

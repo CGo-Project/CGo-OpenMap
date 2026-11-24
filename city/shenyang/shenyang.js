@@ -592,7 +592,8 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = "261123.112538";
+        document.documentElement?.classList?.add("map-shenyang");
+        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261124.235734";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./core/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
@@ -627,8 +628,6 @@
         // 浮层遮挡：声明浮层占用的边缘尺寸，由引擎据此收窄平移边界与居中区
         document.write(`<script src="./core/shared/base/viewport-inset.js?v=${version}"><\/script>`);
         // 移动端抽屉已由核心统一接管（core/mobile-sheet.js，含底栏停靠与页签横滑），共享层不再自建
-        // 车站信息板横滑切页的补充通道：补上「在交互元素（整宽链接 / 按钮）上左右滑」这一缺口
-        document.write(`<script src="./core/shared/base/panel-tab-swipe-relay.js?v=${version}"><\/script>`);
         document.write(`<script src="./core/shared/station/tip-card.js?v=${version}"><\/script>`);
         // 呼出线随标签进入 active：按 data-cgo-callout 把站名标签的选中态同步到引线
         document.write(`<script src="./core/shared/base/label-active.js?v=${version}"><\/script>`);

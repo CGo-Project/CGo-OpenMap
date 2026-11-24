@@ -63,66 +63,6 @@
     });
 
     /**
-     * M-TR 三条线（绿 / 蓝 / 蓝绿共线）共用同一套图标，车站面板会重复渲染出三个线路标。
-     * 这里统一收敛为「蓝绿双色」那一个，避免同一站出现三个 M-TR 标。
-     */
-    (function mergeTramBadges() {
-        const TRAM = /cx-(green|blue|dual)\.svg/;
-
-        function clean() {
-            document.querySelectorAll(".panel-badges").forEach(function (box) {
-                const badges = Array.prototype.slice.call(box.querySelectorAll(".line-badge"))
-                    .filter(function (el) { return TRAM.test(el.getAttribute("data-src") || ""); });
-                if (badges.length < 2) return;
-                const dual = badges.find(function (el) {
-                    return /cx-dual\.svg/.test(el.getAttribute("data-src") || "");
-                });
-                badges.forEach(function (el) {
-                    if (el !== dual) el.remove();
-                });
-            });
-        }
-
-        function start() {
-            clean();
-            new MutationObserver(clean).observe(document.body, { childList: true, subtree: true });
-        }
-
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", start);
-        } else {
-            setTimeout(start, 400);
-        }
-    })();
-
-    /**
-     * 三条 M-TR 交路在图例里各自成条，但车站面板的标签页只需要「绿」「蓝」两条交路；
-     * 第三条（1–12 共线段）只负责双色徽标，这里把它的标签页摘掉。
-     */
-    (function trimTramTabs() {
-        function clean() {
-            document.querySelectorAll(".panel-tabs-nav").forEach(function (nav) {
-                const items = Array.prototype.slice.call(nav.querySelectorAll(".tab-item"))
-                    .filter(function (el) { return /^M-TR专线/.test((el.textContent || "").trim()); });
-                if (items.length >= 3) {
-                    items[1].remove();
-                }
-            });
-        }
-
-        function start() {
-            clean();
-            new MutationObserver(clean).observe(document.body, { childList: true, subtree: true });
-        }
-
-        if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", start);
-        } else {
-            setTimeout(start, 400);
-        }
-    })();
-
-    /**
      * 川西车站面板收敛：
      * 1) 徽标：M-TR 三条共用一张蓝绿双色标，只保留一个；
      * 2) 标签页：分叉点（共线段末站，12 站）保留「绿」「蓝」两个，其余站只留一个。
@@ -178,10 +118,16 @@
             if (!tramIdx.length) return;
             const keepCount = (resolveActiveSid(root) === JUNCTION) ? 2 : 1;
             const drop = tramIdx.slice(keepCount);
+            let removedActive = false;
             drop.sort(function (a, b) { return b - a; }).forEach(function (i) {
+                if (items[i]?.classList.contains("active")) removedActive = true;
                 if (items[i]) items[i].remove();
                 if (panes[i]) panes[i].remove();
             });
+            if (removedActive && nav.children.length > 0 && !nav.querySelector(".tab-item.active")) {
+                nav.children[0].classList.add("active");
+                if (body.children[0]) body.children[0].classList.add("active");
+            }
         }
 
         function clean() {
@@ -193,7 +139,37 @@
 
         function start() {
             clean();
-            new MutationObserver(clean).observe(document.body, { childList: true, subtree: true });
+            let rafId = 0;
+            const scheduleClean = function () {
+                if (rafId) return;
+                rafId = requestAnimationFrame(function () {
+                    rafId = 0;
+                    clean();
+                });
+            };
+            const isRelevant = function (node) {
+                if (!node || node.nodeType !== 1) return false;
+                return Boolean(
+                    node.id === "info-panel"
+                    || node.matches?.(".panel-badges, .panel-tabs-nav, .line-badge, .tab-item")
+                    || node.querySelector?.("#info-panel, .panel-badges, .panel-tabs-nav")
+                );
+            };
+            new MutationObserver(function (mutations) {
+                for (let i = 0; i < mutations.length; i += 1) {
+                    const m = mutations[i];
+                    if (m.target?.closest?.("#info-panel")) {
+                        scheduleClean();
+                        return;
+                    }
+                    for (let j = 0; j < m.addedNodes.length; j += 1) {
+                        if (isRelevant(m.addedNodes[j])) {
+                            scheduleClean();
+                            return;
+                        }
+                    }
+                }
+            }).observe(document.body, { childList: true, subtree: true });
         }
 
         if (document.readyState === "loading") {

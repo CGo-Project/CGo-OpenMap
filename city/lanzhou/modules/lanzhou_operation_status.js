@@ -263,13 +263,18 @@
         return fallback && !fallback.hidden ? fallback.text : null;
     }
 
+    function escapeHtml(text) {
+        return String(text == null ? "" : text).replace(/[&<>"']/g, (c) => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[c]));
+    }
+
     /** 仅暴露解析函数，方便其他模块（如首末车时刻）复用同一份运营情况文案 */
     window.LanzhouOperationStatus = { resolve: resolveOperationStatus, data: LANZHOU_OPERATION_STATUS };
 
-    function registerOperationStatusModule() {
+    function registerOperationStatusModule(attempt = 0) {
         if (!window.StationBoard || typeof window.StationBoard.registerModule !== "function") {
-            console.warn("[lanzhou_operation_status] StationBoard 尚未加载，延迟等待注册...");
-            setTimeout(registerOperationStatusModule, 50);
+            if (attempt < 100) setTimeout(() => registerOperationStatusModule(attempt + 1), 50);
             return;
         }
 
@@ -293,7 +298,7 @@
                 return `
                     <div class="info-row lanzhou-operation-status">
                         <span class="info-label">运营情况</span>
-                        <span class="info-value" style="line-height:1.4;">${text}</span>
+                        <span class="info-value" style="line-height:1.4;">${escapeHtml(text)}</span>
                     </div>
                 `;
             }

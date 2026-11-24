@@ -4,6 +4,13 @@
  * 读取高德坐标数据，在车站详情中渲染可缩放的周边地图。
  */
 
+const escapeHtml = (value) => String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
 const AMapTile = {
     getTileUrl(x, y, z) {
         const server = (x + y) % 4 + 1;
@@ -160,11 +167,11 @@ const HefeiStaCard = {
 
         return `
             <div class="stacard-container stacard-minimap-box ${extraClass}"
-                data-sid="${stationId}"
-                data-sname="${stationName}"
-                data-lid="${lineId}"
-                data-color="${lineColor}"
-                data-coords="${coordinateValue}"
+                data-sid="${escapeHtml(stationId)}"
+                data-sname="${escapeHtml(stationName)}"
+                data-lid="${escapeHtml(lineId)}"
+                data-color="${escapeHtml(lineColor)}"
+                data-coords="${escapeHtml(coordinateValue)}"
                 style="${extraStyle}">
                 <div class="stacard-loading-tip">
                     <span>正在加载车站地图...</span>
@@ -175,12 +182,17 @@ const HefeiStaCard = {
 
     async renderCard(container, context = {}) {
         if (!container) return;
-        await this.init();
+        try {
+            await this.init();
+        } catch (error) {
+            container.innerHTML = "<div class=\"stacard-empty-box\"><span>车站坐标数据加载失败</span></div>";
+            return;
+        }
         this.destroyResizeObserver(container);
 
         const station = context.station || {
-            id: context.stationId || container.dataset.sid || "",
-            cn: context.stationName || container.dataset.sname || ""
+            id: context.id || context.stationId || container.dataset.sid || "",
+            cn: context.cn || context.name || context.stationName || container.dataset.sname || ""
         };
         const stationName = station.cn || station.name || container.dataset.sname || "";
         const lineColor = context.color || container.dataset.color || "var(--primary-color)";
@@ -190,7 +202,7 @@ const HefeiStaCard = {
             const [lngRaw, latRaw] = container.dataset.coords.split(",");
             const lng = Number(lngRaw);
             const lat = Number(latRaw);
-            if (Number.isFinite(lng) && Number.isFinite(lat)) {
+            if (Number.isFinite(lng) && Number.isFinite(lat) && (lng !== 0 || lat !== 0)) {
                 coordinates = [lng, lat];
             }
         }
@@ -208,12 +220,12 @@ const HefeiStaCard = {
         const centerLat = coordinates[1];
 
         container.innerHTML = `
-            <div class="stacard-minimap-viewport" tabindex="0" aria-label="${stationName}周边地图">
+            <div class="stacard-minimap-viewport" tabindex="0" aria-label="${escapeHtml(stationName)}周边地图">
                 <div class="stacard-tiles-wrapper"></div>
-                <div class="stacard-pin-marker" style="--marker-color: ${lineColor};">
+                <div class="stacard-pin-marker" style="--marker-color: ${escapeHtml(lineColor)};">
                     <div class="stacard-pin-pulse"></div>
                     <div class="stacard-pin-dot"></div>
-                    <div class="stacard-pin-label">${stationName}</div>
+                    <div class="stacard-pin-label">${escapeHtml(stationName)}</div>
                 </div>
                 <div class="stacard-controls">
                     <button type="button" class="stacard-ctrl-btn zoom-in" aria-label="放大地图">+</button>
@@ -277,9 +289,25 @@ const HefeiStaCard = {
         });
 
         if (typeof ResizeObserver !== "undefined") {
-            const resizeObserver = new ResizeObserver(renderMap);
+            let rafId = 0;
+            const scheduleRender = () => {
+                if (rafId) return;
+                rafId = requestAnimationFrame(() => {
+                    rafId = 0;
+                    renderMap();
+                });
+            };
+            const resizeObserver = new ResizeObserver(scheduleRender);
             resizeObserver.observe(viewport);
-            container._hefeiStaCardResizeObserver = resizeObserver;
+            container._hefeiStaCardResizeObserver = {
+                disconnect() {
+                    if (rafId) {
+                        cancelAnimationFrame(rafId);
+                        rafId = 0;
+                    }
+                    resizeObserver.disconnect();
+                }
+            };
         }
         renderMap();
     },

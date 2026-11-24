@@ -73,8 +73,8 @@
             window.selectStation(stationId, null, null, 0);
             return;
         }
-        const node = document.getElementById(`node-${stationId}`)
-            || document.querySelector(`.station[data-sid="${stationId}"]`);
+        const node = document.getElementById(`node_${stationId}`)
+            || document.querySelector(`.station[data-sid="${CSS?.escape ? CSS.escape(stationId) : stationId}"]`);
         if (node) node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     }
 

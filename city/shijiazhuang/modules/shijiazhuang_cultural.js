@@ -12,8 +12,15 @@
         "石家庄站": "石家庄铁路枢纽，京广铁路、石济客专交汇。",
         "石家庄东站": "石济客专主要停靠站。"
     };
-    function register() {
-        if (!window.StationBoard) { setTimeout(register, 50); return; }
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+
+    function register(attempt = 0) {
+        if (!window.StationBoard) {
+            if (attempt < 100) setTimeout(() => register(attempt + 1), 50);
+            return;
+        }
         window.StationBoard.registerModule({
             id: 'shijiazhuang-cultural-tip',
             name: '石家庄文化指引',
@@ -33,7 +40,7 @@
                 return `
                     <div class="shijiazhuang-cultural-tip-card" style="margin:0 0 14px 0;padding:10px 12px;background:var(--card-sub-bg,rgba(0,0,0,.03));border:1px solid var(--border-color,rgba(0,0,0,.08));border-left:3px solid var(--primary-color,#1a73e8);border-radius:6px;">
                         <div style="font-size:12px;font-weight:bold;color:var(--text-main);margin-bottom:4px;">历史文化与名胜指引</div>
-                        <div style="font-size:12px;color:var(--text-light);line-height:1.5;">${tip}</div>
+                        <div style="font-size:12px;color:var(--text-light);line-height:1.5;">${esc(tip)}</div>
                     </div>`;
             }
         });

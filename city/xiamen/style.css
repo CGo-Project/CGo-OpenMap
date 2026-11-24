@@ -12,7 +12,7 @@
  * 本文件只作用于 city/xiamen/，核心引擎 core/ 不做任何改动。
  */
 
-:root {
+html.map-xiamen {
     --xiamen-brt-color: #00afad;
     /* 与 core/script.js 的 line-visual-inner 线宽保持一致，避免 BRT 比其它线路显得更粗 */
     --xiamen-brt-stroke-width: 5.4px;
@@ -22,8 +22,8 @@
 }
 
 /* 快速公交：外描边按上面的变量绘制（含高亮态，避免高亮时泛白或跳变） */
-.line-visual-group[data-visual-id="BRT"] .line-visual-outer,
-.line-visual-group[data-visual-id="BRT"].active .line-visual-outer {
+.map-xiamen .line-visual-group[data-visual-id="BRT"] .line-visual-outer,
+.map-xiamen .line-visual-group[data-visual-id="BRT"].active .line-visual-outer {
     stroke: var(--xiamen-brt-outer-color);
     stroke-width: var(--xiamen-brt-outer-width);
 }
@@ -39,7 +39,7 @@
  * 浅色站名与站名描边都清晰），海面仍是偏蓝的深色；略提饱和度、略压亮度，
  * 避免反相后海面发灰。只作用于带 xiamen_sea 的底图，不影响其它散点素材。
  */
-[data-theme="dark"] #scattered-layer img[src*="xiamen_sea"] {
+html[data-theme="dark"].map-xiamen #scattered-layer img[src*="xiamen_sea"] {
     filter: invert(1) hue-rotate(180deg) saturate(1.15) brightness(0.95);
 }
 
@@ -53,10 +53,10 @@
  *   - 站点文本已带 paint-order: stroke fill，描边在字形之下，不会吃掉笔画。
  * 未开通站（.label-group.type-no）的文字颜色仍由核心控制，这里只管描边。
  */
-.label-group .stacn {
+.map-xiamen .label-group .stacn {
     -webkit-text-stroke: var(--sta-stroke-width-cn, 2px) var(--map-bg);
 }
 
-.label-group .staen {
+.map-xiamen .label-group .staen {
     -webkit-text-stroke: var(--sta-stroke-width-en, 1.75px) var(--map-bg);
 }

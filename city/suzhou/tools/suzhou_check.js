@@ -215,9 +215,9 @@ for (const line of lines) {
       let prevS = null, prevLabel = '';
       for (const { id, s } of list) {
         if (prevS !== null && s <= prevS) {
-          err.push(`${line.id} 站序与走向不一致：${prevLabel}(${prevS.toFixed(0)}px) 之后是 ${id} ${s.cn}(${s.toFixed(0)}px)`);
+          err.push(`${line.id} 站序与走向不一致：${prevLabel}(${prevS.toFixed(0)}px) 之后是 ${id} ${stations[id]?.cn || ''}(${s.toFixed(0)}px)`);
         }
-        prevS = s; prevLabel = `${id} ${s.cn}`;
+        prevS = s; prevLabel = `${id} ${stations[id]?.cn || ''}`;
       }
     }
   }

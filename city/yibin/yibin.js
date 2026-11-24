@@ -91,7 +91,31 @@
 
         function start() {
             clean();
-            new MutationObserver(clean).observe(document.body, { childList: true, subtree: true });
+            let rafId = 0;
+            const scheduleClean = function () {
+                if (rafId) return;
+                rafId = requestAnimationFrame(function () {
+                    rafId = 0;
+                    clean();
+                });
+            };
+            const RELEVANT = ".panel-badges, .line-badge, #info-panel";
+            new MutationObserver(function (mutations) {
+                for (let i = 0; i < mutations.length; i += 1) {
+                    const m = mutations[i];
+                    if (m.target?.closest?.(".panel-badges, #info-panel")) {
+                        scheduleClean();
+                        return;
+                    }
+                    for (let j = 0; j < m.addedNodes.length; j += 1) {
+                        const n = m.addedNodes[j];
+                        if (n?.nodeType === 1 && (n.matches?.(RELEVANT) || n.querySelector?.(RELEVANT))) {
+                            scheduleClean();
+                            return;
+                        }
+                    }
+                }
+            }).observe(document.body, { childList: true, subtree: true });
         }
 
         if (document.readyState === "loading") {

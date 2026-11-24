@@ -31,7 +31,10 @@
         // page-level CSS variables, like the project's inline line badges do.
         const inlineQingdaoSea = async () => {
             const img = document.querySelector('#scattered-layer img[src*="qingdao_sea.svg"]');
-            if (!img || img.dataset.qingdaoInlining === "1") return false;
+            if (!img) return false;
+            if (img.dataset.qingdaoInlining === "1" || img.dataset.qingdaoInlining === "error") {
+                return img.dataset.qingdaoInlining === "error";
+            }
             img.dataset.qingdaoInlining = "1";
             try {
                 const response = await fetch(img.src);
@@ -52,6 +55,13 @@
             } catch (error) {
                 // Keep the original external SVG as a graceful fallback. Its own
                 // prefers-color-scheme rule still follows the system theme.
+                const retries = Number(img.dataset.qingdaoRetry || 0) + 1;
+                img.dataset.qingdaoRetry = String(retries);
+                if (retries >= 2) {
+                    img.dataset.qingdaoInlining = "error";
+                    console.warn("[Qingdao] Sea SVG inline injection failed:", error);
+                    return true;
+                }
                 img.removeAttribute("data-qingdao-inlining");
                 console.warn("[Qingdao] Sea SVG inline injection failed:", error);
                 return false;
