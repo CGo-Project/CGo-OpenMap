@@ -50,36 +50,6 @@
   "edge_side_panel": {
     "preferred_width": 400
   },
-  "file_handlers": [
-    {
-      "action": "./editor/index.html?action=open-file",
-      "name": "CGo OpenMap 地图数据包",
-      "accept": {
-        "application/json": [
-          ".json"
-        ],
-        "text/plain": [
-          ".txt"
-        ]
-      }
-    }
-  ],
-  "protocol_handlers": [
-    {
-      "protocol": "web+openmap",
-      "url": "./index.html?link=%s"
-    }
-  ],
-  "share_target": {
-    "action": "./index.html?action=share",
-    "method": "GET",
-    "enctype": "application/x-www-form-urlencoded",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url"
-    }
-  },
   "widgets": [
     {
       "name": "CGo OpenMap 快速定位",

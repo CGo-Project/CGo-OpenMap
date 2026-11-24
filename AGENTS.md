@@ -56,12 +56,10 @@
 - **改完版本号必须跑校验脚本**（不要靠肉眼比对）：
 
   ```bash
-  node scripts/check-site-version.mjs
+  node scripts/check-cache-assets.mjs
   ```
 
-  它会核对 `main.html` / `index.html` / `editor/index.html` / `privacy.html` / `readme.html` / `sw.js`
-  这 6 个文件的全部版本串是否**完全一致**且格式合法，并检查 `sw.js` 的 `CACHE_NAME` 是否与页面版本同步。
-  新增携带版本号的页面时，须在脚本顶部的 `FILES` 清单里登记，否则校验会漏掉它。
+  它会扫描全仓静态资源与 SW `CACHE_NAME` 的全部版本串是否**完全一致**且格式合法，并核对 `ASSETS_TO_CACHE` 本地文件是否存在。
 - 🚨 **最常见的翻车点：只改了 `main.html` 和 `sw.js`**。地图页版本号更新了，但首页 `index.html`、
   编辑器页、隐私政策页、内置说明页仍是旧值 —— 这不是「次要文件无所谓」，而是会让全站版本一致性直接失败
   （参见 PR #60 的评审意见）。**一次改动，6 个文件一起改，然后跑一次脚本。**

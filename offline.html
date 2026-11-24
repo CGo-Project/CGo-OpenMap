@@ -29,13 +29,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="CGo开放地图">
 
-    <link rel="modulepreload" href="core/cgo-ui.js?v=261123.131500">
-    <link rel="stylesheet" href="css/cgo_clr.css?v=261123.131500">
-    <link rel="stylesheet" href="css/cgo_element.css?v=261123.131500">
-    <link rel="stylesheet" href="css/cgo_ui.css?v=261123.131500">
-    <link rel="stylesheet" href="css/cgo_components.css?v=261123.131500">
-    <script type="module" src="core/cgo-ui.js?v=261123.131500"></script>
-    <script src="city/data.js?v=261123.131500"></script>
+    <link rel="modulepreload" href="core/cgo-ui.js?v=261124.235734">
+    <link rel="stylesheet" href="css/cgo_clr.css?v=261124.235734">
+    <link rel="stylesheet" href="css/cgo_element.css?v=261124.235734">
+    <link rel="stylesheet" href="css/cgo_ui.css?v=261124.235734">
+    <link rel="stylesheet" href="css/cgo_components.css?v=261124.235734">
+    <script type="module" src="core/cgo-ui.js?v=261124.235734"></script>
+    <script src="city/data.js?v=261124.235734"></script>
 
     <style>
         body {
@@ -338,9 +338,15 @@
             var toast = document.getElementById('reconnectToast');
             if (toast) toast.style.display = 'flex';
             setTimeout(function () {
-                var target = document.referrer && document.referrer.includes(window.location.host)
-                    ? document.referrer
-                    : './index.html';
+                var target = './index.html';
+                if (document.referrer) {
+                    try {
+                        var refUrl = new URL(document.referrer);
+                        if (refUrl.origin === window.location.origin) {
+                            target = refUrl.href;
+                        }
+                    } catch (_) { }
+                }
                 window.location.href = target;
             }, 600);
         }
@@ -350,11 +356,21 @@
         });
 
         function normalizeUrlPath(url) {
+            var basePath = '';
+            try {
+                basePath = new URL('./', window.location.href).pathname.replace(/\/+$/, '');
+            } catch (_) { }
+            var stripBase = function (p) {
+                if (basePath && p.indexOf(basePath) === 0) {
+                    p = p.slice(basePath.length);
+                }
+                return p.replace(/^\/+/, '').replace(/\/+$/, '');
+            };
             try {
                 var u = new URL(url, window.location.href);
-                return u.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+                return stripBase(u.pathname);
             } catch (_) {
-                return (url || '').split('?')[0].replace(/^\.?\/+/, '').replace(/\/+$/, '');
+                return stripBase((url || '').split('?')[0].replace(/^\.?\/+/, ''));
             }
         }
 
