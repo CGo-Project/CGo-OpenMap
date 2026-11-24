@@ -934,6 +934,7 @@
             if (!src || /^(data:|blob:)/.test(src) || state.exportImgCache.has(src)) continue;
             try {
                 const r = await fetch(new URL(src, document.baseURI).href);
+                if (!r.ok) continue;
                 const b = await r.arrayBuffer();
                 state.exportImgCache.set(src, "data:" + (r.headers.get("content-type") || "image/png") + ";base64," + RASTER.bytesToBase64(new Uint8Array(b)));
             } catch (e) { /* 取不到就保持原样（该图在导出里会缺失，不致命） */ }
@@ -1075,8 +1076,17 @@
         state.muxerLoading = new Promise((resolve, reject) => {
             const s = document.createElement("script");
             s.src = EXPORT.muxerSrc;
-            s.onload = () => (window.Mp4Muxer ? resolve(window.Mp4Muxer) : reject(new Error("mp4-muxer 未挂到全局")));
-            s.onerror = () => reject(new Error("mp4-muxer 加载失败"));
+            s.onload = () => {
+                if (window.Mp4Muxer) resolve(window.Mp4Muxer);
+                else {
+                    state.muxerLoading = null;
+                    reject(new Error("mp4-muxer 未挂到全局"));
+                }
+            };
+            s.onerror = () => {
+                state.muxerLoading = null;
+                reject(new Error("mp4-muxer 加载失败"));
+            };
             document.head.appendChild(s);
         });
         return state.muxerLoading;
@@ -1228,6 +1238,7 @@
             }));
         } catch (e) {
             console.error("[线网发展史] 导出失败：", e);
+            state.exportFailed = true;
             if (alive()) setExportStatus("导出失败：" + (e && e.message ? e.message : e), true);
         } finally {
             if (encoder) { try { encoder.close(); } catch (e) { /* 已关闭或未配置 */ } }
@@ -1245,9 +1256,11 @@
                 }
                 state.exporting = false;
                 // 成功收尾时让「已导出 N 帧 · xx MB」在浮层上停一会儿再收（否则一闪而过）；
-                // 取消 / 失败 / 面板已换则立即收。
+                // 失败则保留报错面板供用户阅读与手动关闭。
                 const modal = state.els && state.els.expModal;
-                if (modal && !state.exportCancelled) {
+                if (state.exportFailed) {
+                    syncExportUI();
+                } else if (modal && !state.exportCancelled) {
                     setTimeout(() => {
                         if (state.els && state.els.expModal === modal) syncExportUI();
                     }, 2600);
@@ -1255,6 +1268,7 @@
                     syncExportUI();
                 }
             }
+            state.exportFailed = false;
         }
     }
 
@@ -1306,10 +1320,11 @@
         const e = state.els;
         if (!e || !e.expFrom || !e.expTo) return;
         // 选项左边一颗线路色圆点（`.cgo-toolbar-option-dot`），文字用「日期 + 事件标题」
+        const escHtml = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         const opts = state.steps
             .map((s) => `<cgo-toolbar-option value="${s.no - 1}">`
-                + `<span class="cgo-toolbar-option-dot" style="background:${s.color}"></span>`
-                + `${s.date} ${s.title || stepLabel(s)}</cgo-toolbar-option>`)
+                + `<span class="cgo-toolbar-option-dot" style="background:${escHtml(s.color)}"></span>`
+                + `${escHtml(s.date)} ${escHtml(s.title || stepLabel(s))}</cgo-toolbar-option>`)
             .join("");
         e.expFrom.innerHTML = opts;
         e.expTo.innerHTML = opts;

@@ -137,7 +137,10 @@
         const task = fetch(url)
             .then((res) => (res.ok ? res.json() : null))
             .then((data) => {
-                if (!data || !Array.isArray(data.l)) return null;
+                if (!data || !Array.isArray(data.l)) {
+                    geoCache.delete(key);
+                    return null;
+                }
                 const seen = new Set();
                 const points = [];
                 data.l.forEach((line) => {
@@ -151,9 +154,16 @@
                         points.push({ name: sta.n, lng, lat });
                     });
                 });
-                return points.length ? points : null;
+                if (!points.length) {
+                    geoCache.delete(key);
+                    return null;
+                }
+                return points;
             })
-            .catch(() => null);
+            .catch(() => {
+                geoCache.delete(key);
+                return null;
+            });
         geoCache.set(key, task);
         return task;
     }
@@ -283,15 +293,14 @@
      */
     function nearestExitOf(cityId, stationName, lat, lng) {
         const exits = window.CGoExits?.exitsByStation?.(cityId, stationName) || [];
-        const [glng, glat] = wgs2gcj(lng, lat);
         let best = null;
         for (const exit of exits) {
             // 暂停使用 / 已拆除 / 弃建的出口不参与「最近」评选：数据里以 closed 标记，
             // 出口清单里也会显示「暂停使用」，再拿它给用户指路就是误导。
             if (exit.closed) continue;
             const [elon, elat] = String(exit.pos || "").split(",").map(Number);
-            if (!elon) continue;
-            const meters = Math.round(distance(glat, glng, elat, elon));
+            if (!Number.isFinite(elon) || !Number.isFinite(elat)) continue;
+            const meters = Math.round(distance(lat, lng, elat, elon));
             if (!best || meters < best.distance) best = { name: exit.name, distance: meters };
         }
         return best;
@@ -325,6 +334,10 @@
         alert(message);
     }
 
+    function escHtml(v) {
+        return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
     function openChooser({ city, local, overall }) {
         const cityName = (city && city.name) || "当前城市";
         const better = overall && overall.city.id !== city.id ? overall : null;
@@ -334,23 +347,23 @@
 
         const blocks = [];
         if (uncovered) {
-            const elsewhere = better ? `，最近的是${better.city.name}的 ${better.station.name}` : "";
+            const elsewhere = better ? `，最近的是${escHtml(better.city.name)}的 ${escHtml(better.station.name)}` : "";
             blocks.push(`<p class="cgo-near-alert">
                 <cgo-icon name="warning" size="14"></cgo-icon>
                 <span>您当前位置附近没有已收录的线路图${elsewhere}。</span>
             </p>`);
         }
         if (better) {
-            blocks.push(`<p class="cgo-near-lead">离您更近的是<b>${better.city.name}</b>：${better.station.name}，约
+            blocks.push(`<p class="cgo-near-lead">离您更近的是<b>${escHtml(better.city.name)}</b>：${escHtml(better.station.name)}，约
                    <b>${formatDistance(better.station.distance)}</b>。</p>`);
-            blocks.push(`<p class="cgo-near-sub">${cityName}最近的是 ${local.name}，约 ${formatDistance(local.distance)}。</p>`);
+            blocks.push(`<p class="cgo-near-sub">${escHtml(cityName)}最近的是 ${escHtml(local.name)}，约 ${formatDistance(local.distance)}。</p>`);
         } else {
-            blocks.push(`<p class="cgo-near-lead">${cityName}最近的车站是<b>${local.name}</b>，约
+            blocks.push(`<p class="cgo-near-lead">${escHtml(cityName)}最近的车站是<b>${escHtml(local.name)}</b>，约
                    <b>${formatDistance(local.distance)}</b>，离您较远。</p>`);
         }
         // 有出入口坐标时，顺手告诉用户该从哪个口进
         if (local.exit) {
-            blocks.push(`<p class="cgo-near-sub">建议走 <b>${local.exit.name} 口</b>，距您约 ${formatDistance(local.exit.distance)}。</p>`);
+            blocks.push(`<p class="cgo-near-sub">建议走 <b>${escHtml(local.exit.name)} 口</b>，距您约 ${formatDistance(local.exit.distance)}。</p>`);
         }
 
         const innerHtml = `
@@ -358,8 +371,8 @@
                 ${blocks.join("\n")}
             </div>
             <div class="cgo-near-actions">
-                ${better ? `<cgo-button class="cgo-near-btn" variant="primary" icon="map" data-act="switch">切换到${better.city.name}</cgo-button>` : ""}
-                <cgo-button class="cgo-near-btn" variant="${better ? "info" : "primary"}" icon="location" data-act="local">查看${cityName}最近车站</cgo-button>
+                ${better ? `<cgo-button class="cgo-near-btn" variant="primary" icon="map" data-act="switch">切换到${escHtml(better.city.name)}</cgo-button>` : ""}
+                <cgo-button class="cgo-near-btn" variant="${better ? "info" : "primary"}" icon="location" data-act="local">查看${escHtml(cityName)}最近车站</cgo-button>
                 <cgo-button class="cgo-near-btn cgo-near-btn--ghost" variant="ghost" icon="close" data-act="cancel">取消</cgo-button>
             </div>
         `;

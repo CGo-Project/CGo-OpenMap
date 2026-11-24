@@ -233,7 +233,16 @@
                 container.querySelectorAll(".cgo-fac-map-detail").forEach((detail) => {
                     const img = detail.querySelector(".cgo-fac-map-img");
                     if (!img) return;
-                    const drop = () => detail.replaceChildren();
+                    const drop = () => {
+                        const row = detail.previousElementSibling?.classList?.contains("cgo-fac-row")
+                            ? detail.previousElementSibling
+                            : null;
+                        const section = detail.closest(".cgo-fac-section");
+                        detail.replaceChildren();
+                        if (row) row.remove();
+                        detail.remove();
+                        if (section && !section.querySelector(".cgo-fac-row")) section.remove();
+                    };
                     // 命中缓存时 complete 已为真，error 不会再触发，须当场判定
                     if (img.complete) {
                         if (img.naturalWidth === 0) drop();

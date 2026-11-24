@@ -512,6 +512,7 @@
      * 改写 .station-history-section 的 class，用属性观察器捕捉即可，不必动 core。
      */
     function refitExpandedSection() {
+        if (!pinned()) return;
         const container = document.getElementById("sidebar-dynamic-content");
         if (!container) return;
 
@@ -798,6 +799,7 @@
      * 搜索是矮块、不参与单展开；唯一例外是「规划行程与搜索互斥」——keepId 为 plan 时顺带收起它。
      */
     function collapseOthers(keepId) {
+        if (!pinned()) return;
         HIGH_SECTIONS.forEach((collapse, id) => {
             if (id !== keepId) collapse();
         });

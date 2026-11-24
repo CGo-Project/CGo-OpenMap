@@ -171,7 +171,7 @@ export function createStaCard(config = {}) {
             if (values.length < 2) return null;
             const lng = Number(values[0]);
             const lat = Number(values[1]);
-            if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng === 0 || lat === 0) return null;
+            if (!Number.isFinite(lng) || !Number.isFinite(lat) || (lng === 0 && lat === 0)) return null;
             return { lng, lat };
         },
 
@@ -378,9 +378,25 @@ export function createStaCard(config = {}) {
             }
 
             if (typeof ResizeObserver !== "undefined") {
-                const resizeObserver = new ResizeObserver(renderMap);
+                let rafId = 0;
+                const scheduleRender = () => {
+                    if (rafId) return;
+                    rafId = requestAnimationFrame(() => {
+                        rafId = 0;
+                        renderMap();
+                    });
+                };
+                const resizeObserver = new ResizeObserver(scheduleRender);
                 resizeObserver.observe(viewport);
-                container[OBSERVER_FIELD] = resizeObserver;
+                container[OBSERVER_FIELD] = {
+                    disconnect() {
+                        if (rafId) {
+                            cancelAnimationFrame(rafId);
+                            rafId = 0;
+                        }
+                        resizeObserver.disconnect();
+                    }
+                };
             }
             renderMap();
         },

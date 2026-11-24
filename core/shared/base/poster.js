@@ -65,13 +65,13 @@
         const task = fetch(url.href)
             .then((res) => (res.ok ? res.blob() : null))
             .then((blob) => new Promise((resolve) => {
-                if (!blob) return resolve(null);
+                if (!blob) { imgCache.delete(key); return resolve(null); }
                 const reader = new FileReader();
                 reader.onload = () => { imgCache.set(key, Promise.resolve(reader.result)); resolve(reader.result); };
-                reader.onerror = () => resolve(null);
+                reader.onerror = () => { imgCache.delete(key); resolve(null); };
                 reader.readAsDataURL(blob);
             }))
-            .catch(() => null);
+            .catch(() => { imgCache.delete(key); return null; });
         imgCache.set(key, task);      // 先占位：并发调用只抓一次
         return task;
     }
@@ -244,12 +244,11 @@
         RASTER.applyRootVars(clone);
         await inlineImages(clone);
 
-        const xml = new XMLSerializer().serializeToString(clone);
         const buildSvg = (fontCss) =>
             '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">'
             + '<foreignObject width="' + W + '" height="' + H + '">'
             + '<style><![CDATA[' + RASTER.cdata(fontCss) + "\n" + RASTER.cdata(loadCss()) + ']]></style>'
-            + xml + '</foreignObject></svg>';
+            + new XMLSerializer().serializeToString(clone) + '</foreignObject></svg>';
 
         // 页面的 webfont 必须内联（SVG 图片文档取不到它们，见 inlineFonts 上面的说明），
         // 排在页面 CSS 之前：@font-face 与其它规则不冲突，先声明后引用更符合直觉。

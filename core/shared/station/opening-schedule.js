@@ -482,8 +482,8 @@
      * 未登记（或城市未接入本能力）时返回空串，由引擎回落到原有文案。
      * ==================================================================== */
 
-    /** 同一时刻只存在一个信息板，保留句柄以便换站时先清掉旧的秒级定时器 */
-    let noticeTimer = null;
+    /** 每个倒计时容器独立持有秒级定时器，支持同一面板内多个倒计时并存 */
+    const countdownTimers = typeof WeakMap === "function" ? new WeakMap() : null;
 
     /** 倒计时单位，按 天 → 时 → 分 → 秒 的顺序排列 */
     const COUNTDOWN_UNITS = [
@@ -576,40 +576,46 @@
 
     /** 启动秒级倒计时刷新（通用入口，供复用方在 onMounted 中调用） */
     function mountCountdown(container) {
-        if (noticeTimer) {
-            clearInterval(noticeTimer);
-            noticeTimer = null;
-        }
-        const root = container?.querySelector(".cgo-opening-pending");
-        const opensAt = root ? parseOpensAt(root.dataset.cgoOpensAt) : null;
-        if (!root || !opensAt) return;
-
-        const fields = {};
-        COUNTDOWN_UNITS.forEach(({ key }) => {
-            fields[key] = root.querySelector(`[data-cgo-unit="${key}"]`);
-        });
-
-        const tick = () => {
-            // 换站或关闭面板后节点会被替换，此时自行退场，避免定时器长期驻留
-            if (!root.isConnected) {
-                clearInterval(noticeTimer);
-                noticeTimer = null;
-                return;
+        if (!container) return;
+        const roots = container.classList?.contains("cgo-opening-pending")
+            ? [container]
+            : Array.from(container.querySelectorAll(".cgo-opening-pending"));
+        roots.forEach((root) => {
+            const opensAt = parseOpensAt(root.dataset.cgoOpensAt);
+            if (!opensAt) return;
+            const prevTimer = countdownTimers?.get(root);
+            if (prevTimer) {
+                clearInterval(prevTimer);
+                countdownTimers.delete(root);
             }
-            const remainMs = opensAt.getTime() - Date.now();
-            const remain = splitRemain(remainMs);
+            const fields = {};
             COUNTDOWN_UNITS.forEach(({ key }) => {
-                if (!fields[key]) return;
-                // 天不进位补零（"2 天" 比 "02 天" 自然），时 / 分 / 秒固定两位
-                fields[key].textContent = key === "day" ? String(remain[key]) : pad2(remain[key]);
+                fields[key] = root.querySelector(`[data-cgo-unit="${key}"]`);
             });
-            if (remainMs <= 0) {
-                clearInterval(noticeTimer);
-                noticeTimer = null;
+            let timerId = null;
+            const tick = () => {
+                if (!root.isConnected) {
+                    if (timerId) clearInterval(timerId);
+                    countdownTimers?.delete(root);
+                    return;
+                }
+                const remainMs = opensAt.getTime() - Date.now();
+                const remain = splitRemain(remainMs);
+                COUNTDOWN_UNITS.forEach(({ key }) => {
+                    if (!fields[key]) return;
+                    fields[key].textContent = key === "day" ? String(remain[key]) : pad2(remain[key]);
+                });
+                if (remainMs <= 0) {
+                    if (timerId) clearInterval(timerId);
+                    countdownTimers?.delete(root);
+                }
+            };
+            tick();
+            if (opensAt.getTime() > Date.now()) {
+                timerId = setInterval(tick, 1000);
+                countdownTimers?.set(root, timerId);
             }
-        };
-        tick();
-        noticeTimer = setInterval(tick, 1000);
+        });
     }
 
     const CGoOpening = {

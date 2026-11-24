@@ -344,7 +344,11 @@
 :root[glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section),
 :root[data-glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section),
 body[glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section),
-body[data-glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section) {
+body[data-glass-mode='flat'] .cgo-mt-panel:not(.cgo-mt-in-section),
+:root[glass-mode='none'] .cgo-mt-panel:not(.cgo-mt-in-section),
+:root[data-glass-mode='none'] .cgo-mt-panel:not(.cgo-mt-in-section),
+body[glass-mode='none'] .cgo-mt-panel:not(.cgo-mt-in-section),
+body[data-glass-mode='none'] .cgo-mt-panel:not(.cgo-mt-in-section) {
     background: var(--card-bg);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

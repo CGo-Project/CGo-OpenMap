@@ -60,6 +60,9 @@
     opacity: var(--cgo-oh-pop-alpha, 0);
     filter: blur(var(--cgo-oh-pop-blur, 4px));
 }
+#map-content.cgo-oh-stage #labels-layer .label-group.cgo-oh-pop {
+    filter: none;
+}
 
 /* 还没轮到的车站不该能点：看不见的东西弹出车站详情最让人迷惑 */
 #map-content.cgo-oh-stage #stations-layer .station:not(.cgo-oh-pop),

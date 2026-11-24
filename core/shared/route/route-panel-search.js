@@ -88,9 +88,9 @@
                 ? `<span style="font-size:12px;color:var(--text-light);">${sub}</span>`
                 : "";
             return `
-            <div class="search-item cgo-rt-exit-item" data-sid="${hit.sid}" data-exit="${hit.code}" data-landmark="${d.escAttr(hit.context || "")}">
+            <div class="search-item cgo-rt-exit-item" data-sid="${d.escAttr(hit.sid)}" data-exit="${d.escAttr(hit.code)}" data-landmark="${d.escAttr(hit.context || "")}">
                 <cgo-icon name="location" size="14"></cgo-icon>
-                <span class="search-item-text">${main} ${subHtml}</span>
+                <span class="search-item-text">${d.escAttr(main)} ${sub ? `<span style="font-size:12px;color:var(--text-light);">${d.escAttr(sub)}</span>` : ""}</span>
             </div>
         `;
         }
@@ -104,10 +104,10 @@
                 return;
             }
             panel.innerHTML = hits.map((hit) => `
-            <div class="search-item" data-sid="${hit.sid}">
+            <div class="search-item" data-sid="${d.escAttr(hit.sid)}">
                 ${badgesHtml(hit.sid)}
-                <span class="search-item-text">${hit.cn}
-                    <span style="font-size:12px;color:var(--text-light);">${hit.en}</span>
+                <span class="search-item-text">${d.escAttr(hit.cn)}
+                    <span style="font-size:12px;color:var(--text-light);">${d.escAttr(hit.en)}</span>
                 </span>
             </div>
         `).join("") + exitHits.map(exitItemHtml).join("");

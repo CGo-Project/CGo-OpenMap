@@ -86,10 +86,32 @@
     }
 
     /**
+     * 预先收集所有「有出入口概念的线路」（非点线）经过的站 ID，避免检索时对每站重复扫全网线路
+     */
+    function buildRidableSet() {
+        const lines = window.linesData;
+        if (!Array.isArray(lines)) return null;
+        const set = new Set();
+        const routing = window.CGoLineRouting;
+        for (const line of lines) {
+            if (!line || line.isPointOnly) continue;
+            const groups = routing
+                ? routing.ways(line).map((way) => way.ids)
+                : [line.stationIds, line["stationIds-way1"], line["stationIds-way2"]];
+            for (const g of groups) {
+                if (!Array.isArray(g)) continue;
+                for (const id of g) set.add(id);
+            }
+        }
+        return set;
+    }
+
+    /**
      * 该站是否属于「有出入口概念的线路」：只被点线（国铁 / 轻铁 / 在建点线）
      * 引用的车站没有出入口概念。线路数据取不到时按「有」处理，退回旧行为。
      */
-    function onRidable(sid) {
+    function onRidable(sid, ridableSet) {
+        if (ridableSet) return ridableSet.has(sid);
         const lines = window.linesData;
         if (!Array.isArray(lines)) return true;
         const routing = window.CGoLineRouting;
@@ -120,11 +142,12 @@
         const table = exitTable();
         if (!kw || !table) return [];
         const stations = window.stationsData || {};
+        const ridableSet = buildRidableSet();
         const hits = [];
         for (const sid in table) {
             const station = stations[sid];
             if (!station?.cn) continue;
-            if (!onRidable(sid)) continue;
+            if (!onRidable(sid, ridableSet)) continue;
             const cnNorm = normalize(station.cn);
             const cnHit = cnNorm && (cnNorm.includes(kw) || kw.includes(cnNorm));
             let listed = 0;
@@ -274,11 +297,19 @@
             results.addEventListener("click", onResultsClick);
             hookedResults.add(results);
         }
+        return Boolean(input?.oninput && wrappedInputs.get(input) === input.oninput && results && hookedResults.has(results));
     }
 
-    // 轮询等待 core 绑定；就绪后每个周期只做两次按 ID 取元素与一次 WeakMap 查表，代价可忽略
-    attach();
-    setInterval(attach, 800);
+    // 轮询等待 core 绑定；就绪后立即停止定时器
+    let pollTimer = null;
+    if (!attach()) {
+        pollTimer = setInterval(() => {
+            if (attach() && pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }, 800);
+    }
 
     window.CGoExitSearch = { search, exitsById, exitLabel, attach };
 })();

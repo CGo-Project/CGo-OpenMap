@@ -73,7 +73,6 @@
 | `nearest-station.js` + `nearest-station.css` | 无对外接口（自动接管 `#locate-btn`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 跨城市「查找最近车站」：在 `#locate-btn` 上以**捕获阶段**扣下核心 `findNearestStation` 的点击，本模块自足地定位、换算 GCJ-02、比对全城站点后，改用 `cgo-modal` 三选一（切换到更近的城市 / 查看当前城市最近车站 / 取消），替掉核心那个同步 `confirm`；样式表由脚本按自身 URL 注入 |
 | `sidebar-refit.js` + `sidebar-refit.css` | `window.CGoSidebarRefit`（`refresh`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（**须晚于 `route-panel.js`**，同名同权重样式以本层为准） | 桌面端固定侧栏（body.legend-pinned）形态改造，向官方 /map 靠拢，详见 2.1 |
 | `viewport-inset.js` | 载体 `window.CGoViewportInsets`（`{left, right, bottom}`，px）、接口 `window.CGoViewportInset`（`refresh` / `compute` / `fit`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福） | 浮层遮挡上报：把「哪一侧被遮多少」写回引擎，详见 2.1 |
-| `panel-tab-swipe-relay.js` | 无对外接口（脚本存在即生效，自动接管 `#info-panel` 的 `.panel-body`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福）（须晚于 `viewport-inset.js`） | 车站信息板横滑切页的**补充通道**：核心 `panel-tab-swipe.js` 会跳过「交互元素」与「地图卡片」两类起手区域，于是「在整宽链接 / 成排按钮 / 迷你地图上左右滑」都没反应；本模块只补这两类，详见 2.1 |
 | `svg-raster.js` | `window.CGoSvgRaster`（`sanitizeXml` / `imgFromData` / `collectCss` / `applyRootVars` / `cdata` / `bytesToBase64` / `stringToBase64`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须早于 `poster.js` 与 `tools/opening-history.export.js`** | 海报出图与沿革视频导出**共用**的栅格化零件：净化 XML 非法字符、SVG 文本 → `<img>`（base64）、收集同源样式表、搬 `--变量`、CDATA 转义、base64 编解码，详见 2.1 |
 | `poster.js` | `window.CGoPoster`（`render` / `loadCss` / `toDataUrl` / `inlineImages`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须晚于 `svg-raster.js`、早于 `share-card.js`** | DOM 海报栅格化（克隆 → 搬自定义属性 → 内联同源位图 → `foreignObject` → canvas）：分享卡的一次性成像基建。公共零件取自 `svg-raster.js`，其余（webfont 内联 / 裁边）自持，详见 2.1 |
 | `share-card.js` + `share-card.css` | `window.CGoShareCard`（`open`） | classic script，六城在 `{city}.js` 引入（沈 / 大 / 长 / 哈 / 呼 / 福），**须晚于 `route-panel.js` 与 `poster.js`** | 车站卡 / 行程卡分享弹窗：卡片预览 + 下载图片 / 复制链接 / 分享链接。在 **document 捕获阶段**扣下两个 `.panel-share-btn`（core 零改动），深链 `?city=&from=&to=[&need=]`，详见 2.1 |
@@ -162,23 +161,6 @@
 > 并不管**页签条自身**的横向滚动。旧共享层给 `#info-panel .panel-tabs-nav` 设的 `touch-action: pan-x`
 > 已随文件删除，故页签条溢出时不能靠触摸拖动（仍可用正文横滑切页，核心会把选中页签 `scrollIntoView` 带进视野）。
 > 实测沈阳站 3 个页签不溢出、未观测到影响；若日后有城市页签多到溢出且被反馈，再单独补一条 `pan-x` 规则即可。
-
-#### panel-tab-swipe-relay.js —— 横滑切页的补充通道
-
-核心的横滑引擎对两类起手区域**直接放弃**，本模块只补这两处缺口，**不接管核心已处理的普通区域**：
-
-| 核心跳过的区域 | 为什么跳 | 为什么仍要补 |
-| :--- | :--- | :--- |
-| 交互元素 `button` / `a` / `[role=button]` / `[role=tab]` | 保护点击（历史上出过「手势接管后按钮点不动」） | 车站信息板里**整宽 `<a>`**（车站层级图、卡片标题行）与成排按钮占了大半面积，「在它们上面左右滑」完全没反应 |
-| 地图卡片 `[data-card-type="map"]` / `.stacard-minimap-viewport` | 视为「地图自管手势」 | 车站卡片的迷你地图**只实现了缩放**（按钮 / 滚轮）、没有平移手势，横向拖动本就无归属；而它在 21:9 这类窄长屏上常占可视内容高度一半以上，白吃掉一半切页区域 |
-
-保守之处：横向位移 > 10px 且大于纵向位移 ×1.15 才认作切页手势，**未达阈值一律不 `preventDefault`、不拦点击**；
-真表单控件、可横向滚动的容器、`canvas` / `iframe` 仍让路；命中后点下一枚 / 上一枚页签并 `scrollIntoView`
-（复用核心的激活事件）；**纵向手势完全不拦**，原生滚动照旧。
-
-> ⚠️ **仍未补**：从按钮 / 链接起手**纵向拖动换档**。核心把抽屉位置写在内联 `transform`、档位由闭包里的
-> `getDetents()` 决定，外部无接口；要补就得复刻整套跟手与弹簧，与「上游有重叠实现一律以上游为准」相冲，
-> 故该缺口留待上游在 `core/` 内修（原生滚动本身在按钮上是正常的，不受影响）。
 
 > ⚠️ 共享层原先自建的 `base/sheet-drag.js`（通用引擎）与 `base/panel-sheet-gesture.js / .css`（车站详情适配器）
 > **已删除**。它们会在每次渲染后卸掉核心的控制器、换成自己的，而核心的控制器现在还兼管底栏停靠 ——

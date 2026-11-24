@@ -140,10 +140,10 @@
          */
         findDate(targetKey, from = new Date(), options = {}) {
             const maxDays = Number(options.maxDays) || 15;
-            const probe = new Date(from.getTime());
+            const baseMs = from.getTime();
             for (let i = 0; i < maxDays; i += 1) {
-                probe.setDate(probe.getDate() + 1);
-                if (this.resolve(probe, options).key === targetKey) return new Date(probe.getTime());
+                const probe = new Date(baseMs + (i + 1) * 86400000);
+                if (this.resolve(probe, options).key === targetKey) return probe;
             }
             return null;
         }

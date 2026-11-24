@@ -234,7 +234,8 @@
 
     /** 题字标题：题字图替换中文站名，真实站名文本仅供无障碍与侧栏标题读取 */
     function renderCalligraphyTitle(station, info) {
-        const imageUrl = escapeAttribute(info.image);
+        const safeRawUrl = String(info.image || "").replace(/['()\\]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+        const imageUrl = escapeAttribute(safeRawUrl);
         const ratio = Number.isFinite(Number(info.ratio)) ? Number(info.ratio) : 4.7;
         const altText = escapeHtml(info.alt || `${station.cn || ""}站`);
         // mask-image 必须直接写在元素内联样式上：内联样式中的 url() 相对宿主文档
@@ -505,7 +506,7 @@
                     if (!person.name) {
                         return renderCalligrapherRow(
                             "待考",
-                            (info.pendingNote || pendingText)
+                            escapeHtml(info.pendingNote || pendingText)
                                 + contributionNoteHtml("本站题写者的落款、印章或站内说明牌尚待考证。", station)
                         );
                     }

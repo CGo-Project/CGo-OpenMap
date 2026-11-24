@@ -136,7 +136,16 @@
         const url = window.CURRENT_CITY?.stacard?.getRenderer?.()?.geoDataUrl;
         if (!url) return Promise.resolve(null);
         if (!geoPromise) {
-            geoPromise = fetch(url).then((res) => (res.ok ? res.json() : null)).catch(() => null);
+            geoPromise = fetch(url)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((data) => {
+                    if (!data) geoPromise = null;
+                    return data;
+                })
+                .catch(() => {
+                    geoPromise = null;
+                    return null;
+                });
         }
         return geoPromise;
     }
@@ -174,13 +183,13 @@
         for (const group of geoData?.l || []) {
             const station = (group.st || []).find(matchesStation);
             const [lng, lat] = String(station?.sl || "").split(",").map(Number);
-            if (!lng) continue;
+            if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
             const lineName = String(group.ln || "").trim();
             markers.push({ lng, lat, kind: "hall", label: lineName, color: lineColorOf(lineName) });
         }
         for (const exit of exits || []) {
             const [lng, lat] = String(exit.pos || "").split(",").map(Number);
-            if (!lng) continue;
+            if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
             markers.push({ lng, lat, kind: "exit", label: exit.name, color: "" });
         }
         return markers;
@@ -666,7 +675,12 @@
                     <div class="cgo-exit-section">
                         <div class="cgo-exit-map" data-station-id="${escapeHtml(station?.id || "")}" data-station-name="${escapeHtml(station?.cn || "")}"></div>
                         ${filtersHtml}
-                        <div class="cgo-exit-list">${exits.map((exit) => exitHtml(exit, verticals.get(exit.name) || [], typesByExit.get(exit.name), { stationId: station?.id, stationCn: station?.cn })).join("")}</div>
+                        <div class="cgo-exit-list">${exits.map((exit) => {
+                            const normCode = String(exit.name ?? "").trim().toUpperCase().replace(/号(?:[口门])?$/, "");
+                            const verts = verticals.get(exit.name) || verticals.get(normCode) || [];
+                            const facTypes = typesByExit.get(exit.name) || typesByExit.get(normCode);
+                            return exitHtml(exit, verts, facTypes, { stationId: station?.id, stationCn: station?.cn });
+                        }).join("")}</div>
                         ${config.sourceNote ? `<div class="cgo-exit-source">
                             <cgo-icon name="info" size="12"></cgo-icon>
                             <span>${escapeHtml(config.sourceNote)}</span>

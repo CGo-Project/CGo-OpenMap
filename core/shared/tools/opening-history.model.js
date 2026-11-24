@@ -245,7 +245,7 @@
                     // 取该线在本站的**最晚**到达 / 补开日：不晚于当日才算真正服务本站
                     //（延伸段重新经过不能把本站自己的补开日顶回去）
                     const days = (per && per.get(lid)) || [];
-                    const latest = days.length ? Math.max.apply(null, days) : null;
+                    const latest = days.length ? days.reduce((a, b) => (a > b ? a : b)) : null;
                     if (!(latest && latest > date)) served = true;
                 });
                 if (linesHere.size && !served) return "no";

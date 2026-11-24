@@ -131,15 +131,23 @@
             const s = st[sid];
             return s && s.type === "rdot" && s._rdotHideAfterLink;
         });
+        const old = document.getElementById("cgo-rdot-label-hide");
+        if (!hide.length) {
+            if (old) old.remove();
+            return;
+        }
+        const escCssId = (id) => (typeof CSS !== "undefined" && CSS.escape)
+            ? CSS.escape(id)
+            : String(id).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+        const escCssAttr = (val) => String(val).replace(/["\\]/g, "\\$&");
         const css = hide.map((sid) => [
-            `#map-content:not(.cgo-oh-stage) #label_${sid}`,
-            `#map-content:not(.cgo-oh-stage) [data-cgo-callout="${sid}"]`
+            `#map-content:not(.cgo-oh-stage) #${escCssId(`label_${sid}`)}`,
+            `#map-content:not(.cgo-oh-stage) [data-cgo-callout="${escCssAttr(sid)}"]`
         ].join(",")).join(",") + "{display:none !important}";
-        if (!css) return;
-        const el = document.createElement("style");
+        const el = old || document.createElement("style");
         el.id = "cgo-rdot-label-hide";
         el.textContent = css;
-        document.head.appendChild(el);
+        if (!old) document.head.appendChild(el);
     }
 
     // 数据就绪即治理（main.html 在数据区之后引入，此时数据已挂载）

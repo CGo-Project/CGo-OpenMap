@@ -65,24 +65,26 @@
         const codes = new Set();
         const push = (raw) => {
             for (const piece of String(raw).split(/[、,，和及]/)) {
-                const code = piece.trim().toUpperCase();
-                if (/^[A-Z]{1,2}\d{0,2}$/.test(code)) codes.add(code);
+                const code = piece.trim().toUpperCase().replace(/号$/, "");
+                if (/^(?:[A-Z]{1,2}\d{0,2}|\d{1,3}[A-Z]?)$/.test(code)) codes.add(code);
             }
         };
         const src = String(text || "");
-        // 形式一：A、B出入口 / A出入口 / C1出入口
-        for (const hit of src.match(/[A-Za-z]{1,2}\d{0,2}(?:\s*[、,，和及]\s*[A-Za-z]{1,2}\d{0,2})*\s*出入口/g) || []) {
+        // 形式一：A、B出入口 / C1出入口 / 1、2号出入口 / 1出入口
+        for (const hit of src.match(/(?:[A-Za-z]{1,2}\d{0,2}|\d{1,3}[A-Za-z]?)\s*号?(?:\s*[、,，和及]\s*(?:[A-Za-z]{1,2}\d{0,2}|\d{1,3}[A-Za-z]?)\s*号?)*\s*出入口/g) || []) {
             push(hit.replace(/出入口/g, ""));
         }
         // 形式二：A（出入口下段）
-        for (const hit of src.match(/[A-Za-z]{1,2}\d{0,2}(?:\s*[、,，和及]\s*[A-Za-z]{1,2}\d{0,2})*\s*[（(]\s*出入口/g) || []) {
+        for (const hit of src.match(/(?:[A-Za-z]{1,2}\d{0,2}|\d{1,3}[A-Za-z]?)\s*号?(?:\s*[、,，和及]\s*(?:[A-Za-z]{1,2}\d{0,2}|\d{1,3}[A-Za-z]?)\s*号?)*\s*[（(]\s*出入口/g) || []) {
             push(hit.split(/[（(]/)[0]);
         }
-        // 形式三：A口 / A1口（「出入口」里的「口」因前面不是字母而不会被误取）
-        for (const hit of src.match(/[A-Za-z]{1,2}\d{0,2}\s*口/g) || []) push(hit.replace(/口/g, ""));
+        // 形式三：A口 / A1口 / 1号口 / 1口 / 1号门
+        for (const hit of src.match(/(?:[A-Za-z]{1,2}\d{0,2}|\d{1,3}[A-Za-z]?)\s*(?:号?\s*[口门])/g) || []) {
+            push(hit.replace(/号?\s*[口门]$/g, ""));
+        }
         // 形式四：站外C,D（整条以「站外」开头却漏写「口」字）
         if (/^站外/.test(src.trim())) {
-            for (const hit of src.match(/[A-Za-z]{1,2}\d{0,2}(?:\s*[,，、]\s*[A-Za-z]{1,2}\d{0,2})*/g) || []) push(hit);
+            for (const hit of src.match(/(?:[A-Za-z]{1,2}\d{0,2}|\d{1,3}[A-Za-z]?)(?:\s*[,，、]\s*(?:[A-Za-z]{1,2}\d{0,2}|\d{1,3}[A-Za-z]?))*/g) || []) push(hit);
         }
         return [...codes].sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
     }

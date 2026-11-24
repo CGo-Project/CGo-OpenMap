@@ -50,8 +50,17 @@
     const allLines = () => window.linesData || [];
     const stationName = (sid) => allStations()[sid]?.cn || sid;
     const stationEn = (sid) => allStations()[sid]?.en || "";
-    const linesAt = (sid) => allLines().filter((line) => !line.isPointOnly
-        && (line.stationIds || []).includes(sid));
+    const linesAt = (sid) => {
+        const routing = window.CGoLineRouting;
+        return allLines().filter((line) => {
+            if (!line || line.isPointOnly) return false;
+            if (routing && typeof routing.waysOfStation === "function") {
+                return routing.waysOfStation(line, sid).length > 0;
+            }
+            if ((line.stationIds || []).includes(sid)) return true;
+            return Object.keys(line).some((k) => k.startsWith("stationIds-") && Array.isArray(line[k]) && line[k].includes(sid));
+        });
+    };
     /** 可参与规划：已开通且至少属于一条可规划线路（国铁等点状线路的站不可用） */
     const pickable = (sid) => allStations()[sid]?.type !== "no" && linesAt(sid).length > 0;
 
@@ -111,18 +120,18 @@
         }
         const { html: facHtml, types } = recommendFacRows(sid, alt);
         if (!facHtml) {
-            return `<div class="cgo-rt-leg-line muted" data-role="gate"><span>推荐改用 ${alt.join("、")} 口</span></div>`;
+            return `<div class="cgo-rt-leg-line muted" data-role="gate"><span>推荐改用 ${escAttr(alt.join("、"))} 口</span></div>`;
         }
         return `
-            <div class="cgo-rt-leg-line muted cgo-rt-expandable" data-role="gate" data-expand="${key}" title="查看推荐出入口设施">
+            <div class="cgo-rt-leg-line muted cgo-rt-expandable" data-role="gate" data-expand="${escAttr(key)}" title="查看推荐出入口设施">
                 <cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>
-                <span>推荐改用 ${alt.join("、")} 口 · 设施：${types.join("、")}</span>
+                <span>推荐改用 ${escAttr(alt.join("、"))} 口 · 设施：${escAttr(types.join("、"))}</span>
             </div>
-            <div data-list="${key}" hidden><div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${facHtml}</div></div></div>
+            <div data-list="${escAttr(key)}" hidden><div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${facHtml}</div></div></div>
         `;
     }
     const warnLineHtml = (text) => `<div class="cgo-rt-leg-line cgo-rt-warn" data-role="gate">
-        <cgo-icon name="warning" size="13"></cgo-icon><span>${text}</span>
+        <cgo-icon name="warning" size="13"></cgo-icon><span>${escAttr(text)}</span>
     </div>`;
     /**
      * 进 / 出站条的设施折叠组（按口，item.text 无线路归属 → 明细直接拆段）：
@@ -238,14 +247,14 @@
                 <span>设施：${types.join("、")}</span>
             </div>` : "";
         const panel = facHtml ? `
-            <div data-list="${key}" hidden>
+            <div data-list="${escAttr(key)}" hidden>
                 <div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${facHtml}</div></div>
             </div>` : "";
         return `
             <li class="cgo-rt-leg exitgate">
                 <div class="cgo-rt-leg-head" data-role="gate">
                     <span class="cgo-rt-mode exitgate"><cgo-icon name="${mark}" size="16"></cgo-icon></span>
-                    <span class="cgo-rt-leg-name"><b>${names.join("、")}</b><em>推荐${dir === "entry" ? "可进站" : "可出站"}出入口</em></span>
+                    <span class="cgo-rt-leg-name"><b>${escAttr(names.join("、"))}</b><em>推荐${dir === "entry" ? "可进站" : "可出站"}出入口</em></span>
                 </div>
                 ${summary}
                 ${panel}
@@ -292,7 +301,7 @@
         let bestDist = Infinity;
         for (const name of alts) {
             const [x, y] = String(exitOf(sid, name)?.pos || "").split(",").map(Number);
-            if (!Number.isFinite(x) || !Number.isFinite(ox)) continue;
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(ox) || !Number.isFinite(oy)) continue;
             const dist = (x - ox) ** 2 + (y - oy) ** 2;
             if (dist < bestDist) { bestDist = dist; best = name; }
         }
@@ -486,6 +495,7 @@
     }
     // 重建或切回桌面侧栏时一并释放抽屉监听与固定底栏。
     function removePanel(panel) {
+        panel._cgoDragCleanup?.();
         panel._cgoSheetCleanup?.();
         panel.remove();
     }
@@ -948,7 +958,7 @@
             trigger.hidden = false;
             const current = state[exitKey(field)];
             trigger.innerHTML = `<cgo-icon name="location" size="12"></cgo-icon>`
-                + `<span>${current || "全部"}</span>`
+                + `<span>${escAttr(current || "全部")}</span>`
                 + `<cgo-icon name="chevron-down" size="10"></cgo-icon>`;
             trigger.classList.toggle("active", Boolean(current));
             trigger.title = current ? `出入口：${current} 口（点击更换）` : "选择出入口（当前：不指定）";
@@ -1022,7 +1032,7 @@
                     need && ok === false ? `无满足「${need.name}」的设施` : ""
                 ].filter(Boolean).join(" · ");
                 return `<button type="button" class="cgo-rt-exit-chip${active ? " active" : ""}${closed}${unmet}"
-                    data-exit-code="${escAttr(code)}" title="${escAttr(title)}">${code}</button>`;
+                    data-exit-code="${escAttr(code)}" title="${escAttr(title)}">${escAttr(code)}</button>`;
             })
         ];
         menu.innerHTML = `${notice}${hint}<div class="cgo-rt-gaterow">${chips.join("")}</div>`;
@@ -1789,14 +1799,14 @@
                 <li class="cgo-rt-leg exitgate">
                     <div class="cgo-rt-leg-head">
                         <span class="cgo-rt-mode exitgate"><cgo-icon name="depart" size="16"></cgo-icon></span>
-                        <span class="cgo-rt-leg-name"><b>${state.fromExitLandmark || stationName(state.from)}</b><em>出发</em></span>
+                        <span class="cgo-rt-leg-name"><b>${escAttr(state.fromExitLandmark || stationName(state.from))}</b><em>出发</em></span>
                     </div>
-                    <div class="cgo-rt-leg-line muted${entryFac ? " cgo-rt-expandable" : ""}" data-role="fac"${entryFac ? ` data-expand="${entryKey}" title="查看出入口设施"` : ""}>
+                    <div class="cgo-rt-leg-line muted${entryFac ? " cgo-rt-expandable" : ""}" data-role="fac"${entryFac ? ` data-expand="${escAttr(entryKey)}" title="查看出入口设施"` : ""}>
                         ${entryFac ? `<cgo-icon class="cgo-rt-expand-caret" name="chevron-down" size="14"></cgo-icon>` : ""}
                         <span>经 ${boldExitCode(state.fromExit)} 进站${entrySpec ? gateNote(entrySpec) : ""}</span>
                     </div>
                     ${gateAdviseLine(state.from, state.fromExit, "entry", `fac-${++facSeq}`)}
-                    ${entryFac ? `<div data-list="${entryKey}" hidden><div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${entryFac}</div></div></div>` : ""}
+                    ${entryFac ? `<div data-list="${escAttr(entryKey)}" hidden><div class="cgo-rt-leg-line muted" data-role="fac"><div class="cgo-rt-facwrap">${entryFac}</div></div></div>` : ""}
                 </li>
             `);
         } else {
@@ -1811,7 +1821,7 @@
                 const first = segments[0];
                 const last = segments[segments.length - 1];
                 const line = lineOf(first.line);
-                lastLineId = first.line;
+                lastLineId = last.line;
                 const start = first.stops[0];
                 const terminus = rideTerminus(last);
                 const stopsCount = segments.reduce((n, seg) => n + Math.max(0, seg.stops.length - 1), 0);
@@ -2826,7 +2836,7 @@
             event.preventDefault();
         });
 
-        document.addEventListener("mousemove", (event) => {
+        const onMove = (event) => {
             if (!dragging) return;
             const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
             const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
@@ -2835,9 +2845,8 @@
             panel.style.left = `${left}px`;
             panel.style.top = `${top}px`;
             ghost()?.classList.toggle("active", event.clientX < DOCK_EDGE_PX);
-        });
-
-        document.addEventListener("mouseup", () => {
+        };
+        const onUp = () => {
             if (!dragging) return;
             dragging = false;
             document.body.style.cursor = "";
@@ -2845,7 +2854,13 @@
             if (!hint?.classList.contains("active")) return;
             hint.classList.remove("active");
             pinToSidebar(panel);
-        });
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+        panel._cgoDragCleanup = () => {
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+        };
     }
 
     /**
@@ -3353,7 +3368,16 @@
      */
     function collapseResultSection() {
         const panel = livePanel(RESULT_ID);
-        if (!panel?.classList.contains("show")) return;
+        if (!panel) return;
+        if (isCgoWmDesktop()) {
+            if (window.CGoWMAdapter?.isOpen?.("route-result")) {
+                closingResultFromWm = true;
+                try { window.CGoWMAdapter.close("route-result"); } finally { closingResultFromWm = false; }
+            }
+            clearHighlight();
+            return;
+        }
+        if (!panel.classList.contains("show")) return;
         if (panel.dataset.cgoMode === "section") {
             if (panel.classList.contains("collapsed")) return;
             panel.classList.add("collapsed");

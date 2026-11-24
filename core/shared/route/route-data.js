@@ -279,7 +279,16 @@
                 }));
             })
             .catch(() => {});   // 坐标仅用于里程兜底，取不到不影响有实测站距的线路
-        return { ready, coordOf: (name) => index.get(name) || null };
+        return {
+            ready,
+            coordOf: (name) => {
+                if (!name) return null;
+                const direct = index.get(name);
+                if (direct) return direct;
+                const alias = (window.CGO_STATION_NAME_ALIASES || {})[name];
+                return alias ? (index.get(alias) || null) : null;
+            }
+        };
     }
 
     /**
@@ -365,7 +374,7 @@
             for (let k = 0; k < ordered.length - 1; k++) {
                 const a = ordered[k], b = ordered[k + 1];
                 // 环线首尾相接：末站 → 首站也是相邻的一跳
-                const wraps = loop && a === ids.length - 1 && b === 0;
+                const wraps = loop && ((a === ids.length - 1 && b === 0) || (a === 0 && b === ids.length - 1));
                 if (!wraps && Math.abs(b - a) !== 1) continue;             // 跨越缺数据站，不强行分摊
                 let delta = chain.times.get(b) - chain.times.get(a);
                 if (delta < 0) delta += 1440;                    // 跨零点
@@ -373,6 +382,17 @@
                     // 跨接缝那一跳记在最后一条区间（末站 → 首站）上
                     const slot = wraps ? ids.length - 1 : Math.min(a, b);
                     buckets[slot][chain.period === "last" ? "last" : "first"].push(delta);
+                }
+            }
+            // 环线补充首站与末站之间的跨接缝直连检测（ordered 升序时首末两端分别在数组首尾）
+            if (loop && ordered.length > 2) {
+                const a = ordered[ordered.length - 1], b = ordered[0];
+                if ((a === ids.length - 1 && b === 0) || (a === 0 && b === ids.length - 1)) {
+                    let delta = chain.times.get(b) - chain.times.get(a);
+                    if (delta < 0) delta += 1440;
+                    if (delta > 0 && delta <= HOP_MAX) {
+                        buckets[ids.length - 1][chain.period === "last" ? "last" : "first"].push(delta);
+                    }
                 }
             }
         });

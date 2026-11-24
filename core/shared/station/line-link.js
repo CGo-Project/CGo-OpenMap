@@ -98,7 +98,7 @@
             main.lineColor ||= other.lineColor;
         });
 
-        if (link.through) {
+        if (link.through && rest.length) {
             // 贯通是一条跨两线的链，而衔接站的两个邻居分属两条线：主条目那一侧接在链的起点方向，
             // 接续线那一侧接在终点方向。这里必须**重排**而不是「缺省才补」——
             // 两条线都是「从衔接站出发」的站序，邻居都记在各自的 next 上，

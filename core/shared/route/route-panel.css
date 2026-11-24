@@ -103,7 +103,11 @@
 :root[glass-mode='flat'] .cgo-rt-panel,
 :root[data-glass-mode='flat'] .cgo-rt-panel,
 body[glass-mode='flat'] .cgo-rt-panel,
-body[data-glass-mode='flat'] .cgo-rt-panel {
+body[data-glass-mode='flat'] .cgo-rt-panel,
+:root[glass-mode='none'] .cgo-rt-panel,
+:root[data-glass-mode='none'] .cgo-rt-panel,
+body[glass-mode='none'] .cgo-rt-panel,
+body[data-glass-mode='none'] .cgo-rt-panel {
     background: var(--card-bg);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -1674,7 +1678,7 @@ body.legend-pinned #cgo-route-card .section-title-text {
     height: 0;
     pointer-events: none;
     /* 盖在站点图元之上 */
-    z-index: 4;
+    z-index: 25;
 }
 
 .cgo-rt-ripple[data-role="to"] {

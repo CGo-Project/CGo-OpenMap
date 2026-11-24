@@ -511,6 +511,7 @@
 
     /** 侧栏形态的「收起 / 关闭工具」：收起区块，并把正在进行的工具连同画布叠加一并关掉 */
     function collapseToolsSection() {
+        if (!inPinnedSidebar()) return;
         toolsSection()?.classList.add("collapsed");
         hidePanel(MENU_ID);
         closePanel();
@@ -1695,7 +1696,7 @@
                 // 组界上时（如 105 分档里的 105）也照样要标出来
                 const text = bands.kind === "iso"
                     ? `${edgeGroupHit ? edgeGroup * edgeEvery * ISO_STEP : bands.clipMax}分`
-                    : bands.cutText(band - 1);
+                    : (edgeGroupHit ? bands.cutText(edgeGroup * edgeEvery - 1) : "");
                 if (!text) continue;
                 // 标签只撒在未淡化的实心区：淡化带上的色块本就快看不见了，
                 // 数字留在那儿会读成一串悬空的字符
@@ -2262,7 +2263,7 @@
                     ${(picks || []).map((pick, i) => `
                         <button type="button" class="cgo-mt-meet-item" data-meet-sid="${pick.sid}">
                             <span class="cgo-mt-meet-rank">${i + 1}</span>
-                            <span class="cgo-mt-meet-name">${stationName(pick.sid)}</span>
+                            <span class="cgo-mt-meet-name">${esc(stationName(pick.sid))}</span>
                             <span class="cgo-mt-meet-time">${pickTimesText(pick)}</span>
                         </button>
                     `).join("")}
@@ -2342,7 +2343,7 @@
                     </div>
                     ${overHtml}
                 </div>
-                ${meetish ? `<div class="cgo-mt-ends"><span>${stationName(targets[0])} 更近</span><span class="cgo-mt-ends-mid">汇合带</span><span>${stationName(targets[1])} 更近</span></div>` : ""}
+                ${meetish ? `<div class="cgo-mt-ends"><span>${esc(stationName(targets[0]))} 更近</span><span class="cgo-mt-ends-mid">汇合带</span><span>${esc(stationName(targets[1]))} 更近</span></div>` : ""}
             </div>
         `;
 
@@ -2394,7 +2395,7 @@
     }
 
     function renderNotice(panel, text) {
-        panel.querySelector(".cgo-mt-body").innerHTML = `<p class="cgo-mt-notice">${text}</p>`;
+        panel.querySelector(".cgo-mt-body").innerHTML = `<p class="cgo-mt-notice">${esc(text)}</p>`;
     }
 
     function closePanel(opts = {}) {
@@ -2714,7 +2715,11 @@
             if (to) lastRoute.to = to;
         };
         document.addEventListener("cgo:route-opened", remember);
-        document.addEventListener("cgo:route-planned", remember);
+        document.addEventListener("cgo:route-planned", (event) => {
+            remember(event);
+            decoratePanels();
+        });
+        document.addEventListener("cgowm:insets-changed", decoratePanels);
         document.addEventListener("cgo:route-closed", () => { lastRoute = { from: null, to: null }; });
     }
 
@@ -2823,7 +2828,7 @@
             queued = true;
             requestAnimationFrame(() => {
                 queued = false;
-                if (state.tool && state.stationId) run(state.tool, state.stationId);
+                if (state.tool && state.last) repaint();
             });
         }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     }
@@ -2833,11 +2838,17 @@
      * 只为这三块面板绑观察器（不监听 body 全子树）—— 地图自身的节点变动远比这频繁。
      * body 只盯直接子节点，用于在面板新建 / 搬家 / 拆除后重新绑定。
      */
+    let panelChangeQueued = false;
     function onPanelChange() {
-        watchPanels();
-        watchContextMenu();
-        syncStacking();
-        decoratePanels();
+        if (panelChangeQueued) return;
+        panelChangeQueued = true;
+        requestAnimationFrame(() => {
+            panelChangeQueued = false;
+            watchPanels();
+            watchContextMenu();
+            syncStacking();
+            decoratePanels();
+        });
     }
 
     const panelObserver = new MutationObserver(onPanelChange);

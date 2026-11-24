@@ -85,10 +85,16 @@
                     : (line.hasbranch
                         ? [line["stationIds-way1"] || [], line["stationIds-way2"] || []]
                         : [line.stationIds || []]);
+                const isLoop = Boolean(line.isLoop || line.loop);
                 groups.forEach((ids) => {
                     const i = ids.indexOf(activeSid);
+                    if (i < 0) return;
                     if (i > 0) adjacent.add(ids[i - 1]);
-                    if (i >= 0 && i < ids.length - 1) adjacent.add(ids[i + 1]);
+                    if (i < ids.length - 1) adjacent.add(ids[i + 1]);
+                    if (isLoop && ids.length > 1) {
+                        if (i === 0) adjacent.add(ids[ids.length - 1]);
+                        if (i === ids.length - 1) adjacent.add(ids[0]);
+                    }
                 });
             });
             const narrowed = candidates.filter((id) => adjacent.has(id));
@@ -157,9 +163,11 @@
         }
     }
 
-    /** 当前站 id：地图 active 站点优先，退回 active 标签（面板打开即有其一） */
-    function activeStationId() {
-        return document.querySelector("#stations-layer .station.active")?.dataset?.sid
+    /** 当前站 id：面板绑定 sid 优先，其次地图 active 站点与标签 */
+    function activeStationId(root) {
+        return root?.dataset?.sid
+            || document.getElementById("info-panel")?.dataset?.sid
+            || document.querySelector("#stations-layer .station.active")?.dataset?.sid
             || document.querySelector("#labels-layer .label-group.active")?.dataset?.sid
             || null;
     }
@@ -170,7 +178,8 @@
      */
     function applyToPanel(root) {
         if (!ready || !root) return;
-        const activeSid = activeStationId();
+        if (typeof window !== "undefined" && window.getComputedStyle?.(root)?.display === "none") return;
+        const activeSid = activeStationId(root);
         if (!activeSid) return;
         root.querySelectorAll("span").forEach((el) => {
             if (el.dataset.cgoGeoDone) return;

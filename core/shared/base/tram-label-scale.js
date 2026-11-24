@@ -39,8 +39,10 @@
         const raw = window.CGO_TRAM_LABEL_SCALE !== undefined
             ? window.CGO_TRAM_LABEL_SCALE
             : city?.tramLabelScale;
+        if (raw === undefined || raw === null || raw === "") return DEFAULT_SCALE;
         const scale = Number(raw);
-        if (!Number.isFinite(scale) || scale <= 0) return DEFAULT_SCALE;
+        if (!Number.isFinite(scale)) return DEFAULT_SCALE;
+        if (scale <= 0) return 1;
         return scale;
     }
 

@@ -84,10 +84,31 @@
             return "metro";
         }
 
+        const sameNameCache = new WeakMap();
+        function sameNameIndex(stations) {
+            let map = sameNameCache.get(stations);
+            if (!map) {
+                map = new Map();
+                for (const id of Object.keys(stations)) {
+                    const s = stations[id];
+                    if (!s?.cn) continue;
+                    let list = map.get(s.cn);
+                    if (!list) {
+                        list = [];
+                        map.set(s.cn, list);
+                    }
+                    list.push(s);
+                }
+                sameNameCache.set(stations, map);
+            }
+            return map;
+        }
+
         function sameNameOthers(station, stations) {
-            return Object.keys(stations)
-                .map((id) => stations[id])
-                .filter((other) => other && other !== station && other.id !== station.id && other.cn === station.cn);
+            if (!station?.cn || !stations) return [];
+            const list = sameNameIndex(stations).get(station.cn);
+            if (!list) return [];
+            return list.filter((other) => other !== station && other.id !== station.id);
         }
 
         /** 计算侧栏标题 */

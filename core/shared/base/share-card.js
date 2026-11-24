@@ -235,7 +235,9 @@
         if (!lineId) {
             lineId = allLines().find((line) => !line.isPointOnly && lineHasStation(line, sid))?.id || "";
         }
-        return `${location.origin}${location.pathname}?=nmlsta&${lineId}&${sid}${tabSuffix}`;
+        const cid = currentCityId();
+        const citySuffix = cid ? `&city=${encodeURIComponent(cid)}` : "";
+        return `${location.origin}${location.pathname}?=nmlsta&${encodeURIComponent(lineId)}&${encodeURIComponent(sid)}${tabSuffix}${citySuffix}`;
     }
 
     /** 行程卡深链：只带 OpenMap 自己的参数（city / from / to / need），不接 /map 的语义。 */

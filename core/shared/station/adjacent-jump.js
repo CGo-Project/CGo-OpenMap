@@ -210,10 +210,17 @@
      * @returns {boolean} 是否发生了改写
      */
     function rewriteRetiredNeighbor(valueEl, lineInfo, activeSid, dir, retired) {
-        const sid = sidByName(stationNameOf(valueEl));
+        const sid = resolveSid(stationNameOf(valueEl), activeSid) || sidByName(stationNameOf(valueEl));
         if (!sid || !retired.has(sid)) return false;
         const alt = nextLiveSid(lineInfo.id, activeSid, dir, retired);
-        if (!alt || alt === sid) return false;
+        if (!alt || alt === sid) {
+            valueEl.textContent = "无";
+            valueEl.removeAttribute(JUMP_ATTR);
+            valueEl.removeAttribute("role");
+            valueEl.removeAttribute("tabindex");
+            valueEl.removeAttribute("aria-label");
+            return true;
+        }
         const altName = (stationTable()[alt] || {}).cn;
         if (!altName) return false;
         const geo = window.CGoGeoEstimate;

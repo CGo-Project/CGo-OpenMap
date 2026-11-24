@@ -109,12 +109,18 @@
         const now = Date.now();
         let nextAt = null;
 
+        const pendingEvents = [];
         events.forEach((ev) => {
             if (!ev || ev.kind !== "rename") return;
             const at = parseRenameDate(ev.date);
             if (!at) return;
             // 已生效的事件：数据本身就是现名，不必回退
             if (at.getTime() <= now) return;
+            pendingEvents.push({ ev, at });
+        });
+        // 多次未来更名按日期倒序回滚（由最晚回退到最早），保证最终呈现距今最近的下一版旧名
+        pendingEvents.sort((a, b) => b.at.getTime() - a.at.getTime());
+        pendingEvents.forEach(({ ev, at }) => {
             const specs = (Array.isArray(ev.renames) && ev.renames.length) ? ev.renames : [ev];
             specs.forEach((spec) => {
                 const stationId = findStationId(spec, table);

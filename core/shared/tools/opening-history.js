@@ -124,7 +124,7 @@
      * 选择器按站点 ID 直指节点（`#node_<sid>` / `#label_<sid>` / 呼出线），核心重建站点
      * 节点后依然命中，因此不需要常驻观察器。`!important` 是为了压过核心的 `display: flex`。
      */
-    (function hideRetiredStations() {
+    function hideRetiredStations() {
         const ids = [];
         const retired = [];
         const pushIds = (list, isRetired) => (list || []).forEach((sid) => {
@@ -153,17 +153,25 @@
         // 「已拆除站」对外暴露：上一站/下一站、接驳徽标等后处理模块据此判定「活站」
         // （共享层其它模块读它，见 shared/station/adjacent-jump.js）
         window.CGO_RETIRED_STATIONS = retired;
-        if (!ids.length) return;
-        const css = ids.map((sid) => [
-            `#map-content:not(.cgo-oh-stage) #node_${sid}`,
-            `#map-content:not(.cgo-oh-stage) #label_${sid}`,
-            `#map-content:not(.cgo-oh-stage) [data-cgo-callout="${sid}"]`
-        ].join(",")).join(",") + "{display:none !important}";
-        const style = document.createElement("style");
+        const old = document.getElementById(STYLE_ID + "-retired");
+        if (!ids.length) { old?.remove(); return; }
+        const css = ids.map((sid) => {
+            const safeId = esc(sid);
+            return [
+                `#map-content:not(.cgo-oh-stage) #node_${safeId}`,
+                `#map-content:not(.cgo-oh-stage) #label_${safeId}`,
+                `#map-content:not(.cgo-oh-stage) [data-cgo-callout="${safeId}"]`
+            ].join(",");
+        }).join(",") + "{display:none !important}";
+        const style = old || document.createElement("style");
         style.id = STYLE_ID + "-retired";
         style.textContent = css;
-        document.head.appendChild(style);
-    })();
+        if (!style.parentNode) document.head.appendChild(style);
+    }
+    hideRetiredStations();
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", hideRetiredStations, { once: true });
+    }
 
     /* ======================================================================
      * 运行期状态（时钟层）
@@ -2020,7 +2028,7 @@
                 if (!sg.pts || sg.pts.length < 2) return;
                 const node = document.createElementNS(NS, "path");
                 node.setAttribute("class", "cgo-oh-grow");
-                node.setAttribute("d", toD(alignEndsToVisible(sg.pts, sg.headSid, sg.tailSid, step.no)));
+                node.setAttribute("d", toD(alignEndsToVisible(sg.pts, sg.headSid, sg.tailSid, step.no - 1)));
                 node.setAttribute("stroke", step.color);
                 node.setAttribute("stroke-width", "5.4");   // 与核心 .line-visual-inner 同宽
                 node.setAttribute("vector-effect", "non-scaling-stroke");
@@ -2392,7 +2400,7 @@
             p.setAttribute("data-no", String(step.no));
             p.setAttribute("data-line", String(step.lineId));   // 供「画布上正在展示的线路数」统计
             if (k) p.setAttribute("data-part", String(k));
-            p.setAttribute("d", toD(alignEndsToVisible(sg.pts, sg.headSid, sg.tailSid, step.no)));
+            p.setAttribute("d", toD(alignEndsToVisible(sg.pts, sg.headSid, sg.tailSid, step.no - 1)));
             // 原始折线 + 端点站 ID 留一份：让位状态变化时按它重算端点（见 realignArchivedPaths）
             p.__rawPts = sg.pts;
             p.__headSid = sg.headSid;
@@ -2429,7 +2437,7 @@
         const ta = Date.parse(a), tb = Date.parse(b);
         if (!Number.isFinite(ta) || !Number.isFinite(tb) || ta === tb) return b;
         const d = new Date(ta + (tb - ta) * p);
-        return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
     }
 
     /** 进度条直接落值。逐帧写 width，得把 CSS 那条 .25s 过渡摘掉，否则每帧重起一段过渡、慢半拍 */
@@ -2746,12 +2754,13 @@
         // 时间线上这些拍本来就连着演完，落在末拍即该事件完成后的静态形态，不会停在"半成品"画面。
         // ⚠️ 早先每拍一行，同一事件被拆成几个可点项（用户点到中间拍就会看到演了一半的图）；
         // 标题用**事件级**标题（`evTitle`），各拍自己的操作标题留给面板信息区。
+        const escHtml = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
         state.els.list.innerHTML = (state.listGroups || []).map((g) => {
             const text = g.step.evTitle || stepLabel(g.step);
             return `<li class="cgo-oh-item" data-go="${g.to + 1}" data-ev="${g.evIdx}">
-                <span class="cgo-oh-item-date">${g.step.date}</span>
-                <span class="cgo-oh-item-dot" style="background:${g.step.color}"></span>
-                <span class="cgo-oh-item-text">${text}</span>${chipsHTML(g)}
+                <span class="cgo-oh-item-date">${escHtml(g.step.date)}</span>
+                <span class="cgo-oh-item-dot" style="background:${escHtml(g.step.color)}"></span>
+                <span class="cgo-oh-item-text">${escHtml(text)}</span>${chipsHTML(g)}
             </li>`;
         }).join("");
     }
@@ -2909,6 +2918,8 @@
         if (state.els) {
             state.els.badge.hidden = true;
             state.els.date.textContent = "尚未开始";
+            if (state.els.title) state.els.title.textContent = "";
+            if (state.els.status) state.els.status.textContent = "";
             state.els.desc.textContent = "点「播放」从空白画布起笔，镜头跟着画笔把线网逐段画出来；也可用操作行的清单按钮跳到任一年份。";
             state.els.lines.textContent = "0";
             state.els.stations.textContent = "0";
@@ -2946,7 +2957,11 @@
         state.tCur = r.growEnd;
         applyFrame(r.growEnd, true);
         // 跳到更名这一步：名字直接落成新名（跳转不是「演」，不播换字动画）
-        if (r.step.rename) applyNewName(r.step.rename.sid, r.step.rename.to, r.step.rename.toEn, r.step.rename.toMn);
+        if (r.step.renames && r.step.renames.length) {
+            r.step.renames.forEach((rn) => applyNewName(rn.sid, rn.to, rn.toEn, rn.toMn));
+        } else if (r.step.rename) {
+            applyNewName(r.step.rename.sid, r.step.rename.to, r.step.rename.toEn, r.step.rename.toMn);
+        }
         // 最后落到「能看该段全貌」的取景（applyFrame 给的是生长结束时的取景）
         if (window.setMapView && r.camTail) window.setMapView({ x: r.camTail.x, y: r.camTail.y, scale: r.camTail.scale });
         syncPlayBtn();
@@ -3144,6 +3159,7 @@
         state.modalObserver = null;
         state.els?.expModal?.remove();   // 导出浮层挂在 body 上，得自己摘掉
         window.CGoWMAdapter?.get?.("opening-export")?.destroy?.();
+        state.expDialog = null;
         state.els = null;
     }
 
@@ -3387,8 +3403,10 @@
         });
     }
 
-    watchPhantomNodes();                    // 幽灵车站不进选择器 / 搜索候选（底图与演示态都要）
-    setInterval(watchPhantomNodes, 800);    // 两个容器可能晚于本脚本进 DOM（core 是 module）
+    if (phantomIds().size > 0) {
+        watchPhantomNodes();                // 幽灵车站不进选择器 / 搜索候选（底图与演示态都要）
+        setInterval(watchPhantomNodes, 800); // 两个容器可能晚于本脚本进 DOM（core 是 module）
+    }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", register);
     else register();
