@@ -299,7 +299,8 @@
             </div>`;
         popup.querySelector(".panel-close-btn")?.addEventListener("click", (event) => {
             event.stopPropagation();
-            closeSegmentPopup();
+            // 关闭按钮常被键盘 Tab 到；关闭后把焦点送回区间热区。
+            closeSegmentPopup({ restoreFocus: true });
         });
         document.body.appendChild(popup);
         installSegmentPopupInteractions(popup);
@@ -434,13 +435,30 @@
         } catch (_) { return null; }
     }
 
-    function closeSegmentPopup() {
+    /**
+     * 关闭区间信息卡。
+     * @param {{restoreFocus?: boolean}} [options]
+     *   键盘用户（尤其是从关闭按钮退出时）需要把焦点送回打开卡片的区间，
+     *   否则焦点会落在已经 display:none 的按钮上并被浏览器丢到 body。
+     */
+    function closeSegmentPopup(options) {
         const popup = document.getElementById(SEGMENT_POPUP_ID);
         if (!popup) return;
+        const restoreFocus = !!(options && options.restoreFocus);
+        const returnFocus = popup._qdReturnFocus;
+        const wasOpen = popup.classList.contains("show") ||
+            popup.style.display === "flex" || popup.style.display === "block";
+        popup._qdReturnFocus = null;
         popup.classList.remove("show");
         window.setTimeout(() => {
             if (!popup.classList.contains("show")) popup.style.display = "none";
         }, 180);
+        if (!restoreFocus || !wasOpen || !returnFocus || !returnFocus.isConnected) return;
+        try {
+            returnFocus.focus({ preventScroll: true });
+        } catch (_) {
+            try { returnFocus.focus(); } catch (_) { /* 目标已移除时保持原行为 */ }
+        }
     }
 
     // 与 core/showPanelAt 一致：将区间几何中点视为虚拟车站，
@@ -511,6 +529,8 @@
         if (!segment) return;
         const popup = ensureSegmentPopup();
         popup._qdAnchorHit = hit || null;
+        // 记住打开卡片的区间：关闭按钮 / Escape 之后把焦点送回去。
+        popup._qdReturnFocus = hit || null;
         const title = popup.querySelector(".qd-construction-segment-panel-title");
         const subtitle = popup.querySelector(".qd-construction-segment-panel-subtitle");
         const slot = popup.querySelector(".qd-construction-segment-card-slot");
@@ -569,7 +589,12 @@
             closeSegmentPopup();
         });
         document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape") closeSegmentPopup();
+            if (event.key !== "Escape") return;
+            // 区间热区自己有 Escape 处理（会回到线路入口并 stopPropagation）；
+            // 这里只兜住「焦点在弹窗内 / 页面其他位置」时的关闭，并把焦点送回区间。
+            const popup = document.getElementById(SEGMENT_POPUP_ID);
+            if (!popup || !popup.classList.contains("show")) return;
+            closeSegmentPopup({ restoreFocus: true });
         });
     }
 
@@ -605,7 +630,7 @@
         }, true);
     }
 
-    function appendSegmentHit(layer, path, startLength, endLength, segment, api, lineId) {
+    function appendSegmentHit(layer, path, startLength, endLength, segment, api, lineId, lineName) {
         const signedSpan = endLength - startLength;
         const span = Math.abs(signedSpan);
         if (!segment || span < 1) return;
@@ -632,7 +657,19 @@
         hit.setAttribute("focusable", "true");
         hit.setAttribute("role", "button");
         hit.setAttribute("tabindex", "-1"); // 二级键盘导航；鼠标点击逻辑保持原样。
-        hit.setAttribute("aria-label", `${segment.name || "区间"}建设进度`);
+        // aria-label 不能带数据里的排版标记（如 <br>），并明确告知可用的按键。
+        // 读屏会按「线路 + 起讫站 + 区间名 + 操作提示」念出完整语义。
+        const hitStations = getStations();
+        const fromName = stripBreakTags(hitStations?.[segment.from]?.cn || segment.from || "");
+        const toName = stripBreakTags(hitStations?.[segment.to]?.cn || segment.to || "");
+        const ariaParts = [
+            stripBreakTags(lineName || ""),
+            fromName && toName ? `${fromName}至${toName}区间` : "",
+            stripBreakTags(segment.name || "区间"),
+            "建设进度，按 Enter 或空格键查看详情"
+        ].filter(Boolean);
+        hit.setAttribute("aria-label", ariaParts.join("，"));
+        hit.setAttribute("aria-haspopup", "dialog");
 
         const open = (event) => {
             event.preventDefault();
@@ -643,6 +680,13 @@
             showSegmentPopup(segment, api, anchor, hit);
         };
         hit.addEventListener("click", open);
+        // 键盘 Tab 到另一条区间时，上一条区间还开着的卡片内容已经过期，先收起。
+        hit.addEventListener("focus", () => {
+            const popup = document.getElementById(SEGMENT_POPUP_ID);
+            if (popup && popup.classList.contains("show") && popup._qdAnchorHit !== hit) {
+                closeSegmentPopup();
+            }
+        });
 
         // 仅在这个青岛 SVG 命中区域上补充键盘行为，不依赖或修改 Core。
         // 阻止事件继续冒泡，避免 Core 的 document 级键盘激活监听重复触发。
@@ -1970,7 +2014,7 @@
             details.forEach((detail) => {
                 count += appendTrack(layer, path, fromLength, toLength, detail, line, api, stations, orderedFromId, orderedToId);
             });
-            appendSegmentHit(layer, path, fromLength, toLength, segment, api, line.id);
+            appendSegmentHit(layer, path, fromLength, toLength, segment, api, line.id, line.name || line.id);
         }
 
         appendLineKeyboardEntry(layer, line.id, line.name || line.id);
@@ -2143,6 +2187,22 @@
         const badgeLayer = ensureBadgeLayer();
         const latestLayer = ensureLatestMarkerLayer();
         const legend = ensureLegend();
+        // 关闭专题时焦点可能停在区间 / 星标 / 信息卡上；图层随后会被隐藏，
+        // 必须先把焦点送回触发按钮，否则键盘用户会突然"掉"到文档开头。
+        const activeEl = document.activeElement;
+        const segmentPopup = document.getElementById(SEGMENT_POPUP_ID);
+        const focusInsideOverlay = !!activeEl && (
+            layer.contains(activeEl) ||
+            !!latestLayer?.contains(activeEl) ||
+            !!segmentPopup?.contains(activeEl)
+        );
+        if (focusInsideOverlay) {
+            const progressButton = document.getElementById(BUTTON_ID);
+            if (progressButton) {
+                try { progressButton.focus({ preventScroll: true }); }
+                catch (_) { try { progressButton.focus(); } catch (_) { /* 忽略 */ } }
+            }
+        }
         layer.classList.remove("show");
         labelLayer?.classList.remove("show");
         badgeLayer?.classList.remove("show");
