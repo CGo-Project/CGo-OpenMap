@@ -593,7 +593,7 @@
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
         document.documentElement?.classList?.add("map-shenyang");
-        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261125.220221";
+        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261125.223600";
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./core/shared/route/loop-direction.js?v=${version}"><\/script>`);
         // 站距「约X米」估算：有经纬度优先取球面距离（异常偏离回退画布等比，见文件头注释）
