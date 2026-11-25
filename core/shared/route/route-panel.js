@@ -1570,12 +1570,27 @@
         return panel;
     }
 
+    /**
+     * 切换到指定路线页签。
+     * 鼠标点击、键盘 Enter/Space、方向键导航都走这里，保证三条路径的状态更新一致。
+     * @param {HTMLElement|null} tab 带 data-route 的页签
+     */
+    function selectRouteTab(tab) {
+        if (!tab) return;
+        const index = Number(tab.dataset.route);
+        if (!Number.isInteger(index) || index < 0 || index >= (state.routes || []).length) return;
+        if (state.routeIndex === index) return;
+        state.routeIndex = index;
+        renderActiveRoute();
+    }
+
     function bindResultEvents(panel) {
         panel.querySelector('[data-close="result"]')?.addEventListener("click", () => closePanel("result"));
         // 页签与分享按钮都在 routebar 上做事件委托：分享按钮是出结果后才由 paintRouteBar
         // 注入的，面板创建时该节点还不存在，直接 querySelector 会取空、监听根本绑不上。
         // 原「重新选择」按钮已移除：回到查询面板改起终点，直接展开查询面板的 section-header 即可
-        panel.querySelector(".cgo-rt-routebar").addEventListener("click", (event) => {
+        const routebar = panel.querySelector(".cgo-rt-routebar");
+        routebar.addEventListener("click", (event) => {
             if (event.target.closest('[data-share="route"]')) {
                 event.stopPropagation();
                 shareRoute();
@@ -1588,8 +1603,38 @@
             }
             const tab = event.target.closest("[data-route]");
             if (!tab) return;
-            state.routeIndex = Number(tab.dataset.route) || 0;
-            renderActiveRoute();
+            selectRouteTab(tab);
+        });
+        // 页签是原生 <button>，Enter/Space 本可由浏览器激活；这里显式处理既能覆盖
+        // 辅助技术合成的按键，也把 Space 的页面滚动一起挡掉。方向键 / Home / End
+        // 用于在多个候选方案之间快速移动并切换，Tab 仍可逐个访问每个页签。
+        routebar.addEventListener("keydown", (event) => {
+            if (event.ctrlKey || event.metaKey || event.altKey) return;
+            const tab = event.target.closest("[data-route]");
+            if (!tab) return;
+            const tabs = Array.from(routebar.querySelectorAll("[data-route]"))
+                .filter((node) => node.getClientRects().length > 0);
+            const index = tabs.indexOf(tab);
+            if (index < 0) return;
+
+            if (event.key === "Enter" || event.key === " " || event.key === "Spacebar" || event.code === "Space") {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!event.repeat) selectRouteTab(tab);
+                return;
+            }
+
+            let next = -1;
+            if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % tabs.length;
+            else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + tabs.length) % tabs.length;
+            else if (event.key === "Home") next = 0;
+            else if (event.key === "End") next = tabs.length - 1;
+            if (next === -1) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const target = tabs[next];
+            selectRouteTab(target);
+            target.focus({ preventScroll: true });
         });
         const body = panel.querySelector(".cgo-rt-result-body");
         body.addEventListener("click", (event) => {
@@ -2042,18 +2087,19 @@
             return;
         }
         bar.innerHTML = `
-            <div class="panel-tabs-nav">
+            <div class="panel-tabs-nav" role="group" aria-label="备选路线">
                 ${routes.map((route, index) => `
                     <button type="button" class="tab-item${index === state.routeIndex ? " cgo-rt-tab-active" : ""}" data-route="${index}"
-                            aria-pressed="${index === state.routeIndex ? "true" : "false"}">
-                        ${routeTabLabel(route, index)}
+                            aria-pressed="${index === state.routeIndex ? "true" : "false"}"
+                            aria-label="${escAttr(`方案 ${index + 1}：${routeTabLabel(route, index)}`)}">
+                        ${escAttr(routeTabLabel(route, index))}
                     </button>
                 `).join("")}
             </div>
-            <button class="panel-share-btn" title="查看全程" data-fit="route">
+            <button type="button" class="panel-share-btn" title="查看全程" data-fit="route">
                 <cgo-icon name="map" size="20"></cgo-icon>
             </button>
-            <button class="panel-share-btn" title="分享路线信息" data-share="route">
+            <button type="button" class="panel-share-btn" title="分享路线信息" data-share="route">
                 <cgo-icon name="external" size="20"></cgo-icon>
             </button>
         `;
@@ -2177,7 +2223,8 @@
         panel.querySelectorAll(".cgo-rt-routebar .tab-item").forEach((tab) => {
             const active = Number(tab.dataset.route) === state.routeIndex;
             tab.classList.toggle("cgo-rt-tab-active", active);
-            // 页签是非原生控件，选中态只体现在 class 上；一并同步给读屏
+            // 页签是原生 <button>：Enter/Space 由浏览器与上面的 keydown 处理；
+            // 这里只同步视觉选中态与读屏的 aria-pressed。
             tab.setAttribute("aria-pressed", active ? "true" : "false");
         });
 
