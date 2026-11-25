@@ -87,7 +87,7 @@
     };
 
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        const v = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261124.235734";
+        const v = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261125.220221";
         document.write(`<scr` + `ipt src="./city/hefei/modules/hefei_timetable.js?v=${v}"><\/scr` + `ipt>`);
         document.write(`<scr` + `ipt src="./city/hefei/modules/hefei_cultural.js?v=${v}"><\/scr` + `ipt>`);
     }

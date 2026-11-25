@@ -429,7 +429,7 @@
 
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261124.235734";
+        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261125.220221";
         // 共享层（临时位于 core/shared/，须早于各城模块加载）
         // 环线方向文案（内环 / 外环）：须早于行程规划与时刻表渲染
         document.write(`<script src="./core/shared/route/loop-direction.js?v=${version}"><\/script>`);
