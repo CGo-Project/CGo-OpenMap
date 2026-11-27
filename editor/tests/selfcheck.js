@@ -2460,8 +2460,31 @@ section('撤销历史：切换工程 / 新建画布后清空（#39）');
     check(!/HistoryManager\.reset\b/.test(editorAppSrc), '不再调用不存在的 HistoryManager.reset');
     check(/btnConfirmNewCanvas[\s\S]{0,1400}HistoryManager\.clear\(\)/.test(editorAppSrc),
         '新建画布后清空撤销历史');
-    check(/btnHeaderOpenFile[\s\S]{0,800}loadProjectJsonData[\s\S]{0,1600}HistoryManager\.clear\(\)/.test(editorAppSrc),
+    // 断言锚到"函数体"而不是字符距离：
+    // loadProjectJsonData 里加一段导入分支（如 RMP 转换）就会把 clear() 推出字符预算，
+    // 那种失败是测试脆弱，不是功能回归。这里直接取函数体，核对 normalize 之后确实清了历史。
+    function extractFunctionBody(src, name) {
+        const start = src.indexOf('function ' + name + '(');
+        if (start < 0) return null;
+        const braceStart = src.indexOf('{', start);
+        if (braceStart < 0) return null;
+        let depth = 0;
+        for (let i = braceStart; i < src.length; i++) {
+            const ch = src[i];
+            if (ch === '{') depth++;
+            else if (ch === '}') {
+                depth--;
+                if (depth === 0) return src.slice(braceStart + 1, i);
+            }
+        }
+        return null;
+    }
+    const loadJsonBody = extractFunctionBody(editorAppSrc, 'loadProjectJsonData') || '';
+    check(loadJsonBody.length > 0 && /HistoryManager\.clear\(\)/.test(loadJsonBody),
         '导入工程 JSON 后清空撤销历史');
+    check(/app\.project\s*=\s*window\.OpenMapEditor\.ProjectModel\.normalize/.test(loadJsonBody) &&
+        loadJsonBody.indexOf('HistoryManager.clear()') > loadJsonBody.indexOf('app.project'),
+        '导入工程 JSON：先 normalize 接管工程，再清空撤销历史（顺序正确）');
     check(/HistoryManager\.clear\(\)[\s\S]{0,200}renderAll\(\)[\s\S]{0,200}已无损载入城市/.test(editorAppSrc),
         '载入城市后清空撤销历史（不会 Undo 回上一座城市）');
     check(/HistoryManager\.markSaved\(\)/.test(editorAppSrc),

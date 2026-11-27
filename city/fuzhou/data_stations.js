@@ -106,8 +106,20 @@ const stationsData = {
     "BE07": { type: "dot", x: 1177.3, y: 1211.3, cn: "祥谦", en: "Xiangqian", align: "top", offset: { x: 0, y: 0 } },
     "BE06": { type: "dot", x: 1507.9, y: 1211.3, cn: "首占", en: "Shouzhan", align: "top", offset: { x: 0, y: 0 } },
     "BE05": { type: "no", x: 1651.6, y: 1211.3, cn: "滨海西", en: "Binhaixi", align: "top", offset: { x: 0, y: 0 } },
-    "BE04": { type: "dot", x: 1757.8, y: 1211.3, cn: "大数据", en: "Dashuju", align: "top", offset: { x: 0, y: 0 } },
+    "BE04": { type: "dot", x: 1757.8, y: 1211.3, cn: "大数据", en: "Dashuju", align: "bottom", offset: { x: 0, y: 0 } },
     "BE03": { type: "dot", x: 1840.3, y: 1211.3, cn: "滨海中央商务区", en: "Binhai CBD", align: "bottom-right", offset: { x: 0, y: 0 } },
     "BE02": { type: "dot", x: 1887, y: 1113.5, cn: "机场", en: "Airport", align: "right", offset: { x: 0, y: 0 } },
-    "BE01": { type: "dot", x: 1887, y: 1014.1, cn: "文岭", en: "Wenling", align: "right", offset: { x: 0, y: 0 } }
+    "BE01": { type: "dot", x: 1887, y: 1014.1, cn: "文岭", en: "Wenling", align: "right", offset: { x: 0, y: 0 } },
+    "M223": {"x":1154.85,"y":699.95,"cn":"魁岐","en":"Kuiqi","align":"top-right","type":"no"},
+    "M224": {"x":1195.35,"y":739.5,"cn":"葆桢路","en":"Baozhenlu","align":"top-right","type":"no"},
+    "M225": {"x":1234.95,"y":779.23,"cn":"儒江","en":"Rujiang","align":"top-right","type":"no"},
+    "M226": {"x":1280.22,"y":824.5,"cn":"下德","en":"Xiade","align":"top-right","type":"no"},
+    "M227": {"x":1326,"y":870.63,"cn":"马江渡","en":"Majingdu","align":"top-right","type":"no"},
+    "M228": {"x":1369.95,"y":915.23,"cn":"船政文化景区","en":"Chuanzheng Shipbuilding<br>Heritage Park","align":"top-right","type":"no"},
+    "M229": {"x":1449.7,"y":915.23,"cn":"罗星塔","en":"Luoxinta","align":"bottom-right","type":"no"},
+    "M230": {"x":1500,"y":865,"cn":"青洲","en":"Qingzhou","align":"bottom-right","type":"no"},
+    "M617": {"x":1840.3,"y":1170,"cn":"万沙·滨海三中","en":"Wansha / Sanzhong Binhai","align":"left","type":"no"},
+    "M618": {"x":1840.3,"y":1255,"cn":"沙尾","en":"Shawei","align":"right","type":"no"},
+    "M619": {"x":1840.3,"y":1290,"cn":"文武砂·国际学校","en":"Wenwusha / Guoji Xuexiao","align":"right","type":"no"},
+    "M620": {"x":1840.3,"y":1330,"cn":"十八孔闸","en":"Shibakongzha","align":"right","type":"no"}
 };

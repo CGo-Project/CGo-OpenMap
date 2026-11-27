@@ -29,3 +29,7 @@ city/fuzhou/tools/_tmp_*.js
 归档.zip
 # 本地截图暂存（PR 用，不入库）
 .tmp-shot/
+
+# 本地 AI 技能目录（个人研究沉淀，只在本机使用，不入版本库）
+# 例：.dsh/skills/fuzhou-station-map-audit —— 福州官网车站示意图更新审计
+.dsh/
