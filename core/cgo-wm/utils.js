@@ -54,6 +54,17 @@ export function normalizeConfig(input = {}, host = {}) {
     ? input.minimizeMode
     : DEFAULT_CONFIG.minimizeMode;
   const minHeight = clamp(input.minHeight ?? DEFAULT_CONFIG.minHeight, 48, 2000);
+  const minWidth = clamp(input.minWidth ?? DEFAULT_CONFIG.minWidth, 120, 2000);
+  // maxWidth / maxHeight：0 或未配置 = 不限（沿用视口比例上限，行为与旧版一致）；
+  // 配了就以它为准，且不允许小于最小值（否则 min/max 打架，浏览器会把元素锁死）
+  const maxWidthInput = Number(input.maxWidth);
+  const maxHeightInput = Number(input.maxHeight);
+  const maxWidth = Number.isFinite(maxWidthInput) && maxWidthInput > 0
+    ? Math.max(minWidth, clamp(maxWidthInput, 0, 4000))
+    : 0;
+  const maxHeight = Number.isFinite(maxHeightInput) && maxHeightInput > 0
+    ? Math.max(minHeight, clamp(maxHeightInput, 0, 4000))
+    : 0;
   const rawDefaultHeight = input.defaultHeight ?? DEFAULT_CONFIG.defaultHeight;
   const defaultHeight = rawDefaultHeight === 'auto' || !Number.isFinite(Number(rawDefaultHeight))
     ? 'auto'
@@ -98,8 +109,10 @@ export function normalizeConfig(input = {}, host = {}) {
     autoHeight,
     dockHeight,
     defaultWidth: clamp(input.defaultWidth ?? DEFAULT_CONFIG.defaultWidth, 120, 4000),
-    minWidth: clamp(input.minWidth ?? DEFAULT_CONFIG.minWidth, 120, 2000),
+    minWidth,
+    maxWidth,
     minHeight,
+    maxHeight,
     mobileBreakpoint: clamp(host.mobileBreakpoint ?? DEFAULT_MOBILE_BREAKPOINT, 320, 1280),
   };
 }

@@ -652,7 +652,7 @@ export class CgoWindowInstance {
 
   applyGeometry() {
     if (this.state.effectiveMode === 'sidebar') {
-      for (const property of ['left', 'top', 'right', 'bottom', 'width', 'minWidth', 'minHeight', 'maxHeight', 'transform']) {
+      for (const property of ['left', 'top', 'right', 'bottom', 'width', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight', 'transform']) {
         this.element.style[property] = '';
       }
       const dockH = this.state.dockHeight;
@@ -671,6 +671,8 @@ export class CgoWindowInstance {
     this.element.style.width = safeCssLength(this.state.width, `${this.config.defaultWidth}px`);
     const workArea = this.manager.getWorkArea();
     const maxFloatH = Math.max(this.config.minHeight, (workArea.height || 800) - 16);
+    // maxHeight / maxWidth：0 或未配置 = 沿用视口上限（与旧版一致）
+    const maxH = this.config.maxHeight > 0 ? Math.min(this.config.maxHeight, maxFloatH) : maxFloatH;
     if (this.state.lifecycle === 'minimized' && this.resolveMinimizeMode() === 'collapse') {
       this.element.style.height = 'auto';
       this.element.style.minHeight = '0px';
@@ -678,14 +680,16 @@ export class CgoWindowInstance {
     } else {
       this.element.style.height = safeCssLength(this.state.height);
       this.element.style.minHeight = `${this.config.minHeight}px`;
-      this.element.style.maxHeight = `${Math.round(maxFloatH)}px`;
+      this.element.style.maxHeight = `${Math.round(maxH)}px`;
     }
     this.element.style.minWidth = `${this.config.minWidth}px`;
+    if (this.config.maxWidth > 0) this.element.style.maxWidth = `${Math.round(this.config.maxWidth)}px`;
+    else this.element.style.removeProperty('max-width');
   }
 
   clearFreeGeometry() {
     this.element.classList.remove('cgowm-has-dock-height');
-    for (const property of ['left', 'top', 'right', 'bottom', 'width', 'height', 'minWidth', 'minHeight', 'maxHeight', 'transform']) {
+    for (const property of ['left', 'top', 'right', 'bottom', 'width', 'height', 'minWidth', 'maxWidth', 'minHeight', 'maxHeight', 'transform']) {
       this.element.style[property] = '';
     }
   }
@@ -1344,7 +1348,10 @@ export class CgoWindowInstance {
     const dy = event.clientY - session.startY;
 
     if (session.mode === 'sidebar') {
-      const nextHeight = clamp(Math.round(session.rect.height + dy), this.config.minHeight, Math.max(this.config.minHeight, workArea.height));
+      const dockMax = this.config.maxHeight > 0
+        ? Math.min(this.config.maxHeight, Math.max(this.config.minHeight, workArea.height))
+        : Math.max(this.config.minHeight, workArea.height);
+      const nextHeight = clamp(Math.round(session.rect.height + dy), this.config.minHeight, dockMax);
       this.state.dockHeight = nextHeight;
       this.manager.setDockHeight(this.key, nextHeight);
       this.applyGeometry();
@@ -1361,8 +1368,14 @@ export class CgoWindowInstance {
       if (session.direction.includes('w')) nextW = session.rect.width - dx * 2;
       if (session.direction.includes('s')) nextH = session.rect.height + dy * 2;
       if (session.direction.includes('n')) nextH = session.rect.height - dy * 2;
-      nextW = clamp(Math.round(nextW), this.config.minWidth, Math.floor(viewport.width * 0.94));
-      nextH = clamp(Math.round(nextH), this.config.minHeight, Math.floor(viewport.height * 0.9));
+      const modalMaxW = this.config.maxWidth > 0
+        ? Math.min(this.config.maxWidth, Math.floor(viewport.width * 0.94))
+        : Math.floor(viewport.width * 0.94);
+      const modalMaxH = this.config.maxHeight > 0
+        ? Math.min(this.config.maxHeight, Math.floor(viewport.height * 0.9))
+        : Math.floor(viewport.height * 0.9);
+      nextW = clamp(Math.round(nextW), this.config.minWidth, Math.max(this.config.minWidth, modalMaxW));
+      nextH = clamp(Math.round(nextH), this.config.minHeight, Math.max(this.config.minHeight, modalMaxH));
       this.state.width = nextW;
       this.element.style.setProperty('--cwm-modal-width', `${nextW}px`);
       if (hasVertical) {
@@ -1378,16 +1391,19 @@ export class CgoWindowInstance {
 
     const hasVertical = session.direction.includes('s') || session.direction.includes('n');
     const hasHorizontal = session.direction.includes('e') || session.direction.includes('w');
+    // 配置了上限就同时受它约束（未配置为 Infinity，与旧行为完全一致）
+    const dragMaxW = this.config.maxWidth > 0 ? this.config.maxWidth : Infinity;
+    const dragMaxH = this.config.maxHeight > 0 ? this.config.maxHeight : Infinity;
     let { left: x, top: y, width, height } = session.rect;
-    if (session.direction.includes('e')) width = clamp(session.rect.width + dx, this.config.minWidth, viewport.width - x);
-    if (session.direction.includes('s')) height = clamp(session.rect.height + dy, this.config.minHeight, workArea.bottom - y);
+    if (session.direction.includes('e')) width = clamp(session.rect.width + dx, this.config.minWidth, Math.min(dragMaxW, viewport.width - x));
+    if (session.direction.includes('s')) height = clamp(session.rect.height + dy, this.config.minHeight, Math.min(dragMaxH, workArea.bottom - y));
     if (session.direction.includes('w')) {
-      width = clamp(session.rect.width - dx, this.config.minWidth, session.rect.right);
+      width = clamp(session.rect.width - dx, this.config.minWidth, Math.min(dragMaxW, session.rect.right));
       x = session.rect.right - width;
     }
     if (session.direction.includes('n')) {
-      const maxH = Math.max(this.config.minHeight, session.rect.bottom - workArea.top);
-      height = clamp(session.rect.height - dy, this.config.minHeight, maxH);
+      const edgeMaxH = Math.min(dragMaxH, Math.max(this.config.minHeight, session.rect.bottom - workArea.top));
+      height = clamp(session.rect.height - dy, this.config.minHeight, edgeMaxH);
       y = session.rect.bottom - height;
     }
     this.state.x = Math.round(x);

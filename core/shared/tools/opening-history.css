@@ -26,10 +26,11 @@
 
 /* 站点涟漪：以圆心为基准放大淡出。
    缩放与透明度由 applyFrame 按 t 逐帧写，所以这里只留框与原点，不挂 CSS 动画
-   （CSS 动画没法定位到任意 t，导出就取不回画面）。 */
+   （CSS 动画没法定位到任意 t，导出就取不回画面）。
+   每条涟漪是内外两层同心圆（粗细由 JS 逐元素写 stroke-width），
+   故这里**不能**再声明 stroke-width，否则类选择器会盖掉表现属性。 */
 .cgo-oh-pulse {
     fill: none;
-    stroke-width: 2.2;
     transform-box: fill-box;
     transform-origin: center;
 }

@@ -592,15 +592,10 @@ cgo-toast-container {
     }
 
     /* 侧边栏模式：恢复 CGoWM 原版顶栏与最小化按钮，隐藏 #info-panel 信息头避免双标题栏；
-       沈阳站名题字与香港专属站头在侧栏保留精简视觉横幅 */
+       沈阳站名题字同样收进顶栏（题字横幅只属于浮窗形态），香港专属站头保留精简视觉横幅 */
     .cgowm-window.openmap-station-window[data-mode="sidebar"] #info-panel > .panel-header,
     .cgowm-window.openmap-station-window[data-mode="sidebar"] .cgowm-inline-controls {
         display: none !important;
-    }
-
-    .cgowm-window.openmap-station-window[data-mode="sidebar"] #info-panel > .panel-header.sy-calligraphy-header {
-        display: flex !important;
-        padding: 12px 16px !important;
     }
 
     .map-hongkong .cgowm-window.openmap-station-window[data-mode="sidebar"] #info-panel > .panel-header {

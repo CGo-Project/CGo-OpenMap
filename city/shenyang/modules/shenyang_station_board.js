@@ -14,15 +14,23 @@
         circleHeight: 24,
         circleGap: 2,
         numberFontSize: 18,
-        twoDigitNumberFontSize: 15,
+        twoDigitNumberFontSize: 18,
+        /**
+         * 两位数（10 号线起）在**正圆**里的排版：先收字距、再轻微横向压缩。
+         *
+         * 底形必须是正圆 —— 把圆拉成胶囊会破坏整套徽标的等宽节奏（用户反馈）。
+         * 也不用整段 scaleX 0.8 硬塞：那样每个数字都被压窄，「10」看着比「3」瘦一圈。
+         * 这里两招并用：letter-spacing 收掉数字之间的空隙，剩下的差额再按 0.92 轻压，
+         * 字形比例基本保持，圆内左右留白与个位数接近。
+         */
+        twoDigitNumberScaleX: 0.92,
+        twoDigitNumberLetterSpacing: -0.6,
         numberVerticalOffset: 1,
         labelGap: 3
     };
     const LINE_BADGE_OVERRIDES = {
         SYM10: {
-            numberTextColor: "#ffffff",
-            numberFontSize: 18,
-            numberScaleX: 0.8
+            numberTextColor: "#ffffff"
         }
     };
     /**
@@ -210,6 +218,8 @@
             circleGap,
             numberFontSize,
             twoDigitNumberFontSize,
+            twoDigitNumberScaleX,
+            twoDigitNumberLetterSpacing,
             numberVerticalOffset,
             labelGap
         } = LINE_BADGE_CONFIG;
@@ -226,18 +236,27 @@
             if (!number) return "";
             const centerX = circleRadius + index * (circleHeight + circleGap);
             const override = LINE_BADGE_OVERRIDES[line.id] || {};
-            const fontSize = override.numberFontSize || (number.length > 1 ? twoDigitNumberFontSize : numberFontSize);
-            const scaleX = override.numberScaleX || 1;
-            const transform = scaleX === 1
-                ? ""
-                : ` transform="translate(${centerX} 0) scale(${scaleX} 1) translate(${-centerX} 0)"`;
+            const twoDigit = number.length > 1;
+            const fontSize = override.numberFontSize || (twoDigit ? twoDigitNumberFontSize : numberFontSize);
+            const scaleX = override.numberScaleX !== undefined
+                ? override.numberScaleX
+                : (twoDigit ? twoDigitNumberScaleX : 1);
+            const letterSpacing = override.numberLetterSpacing !== undefined
+                ? override.numberLetterSpacing
+                : (twoDigit ? twoDigitNumberLetterSpacing : 0);
+            // 两位数：围绕圆心的横向轻压缩（字形不被整体改瘦），配合 letter-spacing 收字距；
+            // 底形始终是正圆，个位数与两位数共用同一套圆底节奏
+            const transform = scaleX !== 1
+                ? ` transform="translate(${centerX} 0) scale(${scaleX} 1) translate(${-centerX} 0)"`
+                : "";
+            const spacingAttr = letterSpacing ? ` letter-spacing="${letterSpacing}"` : "";
             // 该圆即题字 header 的染色来源线路 → 圆底/数字颜色对调（onColor 底 + 线路色数字）
             const inverted = isBadgeInverted(line, headerTint);
             const circleFill = inverted ? headerTint.onColor : line.color;
             const numberFill = inverted ? line.color : getBadgeNumberTextColor(line);
             return `
                 <circle cx="${centerX}" cy="${centerY}" r="${circleRadius}" fill="${circleFill}" />
-                <text x="${centerX}" y="${centerY + numberVerticalOffset}" text-anchor="middle" dominant-baseline="middle" fill="${numberFill}" font-family="${BADGE_EN_FONT}" font-size="${fontSize}" font-weight="400"${transform}>${number}</text>
+                <text x="${centerX}" y="${centerY + numberVerticalOffset}" text-anchor="middle" dominant-baseline="middle" fill="${numberFill}" font-family="${BADGE_EN_FONT}" font-size="${fontSize}" font-weight="400"${spacingAttr}${transform}>${number}</text>
             `;
         }).join("");
 

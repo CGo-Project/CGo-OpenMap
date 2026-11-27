@@ -1683,6 +1683,8 @@
             defaultPosition: cfg.defaultPosition || null,
             minWidth: cfg.minWidth || 260,
             minHeight: cfg.minHeight || 220,
+            maxWidth: cfg.maxWidth || 0,
+            maxHeight: cfg.maxHeight || 0,
             resizable: cfg.resizable !== false,
             groupable: cfg.groupable !== false,
             rememberPosition: cfg.rememberPosition !== false,

@@ -1363,8 +1363,11 @@
             resultPanel.style.removeProperty("left");
             resultPanel.style.removeProperty("top");
             resultPanel.style.removeProperty("right");
-            renderRoutes(routes);
+            // ⚠️ 先开窗再渲染：renderActiveRoute() 里的 isResultVisible() 会同时看
+            // CGoWMAdapter.isOpen("route-result")，窗还没开时它判为不可见，
+            // applyHighlight() 就被跳过 —— 表现为「结果面板有内容、地图上却没有高亮线」。
             window.CGoWMAdapter.open("route-result");
+            renderRoutes(routes);
         } else {
             if (resultPanel.dataset.cgoMode === "section") {
                 // 固定侧栏：结果面板入驻动态内容区，独占侧栏的剩余高度
@@ -2571,6 +2574,30 @@
         wanted.forEach((item) => ensureRipple(item.sid, item.role));
     }
 
+    /** 把地图上剩余的起终点涟漪全部摘掉（行程面板全关时收尾用） */
+    function clearPickedRipples() {
+        const layer = window.stationsLayer || document.getElementById("stations-layer");
+        if (!layer) return;
+        layer.querySelectorAll(`.${RIPPLE_CLASS}`).forEach((el) => el.remove());
+    }
+
+    /**
+     * 行程面板（查询 / 结果）是否还有一扇开着。
+     *
+     * 涟漪是「正在看这条行程」的附属标注，应随面板一起进退：面板全关后还留着两圈脉冲，
+     * 会被误读成「地图上还有没撤销的选中态」（用户反馈：关掉行程面板涟漪还在跳）。
+     * 面板一开（哪怕是只填了起点还没出结果）就该重新出现，故 paintPickedRipple 仍是唯一画入口。
+     */
+    function routeUiOpen() {
+        if (isCgoWmDesktop()) {
+            return !!window.CGoWMAdapter?.isOpen?.("route-plan")
+                || !!window.CGoWMAdapter?.isOpen?.("route-result");
+        }
+        if (panelMode() === "section") return planExpanded || isResultVisible();
+        return !!document.getElementById(PLAN_ID)?.classList.contains("show")
+            || !!document.getElementById(RESULT_ID)?.classList.contains("show");
+    }
+
     /**
      * 保活：起终点的 active 随时可能被核心清掉（每次 selectStation 都会先 clearHighlights()，
      * 点空白处的 resetMapState() 同理），而此时结果窗口还开着、路线高亮也还在，起终点不该跟着熄灭。
@@ -3263,6 +3290,7 @@
                 }
             }
             if (!isResultVisible()) clearHighlight();
+            if (!routeUiOpen()) clearPickedRipples();
             emit("cgo:route-closed", {});
             return;
         }
@@ -3271,6 +3299,7 @@
             // 结果面板则是按需存在的窗口，收起它同样保留内容，展开可恢复
             if (which === "result") collapseResultSection();
             else setPlanExpanded(false);
+            if (!routeUiOpen()) clearPickedRipples();
             emit("cgo:route-closed", {});
             return;
         }
@@ -3293,6 +3322,7 @@
         }
         // 高亮归结果面板所有：它不可见了才撤销（查询面板开着与否与此无关）
         if (!isResultVisible()) clearHighlight();
+        if (!routeUiOpen()) clearPickedRipples();
         emit("cgo:route-closed", {});
     }
 

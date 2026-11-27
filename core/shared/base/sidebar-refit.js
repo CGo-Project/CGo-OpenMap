@@ -279,11 +279,56 @@
         const size = parseFloat(style.width) || BADGE_SIZE;
         const room = size * (badge.classList.contains("circle") ? BADGE_ROOM.circle : BADGE_ROOM.square);
         const scale = Math.min(1, room / width);
+        // 换到更大的形态时要能「松开」：只增不减会把上一次的压缩比永久留住
         if (scale < 0.999) codeEl.style.setProperty("--cgo-rt-code-sx", scale.toFixed(3));
+        else codeEl.style.removeProperty("--cgo-rt-code-sx");
+    }
+
+    /** 已挂上尺寸观察的色块（WeakMap 去重；Set 用于扫掉已脱离文档的旧元素） */
+    const fitWatchers = new WeakMap();
+    const activeWatchers = new Set();
+
+    /**
+     * 断开已脱离文档的观察器。
+     * ResizeObserver 会**强引用**被观察元素，侧栏重建后旧徽标不会自己回收；
+     * decorateSquares 每轮都会跑，顺带扫一次即可，不需要额外定时器。
+     */
+    function sweepFitWatchers() {
+        activeWatchers.forEach((entry) => {
+            if (entry.badge.isConnected) return;
+            entry.observer.disconnect();
+            activeWatchers.delete(entry);
+        });
+    }
+
+    /**
+     * 盯住单个色块的边长：展开 ⇄ 最小化、侧栏 ⇄ 浮窗之间切换时徽标会换尺寸，
+     * 压缩比必须按**新边长**重算 —— 否则会按另一种形态的尺寸把数字压扁
+     * （用户反馈：最小化行里的「54」比 16px 色块窄一截）。
+     * 折叠态下元素处于 display:none，宽度为 0 时先跳过，等真正显示出来再算。
+     *
+     * 观察器只在尺寸变化时跑一次 rAF，写入的是 codeEl 上的 CSS 变量、不改色块几何，
+     * 因此不会自触发死循环。
+     */
+    function watchFit(badge, codeEl) {
+        if (fitWatchers.has(badge) || typeof ResizeObserver !== "function") return;
+        let frame = 0;
+        const observer = new ResizeObserver(() => {
+            if (frame) return;
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                if (badge.getBoundingClientRect().width < 1) return;   // 还藏着，等显示再量
+                fitCode(badge, codeEl);
+            });
+        });
+        observer.observe(badge);
+        fitWatchers.set(badge, observer);
+        activeWatchers.add({ badge, observer });
     }
 
     /** 就地把尚未处理过的色块换成徽标（已处理的打 data 标记，避免观察器反复处理） */
     function decorateSquares(scope) {
+        sweepFitWatchers();
         const squares = scope.querySelectorAll(`.header-color-square:not([${SKIN_ATTR}])`);
         squares.forEach((square) => {
             const line = lineOfSquare(square);
@@ -323,7 +368,10 @@
             codeEl.appendChild(document.createTextNode(parts.code));
             if (parts.suffix) addAffix(parts.suffix);
             square.appendChild(codeEl);
-            fitCode(square, codeEl);
+            // 有 ResizeObserver 就按「显示时的实际边长」算，避免用隐藏态的宽度定死压缩比；
+            // 没有的话退回一次性测量（老浏览器），至少不会画错形状
+            if (typeof ResizeObserver === "function") watchFit(square, codeEl);
+            else fitCode(square, codeEl);
         });
     }
 

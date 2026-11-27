@@ -57,14 +57,20 @@ export function writeMobileWorkspaceState(storage, storageKey, state) {
 
 export function sanitizePersistedState(value, config, viewport = {}) {
   if (!value || value.schema !== STORAGE_SCHEMA_VERSION) return null;
-  const width = clamp(value.width ?? config.defaultWidth, config.minWidth, Math.max(config.minWidth, viewport.width || 4000));
+  const widthLimit = config.maxWidth > 0
+    ? Math.max(config.minWidth, Math.min(config.maxWidth, viewport.width || 4000))
+    : Math.max(config.minWidth, viewport.width || 4000);
+  const heightLimit = config.maxHeight > 0
+    ? Math.max(config.minHeight, Math.min(config.maxHeight, viewport.height || 4000))
+    : Math.max(config.minHeight, viewport.height || 4000);
+  const width = clamp(value.width ?? config.defaultWidth, config.minWidth, widthLimit);
   const rawHeight = value.height ?? config.defaultHeight;
   const height = rawHeight === 'auto' || !Number.isFinite(Number(rawHeight))
     ? 'auto'
-    : clamp(rawHeight, config.minHeight, Math.max(config.minHeight, viewport.height || 4000));
+    : clamp(rawHeight, config.minHeight, heightLimit);
   const dockHeight = value.dockHeight === 'auto' || value.dockHeight === undefined || value.dockHeight === null
     ? (config.dockHeight ?? 'auto')
-    : clamp(value.dockHeight, config.minHeight, Math.max(config.minHeight, viewport.height || 4000));
+    : clamp(value.dockHeight, config.minHeight, heightLimit);
   const maxX = Math.max(0, (viewport.width || 4000) - Math.min(width, viewport.width || width));
   const numericHeight = height === 'auto' ? config.minHeight : height;
   const maxY = Math.max(0, (viewport.height || 4000) - Math.min(numericHeight, viewport.height || numericHeight));
