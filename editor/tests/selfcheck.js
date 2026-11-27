@@ -3566,6 +3566,49 @@ section('线上编辑器：不提供在线城市库，已有城市只能从本�
     check(hrbBadgesSrc.includes('slice(2, 4)') && hrbBadgesSrc.includes('slice(4, 6)') &&
         /width:\s*totalWidth,\s*\n\s*height\b/.test(syBoardSrc),
         'Audit: Harbin RGB 解析与 Shenyang 紧凑徽标 height 均已修复');
+
+    // ========================================================================
+    // 键盘可达性：青岛建设进度专题（#64）与行程规划路线切换（#65）
+    // ========================================================================
+    section('键盘可达性：青岛建设进度专题与行程规划路线切换（#64 / #65）');
+    const qdMapSrc = fs.readFileSync(path.join(ROOT, 'city/qingdao/modules/qingdao_construction_progress_map.js'), 'utf8');
+    const qdCssSrc = fs.readFileSync(path.join(ROOT, 'city/qingdao/style.css'), 'utf8');
+    const routeSrc = fs.readFileSync(path.join(ROOT, 'core/shared/route/route-panel.js'), 'utf8');
+    const routeCssSrc = fs.readFileSync(path.join(ROOT, 'core/shared/route/route-panel.css'), 'utf8');
+
+    check(/hit\.setAttribute\("focusable",\s*"true"\)/.test(qdMapSrc) &&
+        /hit\.setAttribute\("role",\s*"button"\)/.test(qdMapSrc) &&
+        /hit\.setAttribute\("tabindex",\s*"-1"\)/.test(qdMapSrc),
+        '#64: 青岛区间热区具备 focusable / role=button / 二级 tabindex');
+    check(/hit\.setAttribute\("aria-label",\s*ariaParts\.join/.test(qdMapSrc) &&
+        /hit\.setAttribute\("aria-haspopup",\s*"dialog"\)/.test(qdMapSrc) &&
+        /stripBreakTags\(segment\.name/.test(qdMapSrc),
+        '#64: 区间 aria-label 剥离 <br> 并包含线路、起讫站与按键提示');
+    check(/event\.key === "Enter"[\s\S]{0,320}open\(event\)/.test(qdMapSrc) &&
+        /event\.key === " " \|\| event\.key === "Spacebar" \|\| event\.code === "Space"/.test(qdMapSrc),
+        '#64: 区间热区支持 Enter 与 Space 激活（Space 阻止页面滚动）');
+    check(/function closeSegmentPopup\(options\)/.test(qdMapSrc) &&
+        /restoreFocus/.test(qdMapSrc) && /_qdReturnFocus/.test(qdMapSrc) &&
+        /progressButton\.focus/.test(qdMapSrc),
+        '#64: 关闭弹窗/退出专题时把焦点送回区间或专题按钮');
+    check(/qd-construction-segment-hit:focus-visible/.test(qdCssSrc) &&
+        /qd-construction-line-keyboard-entry:focus-visible/.test(qdCssSrc),
+        '#64: 区间与线路入口均有 focus-visible 焦点样式');
+
+    check(routeSrc.includes('<button type="button" class="tab-item') &&
+        routeSrc.includes('data-route="${index}"'),
+        '#65: 路线页签使用原生 <button type="button">，不再依赖 div role=button');
+    check(!/<div class="tab-item[^>]*role="button"/.test(routeSrc),
+        '#65: 不再残留 div role=button 的路线页签');
+    check(/routebar\.addEventListener\("keydown"/.test(routeSrc) &&
+        /event\.key === "Enter" \|\| event\.key === " " \|\| event\.key === "Spacebar"/.test(routeSrc) &&
+        /selectRouteTab\(tab\)/.test(routeSrc),
+        '#65: 路线页签显式处理 Enter/Space，并复用统一的 selectRouteTab');
+    check(routeSrc.includes('aria-pressed="${index === state.routeIndex ? "true" : "false"}"') &&
+        /tab\.setAttribute\("aria-pressed"/.test(routeSrc),
+        '#65: 初始与切换后的 aria-pressed 都会同步');
+    check(/\.cgo-rt-routebar \.tab-item:focus-visible/.test(routeCssSrc),
+        '#65: 路线页签保留可见焦点样式');
 })().then(finish, err => { failed++; console.log('  ✗ 本地目录载入自检异常：' + (err && err.stack || err)); finish(); });
 
 function finish() {

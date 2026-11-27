@@ -140,10 +140,11 @@ window.QingdaoConstructionProgressMap = {
 
 `appendSegmentHit()` 沿该区间路径生成一条透明 SVG Path：`stroke-width=18`、`pointer-events=stroke`，类名 `qd-construction-segment-hit`。在同一热区挂载鼠标 `click` 事件和键盘事件：
 
-- 热区具有 `focusable`、`role=button` 与明确 `aria-label`；当前两级键盘导航通过动态焦点控制进入区间，不再依赖所有热区永久设置 `tabindex=0`。
+- 热区具有 `focusable`、`role=button`、`aria-haspopup=dialog` 与明确 `aria-label`（线路 + 起讫站 + 区间名 + 按键提示，`<br>` 等排版标记会先剥离）；当前两级键盘导航通过动态焦点控制进入区间，不再依赖所有热区永久设置 `tabindex=0`。
 - Enter 在 `keydown` 激活；Space 在 `keydown` 阻止默认页面滚动、在 `keyup` 激活。
 - 激活时先关闭普通车站面板，再调用 `focusSegmentOnMap()` 计算锚点，最后调用 `showSegmentPopup()`。
 - `focusSegmentOnMap()` 通过 SVG 路径中点和变换矩阵获取屏幕位置；桌面端主要用于定位弹窗锚点，移动端可调用 `getMapView()` / `setMapView()` 重新对准区间。
+- 信息卡记录打开它的区间热区：点击关闭按钮或按 Escape 后焦点回到该热区；退出专题时若焦点仍停在区间 / 星标 / 信息卡内，则回到专题入口按钮，避免焦点掉到文档开头。
 
 `ensureSegmentPopup()` 只创建一次弹窗，`installSegmentPopupInteractions()` 实现桌面端拖动，`ensureSegmentPopupMobileSheet()` 对接 `CGoMobileSheet`，`installSegmentPopupBreakpointHandler()` 处理屏幕宽度跨过 640px 的切换。`positionSegmentPopup()` 限制桌面弹窗尽量留在屏幕范围；`installPopupDismissHandlers()` 处理点击外部、点击车站、Escape 关闭。
 
@@ -178,6 +179,10 @@ window.QingdaoConstructionProgressMap = {
 6. 打开信息卡后应确认 Escape 关闭、焦点返回及继续导航正常；进出专题时必须恢复合理的焦点顺序。**已知边界行为：**最后一条线路的末区间按 Tab 可能先回到 15 号线入口，继续 Tab 才进入后续控件；目前用户接受此行为，不应将其记作完全消除。
 
 以上行为属于青岛专题的键盘增强，不应改变鼠标点击区间、拖动地图、线路样式及普通地图模式。涉及键盘逻辑的变更只在青岛目录实现，不擅自修改 Core。
+
+### 9.3 键盘验证记录
+
+- 2026-11-25，Edge 158 headless（CDP 真实键盘事件）：Tab 聚焦线路入口 → Enter 进入区间 → Enter / Space 打开信息卡 → Escape 关闭后焦点回到线路入口 → 关闭按钮关闭后焦点回到区间热区 → Tab 在区间之间移动 → 键盘退出专题后焦点回到专题入口按钮，全部通过；Space 未触发页面滚动。
 
 ## 10. 专题和其他模式的互斥及恢复
 

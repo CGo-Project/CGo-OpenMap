@@ -245,7 +245,7 @@
     //       但模块同样在渲染时才读取该表，故此处顺序仅作可读性保证。
     // ==========================================================================
     if (typeof document !== "undefined" && typeof document.write === "function") {
-        const v = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261125.220221";
+        const v = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261125.223600";
         document.write(`<scr` + `ipt src="./city/lanzhou/data_station_names.js?v=${v}"><\/scr` + `ipt>`);
         document.write(`<scr` + `ipt src="./city/lanzhou/modules/lanzhou_station_names.js?v=${v}"><\/scr` + `ipt>`);
         document.write(`<scr` + `ipt src="./city/lanzhou/modules/lanzhou_timetable.js?v=${v}"><\/scr` + `ipt>`);
