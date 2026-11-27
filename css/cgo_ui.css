@@ -68,7 +68,7 @@ html[data-bg-mode="solid"] body {
    ══════════════════════════════════════════════════════ */
 html.has-custom-bg body,
 body.has-custom-bg {
-    --lg-wallpaper: none;
+    --lg-wallpaper: var(--bg-gradient, linear-gradient(135deg, #e0f2fe 0%, #f8f9fa 100%));
     background-image:
         linear-gradient(rgba(248, 249, 250, 0.2), rgba(248, 249, 250, 0.2)),
         var(--cgo-wallpaper, var(--lg-wallpaper)) !important;
@@ -357,29 +357,14 @@ body[data-header-mode="floating"] .tool-header:not([header-mode="classic"]):not(
    - 顶部=视窗顶部，底部=悬浮标题栏底部，左右贯通
    - 层级规范：正文内容 < 顶部渐变 (z-index: 900) < 悬浮标题栏与左侧面板 (z-index: 1000)
    - 颜色规范：顶部 100% 不透明度，底部 0%
-/* 经典吸顶模式或工作台应用严格禁止顶部遮罩渐变与悬浮干扰 */
-:root[header-mode="classic"] body::before,
-:root[data-header-mode="classic"] body::before,
-body[header-mode="classic"]::before,
-body[data-header-mode="classic"]::before,
-body.office-app-shell::before,
-:root[header-mode="classic"] .floating-header-scrim,
-body.office-app-shell .floating-header-scrim,
-body.office-app-shell .mobile-status-bar-fill {
-    display: none !important;
-    content: none !important;
-    background: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    height: 0 !important;
-}
-
-:root[header-mode="floating"] body:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
-:root[data-header-mode="floating"] body:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
-body[header-mode="floating"]:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
-body[data-header-mode="floating"]:not(.office-app-shell):has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
-.floating-header-scrim:not([header-mode="classic"]) {
+   - 普通版标题栏不添加渐变
+   ========================================================================== */
+:root:not([header-mode="classic"]):not([data-header-mode="classic"]) body:has(.tool-header:not([header-mode="classic"]):not(.classic-header))::before,
+:root[header-mode="floating"] body::before,
+:root[data-header-mode="floating"] body::before,
+body[header-mode="floating"]::before,
+body[data-header-mode="floating"]::before,
+.floating-header-scrim {
     content: '';
     position: fixed;
     top: 0;
@@ -401,7 +386,6 @@ body[data-header-mode="floating"]:not(.office-app-shell):has(.tool-header:not([h
    ② 下方 16px 渐变淡出到透明，内容自然消融到信号栏后方
    var(--bg-color) 自动跟随深色模式，无需额外 dark 选择器 */
 .mobile-status-bar-fill {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
@@ -411,22 +395,17 @@ body[data-header-mode="floating"]:not(.office-app-shell):has(.tool-header:not([h
     /* constant() 回退给旧版 iOS Safari */
     background: linear-gradient(
         to bottom,
-        var(--theme-bg, var(--bg-color, #f8f9fa)) constant(safe-area-inset-top, 0px),
+        var(--bg-color, #f8f9fa) constant(safe-area-inset-top, 0px),
         transparent calc(constant(safe-area-inset-top, 0px) + 16px)
     );
     /* 现代浏览器使用 env() */
     background: linear-gradient(
         to bottom,
-        var(--theme-bg, var(--bg-color, #f8f9fa)) env(safe-area-inset-top, 0px),
+        var(--bg-color, #f8f9fa) env(safe-area-inset-top, 0px),
         transparent calc(env(safe-area-inset-top, 0px) + 16px)
     );
-    z-index: 49999;
+    z-index: 50001;
     pointer-events: none;
-}
-@media (max-width: 640px) {
-    .mobile-status-bar-fill {
-        display: block;
-    }
 }
 
 :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .header-island,
@@ -747,9 +726,8 @@ body[header-mode="floating"] .header-island-left .header-left .btn,
 }
 
 /* 悬浮菜单栏 + 玻璃态 联动：液态玻璃与磨砂模糊 (Tier C 不可交互强调板规范，作为默认档位) */
-:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island,
-.tool-header[header-mode='floating']:is([glass-mode='liquid'], [glass-mode='blur']) .header-island,
-:is(:root, body):is([glass-mode='liquid'], [glass-mode='blur']) .tool-header[header-mode='floating'] .header-island {
+:root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([header-mode='classic']):not([data-header-mode='classic']) .header-island,
+.tool-header[header-mode='floating']:not([glass-mode='flat']):not([glass-mode='none']) .header-island {
     backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
@@ -757,9 +735,8 @@ body[header-mode="floating"] .header-island-left .header-left .btn,
     box-shadow: var(--glass-shadow);
 }
 
-:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island::before,
-.tool-header[header-mode='floating'][glass-mode='liquid'] .header-island::before,
-:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island::before {
+:root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([glass-mode='blur']):not([data-glass-mode='blur']):not([header-mode='classic']):not([data-header-mode='classic']) .header-island::before,
+.tool-header[header-mode='floating'][glass-mode='liquid'] .header-island::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -786,17 +763,15 @@ body[header-mode="floating"] .header-island-left .header-left .btn,
     z-index: 1;
 }
 
-:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island > *,
-.tool-header[header-mode='floating'][glass-mode='liquid'] .header-island > *,
-:root[glass-mode='liquid'] .tool-header[header-mode='floating'] .header-island > * {
+:root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([header-mode='classic']):not([data-header-mode='classic']) .header-island > *,
+.tool-header[header-mode='floating'][glass-mode='liquid'] .header-island > * {
     position: relative;
     z-index: 10;
 }
 
 /* 暗色主题下的 Liquid Glass / Blur 悬浮菜单栏适配 (Tier C 暗色: 0.72) */
-[data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island,
-[data-theme='dark'] .tool-header[header-mode='floating']:is([glass-mode='liquid'], [glass-mode='blur']) .header-island,
-[data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [glass-mode='blur']) .tool-header[header-mode='floating'] .header-island {
+[data-theme='dark']:root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([header-mode='classic']):not([data-header-mode='classic']) .header-island,
+[data-theme='dark'] .tool-header[header-mode='floating']:not([glass-mode='flat']):not([glass-mode='none']) .header-island {
     background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
@@ -829,7 +804,7 @@ body[header-mode="floating"] .header-island-left .header-left .btn,
    样式在 cgo_element.css 中通过 isolation isolate 隔离，无需额外覆盖 ::before 规则 */
 
 /* 单胶囊悬浮菜单栏（未拆分双岛时）在 liquid / blur 模式下的适配 */
-:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .tool-header:not(:has(.header-island)) {
+:root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([header-mode='classic']):not([data-header-mode='classic']) .tool-header:not(:has(.header-island)) {
     backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
@@ -837,14 +812,14 @@ body[header-mode="floating"] .header-island-left .header-left .btn,
     box-shadow: var(--glass-shadow);
 }
 
-[data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none']):not([glass-mode='blur'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .tool-header:not(:has(.header-island)) {
+[data-theme='dark']:root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([header-mode='classic']):not([data-header-mode='classic']) .tool-header:not(:has(.header-island)) {
     background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
     border: none;
     box-shadow: var(--glass-shadow);
 }
 
 /* 悬浮菜单栏内部竖分割线在玻璃模式下的纯净微光线 */
-:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur'], :not([glass-mode='flat']):not([glass-mode='none'])):is([header-mode='floating'], [data-header-mode='floating'], :not([header-mode='classic'])) .header-island-divider {
+:root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([header-mode='classic']):not([data-header-mode='classic']) .header-island-divider {
     background-color: var(--glass-border);
     opacity: 0.85;
 }
@@ -1454,7 +1429,7 @@ body[glass-mode='blur'][header-mode='floating'] .sidebar {
     padding: 20px;
     max-height: 80dvh;
 }
-canvas {
+#pdf-canvas-container canvas {
     display: block;
     margin: 0 auto;
 }
@@ -1948,10 +1923,8 @@ body.map-page {
     }
 
     /* 移动端悬浮胶囊栏：液态玻璃与磨砂模糊 (Tier C 不可交互强调板) */
-    :is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur']):is([header-mode='floating'], [data-header-mode='floating']) .tool-header,
-    :is(:root, body):is([glass-mode='liquid'], [glass-mode='blur']) .tool-header[header-mode='floating'],
-    .tool-header[header-mode='floating']:is([glass-mode='liquid'], [glass-mode='blur']),
-    :root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header) {
+    :root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([header-mode='classic']):not([data-header-mode='classic']) .tool-header:not([header-mode='classic']):not(.classic-header),
+    .tool-header[header-mode='floating']:not([glass-mode='flat']):not([glass-mode='none']) {
         backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
         -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%)) !important;
         background-color: var(--glass-bg-surface, rgba(255, 255, 255, 0.72)) !important;
@@ -1960,10 +1933,8 @@ body.map-page {
     }
 
     /* 移动端悬浮胶囊栏暗色主题适配 */
-    [data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [data-glass-mode='liquid'], [glass-mode='blur'], [data-glass-mode='blur']):is([header-mode='floating'], [data-header-mode='floating']) .tool-header,
-    [data-theme='dark']:is(:root, body):is([glass-mode='liquid'], [glass-mode='blur']) .tool-header[header-mode='floating'],
-    [data-theme='dark'] .tool-header[header-mode='floating']:is([glass-mode='liquid'], [glass-mode='blur']),
-    [data-theme='dark']:root:not([header-mode="classic"]):not([data-header-mode="classic"]) .tool-header:not([header-mode="classic"]):not(.classic-header) {
+    [data-theme='dark']:root:not([glass-mode='flat']):not([glass-mode='none']):not([data-glass-mode='flat']):not([data-glass-mode='none']):not([header-mode='classic']):not([data-header-mode='classic']) .tool-header:not([header-mode='classic']):not(.classic-header),
+    [data-theme='dark'] .tool-header[header-mode='floating']:not([glass-mode='flat']):not([glass-mode='none']) {
         background-color: var(--glass-bg-surface, rgba(31, 32, 34, 0.72)) !important;
         border: none !important;
         box-shadow: var(--glass-shadow) !important;
@@ -2009,12 +1980,10 @@ body.map-page {
     }
 
     /* 顶栏按钮在小屏仅显示图标（排除通知红点等角标节点） */
-    .tool-header .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge),
-    .header-island .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge) {
+    .tool-header .btn span:not(.options-btn-badge):not(.btn-dot):not(.btn-badge) {
         display: none;
     }
-    .tool-header .btn,
-    .header-island .btn {
+    .tool-header .btn {
         padding: 6px;
     }
     .header-right > span,

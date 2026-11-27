@@ -32,7 +32,611 @@
  * ⚠  依赖：cgo_clr.css → cgo_element.css → cgo_ui.css → cgo_components.css
  */
 
-/* (管理台 .admin-* / .permission-* 已废弃移除) */
+/* =====================================================
+   §1  管理台 — 自定义选择器 (Admin Select)
+   ===================================================== */
+.admin-tab {
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--admin-muted, var(--text-light));
+    padding: 10px 12px;
+    text-align: left;
+    cursor: pointer;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    transition:
+        background-color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+        color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+.admin-tab:hover {
+    background: var(--admin-surface-soft, var(--panel-bg));
+    color: var(--admin-text, var(--text-main));
+}
+.admin-tab.is-active {
+    background: var(--admin-primary, var(--primary-color));
+    color: #fff;
+    border-color: transparent;
+}
+
+/* 管理台选择器包装 */
+.admin-select {
+    --select-accent: var(--admin-primary, var(--primary-color));
+    --select-soft: #f4f8fd;
+    --select-border: var(--admin-border-strong, var(--border-color));
+    position: relative;
+    width: 100%;
+    min-width: 136px;
+    color: var(--admin-text, var(--text-main));
+}
+.admin-select.has-open-layer,
+.admin-multiselect.has-open-layer {
+    z-index: 120;
+}
+
+/* 状态色 */
+.admin-select[data-value='enabled'] {
+    --select-accent: var(--permission-enabled);
+    --select-soft: var(--permission-enabled-soft);
+    --select-border: var(--permission-enabled-border);
+}
+.admin-select[data-value='disabled'] {
+    --select-accent: var(--permission-disabled);
+    --select-soft: var(--permission-disabled-soft);
+    --select-border: var(--permission-disabled-border);
+}
+.admin-select[data-value='hidden'] {
+    --select-accent: var(--permission-hidden);
+    --select-soft: var(--permission-hidden-soft);
+    --select-border: var(--permission-hidden-border);
+}
+.admin-select[data-value='inherit'] {
+    --select-accent: var(--permission-inherit);
+    --select-soft: var(--permission-inherit-soft);
+    --select-border: var(--permission-inherit-border);
+}
+
+/* 尺寸变体 */
+.permission-toolbar .admin-select {
+    width: 164px;
+}
+.permission-card .admin-select,
+.permission-asset-panel .admin-select,
+.permission-asset-category .admin-select,
+.permission-asset-icon-row .admin-select {
+    width: 118px;
+    min-width: 118px;
+}
+
+.admin-select-button {
+    width: 100%;
+    height: 34px;
+    border: 1px solid var(--select-border);
+    border-radius: 4px;
+    background: var(--select-soft);
+    color: var(--admin-text, var(--text-main));
+    padding: 0 10px;
+    display: grid;
+    grid-template-columns: 9px minmax(0, 1fr) 12px;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: none;
+    font-family: var(--font-sans);
+    transition: border-color 0.15s ease;
+}
+.admin-select-button:hover {
+    border-color: var(--select-accent);
+}
+.admin-select-button:focus-visible {
+    outline: none;
+    border-color: var(--select-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--select-accent) 22%, transparent);
+}
+.admin-select.is-disabled .admin-select-button {
+    cursor: not-allowed;
+    color: var(--admin-muted, var(--text-light));
+    background: color-mix(in oklab, var(--admin-text, var(--text-main)) 6%, transparent);
+    border-color: var(--admin-border, var(--border-color));
+}
+
+.admin-select-current-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--select-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--select-accent) 14%, transparent);
+    flex-shrink: 0;
+}
+.admin-select-current-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 下拉箭头 */
+.admin-select-arrow {
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 160ms ease;
+    flex-shrink: 0;
+}
+.admin-select.is-open .admin-select-arrow {
+    transform: translateY(2px) rotate(225deg);
+}
+.admin-multiselect.is-open .admin-select-arrow {
+    transform: translateY(2px) rotate(225deg);
+}
+
+/* 下拉选项菜单 */
+.admin-select-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 40;
+    display: none;
+    padding: 6px;
+    border: 1px solid var(--admin-border, var(--border-color));
+    border-radius: 6px;
+    background: color-mix(in oklab, var(--admin-surface, var(--card-bg)) 98%, transparent);
+    box-shadow: 0 18px 42px rgba(16, 32, 51, 0.16);
+}
+.admin-select.is-open .admin-select-menu {
+    display: grid;
+    gap: 3px;
+}
+
+.admin-select-option {
+    --option-accent: var(--admin-primary, var(--primary-color));
+    width: 100%;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--admin-text, var(--text-main));
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 8px 9px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-sans);
+}
+.admin-select-option[data-value='enabled'] {
+    --option-accent: var(--permission-enabled);
+}
+.admin-select-option[data-value='disabled'] {
+    --option-accent: var(--permission-disabled);
+}
+.admin-select-option[data-value='hidden'] {
+    --option-accent: var(--permission-hidden);
+}
+.admin-select-option[data-value='inherit'] {
+    --option-accent: var(--permission-inherit);
+}
+.admin-select-option:hover,
+.admin-select-option.is-selected {
+    background: color-mix(in oklab, var(--option-accent) 10%, white);
+    color: color-mix(in oklab, var(--option-accent) 78%, #102033);
+}
+[data-theme='dark'] .admin-select {
+    --select-soft: #202936;
+}
+[data-theme='dark'] .admin-select-option:hover,
+[data-theme='dark'] .admin-select-option.is-selected {
+    background: color-mix(in oklab, var(--option-accent) 15%, transparent);
+    color: var(--option-accent);
+}
+.admin-select-option-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--option-accent);
+    flex-shrink: 0;
+}
+
+/* =====================================================
+   §2  管理台 — 多选 (Admin Multiselect)
+   ===================================================== */
+.admin-multiselect {
+    position: relative;
+    width: min(520px, 100%);
+    margin: -2px 0 20px;
+}
+.admin-multiselect-button {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--admin-border-strong, var(--border-color));
+    border-radius: 4px;
+    background: var(--admin-surface, var(--card-bg));
+    color: var(--admin-text, var(--text-main));
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) 12px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: none;
+    font-family: var(--font-sans);
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+.admin-multiselect-button:hover,
+.admin-multiselect.is-open .admin-multiselect-button {
+    border-color: var(--admin-primary, var(--primary-color));
+    box-shadow: 0 0 0 3px var(--admin-focus, rgba(0, 96, 152, 0.15));
+}
+.admin-multiselect.is-disabled .admin-multiselect-button {
+    cursor: not-allowed;
+    color: var(--admin-muted, var(--text-light));
+    background: color-mix(in oklab, var(--admin-text, var(--text-main)) 6%, transparent);
+    border-color: var(--admin-border, var(--border-color));
+    box-shadow: none;
+}
+.admin-multiselect-summary {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--admin-primary-soft, rgba(0, 96, 152, 0.1));
+    color: var(--admin-primary, var(--primary-color));
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.admin-multiselect-selection {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.admin-multiselect-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 45;
+    display: none;
+    max-height: 280px;
+    overflow: auto;
+    padding: 7px;
+    border: 1px solid var(--admin-border, var(--border-color));
+    border-radius: 6px;
+    background: color-mix(in oklab, var(--admin-surface, var(--card-bg)) 98%, transparent);
+    box-shadow: 0 20px 50px rgba(16, 32, 51, 0.18);
+}
+.admin-multiselect.is-open .admin-multiselect-menu {
+    display: grid;
+    gap: 4px;
+}
+
+.admin-multiselect-option {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 9px;
+    align-items: center;
+    min-height: 34px;
+    padding: 8px 9px;
+    border-radius: 4px;
+    color: var(--admin-text, var(--text-main));
+    font-size: 13px;
+    font-weight: 750;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+.admin-multiselect-option:hover,
+.admin-multiselect-option.is-selected {
+    background: var(--admin-primary-soft, rgba(0, 96, 152, 0.1));
+}
+.admin-multiselect-option input {
+    display: none;
+}
+
+.admin-multiselect-check {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #9eb2cc;
+    border-radius: 5px;
+    background: var(--admin-surface, var(--card-bg));
+    position: relative;
+    flex-shrink: 0;
+}
+.admin-multiselect-option.is-selected .admin-multiselect-check {
+    border-color: var(--admin-primary, var(--primary-color));
+    background: var(--admin-primary, var(--primary-color));
+}
+.admin-multiselect-option.is-selected .admin-multiselect-check::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(45deg);
+}
+
+/* =====================================================
+   §3  管理台 — 权限面板 (Permission Board)
+   ===================================================== */
+.permission-board {
+    display: grid;
+    gap: 14px;
+}
+.permission-list {
+    display: grid;
+    gap: 14px;
+}
+
+.permission-board-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--admin-border, var(--border-color));
+    border-radius: 6px;
+    background: var(--admin-surface-soft, var(--panel-bg));
+    box-shadow: 0 10px 24px rgba(16, 32, 51, 0.05);
+}
+.permission-board-copy {
+    display: grid;
+    gap: 3px;
+    max-width: 640px;
+}
+.permission-board-kicker {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--admin-primary, var(--primary-color));
+    text-transform: uppercase;
+}
+.permission-board-copy h4 {
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.2;
+}
+.permission-board-copy p {
+    margin: 0;
+    color: var(--admin-muted, var(--text-light));
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.permission-board-stats {
+    display: grid;
+    grid-auto-flow: column;
+    gap: 8px;
+}
+.permission-stat {
+    min-width: 72px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--admin-surface, var(--card-bg)) 72%, transparent);
+    border: 1px solid var(--admin-border, var(--border-color));
+    display: grid;
+    gap: 4px;
+    text-align: center;
+}
+.permission-stat-value {
+    font-size: 16px;
+    line-height: 1;
+    font-weight: 800;
+    color: var(--admin-text, var(--text-main));
+}
+.permission-stat-value.is-enabled {
+    color: var(--permission-enabled);
+}
+.permission-stat-value.is-disabled {
+    color: var(--permission-disabled);
+}
+.permission-stat-value.is-hidden {
+    color: var(--permission-hidden);
+}
+.permission-stat-label {
+    font-size: 10px;
+    color: var(--admin-muted, var(--text-light));
+}
+
+.permission-board-legend {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--admin-muted, var(--text-light));
+    align-items: center;
+    padding: 0 4px;
+}
+
+.permission-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin: 12px 0 14px;
+}
+.permission-toolbar select {
+    min-width: 136px;
+}
+
+/* 原生 select 隐藏（被自定义组件替代）*/
+.admin-native-select {
+    position: absolute;
+    width: 1px !important;
+    height: 1px !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 表单字段 */
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.admin-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 10px;
+}
+.admin-section-title h3 {
+    margin: 0;
+}
+
+.admin-inline-hint {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid var(--admin-border, var(--border-color));
+    background: var(--admin-surface-soft, var(--panel-bg));
+    color: var(--admin-primary, var(--primary-color));
+    font-size: 12px;
+    font-weight: 800;
+    cursor: help;
+    user-select: none;
+}
+.admin-inline-hint::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    width: min(360px, 52dvw);
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(16, 32, 51, 0.94);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: 0 14px 32px rgba(16, 32, 51, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease;
+    z-index: 160;
+    white-space: normal;
+}
+.admin-inline-hint:hover::after,
+.admin-inline-hint:focus-visible::after {
+    opacity: 1;
+}
+
+/* =====================================================
+   §4  管理台 — 用户列表项 (Admin List Item)
+   ===================================================== */
+.admin-list-item {
+    width: 100%;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--admin-text, var(--text-main));
+    display: grid;
+    gap: 3px;
+    padding: 10px;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    transition: background 0.15s ease;
+}
+.admin-list-item:hover {
+    background: var(--admin-primary-soft, rgba(0, 96, 152, 0.08));
+}
+.admin-list-item.is-active {
+    background: var(--admin-primary-soft, rgba(0, 96, 152, 0.1));
+    color: var(--admin-primary, var(--primary-color));
+}
+
+.admin-list-title {
+    font-weight: 700;
+    font-size: 14px;
+}
+.admin-list-meta {
+    font-size: 12px;
+    color: var(--admin-muted, var(--text-light));
+}
+
+/* =====================================================
+   §5  管理台 — 表单字段 (Admin Field)
+   ===================================================== */
+.admin-field {
+    display: grid;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--admin-text, var(--text-main));
+    font-weight: 650;
+}
+.admin-field input,
+.admin-field select,
+.permission-toolbar select,
+.permission-row select {
+    height: 34px;
+    border: 1px solid var(--admin-border-strong, var(--border-color));
+    border-radius: 4px;
+    background: var(--admin-surface, var(--card-bg));
+    color: var(--admin-text, var(--text-main));
+    padding: 0 8px;
+    font-family: var(--font-sans);
+}
+.admin-field input:focus,
+.admin-field select:focus,
+.permission-toolbar select:focus,
+.permission-row select:focus {
+    border-color: var(--admin-primary, var(--primary-color));
+    box-shadow: 0 0 0 3px var(--admin-focus, rgba(0, 96, 152, 0.15));
+    outline: none;
+}
+.admin-field input:disabled,
+.admin-field select:disabled,
+.permission-row select:disabled {
+    background: color-mix(in oklab, var(--admin-text, var(--text-main)) 6%, transparent);
+    color: var(--admin-muted, var(--text-light));
+    border-color: var(--admin-border, var(--border-color));
+    opacity: 1;
+    cursor: not-allowed;
+}
+
+/* 保存动画 */
+@keyframes adminSavePulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 18px 46px rgba(16, 32, 51, 0.16);
+    }
+    40% {
+        transform: scale(1.05);
+        box-shadow: 0 20px 54px rgba(16, 32, 51, 0.22);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 18px 46px rgba(16, 32, 51, 0.16);
+    }
+}
+.admin-sticky-actions .btn.is-save-success {
+    animation: adminSavePulse 650ms ease;
+}
 
 /* =====================================================
    §6  偏好设置列表 (Preferences List)
@@ -121,10 +725,597 @@
     display: block;
 }
 
-/* (§7-§12 地图画布与面板样式已统一由 css/style.css 维护，此处保留 §2 对话气泡等通用组件) */
+/* =====================================================
+   §7  地图信息面板 (Map Info Panel)
+   ===================================================== */
+#info-panel {
+    width: 360px;
+    padding: 0;
+    background: var(--card-bg) !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: fixed;
+    z-index: 2000;
+    top: 0;
+    left: 0;
+    font-weight: 400;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    display: none;
+}
+#info-panel.panel-adjust-anim {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel-header {
+    position: relative;
+    background-color: var(--panel-header-bg) !important;
+    color: var(--panel-header-text) !important;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 20px 50px 20px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+    --data1: transparent;
+    --data2: #ffffff;
+}
+.header-name-group {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+.panel-cn-name {
+    font-size: 18.5px;
+    font-weight: 700;
+}
+.panel-en-name {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 2px;
+    opacity: 0.75;
+}
+
+.panel-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--close-btn-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+.panel-close-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
 
 /* =====================================================
-   §2  对话聊天气泡 (Chat Bubble)
+   §8  地图缩放控件 (Map Zoom Control)
+   ===================================================== */
+#modern-zoom-control {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 800;
+    background-color: var(--control-bg) !important;
+    padding: 8px 6px;
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    user-select: none;
+    touch-action: none;
+}
+#modern-zoom-control button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--ctrl-btn-bg) !important;
+    color: var(--ctrl-icon) !important;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+        color 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+#modern-zoom-control button:hover {
+    background-color: var(--ctrl-hover) !important;
+    color: var(--capsule-text) !important;
+}
+#modern-zoom-control button:active {
+    transform: scale(0.95);
+}
+
+.mz-slider-track {
+    height: 100px;
+    width: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+#mz-slider {
+    width: 100px;
+    height: 32px;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    margin: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+}
+#mz-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: #eee;
+    border-radius: 2px;
+}
+[data-theme='dark'] #mz-slider::-webkit-slider-runnable-track {
+    background: #373838 !important;
+}
+#mz-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #00263b;
+    margin-top: -6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.1s;
+}
+[data-theme='dark'] #mz-slider::-webkit-slider-thumb {
+    background: #78848b !important;
+}
+#mz-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* =====================================================
+   §9  地图路线胶囊 (Route Capsule & Result)
+   ===================================================== */
+#route-ui-container {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+}
+#route-ui-container > * {
+    pointer-events: auto;
+}
+
+#route-capsule {
+    background: var(--capsule-bg);
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    padding: 10px 20px 10px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 260px;
+}
+.capsule-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    color: var(--capsule-text);
+    font-size: 14px;
+}
+.capsule-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.capsule-dot.end {
+    background: var(--primary-color);
+}
+.capsule-text {
+    font-weight: 600;
+}
+.capsule-hint {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-left: auto;
+}
+.capsule-arrow {
+    color: var(--text-light);
+}
+.capsule-close {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: var(--ctrl-btn-bg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+
+/* 路线结果面板 */
+#route-result-panel {
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    padding: 16px 20px;
+    width: 280px;
+    position: relative;
+}
+.result-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-light);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.result-close:hover {
+    background: var(--btn-info-hover);
+}
+.result-header {
+    margin-bottom: 12px;
+}
+.station-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-main);
+}
+.flow-arrow {
+    color: var(--text-light);
+}
+.time-big {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+.stops-small {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-top: 4px;
+}
+.result-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--text-light);
+}
+.result-options label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+#copy-result-btn {
+    margin-top: 14px;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--btn-info-bg);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+#copy-result-btn:hover {
+    background: var(--btn-info-hover);
+}
+
+/* 标准箭头 SVG 图形（各地图路线通用）*/
+.arrow-icon {
+    fill: currentColor;
+}
+
+/* 站名胶囊上方停靠数 */
+.stops-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--stops-tag-bg);
+    color: var(--text-main);
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+/* =====================================================
+   §10  地图图例覆盖 (Legend Overlay)
+   ===================================================== */
+#legend-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2500;
+    pointer-events: none;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 20px;
+}
+#legend-overlay.is-open {
+    pointer-events: auto;
+}
+
+.legend-modal {
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    min-width: 240px;
+    max-width: 320px;
+    max-height: 70dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition:
+        transform 0.3s ease,
+        opacity 0.3s ease;
+}
+
+.legend-close-btn,
+.legend-pin-btn {
+    position: absolute;
+    top: 8px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    transition: background 0.2s;
+}
+.legend-close-btn {
+    right: 40px;
+}
+.legend-pin-btn {
+    right: 6px;
+}
+.legend-close-btn:hover,
+.legend-pin-btn:hover {
+    background: var(--btn-info-hover);
+}
+
+#legend-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+}
+
+/* =====================================================
+   §11  地图车站与标签 (Station & Label)
+   ===================================================== */
+.station {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+.station svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.station.active {
+    transform: translate(-50%, -50%) scale(1.5);
+    z-index: 100 !important;
+    filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+}
+
+.dot,
+.rdot,
+.tsfo {
+    width: 10px;
+    height: 10px;
+    z-index: 15;
+}
+.tsf {
+    width: 17.5px;
+    height: 17.5px;
+    z-index: 20;
+}
+.no {
+    width: 10px;
+    height: 10px;
+    z-index: 5;
+}
+.diy {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.label-group {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.2s;
+}
+.stacn {
+    font-size: 11.5px;
+    color: var(--text-main) !important;
+    display: block;
+    line-height: 13.8px;
+    font-weight: 500;
+    paint-order: stroke fill;
+}
+.staen {
+    font-size: 6.65px;
+    color: var(--text-main) !important;
+    display: block;
+    margin-top: 0;
+    line-height: 6.35px;
+    white-space: nowrap;
+    font-family: var(--font-en);
+    font-weight: 500;
+    paint-order: stroke fill;
+}
+.label-group.type-no .stacn,
+.label-group.type-no .staen {
+    color: var(--not-open-color) !important;
+}
+.label-group.active {
+    z-index: 35;
+}
+.label-group.active .stacn {
+    color: #d0021b !important;
+    transform: scale(1.1);
+    transform-origin: inherit;
+    font-size: 15px;
+    line-height: 15px;
+    font-weight: 700;
+    -webkit-text-stroke: var(--sta-stroke-width-cn) var(--map-bg);
+}
+.label-group.active .staen {
+    color: #d0021b !important;
+    font-size: 9px;
+    line-height: 8px;
+    font-weight: 700;
+    -webkit-text-stroke: var(--sta-stroke-width-en) var(--map-bg);
+}
+
+.scattered-item {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+/* =====================================================
+   §12  路线图 SVG 线路渲染 (Line Visual)
+   ===================================================== */
+.line-visual-overlay {
+    fill: none;
+    pointer-events: none;
+    transition: opacity var(--dur-fast, 140ms) ease;
+}
+.line-visual-outer,
+.line-visual-inner {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke var(--dur-fast, 140ms) ease, opacity var(--dur-fast, 140ms) ease;
+    pointer-events: none;
+}
+.line-visual-group.active .line-visual-outer {
+    filter: drop-shadow(0 0 5px rgba(0, 0, 0, 0.5));
+}
+[data-theme='dark'] .line-visual-group.active .line-visual-outer {
+    filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.8)) !important;
+}
+.line-visual-group.active .line-visual-inner {
+    stroke-width: 9px !important;
+}
+
+.line-interaction {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 15px;
+    cursor: pointer;
+    pointer-events: stroke;
+}
+
+/* 线路 Tooltip */
+#line-tooltip {
+    position: fixed;
+    z-index: 9999;
+    display: none;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+    margin-top: -15px;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.3));
+    transition: opacity 0.2s;
+    background-color: var(--header-bg);
+    padding: 4px 1.5px 1px 1.5px;
+    border-radius: 2px;
+    --data1: var(--map-bg);
+    --data2: #00263b;
+}
+[data-theme='dark'] #line-tooltip {
+    --data2: #ffffff;
+}
+#line-tooltip img {
+    height: 24px;
+    display: block;
+    background-color: var(--map-bg);
+    border-radius: 2px;
+    padding: 1px;
+}
+
+/* 地图背景容器 */
+#map-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border: none;
+    overflow: hidden;
+    user-select: none;
+    cursor: grab;
+    touch-action: none;
+    transform-origin: 0 0;
+    background-color: var(--map-bg) !important;
+}
+#map-container.active {
+    cursor: grabbing;
+}
+#map-content {
+    position: relative;
+    transform-origin: 0 0;
+    background-color: var(--map-bg) !important;
+}
+.animate-zoom {
+    transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* =====================================================
+   §13  对话聊天气泡 (Chat Bubble)
    ===================================================== */
 .chat-bubble {
     display: flex;
@@ -267,12 +1458,6 @@
 /* =====================================================
    §16  图片 / PDF 增强 (Media Enhancements)
    ===================================================== */
-/* PDF Canvas */
-canvas {
-    display: block;
-    margin: 0 auto;
-}
-
 /* 危险区行 */
 .danger-row {
     display: flex;
@@ -355,22 +1540,12 @@ canvas {
     background: rgba(255, 255, 255, 0.24);
 }
 
-/* Firefox 滚动容器局部细滚动条（不作用于全局 *） */
-.panel-body,
-.dropdown-content,
-.cgo-toolbar-select-options,
-.cgo-md-scroll,
-.inspector-scroll,
-.nav-tree-scroll {
+/* Firefox */
+:root {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
 }
-[data-theme='dark'] .panel-body,
-[data-theme='dark'] .dropdown-content,
-[data-theme='dark'] .cgo-toolbar-select-options,
-[data-theme='dark'] .cgo-md-scroll,
-[data-theme='dark'] .inspector-scroll,
-[data-theme='dark'] .nav-tree-scroll {
+[data-theme='dark'] {
     scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
 }
 
@@ -394,7 +1569,7 @@ canvas {
     display: flex;
     align-items: center;
     gap: 10px;
-    background: var(--input-bg, var(--bg-secondary, #f5f6f8));
+    background: var(--cgo-input-bg, var(--cgo-bg-secondary, #f5f6f8));
     border: 1px solid var(--border-color, #dee2e6);
     border-radius: var(--radius-sm, 6px);
     padding: 6px 10px;
@@ -654,15 +1829,15 @@ cgo-toolbar-btn,
 /* 微光描边统一继承自 cgo_element.css 中的 cgo-toolbar-btn::before，避免重复声明 */
 
 
-cgo-toolbar-btn:hover:not(:disabled),
-.cgo-toolbar-btn:hover:not(:disabled) {
+cgo-toolbar-btn:hover:not([disabled]):not(:disabled),
+.cgo-toolbar-btn:hover:not([disabled]):not(:disabled) {
     background-color: var(--btn-info-hover, #e9ecef);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 /* 按压微触感反馈：仅在点击瞬间产生 scale(0.98) 弹性回馈，取消悬停上下位移 */
-cgo-toolbar-btn:active:not(:disabled),
-.cgo-toolbar-btn:active:not(:disabled) {
+cgo-toolbar-btn:active:not([disabled]):not(:disabled),
+.cgo-toolbar-btn:active:not([disabled]):not(:disabled) {
     transform: scale(0.98);
 }
 
@@ -688,8 +1863,8 @@ cgo-toolbar-btn > *,
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
-[data-theme='dark'] cgo-toolbar-btn:hover:not(:disabled),
-[data-theme='dark'] .cgo-toolbar-btn:hover:not(:disabled) {
+[data-theme='dark'] cgo-toolbar-btn:hover:not([disabled]):not(:disabled),
+[data-theme='dark'] .cgo-toolbar-btn:hover:not([disabled]):not(:disabled) {
     background-color: var(--btn-info-hover, #323438);
     color: #ffffff;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
@@ -709,8 +1884,8 @@ cgo-toolbar-btn.cgo-toolbar-btn-primary,
     box-shadow: 0 1px 2px rgba(0, 96, 152, 0.2);
 }
 
-cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled),
-.cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled) {
+cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not([disabled]):not(:disabled),
+.cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not([disabled]):not(:disabled) {
     background-color: var(--primary-hover, #004f80);
     color: #ffffff !important;
     box-shadow: 0 2px 5px rgba(0, 96, 152, 0.25);
@@ -723,8 +1898,8 @@ cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled),
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-[data-theme='dark'] cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled),
-[data-theme='dark'] .cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not(:disabled) {
+[data-theme='dark'] cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not([disabled]):not(:disabled),
+[data-theme='dark'] .cgo-toolbar-btn.cgo-toolbar-btn-primary:hover:not([disabled]):not(:disabled) {
     background-color: var(--primary-hover, #0084d1);
     color: #ffffff !important;
     box-shadow: 0 2px 6px rgba(0, 112, 176, 0.35);
@@ -738,8 +1913,8 @@ cgo-toolbar-btn.cgo-toolbar-btn-danger,
     box-shadow: 0 1px 2px rgba(234, 67, 53, 0.2);
 }
 
-cgo-toolbar-btn.cgo-toolbar-btn-danger:hover:not(:disabled),
-.cgo-toolbar-btn.cgo-toolbar-btn-danger:hover:not(:disabled) {
+cgo-toolbar-btn.cgo-toolbar-btn-danger:hover:not([disabled]):not(:disabled),
+.cgo-toolbar-btn.cgo-toolbar-btn-danger:hover:not([disabled]):not(:disabled) {
     background-color: var(--danger-hover, #d33828);
     color: #ffffff !important;
     box-shadow: 0 2px 5px rgba(234, 67, 53, 0.28);
@@ -753,8 +1928,8 @@ cgo-toolbar-btn.cgo-toolbar-btn-success,
     box-shadow: 0 1px 2px rgba(52, 168, 83, 0.2);
 }
 
-cgo-toolbar-btn.cgo-toolbar-btn-success:hover:not(:disabled),
-.cgo-toolbar-btn.cgo-toolbar-btn-success:hover:not(:disabled) {
+cgo-toolbar-btn.cgo-toolbar-btn-success:hover:not([disabled]):not(:disabled),
+.cgo-toolbar-btn.cgo-toolbar-btn-success:hover:not([disabled]):not(:disabled) {
     background-color: #2d9248;
     color: #ffffff !important;
     box-shadow: 0 2px 5px rgba(52, 168, 83, 0.28);
@@ -771,25 +1946,4 @@ cgo-toolbar-btn[disabled],
     pointer-events: none !important;
     transform: none !important;
     box-shadow: none !important;
-}
-
-/* ── 上一站 / 下一站 跳转交互（core/station-board.js 原生内置） ── */
-.info-value[data-cgo-jump-sid] {
-    cursor: pointer;
-    border-radius: 4px;
-    transition: color 0.15s ease, background-color 0.15s ease;
-}
-
-.info-value[data-cgo-jump-sid]:hover {
-    color: var(--primary-color) !important;
-    background-color: color-mix(in srgb, var(--primary-color) 12%, transparent);
-}
-
-.info-value[data-cgo-jump-sid]:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-.info-value[data-cgo-jump-sid]:hover span {
-    color: var(--text-light);
 }

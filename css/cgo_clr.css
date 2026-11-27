@@ -69,12 +69,83 @@
     --help-code-bg: #f7f9fa;
     --filter-tag-bg: #f8f9fa;
     --filter-toolbar-bg: #eef2f7;
+
+    /* ── 组件级自适应亮暗 Token（替代 Shadow DOM 中的 :host-context）── */
+    --cgo-border-hover: #ced4da;
+    --cgo-input-bg: #f5f6f8;
+    --cgo-bg-secondary: #f5f6f8;
+    --cgo-btn-info-active: #dee2e6;
+    --cgo-scrollbar-thumb: rgba(0, 0, 0, 0.18);
+    --cgo-focus-ring-offset: #ffffff;
+    --cgo-subtle-hover: rgba(0, 38, 59, 0.06);
+    --cgo-subtle-active: rgba(0, 38, 59, 0.1);
+    --cgo-subtle-border: rgba(0, 38, 59, 0.08);
+    --cgo-divider-color: rgba(0, 38, 59, 0.08);
+    --cgo-shadow-dropdown: 0 8px 24px rgba(0, 38, 59, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+    --cgo-shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.22);
+    --cgo-shadow-control: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --cgo-shadow-control-hover: 0 2px 4px rgba(0, 0, 0, 0.06);
+    --cgo-shadow-zoom: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --cgo-tooltip-bg: rgba(255, 255, 255, 0.92);
+    --cgo-tooltip-color: #00263b;
+    --cgo-tooltip-border: rgba(0, 38, 59, 0.08);
+    --cgo-badge-info-bg: #e9ecef;
+    --cgo-badge-info-color: #495057;
+    --cgo-badge-muted-bg: #f1f3f5;
+    --cgo-badge-muted-color: #64748b;
+    --cgo-notice-close-bg: rgba(0, 38, 59, 0.05);
+    --cgo-notice-close-hover: rgba(0, 38, 59, 0.12);
+    --cgo-notice-action-bg: rgba(0, 38, 59, 0.06);
+    --cgo-notice-action-hover: rgba(0, 38, 59, 0.12);
+    --cgo-notice-embedded-bg: rgba(255, 255, 255, 0.55);
+    --cgo-notice-embedded-border: rgba(0, 38, 59, 0.06);
+    --cgo-floating-header-bg: rgba(248, 250, 252, 0.85);
+    --cgo-floating-header-border: rgba(0, 0, 0, 0.08);
+    --cgo-avatar-default-bg: rgba(241, 245, 249, 0.85);
+    --cgo-chat-bot-bg: var(--glass-bg-surface, rgba(255, 255, 255, 0.72));
+    --cgo-chat-bot-border: var(--border-color, #dee2e6);
+    --cgo-pref-hover-bg: rgba(255, 255, 255, 0.96);
+    --cgo-tab-active-bg: #ffffff;
+    --cgo-tab-active-shadow: 0 1px 4px rgba(0, 38, 59, 0.08);
+    --cgo-select-opt-hover: rgba(0, 38, 59, 0.06);
+    --cgo-select-opt-selected-bg: rgba(0, 96, 152, 0.1);
+    --cgo-select-opt-selected-color: var(--primary-color, #006098);
+    --cgo-rim-hairline-bg:
+        linear-gradient(to right,
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
+            rgba(0, 0, 0, 0) var(--lg-rim-side, 3px),
+            rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 3px)),
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) 0,
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45)) var(--lg-rim-hold, 1px),
+            rgba(255, 255, 255, 0) 8px,
+            rgba(0, 0, 0, 0.02) calc(100% - 4px),
+            rgba(0, 0, 0, 0.12) 100%);
+    --cgo-rim-tierb-bg: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.45 * 0.75)) var(--lg-rim-hold, 1px),
+        rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px));
+    --cgo-rim-tierc-bg:
+        linear-gradient(to right,
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 0,
+            rgba(0, 0, 0, 0) var(--lg-rim-side, 4px),
+            rgba(0, 0, 0, 0) calc(100% - var(--lg-rim-side, 4px)),
+            rgba(0, 38, 59, var(--lg-rim-dark, 0.04)) 100%),
+        linear-gradient(to bottom,
+            rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) 0,
+            rgba(255, 255, 255, var(--lg-rim-lit, 0.95)) var(--lg-rim-hold, 1px),
+            rgba(255, 255, 255, 0) var(--lg-rim-fade, 12px),
+            rgba(255, 255, 255, 0) calc(100% - var(--lg-rim-fade, 12px)),
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) calc(100% - var(--lg-rim-hold, 1px)),
+            rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.95) * 0.4)) 100%);
 }
 
 /* =====================================================
    §1  全局色彩 Token — 暗色模式 (Dark Mode)
    ===================================================== */
 [data-theme='dark'] {
+    color-scheme: dark;
     --bg-color: #1a1a1a;
     --bg-body: var(--bg-color);
     --card-bg: #1f2020;
@@ -112,6 +183,62 @@
     --help-code-bg: #2a2a2a;
     --filter-tag-bg: #2c2d2e;
     --filter-toolbar-bg: #2c2d2e;
+
+    --cgo-border-hover: #44474b;
+    --cgo-input-bg: #262729;
+    --cgo-bg-secondary: #262729;
+    --cgo-btn-info-active: #383a3c;
+    --cgo-scrollbar-thumb: rgba(255, 255, 255, 0.14);
+    --cgo-focus-ring-offset: #1a1a1a;
+    --cgo-subtle-hover: rgba(255, 255, 255, 0.08);
+    --cgo-subtle-active: rgba(255, 255, 255, 0.14);
+    --cgo-subtle-border: rgba(255, 255, 255, 0.08);
+    --cgo-divider-color: rgba(255, 255, 255, 0.08);
+    --cgo-shadow-dropdown: 0 16px 40px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --cgo-shadow-modal: 0 24px 72px rgba(0, 0, 0, 0.65);
+    --cgo-shadow-control: 0 1px 3px rgba(0, 0, 0, 0.25);
+    --cgo-shadow-control-hover: 0 2px 5px rgba(0, 0, 0, 0.35);
+    --cgo-shadow-zoom: 0 12px 36px rgba(0, 0, 0, 0.5);
+    --cgo-tooltip-bg: rgba(38, 40, 44, 0.94);
+    --cgo-tooltip-color: #e5e8ea;
+    --cgo-tooltip-border: rgba(255, 255, 255, 0.12);
+    --cgo-badge-info-bg: #373838;
+    --cgo-badge-info-color: #e5e8ea;
+    --cgo-badge-muted-bg: rgba(255, 255, 255, 0.1);
+    --cgo-badge-muted-color: #a0b0b9;
+    --cgo-notice-close-bg: rgba(255, 255, 255, 0.08);
+    --cgo-notice-close-hover: rgba(255, 255, 255, 0.16);
+    --cgo-notice-action-bg: rgba(255, 255, 255, 0.08);
+    --cgo-notice-action-hover: rgba(255, 255, 255, 0.14);
+    --cgo-notice-embedded-bg: rgba(255, 255, 255, 0.04);
+    --cgo-notice-embedded-border: rgba(255, 255, 255, 0.08);
+    --cgo-floating-header-bg: rgba(38, 40, 44, 0.85);
+    --cgo-floating-header-border: rgba(255, 255, 255, 0.08);
+    --cgo-avatar-default-bg: rgba(45, 48, 52, 0.85);
+    --cgo-chat-bot-bg: var(--glass-bg-surface, rgba(31, 32, 34, 0.72));
+    --cgo-chat-bot-border: var(--border-color, #383a3c);
+    --cgo-pref-hover-bg: rgba(44, 46, 50, 0.92);
+    --cgo-tab-active-bg: #323438;
+    --cgo-tab-active-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    --cgo-select-opt-hover: rgba(255, 255, 255, 0.08);
+    --cgo-select-opt-selected-bg: rgba(0, 112, 176, 0.22);
+    --cgo-select-opt-selected-color: #7cc4ff;
+    --cgo-rim-hairline-bg: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 1px,
+        rgba(255, 255, 255, 0) 8px,
+        rgba(255, 255, 255, 0) calc(100% - 4px),
+        rgba(255, 255, 255, 0.08) 100%);
+    --cgo-rim-tierb-bg: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 0.45 * 1.5)) 1px,
+        rgba(255, 255, 255, 0) 8px);
+    --cgo-rim-tierc-bg: linear-gradient(to bottom,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 0,
+        rgba(255, 255, 255, calc(var(--lg-rim-lit, 0.22) * 1.5)) 1px,
+        rgba(255, 255, 255, 0) 8px,
+        rgba(255, 255, 255, 0) calc(100% - 4px),
+        rgba(255, 255, 255, 0.12) 100%);
 }
 
 /* =====================================================
@@ -225,8 +352,8 @@
 
     /* ══════════════════════════════════════════════════════
        CGoUI 顶栏模式中央默认档位配置 (Single Source of Truth)
-       classic: 原版经典吸顶顶栏（向后兼容）
-       floating: 新版脱离文档流的双岛屿/单胶囊悬浮菜单栏（OpenMap 默认）
+       classic: 默认原版经典吸顶顶栏（Zero-Regression 零变更保证）
+       floating: 新版脱离文档流的双岛屿/单胶囊悬浮菜单栏
        ══════════════════════════════════════════════════════ */
     --cgo-header-default: floating;
     --header-floating-height: 52px;
@@ -312,6 +439,22 @@
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
+        color-scheme: dark;
+        --bg-color: #1a1a1a;
+        --bg-body: var(--bg-color);
+        --card-bg: #1f2020;
+        --panel-bg: #1f2020;
+        --bg-card: var(--card-bg);
+        --text-main: #e5e8ea;
+        --text-light: #a0b0b9;
+        --text-secondary: var(--text-light);
+        --text-color: var(--text-main);
+        --border-color: #333333;
+        --primary-color: #006098;
+        --primary-hover: #0070b0;
+        --btn-info-bg: #373838;
+        --btn-info-text: #e5e8ea;
+        --btn-info-hover: #4a4b4c;
         --bg-gradient: var(--bg-gradient-dark);
         --lg-rim-lit: 0.22;
         --lg-rim-dark: 0;
@@ -343,25 +486,6 @@ body[data-glass-mode='blur'],
 [glass-mode='blur'],
 [data-glass-mode='blur'] {
     --glass-refraction-filter: none;
-    --glass-backdrop-blur: blur(5px) saturate(130%);
-    --glass-backdrop-blur-surface: blur(14px) saturate(135%);
-    --glass-backdrop-filter: blur(5px) saturate(130%);
-    --glass-backdrop-filter-surface: blur(14px) saturate(135%);
-    --glass-bg: rgba(255, 255, 255, 0.60);
-    --glass-bg-hover: rgba(255, 255, 255, 0.68);
-    --glass-bg-card: rgba(255, 255, 255, 0.60);
-    --glass-bg-card-hover: rgba(255, 255, 255, 0.68);
-    --glass-bg-surface: rgba(255, 255, 255, 0.72);
-    --glass-bg-panel: rgba(255, 255, 255, 0.9);
-    --glass-border: rgba(255, 255, 255, 0.40);
-    --glass-shadow:
-        0 0 0 0.5px rgba(0, 0, 0, 0.06),
-        0 8px 24px -6px rgba(0, 38, 59, 0.06),
-        0 2px 6px -2px rgba(0, 38, 59, 0.04);
-    --glass-shadow-hover:
-        0 0 0 0.5px rgba(0, 0, 0, 0.08),
-        0 14px 30px -8px rgba(0, 38, 59, 0.12),
-        0 4px 10px -2px rgba(0, 38, 59, 0.06);
     --lg-rim-display: block;
 }
 
@@ -373,87 +497,7 @@ body[data-glass-mode='liquid'],
 [glass-mode='liquid'],
 [data-glass-mode='liquid'] {
     --glass-refraction-filter: url(#glass-distortion);
-    --glass-backdrop-blur: blur(5px) saturate(130%);
-    --glass-backdrop-blur-surface: blur(14px) saturate(135%);
-    --glass-backdrop-filter: blur(5px) saturate(130%);
-    --glass-backdrop-filter-surface: blur(14px) saturate(135%);
-    --glass-bg: rgba(255, 255, 255, 0.60);
-    --glass-bg-hover: rgba(255, 255, 255, 0.68);
-    --glass-bg-card: rgba(255, 255, 255, 0.60);
-    --glass-bg-card-hover: rgba(255, 255, 255, 0.68);
-    --glass-bg-surface: rgba(255, 255, 255, 0.72);
-    --glass-bg-panel: rgba(255, 255, 255, 0.9);
-    --glass-border: rgba(255, 255, 255, 0.40);
-    --glass-shadow:
-        0 0 0 0.5px rgba(0, 0, 0, 0.06),
-        0 8px 24px -6px rgba(0, 38, 59, 0.06),
-        0 2px 6px -2px rgba(0, 38, 59, 0.04);
-    --glass-shadow-hover:
-        0 0 0 0.5px rgba(0, 0, 0, 0.08),
-        0 14px 30px -8px rgba(0, 38, 59, 0.12),
-        0 4px 10px -2px rgba(0, 38, 59, 0.06);
     --lg-rim-display: block;
-}
-
-/* 档位 1 与 2 在暗色模式下的专属高质感黑曜石微透适配 */
-[data-theme='dark'][glass-mode='blur'],
-[data-theme='dark'][data-glass-mode='blur'],
-[data-theme='dark'] body[glass-mode='blur'],
-[data-theme='dark'] body[data-glass-mode='blur'],
-[data-theme='dark'] [glass-mode='blur'],
-[data-theme='dark'] [data-glass-mode='blur'],
-[data-theme='dark'][glass-mode='liquid'],
-[data-theme='dark'][data-glass-mode='liquid'],
-[data-theme='dark'] body[glass-mode='liquid'],
-[data-theme='dark'] body[data-glass-mode='liquid'],
-[data-theme='dark'] [glass-mode='liquid'],
-[data-theme='dark'] [data-glass-mode='liquid'] {
-    --glass-bg: rgba(31, 32, 34, 0.60);
-    --glass-bg-hover: rgba(38, 40, 44, 0.68);
-    --glass-bg-card: rgba(31, 32, 34, 0.60);
-    --glass-bg-card-hover: rgba(38, 40, 44, 0.68);
-    --glass-bg-surface: rgba(31, 32, 34, 0.72);
-    --glass-bg-panel: rgba(31, 32, 34, 0.9);
-    --glass-border: rgba(255, 255, 255, 0.09);
-    --glass-shadow:
-        0 0 0 0.5px rgba(255, 255, 255, 0.09),
-        0 10px 28px -6px rgba(0, 0, 0, 0.5),
-        0 3px 8px -2px rgba(0, 0, 0, 0.35);
-    --glass-shadow-hover:
-        0 0 0 0.5px rgba(255, 255, 255, 0.15),
-        0 16px 36px -8px rgba(0, 0, 0, 0.65),
-        0 4px 12px -2px rgba(0, 0, 0, 0.4);
-}
-
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light'])[glass-mode='blur'],
-    :root:not([data-theme='light'])[data-glass-mode='blur'],
-    :root:not([data-theme='light']) body[glass-mode='blur'],
-    :root:not([data-theme='light']) body[data-glass-mode='blur'],
-    :root:not([data-theme='light']) [glass-mode='blur'],
-    :root:not([data-theme='light']) [data-glass-mode='blur'],
-    :root:not([data-theme='light'])[glass-mode='liquid'],
-    :root:not([data-theme='light'])[data-glass-mode='liquid'],
-    :root:not([data-theme='light']) body[glass-mode='liquid'],
-    :root:not([data-theme='light']) body[data-glass-mode='liquid'],
-    :root:not([data-theme='light']) [glass-mode='liquid'],
-    :root:not([data-theme='light']) [data-glass-mode='liquid'] {
-        --glass-bg: rgba(31, 32, 34, 0.60);
-        --glass-bg-hover: rgba(38, 40, 44, 0.68);
-        --glass-bg-card: rgba(31, 32, 34, 0.60);
-        --glass-bg-card-hover: rgba(38, 40, 44, 0.68);
-        --glass-bg-surface: rgba(31, 32, 34, 0.72);
-        --glass-bg-panel: rgba(31, 32, 34, 0.9);
-        --glass-border: rgba(255, 255, 255, 0.09);
-        --glass-shadow:
-            0 0 0 0.5px rgba(255, 255, 255, 0.09),
-            0 10px 28px -6px rgba(0, 0, 0, 0.5),
-            0 3px 8px -2px rgba(0, 0, 0, 0.35);
-        --glass-shadow-hover:
-            0 0 0 0.5px rgba(255, 255, 255, 0.15),
-            0 16px 36px -8px rgba(0, 0, 0, 0.65),
-            0 4px 12px -2px rgba(0, 0, 0, 0.4);
-    }
 }
 
 /* 显式锁定为扁平（即便未来全局默认切换，显式写了 flat 的页面依然稳固保持扁平） */
@@ -520,7 +564,7 @@ body[data-glass-mode='none'],
     --close-btn-color: #78848b;
     --capsule-bg: #1f2020;
     --capsule-text: #78848b;
-    --stops-tag-bg: #78848b;
+    --stops-tag-bg: #373838;
     --control-bg: #1f2020;
     --ctrl-btn-bg: #373838;
     --ctrl-icon: #78848b;
@@ -805,7 +849,6 @@ body[data-glass-mode='none'],
 
     /* =====================================================
        2. 优化色 (Screen Adaptive Line Colors)
-       注：数值参考自 scmap_original/data_lines.js
        ===================================================== */
     --line-1-screen: #c23a30;
     --line-2-screen: #006098;
@@ -930,46 +973,6 @@ body[data-glass-mode='none'],
     --line-color-text-dark: var(--line-text-dark-official);
 }
 
-[data-color-palette='screen'] {
-    --line-color-1: var(--line-1-screen);
-    --line-color-2: var(--line-2-screen);
-    --line-color-3: var(--line-3-screen);
-    --line-color-4: var(--line-4-screen);
-    --line-color-5: var(--line-5-screen);
-    --line-color-6: var(--line-6-screen);
-    --line-color-7: var(--line-7-screen);
-    --line-color-8: var(--line-8-screen);
-    --line-color-9: var(--line-9-screen);
-    --line-color-10: var(--line-10-screen);
-    --line-color-11: var(--line-11-screen);
-    --line-color-12: var(--line-12-screen);
-    --line-color-13: var(--line-13-screen);
-    --line-color-14: var(--line-14-screen);
-    --line-color-15: var(--line-15-screen);
-    --line-color-16: var(--line-16-screen);
-    --line-color-17: var(--line-17-screen);
-    --line-color-18: var(--line-18-screen);
-    --line-color-19: var(--line-19-screen);
-    --line-color-22: var(--line-22-screen);
-    --line-color-28: var(--line-28-screen);
-    --line-color-24: var(--line-24-screen);
-    --line-color-t1: var(--line-t1-screen);
-    --line-color-25: var(--line-25-screen);
-    --line-color-25w: var(--line-25w-screen);
-    --line-color-26: var(--line-26-screen);
-    --line-color-27: var(--line-27-screen);
-    --line-color-xj: var(--line-xj-screen);
-    --line-color-cae: var(--line-cae-screen);
-    --line-color-dae: var(--line-dae-screen);
-    --line-color-sub-s1: var(--line-sub-s1-screen);
-    --line-color-sub-s2: var(--line-sub-s2-screen);
-    --line-color-sub-s5: var(--line-sub-s5-screen);
-    --line-color-sub-s6: var(--line-sub-s6-screen);
-
-    --line-color-text-light: var(--line-text-light-screen);
-    --line-color-text-dark: var(--line-text-dark-screen);
-}
-
 /* =====================================================
    §7  用户头像预制配色 (Avatar Preset Colors)
    ===================================================== */
@@ -991,7 +994,7 @@ body[data-glass-mode='none'],
     --avatar-color-gray: #78848b;
     --avatar-color-dark: #00263b;
 
-    /* 30色头像新色板 (自 cgoauth/app.js) */
+    /* 30色头像新色板 */
     --avatar-color-0: #ef4444;
     --avatar-color-1: #f87171;
     --avatar-color-2: #f97316;
@@ -1257,6 +1260,16 @@ body[data-glass-mode='none'],
     );
     --brand-border-staline: #30587d;
 
+    --brand-color-trainlcd: #e2a213;
+    --brand-gradient-start-trainlcd: #9e8f04;
+    --brand-gradient-end-trainlcd: #ffb430;
+    --brand-gradient-trainlcd: linear-gradient(
+        to top,
+        var(--brand-gradient-start-trainlcd),
+        var(--brand-gradient-end-trainlcd)
+    );
+    --brand-border-trainlcd: #7d6f03;
+
     --brand-color-project: #67caae;
     --brand-gradient-start-project: #43b1a2;
     --brand-gradient-end-project: #8fdeb2;
@@ -1301,6 +1314,12 @@ html[data-app='staline'] {
     --brand-gradient-start-appname: var(--brand-gradient-start-staline);
     --brand-gradient-end-appname: var(--brand-gradient-end-staline);
     --brand-border-appname: var(--brand-border-staline);
+}
+
+html[data-app='trainlcd'] {
+    --brand-gradient-start-appname: var(--brand-gradient-start-trainlcd);
+    --brand-gradient-end-appname: var(--brand-gradient-end-trainlcd);
+    --brand-border-appname: var(--brand-border-trainlcd);
 }
 
 html[data-app='project'] {

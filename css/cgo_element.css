@@ -395,7 +395,7 @@ cgo-toolbar-btn:hover:not(:disabled)::before,
 
 .btn-info:hover {
     background-color: var(--btn-info-hover, #e9ecef);
-    border-color: var(--border-hover, #ced4da);
+    border-color: var(--cgo-border-hover, #ced4da);
     color: var(--text-main, #00263b);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
@@ -898,27 +898,6 @@ body[data-glass-mode='none'] .btn {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z'/%3E%3C/svg%3E");
 }
 
-/* 工具类 */
-.icon-sm {
-    width: 16px;
-    height: 16px;
-}
-
-.icon-md {
-    width: 20px;
-    height: 20px;
-}
-
-.icon-lg {
-    width: 24px;
-    height: 24px;
-}
-
-.icon-xl {
-    width: 32px;
-    height: 32px;
-}
-
 /* ── 图标与图片渐进加载占位容器体系 ── */
 .img-icon-wrapper {
     position: relative;
@@ -931,27 +910,7 @@ body[data-glass-mode='none'] .btn {
 .header-logo-wrapper {
     height: 32px;
     width: 32px;
-    margin-right: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: var(--city-theme-color, var(--text-main, #00263b));
-    transition: color 0.3s ease;
-}
-
-.title-city {
-    color: var(--city-theme-color, inherit);
-    transition: color 0.3s ease;
-}
-
-/* 暗色模式下：加载 themeColorDark（默认回退到 #ffffff），平滑过渡 */
-[data-theme="dark"] .header-logo-wrapper {
-    color: var(--city-theme-color-dark, #ffffff);
-}
-
-[data-theme="dark"] .title-city {
-    color: var(--city-theme-color-dark, #ffffff);
+    margin-right: 8px;
 }
 
 .header-logo-wrapper .header-logo {
@@ -1091,12 +1050,12 @@ body[data-glass-mode='none'] .btn {
         0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
-.floating-label .form-control::placeholder {
+.form-control::placeholder {
     color: transparent;
     transition: color var(--transition-fast);
 }
 
-.floating-label .form-control:focus::placeholder {
+.form-control:focus::placeholder {
     color: var(--text-light) !important;
 }
 
@@ -1346,8 +1305,8 @@ body[data-glass-mode='none'] .btn {
 .filter-tag:hover {
     transform: translateY(-1px);
     color: var(--primary-color, #00263b);
-    background: var(--bg-hover, var(--btn-info-bg, #f4f6f8));
-    box-shadow: 0 0 0 1px var(--border-hover-color, rgba(0, 38, 59, 0.22)),
+    background: var(--btn-info-hover, var(--btn-info-bg, #f4f6f8));
+    box-shadow: 0 0 0 1px var(--cgo-border-hover, rgba(0, 38, 59, 0.22)),
                 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
@@ -1524,8 +1483,8 @@ body[data-glass-mode='none'] .btn {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: var(--office-hover, rgba(0, 38, 59, 0.05));
-    border: 1px solid var(--office-border, rgba(0, 0, 0, 0.08));
+    background: var(--cgo-subtle-hover, rgba(0, 38, 59, 0.05));
+    border: 1px solid var(--cgo-subtle-border, rgba(0, 0, 0, 0.08));
     border-radius: var(--radius-md, 8px);
     padding: 3px;
     box-sizing: border-box;
@@ -1881,7 +1840,7 @@ body[data-glass-mode='none'] .btn {
     box-sizing: border-box;
     overflow: hidden;
     isolation: isolate;
-    box-shadow: var(--glass-shadow-surface, 0 4px 16px rgba(0, 38, 59, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
+    box-shadow: var(--glass-shadow, 0 4px 16px rgba(0, 38, 59, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
     backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
 }
@@ -1955,7 +1914,7 @@ body[data-glass-mode='none'] .btn {
     box-sizing: border-box;
     overflow: hidden;
     isolation: isolate;
-    box-shadow: var(--glass-shadow-surface, 0 4px 16px rgba(0, 38, 59, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
+    box-shadow: var(--glass-shadow, 0 4px 16px rgba(0, 38, 59, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
     backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
 }
@@ -2082,7 +2041,7 @@ cgo-modal .modal-card,
     color: var(--text-main);
     overflow: hidden;
     isolation: isolate;
-    box-shadow: var(--glass-shadow-surface, 0 4px 16px rgba(0, 38, 59, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
+    box-shadow: var(--glass-shadow, 0 4px 16px rgba(0, 38, 59, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
     backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     -webkit-backdrop-filter: var(--glass-backdrop-blur-surface, blur(14px) saturate(135%));
     cursor: default;
@@ -2542,8 +2501,8 @@ cgo-modal .modal-card:hover,
 .tool-card.interactive,
 a.tool-card {
     position: relative;
-    border: none !important;
-    background: transparent !important;
+    border: none;
+    background: transparent;
     border-radius: var(--radius-lg, 12px);
     padding: 20px;
     margin-bottom: 20px;
@@ -2712,8 +2671,8 @@ a.tool-card > *:not(.liquid-glass-effect):not(.glass-refraction) {
    ---------------------------------------------------- */
 .glass-panel {
     position: relative;
-    border: none !important;
-    background: transparent !important;
+    border: none;
+    background: transparent;
     border-radius: var(--radius-lg, 12px);
     padding: 24px;
     margin-bottom: 20px;
@@ -2853,8 +2812,8 @@ body[data-glass-mode='liquid'] .glass-panel,
    ---------------------------------------------------- */
 .glass-surface {
     position: relative;
-    border: none !important;
-    background: transparent !important;
+    border: none;
+    background: transparent;
     border-radius: var(--radius-lg, 12px);
     padding: 24px;
     margin-bottom: 20px;
@@ -2990,8 +2949,8 @@ body[data-glass-mode='liquid'] .glass-surface,
 /* 兼容未显式分档的普通 .tool-card (默认采用 Tier C 不可交互强调板规范，避免非交互元素误触发 hover 上浮) */
 .tool-card:not(.interactive):not(a):not(.glass-panel):not(.glass-surface) {
     position: relative;
-    border: none !important;
-    background: transparent !important;
+    border: none;
+    background: transparent;
     border-radius: var(--radius-lg, 12px);
     padding: 20px;
     margin-bottom: 20px;
@@ -3109,183 +3068,76 @@ body[data-glass-mode='liquid'] .glass-surface,
 :root[data-glass-mode='none'] .tool-card,
 body[glass-mode='flat'] .tool-card,
 body[data-glass-mode='flat'] .tool-card,
+body[glass-mode='none'] .tool-card,
+body[data-glass-mode='none'] .tool-card,
 .tool-card[glass-mode='flat'],
 .tool-card[data-glass-mode='flat'],
+.tool-card[glass-mode='none'],
+.tool-card[data-glass-mode='none'],
 :root[glass-mode='flat'] .glass-card,
 :root[data-glass-mode='flat'] .glass-card,
 :root[glass-mode='none'] .glass-card,
 :root[data-glass-mode='none'] .glass-card,
 body[glass-mode='flat'] .glass-card,
 body[data-glass-mode='flat'] .glass-card,
+body[glass-mode='none'] .glass-card,
+body[data-glass-mode='none'] .glass-card,
 .glass-card[glass-mode='flat'],
 .glass-card[data-glass-mode='flat'],
+.glass-card[glass-mode='none'],
+.glass-card[data-glass-mode='none'],
 :root[glass-mode='flat'] .glass-panel,
 :root[data-glass-mode='flat'] .glass-panel,
 :root[glass-mode='none'] .glass-panel,
 :root[data-glass-mode='none'] .glass-panel,
 body[glass-mode='flat'] .glass-panel,
 body[data-glass-mode='flat'] .glass-panel,
+body[glass-mode='none'] .glass-panel,
+body[data-glass-mode='none'] .glass-panel,
 .glass-panel[glass-mode='flat'],
 .glass-panel[data-glass-mode='flat'],
+.glass-panel[glass-mode='none'],
+.glass-panel[data-glass-mode='none'],
 :root[glass-mode='flat'] .glass-surface,
 :root[data-glass-mode='flat'] .glass-surface,
 :root[glass-mode='none'] .glass-surface,
 :root[data-glass-mode='none'] .glass-surface,
 body[glass-mode='flat'] .glass-surface,
 body[data-glass-mode='flat'] .glass-surface,
+body[glass-mode='none'] .glass-surface,
+body[data-glass-mode='none'] .glass-surface,
 .glass-surface[glass-mode='flat'],
 .glass-surface[data-glass-mode='flat'],
+.glass-surface[glass-mode='none'],
+.glass-surface[data-glass-mode='none'],
 :root[glass-mode='flat'] .tool-item,
 :root[data-glass-mode='flat'] .tool-item,
 :root[glass-mode='none'] .tool-item,
 :root[data-glass-mode='none'] .tool-item,
 body[glass-mode='flat'] .tool-item,
 body[data-glass-mode='flat'] .tool-item,
-.tool-item[glass-mode='flat'],
-.tool-item[data-glass-mode='flat'],
-:root[glass-mode='none'] .glass-card,
-:root[data-glass-mode='none'] .glass-card,
-body[glass-mode='none'] .glass-card,
-body[data-glass-mode='none'] .glass-card,
-.glass-card[glass-mode='none'],
-.glass-card[data-glass-mode='none'],
-:root[glass-mode='none'] .glass-panel,
-:root[data-glass-mode='none'] .glass-panel,
-body[glass-mode='none'] .glass-panel,
-body[data-glass-mode='none'] .glass-panel,
-.glass-panel[glass-mode='none'],
-.glass-panel[data-glass-mode='none'],
-:root[glass-mode='none'] .glass-surface,
-:root[data-glass-mode='none'] .glass-surface,
-body[glass-mode='none'] .glass-surface,
-body[data-glass-mode='none'] .glass-surface,
-.glass-surface[glass-mode='none'],
-.glass-surface[data-glass-mode='none'],
-:root[glass-mode='none'] .tool-card,
-:root[data-glass-mode='none'] .tool-card,
-body[glass-mode='none'] .tool-card,
-body[data-glass-mode='none'] .tool-card,
-.tool-card[glass-mode='none'],
-.tool-card[data-glass-mode='none'],
 body[glass-mode='none'] .tool-item,
 body[data-glass-mode='none'] .tool-item,
+.tool-item[glass-mode='flat'],
+.tool-item[data-glass-mode='flat'],
 .tool-item[glass-mode='none'],
 .tool-item[data-glass-mode='none'] {
-    background: var(--card-bg) !important;
-    border: 1px solid var(--border-color) !important;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.06));
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
 }
-:root[glass-mode='flat'] .tool-card::before,
-:root[data-glass-mode='flat'] .tool-card::before,
-.tool-card[glass-mode='flat']::before,
-:root[glass-mode='flat'] .tool-card::after,
-:root[data-glass-mode='flat'] .tool-card::after,
-.tool-card[glass-mode='flat']::after,
-:root[glass-mode='flat'] .tool-card .liquid-glass-effect,
-:root[data-glass-mode='flat'] .tool-card .liquid-glass-effect,
-:root[glass-mode='flat'] .glass-card::before,
-:root[data-glass-mode='flat'] .glass-card::before,
-.glass-card[glass-mode='flat']::before,
-:root[glass-mode='flat'] .glass-card::after,
-:root[data-glass-mode='flat'] .glass-card::after,
-.glass-card[glass-mode='flat']::after,
-:root[glass-mode='flat'] .glass-card .liquid-glass-effect,
-:root[data-glass-mode='flat'] .glass-card .liquid-glass-effect,
-:root[glass-mode='flat'] .glass-card .glass-refraction,
-:root[data-glass-mode='flat'] .glass-card .glass-refraction,
-:root[glass-mode='flat'] .glass-panel::before,
-:root[data-glass-mode='flat'] .glass-panel::before,
-.glass-panel[glass-mode='flat']::before,
-:root[glass-mode='flat'] .glass-panel::after,
-:root[data-glass-mode='flat'] .glass-panel::after,
-.glass-panel[glass-mode='flat']::after,
-:root[glass-mode='flat'] .glass-panel .liquid-glass-effect,
-:root[data-glass-mode='flat'] .glass-panel .liquid-glass-effect,
-:root[glass-mode='flat'] .glass-panel .glass-refraction,
-:root[data-glass-mode='flat'] .glass-panel .glass-refraction,
-:root[glass-mode='flat'] .glass-surface::before,
-:root[data-glass-mode='flat'] .glass-surface::before,
-.glass-surface[glass-mode='flat']::before,
-:root[glass-mode='flat'] .glass-surface::after,
-:root[data-glass-mode='flat'] .glass-surface::after,
-.glass-surface[glass-mode='flat']::after,
-:root[glass-mode='flat'] .glass-surface .liquid-glass-effect,
-:root[data-glass-mode='flat'] .glass-surface .liquid-glass-effect,
-:root[glass-mode='flat'] .glass-surface .glass-refraction,
-:root[data-glass-mode='flat'] .glass-surface .glass-refraction,
-:root[glass-mode='flat'] .tool-item::before,
-:root[data-glass-mode='flat'] .tool-item::before,
-.tool-item[glass-mode='flat']::before,
-:root[glass-mode='flat'] .tool-item::after,
-:root[data-glass-mode='flat'] .tool-item::after,
-.tool-item[glass-mode='flat']::after,
-:root[glass-mode='flat'] .tool-item .liquid-glass-effect,
-:root[data-glass-mode='flat'] .tool-item .liquid-glass-effect,
-:root[glass-mode='flat'] .tool-item .glass-refraction,
-:root[data-glass-mode='flat'] .tool-item .glass-refraction,
-:root[glass-mode='none'] .tool-card::before,
-:root[data-glass-mode='none'] .tool-card::before,
-.tool-card[glass-mode='none']::before,
-:root[glass-mode='none'] .tool-card::after,
-:root[data-glass-mode='none'] .tool-card::after,
-.tool-card[glass-mode='none']::after,
-:root[glass-mode='none'] .tool-card .liquid-glass-effect,
-:root[data-glass-mode='none'] .tool-card .liquid-glass-effect,
-:root[glass-mode='none'] .glass-card::before,
-:root[data-glass-mode='none'] .glass-card::before,
-.glass-card[glass-mode='none']::before,
-:root[glass-mode='none'] .glass-card::after,
-:root[data-glass-mode='none'] .glass-card::after,
-.glass-card[glass-mode='none']::after,
-:root[glass-mode='none'] .glass-card .liquid-glass-effect,
-:root[data-glass-mode='none'] .glass-card .liquid-glass-effect,
-:root[glass-mode='none'] .glass-card .glass-refraction,
-:root[data-glass-mode='none'] .glass-card .glass-refraction,
-:root[glass-mode='none'] .glass-panel::before,
-:root[data-glass-mode='none'] .glass-panel::before,
-.glass-panel[glass-mode='none']::before,
-:root[glass-mode='none'] .glass-panel::after,
-:root[data-glass-mode='none'] .glass-panel::after,
-.glass-panel[glass-mode='none']::after,
-:root[glass-mode='none'] .glass-panel .liquid-glass-effect,
-:root[data-glass-mode='none'] .glass-panel .liquid-glass-effect,
-:root[glass-mode='none'] .glass-panel .glass-refraction,
-:root[data-glass-mode='none'] .glass-panel .glass-refraction,
-:root[glass-mode='none'] .glass-surface::before,
-:root[data-glass-mode='none'] .glass-surface::before,
-.glass-surface[glass-mode='none']::before,
-:root[glass-mode='none'] .glass-surface::after,
-:root[data-glass-mode='none'] .glass-surface::after,
-.glass-surface[glass-mode='none']::after,
-:root[glass-mode='none'] .glass-surface .liquid-glass-effect,
-:root[data-glass-mode='none'] .glass-surface .liquid-glass-effect,
-:root[glass-mode='none'] .glass-surface .glass-refraction,
-:root[data-glass-mode='none'] .glass-surface .glass-refraction,
-:root[glass-mode='none'] .tool-item::before,
-:root[data-glass-mode='none'] .tool-item::before,
-.tool-item[glass-mode='none']::before,
-:root[glass-mode='none'] .tool-item::after,
-:root[data-glass-mode='none'] .tool-item::after,
-.tool-item[glass-mode='none']::after,
-:root[glass-mode='none'] .tool-item .liquid-glass-effect,
-:root[data-glass-mode='none'] .tool-item .liquid-glass-effect,
-:root[glass-mode='none'] .tool-item .glass-refraction,
-:root[data-glass-mode='none'] .tool-item .glass-refraction {
+:root:is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none']) :is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item)::before,
+:root:is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none']) :is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item)::after,
+:root:is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none']) :is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item) :is(.liquid-glass-effect, .glass-refraction),
+body:is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none']) :is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item)::before,
+body:is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none']) :is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item)::after,
+body:is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none']) :is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item) :is(.liquid-glass-effect, .glass-refraction),
+:is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item):is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none'])::before,
+:is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item):is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none'])::after,
+:is(.tool-card, .glass-card, .glass-panel, .glass-surface, .tool-item):is([glass-mode='flat'], [data-glass-mode='flat'], [glass-mode='none'], [data-glass-mode='none']) :is(.liquid-glass-effect, .glass-refraction) {
     display: none;
-}
-
-@media (prefers-reduced-motion: reduce), (max-width: 640px) {
-    :root {
-        --glass-refraction-filter: none;
-    }
-    .liquid-glass-effect,
-    .glass-refraction {
-        filter: none !important;
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-    }
 }
 
 /* 视口外非首屏卡片渲染性能优化 */
@@ -3412,6 +3264,45 @@ td {
 tr:hover,
 tbody tr:hover {
     background-color: var(--table-row-hover);
+}
+
+cgo-table table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 14px 18px;
+    background: var(--glass-bg-subtle, rgba(0, 38, 59, 0.03));
+    color: var(--table-head-text, var(--text-main, #00263b));
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--cgo-subtle-border, rgba(0, 38, 59, 0.07));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+[data-theme='dark'] cgo-table table th {
+    background: var(--glass-bg-subtle, rgba(255, 255, 255, 0.04));
+}
+cgo-table table thead tr:first-child th:first-child {
+    border-top-left-radius: var(--radius-lg, 12px);
+}
+cgo-table table thead tr:first-child th:last-child {
+    border-top-right-radius: var(--radius-lg, 12px);
+}
+cgo-table table td {
+    padding: 13px 18px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--text-main, #00263b);
+    border-bottom: 1px solid var(--cgo-subtle-border, rgba(0, 38, 59, 0.05));
+    cursor: default;
+}
+[data-theme='dark'] cgo-table table td {
+    color: var(--text-main, #e5e8ea);
+}
+cgo-table table tbody tr:hover td {
+    background: var(--cgo-subtle-hover, rgba(0, 38, 59, 0.03));
 }
 
 /* 对比高亮 */
@@ -3713,7 +3604,12 @@ th.selected::after {
         transform: none !important;
         padding: 0 !important;
         overflow-y: auto !important;
-        animation: drawerIn 0.3s cubic-bezier(0.32, 0.94, 0.6, 1) !important;
+        animation: drawerIn 0.3s cubic-bezier(0.32, 0.94, 0.6, 1);
+    }
+
+    .text-dialog.closing:not(.help-dialog):not(.modal-dialog-keep-center),
+    .modal-dialog.closing:not(.help-dialog):not(.modal-dialog-keep-center) {
+        animation: drawerOut 0.2s cubic-bezier(0.4, 0, 1, 1) forwards;
     }
 
     /* 帮助弹窗在移动端保持居中，不作为底置弹窗 */
@@ -3729,7 +3625,7 @@ th.selected::after {
         border-radius: 12px !important;
         overflow-y: auto !important;
         z-index: 100000 !important;
-        animation: dialogIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+        animation: dialogIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 }
 
