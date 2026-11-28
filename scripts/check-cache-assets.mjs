@@ -126,6 +126,10 @@ function checkVersions() {
     const tokenRe = /\b\d{6}\.\d{6}\b/g;
     for (const file of files) {
         const text = readFileSync(file, 'utf8');
+        // A version appended directly to an extension is a different URL and returns 404.
+        for (const m of text.matchAll(/\.(?:m?js|css)\d{6}\.\d{6}\b/g)) {
+            malformed.push(`${relative(root, file).replace(/\\/g, '/')}:${lineOf(text, m.index)} 缺少 ?v=: ${m[0]}`);
+        }
         for (const m of text.matchAll(tokenRe)) {
             if (m[0] === version) continue;
             const where = `${relative(root, file).replace(/\\/g, '/')}:${lineOf(text, m.index)}`;

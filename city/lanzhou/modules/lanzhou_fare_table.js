@@ -59,7 +59,7 @@
     /** 票价表弹层根节点 ID（全局单例） */
     const VIEWER_ID = "lanzhou-fare-viewer";
     /** 本模块版本号（优先读全局发布号，与 lanzhou.js 中 ?v= 保持一致） */
-    const VERSION = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261125.223600";
+    const VERSION = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261128.191052";
 
     /* ===================================================================== */
     /* ====== 可自由编辑区：票价表配置表 (EDIT HERE) ========================= */

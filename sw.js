@@ -2,10 +2,57 @@
  * CGo OpenMap - PWA 渐进式离线缓存 Service Worker (sw.js)
  */
 
-const CACHE_NAME = 'cgo-openmap-v261127.160841';
+const CACHE_NAME = 'cgo-openmap-v261128.191052';
 // 地图瓦片专用缓存：与静态资源版本无关，激活新版本时需保留
 const TILE_CACHE_NAME = 'map-tiles-cache';
 const ASSETS_TO_CACHE = [
+    "./city/singapore/ASSET-RIGHTS.md",
+    "./city/singapore/QUALITY_REVIEW.md",
+    "./city/singapore/PR-READINESS.md",
+    "./city/singapore/permissions/LTA-request.md",
+    "./city/singapore/permissions/Sentosa-request.md",
+
+    "./city/singapore/assets/brand/public-transport.svg",
+    "./city/singapore/modules/sentosa-express.js",
+    "./city/singapore/modules/service-patterns.js",
+    "./city/singapore/assets/line/sentosa-express.svg",
+    "./city/singapore/assets/brand/sentosa.svg",
+    "./city/singapore/assets/fonts/SingaporeChinese-Regular.woff",
+    "./city/singapore/assets/fonts/SingaporeChinese-Bold.woff",
+    "./city/singapore/assets/fonts/OFL-NotoSansCJK.txt",
+    "./city/singapore/assets/line/BP.svg",
+    "./city/singapore/assets/line/CCL.svg",
+    "./city/singapore/assets/line/DTL.svg",
+    "./city/singapore/assets/line/EWL.svg",
+    "./city/singapore/assets/line/NEL.svg",
+    "./city/singapore/assets/line/NSL.svg",
+    "./city/singapore/assets/line/PTC.svg",
+    "./city/singapore/assets/line/STC.svg",
+    "./city/singapore/assets/line/TEL.svg",
+    "./city/singapore/README.md",
+    "./city/singapore/MAINTAINER_GUIDE.md",
+    "./city/singapore/FONT-NOTICE.md",
+    "./city/singapore/assets/water-light.svg",
+    "./city/singapore/assets/water-dark.svg",
+    "./city/singapore/assets/fonts/Lato-Regular.ttf",
+    "./city/singapore/assets/fonts/Lato-Bold.ttf",
+    "./city/singapore/assets/fonts/OFL.txt",
+    "./city/singapore/modules/unpaid-transfer.js",
+    "./city/singapore/data_reference_geometry.js",
+    "./city/singapore/modules/airport-shuttle.js",
+    "./city/singapore/modules/construction.js",
+    "./city/singapore/data_construction.js",
+    "./city/singapore/data_legend.js",
+    "./city/singapore/data_stations.js",
+    "./city/singapore/singapore.js",
+    "./city/singapore/style.css",
+    "./city/singapore/data_virtual_transfers.js",
+    "./city/singapore/data_scattered.js",
+    "./city/singapore/data_timetable.js",
+    "./city/singapore/data_notopen.js",
+    "./city/singapore/data_lines.js",
+    "./city/singapore/stacard/script.js",
+
     // 页面与入口
     './',
     './index.html',

@@ -260,6 +260,7 @@ CGo OpenMap follows an **open collaboration + city stewardship** model. Contribu
 - **Shanghai:** [Ryan Si](https://github.com/ryan-si) — City Maintainer
 - **Dalian:** [jrzhang](https://github.com/beepingflijo) — City Maintainer; duckinglim — operations-data support
 - **Changchun:** [jrzhang](https://github.com/beepingflijo) — City Maintainer
+- **Singapore MRT/LRT and Sentosa Express:** [Deming ZHOU](https://github.com/betaxiaozhou/) — Maintainer applicant; 184 MRT/LRT stations plus 4 Sentosa Express stations; source-asset permissions and upstream review pending.
 - **Sydney:** [Ryan Si](https://github.com/ryan-si) — City Maintainer
 - **Hong Kong:** [Ryan Si](https://github.com/ryan-si) — City Maintainer (unofficial recreation with cross-platform interchange guide and route planner)
 - **Platform architecture:** [NaL](https://github.com/NokiaimuL/) & [Ryan](https://github.com/ryan-si)
