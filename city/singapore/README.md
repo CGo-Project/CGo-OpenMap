@@ -158,4 +158,4 @@ python scripts/check-singapore-route-casings.py 'http://127.0.0.1:8080/main.html
 
 ## 审查材料
 
-城市入口和地图标题使用 LTA 公共交通双向箭头标志（绿色单色适配），不使用 SMRT 公司标志或默认车辆图标。见 [素材许可清单](ASSET-RIGHTS.md)、[质量自评](QUALITY_REVIEW.md)、[PR 范围说明](PR-READINESS.md)。官方来源图形许可尚待确认，不能将待许可素材统一声明为开放授权。
+城市入口和地图标题使用 LTA 公共交通双向箭头标志（首页跟随通用单色，地图随城市绿色主题适配），不使用 SMRT 公司标志或默认车辆图标。见 [素材许可清单](ASSET-RIGHTS.md)、[质量自评](QUALITY_REVIEW.md)、[PR 范围说明](PR-READINESS.md)。官方来源图形许可尚待确认，不能将待许可素材统一声明为开放授权。

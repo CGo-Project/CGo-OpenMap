@@ -168,7 +168,7 @@
     /* 官网车站资料 + 行程规划共享层（须在核心引擎执行前同步写入） */
     function loadStationBoardModules() {
         if (typeof document === "undefined" || typeof document.write !== "function") return;
-        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261128.184551";
+        const version = (typeof window !== "undefined" && window.CGO_ASSET_VERSION) || "261128.191052";
         const shared = "./core/shared";
         const write = (src) => document.write(`<script src="${src}?v=${version}"><\/script>`);
 
