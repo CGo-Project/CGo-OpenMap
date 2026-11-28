@@ -1,0 +1,173 @@
+@font-face {
+    font-family: 'Singapore Lato';
+    src: url('./assets/fonts/Lato-Regular.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Singapore Lato';
+    src: url('./assets/fonts/Lato-Bold.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Singapore Chinese';
+    src: url('./assets/fonts/SingaporeChinese-Regular.woff') format('woff');
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Singapore Chinese';
+    src: url('./assets/fonts/SingaporeChinese-Bold.woff') format('woff');
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+}
+.map-singapore .stacn { font-family: 'Singapore Chinese', 'Noto Sans SC', 'PingFang SC', sans-serif; font-weight: 400; }
+/* Match visible Chinese glyph centres to the signs, rather than the font line box. */
+.map-singapore .label-group { --sg-label-size: 24px; --sg-label-leading: 28px; --sg-label-optical-shift: -1px; line-height: 1.08; }
+/* Keep the city label metrics when the generic selected-state style is applied. */
+.map-singapore .label-group .stacn,
+.map-singapore .label-group.active .stacn { font-size: var(--sg-label-size); line-height: var(--sg-label-leading); position: relative; top: var(--sg-label-optical-shift); }
+.map-singapore .label-group.type-tsf .stacn { font-weight: 700; }
+.map-singapore .staen { display: none; }
+.map-singapore .panel-cn-name { font-family: 'Singapore Chinese', 'Noto Sans SC', 'PingFang SC', sans-serif; }
+.map-singapore .panel-en-name { font-family: 'Singapore Lato', sans-serif; }
+.map-singapore .sg-station-sign text { font-family: 'Singapore Lato', sans-serif; }
+.map-singapore .sg-terminal-marker { position: absolute; width: 28px; height: 28px; transform: translate(-50%, -50%); pointer-events: none; z-index: 23; }
+.map-singapore .sg-terminal-marker svg { display: block; width: 100%; height: 100%; }
+.sg-terminal-key { display: flex; gap: 10px; align-items: center; font-size: 12px; line-height: 1.5; color: var(--text-main); }
+.sg-terminal-key svg { width: 28px; height: 28px; flex-shrink: 0; }
+/* Same card code-cell height and lettering for ordinary, interchange and tap-out signs. */
+.map-singapore .panel-badges.sg-station-badges { --sg-card-sign-height: 24px; gap: 0; margin-right: 0; }
+.map-singapore .sg-card-station-sign { display: block; flex-shrink: 0; height: var(--sg-card-sign-height); width: calc(var(--sg-card-sign-height) * var(--sg-card-sign-ratio)); }
+.map-singapore .sg-card-station-sign > svg { display: block; width: 100%; height: 100%; }
+/* Chinese legend: 24.134pt neck / 67.792pt colour plate. Scale to the card's 25/27 colour/viewBox ratio;
+   overlap the bowed ends so the station outlines do not cut white seams across the connection. */
+.map-singapore .sg-card-transfer-connector { display: block; flex-shrink: 0; position: relative; z-index: 1; width: calc(var(--sg-card-sign-height) * .712774); height: calc(var(--sg-card-sign-height) * .329627); margin: 0 calc(var(--sg-card-sign-height) * -.123634); }
+@media (max-width: 380px) {
+    .map-singapore .panel-badges.sg-station-badges { --sg-card-sign-height: 22px; }
+}
+.map-singapore .sg-line-badges .line-badge { height: 32px; width: auto; flex-shrink: 0; border-radius: 0; }
+.map-singapore .sg-line-badges .sg-line-mark { display: block; height: 100%; width: auto; }
+.map-singapore .sg-line-badges .sg-sentosa-brand { height: 24px; width: 135px; flex-shrink: 0; background: transparent; padding: 0; }
+.map-singapore .sg-line-badges:has(.sg-sentosa-brand) { margin-right: 0; }
+.map-singapore .sg-sentosa-brand svg { display: block; height: 100%; width: 100%; }
+@media (max-width: 380px) {
+    .map-singapore .sg-line-badges .sg-sentosa-brand { height: 20px; width: 112.5px; }
+}
+.map-singapore .station.sg-station-sign.active { transform: translate(-50%, -50%) scale(1.12); }
+.map-singapore #scattered-layer { pointer-events: none; }
+.map-singapore #scattered-layer .scattered-item:has(img[src*="water-dark.svg"]) { display: none; }
+.map-singapore[data-theme="dark"] #scattered-layer .scattered-item:has(img[src*="water-light.svg"]) { display: none; }
+.map-singapore[data-theme="dark"] #scattered-layer .scattered-item:has(img[src*="water-dark.svg"]) { display: block; }
+
+@media (prefers-color-scheme: dark) {
+    .map-singapore:not([data-theme="light"]) #scattered-layer .scattered-item:has(img[src*="water-light.svg"]) { display: none; }
+    .map-singapore:not([data-theme="light"]) #scattered-layer .scattered-item:has(img[src*="water-dark.svg"]) { display: block; }
+}
+
+/* LRT labels follow the denser neighbourhood-loop scale of the reference map. */
+.map-singapore .label-group[data-sid^="SE"],
+.map-singapore .label-group[data-sid^="SW"],
+.map-singapore .label-group[data-sid^="PE"],
+.map-singapore .label-group[data-sid^="PW"],
+.map-singapore .label-group.type-dot[data-sid^="BP"] { --sg-label-size: 19px; --sg-label-leading: 22px; --sg-label-optical-shift: -.5px; }
+.map-singapore :is(#label_NE5, #label_NS25, #label_DT18) .stacn { width: 2em; white-space: normal; }
+.map-singapore #label_CC32 .stacn { width: 3em; white-space: normal; }
+.map-singapore :is(#label_TE18, #label_DT18) { --sg-label-size: 22px; --sg-label-leading: 25px; --sg-label-optical-shift: -1.5px; }
+.map-singapore .label-group[data-sid^="SENTOSA_"] { --sg-label-size: 22px; --sg-label-leading: 26px; --sg-label-optical-shift: -2px; }
+.map-singapore .sg-line-badges .sg-sentosa-mark { display: block; height: 100%; width: auto; }
+.map-singapore { --sg-sentosa-logo-bg: #ffffff; }
+.map-singapore .sg-line-badges .line-badge:has(.sg-sentosa-mark) { background: var(--sg-sentosa-logo-bg); border-radius: 4px; padding: 3px 5px; }
+.map-singapore .sg-sentosa-sign .sg-sentosa-mark { display: block; width: 100%; height: 100%; }
+.map-singapore[data-theme="dark"] { --sg-sentosa-logo-bg: #1a1a1a; }
+.map-singapore[data-theme="dark"] .sg-sentosa-mark { filter: invert(1) grayscale(1); }
+@media (prefers-color-scheme: dark) {
+    .map-singapore:not([data-theme="light"]) { --sg-sentosa-logo-bg: #1a1a1a; }
+    .map-singapore:not([data-theme="light"]) .sg-sentosa-mark { filter: invert(1) grayscale(1); }
+}
+
+/* Official tap-out treatment: separate code plates joined by a narrow, two-colour solid neck. */
+.map-singapore .virtual-connectors > path { display: none; }
+.map-singapore .sg-tap-out-bridge { pointer-events: none; }
+.sg-transfer-key { margin-top: 8px; display: grid; gap: 10px; font-weight: 400; }
+.sg-transfer-key-row { display: flex; align-items: center; gap: 10px; }
+.sg-transfer-key-sign { width: 154px; flex: 0 0 154px; display: flex; align-items: center; justify-content: center; }
+.sg-transfer-key-sign > svg { width: 130px; height: 35px; }
+.sg-transfer-key-sign .sg-key-code { display: flex; width: 67px; height: 35px; }
+.sg-key-code svg { width: 100%; height: 100%; }
+.sg-transfer-key-sign > svg.sg-key-neck { width: 24px; height: 11px; margin: 0 -3px; flex: 0 0 24px; }
+.sg-transfer-key-label { display: flex; flex-direction: column; font-size: 12px; color: var(--text-main); line-height: 1.4; }
+.sg-transfer-key-label small { font-size: 10px; color: var(--text-light); }
+.map-singapore .label-group.type-tsfo .stacn { font-weight: 700; }
+.sg-unpaid-transfer { margin-bottom: 14px; padding: 12px; border: 1px solid var(--border-color); border-left: 3px solid var(--primary-color); border-radius: 8px; background: var(--card-sub-bg); color: var(--text-main); font-size: 13px; line-height: 1.65; }
+.sg-unpaid-transfer h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 14px; }
+.sg-unpaid-transfer p { margin: 6px 0; }
+.sg-transfer-button { display: block; margin: 10px 0 6px; padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 5px; background: var(--map-bg); color: var(--text-main); cursor: pointer; }
+.sg-unpaid-transfer a { color: var(--text-main); text-decoration: underline; }
+/* Both sides may be selected together; preserve the visible gap between fare-paid areas. */
+.map-singapore .station.sg-tap-out-sign.active { transform: translate(-50%, -50%); }
+
+/* Fallback widths before the city geometry finishes loading. */
+.map-singapore :is(#lines-layer, #highlight-layer) .line-visual-group { --sg-line-width: 9.52445px; --sg-casing-extra: 8.272px; }
+.map-singapore :is(#lines-layer, #highlight-layer) .line-visual-group:is([data-visual-id="BP"], [data-visual-id="SE"], [data-visual-id="SW"], [data-visual-id="PE"], [data-visual-id="PW"]) { --sg-line-width: 3.96695px; --sg-casing-extra: 2.4px; }
+.map-singapore :is(#lines-layer, #highlight-layer) .line-visual-group[data-visual-id="CG"] { --sg-line-width: 13.5564px; }
+.map-singapore :is(#lines-layer, #highlight-layer) .line-visual-inner { stroke-width: var(--sg-line-width) !important; }
+.map-singapore :is(#lines-layer, #highlight-layer) .line-visual-outer { stroke: var(--map-bg) !important; stroke-width: calc(var(--sg-line-width) + var(--sg-casing-extra)) !important; }
+.map-singapore :is(.sg-reference-geometry, .sg-route-casing) { pointer-events: none; }
+.map-singapore .sg-official-geometry > :is(.line-visual-inner, .line-visual-outer, .line-visual-overlay) { display: none; }
+/* Same-service branches share a casing layer. Shadows use coloured alpha only.
+   When every member is selected, filter their combined ink to avoid seams at joins;
+   a partially selected family (e.g. the airport shuttle) shadows only its selected routes. */
+.map-singapore #highlight-layer .sg-official-geometry { display: none; }
+.map-singapore #lines-layer .sg-family-ink:has(> .line-visual-group.active):not(:has(> .line-visual-group:not(.active))),
+.map-singapore #lines-layer .sg-family-ink:has(> .line-visual-group:not(.active)) > .line-visual-group.active > .sg-reference-geometry { filter: drop-shadow(0 0 2px rgba(0, 0, 0, .4)); }
+.map-singapore { --sg-sentosa-track: #000000; }
+.map-singapore[data-theme="dark"] { --sg-sentosa-track: #ffffff; }
+@media (prefers-color-scheme: dark) {
+    .map-singapore:not([data-theme="light"]) { --sg-sentosa-track: #ffffff; }
+}
+.map-singapore :is(#lines-layer, #highlight-layer) .line-visual-group[data-visual-id="SENTOSA"] { --sg-line-width: 5.5px; --sg-casing-extra: 3px; }
+.map-singapore :is(#lines-layer, #highlight-layer) .line-visual-group[data-visual-id="SENTOSA"] .line-visual-inner { stroke: var(--sg-sentosa-track); }
+
+.sg-airport-shuttle, .sg-sentosa-info { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--border-color); border-left: 3px solid #009645; border-radius: 6px; background: var(--card-sub-bg); color: var(--text-main); font-size: 12px; line-height: 1.5; }
+.sg-sentosa-info { border-left-color: #f7931e; }
+:is(.sg-airport-shuttle, .sg-sentosa-info) h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-size: 13px; line-height: 18px; }
+:is(.sg-airport-shuttle, .sg-sentosa-info) p { margin: 4px 0 0; }
+.sg-sentosa-hours a { color: var(--text-main); text-decoration: underline; }
+
+/* LTA construction enclosure: coloured tracks/codes, dotted limits and a solid left bracket. */
+.map-singapore { --sg-construction-ink: #2d2a26; }
+.map-singapore[data-theme="dark"] { --sg-construction-ink: #d5d2ce; }
+@media (prefers-color-scheme: dark) {
+    .map-singapore:not([data-theme="light"]) { --sg-construction-ink: #d5d2ce; }
+}
+.map-singapore .sg-construction-annotation { pointer-events: none; }
+.map-singapore .sg-construction-annotation text { font-family: 'Singapore Chinese', sans-serif; font-weight: 700; }
+.map-singapore .label-group.type-no .stacn { color: var(--text-main) !important; font-weight: 400; }
+.map-singapore .label-group[data-sid="TE31"] .stacn { font-weight: 700; }
+.sg-construction-info { margin-bottom: 14px; padding: 12px; border: 1px solid var(--border-color); border-left: 3px solid var(--text-main); border-radius: 8px; background: var(--card-sub-bg); color: var(--text-main); font-size: 13px; line-height: 1.65; }
+.sg-construction-info h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 14px; }
+.sg-construction-info p { margin: 8px 0; }
+.sg-construction-info a { color: var(--text-main); text-decoration: underline; }
+.sg-construction-key { display: flex; align-items: center; gap: 12px; font-weight: 400; }
+.sg-construction-key > span { flex: 0 0 auto; padding: 7px 10px; border-radius: 7px; background: #231f20; color: #ffffff; font-family: 'Singapore Lato', sans-serif; font-weight: 700; text-align: center; line-height: 1.2; }
+.sg-construction-key p { margin: 0; font-size: 12px; line-height: 1.5; }
+
+/* A single line may expose several complete operating patterns without duplicating its track. */
+.sg-service-choices { display: flex; gap: 6px; margin-bottom: 8px; }
+.sg-service-choices button { flex: 1; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; background: var(--btn-info-bg); color: var(--text-main); font: inherit; font-size: 12px; cursor: pointer; }
+.sg-service-choices button[aria-pressed="true"] { background: var(--primary-color); color: var(--btn-text); }
+.sg-service-panel[hidden] { display: none; }
+.sg-service-neighbors { width: 100%; min-width: 0; max-width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 1.5; }
+.sg-service-neighbors th, .sg-service-neighbors td { font-size: inherit; padding: 5px 4px; text-align: center; }
+.sg-service-neighbors thead th { font-size: 11px; font-weight: 400; color: var(--text-light); }
+.sg-service-neighbors tbody tr { border-top: 1px solid var(--border-color); }
+.sg-service-neighbors tbody th { font-size: 11px; font-weight: 400; text-align: left; color: var(--text-light); }
+.sg-service-neighbor { border: 0; padding: 0; min-height: 24px; background: transparent; color: var(--text-main); font: inherit; font-weight: 600; cursor: pointer; }
+.sg-service-patterns button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+.sg-service-note { margin: 8px 0 0; font-size: 11px; line-height: 1.5; color: var(--text-light); }

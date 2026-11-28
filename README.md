@@ -308,6 +308,7 @@ openmap/
 - **上海线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人）
 - **大连线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人） · duckinglim（运营数据支持）
 - **长春线网**：[jrzhang](https://github.com/beepingflijo)（城市主理人）
+- **新加坡 MRT/LRT 与圣淘沙捷运**：[Deming ZHOU](https://github.com/betaxiaozhou/)（主理人申请中；184 个地铁轻轨站及圣淘沙捷运 4 站，待官方评审）
 - **悉尼线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人）
 - **香港线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人；非官方复刻，支持同台换乘指南与行程规划）
 - **深圳线网**：[Ryan Si](https://github.com/ryan-si)（城市主理人；按深圳市交通运输局公布的官方运营线路网络图非官方复刻，与香港线路图衔接，口岸车站提供通关信息）
