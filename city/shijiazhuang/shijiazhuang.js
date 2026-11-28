@@ -379,7 +379,7 @@
     window.CURRENT_CITY = ShijiazhuangCity;
 
     if (typeof document !== 'undefined' && typeof document.write === 'function') {
-        const v = (typeof window !== 'undefined' && window.CGO_ASSET_VERSION) || '261125.223600';
+        const v = (typeof window !== 'undefined' && window.CGO_ASSET_VERSION) || '261128.184551';
         document.write(`<scr` + `ipt src="./city/shijiazhuang/modules/shijiazhuang_cultural.js?v=${v}"><\/scr` + `ipt>`);
     }
 

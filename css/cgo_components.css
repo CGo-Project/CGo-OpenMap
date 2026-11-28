@@ -1947,3 +1947,24 @@ cgo-toolbar-btn[disabled],
     transform: none !important;
     box-shadow: none !important;
 }
+
+/* ── 上一站 / 下一站 跳转交互（core/station-board.js 原生内置） ── */
+.info-value[data-cgo-jump-sid] {
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.info-value[data-cgo-jump-sid]:hover {
+    color: var(--primary-color) !important;
+    background-color: color-mix(in srgb, var(--primary-color) 12%, transparent);
+}
+
+.info-value[data-cgo-jump-sid]:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.info-value[data-cgo-jump-sid]:hover span {
+    color: var(--text-light);
+}
